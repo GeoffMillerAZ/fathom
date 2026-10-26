@@ -108,6 +108,31 @@
       "end_line": 61,
       "signature": "float4 Shade(float4 c)",
       "tier": "verified"
+    },
+    {
+      "name": "Tone",
+      "kind": "HlslFunc",
+      "package": "conditionals",
+      "line": 65,
+      "end_line": 70,
+      "signature": "float4 Tone(float4 c)",
+      "tier": "verified"
+    },
+    {
+      "name": "TONE",
+      "kind": "HlslMacro",
+      "package": "conditionals",
+      "line": 67,
+      "end_line": 67,
+      "tier": "verified"
+    },
+    {
+      "name": "EXPOSURE",
+      "kind": "HlslMacro",
+      "package": "conditionals",
+      "line": 68,
+      "end_line": 68,
+      "tier": "verified"
     }
   ]
 }

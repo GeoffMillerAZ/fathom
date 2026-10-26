@@ -59,3 +59,12 @@ float4 Shade(float4 c)
 #endif
     return c * nestedLocal;
 }
+
+// A #define inside a body is the file's: the preprocessor has no scope, so a
+// macro under a function's body (a @local.scope) stays a definition.
+float4 Tone(float4 c)
+{
+#define TONE(x) ((x) / (1.0 + (x)))
+#define EXPOSURE 2.0
+    return TONE(c * EXPOSURE);
+}
