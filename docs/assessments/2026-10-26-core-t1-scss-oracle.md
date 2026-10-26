@@ -69,3 +69,17 @@ node --test calibration/oracles/dart-sass/sass_oracle.test.cjs
 go test -race ./internal/langbench -run 'GrammarPrefillDataMatchesQueue|Reading|Corpus'
 ruby -r yaml -e 'ARGV.each { |p| YAML.safe_load(File.read(p)) }' calibration/corpus.d/scss.yaml docs/bench/scss-spans-holdout.yaml
 ```
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / compiler | [Dart Sass](https://sass-lang.com/documentation/js-api/) is measured at 1.105.1 for successful `loadedUrls`; [registry 1.106.1](https://registry.npmjs.org/sass/latest) is newer but does not automatically attest failed Foundation compiles. |
+| SCIP / LSIF | Shared catalogs and [GitHub `scip-scss` search](https://github.com/search?q=scip-scss&type=repositories) yielded no measured SCSS indexer. |
+| Language server | [VS Code CSS/SCSS language service](https://github.com/microsoft/vscode-css-languageservice) has navigation services. **LIVE UNMEASURED** against Foundation’s 25 unattested file pairs. |
+| Registry AST | [sass-parser registry 0.5.1](https://registry.npmjs.org/sass-parser/latest) postdates measured 0.4.57. [`sass_api` 18.1.0](https://pub.dev/api/packages/sass_api) exposes AST spans and [`findDependencies`](https://pub.dev/documentation/sass_api/latest/sass_api/) returns declared URLs, **not resolved pairs**. Spans are a possible independent check; none of these version hits closes the 25-pair gap. |
+| Runtime/load tracing | [Dart Sass compile API](https://sass-lang.com/documentation/js-api/) reports loads for successful compiles only; failed individual files remain counted and unattested. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.
