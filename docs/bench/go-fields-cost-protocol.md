@@ -74,3 +74,8 @@ If both gates pass, explicitly reopen Go L4 rather than retain a failed-cost cla
 No Gin or other holdout is consumed by this cost rerun. Any language grade remains
 a separate independent-oracle measurement after acceptable cost is established.
 Portable commands are in calibration/oracles/go-fields-cost/README.md.
+
+Strict rerun candidate: `4803e3d8b83b9ca132dcc75d5c27e12ff6250ea0`. The full five-package race suite
+passed before freeze; only test files differ from 68ef51637 in internal/cmd/pkg.
+Build both arms with `-trimpath -buildvcs=false` under Go 1.27.3 darwin/arm64.
+The source snapshot remains main 5b84aa5b4, not either updated checkout.

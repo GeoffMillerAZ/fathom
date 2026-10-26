@@ -11,13 +11,13 @@ export FATHOM_HOME="$GO_FIELDS_SCRATCH/fathom-home" GOWORK=off GOMAXPROCS=2 GOFL
 export GOCACHE="$GO_FIELDS_SCRATCH/go-build" GOTMPDIR="$GO_FIELDS_SCRATCH/go-tmp" GOMODCACHE="$GO_FIELDS_SCRATCH/go-mod"
 mkdir -p "$GOTMPDIR"
 export SOURCE_COMMIT="$(git -C "$REPO" rev-parse 5b84aa5b4^{commit})"
-export CANDIDATE_COMMIT="$(git -C "$REPO" rev-parse 68ef5163780197afde9346bddad720b6076677d9^{commit})"
+export CANDIDATE_COMMIT="$(git -C "$REPO" rev-parse 4803e3d8b83b9ca132dcc75d5c27e12ff6250ea0^{commit})"
 mkdir -p "$GO_FIELDS_SCRATCH/source" "$GO_FIELDS_SCRATCH/stores" "$GO_FIELDS_SCRATCH/logs"
 git -C "$REPO" archive "$SOURCE_COMMIT" | tar -xf - -C "$GO_FIELDS_SCRATCH/source"
 git -C "$REPO" worktree add --detach "$GO_FIELDS_SCRATCH/baseline-src" "$SOURCE_COMMIT"
 git -C "$REPO" worktree add --detach "$GO_FIELDS_SCRATCH/candidate-src" "$CANDIDATE_COMMIT"
-(cd "$GO_FIELDS_SCRATCH/baseline-src" && go build -o "$GO_FIELDS_SCRATCH/fathom-baseline" ./cmd/fathom)
-(cd "$GO_FIELDS_SCRATCH/candidate-src" && go build -o "$GO_FIELDS_SCRATCH/fathom-candidate" ./cmd/fathom)
+(cd "$GO_FIELDS_SCRATCH/baseline-src" && go build -trimpath -buildvcs=false -o "$GO_FIELDS_SCRATCH/fathom-baseline" ./cmd/fathom)
+(cd "$GO_FIELDS_SCRATCH/candidate-src" && go build -trimpath -buildvcs=false -o "$GO_FIELDS_SCRATCH/fathom-candidate" ./cmd/fathom)
 python3 calibration/oracles/go-fields-cost/cost.py \
   --baseline "$GO_FIELDS_SCRATCH/fathom-baseline" --candidate "$GO_FIELDS_SCRATCH/fathom-candidate" \
   --subject "$GO_FIELDS_SCRATCH/source" --stores "$GO_FIELDS_SCRATCH/stores" \
@@ -73,3 +73,8 @@ are local identity only: host, toolchain, path and VCS stamping can change them.
 For new controlled builds use the same flags for both arms (`-trimpath
 -buildvcs=false`) and record the Go version/architecture and applied settings.
 Keep the source snapshot fixed even when candidate test expectations change.
+
+The strict rerun candidate is `4803e3d8b83b9ca132dcc75d5c27e12ff6250ea0`, frozen after the full
+core/extractor/callgraph/fusion/langbench race suite passed. Relative to 68ef51637,
+only test expectations and main's hook regression test differ in internal/cmd/pkg;
+production code is unchanged. No historical red candidate is silently called green.
