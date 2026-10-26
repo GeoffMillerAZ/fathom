@@ -3,6 +3,7 @@ package extractor
 import (
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"testing"
 )
@@ -370,6 +371,27 @@ func TestReadSimulinkModelRefsJSONDecode(t *testing.T) {
 		m, err := ReadSimulinkModel("m.slx", slxPackage(t, sys, `<System/>`, "simulink/graphicalInterface.json", c.gi))
 		if err != nil || fmt.Sprint(m.ModelRefs) != fmt.Sprint(c.want) {
 			t.Errorf("%s: %v, %v; want %v", name, m.ModelRefs, err, c.want)
+		}
+	}
+}
+
+// TestReadSimulinkModelRefsPartRefused is S5-R3: a model-references part that is over a cap
+// or does not parse refuses the whole model, as a system part does, never a silent read of
+// the rest: an in-budget model beside it reads as nothing.
+func TestReadSimulinkModelRefsPartRefused(t *testing.T) {
+	sys := "simulink/systems/system_root.xml"
+	block := `<System><Block Name="K" SID="1"/></System>`
+	if m, err := ReadSimulinkModel("m.slx", slxPackage(t, sys, block)); err != nil || len(m.Blocks) != 1 {
+		t.Fatalf("the model alone: %d blocks, %v; want it read", len(m.Blocks), err)
+	}
+	for name, part := range map[string][2]string{
+		"xml over the element budget": {"simulink/graphicalInterface.xml", slxNoise(SimulinkMaxElements, `<P Name="x">%s</P>`, false)},
+		"xml not well formed":         {"simulink/graphicalInterface.xml", `<GraphicalInterface><ModelReference>`},
+		"json not well formed":        {"simulink/graphicalInterface.json", `{"ModelReferences": [{"BlockPath": "a/b", "ModelName": `},
+	} {
+		m, err := ReadSimulinkModel("m.slx", slxPackage(t, sys, block, part[0], part[1]))
+		if !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), path.Base(part[0])) || len(m.Blocks) != 0 {
+			t.Errorf("%s: %d blocks, %v; want ErrSimulinkCap naming %s and nothing read", name, len(m.Blocks), err, path.Base(part[0]))
 		}
 	}
 }

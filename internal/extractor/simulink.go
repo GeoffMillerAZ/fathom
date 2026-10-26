@@ -851,9 +851,11 @@ func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode, bu
 	}
 	var gi *xnode
 	if b, ok := parts["simulink/graphicalInterface.xml"]; ok {
-		if doc, err := parseXMLPart(b, budget); err == nil {
-			gi = doc
+		doc, err := parseXMLPart(b, budget)
+		if err != nil {
+			return fmt.Errorf("simulink: graphicalInterface.xml: %w", err)
 		}
+		gi = doc
 	} else if diagram != nil {
 		gi = &xnode{kids: diagram.children("GraphicalInterface")}
 	}
@@ -873,8 +875,8 @@ func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode, bu
 // are there. The part is decoded as a token stream, never into a tree: no string in it may
 // pass SimulinkMaxValue (checked on its bytes first), no value nest past SimulinkMaxDepth,
 // each reference spends an element of budget and the references stop at
-// SimulinkMaxModelRefs, each past its cap an ErrSimulinkCap. A part that is not a JSON
-// object reads as no references.
+// SimulinkMaxModelRefs, each past its cap an ErrSimulinkCap, as is a part that is not
+// well-formed JSON. A well-formed part that is not an object holds no references.
 func (m *SimulinkModel) jsonModelRefs(b []byte, budget *simulinkBudget) error {
 	if err := jsonStringCap(b); err != nil {
 		return err
@@ -928,17 +930,25 @@ func (m *SimulinkModel) jsonModelRefs(b []byte, budget *simulinkBudget) error {
 		}
 		return nil
 	}
-	if open, err := jsonOpens(d, '{'); err != nil || !open {
+	syntax := func(err error) error {
 		if errors.Is(err, ErrSimulinkCap) {
 			return err
 		}
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return fmt.Errorf("%w: line %d: %w", ErrSimulinkCap, line(), err)
+	}
+	if open, err := jsonOpens(d, '{'); err != nil {
+		return syntax(err)
+	} else if !open {
 		return nil
 	}
 	if err := object(&top, false); err != nil {
-		if errors.Is(err, ErrSimulinkCap) {
-			return err
-		}
-		return nil
+		return syntax(err)
+	}
+	if _, err := d.Token(); err != nil { // the closing brace
+		return syntax(err)
 	}
 	refs := top
 	if hasInner {
