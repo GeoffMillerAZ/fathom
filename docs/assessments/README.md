@@ -103,6 +103,8 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [iac-docxref-impact](2026-10-26-iac-docxref-impact.md), [data](data/2026-10-26-iac-docxref-impact.json) | Two-hop engine restores 1,381 native Terraform pairs; other doc strategies are isolated and fixture-replayed | IAC-5, IAC-6, IAC-9, IAC-11, GAP1-32, ADR-048, ADR-075 |
 | 2026-10-26 | [next-phase-plan](2026-10-26-next-phase-plan.md) | Fathom cannot yet prove it helps: land the P0 fixes and drafts, move bench honesty into code, then run four preregistered experiments with written predictions | vision 38 §9.16, NP-Q1 to NP-Q6 |
 
+| 2026-10-26 | [tools Jenkins native audit](2026-10-26-tools-jenkins-native.md) | Owner Declarative ModelAST accepts all 23 inputs; a complete unit comparator remains unmeasured and the absent-evaluator premise is withdrawn | LB-Q-jenkinsfile-rest, ADR-048/054/067, P-T1 |
+
 ## Companion pages
 
 The owner keeps private companion pages for several of these readings; they are not linked here

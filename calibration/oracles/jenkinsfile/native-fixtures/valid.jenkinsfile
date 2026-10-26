@@ -1,0 +1,13 @@
+pipeline {
+    agent any
+    environment { MODE = 'test' }
+    stages {
+        stage('Compile') {
+            steps {
+                echo 'ready'
+                script { echo 'opaque' }
+            }
+        }
+    }
+    post { always { echo 'complete' } }
+}

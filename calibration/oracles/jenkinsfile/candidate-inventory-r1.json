@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-26",
+  "scope": "Jenkins canonical L1/L2 only. No L3 investigation or grade change. No absent-native-oracle ceiling is retained.",
+  "candidates": [
+    {
+      "name": "Jenkins Declarative Converter and ModelAST",
+      "version": "2.2293.v6e7193cec599",
+      "pin": "6e7193cec599b402ee79ee9afc5b8a417eb43967",
+      "license": "MIT",
+      "source": "https://plugins.jenkins.io/pipeline-model-definition/",
+      "status": "measured",
+      "result": "all 23 canonical L1/L2 inputs accepted with 50 pinned plugins and three declaration-only tool slots; 753 model nodes, 747 positioned. A complete dialect declaration/pair comparator is unbuilt; these are not 753 dialect definitions or an L2 recall claim."
+    },
+    {
+      "name": "Jenkins declarative linter and toJson endpoint",
+      "version": "2.2293.v6e7193cec599",
+      "license": "MIT",
+      "source": "https://www.jenkins.io/doc/book/pipeline/development/#linter",
+      "status": "source-audited",
+      "result": "validate attests syntax/model acceptance; toJson exposes the owner model but does not serialize sourceLocation. Direct ModelAST access is the measured positioned route."
+    },
+    {
+      "name": "Groovy AST plus existing JenkinsfileAstDump",
+      "version": "4.0.33",
+      "license": "Apache-2.0",
+      "source": "https://repo.maven.apache.org/maven2/org/apache/groovy/groovy/4.0.33/groovy-4.0.33.pom",
+      "status": "existing canonical oracle",
+      "result": "compiler reports Groovy syntax; the custom walk assigns Jenkins DSL meanings and pair ownership, so current 163/163 definitions and 133/133 pairs remain C"
+    },
+    {
+      "name": "gvy SCIP and LSIF exporter",
+      "version": "commit 91612342ad9d4dbb7681c9c99afad2edf680837a",
+      "license": "Apache-2.0",
+      "source": "https://github.com/albertocavalcante/gvy",
+      "status": "source-audited; not executed",
+      "result": "real SCIP/LSIF writers exist, correcting the no-producer premise. UnifiedIndexer at this pin visits only classes and methods, explicitly leaves body visitation unimplemented, and supplies no Pipeline stage/section/step population. Its separate Jenkins diagnostics are not a SCIP DSL oracle."
+    },
+    {
+      "name": "Groovy Language Server",
+      "version": "commit 347d098a928707223ce44b52cc45174a6327a5f3; Groovy 4.0.26",
+      "license": "Apache-2.0",
+      "source": "https://github.com/GroovyLanguageServer/groovy-language-server",
+      "status": "source-audited; not executed",
+      "result": "definition, references and documentSymbol are available for Groovy. Independent non-SCIP analysis remains C under P-T1 and cannot by itself raise the current tier cap."
+    },
+    {
+      "name": "jenkinsfilelint",
+      "version": "1.5.3",
+      "license": "MIT",
+      "source": "https://pypi.org/project/jenkinsfilelint/1.5.3/",
+      "status": "source-audited; not installed",
+      "result": "owner-maintained wrapper of Jenkins validate; no positioned symbol/pair enumeration. Local mode requires Docker/Podman, prohibited here; the underlying owner API was run without containers."
+    },
+    {
+      "name": "jenkinsfile-lint (jflint)",
+      "version": "0.1.0",
+      "license": "MIT",
+      "source": "https://registry.npmjs.org/jenkinsfile-lint/0.1.0",
+      "status": "registry/source-audited; not installed",
+      "result": "wraps official Jenkinsfile Runner in Docker. That wrapper is unavailable on this no-Docker machine; it is not evidence that native Jenkins is unavailable."
+    },
+    {
+      "name": "Jenkinsfile Runner lint",
+      "version": "commit a612e845e92b61745570920eb57a7b92f7b8b40e",
+      "license": "MIT",
+      "source": "https://github.com/jenkinsci/jenkinsfile-runner",
+      "status": "source-audited; not executed",
+      "result": "existing declarative lint command avoids pipeline execution but returns validation, not complete positioned definitions/local pairs. A guessed 1.0-beta-38 tag was absent; the actual source commit is pinned instead."
+    },
+    {
+      "name": "Jenkins Workflow API FlowGraphWalker",
+      "version": "1384.vdc05a_48f535f (measured bundle dependency)",
+      "license": "MIT",
+      "source": "https://javadoc.jenkins.io/plugin/workflow-api/",
+      "status": "API audited; no runtime trace run",
+      "result": "enumerates nodes produced by an execution; does not enumerate every unexecuted branch or all syntax-only references. Executing subjects would run their build steps and is outside this parse-only diagnostic."
+    },
+    {
+      "name": "JenkinsPipelineUnit",
+      "version": "commit cd2e979a77fc3a2af70d3c82f542f3c9a7526faf",
+      "license": "MIT",
+      "source": "https://github.com/jenkinsci/JenkinsPipelineUnit",
+      "status": "source-audited; not executed",
+      "result": "test-side mocks and exercised-call recording do not constitute the complete native written-pair population; no mocked trace is promoted to tier A"
+    },
+    {
+      "name": "Groovy ProxyMetaClass and Interceptor",
+      "version": "4.0.33 API",
+      "license": "Apache-2.0",
+      "source": "https://www.groovy-lang.org/metaprogramming.html",
+      "status": "API audited; not executed",
+      "result": "records exercised Groovy calls, while supplying Jenkins step behavior requires a separate runtime or mocks; insufficient alone for full static pair recall"
+    },
+    {
+      "name": "universal-ctags",
+      "version": "v6.2.1; tag 9463f1c64a4bec4b5b747440183ad44d04c4abe0",
+      "license": "GPL-2.0-or-later",
+      "source": "https://github.com/universal-ctags/ctags/issues/2908",
+      "status": "source/issue audited; not built",
+      "result": "the documented Groovy fallback forces the Java parser. It does not provide the owner Pipeline DSL model or stage/section semantics; no forced-Java tags were treated as Jenkins definitions."
+    }
+  ]
+}
