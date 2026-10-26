@@ -134,7 +134,7 @@ not read until 30 days of signal exist.
 
 | Note | Verdict | Serves | Shape |
 |---|---|---|---|
-| N1 dependencies | accept, reshaped | a | never download; read what the toolchain already fetched; index each (package, version) public API once per machine, content-addressed, shared by every service, lazily and under budget; upgrade impact, usage map, vuln reach (wave 4), version-exact docs. The lockfile graph comes through a port; ci-kit owns the engine (vision 15 §3). Dependency API is the `pkg:` kind of the system graph (ADR-050) |
+| N1 dependencies | accept, reshaped | a | never download; read what the toolchain already fetched; index each (package, version) public API once per machine, content-addressed, shared by every service, lazily and under budget; upgrade impact, usage map, vuln reach (wave 4), version-exact docs. The lockfile graph comes through a port; the CI kit owns the engine (vision 15 §3). Dependency API is the `pkg:` kind of the system graph (ADR-050) |
 | N2 progress | accept as views | c | status is derived by verify, never set. Optional row `weight:`; proof history is a projection of the existing verify ledger (about 17,000 readings), which gains per-row verdicts additively (schema 3) so burn-up and regressions are computed; views listed in `docs/design/progress-and-economics.md` |
 | N3 usage dashboard | accept narrowly | c | outcome economics only: cost per proven outcome, a projection joining the session ledger (3,359 sessions) and transcripts to verify readings. A generic token dashboard is refused |
 | N4 spec formats | accept (promotes F20) | b | a spec-dialect port with plan grammar v2 as the canonical model; read in place; converge report; `weight:` and `accept:` added; the test-tied tier is the existing `certified_by:`; Jev proposes anchors for unanchored foreign tasks behind a calibration gate |
@@ -289,7 +289,7 @@ from the repository alone.
 ### 9.5 Amended 2026-10-11 (ADR-069): evidence before the incident, and index snapshots
 
 Vision 44 adds no pillar. Its fact rows ride lf8 (ops formats, Kubernetes facts, observed-by) as WAE wave 2,
-after Review Kit commits the bundle's requirements; its joins and fact receipts follow WAE-M2 KEEP. Index
+after the review kit commits the bundle's requirements; its joins and fact receipts follow WAE-M2 KEEP. Index
 snapshots are parked under section 9.4's rule: only IXS-M0 and IXS-0 ride war1. Language excellence stays the
 main line. Instrument: WAE-M0 to WAE-M7 (WAE-M7 now with a fail-open bar) and IXS-M0 to IXS-M9, all $0 in model
 spend. RT-M1 PASS still gates SG-2 and with it F72. G37's kill date, 2027-01-31, covers the WAE waves only; index

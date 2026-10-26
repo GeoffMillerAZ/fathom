@@ -4,7 +4,7 @@ package conserve
 // §3.4, ADR-044 amended 2026-09-25, Q22): the reading set. Not a plane —
 // ChangedFunctions/Residue never register with Register, never contribute a
 // Verdict, and never change --strict's exit (design §3.4: "It is not a
-// plane"). It answers the residue decision 7 hands to Review Kit: the
+// plane"). It answers the residue decision 7 hands to the review kit: the
 // changed functions in base..head whose behaviour no commit-bound passing
 // test vouches for.
 //

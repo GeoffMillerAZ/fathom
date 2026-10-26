@@ -2,9 +2,9 @@
 #
 # testkit-schema-check.sh — drift guard: assert schema/testkit/{manifest,
 # result}.cue matches the exact commit schema/testkit/.vendor-commit pins
-# from platform-engineering/kits/test-kit's own schema/ directory (vision
-# 33 / ADR-043 stage 0, TC-1). Modelled on scripts/vendor-check.sh, wired
-# into `task validate` beside vendor-check — but simpler: test-kit is not a
+# from the test kit's own schema/ directory (vision 33 / ADR-043 stage 0,
+# TC-1). Modelled on scripts/vendor-check.sh, wired
+# into `task validate` beside vendor-check — but simpler: the test kit is not a
 # Go dependency of fathom (no go.mod pin to cross-check against), and only
 # two files are mirrored, not a whole tree.
 #
@@ -12,21 +12,22 @@
 # the source: cue/load resolves a package by the DIRECTORY it lives in
 # (schema/testkit/, under fathom's own root cue.mod module), never by a
 # global package registry, so a same-named "testkit" package coexisting
-# with test-kit's own upstream "testkit" package in a DIFFERENT repo's
+# with the test kit's own upstream "testkit" package in a DIFFERENT repo's
 # module is never a collision fathom's own `cue vet`/`cue/load` calls can
 # see.
 #
-# Skips gracefully (exit 0, warning) when the test-kit sibling isn't
+# Skips gracefully (exit 0, warning) when the test kit sibling isn't
 # present or doesn't have the pinned commit — expected on a machine without
-# access to the private platform-engineering monorepo.
+# access to the test kit's (private) monorepo.
 #
 # Usage:
 #   task testkit-schema-check
 #   bash scripts/testkit-schema-check.sh
 #
 # Environment:
-#   TEST_KIT_SIBLING   Override the sibling path
-#                       (default: ../platform-engineering/kits/test-kit).
+#   TEST_KIT_SIBLING   The test kit's directory (default: the first
+#                       ../*/kits/*/ whose schema/result.cue declares
+#                       #TestResult, i.e. a sibling monorepo's test kit).
 
 set -euo pipefail
 
@@ -35,12 +36,19 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 DEST="schema/testkit"
-SIBLING="${TEST_KIT_SIBLING:-../platform-engineering/kits/test-kit}"
+SIBLING="${TEST_KIT_SIBLING:-}"
+if [ -z "${SIBLING}" ]; then
+  for cand in ../*/kits/*/schema/result.cue; do
+    [ -f "${cand}" ] && grep -q '#TestResult' "${cand}" || continue
+    SIBLING="${cand%/schema/result.cue}"
+    break
+  done
+fi
+SIBLING="${SIBLING:-../test-kit}"
 FILES=(manifest.cue result.cue)
 
 if [ ! -d "${SIBLING}" ] || ! git -C "${SIBLING}" rev-parse --git-dir >/dev/null 2>&1; then
-  # test-kit lives NESTED inside the platform-engineering monorepo
-  # (kits/test-kit), unlike agentic-kit/app-kit's own standalone sibling
+  # The test kit lives NESTED inside a monorepo (kits/<name>), unlike agentic-kit/app-kit's own standalone sibling
   # repos — `git -C rev-parse --git-dir` finds the monorepo's .git no
   # matter how deep SIBLING sits under it, where a bare `-d .git` check
   # would not.
@@ -65,8 +73,7 @@ if ! git -C "${SIBLING}" rev-parse --verify "${commit}^{commit}" >/dev/null 2>&1
   exit 0
 fi
 
-# test-kit is nested inside the platform-engineering monorepo
-# (kits/test-kit) — git paths at $commit are relative to the MONOREPO
+# The test kit is nested inside a monorepo (kits/<name>) — git paths at $commit are relative to the MONOREPO
 # root, not to SIBLING, so the subdirectory prefix has to be recovered
 # and prepended before every `git show <commit>:<path>`.
 prefix="$(git -C "${SIBLING}" rev-parse --show-prefix)"

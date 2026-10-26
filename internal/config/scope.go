@@ -95,7 +95,7 @@ var fieldScopes = []FieldScope{
 	{"default_profile", ScopeBehaviour, "chooses a profile by name"},
 	{"findings.outbox", ScopeRepoPath, "a repo-relative file the session hook imports (findings_outbox.go)"},
 	{"findings.producers", ScopeBehaviour, "an allow-list of producer ids"},
-	{"findings.subject", ScopeBehaviour, "the review-kit subject this repository maps to"},
+	{"findings.subject", ScopeBehaviour, "the review kit subject this repository maps to"},
 	{"gate.accept_receipts", ScopeBehaviour, "the repository opts in to exact-tree gate evidence; default off"},
 	{"gate.allow_receipt_acceptance", ScopeUserOnly, whyConsent + ": allows a repository to accept exact-tree gate evidence"},
 	{"gate.host_label", ScopeUserOnly, "an operator-named machine label, never a hostname read"},

@@ -650,7 +650,7 @@ func TestAdoptionServiceScoped(t *testing.T) {
 	t.Run("filter_counts_unattributed", func(t *testing.T) {
 		entries := []adoptionCallEntry{
 			{Tool: "find_symbol", Service: "app-kit"},
-			{Tool: "read_source", Service: "planning"},
+			{Tool: "read_source", Service: "svc-b"},
 			{Tool: "obligations", Service: ""},
 		}
 		kept, unattributed := filterEntriesByService(entries, "app-kit")
@@ -680,7 +680,7 @@ func TestAdoptionServiceScoped(t *testing.T) {
 		dir := t.TempDir()
 		logPath := filepath.Join(dir, "calls.jsonl")
 		lines := `{"ts":"2026-08-07T01:02:03Z","tool":"find_symbol","service":"app-kit","surface":"agent"}
-{"ts":"2026-08-07T01:02:04Z","tool":"read_source","service":"planning","surface":"agent"}
+{"ts":"2026-08-07T01:02:04Z","tool":"read_source","service":"svc-b","surface":"agent"}
 `
 		if err := os.WriteFile(logPath, []byte(lines), 0o644); err != nil {
 			t.Fatal(err)

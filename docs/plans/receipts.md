@@ -72,7 +72,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 - [x] A repo-declared, open-vocabulary layer config classifies each test (default: `_test.go` is `unit`; build tags and directory names as declared) {id: RC-39, symbol: Classify, package: internal/testlayer}
 - [x] `fathom tests coverage --profile <file> [--diff]` prints per-symbol coverage by layer and the changed symbols with no covering test {id: RC-40, symbol: cmdTestsCoverage, package: cmd/fathom}
 - [x] `review_diff` and `fathom review --json` carry a coverage block for the changed symbols when a profile is supplied — the one surface the review kit consumes {id: RC-41, symbol: DimTestCoverage, package: internal/analysis/review}
-- [-] An obligation of the shape "a change to X needs a test at layer Y" {id: RC-42, disposition: deferred, reason: "waits for a consumer — the review kit parks coverage as context and test-kit owns floors", trigger: "the review kit promotes coverage out of context, or a second repo declares layers"}
+- [-] An obligation of the shape "a change to X needs a test at layer Y" {id: RC-42, disposition: deferred, reason: "waits for a consumer — the review kit parks coverage as context and the test kit owns floors", trigger: "the review kit promotes coverage out of context, or a second repo declares layers"}
 
 ## Wave 5 — the reruns (pilot tier) and the second reading
 

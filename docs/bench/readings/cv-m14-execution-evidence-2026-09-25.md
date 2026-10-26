@@ -2,17 +2,17 @@
 
 **Verdict (plain language). CV-M14 PASSES.** Re-running the CV-M13 ranges
 through the new coverage-bound `fathom conserve` — fathom's own
-`5afeee42..78e508d3` and conjure's `r1`/`r2` — with a genuine, passing,
+`5afeee42..78e508d3` and svc-f's `r1`/`r2` — with a genuine, passing,
 commit-bound coverage profile at every head: no item the tool calls
 `attested` turned out, on independent inspection of the raw `go tool
 cover` profile, to have an unexecuted changed line, and no item the tool
 flagged (`partial`/`unexecuted`) turned out to be secretly fully executed.
 All six named predictions from design §3.5 came back exactly as
-predicted: `runServeHTTP` reads `partial` naming line 131; conjure's
+predicted: `runServeHTTP` reads `partial` naming line 131; svc-f's
 `fanoutHandler.Enabled/Handle/WithAttrs` read `attested`;
 `fanoutHandler.WithGroup` and `ParseError.Unwrap` read `unexecuted`. Every
 range's counts reconcile (`changed == attested + unattested + unreached +
-partial + unexecuted + unanalyzed_functions`), including conjure r2's 100
+partial + unexecuted + unanalyzed_functions`), including svc-f r2's 100
 vendor-excluded functions. The `-coverpkg=./...` attest run on fathom
 costs 1.08x the plain run (117s vs 108s), well under the 2x threshold, so
 the profile stays default rather than opt-in. For a reviewer: the tool's
@@ -21,11 +21,11 @@ evidence — a genuinely untested changed line does not get waved through
 as attested, and a genuinely-run line does not get wrongly flagged.
 
 **Two caveats limit the pass, both disclosed rather than engineered
-around (see Caveats):** (1) conjure r1 shares its head (`e9d0f2e`) with
+around (see Caveats):** (1) svc-f r1 shares its head (`e9d0f2e`) with
 CV-M13/CV-M14's `r3`, whose suite is known to fail a pre-existing,
 date-dependent fixture unrelated to either range — `-skip` (not a code
 edit) was used to get a genuine pass at the literal r1 head, exactly as
-design §3.5 anticipates. (2) the task scoped this measurement to conjure's
+design §3.5 anticipates. (2) the task scoped this measurement to svc-f's
 two ranges (r1, r2) rather than all three from design §3.5, but the
 `fanoutHandler` predictions are about r3's own diff, which is disjoint
 from r1's and r2's changed-function sets. Rather than silently skip that
@@ -36,11 +36,11 @@ reuse) with `--since 44fd5ae` — a supplementary check, not a third
 range's full test run.
 
 Bar (CV-M14, `docs/plans/refactor-conservation.md`, design §3.5): "Re-run
-the CV-M13 ranges with coverage: fathom `5afeee42..78e508d3` and conjure's
+the CV-M13 ranges with coverage: fathom `5afeee42..78e508d3` and svc-f's
 three measured ranges (r1, r2, r3). By construction, no `attested` item
 may be unexecuted and no flagged item may have executed. `runServeHTTP`
 must read `partial`, naming `cmd/fathom/servehttp.go` line 131. The
-`slog.Handler` methods (only present in conjure's r3, `44fd5ae..e9d0f2e`)
+`slog.Handler` methods (only present in svc-f's r3, `44fd5ae..e9d0f2e`)
 must read `attested`. `WithGroup` and `ParseError.Unwrap` must read
 `unexecuted`... if an attest run with `-coverpkg=./...` takes more than
 twice as long as the plain run on this repository, the profile becomes
@@ -50,8 +50,8 @@ opt-in."
 
 Built the fathom binary once from this checkout's `exec-evidence` branch
 HEAD (`1ccba65e`, the commit that carries the design §3.5 coverage feature,
-CV-67..72) via `go build -o bin/fathom ./cmd/fathom`. Built test-kit's
-`surveyor` once from the platform-engineering `kits/test-kit` checkout.
+CV-67..72) via `go build -o bin/fathom ./cmd/fathom`. Built the test kit's
+the test kit's CLI once from its checkout.
 
 For fathom's own range, cloned this checkout into a scratch directory and
 checked out `78e508d3` (the head; `5afeee42` is the base — this reads
@@ -64,14 +64,14 @@ matching the Taskfile's current implementation line for line: `go test
 -json -coverpkg=./... -coverprofile=coverage.out ./...`, then a
 hand-written `coverage.meta.json` (`schema: fathom.coverage/v1`, `commit`,
 `dirty: false`, `race: false`, `profile: coverage.out`, `passed: true`),
-`surveyor ingest --format go-test-json --commit <head>`, a scratch `fathom
+`test-kit ingest --format go-test-json --commit <head>`, a scratch `fathom
 ingest` (own index, own store, never the shared one), `fathom tests
 ingest`, then `fathom conserve --since 5afeee42 --json --coverage-meta
 coverage.meta.json`.
 
-For conjure, cloned `/Volumes/m2ext/code/geoffmilleraz/conjure` (never
+For svc-f, cloned `<fleet root>/svc-f` (never
 touched the original) into a separate scratch directory and ran the same
-recipe per range with `GOFLAGS=-mod=vendor` (conjure vendors its
+recipe per range with `GOFLAGS=-mod=vendor` (svc-f vendors its
 dependencies and, at these heads, a `replace => ../app-kit` that
 `-mod=mod` cannot resolve — matching CV-M13's own control notes). r1
 (`87ccb17..e9d0f2e`) and r2 (`e9d0f2e..10efbe4`) are the two ranges the
@@ -96,14 +96,14 @@ unreached + partial + unexecuted + unanalyzed_functions` for each row.
 | Range | base..head | changed | attested | partial | unexecuted | unattested | unreached | unanalyzed_functions | reconciles |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---|
 | fathom | `5afeee42..78e508d3` | 31 | 18 | 13 | 0 | 0 | 0 | 0 | 18+13+0+0+0+0=31 ✓ |
-| conjure r1 | `87ccb17..e9d0f2e` | 54 | 19 | 34 | 1 | 0 | 0 | 0 | 19+34+1+0+0+0=54 ✓ |
-| conjure r2 | `e9d0f2e..10efbe4` | 326 | 119 | 105 | 2 | 0 | 0 | 100 | 119+105+2+0+0+100=326 ✓ |
-| conjure r3 (supplementary, reuses r1's store/coverage) | `44fd5ae..e9d0f2e` | 148 | 54 | 92 | 2 | 0 | 0 | 0 | 54+92+2+0+0+0=148 ✓ |
+| svc-f r1 | `87ccb17..e9d0f2e` | 54 | 19 | 34 | 1 | 0 | 0 | 0 | 19+34+1+0+0+0=54 ✓ |
+| svc-f r2 | `e9d0f2e..10efbe4` | 326 | 119 | 105 | 2 | 0 | 0 | 100 | 119+105+2+0+0+100=326 ✓ |
+| svc-f r3 (supplementary, reuses r1's store/coverage) | `44fd5ae..e9d0f2e` | 148 | 54 | 92 | 2 | 0 | 0 | 0 | 54+92+2+0+0+0=148 ✓ |
 
 `unattested`/`unreached` are 0 on every row — expected: design §3.5 says
 those static-only classes stand only *without* usable coverage, and every
 row here has `coverage_unusable: false` (a usable, bound, passing
-profile). r2's 100 `unanalyzed_functions` are conjure's own vendored
+profile). r2's 100 `unanalyzed_functions` are svc-f's own vendored
 `app-kit` UI files touched by that range's commit (`git diff --stat
 e9d0f2e 10efbe4 -- 'vendor/*.go'` shows 35 vendor files changed);
 `.fathomignore` excludes `vendor/` from the index, so every changed
@@ -116,11 +116,11 @@ specifically *because* they land there instead of vanishing.
 | Case | Range | Predicted | Measured | Independent check |
 |---|---|---|---|---|
 | `runServeHTTP` | fathom `5afeee42..78e508d3` | `partial`, naming `servehttp.go` line 131 | `partial`, `unexecuted_lines: ["129-133"]` (contains 131) | `go tool cover -func` shows `runServeHTTP 72.7%`; every raw profile block covering lines 129-133 (`129.9,129.73`, `129.73,133.4`) shows count 0 across all merged package sections |
-| `fanoutHandler.Enabled` | conjure r3 (`44fd5ae..e9d0f2e`, supplementary) | `attested` | not in flagged items ⇒ `attested` | raw profile blocks `181.76,182.22` … `183.28,185.4` all count 1 |
-| `fanoutHandler.Handle` | conjure r3 (supplementary) | `attested` | not in flagged items ⇒ `attested` | raw profile blocks `190.73,192.22` … `194.12` all count 1 |
-| `fanoutHandler.WithAttrs` | conjure r3 (supplementary) | `attested` | not in flagged items ⇒ `attested` | raw profile blocks `203.66,205.22` … `208.12` all count 1 |
-| `fanoutHandler.WithGroup` | conjure r3 (supplementary) | `unexecuted` | `unexecuted` | raw profile blocks `211.60,213.22`, `213.22,215.3`, `216.2,216.12` all count 0 |
-| `ParseError.Unwrap` | conjure r2 (`e9d0f2e..10efbe4`) | `unexecuted` | `unexecuted` | raw profile block `store.go:36.37,36.53` count 0 across all 22 merged package sections |
+| `fanoutHandler.Enabled` | svc-f r3 (`44fd5ae..e9d0f2e`, supplementary) | `attested` | not in flagged items ⇒ `attested` | raw profile blocks `181.76,182.22` … `183.28,185.4` all count 1 |
+| `fanoutHandler.Handle` | svc-f r3 (supplementary) | `attested` | not in flagged items ⇒ `attested` | raw profile blocks `190.73,192.22` … `194.12` all count 1 |
+| `fanoutHandler.WithAttrs` | svc-f r3 (supplementary) | `attested` | not in flagged items ⇒ `attested` | raw profile blocks `203.66,205.22` … `208.12` all count 1 |
+| `fanoutHandler.WithGroup` | svc-f r3 (supplementary) | `unexecuted` | `unexecuted` | raw profile blocks `211.60,213.22`, `213.22,215.3`, `216.2,216.12` all count 0 |
+| `ParseError.Unwrap` | svc-f r2 (`e9d0f2e..10efbe4`) | `unexecuted` | `unexecuted` | raw profile block `store.go:36.37,36.53` count 0 across all 22 merged package sections |
 
 All six match design §3.5's predictions exactly. Two of the five
 `fanoutHandler`/`ParseError` predictions are properly r3-scoped
@@ -135,14 +135,14 @@ it landed in r2 directly.
 Additional spot checks beyond the named cases, each cross-verified
 against the raw `coverage.out` blocks for the function's changed lines
 (the changed-block rule): fathom's `compileViaStore` (attested — line 350,
-the O119 fix's *other* call site, count 1) and conjure r1's
+the O119 fix's *other* call site, count 1) and svc-f r1's
 `jsonShapeError.Error` (the range's one `unexecuted` item — line 68, the
 function's only block, count 0). No contradiction found in any spot check
 across the four ranges/reconstructions.
 
 ## Cost
 
-Measured on conjure's r1/r2 host (this session's sandbox), sequentially,
+Measured on svc-f's r1/r2 host (this session's sandbox), sequentially,
 each once: fathom's own suite at head `78e508d3`.
 
 | Run | Command | Wall | Load avg before | Load avg after |
@@ -175,7 +175,7 @@ fair read even though the *absolute* seconds carry noise.
   cherry-picking `c996187`'s fix (which touches a shared test helper,
   `runCLIAt`, not introduced until later in that same overhaul commit,
   and would have risked a non-compiling scratch tree).
-- **Two ranges given, three predictions needed.** The task scoped conjure
+- **Two ranges given, three predictions needed.** The task scoped svc-f
   to r1/r2; design §3.5's `fanoutHandler` predictions are r3-scoped. See
   Named cases — answered via a same-data, zero-extra-test-run
   reconstruction (`fathom conserve --since 44fd5ae` against r1's own
@@ -210,7 +210,7 @@ bin/fathom tests ingest --service <scratch> --manifest . --results . --store <sc
 bin/fathom conserve --since 5afeee42 --json --service <scratch> \
   --store <scratch>.sqlite --coverage-meta coverage.meta.json
 
-# conjure r1/r2 (clone /Volumes/m2ext/code/geoffmilleraz/conjure elsewhere, never touch the original)
+# svc-f r1/r2 (clone <fleet root>/svc-f elsewhere, never touch the original)
 export GOFLAGS=-mod=vendor   # vendored deps + a replace => ../app-kit at these heads
 git checkout --detach e9d0f2e   # r1 head; -skip 'TestLogsVerbFiltersAndFormats' (see Caveats)
 go test -json -skip 'TestLogsVerbFiltersAndFormats' -coverpkg=./... -coverprofile=coverage.out ./...

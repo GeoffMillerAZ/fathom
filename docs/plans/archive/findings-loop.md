@@ -3,7 +3,7 @@
 > **Archived** 2026-10-10T00:50:45Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 27 tasks total; 27 claimed (27 verified, 0 failing); 0 skipped
 
 Design: `docs/vision/30-findings-loop.md`. Decision: ADR-040. Counterpart plan:
-platform-engineering `docs/plans/findings-projection.md` (RP-1 … RP-9).
+the review kit's own findings-projection plan.
 Grammar: `docs/plans/README.md`. Rows are proven by `fathom verify`, never by
 a checkbox. No benchmark is run by this plan; FL-22 commits the corpus only.
 

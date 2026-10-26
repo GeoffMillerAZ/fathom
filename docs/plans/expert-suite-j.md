@@ -262,7 +262,7 @@ here because they cut across multiple rows:
 - **`module map`'s agentic half** (spec IDs cited-but-undefined, contradiction
   scan) — phase L's eval-gated advisor, per this plan's design section.
 - **The coverage-map instrument's UI rendering, the readiness ladder's TUI
-  panel, mouse/keyboard interaction** — phase K (`fathom-studio`, Bubble
+  panel, mouse/keyboard interaction** — phase K (the studio repository, Bubble
   Tea), a separate repo per `docs/vision/13-expert-suite.md` §7's ownership
   table.
 - **Tool-kind (yaml/cue-family) bucketing in `module sources`** — would

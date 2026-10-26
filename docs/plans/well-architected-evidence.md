@@ -10,7 +10,7 @@ admits, holds the findings record, or executes, proposes or records a mitigation
 
 Gates: wave 0 is $0 readings, their bars fixed here before any run (K19: never moved after the data). Wave 1 rides
 war1 (paused: `docs/plans/resume-2026-10.md` R1). Wave 2 rides language wave lf8 (ops formats, Kubernetes facts,
-observed-by; vision 38 section 9.4 as corrected) and starts only after Review Kit commits the reliability bundle's
+observed-by; vision 38 section 9.4 as corrected) and starts only after the review kit commits the reliability bundle's
 requirements. Wave 3 needs WAE-M2 KEEP. Wave 4 needs a WAE-M3 join KEEP. A fact family over the cost gate (K26: +20%
 store or +15% wall, cold and warm, summed per wave and per language) ships only with an owner ruling beside its gain.
 Kill (G37): on 2027-01-31, a WAE-M4 that is unread or CUT drops waves 3 to 4, not deferred. Capacity: about 3, 9, 9
@@ -19,7 +19,7 @@ provisional until grounded with `find_symbol` at row start.
 
 ## Wave 0: readings
 
-- [ ] (op) WAE-M0: the owner commits a six-concern draft bundle (alert quality, probe semantics, resources and headroom, retries and timeouts per hop, PDB and spread, rollout safety) and stratified hand labels before any fathom run: 40 alerts and 30 workloads sampled by a committed rule from opentelemetry-demo, microservices-demo, kube-prometheus and istio samples at pinned SHAs, plus platform-engineering's substrate manifests for workload facts; who labels (the owner, or agents with a 20% owner audit) is the owner's U3 {id: WAE-M0, oracle: lexical, path: docs/bench/readings/well-architected/labels.md, pattern: "^WAE-M0 labels: [0-9]+ alerts, [0-9]+ workloads"}
+- [ ] (op) WAE-M0: the owner commits a six-concern draft bundle (alert quality, probe semantics, resources and headroom, retries and timeouts per hop, PDB and spread, rollout safety) and stratified hand labels before any fathom run: 40 alerts and 30 workloads sampled by a committed rule from opentelemetry-demo, microservices-demo, kube-prometheus and istio samples at pinned SHAs, plus the adopter's platform manifests for workload facts; who labels (the owner, or agents with a 20% owner audit) is the owner's U3 {id: WAE-M0, oracle: lexical, path: docs/bench/readings/well-architected/labels.md, pattern: "^WAE-M0 labels: [0-9]+ alerts, [0-9]+ workloads"}
 - [ ] (op) WAE-M1: on the WAE-M0 corpus, the share of hand-labelled client construction sites that carry literal retry or timeout options or a named retry library; BUILD at 30% or more {id: WAE-M1, oracle: lexical, path: docs/bench/readings/well-architected/code-clients.md, pattern: "^WAE-M1 verdict: (BUILD|HOLD)", needs: "WAE-M0"}
 
 ## Wave 1: correctness and keys (rides war1)
@@ -50,9 +50,9 @@ provisional until grounded with `find_symbol` at row start.
 
 - [ ] Envoy retry_policy, timeouts, circuit_breakers, retry_budget, outlier_detection; Istio DestinationRule trafficPolicy and VirtualService retries and timeout are facts {id: WAE-11, oracle: lexical, path: internal/extractor/dialects/envoy/doc.json, pattern: "\"key\": \"retry_policy\"", needs: "WAE-M2"}
 - [ ] J3: per-hop retries and timeouts along a route chain, with the attempt product and any violated timeout inequality named {id: WAE-12, symbol: retryChain, package: internal/mcp, reachable_from: TestRetryChainMultipliesAttemptsAcrossHops, needs: "WAE-11"}
-- [ ] (op) WAE-M4: Review Kit's `fathom-facts` adapter closes at least one finding on pass with complete coverage, and owner-judged precision is at least 80% on 30 sampled findings over three repositories; the share of evaluated requirements depending on a fathom lane is recorded (F32) {id: WAE-M4, oracle: lexical, path: docs/bench/readings/well-architected/consumer.md, pattern: "^WAE-M4 verdict: (KEEP|CUT)", needs: "WAE-10"}
+- [ ] (op) WAE-M4: the review kit's `fathom-facts` adapter closes at least one finding on pass with complete coverage, and owner-judged precision is at least 80% on 30 sampled findings over three repositories; the share of evaluated requirements depending on a fathom lane is recorded (F32) {id: WAE-M4, oracle: lexical, path: docs/bench/readings/well-architected/consumer.md, pattern: "^WAE-M4 verdict: (KEEP|CUT)", needs: "WAE-10"}
 - [ ] (op) WAE-M5: at least 20 public postmortems, selected by a rule committed before the bundle is authored (each names a culprit commit in a public repository and a cause in a covered concern family), replayed at each culprit's parent; recall reported with its Wilson 95% lower bound; KEEP (a "prevention" claim allowed) only at a lower bound of at least 0.20 (8 of 20) {id: WAE-M5, oracle: lexical, path: docs/bench/readings/well-architected/replay.md, pattern: "^WAE-M5 verdict: (KEEP|CUT)", needs: "WAE-M4"}
-- [ ] (op) WAE-M7: the latency Review Kit's admission adds per deploy with the fathom checks (median and p95 over 30 deploys), and the share of gate runs that fail open, each with its recorded reason; KEEP at most 2% over 30 days; CUT above 10%, after which the prod side leaves the gate's required inputs and is shown as advisory until a reading falls back under 2% {id: WAE-M7, oracle: lexical, path: docs/bench/readings/well-architected/gate-latency.md, pattern: "^WAE-M7 verdict: (KEEP|CUT)"}
+- [ ] (op) WAE-M7: the latency the review kit's admission adds per deploy with the fathom checks (median and p95 over 30 deploys), and the share of gate runs that fail open, each with its recorded reason; KEEP at most 2% over 30 days; CUT above 10%, after which the prod side leaves the gate's required inputs and is shown as advisory until a reading falls back under 2% {id: WAE-M7, oracle: lexical, path: docs/bench/readings/well-architected/gate-latency.md, pattern: "^WAE-M7 verdict: (KEEP|CUT)"}
 
 ## Deferred and refused
 
@@ -60,8 +60,8 @@ provisional until grounded with `find_symbol` at row start.
 - [-] A rollback dimension of review --since over previous..deployed, extending incident maps 6.3 {id: WAE-D2, disposition: deferred, reason: "mitigation input decided in shape (ADR-069 decision 8)", trigger: "incident-maps.md#IM-M0 reads BUILD"}
 - [-] Judged sites for hand-rolled retry loops, health-pool separation, alert investigative value and route auth middleware {id: WAE-D3, disposition: deferred, reason: "ADR-056 opt-in; the spend hold", trigger: "the spend hold lifts and WAE-M4 reads KEEP"}
 - [-] Cross-repository pool arithmetic and retry amplification {id: WAE-D4, disposition: deferred, reason: "F72", trigger: "responsible-tenant.md#RT-M1 reads PASS and system-graph.md#SG-2 lands"}
-- [-] Kubernetes resource or security rules in fathom or a tech pack {id: WAE-X1, disposition: refused, reason: "ADR-063 O11: policy-kit or Kyverno"}
-- [-] A fathom deploy-gate, readiness verb or change-risk score {id: WAE-X2, disposition: refused, reason: "a second verifier (ADR-063 O2); Review Kit admit and pe pdk/risk decide"}
-- [-] Fathom as the findings record {id: WAE-X3, disposition: refused, reason: "ADR-040; Review Kit ADR-0098"}
+- [-] Kubernetes resource or security rules in fathom or a tech pack {id: WAE-X1, disposition: refused, reason: "ADR-063 O11: the policy kit or Kyverno"}
+- [-] A fathom deploy-gate, readiness verb or change-risk score {id: WAE-X2, disposition: refused, reason: "a second verifier (ADR-063 O2); the review kit admit and the adopter's change-risk tierer decide"}
+- [-] Fathom as the findings record {id: WAE-X3, disposition: refused, reason: "ADR-040; the review kit's record decision"}
 - [-] Fathom executes, proposes or records a mitigation {id: WAE-X4, disposition: refused, reason: "IM-X3 and IM-X9"}
 - [-] A literal env or arg value in any fact or receipt {id: WAE-X5, disposition: refused, reason: "ADR-065 decision 2"}

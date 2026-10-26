@@ -19,7 +19,7 @@ import (
 // TestFindingsLoopCorpusParses proves the corpus itself is not just prose:
 // it loads and validates through the same gate every other scenario corpus
 // passes (LoadScenarioCorpus — arms, oracle, derivation, prediction-per-arm,
-// self-host exclude_paths, SB-10), then checks every review-kit projection
+// self-host exclude_paths, SB-10), then checks every review kit projection
 // event embedded in each task's subject.setup names a REAL anchor: the file
 // exists in this tree and the anchor's own digest matches that file's
 // current sha256 at HEAD. Anchor digests can be validated in-tree here
@@ -30,7 +30,7 @@ import (
 
 const findingsLoopCorpusPath = "../../testdata/scenariobench/findings-loop.json"
 
-// findingsLoopEvent mirrors the review-kit projection event shape vision
+// findingsLoopEvent mirrors the review kit projection event shape vision
 // 30 §3.3 documents (schemaVersion/kind/outcome/producer/subject/
 // visibility/sourceId/sourceVersion/payloadDigest/findingId/observedAt/
 // anchor/rule) — only the fields this test checks are typed; anything else

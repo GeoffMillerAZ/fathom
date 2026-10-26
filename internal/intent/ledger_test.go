@@ -110,7 +110,7 @@ func TestIntentClockWrittenOnce(t *testing.T) {
 	if _, ok := intent.Clock(intent.ReadLedger(), "/r"); ok {
 		t.Fatal("no clock should exist yet")
 	}
-	if err := intent.StartClock("/r", "abc1234", []string{"conjure", "fathom", "agentic-kit"}); err != nil {
+	if err := intent.StartClock("/r", "abc1234", []string{"svc-a", "fathom", "agentic-kit"}); err != nil {
 		t.Fatalf("StartClock: %v", err)
 	}
 	first, ok := intent.Clock(intent.ReadLedger(), "/r")
