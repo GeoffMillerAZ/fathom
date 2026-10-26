@@ -46,7 +46,6 @@ and `graphify-comparison.html`); they may move in later with link updates.
 
 | Date | File | The verdict in one line | Decisions it drove |
 |---|---|---|---|
-| 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
 | 2026-09-27 | [agentic-coding-landscape](2026-09-27-agentic-coding-landscape.md) | The market has many ways to find code and describe work and almost none to prove things about code; keep building and point at that gap, with reach before new engines | ADR-049, ADR-050, ADR-051, vision 38 sections 5 to 7 |
 | 2026-09-27 | [fathom-and-claude-os](2026-09-27-fathom-and-claude-os.md) | Neighbours, not competitors (about 25 percent overlap at session-start context); keep building with a sharper focus; one embedded file, many indexes, no extra servers | ADR-049 amendment 2026-09-29, F55, RH-11, RH-12, GL-23, SR-X1, RH-X4 |
 | 2026-09-27 | [peer-stacks-and-rust](2026-09-27-peer-stacks-and-rust.md), [data](data/2026-09-27-peer-stacks.json) | Fathom's stack is among the leanest in the field and Go is not the bottleneck; do not rewrite in Rust | ADR-049 decision 11, vision 38 section 8, F29, RH-M5 |
@@ -61,6 +60,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-16 | [interception-seams](2026-10-16-interception-seams.md) | Thirteen hook seams; two Very high (the readouts view, a deterministic claim check at Stop), each Medium or higher one ends in a 7-day reading with no false answer | readouts design section 20, G41, F79, RO-37 to RO-47, MOD-20, IXS-14 |
 | 2026-10-16 | [decision-models](2026-10-16-decision-models.md) | Decision models pay now only as $0 scaffolding (kill, consent, disclosure, a fitted table, the `ask` spine at provider none); whether a fast model reads code is a stage-gated experiment, at most $2 then $8; the port is hexagonal | ADR-073, I66, G42, Q37, F34 in part, F80, F81, KS-, EXP-, AQ-, RJ-, JG- |
 | 2026-10-17 | [intent-practice](2026-10-17-intent-practice.md) | Keep the practice (cheap, read): delivery was the weak link, so v0.15.0 retires `INTENT.md` and generates edit-time intent from the router; seven alternatives rejected for now with wins-if lines; K1 to K6 are due 2026-11-17 and unread | ADR-074, IV-1 to IV-10, F86, F9, O1134 to O1137 |
+| 2026-10-25 | [matlab-free-oracle-ceiling](2026-10-25-matlab-free-oracle-ceiling.md) | Reviewed free tools do not yet supply independent call and resolution truth across the unchanged MATLAB corpus | LB-Q-matlab-rest |
 
 ## Companion pages
 
