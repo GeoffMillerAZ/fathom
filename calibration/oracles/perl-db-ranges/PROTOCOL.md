@@ -48,3 +48,14 @@ X-R4; it does not assert that other Perl tooling has been exhausted.
   native keys, compiler diagnostics and per-file failures stay in scratch.
   Commit a dated assessment and actual measured reading separately from the
   canonical reading if coverage or oracle validity remains unresolved.
+
+## Instrument erratum before holdout
+
+The first canonical attempt completed mojo but refused Perl-Critic before compiling
+it: its tracked in-tree directory alias tripped an over-broad symlink check. The
+source manifest is a list of tracked regular Perl files, not a directory traversal.
+The corrected collector permits an existing in-tree directory symlink without
+following it, because the real target's tracked source files are already listed.
+Source-file, outside-root and broken symlinks still reject. Added synthetic controls
+cover each case. Re-freeze and rerun both complete canonical subjects; do not use
+the first partial sequence as the final measurement. Dancer2 remains unspent.

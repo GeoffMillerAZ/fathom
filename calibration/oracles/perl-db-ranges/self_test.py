@@ -52,7 +52,7 @@ def descendant_cleanup(base):
         runner.os.killpg = original
         try:
             original(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
             pass
         proc.wait(timeout=2)
 
@@ -203,6 +203,28 @@ def main():
             assert "symlink" in str(exc), exc
         else:
             raise AssertionError("tracked symlink was accepted")
+        (root / "linked.pm").unlink()
+        subprocess.run(["git", "-C", str(root), "rm", "-q", "linked.pm"], check=True)
+        (root / "Policy").mkdir()
+        (root / "Policy" / "included.pm").write_text("sub Included {}\n")
+        (root / "PolicyLink").symlink_to("Policy", target_is_directory=True)
+        subprocess.run(["git", "-C", str(root), "add", "Policy", "PolicyLink"], check=True)
+        subprocess.run(["git", "-C", str(root), "-c", "user.name=Range test", "-c", "user.email=range@test.invalid", "commit", "-qm", "directory link fixture"], check=True)
+        linked_snapshot = runner.snapshot(root)
+        assert [e["path"] for e in linked_snapshot["files"]] == ["Policy/included.pm", "example.pl"], linked_snapshot
+        for link, target in (("outside-link", base), ("broken-link", root / "missing-directory"),
+                             ("source-link.pm", root / "example.pl")):
+            path = root / link
+            path.symlink_to(target)
+            subprocess.run(["git", "-C", str(root), "add", link], check=True)
+            try:
+                runner.files_under(root)
+            except ValueError as exc:
+                assert "symlink" in str(exc), exc
+            else:
+                raise AssertionError(f"tracked {link} symlink was accepted")
+            subprocess.run(["git", "-C", str(root), "reset", "-q", "HEAD", "--", link], check=True)
+            path.unlink()
         injected_eperm_cleanup()
         timeout_cleanup(base)
         descendant_cleanup(base)

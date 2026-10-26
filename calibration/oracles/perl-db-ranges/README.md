@@ -30,7 +30,10 @@ python3 calibration/oracles/perl-db-ranges/runner.py \
 
 The manifest scans tracked, regular files with PPI call-oracle extensions
 `.pm`, `.pl`, `.t`, `.psgi`, `.plx`, `.perl`, plus extensionless Perl shebang
-scripts. Ignored/untracked files are excluded and tracked symlinks rejected.
+scripts. Ignored/untracked files are excluded. A tracked directory symlink is
+allowed only when it resolves to an existing directory inside the checkout;
+the manifest does not traverse it. Tracked source-file, broken, and
+outside-checkout symlinks are rejected.
 It hashes every listed source file and checks Git HEAD/cleanliness, scope, and bytes before
 and after. Each file runs `perl -d -c -I<subject>/lib` from the checkout root,
 with `nice -n 10`, a 1-minute load ceiling of 9, a 2-second file timeout,
@@ -46,3 +49,12 @@ outside-source entries are excluded. The range companion emits ctags's
 source-written name and declaration line, paired to the compiler end. No Fathom
 output is read. Full-corpus completeness, errors, safety, and range quality
 remain to be measured before using it in a reading.
+
+The runnable verification command uses `PERL_BINARY` and `CTAGS_BINARY` set to
+available executables reporting exactly Perl 5.34.1 and Universal Ctags 6.2.1:
+
+```sh
+: "${PERL_BINARY:?set to the pinned Perl executable}"
+: "${CTAGS_BINARY:?set to the pinned Universal Ctags executable}"
+python3 calibration/oracles/perl-db-ranges/self_test.py --perl "$PERL_BINARY" --ctags "$CTAGS_BINARY"
+```

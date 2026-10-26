@@ -37,8 +37,18 @@ def files_under(root):
     for raw in sorted(name for name in tracked if name):
         rel = os.fsdecode(raw)
         path = root / rel
-        if path.is_symlink() or not path.resolve().is_relative_to(root):
+        try:
+            resolved = path.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise ValueError("broken tracked symlink or missing source is not supported") from exc
+        if not resolved.is_relative_to(root):
             raise ValueError("tracked symlink or outside source is not supported")
+        if path.is_symlink():
+            # Git tracks this directory entry, not files below it. A link to
+            # an in-tree directory is inert for the tracked-file manifest.
+            if resolved.is_dir():
+                continue
+            raise ValueError("tracked source-file symlink is not supported")
         if not path.is_file():
             continue
         if path.suffix.lower() in EXTENSIONS:
