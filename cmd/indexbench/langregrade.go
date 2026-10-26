@@ -37,8 +37,16 @@ func cmdLangRegrade(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "lang-regrade:", err)
 			return 1
 		}
+		// The required-kind mapping is a harness rule, so a reading takes its
+		// dialect manifest's canonical list again — but only when that manifest
+		// requires kinds of its own (owner ruling E2-R3). A reading scored under
+		// another manifest (astro's L1 is the hosted TypeScript ranges' kinds, on
+		// a manifest that requires none) keeps the kinds it measured: regrading
+		// reads no new data and never empties a measured list.
 		if spec, _, err := resolveBenchSpec(r.Dialect, ""); err == nil {
-			r.RequiredKinds = spec.Manifest.RequiredCanonical()
+			if kinds := spec.Manifest.RequiredCanonical(); len(kinds) > 0 {
+				r.RequiredKinds = kinds
+			}
 		}
 		before := r.LevelMet
 		langbench.Regrade(&r)
