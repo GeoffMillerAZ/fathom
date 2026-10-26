@@ -1,0 +1,26 @@
+{
+  "results": [
+    {
+      "file": "pagila-schema.sql",
+      "version": "PostgreSQL 18.6 (PGlite 0.5.11) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+      "error": {
+        "message": "extension \"vector\" is not available",
+        "code": "0A000"
+      }
+    },
+    {
+      "file": "pagila-schema-jsonb.sql",
+      "version": "PostgreSQL 18.6 (PGlite 0.5.11) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+      "error": null
+    },
+    {
+      "file": "pagila-temporal-setup.sql",
+      "version": "PostgreSQL 18.6 (PGlite 0.5.11) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+      "error": {
+        "message": "syntax error at or near \"FOR\"",
+        "code": "42601",
+        "position": "3779"
+      }
+    }
+  ]
+}

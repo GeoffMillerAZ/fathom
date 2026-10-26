@@ -1,0 +1,25 @@
+{
+  "calls": [
+    {
+      "from": "film_price_history",
+      "path": "pagila-temporal-setup.sql",
+      "to": "film"
+    },
+    {
+      "from": "store_film_price_override",
+      "path": "pagila-temporal-setup.sql",
+      "to": "film_price_history"
+    },
+    {
+      "from": "store_film_price_override",
+      "path": "pagila-temporal-setup.sql",
+      "to": "store"
+    }
+  ],
+  "disclose": [
+    "native catalog: 3 unchanged scoped files, 3 distinct inline CREATE TABLE FK pairs; every CREATE TABLE accepted; 6 rejected statements outside CREATE TABLE named in the companion report; ALTER TABLE and inherited-only keys excluded"
+  ],
+  "tier": "A",
+  "tool": "sql-native-catalog",
+  "version": "SQLite 3.49.1; PGlite 0.5.11 PostgreSQL 18.6; pgvector 0.0.12"
+}

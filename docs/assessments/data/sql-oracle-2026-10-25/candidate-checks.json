@@ -1,0 +1,90 @@
+{
+  "pagila": {
+    "command_fallback_warnings": 194,
+    "pairs": [],
+    "sqlglot_version": "27.8.0"
+  },
+  "sqitch": {
+    "command_fallback_warnings": 0,
+    "pairs": [
+      {
+        "from": "new_changes",
+        "path": "lib/App/Sqitch/Engine/Upgrade/sqlite-1.0.sql",
+        "to": "projects"
+      },
+      {
+        "from": "new_events",
+        "path": "lib/App/Sqitch/Engine/Upgrade/sqlite-1.0.sql",
+        "to": "projects"
+      },
+      {
+        "from": "new_changes",
+        "path": "lib/App/Sqitch/Engine/Upgrade/sqlite-1.1.sql",
+        "to": "projects"
+      },
+      {
+        "from": "changes",
+        "path": "lib/App/Sqitch/Engine/sqlite.sql",
+        "to": "projects"
+      },
+      {
+        "from": "dependencies",
+        "path": "lib/App/Sqitch/Engine/sqlite.sql",
+        "to": "changes"
+      },
+      {
+        "from": "events",
+        "path": "lib/App/Sqitch/Engine/sqlite.sql",
+        "to": "projects"
+      },
+      {
+        "from": "tags",
+        "path": "lib/App/Sqitch/Engine/sqlite.sql",
+        "to": "changes"
+      },
+      {
+        "from": "tags",
+        "path": "lib/App/Sqitch/Engine/sqlite.sql",
+        "to": "projects"
+      },
+      {
+        "from": "widgets",
+        "path": "t/engine/deploy/widgets.sql",
+        "to": "users"
+      },
+      {
+        "from": "changes",
+        "path": "t/lib/upgradable_registries/sqlite.sql",
+        "to": "projects"
+      },
+      {
+        "from": "dependencies",
+        "path": "t/lib/upgradable_registries/sqlite.sql",
+        "to": "changes"
+      },
+      {
+        "from": "events",
+        "path": "t/lib/upgradable_registries/sqlite.sql",
+        "to": "projects"
+      },
+      {
+        "from": "tags",
+        "path": "t/lib/upgradable_registries/sqlite.sql",
+        "to": "changes"
+      },
+      {
+        "from": "tags",
+        "path": "t/lib/upgradable_registries/sqlite.sql",
+        "to": "projects"
+      }
+    ],
+    "sqlglot_version": "27.8.0"
+  },
+  "sqlfluff": {
+    "contract": "syntax parse tree, not native evaluation or resolved FK catalog",
+    "version": "4.4.0",
+    "violation_codes": [
+      "PRS"
+    ]
+  }
+}
