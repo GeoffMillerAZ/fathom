@@ -1,7 +1,7 @@
 # exploration-ledger — vision 19 promoted: the 90x measured, the dashboard readable
 
 > Governing source: docs/vision/19-exploration-ledger.md. **Covenant
-> (ADR-0070 class):** failing test first; `task validate` green before
+> (test-first class):** failing test first; `task validate` green before
 > commit; dated CHANGELOG entry; boxes flip only on `fathom verify`.
 
 ## A — The instrument
