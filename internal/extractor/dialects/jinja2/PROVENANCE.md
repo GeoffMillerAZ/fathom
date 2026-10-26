@@ -1,32 +1,72 @@
 # jinja2 — provenance and divergences
 
-LB-Q-jinja2, design `docs/design/language-breadth.md` §13. A tags-engine dialect over
-`cathaysia/tree-sitter-jinja` v0.5.0 (commit `687b1ff1d6a7eaae26df84560bb1c049f4f1b4c1`,
-Apache-2.0, the `tree-sitter-jinja` grammar; blob `jinja2` in `grammars.lock.json`). Built and
-measured, **not dispatched**: see the plan row `LB-Q-jinja2-rest` and `refusedDialects`.
+LB-Q-jinja2, design `docs/design/language-breadth.md` §13. A tags-engine dialect for
+`.j2`, `.jinja`, and `.jinja2`, using
+[`bennypowers/tree-sitter-jinja-dialects`](https://github.com/bennypowers/tree-sitter-jinja-dialects/tree/4f832fe6feeae8c9e5963d835bec0272a8331b47)
+at commit `4f832fe6feeae8c9e5963d835bec0272a8331b47` (MIT).
 
 ## Where each piece comes from
 
-- **Grammar.** The upstream repository ships `queries/highlights.scm` and `injections.scm`, no tags
-  query; neither aider nor nvim-treesitter has a Jinja tags or locals query. `dbt-labs/tree-sitter-jinja2`
-  v0.2.0 (Apache-2.0) reads a `{% … %}` statement as one opaque regex token, so a macro or block name
-  is not a node: not usable.
-- **`tags.scm` / `imports.scm`.** Written in this repository from `indexbench lang-probe` output
-  over `testdata/`. The grammar is flat (a `block` and its `endblock` are sibling nodes), so a
-  definition's range is its opening tag and nothing nests.
-- **Preprocess.** `jinja-templates` (`tsextract_jinja.go`): the grammar reads a text line opening with
-  `# ` as a line statement and `in` as an operator only in a for header; Jinja has line statements off
-  by default and `in` everywhere. Taken only when the file does not parse as written.
-- **Imports.** `include-path`: Jinja looks a template name up in the loader's search path; the
-  importing file's directory, then each ancestor directory, is the layout of a Flask `templates/`
-  tree, a Kolla `docker/` tree and an Ansible role.
+- **Grammar.** Built from that upstream commit with the in-tree
+  `internal/extractor/tsengine/grammars/patches/jinja2/optional-else.patch`
+  (SHA-256 `ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86`).
+  The patch allows a conditional without an else and preserves loop-filter precedence.
+  The shared patch mechanism is [P-R1 PR #36](https://github.com/GeoffMillerAZ/fathom/pull/36) (`gpu-sci/grammar-patches-r1`). The unmodified production
+  `build.sh` repeatedly built the same patched source with matching raw WASM SHA-256
+  `71680f5fead32c2881a5e486e8dc79a71656e3be60fff7b714667673b5f30e25`
+  (212061 bytes raw, 71302 bytes compressed).
+- **Queries.** `tags.scm` and `imports.scm` were written here from owned fixture
+  probes. They use keyword positions for statement names, the header's `@end`
+  for definition ranges, and the macro signature lead. No upstream query is copied.
+- **Imports.** `include-path` resolves a template name through the importing
+  file's directory and ancestor directories, matching the measured template trees.
 - **Fixtures.** Written for this dialect; no upstream file is copied.
-- **Oracle.** `calibration/oracles/jinja2-meta` (jinja2 3.1.6, tier A).
+- **Oracle.** `calibration/oracles/jinja2-meta` uses Jinja 3.1.6's parser, AST,
+  and `meta.find_referenced_templates` independently (tier A).
 
-## Not built
+The old `cathaysia/tree-sitter-jinja` v0.5.0 (Apache-2.0) needed a pre-parse
+repair and left 21 of 520 files with errors. It measured 0.93 MB/CPU-s in the
+2026-10-25 timing retake (historically 0.34). The new grammar parses files as
+written; the obsolete preprocessor is removed. The committed production-build
+comparison (`calibration/oracles/jinja2-meta/proof/parse-gate.json`) reproduces
+27/520 -> 3/520 WASM ERROR-or-MISSING files, 24 repaired, none newly failing,
+zero faults, with identical full pinned shards. The committed `prove_patch.py`
+entrypoint rebuilds both variants using unmodified production `build.sh`.
 
-- `templates/*.html` by content sniff: the pipeline dispatches `.html` by extension before any sniff
-  (`p.exts`), and a manifest sniff on `.html` would make every other `.html` file ambiguous and
-  excluded unless the html dialect also sniffs. It waits for dispatch (see the plan row's trigger).
-- Dispatch itself: throughput .34 MB per CPU-second, under the 1.0 floor, from the grammar's
-  one-token-per-character text lexing.
+`syntax-controls.json` contains 22 authored Jinja 3.1.6 verdicts. The shipped
+WASM agrees on 21, with one explicit pre-existing loop over-acceptance. Go
+controls pin that divergence and the legal loop-filter AST. A Jinja-only
+regenerator checks the independent verdicts. The three authored upstream corpus
+additions are beside the patch; the prepared upstream PR separately reports
+108 passing upstream-suite cases (105 existing plus those three).
+
+Three raw full-oracle receipts are committed under
+`calibration/oracles/jinja2-meta/proof/full-oracle-run{1,2,3}.json`:
+520 files, 734576 bytes, 1124 definitions, 687 qualified calls, 189 resolved
+imports/file edges, L1-L3 excellent, 3 ERROR-or-MISSING files (0.58%), zero
+faults and 5.17/4.92/5.18 MB/CPU-s. Run 1 is the median; the canonical reading
+is that exact harness output with no appended notes. Source and harness are
+`85b73ee11`. Remaining syntax classes are splatted arguments, extra filter
+arguments and a numeric dotted attribute.
+
+The committed stress entrypoint and `proof/stress.json` record one
+57344-byte malformed repeated `{% if (` input aborted at the 10-second budget
+(10000.640 ms, one fault), followed by successful 55-byte macro recovery in
+7.214 ms (two symbols, zero faults). Zero calibration faults does not mean
+arbitrary malformed inputs never fault. Reproduction commands and hash formats
+are in `calibration/oracles/jinja2-meta/PATCH-PROOF.md`.
+
+## Coverage ceiling
+
+`templates/*.html` is outside this dialect's dispatch. Extension dispatch and
+the file resolver select HTML before Jinja sniffing. Adding that coverage needs
+an engine and HTML regrade; it is not implemented here.
+
+An upstream PR is prepared only under `workspace/upstream/jinja-optional-else/`.
+It has not been opened.
+
+Namespace imports opt into `imports.whole_bindings: "namespace"`; qualified
+call captures preserve the receiver. Includes and extends emit side-effect-only
+import specs. Two imported templates defining the same macro do not collide or
+leak that macro into unqualified scope (ingest collision regression). Other
+dialects keep the existing whole-import binding defaults.

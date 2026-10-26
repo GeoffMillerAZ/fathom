@@ -248,7 +248,7 @@ owner's decisions, binding on the harness and every reading after them:
   compiler's own parser (`calibration/oracles/kotlin-psi`, tier B like JavaParser and Roslyn) — its
   definitions, ranges and call pairs, a call belonging to the smallest enclosing function or
   constructor as it does in the dialect. scip-java's Kotlin index was tried and cannot stand in: under
-  Kotlin 2.2.0 (its plugin refuses 2.3.20) it wrote 58,698 occurrences with no range at all, and
+  Kotlin 2.2.0 (its plugin refuses 2.3.20) the legacy-only reader returned 58,698 empty ranges (source-read correction 2026-10-26: the producer writes typed-only ranges absent from the bundled reader; this does not establish missing producer ranges), and
   okhttp's build needs an Android SDK. The grammar pin moved from fwcd 0.3.8 to commit `1852ea17`
   because 0.3.8 left 16.6% of the subject files with parse errors (over §14.2's 5% line) and 1852ea17
   leaves 1.1%.
@@ -1474,7 +1474,8 @@ repo file set) → target files:
 
 A manifest names its strategy and its parameters — the closed set `extractor.ImportParams`
 decodes: `source_roots`, `suffixes`, `index_files`, `separator`, `relative` (a bare spec is
-relative to the importer first), `case: "snake"`, `labels: "bazel"`, `type_wildcard:
+relative to the importer first), `whole_bindings: "namespace"` (whole imports bind
+a local prefix instead of bringing every target name into scope), `case: "snake"`, `labels: "bazel"`, `type_wildcard:
 "members"` (a wildcard naming a type brings its members into scope: C#'s `using static`) and
 global-name's `scope` and `defines` (the kinds whose top-level definitions a name binds); an
 omitted one takes the strategy's default, which for `dotted-module` is the pre-LB-F11 Python
@@ -1488,10 +1489,14 @@ N.T;`, a nested `N.Outer.Inner`) resolves to the files declaring it, wherever th
 `using static` member binds a bare call only when no type enclosing the caller declares that name
 and no second `using static` type does, as C#'s simple-name lookup reads it (LB-F45;
 `internal/fusion/resolvestrategy.go` and `fileresolve.go` document each strategy's reads).
-Under `include-path`, `file-symbol` and `swift-module` a whole-module import brings every
+Unless `whole_bindings: "namespace"` is selected, under `include-path`, `file-symbol`
+and `swift-module` a whole-module import brings every
 top-level name of its target into scope, as does any `@import.wildcard` (C#'s unaliased
 `using`, D7); a name two targets define is left unresolved, and a dotted call through a
 wildcard-imported name resolves to that name's member when its file defines one.
+Jinja selects namespace binding for `{% import "forms.j2" as forms %}` and preserves
+`forms.input()` as a qualified call. Its include/extends specs are side-effect-only:
+they retain module edges without exposing the target's macros as unqualified names.
 Under `include-path` (wave cx item cinc, LB-F121, LB-F122) the compile databases read are the
 conventional in-repo ones (the repo root, `build/`, `builddir/`, `_build/`, `cmake-build-*/`,
 `out/build/*/`), from the disk when the connector lists none (a build directory is gitignored):

@@ -1,0 +1,66 @@
+{
+  "controls": {
+    "components.blade.php": {
+      "ast_sha256": "03cec50ddc3f256b9708283e7f8516321eed61820cc4fca3c63827d2a51660dc",
+      "exit_code": 0,
+      "node_types": {
+        "attribute": 2,
+        "attribute_name": 2,
+        "attribute_value": 2,
+        "document": 1,
+        "element": 2,
+        "end_tag": 2,
+        "quoted_attribute_value": 2,
+        "start_tag": 2,
+        "tag_name": 4,
+        "text": 2
+      },
+      "source_sha256": "28384dc71babaa115a72e9cf22baa74156a3b3b496639cc6b9d5c4666df7b96c"
+    },
+    "directives.blade.php": {
+      "ast_sha256": "67134245eae2aa58a5e5f0b4d440f720d22bd4ee201238b150707315834ae01d",
+      "exit_code": 1,
+      "node_types": {
+        "ERROR": 3,
+        "directive": 1,
+        "directive_argument": 1,
+        "document": 1,
+        "raw_text": 3
+      },
+      "source_sha256": "4c80f6dd9c471f9e93b0976abaada94e36beac130d72844d8364f23d227ecebb"
+    }
+  },
+  "gate": {
+    "error_or_missing": 94,
+    "infrastructure_failure": 0,
+    "pass": 160,
+    "passes_error_ceiling": false,
+    "timeout": 0,
+    "total": 254
+  },
+  "grammar": {
+    "commit": "e2ff089ded9351aeac9f4402225c5d49e8c0067d",
+    "native_library_sha256": "dca4a5cb96973944b041e968414f5235a663edc426f93ec6f32469d1f09e04e5",
+    "sources_sha256": {
+      "parser.c": "5e63bd1c907fe73e91cd106ea963898676c33fc65d3ce6089048a947ea491d74",
+      "scanner.c": "c3bf1b45f5f0e1a5bbc91a42068e0ca21ccc2d2bf4e48bac7b73f568e2b4d8c8"
+    }
+  },
+  "structural_review": "manual inspection required; low ERROR rate alone is insufficient",
+  "subjects": {
+    "breeze": {
+      "bytes": 126356,
+      "commit": "47f6b30a3bdf376a3f75cf9ad8e68ea3941048e2",
+      "files": 57,
+      "path_content_set_sha256": "4285ed9e64f706a0a3c29ad2fa204d4e19565b294a2636dca9fc687feb31e32b"
+    },
+    "filament": {
+      "bytes": 589903,
+      "commit": "85d51ef9e5c4e3db281c568315f535652639e09f",
+      "files": 197,
+      "path_content_set_sha256": "09771f10d2cb5caabe947fe7f63c5803bf614b590e6832c0aa5026e1c6859d4a"
+    }
+  },
+  "timeout_seconds_per_file": 10,
+  "tool": "tree-sitter 0.26.11"
+}
