@@ -28,6 +28,13 @@ class NativeUpstreamTest(unittest.TestCase):
         self.assertFalse(attests_error(message, 'app', 'sub/site.conf', {18}))
         self.assertFalse(attests_error('syntax error in sub/site.conf:17', 'app', 'sub/site.conf', {17}))
 
+    def test_native_population_can_attest_removed_named_upstream_without_default_port(self):
+        message = 'nginx: [emerg] no port in upstream "app" in sub/site.conf:17'
+        self.assertFalse(attests_error(message, 'app', 'sub/site.conf', {17}))
+        self.assertTrue(attests_error(message, 'app', 'sub/site.conf', {17}, allow_no_port=True))
+        self.assertFalse(attests_error(message, 'app', 'sub/site.conf', {18}, allow_no_port=True))
+        self.assertFalse(attests_error(message, 'other', 'sub/site.conf', {17}, allow_no_port=True))
+
 
 class ScratchBoundsTest(unittest.TestCase):
     def test_scratch_cannot_recurse_into_subject(self):

@@ -15,6 +15,8 @@ HERE = Path(__file__).resolve().parent
 
 
 def run(command):
+    subprocess.run(['df', '-h', str(Path.home())], check=True)
+    require_free_space('measurement step')
     subprocess.run([str(x) for x in command], check=True)
 
 

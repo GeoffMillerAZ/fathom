@@ -117,3 +117,35 @@ starting either driver. This guard does not authorize a build while the
 controller's load or serial-measurement limits are unmet. Completed measured
 subjects, source trees and downloaded tools are removed under disk pressure;
 the committed aggregate receipts preserve the diagnostic, not a runnable cache.
+
+## Native population experiment
+
+Protocol r3 observes all native HTTP/stream upstream registration calls, including
+unused and forward declarations, before looking at the independent scanner's
+reference set. Returned native object identities determine bindings; the source
+walk labels enclosing owners only. Unknown events or ambiguous locations refuse
+the profile. The full original 47-input scope remains fixed. Each local pair
+must pass target-only declaration ablation. Native stream/zero-default-port
+passes report `no port in upstream` after that mutation; ordinary HTTP passes
+report `host not found in upstream`. Both must name the original target and
+queried source line, and the unchanged native profile must first load.
+
+`native-observer-build-r1.json` records the source archives, original/observed
+native source hashes, observer shim and binary SHA-256. All 41 authored tests
+passed with native tests enabled; there were no skips. These include HTTP and
+stream, forward references, unused declarations, scanner omission, identity
+refusal and scratch cleanup on unknown output. Canonical corpus replay remains
+required before an A reading is accepted.
+
+With the private built observer exposed at `workspace/oracle/nginx-observer`,
+and the documented Python requirements installed:
+
+```sh
+NGINX_OBSERVER=$PWD/workspace/oracle/nginx-observer NGINX_NATIVE=$PWD/workspace/oracle/nginx-observer NGINX_BIN=$PWD/workspace/oracle/nginx-observer python3 -B -m unittest discover -s calibration/oracles/nginx
+```
+
+The measurement driver `grade_native_l2.py -native-population` invokes native
+controls on its exact checksum-verified binary before producing A reference
+output. It freezes inputs with the exact normative tracked-set recipe, refuses
+changed/generated inputs and retains native-only pairs. Definitions remain C.
+L3 is not measured or changed by this experiment.

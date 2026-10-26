@@ -98,7 +98,7 @@ def measure(subject, files, nginx, work):
                     prefix = posixpath.dirname(rel)
                 loaded, _, message, _ = old.nginx_check(str(probe), prefix, str(nginx), str(work / 'negative'), mode, rel)
                 expected = posixpath.relpath(rel, prefix) if prefix else rel
-                if loaded or not attests_error(message, ref['to'], expected, {e['line'] for e, _ in sites}):
+                if loaded or not attests_error(message, ref['to'], expected, {e['line'] for e, _ in sites}, allow_no_port=True):
                     raise ValueError('native target-only ablation did not attest pair: ' + message)
                 controls.append(dict(reference=ref, native_error=message))
             finally:

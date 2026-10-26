@@ -30,8 +30,11 @@ def rename_target(source, target, line):
     return source[:match.start()] + replacement + source[match.end():]
 
 
-def attests_error(message, target, expected_path, lines):
-    if 'host not found in upstream "' + target + '"' not in message:
+def attests_error(message, target, expected_path, lines, allow_no_port=False):
+    failures = ['host not found in upstream "' + target + '"']
+    if allow_no_port:
+        failures.append('no port in upstream "' + target + '"')
+    if not any(failure in message for failure in failures):
         return False
     found = re.fullmatch(r'(.+):(\d+)\s*', message.rsplit(' in ', 1)[-1])
     return bool(found and found.group(1) == expected_path and int(found.group(2)) in lines)
