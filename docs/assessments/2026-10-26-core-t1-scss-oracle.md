@@ -36,7 +36,7 @@ No rule was changed after that reading. Its computed grades are in the [independ
 range agreement 1 (2,972/2,972), symbol recall .9927 and precision .9987, call recall .9985 and
 precision .9559, import resolution 1, file-edge recall 1 and precision .8239 (117/142). Twenty-five
 counted file pairs lack successful compile attestation. Median throughput is 2.74 MB per
-CPU-second (2.76, 2.73, 2.74), zero faults. This is the remaining written oracle ceiling, not
+CPU-second (2.76, 2.73, 2.74), zero faults. This was the original measured oracle limit, not
 proof that those file-resolver edges are wrong. A future pass needs subject-native compile
 configuration frozen before another independent holdout. The older Angular holdout remains
 historical under the old oracle and restricted source scope.
@@ -69,3 +69,170 @@ node --test calibration/oracles/dart-sass/sass_oracle.test.cjs
 go test -race ./internal/langbench -run 'GrammarPrefillDataMatchesQueue|Reading|Corpus'
 ruby -r yaml -e 'ARGV.each { |p| YAML.safe_load(File.read(p)) }' calibration/corpus.d/scss.yaml docs/bench/scss-spans-holdout.yaml
 ```
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. The source-ledger lookup itself was read-only; the dated native resolver measurement below records subsequent execution.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / compiler | [Dart Sass](https://sass-lang.com/documentation/js-api/) is measured at 1.105.1 for successful `loadedUrls`; [registry 1.106.1](https://registry.npmjs.org/sass/latest) is newer but does not automatically attest failed Foundation compiles. |
+| SCIP / LSIF | Shared catalogs and [GitHub `scip-scss` search](https://github.com/search?q=scip-scss&type=repositories) yielded no measured SCSS indexer. |
+| Language server | [VS Code CSS/SCSS language service](https://github.com/microsoft/vscode-css-languageservice) has navigation services. [`some-sass-language-server` 2.3.8](https://www.npmjs.com/package/some-sass-language-server) supports SCSS and indented Sass with `@use`/`@forward`; it is third-party tier C and **LIVE UNMEASURED** against Foundation's 25 unattested file pairs. |
+| Registry AST / resolver | [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/0.5.1) postdates canonical 0.4.57 and is now measured in the separate canonical-only comparison below. [`sass_api` 18.1.0](https://pub.dev/packages/sass_api/versions/18.1.0) exposes AST spans, [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) returns declared URLs, and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves a URL using Dart Sass's own resolver. Combined, `findDependencies` plus `ImportCache.canonicalize` can attest resolved (importer, imported) pairs without evaluating the stylesheet, including files that fail evaluation. This owner-resolution route is now **MEASURED**, tier A under P-T1; it attests all 25 previously missing pairs in the post-hoc Foundation comparison. It needs the same load paths and importers as a compile, so missing-load-path failures remain unresolved. |
+| Runtime/load tracing | [Dart Sass compile API](https://sass-lang.com/documentation/js-api/) reports loads for successful compiles only. A custom JS importer hook can observe explicit `load` callbacks, but does not establish coverage of built-in loads. The `sass_api` resolver measurement below retains every parse and resolution gap. |
+
+The original frozen Foundation result remains historical. The controller's exact binding was: "F1 major: the SCSS audit misreads sass_api. The same package exports Dart Sass’s own import resolver, which is exactly the route for the 25 unattested pairs, so measure it (P-T1 tier A, the format owner’s own resolver)." The measured result below supersedes the missing-resolver premise without treating a spent subject as fresh validation.
+
+## Native resolver measurement after binding X-R4 F1
+
+Measured: pinned Dart 3.13.7, sass_api 18.1.0 and Dart Sass 1.106.1 resolve
+the complete declared dependency inventory while preserving the primary
+sass-parser 0.4.57/Sass 1.105.1 non-import truth. The composite tool identity
+names both producers. The [canonical reading](../bench/readings/lang/scss.json)
+retains every non-import count, metric and family and remains L1-L3 excellent;
+median-of-three throughput is 2.36 MB/CPU-s, zero faults.
+
+Post hoc only: the [separate Foundation comparison](../bench/readings/scss-native-foundation-posthoc-2026-10-26.json)
+attests all 25 formerly missing counted file pairs, moving file-edge precision
+from .8239 (117/142) to 1 (142/142), with every non-import count/metric unchanged.
+Its median throughput is 2.87 MB/CPU-s. Foundation is spent: this does
+not replace its original untuned reading or provide independent validation.
+The [counts/hashes receipt](data/2026-10-26-core-t1-scss-native-resolver.json)
+records original and derived identities, source inventories and all gaps.
+
+Native resolution reports one, sixteen and eleven unresolved unique URLs
+across the three complete subjects; nine Foundation URLs are builtins. The
+primary retains one successful Bootstrap content-block compile attestation
+that findDependencies does not enumerate. Unresolved native evidence never
+erases successful primary evidence; conflicting resolved targets fail.
+meta.load-css URLs remain explicitly unpositioned and never get a fabricated
+line. Eight primary parser-rejected files remain counted against symbol
+precision. No extractor, discovery filter, production gate or source changed.
+
+The fresh Spectre pin was committed before any source access; the complete
+canonical/post-hoc evidence freeze is 678269006119029000aa81d54d42dd3890727a00.
+Its attempted first validation is recorded below.
+
+## Fresh Spectre validation: refused, now spent
+
+Measured: all 76 tracked SCSS files were supplied unchanged, without filters or
+compile setup. The frozen primary rejected five files, compiled 19 and failed
+57 standalone evaluations. The native composite then refused a dependency
+with no positioned primary statement; that primary-rejected file has no import
+entries in the primary. A parser rejection is a counted primary coverage gap;
+the composite's whole-subject refusal is a separate pairing rule, not another
+parser error. No composite oracle JSON or Fathom grade was produced. The
+[counts/hashes refusal receipt](data/2026-10-26-core-t1-scss-spectre-refusal.json)
+retains the failure, source inventory and frozen tool/build identities.
+
+Spectre is spent and remains outside the canonical corpus. No source, oracle,
+filter or rule was changed after its read. The canonical measurements and
+Foundation post-hoc repair remain valid, but do not establish fresh independent
+validation of the composite. The next candidate was first-party sass-parser 0.5.1, already identified by
+the registry audit. Its subsequent canonical-only comparison below does not
+reuse Spectre or establish a repair on that spent subject. The new instrument
+and a different untouched holdout must be frozen before independent validation.
+No exhausted parser/oracle ceiling is claimed.
+
+## First-party parser 0.5.1: canonical-only comparison
+
+The [separate candidate reading](../bench/readings/scss-native-primary051-2026-10-26.json)
+uses sass-parser 0.5.1, its nested Sass 1.106.1 and top-level compile Sass
+1.105.1, with the unchanged native sass_api 18.1.0/Sass 1.106.1 resolver.
+All pooled counts and numeric metrics exactly equal the prior canonical
+reading: L1-L3 remain excellent. The parser still rejects three of 122
+Bootstrap files and five of 113 Primer files. Native parsing succeeds for
+all inputs; its one missing Bootstrap content-block statement retains the
+primary's successful compile attestation. One and sixteen native unresolved
+URLs remain counted. No source, query, filter or adapter rule changed.
+
+Median-of-three throughput is 2.31 MB/CPU-s (2.27, 2.31, 2.36), zero faults.
+The [count/hash receipt](data/2026-10-26-core-t1-scss-primary051.json) records
+all eight phase launch loads, timing, exact source before/after inventories,
+package identities and original/derived hashes. Digest strings use an
+explicit `sha256:` representation without changing the underlying hashes.
+The [pinned setup](../../calibration/oracles/dart-sass-resolver/PRIMARY.md)
+uses a committed package manifest with exact parser/compiler versions.
+
+Foundation and Spectre remain spent and were not reread for this comparison.
+The new [Bourbon preregistration](../bench/scss-resolver-primary051-holdout.yaml)
+is outside the canonical corpus; only its tag and license metadata have been
+read. Freeze this complete candidate and its toolchain before fetching the
+source, then run once without tuning. No fresh-validation success is claimed.
+
+## Bourbon first read and canonical adoption
+
+The preregistered Bourbon v7.3.0 commit `c3551e46f4` was first read after
+freeze commit `5599fcb40e`. Both full Git identities remain in the receipt
+and frozen preregistration. The complete 86-file
+tracked SCSS inventory was unchanged before and after the read. The
+[independent reading](../bench/readings/lang/holdout/scss-bourbon-native.json)
+meets L1, L2 and L3 at excellent. All 318 symbols and 54 call pairs agree;
+all 45 in-repository import and file pairs agree. Primary parser rejections,
+Fathom ERROR-or-MISSING files and faulting files are each 0/86. Median of
+three throughput runs is 2.29 MB/CPU-s (2.24, 2.29, 2.35); maximum per-file
+extraction is 1 ms. All preregistered gates pass for their declared scope,
+but the native resolver added zero pairs: all 45 graded pairs were inherited
+from successful primary compiles. The 40 unresolved dependencies are in-repo
+targets resolved by the subject runner's `-I .` and fixture-directory load
+paths, which the preregistration excluded. They are 39 fixture setup imports
+and one setup-to-library import. With those paths the native resolver finds
+85/85 in-repo imports; the existing Fathom reading resolves only 45/85, at
+most .53 under that broader truth. This is an inference from the runner and
+resolver measurements, pending a separately labelled post-hoc grade. No
+source, tool, adapter, filter, load path or rule was tuned after first read.
+Bourbon is now spent and does not validate a native-only gain.
+The [public counts/hash receipt](data/2026-10-26-core-t1-scss-bourbon-native.json)
+records freeze and source identities, before/after inventories, tool pins,
+phase loads, gate results and the reading digest without source file lists.
+
+The frozen 0.5.1 candidate is now the [canonical SCSS reading](../bench/readings/lang/scss.json),
+with added disclosure notes; its pooled counts and numeric
+metrics equal the former canonical reading, and it remains L1-L3 excellent at
+2.31 MB/CPU-s median with zero faults. Bootstrap's three and Primer's five
+primary parser rejections, the one retained Bootstrap primary attestation, and
+one plus sixteen native unresolved URLs remain disclosed. Native-only gains
+are Bootstrap 0, Primer 0 and Bourbon 0; Foundation's 25 are post hoc only.
+The canonical 0.5.1 adoption rests on its identical-count comparison, while
+fresh validation of a native-only contribution remains open. A new holdout
+must be preregistered with its subject runner's load paths and attest more
+than zero pairs that the primary compiles do not. The composite can also
+refuse a whole subject when a primary-rejected file declares a dependency,
+as Spectre demonstrated. Foundation and
+Spectre are historical spent attempts; the preceding statements that Bourbon
+was unread and fresh validation was pending describe the state before this
+independent read. The receipts retain the frozen first-read SHA-256 values and
+add separate annotated-reading digests for these disclosure-only note changes.
+Controller verification of the adopted reading and plan
+remains pending; the SCSS follow-up box stays open.
+
+## R2-F9 full runner-population measurement (post hoc)
+
+The spent Bourbon rerun now exercises the native resolver over all 85 imports
+with the subject runner load paths. It resolves 85/85, adding 40 pairs beyond
+the 45 inherited primary attestations, with no unresolved native URL. Repeating
+the primary with those paths still inherits 45; the native route contributes
+the other 40 in both diagnostic arms. Source fingerprints match across arms
+and the unchanged pinned checkout.
+
+The [post-hoc reading](../bench/readings/scss-bourbon-runner-posthoc-2026-10-26.json)
+measures Fathom resolving 45/85 imports (.5294), file precision 45/45 (1),
+and file recall 45/85 (.5294). L1 and L2 remain excellent, while L3 is unmet.
+Median3 throughput is 2.40 MB/CPU-s (2.43, 2.40, 2.40), with no faults.
+This replaces the earlier inference with a measured failure. It is neither
+fresh validation nor a canonical corpus input, and Bourbon remains spent.
+The canonical 0.5.1 adoption rests on its identical-count comparison.
+
+The [count/hash receipt](data/2026-10-26-core-t1-scss-bourbon-runner-posthoc.json)
+comes from the committed `publish_posthoc.py`, which checks the pinned source,
+cross-arm fingerprints, exact six phases, load limits and three timing labels.
+The instrument revision is `9029a10d7`; no extractor or acceptance rule changed.
+
+R3 clarification: the frozen-primary and runner-primary neutral JSON digests
+are identical. Runner paths increased successful compiles from 58/86 to
+83/86, but the primary pairs targets relative to the importer, so the same
+40 configured-load-path imports remain `no_loaded_target`. The native resolver
+attests those 40; the full-population product failure remains .5294. This
+[configured-load-path finding](2026-10-26-core-t1-scss-load-path-gap.md) is owned
+separately from fresh native-oracle validation.

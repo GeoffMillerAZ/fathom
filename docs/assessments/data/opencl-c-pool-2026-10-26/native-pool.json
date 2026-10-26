@@ -1,0 +1,137 @@
+{
+  "diagnostics": [
+    {
+      "bytes": 0,
+      "distinct_blobs": 0,
+      "files": 0,
+      "id": "clinfo",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 22100,
+      "distinct_blobs": 12,
+      "files": 16,
+      "id": "handson",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 24761953,
+      "distinct_blobs": 1347,
+      "files": 1349,
+      "id": "hashcat",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 238306,
+      "distinct_blobs": 41,
+      "files": 41,
+      "id": "nvidia",
+      "role": "diagnostic"
+    },
+    {
+      "bytes": 7663676,
+      "distinct_blobs": 1011,
+      "files": 1016,
+      "id": "pocl",
+      "role": "diagnostic"
+    }
+  ],
+  "duplicates": "Every file remains in denominator; distinct blobs are supplemental counts, never a selection or deduplication filter.",
+  "policy_commit": "3e56917af5cce16bdd545f57c874c0e12a0fd33f",
+  "policy_sha256": "75b1c6a9c13fc32d204201e23f1e1d4f2afe90a02d9567d978d672fc1a9772eb",
+  "pooled": {
+    "bytes": 4256615,
+    "c_error_or_missing": 380,
+    "c_error_rate": 0.9844559585492227,
+    "dedicated_error_or_missing": 138,
+    "dedicated_error_rate": 0.35751295336787564,
+    "distinct_blobs": 382,
+    "faults": 0,
+    "files": 386
+  },
+  "primary": [
+    {
+      "bytes": 467821,
+      "c_error_or_missing": 98,
+      "dedicated_error_or_missing": 8,
+      "distinct_blobs": 103,
+      "faults": 0,
+      "files": 103,
+      "id": "arrayfire",
+      "role": "primary"
+    },
+    {
+      "bytes": 1133326,
+      "c_error_or_missing": 40,
+      "dedicated_error_or_missing": 40,
+      "distinct_blobs": 40,
+      "faults": 0,
+      "files": 40,
+      "id": "clblas",
+      "role": "primary"
+    },
+    {
+      "bytes": 726693,
+      "c_error_or_missing": 46,
+      "dedicated_error_or_missing": 3,
+      "distinct_blobs": 46,
+      "faults": 0,
+      "files": 46,
+      "id": "darktable",
+      "role": "primary"
+    },
+    {
+      "bytes": 1215747,
+      "c_error_or_missing": 110,
+      "dedicated_error_or_missing": 75,
+      "distinct_blobs": 110,
+      "faults": 0,
+      "files": 110,
+      "id": "opencv",
+      "role": "primary"
+    },
+    {
+      "bytes": 160335,
+      "c_error_or_missing": 7,
+      "dedicated_error_or_missing": 5,
+      "distinct_blobs": 8,
+      "faults": 0,
+      "files": 8,
+      "id": "pyopencl",
+      "role": "primary"
+    },
+    {
+      "bytes": 297447,
+      "c_error_or_missing": 31,
+      "dedicated_error_or_missing": 3,
+      "distinct_blobs": 28,
+      "faults": 0,
+      "files": 31,
+      "id": "rodinia",
+      "role": "primary"
+    },
+    {
+      "bytes": 29468,
+      "c_error_or_missing": 10,
+      "dedicated_error_or_missing": 1,
+      "distinct_blobs": 9,
+      "faults": 0,
+      "files": 10,
+      "id": "sdk",
+      "role": "primary"
+    },
+    {
+      "bytes": 225778,
+      "c_error_or_missing": 38,
+      "dedicated_error_or_missing": 3,
+      "distinct_blobs": 38,
+      "faults": 0,
+      "files": 38,
+      "id": "shoc",
+      "role": "primary"
+    }
+  ],
+  "schema": "opencl-c-frozen-pool-native-v1",
+  "scope": "Native diagnostics only; no product support level. Original seven primary receipts were measured before this rule; pyopencl was measured after its registration. This unchanged rule gates all future patch comparisons.",
+  "status": "Both unmodified native candidates fail P-R1; general grammar repair required, no passing gate or level."
+}

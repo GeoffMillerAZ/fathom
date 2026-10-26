@@ -1,0 +1,78 @@
+{
+  "schema": "opencl-r4-subject-search-v1",
+  "researched_at": "2026-10-26",
+  "status": "pins-frozen-before-parse",
+  "scope": "Metadata plus exact pinned raw license files only. No clone, archive, build, source parse, compiler, oracle, or grade was run.",
+  "activation_gate": "Commit this record before parsing either pinned repository.",
+  "population_rule": "At each recorded full commit, measure every tracked regular file whose path ends exactly in lowercase .cl. No sampling, caps, exclusions, or outcome-based selection.",
+  "candidates": [
+    {
+      "name": "inducer/pyopencl",
+      "repository": "https://github.com/inducer/pyopencl",
+      "head_branch": "main",
+      "pin": "0c46357ef31474b1dfd2ec4000b4421fcf71193a",
+      "head_source": "git ls-remote https://github.com/inducer/pyopencl.git HEAD",
+      "role": "primary candidate whole-project population",
+      "license": "MIT/X Consortium with bundled Apache-2.0 and BSD-3-Clause components",
+      "repository_metadata_license": "NOASSERTION",
+      "license_eligibility": "primary-eligible: every license stated in the pinned root LICENSE is OSI-approved",
+      "license_source": "https://raw.githubusercontent.com/inducer/pyopencl/0c46357ef31474b1dfd2ec4000b4421fcf71193a/LICENSE",
+      "license_source_bytes": 3844,
+      "license_source_sha256": "d9810a5ea15f97436c7a736d62c030c888f672244421a22e11947e4983313308",
+      "use_scope": "external measurement only; do not vendor or ship from this metadata record",
+      "cl_population": {
+        "regular_file_count": 8,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/inducer/pyopencl/git/trees/0c46357ef31474b1dfd2ec4000b4421fcf71193a?recursive=1",
+        "truncated": false,
+        "parsed": false
+      }
+    },
+    {
+      "name": "Oblomov/clinfo",
+      "repository": "https://github.com/Oblomov/clinfo",
+      "head_branch": "master",
+      "pin": "8ec1e1d77d64190a7face73656ab3420b274c2ae",
+      "head_source": "git ls-remote https://github.com/Oblomov/clinfo.git HEAD",
+      "role": "zero-population candidate",
+      "license": "CC0-1.0",
+      "repository_metadata_license": "NOASSERTION",
+      "license_source": "https://raw.githubusercontent.com/Oblomov/clinfo/8ec1e1d77d64190a7face73656ab3420b274c2ae/LICENSE",
+      "license_source_bytes": 315,
+      "license_source_sha256": "2a7a9321be169ea6edbc6b1010e8f7bb0f4c1482a2f65c34a49e9719f129b79a",
+      "use_scope": "search outcome only; no population exists under the frozen rule",
+      "cl_population": {
+        "regular_file_count": 0,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/Oblomov/clinfo/git/trees/8ec1e1d77d64190a7face73656ab3420b274c2ae?recursive=1",
+        "truncated": false,
+        "parsed": false
+      }
+    }
+  ],
+  "named_misses": [
+    {
+      "name": "KhronosGroup/OpenCL-Examples",
+      "git_query": "git ls-remote https://github.com/KhronosGroup/OpenCL-Examples.git HEAD",
+      "rest_query": "https://api.github.com/repos/KhronosGroup/OpenCL-Examples",
+      "outcome": "named miss: anonymous Git transport returned Repository not found and the public REST endpoint returned HTTP 404; no claim is made about private or differently named repositories"
+    },
+    {
+      "name": "IntelOpenCLSamples/IntelOpenCLSamples",
+      "git_query": "git ls-remote https://github.com/IntelOpenCLSamples/IntelOpenCLSamples.git HEAD",
+      "rest_query": "https://api.github.com/repos/IntelOpenCLSamples/IntelOpenCLSamples",
+      "outcome": "named miss: anonymous Git transport returned Repository not found and the public REST endpoint returned HTTP 404; no claim is made about private or differently named repositories"
+    }
+  ],
+  "claims": {
+    "parsed_candidates": 0,
+    "graded_candidates": 0,
+    "primary_candidate_whole_populations": 1,
+    "primary_candidate_cl_files": 8,
+    "zero_population_candidates": 1,
+    "named_misses": 2,
+    "quality_or_ceiling_claim": false
+  }
+}
