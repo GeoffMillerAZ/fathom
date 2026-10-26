@@ -44,7 +44,7 @@ DOMAIN="gui/$(id -u)"
 SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
 # Services whose corpus is NOT $FLEET_BASE/<svc> (nested project roots).
 declare -A SERVICE_PATHS=(
-  [crossplane-platform]="$FLEET_BASE/planning/projects/pdk/substrates/timoni/crossplane-platform"
+  [crossplane-platform]="${FATHOM_CROSSPLANE_PLATFORM_DIR:-$FLEET_BASE/crossplane-platform}"
 )
 
 echo "==> fathom fleet re-ingest  (store: $STORE)"

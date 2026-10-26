@@ -71,7 +71,7 @@ TS="$(date +%Y%m%d-%H%M%S)"
 
 SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
 declare -A SERVICE_PATHS=(
-  [crossplane-platform]="$FLEET_BASE/planning/projects/pdk/substrates/timoni/crossplane-platform"
+  [crossplane-platform]="${FATHOM_CROSSPLANE_PLATFORM_DIR:-$FLEET_BASE/crossplane-platform}"
 )
 
 echo "==> [1/8] preflight"

@@ -50,8 +50,17 @@ DOMAIN="gui/$(id -u)"
 export FATHOM_LLM_PROVIDER="${FATHOM_LLM_PROVIDER:-claude-cli}"
 
 # Fleet services — same list as scripts/reingest-fleet.sh (obligations
-# compiles fleet-wide, OP-6).
+# compiles fleet-wide, OP-6). A gitignored workspace/fleet-services (one
+# service per line, # comments) replaces the default list: the operator's
+# private repositories are named there, never in this tracked file.
 SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant conjure cue-wasm iam_horcrux imbue planning platform-engineering pulumi-eks pulumi_eks_component workstation_as_code)
+if [ -f "$FATHOM_REPO/workspace/fleet-services" ]; then
+  SERVICES=()
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"; line="${line//[[:space:]]/}"
+    [ -n "$line" ] && SERVICES+=("$line")
+  done < "$FATHOM_REPO/workspace/fleet-services"
+fi
 
 echo "==> fathom flag-day recompile  (store: $STORE, lane: $FATHOM_LLM_PROVIDER)"
 [ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $FATHOM_REPO && go build -o bin/fathom ./cmd/fathom)"; exit 1; }
