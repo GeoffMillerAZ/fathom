@@ -88,7 +88,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-sass-grammar](2026-10-26-core-t1-sass-grammar.md) | Measured licensed candidate fails the complete-source grammar gate; refusal has concrete syntax causes | LB-Q-sass-rest, X-R1 |
 | 2026-10-26 | [core-t1-scala-ceiling](2026-10-26-core-t1-scala-ceiling.md) | The end-line repair and SemanticDB build remain shared-engine and build routes. | LB-Q-scala-rest |
 | 2026-10-26 | [core-t1-scss-oracle](2026-10-26-core-t1-scss-oracle.md) | Native-only gains: canonical subjects 0, original Bourbon 0, Foundation 25 post hoc; full Bourbon L3 unmet (.5294) post hoc; canonical 0.5.1 counts preserved | LB-Q-scss-rest, W5, X-R1 |
-| 2026-10-26 | [core-t1-scss-load-path-gap](2026-10-26-core-t1-scss-load-path-gap.md) | Draft ENGINE finding owned by core-t1: configured in-repo load paths, Bourbon 45/85; separate from fresh native-oracle validation | LB-Q-scss, LB-Q-scss-rest, R3-F4 |
+| 2026-10-26 | [core-t1-scss-load-path-gap](2026-10-26-core-t1-scss-load-path-gap.md) | Draft ENGINE finding owned by core-t1: configured in-repo load paths, Bourbon 45/85; separate from fresh native-oracle validation | LB-Q-scss, LB-Q-scss-rest |
 | 2026-10-26 | [core-t1-svelte-ceiling](2026-10-26-core-t1-svelte-ceiling.md) | The public C-R1 ruling retains the component kind ceiling. | LB-Q-svelte-rest |
 | 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
 | 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
