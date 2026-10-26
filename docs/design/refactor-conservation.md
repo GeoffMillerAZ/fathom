@@ -10,7 +10,7 @@ anti-Blindness) landed and are proven. §4 (refactors as programs) and §5 (the
 typed floor) shipped their CLI verbs (`fathom refactor plan`/`status`,
 `fathom report evidence`). §6's pre-push wiring and the `review`/`review_diff`
 `conservation` dimension are wired. §7's decision-port sites and §7a's
-cross-repo test-kit/Review Kit rows remain `(op)`/unclaimed in the plan.
+cross-repo test kit and review kit rows remain `(op)`/unclaimed in the plan.
 **CV-M6 (the dogfood refactor program) passes**, but only after fixing a
 real gap it found: `fathom verify --store` had never wired a
 `verify.GoneEvidence` adapter, so a `gone:` row (§3.1) could never be
@@ -115,7 +115,7 @@ Field names and plane/kind strings are the wire contract; sort order is plane,
 then kind, then key. Every Finding additionally carries `file`/`line` (both
 `omitempty`) — the finding's SUBJECT's own repo-relative location, at HEAD
 when it still exists there, else at BASE — for a citation-grounded caller
-(the Review Kit adapters) that needs a real source anchor and not just the
+(the review kit adapters) that needs a real source anchor and not just the
 human-readable `base`/`head` strings. Populated wherever a plane already has
 the location at hand or cheaply parsed (a guarded test's file:line, a
 reappeared function's head site, a capability inventory item's declaration,
@@ -127,7 +127,7 @@ never a single file).
 
 ### 1.1 Commit-bound runs (fixes O114)
 
-- test-kit `#EnvInfo` gains optional `commit` (40-hex), `dirty` (bool) and
+- The test kit `#EnvInfo` gains optional `commit` (40-hex), `dirty` (bool) and
   `race` (bool) — the commit the suite ran against, whether the tree had
   uncommitted changes, and whether the race detector was on. The go-test-json
   adapter fills them from `git rev-parse HEAD` and `git status --porcelain`. An
@@ -149,7 +149,7 @@ never a single file).
   certificate (the half of TC-8 that O114 found missing).
 - Consequence: existing certificates read `unproven` until runs are re-attested
   with a commit. `task tests:attest` does that for this repository (runs
-  `go test -json`, converts with test-kit's adapter when it is installed, and
+  `go test -json`, converts with the test kit's adapter when it is installed, and
   ingests with `fathom tests ingest`).
 
 ### 1.2 Guarded tests
@@ -362,7 +362,7 @@ deterministic Blindness detector.
 
 ### 3.4 The reading set (the residue, Q22)
 
-Decision 7 hands Review Kit "the residue no test covers" and decision 1 lets the
+Decision 7 hands the review kit "the residue no test covers" and decision 1 lets the
 decision port order attention over it, but nothing computed the residue, so
 `refactoring.uncovered-behaviour` had no evidence to judge. The reading set is
 that computation: the changed functions in `base..head` whose behaviour no
@@ -397,7 +397,7 @@ Then:
 class by resolved caller count descending, then symbol. The list is capped
 (default 200, `--residue-max`); the report says how many were cut. No
 percentage, ratio or threshold is computed (I43): counts and lists only, and
-Review Kit judges.
+the review kit judges.
 
 **Honesty.** The reading set is `unproven`, with its missing inputs listed and
 no function classified, when the index is not at HEAD, typed packages failed, or
@@ -410,7 +410,7 @@ instead of implying they were checked.
 `unanalyzed`, `missing`); it is not a plane and never changes a plane's verdict
 or `--strict`'s exit. `fathom conserve` prints the reading set after the planes.
 The review `conservation` dimension carries the counts and the first five
-`unreached` items. Review Kit's `fathom-conserve` adapter reports the residue as
+`unreached` items. The review kit's `fathom-conserve` adapter reports the residue as
 the evidence for `refactoring.uncovered-behaviour`: fail when any item is
 `unreached` or `unattested` (citing the first item's file and line), ok when
 none, not-yet-checked when the residue is unproven. That requirement stays
@@ -625,18 +625,18 @@ Q28).
   site.
 - Frontier ordering and same-concept questions stay futures with triggers (F23).
 
-## 7a. Review Kit and test-kit
+## 7a. The review kit and the test kit
 
-- test-kit: the envelope fields in 1.1, the adapter filling them, an ADR in its
+- The test kit: the envelope fields in 1.1, the adapter filling them, an ADR in its
   own repository.
-- Review Kit: pack `refactoring-conservation` with requirements
+- The review kit: pack `refactoring-conservation` with requirements
   `refactoring.no-undeclared-loss` (adapter `fathom-conserve` over
   `fathom conserve --json --since <base> --service <service>` — `--service`
   is required (cmd/fathom's conserve subcommand has no default-from-
   repo-directory fallback the way `certify gaps`/`certify manifest`/
   `certify status`/`certify orphans` do), so the adapter is constructed
-  with the sounding's own configured Service, the same value
-  `NewFathomAdapterAtRoot` already threads through for `fathom verify`
+  with the review run's own configured Service, the same value
+  the review kit's fathom adapter constructor already threads through for `fathom verify`
   bindings — fails on a finding with `declared` other than `prior`),
   `refactoring.proof-integrity` (integrity
   findings of kind `deleted`, `weakened`, `skipped`, `golden_changed`,

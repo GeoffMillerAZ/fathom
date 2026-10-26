@@ -51,7 +51,7 @@ make fathom the owner of prose it must never edit (law 15).
 | Hooks | The session hook evaluates nothing and makes no RPC for this plane; it reads the newest ledger rows at HEAD and cites their age (≤200 ms, `intent_ms` on the session beat). No oracle of any class runs in any hook. | I9, I12, tokenomics |
 | Kill | Each feature carries a kill criterion whose instrument exists (§8). | law 5, law 7, law 8 |
 | Trust | Annotations are untrusted repository content (a clone, a PR, a sibling committer). Oracles are read-only, root-confined (`paths` may not leave the repo; `..` and absolute paths lint loud), and `service` must be a service rooted in this repo (else `unevaluable: cross-repo refused`, F18). Blast radius is a count. The threat model itself is still Q5. | law 13, F15, Q5 |
-| Population | The consumer population is computed (router present ∧ `.fathom/` present), printed by `fleet report`, never a list in prose. v1 audits the nearest router at the repo root only; nested routers (a monorepo's `kits/*/docs/intent/`) are found and named as unaudited in the doctor row; ids reserve a path qualifier (`kits/ci-kit:F2#1`) for v2. | practice monorepo rule; law 3 |
+| Population | The consumer population is computed (router present ∧ `.fathom/` present), printed by `fleet report`, never a list in prose. v1 audits the nearest router at the repo root only; nested routers (a monorepo's `kits/*/docs/intent/`) are found and named as unaudited in the doctor row; ids reserve a path qualifier (`kits/<kit>:F2#1`) for v2. | practice monorepo rule; law 3 |
 
 ## 2. The intent corpus
 

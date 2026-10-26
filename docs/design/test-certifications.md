@@ -2,7 +2,7 @@
 
 Design for vision 33 (ADR-043). This is the contract the plan
 (`docs/plans/test-certifications.md`) is gated on and the three repositories
-build against: test-kit (the vocabulary), fathom (the facts), Review Kit (the
+build against: the test kit (the vocabulary), fathom (the facts), the review kit (the
 judgment). Every section names what is deterministic, what a declaration is,
 and what tier each fact earns.
 
@@ -12,19 +12,19 @@ layer (§4, compile/resolve/sweep), `fathom verify certified_by` (I43), the
 status|gaps|manifest|orphans|suggest`, a `certification` receipt kind, the
 `fathom doctor` `certifications` row, and fathom's own repo declaring
 certificates for its deny-severity invariants and open incidents' tests
-(`tests/fathom.cue`). §7's test-kit and Review Kit halves (TC-17, TC-18)
-landed in platform-engineering, proven by that repository's own gate. Open:
+(`tests/fathom.cue`). §7's test kit and review kit halves (TC-17, TC-18)
+landed in the kits' own repository, proven by that repository's own gate. Open:
 TC-M2/TC-M3/TC-M4 (the three two-week/one-month/twenty-suggestion operator
 measurements) and fathom's own live-certificate count against its
 deny-severity invariants — see `docs/certifications.md` for the current
 counts.
 
-## 1. Vocabulary (owned by the platform standard, test-kit ADR-0042)
+## 1. Vocabulary (owned by the platform standard, the test kit's testing standard)
 
 A certification names a target, a strength and, optionally, the tests that
 carry it. Two declaration surfaces, one grammar.
 
-**Per suite**, in `tests/<component>.cue` (the test-kit manifest):
+**Per suite**, in `tests/<component>.cue` (the test kit manifest):
 
 ```cue
 #Certifies: {
@@ -69,15 +69,15 @@ Targets resolve deterministically, or the certificate is `contradicted`:
 ## 2. Evidence producers (fathom ingests, never runs)
 
 - **Manifests**: `tests/*.cue` under a service's root, loaded with `cue/load`
-  against test-kit's schema mirrored in `schema/testkit/` (drift-gated against
-  the pinned test-kit commit the same way `third_party/` is).
+  against the test kit's schema mirrored in `schema/testkit/` (drift-gated against
+  the pinned test kit commit the same way `third_party/` is).
 - **Attested result envelopes** (`#TestResult`): read from `--results
   <file|dir>` on `fathom tests ingest`, or from `[tests] results_dir` in
   `.fathom/config.toml` on every `ingest`. Per case: `id`, `name`, `status`
   (pass | fail | skip | flake), `attempts`, `duration`, `failure`; per suite:
   `verdict`, `totals`, `coverage`, artifact references. The DSSE envelope's
   digest is recorded as the run's identity; signature verification is
-  test-kit's job and its result, when present, is carried as a fact.
+  the test kit's job and its result, when present, is carried as a fact.
 - **Coverage profiles and mutation reports**: as today (`--profile`,
   `--mutation`), plus artifact references from the envelope resolved against
   `[tests] artifacts_dir` when the digest matches.
@@ -121,7 +121,7 @@ run's own commit ("reach changed since the attested run at \<sha\>", which
 ALSO marks the claim's own `Status` `stale`, not just its `State`)
 —`unreachable` (declared, but the test reaches nothing the target names).
 Only `live` satisfies a gate. A run's commit/dirty/race facts come from
-test-kit's `#EnvInfo` (`env.commit`/`env.dirty`/`env.race`, all optional —
+the test kit's `#EnvInfo` (`env.commit`/`env.dirty`/`env.race`, all optional —
 absent on a pre-existing envelope, never fabricated) or an in-toto subject
 named `gitCommit` for the commit alone; `task tests:attest` produces one for
 this repository.
@@ -173,7 +173,7 @@ FILE itself moved).
   `suspect` tier in the envelope, never silently live.
 - **Orphans**: `Test*` symbols that certify nothing, reach no symbol changed in
   the last 180 days, and never failed in any ingested run. A list, no action:
-  test-kit's rule is that a test you stop running is deleted, not hidden.
+  The test kit's rule is that a test you stop running is deleted, not hidden.
 - **Ordering**: `fathom tests select` ranks tests that certify a target in
   the changed files first, then the existing reach ranking. Advisory; the
   bench row for selection stays open.
@@ -191,12 +191,12 @@ marker. With `[decide] provider = none` the verb prints one line saying so and
 exits 0. Jev is the design point (sub-second, calibrated); an LLM lane works
 offline within the port's existing bounds.
 
-## 7. The judge (Review Kit) and the standard (test-kit)
+## 7. The judge (the review kit) and the standard (the test kit)
 
-- test-kit: `#Certifies` and `#Suite.certifies` (ADR-0042 amendment), `surveyor
-  validate` accepts it, one example manifest carries it, the docs page names
+- The test kit: `#Certifies` and `#Suite.certifies` (a testing-standard amendment), the test kit's
+  validate command accepts it, one example manifest carries it, the docs page names
   the marker grammar as fathom's.
-- Review Kit: requirement `testing.certified-targets` with check `{kind:
+- The review kit: requirement `testing.certified-targets` with check `{kind:
   "evidence", adapter: "fathom-certify", binding: {kind: "invariant",
   min_strength: "asserts"}, min_tier: "verified"}`, a finding rule for a
   missing certificate with a remedy, and the adapter in `internal/evidence`
@@ -205,11 +205,11 @@ offline within the port's existing bounds.
 
 ## 8. Measurements (op rows, never skipped silently)
 
-- TC-M1: join rate ≥ 80 % on fathom's own repo and on test-kit's `examples/`
+- TC-M1: join rate ≥ 80 % on fathom's own repo and on the test kit's `examples/`
   after stage 0, else the envelope needs a case-to-symbol contract first.
 - TC-M2: ≥ 50 % of fathom's deny-severity invariants carry a live certificate
   two weeks after stage 1, else the declaration path changes.
-- TC-M3: the Review Kit requirement fires `deny` on a real change within a
+- TC-M3: the review kit's requirement fires `deny` on a real change within a
   month of stage 2, else it is theatre.
 - TC-M4: suggestions accepted ≥ 50 % of the time, else `certify suggest` is
   removed.
