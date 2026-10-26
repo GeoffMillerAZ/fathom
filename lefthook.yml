@@ -46,6 +46,9 @@ pre-push:
     # verdict validate asks for here.
     validate:
       run: |
+        # Git exports GIT_DIR to a hook run from a linked worktree, and every test that runs
+        # git in a scratch repository would write this repository's index instead (O48, O1505).
+        unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
         if bash scripts/prepush-refs.sh skipped; then
           echo "pre-push: validate skipped — no commit is new to the remote"
           exit 0
@@ -118,6 +121,9 @@ pre-push:
       priority: 1
       use_stdin: true
       run: |
+        # Git exports GIT_DIR to a hook run from a linked worktree, and every test that runs
+        # git in a scratch repository would write this repository's index instead (O48, O1505).
+        unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
         refs=""
         if [ ! -t 0 ]; then refs=$(cat); fi
         # A push that carries no new commit (a tag already on the remote, a
