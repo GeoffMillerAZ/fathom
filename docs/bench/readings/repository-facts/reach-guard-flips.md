@@ -27,19 +27,19 @@ The fleet holds 19 services (`fathom fleet report`, 2026-10-11). A row can flip 
 `docs/plans/` claims it `[x]` with a `reachable_from:`, or with a `symbol:` that `wired` evaluates
 (a Go function in a service with a `package main`). Twelve services hold no such row and were not
 ingested: svc-e, svc-d, iam-repo, svc-m, svc-i, svc-h,
-study, throughline and workstation_as_code have no plan; cue-wasm and imbue have no claimed row with
-either key; my-gods-eye's 11 symbol rows name no Go source and it has no `reachable_from`. The seven
+study, svc-a and svc-j have no plan; cue-wasm and svc-g have no claimed row with
+either key; svc-k's 11 symbol rows name no Go source and it has no `reachable_from`. The seven
 below were measured at the owner's committed HEAD.
 
 | service | HEAD | plans | rows | claimed rows proven by base | of those, proven with a passing edge_wired or wired | flips |
 |---|---|---|---|---|---|---|
 | agentic-kit | `53024ffa6343` | 29 | 361 | 87 | 42 | 0 |
 | app-kit | `81a1352da387` | 4 | 62 | 41 | 20 | 0 |
-| conjure | `2d95c9795d11` | 6 | 136 | 64 | 42 | 0 |
+| svc-f | `2d95c9795d11` | 6 | 136 | 64 | 42 | 0 |
 | fathom | `c39875f301d0` | 69 | 2949 | 1991 | 1495 | 6 |
-| geoffmiller-cloud | `66ef3be8c69f` | 11 | 37 | 28 | 17 | 0 |
+| svc-b | `66ef3be8c69f` | 11 | 37 | 28 | 17 | 0 |
 | platform | `84f9d4101045` | 25 | 874 | 343 | 225 | 3 |
-| resume_as_code | `04be1238bae1` | 4 | 202 | 183 | 160 | 0 |
+| svc-c | `04be1238bae1` | 4 | 202 | 183 | 160 | 0 |
 | **total** | | 148 | 4621 | 2737 | 2001 | **9** |
 
 ## Method
@@ -59,16 +59,16 @@ below were measured at the owner's committed HEAD.
    criterion.
 
 Three modules failed the scratch ingest's typed pass, each for a reason of the clone, not of the
-service: app-kit's `spikes/wails-gallery` and geoffmiller-cloud's `studio` (go/packages returned no
+service: app-kit's `spikes/wails-gallery` and svc-b's `studio` (go/packages returned no
 package), and the platform's portal UI package (an embedded `app.css` the clone lacks, generated
 and uncommitted). A row reached only through those packages would read heuristic here and typed on
 the operator's tree. None of the nine runs through them, and no other row in those services flipped.
 
-A first guard build (`afb078cf`) also flipped five resume_as_code rows (RA-1, RA-142, RA-180, RA-187,
+A first guard build (`afb078cf`) also flipped five svc-c rows (RA-1, RA-142, RA-180, RA-187,
 RA-188). Each names a type and one method (`symbol: Viz` finds the type `Viz` and the method
 `Corpus.Viz`), and `wired` judged the bare name, which resolves to the type, "reached" only by a
 reference to it. RF-5 now judges the function the row names, and all five pass over typed edges
-(`product entry point resume_as_code::cmd/lambda/main.main reaches resume_as_code::cmd/corpus/Corpus.Corpus.Viz`).
+(`product entry point svc-c::cmd/lambda/main.main reaches svc-c::cmd/corpus/Corpus.Corpus.Viz`).
 
 ## The rows (migration note)
 

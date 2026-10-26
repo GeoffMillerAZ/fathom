@@ -235,7 +235,7 @@ from refusing work, not from answering it cheaply.
 
 - **Store:** a store copy in which the `indexed_commit` of seven registered services was
   set to zeros so they read as drifted: svc-e, svc-b, iam-repo,
-  planning, pulumi_eks_component, study and agentic-kit.
+  svc-m, svc-h, study and agentic-kit.
 - **Daemon:** `--auto-refresh=true`, `--lifecycle-id rtc-storm`, a 4 GiB budget.
 - **Trigger:** after warm-up, 21 concurrent `find_symbol` reads, 3 per service, then
   continued reads every 2 s.
@@ -248,7 +248,7 @@ from refusing work, not from answering it cheaply.
   and one said `refreshing`.
 - **The queue ran them one after another:** study (about 25 s), agentic-kit (5 s),
   svc-h (0.5 s), svc-m (1.5 s), iam-repo (21 s), svc-b
-  (2.5 s) and car-assistant (about 19 s). Durations are to the 0.5 s sampling interval. All seven were refreshed in 77 s.
+  (2.5 s) and svc-e (about 19 s). Durations are to the 0.5 s sampling interval. All seven were refreshed in 77 s.
 - **Serial:** 150 samples, and at most **1** ingest in progress at any time.
 - **Reads during the drain:** 266 calls, p50 2 ms, p95 6 ms, max 10 ms. None waited for
   an ingest.
@@ -263,11 +263,11 @@ into a store copy. The most file content any of them held at once:
 
 | Service | Files discovered | Peak content in flight | CLI peak `phys_footprint` |
 |---|---|---|---|
-| car-assistant | 104 | 0.42 MiB | 138 MiB |
-| geoffmiller-cloud | 300 | 0.94 MiB | 161 MiB |
+| svc-e | 104 | 0.42 MiB | 138 MiB |
+| svc-b | 300 | 0.94 MiB | 161 MiB |
 | iam-repo | 383 | 0.10 MiB | 169 MiB |
-| planning | 588 | 2.11 MiB | 183 MiB |
-| pulumi_eks_component | 116 | 1.34 MiB | 26 MiB |
+| svc-m | 588 | 2.11 MiB | 183 MiB |
+| svc-h | 116 | 1.34 MiB | 26 MiB |
 | study | 782 | **12.9 MiB** | 211 MiB |
 | agentic-kit | 1,213 | 0.22 MiB | 369 MiB |
 

@@ -1,9 +1,11 @@
-import json, sys, re
+import json, os, sys, re
 ct = sys.argv[1]
+# The control repository's Go module path; svc-f stands in for its name.
+mod = os.environ.get("CTL_MODULE", "github.com/geoffmilleraz/svc-f")
 d = json.load(open(ct + "/classes.json"))
 cov = {}
 for line in open(ct + "/cover-func.txt"):
-    m = re.match(r'^github\.com/geoffmilleraz/conjure/(\S+?):(\d+):\s+(\S+)\s+([\d.]+)%', line)
+    m = re.match(re.escape(mod) + r'/(\S+?):(\d+):\s+(\S+)\s+([\d.]+)%', line)
     if m:
         cov[(m.group(1), int(m.group(2)))] = (m.group(3), float(m.group(4)))
 rows = []

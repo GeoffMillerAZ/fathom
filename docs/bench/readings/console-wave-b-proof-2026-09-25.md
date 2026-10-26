@@ -29,7 +29,7 @@ fixed" below): the two gate failures this paragraph first reported were false.* 
 came from runs at the registered root on 2026-09-19 at `d8770983`, while the pre-push
 gate's runs at the commit the root is on (in its detached clone) passed. After the fix,
 on a fresh copy of the fleet: 27 attention items across 18 projects and **no gate
-failure**. Six proof items: geoffmiller-cloud's 11 plans have no recorded verify run;
+failure**. Six proof items: svc-b's 11 plans have no recorded verify run;
 agentic-kit and platform each have one plan never verified; and
 platform (24 plans), agentic-kit (28) and svc-c (4) were last
 verified before their HEAD, each stated as history with its commits and dates. One

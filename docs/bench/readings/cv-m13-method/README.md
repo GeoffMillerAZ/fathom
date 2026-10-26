@@ -13,10 +13,12 @@ kept so the reading can be re-derived after the scratch directory it ran in is g
   `internal/conserve/` of a scratch clone at commit d41cdf14 to run them.
   Tables: `r1-per-function.csv`, `r2-per-function.csv`, `run-summary.json`,
   `r2-wholehead-per-function.csv.gz` (every non-test function at 78e508d3).
-- `conjure/` — the weaker-tested control: `run_range.sh`, `dump_ablate.sh`,
+- `svc-f/` — the weaker-tested control: `run_range.sh`, `dump_ablate.sh`,
   `join_cover.py`, `summarize.py`; per-range `rN-range.txt` and
-  `rN-classes-with-coverage.tsv`; `handcheck.tsv`; `summary.txt`. conjure needs
-  `GOFLAGS=-mod=vendor` at these heads.
+  `rN-classes-with-coverage.tsv`; `handcheck.tsv`; `summary.txt`. svc-f needs
+  `GOFLAGS=-mod=vendor` at these heads. `svc-f` stands in for the control
+  repository's name (clone it at `$CVM13_DIR/svc-f`); `join_cover.py` takes its Go
+  module path from `CTL_MODULE`.
 
 Every script reads its working directory from `CVM13_DIR` (the original run used a
 session scratch directory); set it before running. Tools: fathom built at d41cdf14 and

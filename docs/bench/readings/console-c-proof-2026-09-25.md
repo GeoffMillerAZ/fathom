@@ -291,7 +291,7 @@ showed an empty range reading "not measured" where zero is a count, fixed in
 
 | Defect | Before | Now |
 |---|---|---|
-| 1 gating reads the verify ledger | conjure, agentic-kit "B — not gating", remedy "add the pre-push hook" | conjure **A**, gating met on "63 verify run(s) in the last 14 days, recorded in the verify ledger"; agentic-kit **A** on 33; a missing ledger reads unknown |
+| 1 gating reads the verify ledger | svc-f, agentic-kit "B — not gating", remedy "add the pre-push hook" | svc-f **A**, gating met on "63 verify run(s) in the last 14 days, recorded in the verify ledger"; agentic-kit **A** on 33; a missing ledger reads unknown |
 | 2 one 14-day window | platform "3,295 rule injection(s)" beside 1,171 calls; svc-b preventing met on two August calls; study graded on all-time sessions | platform 578 injections beside 1,126 calls; svc-b preventing **unmet**, 0; study **idle** |
 | 3 the plans trend | 321 plans, 4,154 claimed on every scope | fleet: 129 of 143 current plans with ledger rows, 2,368 claimed, 1,966 proven; `?svc=fathom`: 64 plans; `?svc=app-kit`: absent (too few days); each section equals `fathom plans history [--service S] --json` |
 | 4 stale headline | fathom "claimed, not proven 0" (zero) beside 18 measured-stale rows | fathom "≥ 0", partial, naming the 18 rows and the remedy; fleet "≥ 426" (425 plus the probe's failing row) |
@@ -312,7 +312,7 @@ showed an empty range reading "not measured" where zero is a count, fixed in
 Thirteen views × two themes (`/plans`, `/plans?svc=fathom`, `/plans?page=2`,
 the plan, rows OC-2, OC-12 and PC-9, `/certifications` and `?svc=fathom`,
 `/refactors` and `?svc=fathom&since=HEAD~5`, `/projects/fathom`,
-`/projects/conjure`): every one
+`/projects/svc-f`): every one
 200, one `h1`, the skip link the first focusable element with its target
 present, the nav marking the right page, the trail ending in the page's own
 current crumb, every verb chip's Copy button revealed and bound, `data-theme`

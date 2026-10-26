@@ -70,7 +70,7 @@ verb agree with each other, and both are wrong about what fathom caught.
     `FATHOM_THREADS`, `FATHOM_CONSOLE_VIEWS`, `FATHOM_SUPPRESSIONS`, `FATHOM_PURGES` and
     `FATHOM_SESSION_STAMPS`.
   - The daemon log holds no warning or error beyond the known broken
-    `resume-as-code-standards` layer pack, which `/layers` also names.
+    `svc-c-standards` layer pack, which `/layers` also names.
   - The live daemon on 7575 and its store were not touched.
 - **Data:**
   - a `sqlite3 .backup` of `workspace/db/fleet.sqlite` (188 MB, 18 services listed);
