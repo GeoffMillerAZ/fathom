@@ -1,0 +1,21 @@
+{
+  "status": "proposal-only; activate after GLSL lands under G-R1",
+  "item": {
+    "id": "opencl",
+    "name": "OpenCL C (.cl)",
+    "kind": "language",
+    "tier": "T3",
+    "target_level": "L2",
+    "grammar_source": "lefp/tree-sitter-opencl (candidate; compare maintained C before selection)",
+    "licence": "MIT",
+    "oracle": ["clang-opencl-json-ast"],
+    "calibration_subjects": ["KhronosGroup/OpenCL-SDK", "hashcat/hashcat"],
+    "depends_on": ["LB-Q-glsl"],
+    "engine": "tags",
+    "plan_row": "LB-Q-opencl",
+    "worker_model": "sonnet",
+    "notes": "Initial .cl-only OpenCL C target. Require a positive C/OpenCL sniff and Lisp/Cool negatives, keep every kernel and include fragment in tenancy, publish each subject separately, use reconstructed CL3.0 Clang AST at tier B. Native parse triage does not select or ship a grammar. Exclude C++ for OpenCL, embedded host strings and extra suffixes from this initial proposal. L3/L4 require their own oracle-backed measurements."
+  },
+  "ordering": "GLSL lands, then OpenCL C ships, then Slang starts",
+  "activation": "The controller adds/proves the queue and plan rows; this file does not alter the canonical queue."
+}

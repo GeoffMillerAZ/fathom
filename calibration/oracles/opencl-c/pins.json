@@ -1,0 +1,64 @@
+{
+  "schema": "opencl-c-triage-pins-v1",
+  "date": "2026-10-26",
+  "scope": "Native grammar and compiler capability triage only; no registration, canonical shard or language grade.",
+  "grammars": [
+    {
+      "id": "opencl",
+      "repository": "https://github.com/lefp/tree-sitter-opencl",
+      "commit": "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb",
+      "version": "HEAD at 2026-10-26; no release tag",
+      "archive_url": "https://codeload.github.com/lefp/tree-sitter-opencl/tar.gz/8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb",
+      "archive_sha256": "919d96678787666c0381b2382ca4942fd1f29a688e58c3ee36e7193fbb466f13",
+      "license": "MIT",
+      "license_sha256": "b554b8af06ebca05a26877bf7016aaa0f515b5687707a46d2e69510931ef3df3",
+      "parser_c_sha256": "8d6ef5dd49b5ef6317a3182c581b420fa2d4a1f34b2367c2782b778877f9bd28",
+      "parser_header_sha256": "ab104936984904469572a4e868149f7a22fb2929347f837ae6a1f9b790f1b173",
+      "native_library_sha256": "fd8ab192178f160a6cf2ed22c2aa378d69a1d6c93edf13a65bd8cbed07b8d51e",
+      "native_build": "clang -O2 -dynamiclib -fPIC -I <source>/src <source>/src/parser.c -o <output>.dylib"
+    },
+    {
+      "id": "c",
+      "repository": "https://github.com/tree-sitter/tree-sitter-c",
+      "commit": "b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+      "version": "v0.24.2",
+      "archive_url": "https://codeload.github.com/tree-sitter/tree-sitter-c/tar.gz/b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+      "archive_sha256": "dc3979e40fce678c27273ba8ab93b48b5acd6b91d1dfde6a4451222d366d689f",
+      "license": "MIT",
+      "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+      "parser_c_sha256": "f2883ff9b21f4a5bd5553c1b10366c418947d17a7bc6bf256124a7542f079dd2",
+      "parser_header_sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+      "native_library_sha256": "8ddc36a951aacd8b8ed99e70bdb07491507627b1726ea1020cf9ee6d675752b8",
+      "native_build": "clang -O2 -dynamiclib -fPIC -I <source>/src <source>/src/parser.c -o <output>.dylib"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "sdk",
+      "repository": "https://github.com/KhronosGroup/OpenCL-SDK",
+      "commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
+      "license": "Apache-2.0",
+      "license_file_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "population": "Every tracked regular lowercase .cl, no sampling or exclusions; submodule contents uncovered.",
+      "reuse_dep5_sha256": "a0928a64ac0ae57d17442eb4846fa8cc441dd9b472ffcf44fed1659dd031468b"
+    },
+    {
+      "id": "hashcat",
+      "repository": "https://github.com/hashcat/hashcat",
+      "commit": "6a7e3b5a96abcd6373c2e4112bc358abb24dc538",
+      "license": "MIT",
+      "license_file_sha256": "faa58914fe56af72641246b93c09aa52295c310cec6850634cc7eb992f457652",
+      "population": "Every tracked regular lowercase .cl, no sampling or exclusions; submodule contents uncovered."
+    }
+  ],
+  "compiler": {
+    "version": "Apple clang 21.0.0 (clang-2100.3.34.2)",
+    "clt_package_version": "27.0.0.0.1788430756",
+    "binary_sha256": "1590ac950a3d627817d09ade5cb60b2115f17a72182a3141e010b4bcc482a0c9",
+    "resource_header_sha256": {
+      "opencl-c.h": "aedaac009c73aa9ce4fad770ebdddbf11bbce42effc4c40cb54330f31af49c50",
+      "opencl-c-base.h": "e0b5b97e38951211312bfe946c956927a78da52a9e31bc66ec426e17fa5c23c5"
+    },
+    "oracle_tier": "B"
+  }
+}
