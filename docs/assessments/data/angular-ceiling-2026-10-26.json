@@ -5,6 +5,15 @@
     "publication": "retained locally, never push",
     "source_commit": "d4c576788db1409d0d22b072bbe042e2cbb734d2"
   },
+  "baseline_provenance": {
+    "blob_sha256": "73529a584b23aa5e3fa2eadd4169161a903012eca0c92c685c7c9174a4532b28",
+    "fathom_commit": "40aecf63",
+    "historical_record": "git show 6db920e72:docs/bench/readings/lang/angular-grammar.md",
+    "measured_on": "2026-10-11",
+    "method": "indexbench lang-oracle; LB-F59 files_with_error counts ERROR-or-MISSING union per file",
+    "observation": "O984",
+    "scope": "Experimental uncommitted Angular blob and placeholder dialect, not shipped by fathom 40aecf63."
+  },
   "canonical": {
     "baseline_error_files": 13,
     "bytes": 92694,
@@ -40,6 +49,7 @@
       "version": "v0.23.2"
     }
   ],
+  "holdout_record_sha256": "7bbe00b73e35fadb250d7efbfbcdd5c5ce873eb12080b117d54ec1649869d730",
   "kind": "ceiling-only assessment of an unpublished experiment",
   "landing_base": "6db920e72898abb20bf86c22652b401902e34598",
   "ordinary_ingest_control": {
@@ -50,6 +60,32 @@
     "extracted": 242,
     "raw_json_sha256": "47ed9cbb5dec3b8fbc05ba64382355f19a3befd0d3fbc348ecf53e96c5eac658",
     "read_failures": 0
+  },
+  "owner_route_source_checks": {
+    "artifacts": [
+      {
+        "bytes": 7805,
+        "role": "indexer output",
+        "sha256": "ea0474a4f9217863e9401de5df2db75661e65381c59c20080d39a070dc7ded1c",
+        "url": "https://unpkg.com/@angular/compiler-cli@22.2.0/src/ngtsc/indexer/src/api.d.ts"
+      },
+      {
+        "bytes": 12476,
+        "role": "configured compiler API",
+        "sha256": "7bc72289712678a91acbb1d07958859ae267a36157954cef43e9dad6b5e7b506",
+        "url": "https://unpkg.com/@angular/compiler-cli@22.2.0/src/ngtsc/core/src/compiler.d.ts"
+      },
+      {
+        "bytes": 297757,
+        "role": "selector API",
+        "sha256": "1e84bc097881a1fd2b2abd6ae6032926875ee2d8bd0f6683cccf0c5cb45d59d0",
+        "url": "https://unpkg.com/@angular/compiler@22.2.0/types/compiler.d.ts"
+      }
+    ],
+    "checked_on": "2026-10-26",
+    "license": "MIT",
+    "status": "Published API declarations match pinned SDK bytes; source inspected, no indexer or product matcher run",
+    "version": "22.2.0"
   },
   "r4_subjects": [
     {
@@ -81,7 +117,51 @@
       "typescript": "6.0.3"
     }
   ],
+  "residual_inventory": {
+    "accepting_compiler_versions": [
+      "21.2.12",
+      "22.2.1"
+    ],
+    "additional_control_only_classes": 2,
+    "compiler_read_files": 131,
+    "compiler_valid_rejected_controls": [
+      {
+        "class": "structural directive let microsyntax",
+        "controls": 1,
+        "file_cohort_overlap": "canonical RealWorld"
+      },
+      {
+        "class": "terminal semicolon in an for header",
+        "controls": 1,
+        "file_cohort_overlap": "canonical Material"
+      },
+      {
+        "class": "negative identifier in a ternary consequence",
+        "controls": 1,
+        "file_cohort_overlap": "none measured"
+      },
+      {
+        "class": "whitespace before postfix non-null assertion",
+        "controls": 1,
+        "file_cohort_overlap": "none measured"
+      }
+    ],
+    "file_level_classes": 4,
+    "file_level_error_or_missing_files": 4,
+    "subject_frequencies_of_control_only_classes": "unmeasured",
+    "total_known_syntax_classes": 6
+  },
   "scope": "Frozen external templateUrl-owned HTML only. No holdout entered the canonical corpus. No post-result repair or regrade.",
+  "selection_snapshot": {
+    "inspected_results": 100,
+    "registration": "frozen in local unpublished commits before repair and source access",
+    "selected_ranks": [
+      34,
+      48
+    ],
+    "total_results": 151
+  },
+  "selection_snapshot_sha256": "226725d8911591c26dfee43cbd802a32492363ab18a52d582a1e4f69b02a2f52",
   "spent_ng_matero": {
     "independent_error_files": 6,
     "pin": "9e9d3af2ae8a03dff55bc671914afe9f0a0b6329",
@@ -91,7 +171,7 @@
   },
   "terminal_result": {
     "all_frozen_bars_passed": false,
-    "class_provenance": "manual terminal review of private scanner spans; aggregate counts only",
+    "class_provenance": "Canonical classes from the retained attempt assessment and production proof; ng-alain classes from manual terminal review of private scanner spans; aggregate counts only.",
     "context_failure_classes": [
       {
         "affected_templates": 55,
@@ -100,15 +180,34 @@
       }
     ],
     "grammar_class_overlap_files": 0,
+    "grammar_failure_class_scope": "Four observed file-level classes across 72 canonical and 59 R-R4 files; syntax_only_* fields cover only the 59 R-R4 files.",
     "grammar_failure_classes": [
       {
+        "class": "structural directive let microsyntax",
+        "cohort": "canonical RealWorld",
+        "cohort_files": 10,
+        "files": 1,
+        "measure": "ERROR-or-MISSING file union"
+      },
+      {
+        "class": "terminal semicolon in an for header",
+        "cohort": "canonical Material",
+        "cohort_files": 62,
+        "files": 1,
+        "measure": "ERROR-or-MISSING file union"
+      },
+      {
         "class": "chained string concatenation before a pipe in interpolation",
+        "cohort": "R-R4 ng-alain",
+        "cohort_files": 55,
         "error_spans": 1,
         "files": 1,
         "missing_spans": 0
       },
       {
         "class": "unary negative numeric literal in an if condition",
+        "cohort": "R-R4 ng-alain",
+        "cohort_files": 55,
         "error_spans": 1,
         "files": 1,
         "missing_spans": 0

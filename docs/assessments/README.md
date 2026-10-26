@@ -98,8 +98,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [tools-nginx-native](2026-10-26-tools-nginx-native.md) | Native full upstream population diagnostic; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [tools-nginx-native-positions](2026-10-26-tools-nginx-native-positions.md) | Complete native lexer population attests 71/71 names/ranges and 1/1 references; canonical L3 unchanged | LB-Q-nginx-rest |
 | 2026-10-26 | [glsl-registered-extensions](2026-10-26-glsl-registered-extensions.md), [paired data](data/glsl-g-r3-2026-10-26/canonical-baseline-core-to-full-registry-deltas.json) | Corrected macro precision and array trees retain L2 good; digest-only rejected candidates and fresh pinned statement/extension holdouts | G-R3/G-R4/G-R5, LB-Q-glsl |
-
-| 2026-10-26 | [Angular ceiling](2026-10-26-refused-angular-ceiling.md) | R-R4 spent: canonical 2/72, ng-matero 6/77 spent, ng-alain 55/55 context-deferred; no pooled grade and no implementation ships | LB-Q-angular-rest, R-R2, R-R3, R-R4 |
+| 2026-10-26 | [refused-angular-ceiling](2026-10-26-refused-angular-ceiling.md) | R-R4 spent: canonical 2/72, ng-matero 6/77 spent, ng-alain 55/55 context-deferred; no pooled grade and no implementation ships | LB-Q-angular-rest, R-R2, R-R3, R-R4 |
 
 ## Companion pages
 

@@ -844,7 +844,7 @@ maintained licensed one, leaves an ERROR or MISSING node in 13 of the 72 templat
 pinned subjects (18.1%; a unary minus in a conditional branch, a non-null assertion, a structural directive's `let`
 microsyntax, a `@for` header's trailing semicolon; `docs/bench/readings/lang/angular-grammar.md`), over §14.2's 5%. No
 Angular dialect is built, so no Angular rule is ruled here: a template stays the html dialect's, and LB-Q-angular-rest
-is refused with the measurement and its trigger. *Astro* is ruled as follows. A `.astro` file (the compiler's own
+is refused with the measurement and its trigger. **Angular amendment 2026-10-26:** that wave-lf7 grammar-only account is historical, since the P-R1 experiment reached canonical 2/72 while R-R4 still failed independent grading on 55 context-deferred templates, and the [ceiling assessment](../assessments/2026-10-26-refused-angular-ceiling.md) records the scope rulings and all canonical, holdout and control residual classes. *Astro* is ruled as follows. A `.astro` file (the compiler's own
 input; no other dialect claims the extension) is one component: the astro dialect keys it by its base name with the
 extension (package strategy `file`, F1), so `Card.astro` never shares a key with a sibling `Card.ts`, and it hosts its
 injected ranges (F2): the frontmatter and each `<script>` whose `type` is absent or names JavaScript (`module`,
