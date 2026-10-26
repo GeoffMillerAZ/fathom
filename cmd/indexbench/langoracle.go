@@ -1402,8 +1402,8 @@ type oraclePair struct {
 // inScope is the file list fathom read (§1.4 Scope): an oracle entry on
 // any other file is dropped and counted, never scored as a miss.
 //
-// The *callDiff, non-nil when the file carries calls, is the L2 comparison
-// -unmatched writes (LB-F64).
+// The *callDiff, non-nil when the file asserts call coverage, is the L2
+// comparison -unmatched writes (LB-F64).
 func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (langbench.OracleRun, int, *langbench.L1Result, *callDiff, error) {
 	fail := func(err error) (langbench.OracleRun, int, *langbench.L1Result, *callDiff, error) {
 		return langbench.OracleRun{}, 0, nil, nil, err
@@ -1447,16 +1447,15 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		sub.KindIntersection = l1.Intersection
 		sub.Families[langbench.FamilyL1] = tier
 	}
-	if tf.Calls != nil {
+	if len(tf.Calls) > 0 || len(tf.Scope) > 0 {
 		if _, done := sub.Families[langbench.FamilyCalls]; done {
 			return fail(fmt.Errorf("%s: calls given alongside another calls oracle (a SCIP index or an earlier file); measure one per subject", path))
 		}
 		truth := map[langbench.CallPair]bool{}
 		files := map[string]bool{}
-		if len(tf.Scope) > 0 || len(tf.Calls) == 0 {
-			// Explicit scope covers files with zero oracle calls. An explicit
-			// empty calls list without scope asserts all measured files are
-			// call-free. Legacy nonempty calls still cover only named files.
+		if len(tf.Scope) > 0 {
+			// Explicit scope covers files with zero oracle calls. Legacy
+			// nonempty calls without scope cover only their named files.
 			for f := range inScope {
 				files[f] = true
 			}
