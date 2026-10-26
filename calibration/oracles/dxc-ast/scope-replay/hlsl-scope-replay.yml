@@ -1,8 +1,12 @@
-# Controller workflow. Copy this file to .github/workflows/ on a run branch.
+# Controller workflow. Copy this file to .github/workflows/ on the exact run branch.
+# Pushing gpu-sci/hlsl-scope-replay-run-r1 starts the first replay run.
 # The source checkout remains pinned to the exact main commit being replayed.
 name: hlsl-scope-replay
 
 on:
+  push:
+    branches:
+      - gpu-sci/hlsl-scope-replay-run-r1
   workflow_dispatch:
 
 permissions:

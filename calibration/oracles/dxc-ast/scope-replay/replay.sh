@@ -58,6 +58,20 @@ run_reading() {
   fi
 }
 
+
+run_control() {
+  local script_dir=$1 source_root=$2 patch=$3 snapshot=$4 raw=$5 receipt=$6 private_log=$7
+  if ! { python3 -I -B "$script_dir/control.py" snapshot \
+      --source "$source_root" --out "$snapshot" &&
+    python3 -I -B "$script_dir/control.py" run \
+      --source "$source_root" --patch "$patch" --snapshot "$snapshot" \
+      --reading-out "$raw" --receipt-out "$receipt";
+  } >"$private_log" 2>&1; then
+    echo "error: HLSL control stage failed; details remain in the private workspace log" >&2
+    return 1
+  fi
+}
+
 pin_checkout() {
   local checkout=$1 want=$2 got
   got=$(git -C "$checkout" rev-parse HEAD)
@@ -122,6 +136,8 @@ verify_controller() {
   for rel in \
     calibration/oracles/dxc-ast/scope-replay/replay.sh \
     calibration/oracles/dxc-ast/scope-replay/publish.py \
+    calibration/oracles/dxc-ast/scope-replay/control.py \
+    calibration/oracles/dxc-ast/scope-replay/scope-control.patch \
     calibration/oracles/dxc-ast/scope-replay/hlsl-scope-replay.yml; do
     committed=$(git -C "$controller_root" show "$commit:$rel" | sha256sum | cut -d' ' -f1)
     actual=$(sha256sum "$controller_root/$rel" | cut -d' ' -f1)
@@ -219,6 +235,7 @@ verify_corpus() {
 main() {
   [ "$#" -eq 1 ] || { echo "usage: replay.sh <exact-main-checkout>" >&2; return 2; }
   local source_root script_dir controller_root controller_commit scratch artifacts baseline raw
+  local control_raw control_snapshot control_receipt control_patch control_patch_sha
   local required runner clang_bin private_log replay_sha publish_sha workflow_sha
   local active_workflow_mode active_workflow_path active_workflow_sha
   source_root=$(cd "$1" && pwd)
@@ -228,6 +245,10 @@ main() {
   artifacts="$source_root/workspace/artifacts/hlsl-scope-replay"
   baseline="$scratch/baseline.json"
   raw="$scratch/regenerated-private.json"
+  control_raw="$scratch/control-reading-private.json"
+  control_snapshot="$scratch/control-oracle-inputs-private.json"
+  control_receipt="$scratch/control-receipt-private.json"
+  control_patch="$script_dir/scope-control.patch"
   private_log="$scratch/reading-private.log"
 
   check_platform
@@ -241,6 +262,7 @@ main() {
   replay_sha=$(sha256sum "$script_dir/replay.sh" | cut -d' ' -f1)
   publish_sha=$(sha256sum "$script_dir/publish.py" | cut -d' ' -f1)
   workflow_sha=$(sha256sum "$script_dir/hlsl-scope-replay.yml" | cut -d' ' -f1)
+  control_patch_sha=$(sha256sum "$control_patch" | cut -d' ' -f1)
   mkdir -p "$scratch" "$artifacts"
   cp "$source_root/docs/bench/readings/lang/hlsl.json" "$baseline"
   fetch_dxc "$source_root"
@@ -253,10 +275,16 @@ main() {
   (cd "$source_root" && go build -o workspace/tools/indexbench ./cmd/indexbench)
   clang_bin=$(select_clang "$source_root")
   run_reading "$source_root" "$source_root/workspace/calibration/hlsl" "$clang_bin" "$raw" "$private_log"
+  run_control "$script_dir" "$source_root" "$control_patch" \
+    "$control_snapshot" "$control_raw" "$control_receipt" \
+    "$scratch/control-private.log"
+  verify_source "$source_root"
 
-  python3 "$script_dir/publish.py" \
+  python3 -I -B "$script_dir/publish.py" \
     --baseline "$baseline" \
     --regenerated "$raw" \
+    --control "$control_raw" \
+    --control-receipt "$control_receipt" \
     --reading-out "$artifacts/regenerated-reading.json" \
     --diff-out "$artifacts/reading-diff.json" \
     --source-commit "$SOURCE_COMMIT" \
@@ -265,12 +293,15 @@ main() {
     --runner-glibc "$runner" \
     --go-version "$(go version | awk '{print $3}')" \
     --controller-commit "$controller_commit" \
+    --control-patch-sha256 "$control_patch_sha" \
     --replay-sh-sha256 "$replay_sha" \
     --publish-py-sha256 "$publish_sha" \
     --workflow-sha256 "$workflow_sha" \
     --active-workflow-mode "$active_workflow_mode" \
     --active-workflow-path "$active_workflow_path" \
     --active-workflow-sha256 "$active_workflow_sha"
+
+  verify_source "$source_root"
 
   [ "$(find "$artifacts" -maxdepth 1 -type f | wc -l | tr -d ' ')" = 2 ] || {
     echo "error: publish directory must contain exactly two files" >&2; return 1;

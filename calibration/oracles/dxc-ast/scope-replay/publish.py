@@ -3,26 +3,21 @@
 
 import argparse
 import copy
-import hashlib
 import json
+import math
 from pathlib import Path
 import re
 
 
 DXC_RELEASE = "v1.9.2602"
 DXC_ASSET = "linux_dxc_2026_02_20.x86_64.tar.gz"
+SOURCE_COMMIT = "6db920e72898abb20bf86c22652b401902e34598"
 
 _RUNS_RE = re.compile(
     r"three runs over every measured file read "
     r"([0-9.]+), ([0-9.]+), ([0-9.]+) MB/s CPU")
 _SCOPE_RE = re.compile(
     r"^([^:]+): dxc-ast .*?: ([0-9]+) of ([0-9]+) measured files in scope")
-
-
-def _sha(value):
-    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"),
-                         sort_keys=True).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _runs(data):
@@ -60,74 +55,172 @@ def _number(value, label):
     return value
 
 
-def _pins(data):
-    return sorted((row["name"], row["sha"]) for row in data["subjects"])
+def _pins(data, label):
+    subjects = data.get("subjects")
+    if not isinstance(subjects, list):
+        raise ValueError(f"{label} reading subjects are not a list")
+    pins = []
+    names = set()
+    for row in subjects:
+        if not isinstance(row, dict) or not isinstance(row.get("name"), str):
+            raise ValueError(f"{label} reading has an invalid subject")
+        if row["name"] in names:
+            raise ValueError(f"{label} reading must have unique subject names")
+        if not isinstance(row.get("sha"), str) or not re.fullmatch(r"[0-9a-f]{40}", row["sha"]):
+            raise ValueError(f"{label} reading has an invalid subject pin")
+        names.add(row["name"])
+        pins.append((row["name"], row.get("sha")))
+    return sorted(pins)
 
 
 def _fmt(values):
     return ", ".join(f"{value:g}" for value in values)
 
 
-def sanitize_reading(data, source_commit):
-    """Remove disclosure-bearing notes and path lists without changing metrics."""
-    result = copy.deepcopy(data)
-    raw_notes = list(result.get("notes", []))
-    runs = _runs(data)
-    scope = _scope(data)
+_NAME_EMAIL_RE = re.compile(
+    r"\b[A-Za-z][A-Za-z .'-]{0,100}\s*<[^<>\s@]+@[^<>\s@]+>"
+)
+_EMAIL_RE = re.compile(r"(?<![\w.+-])[^\s<>@]+@[^\s<>@]+")
+_METADATA_RE = re.compile(
+    r"(?im)\b(Author|Committer)\s*:(?!\s*\[redacted-person\])\s*[^\n;,]+|"
+    r"\bCopyright(?:\s+\(c\)|\s+©)?(?:\s+\d{4}(?:-\d{4})?)?\s+[^\n;]+"
+)
+_ABSOLUTE_PATH_RE = re.compile(
+    r"(?<![\w:/.])/(?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+(?::[0-9]+)?"
+)
 
-    faulting_paths = []
-    adjudicated_entries = []
+
+def _redact_string(value, counts):
+    def replace_person(match):
+        counts["person_matches_redacted"] += 1
+        text = match.group(0)
+        if ":" in text and text.split(":", 1)[0].lower() in ("author", "committer"):
+            return text.split(":", 1)[0] + ": [redacted-person]"
+        if text.lower().startswith("copyright"):
+            prefix = re.match(
+                r"(?i)Copyright(?:\s+\(c\)|\s+©)?(?:\s+\d{4}(?:-\d{4})?)?", text)
+            return prefix.group(0) + " [redacted-person]"
+        return "[redacted-person]"
+
+    value = _NAME_EMAIL_RE.sub(replace_person, value)
+    value = _EMAIL_RE.sub(replace_person, value)
+    value = _METADATA_RE.sub(replace_person, value)
+
+    def replace_path(_match):
+        counts["absolute_paths_redacted"] += 1
+        return "[redacted-absolute-path]"
+
+    return _ABSOLUTE_PATH_RE.sub(replace_path, value)
+
+
+def _sanitize_value(value, counts):
+    if isinstance(value, dict):
+        if any(not isinstance(key, str) for key in value):
+            raise ValueError("JSON object has a non-string key")
+        return {key: _sanitize_value(item, counts) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_value(item, counts) for item in value]
+    if isinstance(value, str):
+        return _redact_string(value, counts)
+    if value is None or isinstance(value, (bool, int, float)):
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("JSON number is not finite")
+        return value
+    raise ValueError(f"unrecognized JSON value type: {type(value).__name__}")
+
+
+def sanitize_reading(data, source_commit):
+    """Redact person-shaped text and absolute host paths while retaining evidence."""
+    if not re.fullmatch(r"[0-9a-f]{40}", source_commit):
+        raise ValueError("source commit must be a full lowercase SHA")
+    counts = {"person_matches_redacted": 0, "absolute_paths_redacted": 0}
+    result = _sanitize_value(copy.deepcopy(data), counts)
     tenancy_blocks = [result.get("tenancy", {})]
     tenancy_blocks.extend(row.get("tenancy", {}) for row in result.get("subjects", []))
-    fault_ordinal = 0
     for tenancy in tenancy_blocks:
         paths = tenancy.get("faulting_files")
         if paths is None:
             if tenancy.get("faults", 0) != 0:
                 raise ValueError("tenancy faults do not match faulting-file entries")
-            continue
-        if not isinstance(paths, list) or tenancy.get("faults") != len(paths):
+        elif not isinstance(paths, list) or tenancy.get("faults") != len(paths):
             raise ValueError("tenancy faults do not match faulting-file entries")
-        faulting_paths.extend(paths)
-        replacements = []
-        for _ in paths:
-            fault_ordinal += 1
-            replacements.append(f"redacted-fault-{fault_ordinal:06d}")
-        tenancy["faulting_files"] = replacements
-    for subject in result.get("subjects", []):
-        entries = subject.get("adjudicated")
-        if entries is not None:
-            if not isinstance(entries, list):
-                raise ValueError("subject adjudicated evidence is not a list")
-            adjudicated_entries.extend(entries)
-            subject["adjudicated"] = []
+    return result, counts
 
-    receipt = {
-        "diagnostic_notes_removed": len(raw_notes),
-        "diagnostic_notes_sha256": _sha(raw_notes),
-        "faulting_file_entries_removed": len(faulting_paths),
-        "faulting_file_entries_sha256": _sha(faulting_paths),
-        "adjudicated_entries_removed": len(adjudicated_entries),
-        "adjudicated_entries_sha256": _sha(adjudicated_entries),
-    }
-    result["notes"] = [
-        ("public replay sanitization: removed "
-         f"{receipt['diagnostic_notes_removed']} diagnostic notes "
-         f"(sha256 {receipt['diagnostic_notes_sha256']}); retained no raw note text"),
-        ("public replay sanitization: removed "
-         f"{receipt['faulting_file_entries_removed']} faulting-file path entries "
-         f"(sha256 {receipt['faulting_file_entries_sha256']}); replaced them with "
-         "neutral ordinal placeholders and retained fault counts"),
-        ("public replay sanitization: removed "
-         f"{receipt['adjudicated_entries_removed']} adjudicated path/name entries "
-         f"(sha256 {receipt['adjudicated_entries_sha256']}); retained no entry text"),
-        ("public replay scope: DXC read "
-         f"{scope['dxc_files']} of {scope['measured_files']} measured files"),
-        ("public replay throughput: fresh driver runs were "
-         f"{_fmt(runs)} MB/s CPU; the reading retains the selected median"),
-        f"public replay source: fathom commit {source_commit}",
-    ]
-    return result, receipt
+
+_MISSING = object()
+
+
+def _json_type(value):
+    if value is _MISSING:
+        return "missing"
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    raise ValueError(f"unrecognized JSON value type: {type(value).__name__}")
+
+
+def _path_key(path, key):
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+        return f"{path}.{key}"
+    return f"{path}[{json.dumps(key, ensure_ascii=False)}]"
+
+
+def recursive_diff(before, after):
+    """Return a deterministic field-by-field comparison of two JSON values."""
+    _sanitize_value(before, {"person_matches_redacted": 0, "absolute_paths_redacted": 0})
+    _sanitize_value(after, {"person_matches_redacted": 0, "absolute_paths_redacted": 0})
+    fields = []
+
+    def walk(path, old, new):
+        old_type, new_type = _json_type(old), _json_type(new)
+        if old is _MISSING:
+            change = "added"
+        elif new is _MISSING:
+            change = "removed"
+        elif old_type != new_type:
+            change = "type-changed"
+        else:
+            change = "unchanged" if old == new else "changed"
+        row = {"path": path, "before_type": old_type, "after_type": new_type,
+               "change": change}
+        if old_type not in ("object", "array", "missing"):
+            row["before"] = old
+        if new_type not in ("object", "array", "missing"):
+            row["after"] = new
+        if (old_type == new_type == "number" and
+                not isinstance(old, bool) and not isinstance(new, bool)):
+            delta = new - old
+            if isinstance(delta, float) and not math.isfinite(delta):
+                raise ValueError(f"numeric delta is not finite at {path}")
+            row["delta"] = delta
+        fields.append(row)
+
+        if old_type == "object" or new_type == "object":
+            old_map = old if old_type == "object" else {}
+            new_map = new if new_type == "object" else {}
+            for key in sorted(set(old_map) | set(new_map)):
+                walk(_path_key(path, key), old_map.get(key, _MISSING),
+                     new_map.get(key, _MISSING))
+        elif old_type == "array" or new_type == "array":
+            old_list = old if old_type == "array" else []
+            new_list = new if new_type == "array" else []
+            for index in range(max(len(old_list), len(new_list))):
+                walk(f"{path}[{index}]",
+                     old_list[index] if index < len(old_list) else _MISSING,
+                     new_list[index] if index < len(new_list) else _MISSING)
+
+    walk("$", before, after)
+    return {"fields": fields,
+            "changed_fields": sum(row["change"] != "unchanged" for row in fields)}
 
 
 def _numeric_map(data, label):
@@ -166,6 +259,27 @@ def _metric_comparison(before, after):
             delta[key] = a - b
             change[key] = "changed" if a != b else "unchanged"
     return {"baseline": old, "current": new, "delta": delta, "change": change}
+
+
+def _call_metrics(data):
+    return {"precision": data["metrics"]["call_precision"],
+            "recall": data["metrics"]["call_recall"]}
+
+
+def _call_summary(baseline, current, control):
+    committed_to_main = _metric_comparison(
+        _call_metrics(baseline), _call_metrics(current))
+    control_to_main = _metric_comparison(
+        _call_metrics(control), _call_metrics(current))
+    return {
+        "baseline": committed_to_main["baseline"],
+        "current": committed_to_main["current"],
+        "control": control_to_main["baseline"],
+        "delta": committed_to_main["delta"],
+        "change": committed_to_main["change"],
+        "control_to_main_delta": control_to_main["delta"],
+        "control_to_main_change": control_to_main["change"],
+    }
 
 
 def _subject_counts(baseline, current):
@@ -215,18 +329,58 @@ def _active_workflow(mode, path, digest):
     raise ValueError("invalid active workflow identity")
 
 
-def build_diff(baseline, current, redactions, *, source_commit, dxc_sha256,
+def _validate_revision(data, label, source_commit, allow_dirty=False):
+    revision = data.get("fathom_commit")
+    pattern = r"([0-9a-f]{7,40})(?:[-+.]dirty(?:[-+.][A-Za-z0-9._]+)*)?" if allow_dirty else r"([0-9a-f]{7,40})"
+    match = re.fullmatch(pattern, revision or "") if isinstance(revision, str) else None
+    if not match or not source_commit.startswith(match.group(1)):
+        raise ValueError(f"{label} reading does not identify the replay source commit")
+
+
+def _validate_control_receipt(receipt):
+    if (not isinstance(receipt, dict) or set(receipt) !=
+            {"input_files", "input_bytes", "unchanged"} or
+            receipt.get("input_files") != 9 or
+            isinstance(receipt.get("input_bytes"), bool) or
+            not isinstance(receipt.get("input_bytes"), int) or
+            receipt["input_bytes"] <= 0 or receipt.get("unchanged") is not True):
+        raise ValueError("invalid control oracle-input receipt")
+    return receipt
+
+
+def build_diff(baseline, current, control, redactions, *, source_commit, dxc_sha256,
                required_glibc, runner_glibc, go_version, controller_commit,
-               replay_sha256, publish_sha256, workflow_sha256,
+               replay_sha256, publish_sha256, workflow_sha256, control_patch_sha256,
+               control_receipt,
                active_workflow_mode, active_workflow_path,
                active_workflow_sha256):
-    if _pins(baseline) != _pins(current):
-        raise ValueError("baseline and current subject pins differ")
-    current_revision = current.get("fathom_commit")
-    if (not isinstance(current_revision, str) or
-            not re.fullmatch(r"[0-9a-f]{7,40}", current_revision) or
-            not source_commit.startswith(current_revision)):
-        raise ValueError("current reading does not identify the replay source commit")
+    if source_commit != SOURCE_COMMIT:
+        raise ValueError("source commit is not the pinned replay source")
+    baseline_pins = _pins(baseline, "baseline")
+    current_pins = _pins(current, "main")
+    control_pins = _pins(control, "control")
+    if baseline_pins != current_pins or baseline_pins != control_pins:
+        raise ValueError("baseline, main, and control subject pins differ")
+    _validate_revision(current, "main", source_commit)
+    _validate_revision(control, "control", source_commit, allow_dirty=True)
+    if not re.fullmatch(r"[0-9a-f]{64}", control_patch_sha256 or ""):
+        raise ValueError("invalid control patch sha256")
+    control_receipt = _validate_control_receipt(control_receipt)
+
+    public_baseline, _ = sanitize_reading(baseline, source_commit)
+    public_current, _ = sanitize_reading(current, source_commit)
+    public_control, control_redactions = sanitize_reading(control, source_commit)
+    comparisons = {
+        "committed_to_main": recursive_diff(public_baseline, public_current),
+        "committed_to_control": recursive_diff(public_baseline, public_control),
+        "control_to_main": recursive_diff(public_control, public_current),
+    }
+    comparisons["committed_to_main"]["interpretation"] = (
+        "historical committed reading versus the fresh main reading; changes may include baseline drift")
+    comparisons["committed_to_control"]["interpretation"] = (
+        "historical committed reading versus the fresh control reading; changes may include baseline drift")
+    comparisons["control_to_main"]["interpretation"] = (
+        "semantic counter and metric changes isolate the causal effect of #45; timing differences are not causal proof")
 
     baseline_counts = _numeric_map(baseline["counts"], "baseline counts")
     current_counts = _numeric_map(current["counts"], "current counts")
@@ -234,18 +388,22 @@ def build_diff(baseline, current, redactions, *, source_commit, dxc_sha256,
     metrics = _metric_comparison(baseline["metrics"], current["metrics"])
     baseline_scope = _scope(baseline)
     current_scope = _scope(current)
+    control_scope = _scope(control)
     scope_subjects = _scope_comparison(baseline_scope, current_scope)
     baseline_scope = {key: value for key, value in baseline_scope.items() if key != "subjects"}
     current_scope = {key: value for key, value in current_scope.items() if key != "subjects"}
+    control_scope = {key: value for key, value in control_scope.items() if key != "subjects"}
 
     return {
-        "schema": "fathom-hlsl-scope-replay-diff/v1",
+        "schema": "fathom-hlsl-scope-replay-diff/v2",
         "source": {
             "commit": source_commit,
             "baseline_reading": "docs/bench/readings/lang/hlsl.json",
             "driver": "calibration/oracles/dxc-ast/reading.sh",
             "driver_unmodified": True,
             "go_version": go_version,
+            "control_patch_sha256": control_patch_sha256,
+            "control_oracle_inputs": control_receipt,
             "controller": {
                 "commit": controller_commit,
                 "files": {
@@ -261,7 +419,7 @@ def build_diff(baseline, current, redactions, *, source_commit, dxc_sha256,
         "corpus": {
             "manifest": "calibration/corpus.d/hlsl.yaml",
             "subject_count": len(current["subjects"]),
-            "pins": [{"name": name, "sha": sha} for name, sha in _pins(current)],
+            "pins": [{"name": name, "sha": sha} for name, sha in current_pins],
         },
         "runtime": {
             "dxc_release": DXC_RELEASE,
@@ -279,54 +437,62 @@ def build_diff(baseline, current, redactions, *, source_commit, dxc_sha256,
                 "dxc": _oracle_version(current, "dxc-ast"),
                 "clang": _oracle_version(current, "clang-includes"),
             },
+            "control": {
+                "dxc": _oracle_version(control, "dxc-ast"),
+                "clang": _oracle_version(control, "clang-includes"),
+            },
         },
         "scope": {
             "baseline": baseline_scope,
             "current": current_scope,
+            "control": control_scope,
             "dxc_files_delta": current_scope["dxc_files"] - baseline_scope["dxc_files"],
             "measured_files_delta": (current_scope["measured_files"] -
                                      baseline_scope["measured_files"]),
             "subjects": scope_subjects,
+            "control_to_main": {
+                "dxc_files_delta": current_scope["dxc_files"] - control_scope["dxc_files"],
+                "measured_files_delta": (current_scope["measured_files"] -
+                                         control_scope["measured_files"]),
+            },
         },
         "level": {
             "baseline": baseline["level_met"],
             "current": current["level_met"],
+            "control": control["level_met"],
             "changed": baseline["level_met"] != current["level_met"],
+            "control_to_main_changed": control["level_met"] != current["level_met"],
         },
-        "grade": {"baseline": baseline["grade"], "current": current["grade"]},
-        "calls": {
-            "baseline": {
-                "precision": baseline["metrics"]["call_precision"],
-                "recall": baseline["metrics"]["call_recall"],
-            },
-            "current": {
-                "precision": current["metrics"]["call_precision"],
-                "recall": current["metrics"]["call_recall"],
-            },
-            "delta": {
-                "precision": (current["metrics"]["call_precision"] -
-                              baseline["metrics"]["call_precision"]),
-                "recall": (current["metrics"]["call_recall"] -
-                           baseline["metrics"]["call_recall"]),
-            },
-        },
+        "grade": {"baseline": baseline["grade"], "current": current["grade"],
+                  "control": control["grade"]},
+        "calls": _call_summary(baseline, current, control),
         "metrics": metrics,
+        "control_to_main_metrics": _metric_comparison(control["metrics"], current["metrics"]),
         "counts": {
             "baseline": baseline_counts,
             "current": current_counts,
             "delta": count_delta,
+            "control": _numeric_map(control["counts"], "control counts"),
+            "control_to_main_delta": _counter_delta(
+                _numeric_map(control["counts"], "control counts"), current_counts),
         },
         "subject_counts": _subject_counts(baseline, current),
         "performance": {
             "comparison": ("fresh tenancy participates in grading and may change the current level or grade; "
-                           "timing is reported separately from scope and counter changes"),
+                           "timing is reported separately and is not causal proof of #45's effect"),
             "baseline_committed_throughput_mb_s": baseline["tenancy"]["throughput_mb_s"],
             "baseline_historical_driver_runs_mb_s": _runs(baseline),
             "fresh_driver_runs_mb_s": _runs(current),
+            "fresh_control_driver_runs_mb_s": _runs(control),
             "fresh_selected_median_throughput_mb_s": current["tenancy"]["throughput_mb_s"],
+            "fresh_control_selected_median_throughput_mb_s":
+                control["tenancy"]["throughput_mb_s"],
             "basis": current["tenancy"].get("throughput_basis", "cpu"),
         },
         "redactions": redactions,
+        "control_redactions": control_redactions,
+        "control_reading": public_control,
+        "comparisons": comparisons,
     }
 
 
@@ -334,10 +500,18 @@ def _load(path):
     return json.loads(Path(path).read_text())
 
 
+def _load_json_argument(value):
+    if value.lstrip().startswith("{"):
+        return json.loads(value)
+    return _load(value)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--baseline", required=True)
     parser.add_argument("--regenerated", required=True)
+    parser.add_argument("--control", required=True)
+    parser.add_argument("--control-receipt", required=True)
     parser.add_argument("--reading-out", required=True)
     parser.add_argument("--diff-out", required=True)
     parser.add_argument("--source-commit", required=True)
@@ -346,6 +520,7 @@ def main():
     parser.add_argument("--runner-glibc", required=True)
     parser.add_argument("--go-version", required=True)
     parser.add_argument("--controller-commit", required=True)
+    parser.add_argument("--control-patch-sha256", required=True)
     parser.add_argument("--replay-sh-sha256", required=True)
     parser.add_argument("--publish-py-sha256", required=True)
     parser.add_argument("--workflow-sha256", required=True)
@@ -356,12 +531,16 @@ def main():
 
     baseline = _load(args.baseline)
     regenerated = _load(args.regenerated)
+    control = _load(args.control)
+    control_receipt = _load_json_argument(args.control_receipt)
     sanitized, redactions = sanitize_reading(regenerated, args.source_commit)
     diff = build_diff(
-        baseline, regenerated, redactions, source_commit=args.source_commit,
+        baseline, regenerated, control, redactions, source_commit=args.source_commit,
         dxc_sha256=args.dxc_sha256, required_glibc=args.required_glibc,
         runner_glibc=args.runner_glibc, go_version=args.go_version,
         controller_commit=args.controller_commit,
+        control_patch_sha256=args.control_patch_sha256,
+        control_receipt=control_receipt,
         replay_sha256=args.replay_sh_sha256,
         publish_sha256=args.publish_py_sha256,
         workflow_sha256=args.workflow_sha256,

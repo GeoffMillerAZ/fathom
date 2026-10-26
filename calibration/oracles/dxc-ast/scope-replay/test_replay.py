@@ -36,8 +36,14 @@ def reading(commit="6db920e72898", level="L3", calls=(90, 100), throughput=2.0,
         "dialect": "hlsl",
         "fathom_commit": commit,
         "level_met": level,
+        "target_level": "L3",
+        "disposition": "pass",
         "grade": {"L1": "excellent", "L2": "good", "L3": "good"},
         "metrics": {"call_precision": found / 95, "call_recall": found / truth},
+        "metric_tiers": {"call_precision": "L2", "call_recall": "L2"},
+        "required_kinds": ["call"],
+        "kind_intersection": ["call"],
+        "excluded_by_kind": {"definition": 4},
         "counts": {"call_fathom": 95, "call_truth": truth, "call_truth_found": found,
                    "oracle_defs": 80},
         "oracles": [
@@ -47,11 +53,13 @@ def reading(commit="6db920e72898", level="L3", calls=(90, 100), throughput=2.0,
         "subjects": [
             {"name": "subject-a", "sha": "a" * 40, "files": 6, "bytes": 120,
              "counts": {"call_truth": truth},
+             "families": {"calls": {"kind": "call", "tier": "B", "measured": True}},
              "adjudicated": ["private/person/shader.hlsl:12 SecretName (call)"],
              "tenancy": {"faults": 1, "faulting_files": ["private/person/shader.hlsl"],
                          "files_with_error": 1}},
             {"name": "subject-b", "sha": "b" * 40, "files": 4, "bytes": 80,
              "counts": {"call_truth": 0},
+             "families": {"calls": {"kind": "call", "tier": "B", "measured": True}},
              "tenancy": {"faults": 0, "faulting_files": [], "files_with_error": 0}},
         ],
         "tenancy": {"faults": 1, "faulting_files": ["private/person/shader.hlsl"],
@@ -70,6 +78,21 @@ def reading(commit="6db920e72898", level="L3", calls=(90, 100), throughput=2.0,
 
 
 class PublishTests(unittest.TestCase):
+    source_commit = "6db920e72898abb20bf86c22652b401902e34598"
+
+    def build(self, baseline, current, control, receipt=None):
+        publish = load_publish()
+        return publish.build_diff(
+            baseline, current, control, receipt or {},
+            source_commit=self.source_commit, dxc_sha256="a" * 64,
+            required_glibc="2.38", runner_glibc="2.39", go_version="go1.27.3",
+            controller_commit=CONTROLLER_COMMIT,
+            control_patch_sha256="4" * 64,
+            control_receipt={"input_files": 9, "input_bytes": 2048, "unchanged": True},
+            active_workflow_mode="manual-no-active-workflow",
+            active_workflow_path="", active_workflow_sha256="",
+            **CONTROLLER_HASHES)
+
     def test_committed_baseline_receipts_are_machine_readable(self):
         publish = load_publish()
         baseline = json.loads((HERE.parents[3] / "docs/bench/readings/lang/hlsl.json").read_text())
@@ -86,155 +109,154 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(publish._runs(baseline), [0.75, 0.69, 0.65])
         self.assertEqual(len(baseline["counts"]), 24)
 
-    def test_sanitize_removes_disclosures_but_keeps_schema_and_numeric_evidence(self):
+    def test_sanitize_retains_public_evidence_and_redacts_only_privacy_matches(self):
         publish = load_publish()
         raw = reading()
-        sanitized, receipt = publish.sanitize_reading(raw, "6db920e72898abb20bf86c22652b401902e34598")
+        raw["notes"].append(
+            "Author: Example Maintainer <maintainer@example.invalid> inspected /Users/local/repo/a.hlsl")
+        raw["subjects"][0]["adjudicated"].append(
+            "Copyright 2026 Example Maintainer; /home/local/a.hlsl:2 accepted")
+        sanitized, receipt = publish.sanitize_reading(raw, self.source_commit)
 
         rendered = json.dumps(sanitized, sort_keys=True)
-        self.assertNotIn("private/person", rendered)
-        self.assertNotIn("PersonName", rendered)
-        self.assertNotIn("SecretName", rendered)
+        self.assertIn("private/person/shader.hlsl", rendered)
+        self.assertIn("PersonName", rendered)
+        self.assertIn("SecretName", rendered)
+        self.assertNotIn("maintainer@example.invalid", rendered)
+        self.assertNotIn("Example Maintainer", rendered)
+        self.assertNotIn("/Users/local/repo/a.hlsl", rendered)
+        self.assertNotIn("/home/local/a.hlsl", rendered)
         self.assertEqual(sanitized["counts"], raw["counts"])
-        self.assertEqual(sanitized["metrics"], raw["metrics"])
-        self.assertEqual(sanitized["oracles"], raw["oracles"])
-        self.assertEqual(sanitized["subjects"][0]["sha"], "a" * 40)
-        self.assertEqual(sanitized["tenancy"]["faulting_files"],
-                         ["redacted-fault-000001"])
-        self.assertEqual(sanitized["subjects"][0]["tenancy"]["faulting_files"],
-                         ["redacted-fault-000002"])
+        self.assertEqual(sanitized["notes"][:4], raw["notes"][:4])
+        self.assertEqual(sanitized["subjects"][0]["adjudicated"][0],
+                         raw["subjects"][0]["adjudicated"][0])
         tenancy_blocks = [sanitized["tenancy"]]
         tenancy_blocks.extend(subject["tenancy"] for subject in sanitized["subjects"])
         for tenancy in tenancy_blocks:
             self.assertEqual(tenancy["faults"], len(tenancy["faulting_files"]))
-        self.assertEqual(sanitized["subjects"][0]["adjudicated"], [])
-        self.assertEqual(receipt["diagnostic_notes_removed"], 4)
-        self.assertEqual(receipt["faulting_file_entries_removed"], 2)
-        self.assertEqual(receipt["adjudicated_entries_removed"], 1)
-        self.assertRegex(receipt["diagnostic_notes_sha256"], r"^[0-9a-f]{64}$")
-        self.assertRegex(receipt["faulting_file_entries_sha256"], r"^[0-9a-f]{64}$")
-        self.assertRegex(receipt["adjudicated_entries_sha256"], r"^[0-9a-f]{64}$")
-        self.assertTrue(any("removed 4 diagnostic notes" in note for note in sanitized["notes"]))
-        self.assertTrue(any("neutral ordinal placeholders" in note
-                            for note in sanitized["notes"]))
-        self.assertTrue(any("8 of 10 measured files" in note for note in sanitized["notes"]))
-        self.assertTrue(any("1.8, 2, 2.2" in note for note in sanitized["notes"]))
+        self.assertGreaterEqual(receipt["person_matches_redacted"], 2)
+        self.assertEqual(receipt["absolute_paths_redacted"], 2)
+        self.assertNotIn("sha256", json.dumps(receipt))
 
-    def test_diff_reports_true_current_level_all_counter_deltas_and_separate_timing(self):
+    def test_diff_reports_every_nested_field_and_separates_control_effect(self):
         publish = load_publish()
         baseline = reading(commit="6c5d2d56", level="L2", calls=(80, 100),
                            throughput=1.92, runs=(0.75, 0.69, 0.65))
         current = reading(level="L3", calls=(93, 101), throughput=2.1,
                           runs=(2.0, 2.1, 2.4))
-        current["counts"].update({"call_fathom": 99, "new_counter": 7})
-        baseline["metrics"]["typed_recall"] = None
-        current["metrics"].update({"typed_recall": 0.8, "new_quality": 0.7})
-        baseline["subjects"][0]["counts"]["call_truth"] = 90
-        baseline["subjects"][1]["counts"]["call_truth"] = 10
-        current["subjects"][0]["counts"]["call_truth"] = 85
-        current["subjects"][1]["counts"]["call_truth"] = 15
-        current["notes"][0] = "subject-a: dxc-ast (flags): 4 of 6 measured files in scope (their own unit)"
-        current["notes"][1] = "subject-b: dxc-ast (flags): 4 of 4 measured files in scope (their own unit)"
-        sanitized, receipt = publish.sanitize_reading(
-            current, "6db920e72898abb20bf86c22652b401902e34598")
-        diff = publish.build_diff(
-            baseline, current, receipt,
-            source_commit="6db920e72898abb20bf86c22652b401902e34598",
-            dxc_sha256="a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60",
-            required_glibc="2.38", runner_glibc="2.39", go_version="go1.27.3",
-            controller_commit=CONTROLLER_COMMIT,
-            active_workflow_mode="github-actions-verified-active-copy",
-            active_workflow_path=ACTIVE_WORKFLOW,
-            active_workflow_sha256=CONTROLLER_HASHES["workflow_sha256"],
-            **CONTROLLER_HASHES)
+        control = copy.deepcopy(current)
+        control["fathom_commit"] = self.source_commit[:12] + "-dirty-control"
+        control["counts"]["call_fathom"] = 91
+        control["tenancy"].update({"peak_module_pages": 9, "compiled_bytes": 44})
+        current["counts"]["call_fathom"] = 99
+        current["tenancy"].update({"peak_module_pages": 10, "compiled_bytes": 44})
+        current["subjects"][0]["families"]["calls"]["tier"] = "A"
+        current["subjects"][0]["tenancy"]["files_with_error"] = None
+        current["subjects"][1]["families"]["calls"]["measured"] = False
+        current["kind_intersection"].append("definition")
+        del control["excluded_by_kind"]
 
-        self.assertEqual(diff["level"]["current"], "L3")
-        self.assertEqual(diff["grade"]["current"], sanitized["grade"])
-        self.assertEqual(diff["counts"]["delta"]["call_fathom"], 4)
-        self.assertEqual(diff["counts"]["delta"]["new_counter"], 7)
-        self.assertEqual(set(diff["counts"]["delta"]), set(current["counts"]))
-        self.assertAlmostEqual(diff["calls"]["current"]["recall"], 93 / 101)
-        self.assertEqual(diff["scope"]["current"]["dxc_files"], 8)
-        self.assertEqual(diff["scope"]["subjects"][0]["dxc_files_delta"], -1)
-        self.assertEqual(diff["scope"]["subjects"][1]["dxc_files_delta"], 1)
-        self.assertEqual(diff["subject_counts"][0]["delta"]["call_truth"], -5)
-        self.assertEqual(diff["subject_counts"][1]["delta"]["call_truth"], 5)
-        self.assertIsNone(diff["metrics"]["delta"]["typed_recall"])
-        self.assertEqual(diff["metrics"]["change"]["typed_recall"], "became-measured")
-        self.assertEqual(diff["metrics"]["change"]["new_quality"], "added")
-        timing = diff["performance"]
-        self.assertEqual(timing["baseline_committed_throughput_mb_s"], 1.92)
-        self.assertEqual(timing["baseline_historical_driver_runs_mb_s"], [0.75, 0.69, 0.65])
-        self.assertEqual(timing["fresh_driver_runs_mb_s"], [2.0, 2.1, 2.4])
-        self.assertNotIn("throughput_delta", timing)
-        self.assertIn("may change the current level", timing["comparison"])
-        self.assertEqual(diff["runtime"]["required_glibc"], "2.38")
-        self.assertEqual(diff["source"]["controller"]["commit"], CONTROLLER_COMMIT)
-        self.assertEqual(
-            diff["source"]["controller"]["files"]
-                ["calibration/oracles/dxc-ast/scope-replay/replay.sh"],
-            CONTROLLER_HASHES["replay_sha256"])
-        self.assertEqual(diff["source"]["controller"]["active_workflow"], {
-            "mode": "github-actions-verified-active-copy",
-            "path": ACTIVE_WORKFLOW,
-            "sha256": CONTROLLER_HASHES["workflow_sha256"],
-        })
+        _, receipt = publish.sanitize_reading(current, self.source_commit)
+        diff = self.build(baseline, current, control, receipt)
+        paths = {row["path"]: row for row in diff["comparisons"]["control_to_main"]["fields"]}
+        self.assertEqual(paths["$.counts.call_fathom"]["delta"], 8)
+        self.assertEqual(paths["$.tenancy.peak_module_pages"]["delta"], 1)
+        self.assertEqual(paths["$.subjects[0].families.calls.tier"]["change"], "changed")
+        self.assertEqual(paths["$.subjects[0].tenancy.files_with_error"]["change"],
+                         "type-changed")
+        self.assertEqual(paths["$.subjects[1].families.calls.measured"]["after"], False)
+        self.assertNotIn("delta", paths["$.subjects[1].families.calls.measured"])
+        self.assertEqual(paths["$.kind_intersection[1]"]["change"], "added")
+        self.assertEqual(paths["$.excluded_by_kind"]["change"], "added")
+        self.assertEqual(set(diff["comparisons"]),
+                         {"committed_to_main", "committed_to_control", "control_to_main"})
+        self.assertEqual(diff["control_reading"]["counts"]["call_fathom"], 91)
+        self.assertIn("causal", diff["comparisons"]["control_to_main"]["interpretation"])
+        self.assertIn("not causal", diff["performance"]["comparison"])
+        self.assertEqual(diff["source"]["control_patch_sha256"], "4" * 64)
+        self.assertEqual(diff["source"]["control_oracle_inputs"],
+                         {"input_files": 9, "input_bytes": 2048, "unchanged": True})
 
-    def test_diff_refuses_changed_subject_pins(self):
-        publish = load_publish()
+    def test_call_summaries_preserve_null_metrics_without_inventing_deltas(self):
         baseline = reading(commit="6c5d2d56")
         current = reading()
-        current["subjects"][0]["sha"] = "c" * 40
-        _, receipt = publish.sanitize_reading(current, "6db920e72898abb20bf86c22652b401902e34598")
-        with self.assertRaisesRegex(ValueError, "subject pins"):
-            publish.build_diff(baseline, current, receipt,
-                               source_commit="6db920e72898abb20bf86c22652b401902e34598",
-                               dxc_sha256="a" * 64, required_glibc="2.38",
-                               runner_glibc="2.39", go_version="go1.27.3",
-                               controller_commit=CONTROLLER_COMMIT,
-                               active_workflow_mode="manual-no-active-workflow",
-                               active_workflow_path="", active_workflow_sha256="",
-                               **CONTROLLER_HASHES)
+        control = reading(commit=self.source_commit[:12] + "-dirty-control")
+        baseline["metrics"]["call_precision"] = None
+        current["metrics"]["call_recall"] = None
+        control["metrics"]["call_precision"] = None
 
-    def test_diff_refuses_missing_empty_malformed_or_wrong_source_revision(self):
+        calls = self.build(baseline, current, control)["calls"]
+        self.assertIsNone(calls["delta"]["precision"])
+        self.assertIsNone(calls["delta"]["recall"])
+        self.assertEqual(calls["change"], {
+            "precision": "became-measured", "recall": "became-unmeasured"})
+        self.assertIsNone(calls["control_to_main_delta"]["precision"])
+        self.assertIsNone(calls["control_to_main_delta"]["recall"])
+        self.assertEqual(calls["control_to_main_change"], {
+            "precision": "became-measured", "recall": "became-unmeasured"})
+
+    def test_recursive_diff_covers_missing_null_false_and_rejects_bad_json_values(self):
+        publish = load_publish()
+        rows = {row["path"]: row for row in publish.recursive_diff(
+            {"value": None, "flag": True, "gone": 1},
+            {"value": False, "flag": False, "new": None})["fields"]}
+        self.assertEqual(rows["$.value"]["change"], "type-changed")
+        self.assertEqual(rows["$.flag"]["change"], "changed")
+        self.assertNotIn("delta", rows["$.flag"])
+        self.assertEqual(rows["$.gone"]["change"], "removed")
+        self.assertEqual(rows["$.new"]["change"], "added")
+        for invalid in (float("nan"), float("inf"), object(), {1: "bad"}):
+            with self.subTest(invalid=repr(invalid)), self.assertRaises(ValueError):
+                publish.recursive_diff({}, {"bad": invalid})
+
+    def test_control_receipt_requires_same_nine_oracle_inputs(self):
+        publish = load_publish()
+        for receipt in (
+                {"input_files": 8, "input_bytes": 2048, "unchanged": True},
+                {"input_files": 9, "input_bytes": 2048, "unchanged": False},
+                {"input_files": 9, "input_bytes": 2048, "unchanged": True,
+                 "opaque_hash": "uncheckable"}):
+            with self.subTest(receipt=receipt), self.assertRaisesRegex(
+                    ValueError, "control oracle-input receipt"):
+                publish._validate_control_receipt(receipt)
+
+    def test_diff_refuses_duplicate_subjects_changed_pins_and_wrong_revisions(self):
         publish = load_publish()
         baseline = reading(commit="6c5d2d56")
-        cases = (None, "", "xyz1234", "f" * 7)
-        for revision in cases:
-            current = reading()
-            if revision is None:
-                del current["fathom_commit"]
-            else:
-                current["fathom_commit"] = revision
-            _, receipt = publish.sanitize_reading(
-                current, "6db920e72898abb20bf86c22652b401902e34598")
-            with self.subTest(revision=revision), self.assertRaisesRegex(
-                    ValueError, "source commit"):
-                publish.build_diff(
-                    baseline, current, receipt,
-                    source_commit="6db920e72898abb20bf86c22652b401902e34598",
-                    dxc_sha256="a" * 64, required_glibc="2.38",
-                    runner_glibc="2.39", go_version="go1.27.3",
-                    controller_commit=CONTROLLER_COMMIT,
-                    active_workflow_mode="manual-no-active-workflow",
-                    active_workflow_path="", active_workflow_sha256="",
-                    **CONTROLLER_HASHES)
+        for mutate, message in (
+                (lambda main, control: main["subjects"].append(copy.deepcopy(main["subjects"][0])),
+                 "unique subject names"),
+                (lambda main, control: control["subjects"][0].update(sha="c" * 40),
+                 "subject pins"),
+                (lambda main, control: main.update(fathom_commit="f" * 7),
+                 "main reading.*source commit"),
+                (lambda main, control: control.update(fathom_commit="f" * 7),
+                 "control reading.*source commit")):
+            main, control = reading(), reading(commit=self.source_commit[:12] + "-dirty-control")
+            mutate(main, control)
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                self.build(baseline, main, control)
 
-    def test_cli_records_controller_identity(self):
+    def test_cli_requires_control_and_records_control_patch_identity(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             baseline = reading(commit="6c5d2d56")
             current = reading()
             baseline_path = root / "baseline.json"
             current_path = root / "current.json"
+            control_path = root / "control.json"
             reading_out = root / "reading.json"
             diff_out = root / "diff.json"
             baseline_path.write_text(json.dumps(baseline))
             current_path.write_text(json.dumps(current))
+            control = reading(commit=self.source_commit[:12] + "-dirty-control")
+            control_path.write_text(json.dumps(control))
             command = [
                 "python3", "-I", "-B", str(PUBLISH),
                 "--baseline", str(baseline_path),
                 "--regenerated", str(current_path),
+                "--control", str(control_path),
+                "--control-receipt", '{"input_files":9,"input_bytes":2048,"unchanged":true}',
                 "--reading-out", str(reading_out),
                 "--diff-out", str(diff_out),
                 "--source-commit", "6db920e72898abb20bf86c22652b401902e34598",
@@ -243,6 +265,7 @@ class PublishTests(unittest.TestCase):
                 "--runner-glibc", "2.39",
                 "--go-version", "go1.27.3",
                 "--controller-commit", CONTROLLER_COMMIT,
+                "--control-patch-sha256", "4" * 64,
                 "--replay-sh-sha256", CONTROLLER_HASHES["replay_sha256"],
                 "--publish-py-sha256", CONTROLLER_HASHES["publish_sha256"],
                 "--workflow-sha256", CONTROLLER_HASHES["workflow_sha256"],
@@ -259,6 +282,13 @@ class PublishTests(unittest.TestCase):
                              set(CONTROLLER_HASHES.values()))
             self.assertEqual(controller["active_workflow"], {
                 "mode": "manual-no-active-workflow", "path": None, "sha256": None})
+            self.assertEqual(json.loads(diff_out.read_text())["source"]["control_patch_sha256"],
+                             "4" * 64)
+            missing_control = [arg for arg in command if arg not in ("--control", str(control_path))]
+            result = subprocess.run(missing_control, text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--control", result.stderr)
 
 
 class ReplayShellTests(unittest.TestCase):
@@ -405,13 +435,31 @@ exit 1
                 f"REPLAY_LIBRARY_ONLY=1 source {REPLAY}; verify_checkout_clean {root} source")
             self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_control_failure_keeps_details_in_private_log(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            (scripts / "control.py").write_text(
+                "import sys\nprint('private-control-detail', file=sys.stderr)\nsys.exit(17)\n")
+            log = root / "private.log"
+            result = self.run_bash(
+                f"REPLAY_LIBRARY_ONLY=1 source {REPLAY}; "
+                f"run_control {scripts} {root} {root / 'patch'} {root / 'snapshot'} "
+                f"{root / 'reading'} {root / 'receipt'} {log}")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("HLSL control stage failed", result.stderr)
+            self.assertNotIn("private-control-detail", result.stderr + result.stdout)
+            self.assertIn("private-control-detail", log.read_text())
+
     def test_controller_identity_requires_expected_commit_and_committed_files(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             owned = root / "calibration/oracles/dxc-ast/scope-replay"
             owned.mkdir(parents=True)
-            for filename in ("replay.sh", "publish.py", "hlsl-scope-replay.yml"):
+            for filename in ("replay.sh", "publish.py", "control.py", "scope-control.patch",
+                             "hlsl-scope-replay.yml"):
                 (owned / filename).write_text(f"{filename}\n")
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
             subprocess.run(["git", "-C", str(root), "-c", "user.name=test",
@@ -446,7 +494,7 @@ exit 1
             active = root / ACTIVE_WORKFLOW
             owned.mkdir(parents=True)
             active.parent.mkdir(parents=True)
-            for filename in ("replay.sh", "publish.py"):
+            for filename in ("replay.sh", "publish.py", "control.py", "scope-control.patch"):
                 (owned / filename).write_text(f"{filename}\n")
             dormant = owned / "hlsl-scope-replay.yml"
             dormant.write_text("name: exact-copy\n")
@@ -528,31 +576,12 @@ exit 1
 
 
 class WorkflowTests(unittest.TestCase):
-    def test_manual_read_only_bounded_x64_workflow_contract(self):
-        text = WORKFLOW.read_text()
-        self.assertIn("workflow_dispatch:", text)
-        self.assertRegex(text, r"permissions:\s*\n\s*contents: read")
-        self.assertIn("runs-on: ubuntu-24.04", text)
-        self.assertIn("timeout-minutes:", text)
-        self.assertIn("go-version: 1.27.3", text)
-        self.assertIn("ref: ${{ github.sha }}", text)
-        self.assertIn("Verify runner tools", text)
-        self.assertIn("check_runner_tools", text)
-        self.assertIn("yq", text)
-        self.assertIn("jq", text)
-        self.assertNotIn("container:", text)
-        uses = [line.split("uses:", 1)[1].strip() for line in text.splitlines()
-                if "uses:" in line]
-        self.assertEqual(len(uses), 4)
-        for use in uses:
-            self.assertRegex(use, r"^[^@]+@[0-9a-f]{40}(?: # v[0-9]+)?$")
-        self.assertIn("calibration/oracles/dxc-ast/scope-replay/replay.sh", text)
-        self.assertIn("regenerated-reading.json", text)
-        self.assertIn("reading-diff.json", text)
-        self.assertNotIn("workspace/**", text)
-        self.assertNotIn("workspace/", text.split("path: |", 1)[-1].replace(
-            "workspace/artifacts/hlsl-scope-replay/regenerated-reading.json", "").replace(
-            "workspace/artifacts/hlsl-scope-replay/reading-diff.json", ""))
+    def test_push_read_only_bounded_x64_workflow_contract(self):
+        spec = importlib.util.spec_from_file_location(
+            "hlsl_workflow_contract", HERE / "test_workflow.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.validate_workflow(WORKFLOW.read_text())
 
 
 if __name__ == "__main__":
