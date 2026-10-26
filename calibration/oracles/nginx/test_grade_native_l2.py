@@ -1,5 +1,8 @@
 import unittest
-from grade_native_l2 import original_scope
+import tempfile
+import subprocess
+from pathlib import Path
+from grade_native_l2 import original_scope, tracked_receipt
 from native_upstream import reference_output
 
 
@@ -17,3 +20,18 @@ class ScopeAndAuthorityTest(unittest.TestCase):
     def test_missing_scope_is_refused(self):
         with self.assertRaises(ValueError):
             original_scope({'notes': []}, 'sample')
+
+    def test_exact_normative_manifest_detects_input_and_untracked_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); subject = root / 'subject'; subject.mkdir()
+            subprocess.run(['git', '-C', str(subject), 'init', '-q'], check=True)
+            (subject / 'sample.conf').write_text('events {}\n')
+            subprocess.run(['git', '-C', str(subject), 'add', 'sample.conf'], check=True)
+            before = tracked_receipt(subject, '.', root / 'before')
+            self.assertEqual(1, before['files'])
+            self.assertEqual(0, before['untracked_entries'])
+            (subject / 'sample.conf').write_text('events { worker_connections 128; }\n')
+            (subject / 'generated.conf').write_text('http {}\n')
+            after = tracked_receipt(subject, '.', root / 'after')
+            self.assertNotEqual(before['sha256'], after['sha256'])
+            self.assertEqual(1, after['untracked_entries'])
