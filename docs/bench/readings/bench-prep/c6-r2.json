@@ -1,0 +1,1240 @@
+{
+  "unit": "D24: import package for Go (external tests merged), directory for Python/TypeScript; defining unit excluded from sites and caller units",
+  "source": "Recount of pinned round-1 go/types, Python direct-import AST and TypeScript resolved-signature receipts; newly resolved receipts for new TypeScript candidates. TypeScript project alias configuration used for redux-toolkit. These are static lower bounds, not C4 measurements.",
+  "candidates": [
+    {
+      "repository": "Textualize/rich",
+      "sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "language": "Python",
+      "qualifying_symbols": 7,
+      "examples": [
+        {
+          "symbol": "rich.console.Console",
+          "defining_unit": "rich",
+          "calls": 345,
+          "units": [
+            "benchmarks",
+            "examples",
+            "tests",
+            "tools"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/benchmarks.py:106:19",
+            "examples/columns.py:22:11",
+            "tests/render.py:19:15",
+            "tools/profile_pretty.py:8:11",
+            "benchmarks/benchmarks.py:131:24",
+            "benchmarks/benchmarks.py:150:24"
+          ]
+        },
+        {
+          "symbol": "rich.segment.Segment",
+          "defining_unit": "rich",
+          "calls": 259,
+          "units": [
+            "benchmarks",
+            "tests",
+            "tools"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/benchmarks.py:210:13",
+            "tests/test_bar.py:71:9",
+            "tools/profile_divide.py:6:13",
+            "benchmarks/benchmarks.py:211:13",
+            "benchmarks/benchmarks.py:212:13",
+            "benchmarks/benchmarks.py:213:13"
+          ]
+        },
+        {
+          "symbol": "rich.text.Text",
+          "defining_unit": "rich",
+          "calls": 237,
+          "units": [
+            "benchmarks",
+            "examples",
+            "tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/benchmarks.py:26:9",
+            "examples/layout.py:32:9",
+            "tests/test_ansi.py:25:9",
+            "benchmarks/benchmarks.py:29:9",
+            "benchmarks/benchmarks.py:35:9",
+            "benchmarks/benchmarks.py:38:9"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "encode/starlette",
+      "sha": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+      "language": "Python",
+      "qualifying_symbols": 12,
+      "examples": [
+        {
+          "symbol": "starlette.responses.PlainTextResponse",
+          "defining_unit": "starlette",
+          "calls": 97,
+          "units": [
+            "benchmarks",
+            "starlette/middleware",
+            "tests",
+            "tests/middleware"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/routing_benchmark.py:13:12",
+            "starlette/middleware/authentication.py:52:16",
+            "tests/middleware/test_base.py:1225:15",
+            "tests/test_applications.py:358:16",
+            "starlette/middleware/body_limit.py:119:28",
+            "starlette/middleware/body_limit.py:93:24"
+          ]
+        },
+        {
+          "symbol": "starlette.responses.Response",
+          "defining_unit": "starlette",
+          "calls": 68,
+          "units": [
+            "benchmarks",
+            "starlette/middleware",
+            "tests",
+            "tests/middleware"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/response_benchmark.py:20:12",
+            "starlette/middleware/exceptions.py:68:20",
+            "tests/middleware/test_base.py:1047:16",
+            "tests/test_background.py:19:20",
+            "benchmarks/response_benchmark.py:31:15",
+            "benchmarks/response_benchmark.py:42:40"
+          ]
+        },
+        {
+          "symbol": "starlette.requests.Request",
+          "defining_unit": "starlette",
+          "calls": 52,
+          "units": [
+            "benchmarks",
+            "starlette/middleware",
+            "tests",
+            "tests/middleware"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "benchmarks/json_benchmark.py:54:25",
+            "starlette/middleware/errors.py:166:23",
+            "tests/middleware/test_base.py:1223:19",
+            "tests/test_formparsers.py:102:15",
+            "benchmarks/multipart_benchmark.py:76:19",
+            "benchmarks/request_benchmark.py:21:22"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "go-chi/chi",
+      "sha": "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/go-chi/chi/v5.NewRouter",
+          "defining_unit": "github.com/go-chi/chi/v5",
+          "calls": 47,
+          "units": [
+            "github.com/go-chi/chi/v5/middleware"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "middleware/basic_auth_test.go:17:7",
+            "middleware/clean_path_test.go:12:7",
+            "middleware/client_ip_example_test.go:41:7",
+            "middleware/client_ip_example_test.go:92:7",
+            "middleware/client_ip_test.go:395:7",
+            "middleware/client_ip_test.go:427:8"
+          ]
+        },
+        {
+          "symbol": "github.com/go-chi/chi/v5.*Mux.Use",
+          "defining_unit": "github.com/go-chi/chi/v5",
+          "calls": 46,
+          "units": [
+            "github.com/go-chi/chi/v5/middleware"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "middleware/basic_auth_test.go:18:2",
+            "middleware/clean_path_test.go:13:2",
+            "middleware/client_ip_example_test.go:50:2",
+            "middleware/client_ip_example_test.go:93:2",
+            "middleware/client_ip_test.go:396:2",
+            "middleware/client_ip_test.go:428:3"
+          ]
+        },
+        {
+          "symbol": "github.com/go-chi/chi/v5.*Mux.Get",
+          "defining_unit": "github.com/go-chi/chi/v5",
+          "calls": 44,
+          "units": [
+            "github.com/go-chi/chi/v5/middleware"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "middleware/basic_auth_test.go:19:2",
+            "middleware/clean_path_test.go:14:2",
+            "middleware/client_ip_example_test.go:74:2",
+            "middleware/client_ip_example_test.go:94:2",
+            "middleware/client_ip_test.go:397:2",
+            "middleware/client_ip_test.go:429:3"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "immerjs/immer",
+      "sha": "75a290e44ba14bd723c8ef8546b6559c8ef3ae88",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "src/utils/common.ts#latest",
+          "defining_unit": "src/utils",
+          "calls": 25,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/core/finalize.ts:126:21",
+            "src/plugins/arrayMethods.ts:255:38",
+            "src/core/finalize.ts:241:23",
+            "src/core/proxy.ts:125:18",
+            "src/core/proxy.ts:164:18",
+            "src/core/proxy.ts:167:26"
+          ]
+        },
+        {
+          "symbol": "src/utils/errors.ts#die",
+          "defining_unit": "src/utils",
+          "calls": 17,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/core/current.ts:18:23",
+            "src/plugins/mapset.ts:351:23",
+            "src/core/finalize.ts:35:4",
+            "src/core/immerClass.ts:100:66",
+            "src/core/immerClass.ts:134:10",
+            "src/core/immerClass.ts:153:27"
+          ]
+        },
+        {
+          "symbol": "src/utils/common.ts#isDraftable",
+          "defining_unit": "src/utils",
+          "calls": 12,
+          "units": [
+            "src/core",
+            "src/plugins"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/core/current.ts:23:7",
+            "src/plugins/mapset.ts:127:29",
+            "src/core/finalize.ts:238:13",
+            "src/core/finalize.ts:290:4",
+            "src/core/finalize.ts:311:14",
+            "src/core/finalize.ts:37:7"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "marshmallow-code/marshmallow",
+      "sha": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+      "language": "Python",
+      "qualifying_symbols": 6,
+      "examples": [
+        {
+          "symbol": "marshmallow.fields.String",
+          "defining_unit": "src/marshmallow",
+          "calls": 210,
+          "units": [
+            "examples",
+            "performance",
+            "tests",
+            "tests/mypy_test_cases"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/flask_example.py:53:13",
+            "performance/benchmark.py:24:13",
+            "tests/base.py:191:12",
+            "tests/mypy_test_cases/test_schema.py:16:21",
+            "examples/flask_example.py:54:12",
+            "examples/flask_example.py:70:15"
+          ]
+        },
+        {
+          "symbol": "marshmallow.fields.Integer",
+          "defining_unit": "src/marshmallow",
+          "calls": 158,
+          "units": [
+            "examples",
+            "performance",
+            "tests",
+            "tests/mypy_test_cases"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/flask_example.py:52:10",
+            "performance/benchmark.py:23:10",
+            "tests/base.py:210:20",
+            "tests/mypy_test_cases/test_schema.py:10:11",
+            "examples/flask_example.py:68:10",
+            "performance/benchmark.py:36:10"
+          ]
+        },
+        {
+          "symbol": "marshmallow.exceptions.ValidationError",
+          "defining_unit": "src/marshmallow",
+          "calls": 78,
+          "units": [
+            "examples",
+            "performance",
+            "tests",
+            "tests/mypy_test_cases"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/flask_example.py:64:15",
+            "performance/benchmark.py:19:15",
+            "tests/base.py:233:19",
+            "tests/mypy_test_cases/test_validation_error.py:11:1",
+            "examples/package_json_example.py:24:19",
+            "tests/base.py:93:19"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "microsoft/tsyringe",
+      "sha": "78222334f49265ea2874fac2c73284345c1124d9",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "src/decorators/injectable.ts#injectable",
+          "defining_unit": "src/decorators",
+          "calls": 66,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/__tests__/auto-injectable.test.ts:102:4",
+            "src/__tests__/fixtures/01-test-case-A01-injects-B01.ts:4:2",
+            "src/__tests__/auto-injectable.test.ts:150:4",
+            "src/__tests__/errors.test.ts:12:4",
+            "src/__tests__/errors.test.ts:17:4",
+            "src/__tests__/errors.test.ts:22:4"
+          ]
+        },
+        {
+          "symbol": "src/decorators/registry.ts#registry",
+          "defining_unit": "src/decorators",
+          "calls": 12,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/__tests__/fixtures/03-test-case-A03-lazy-injects-B03-interface.ts:10:2",
+            "src/__tests__/global-container.test.ts:577:4",
+            "src/__tests__/fixtures/03-test-case-B03-lazy-injects-A03-interface.ts:10:2",
+            "src/__tests__/global-container.test.ts:588:4",
+            "src/__tests__/global-container.test.ts:606:4",
+            "src/__tests__/global-container.test.ts:620:4"
+          ]
+        },
+        {
+          "symbol": "src/decorators/inject.ts#inject",
+          "defining_unit": "src/decorators",
+          "calls": 9,
+          "units": [
+            "src/__tests__",
+            "src/__tests__/fixtures"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "src/__tests__/errors.test.ts:42:18",
+            "src/__tests__/fixtures/02-test-case-A02-lazy-injects-B02.ts:7:16",
+            "src/__tests__/fixtures/02-test-case-B02-lazy-injects-A02.ts:11:16",
+            "src/__tests__/fixtures/03-test-case-A03-lazy-injects-B03-interface.ts:18:16",
+            "src/__tests__/fixtures/03-test-case-B03-lazy-injects-A03-interface.ts:18:16",
+            "src/__tests__/global-container.test.ts:713:18"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "pallets/click",
+      "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+      "language": "Python",
+      "qualifying_symbols": 16,
+      "examples": [
+        {
+          "symbol": "click.decorators.option",
+          "defining_unit": "src/click",
+          "calls": 275,
+          "units": [
+            "examples/aliases",
+            "examples/completion",
+            "examples/complex/complex",
+            "examples/imagepipe",
+            "examples/naval",
+            "examples/repo",
+            "examples/termui",
+            "examples/validation",
+            "tests",
+            "tests/typing"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/aliases/aliases.py:136:2",
+            "examples/completion/completion.py:13:2",
+            "examples/complex/complex/cli.py:49:2",
+            "examples/imagepipe/imagepipe.py:102:2",
+            "examples/naval/naval.py:31:2",
+            "examples/repo/repo.py:101:2"
+          ]
+        },
+        {
+          "symbol": "click.decorators.argument",
+          "defining_unit": "src/click",
+          "calls": 145,
+          "units": [
+            "examples/aliases",
+            "examples/completion",
+            "examples/complex/complex/commands",
+            "examples/inout",
+            "examples/naval",
+            "examples/repo",
+            "examples/termui",
+            "tests",
+            "tests/test_utils",
+            "tests/typing"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/aliases/aliases.py:134:2",
+            "examples/completion/completion.py:25:2",
+            "examples/complex/complex/commands/cmd_init.py:7:2",
+            "examples/inout/inout.py:5:2",
+            "examples/naval/naval.py:21:2",
+            "examples/repo/repo.py:124:2"
+          ]
+        },
+        {
+          "symbol": "click.types.Path",
+          "defining_unit": "src/click",
+          "calls": 48,
+          "units": [
+            "examples/aliases",
+            "examples/completion",
+            "examples/complex/complex",
+            "examples/complex/complex/commands",
+            "examples/imagepipe",
+            "examples/repo",
+            "tests",
+            "tests/test_types",
+            "tests/test_utils",
+            "tests/typing"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/aliases/aliases.py:137:27",
+            "examples/completion/completion.py:13:29",
+            "examples/complex/complex/cli.py:51:10",
+            "examples/complex/complex/commands/cmd_init.py:7:46",
+            "examples/imagepipe/imagepipe.py:105:10",
+            "examples/repo/repo.py:124:41"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "pressly/goose",
+      "sha": "2d285d2249855c959765409c68b17a6634f0acb4",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/pressly/goose/v3.GetDBVersion",
+          "defining_unit": "github.com/pressly/goose/v3",
+          "calls": 8,
+          "units": [
+            "github.com/pressly/goose/v3/tests/gomigrations/error",
+            "github.com/pressly/goose/v3/tests/gomigrations/success"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "tests/gomigrations/error/gomigrations_error_test.go:33:18",
+            "tests/gomigrations/success/gomigrations_success_test.go:31:19",
+            "tests/gomigrations/error/gomigrations_error_test.go:41:17",
+            "tests/gomigrations/error/gomigrations_error_test.go:55:17",
+            "tests/gomigrations/error/gomigrations_error_test.go:64:17",
+            "tests/gomigrations/success/gomigrations_success_test.go:39:19"
+          ]
+        },
+        {
+          "symbol": "github.com/pressly/goose/v3.RunContext",
+          "defining_unit": "github.com/pressly/goose/v3",
+          "calls": 3,
+          "units": [
+            "github.com/pressly/goose/v3/cmd/goose",
+            "github.com/pressly/goose/v3/examples/go-migrations"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "cmd/goose/main.go:123:13",
+            "examples/go-migrations/main.go:50:12",
+            "cmd/goose/main.go:128:13"
+          ]
+        },
+        {
+          "symbol": "github.com/pressly/goose/v3/database/dialect.Querier.DeleteVersion",
+          "defining_unit": "github.com/pressly/goose/v3/database/dialect",
+          "calls": 3,
+          "units": [
+            "github.com/pressly/goose/v3/database",
+            "github.com/pressly/goose/v3/internal/legacystore"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "database/dialects.go:108:7",
+            "internal/legacystore/legacystore.go:119:7",
+            "internal/legacystore/legacystore.go:125:7"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "python-attrs/attrs",
+      "sha": "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f",
+      "language": "Python",
+      "qualifying_symbols": 3,
+      "examples": [
+        {
+          "symbol": "attr._next_gen.field",
+          "defining_unit": "src/attr",
+          "calls": 138,
+          "units": [
+            "bench",
+            "tests",
+            "typing_tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/test_benchmarks.py:56:22",
+            "tests/dataclass_transform_example.py:18:27",
+            "typing_tests/baseline.py:102:23",
+            "bench/test_benchmarks.py:57:22",
+            "bench/test_benchmarks.py:58:22",
+            "tests/dataclass_transform_example.py:51:15"
+          ]
+        },
+        {
+          "symbol": "attr._next_gen.define",
+          "defining_unit": "src/attr",
+          "calls": 54,
+          "units": [
+            "bench",
+            "tests",
+            "typing_tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/test_benchmarks.py:206:6",
+            "tests/dataclass_transform_example.py:16:2",
+            "typing_tests/baseline.py:142:2",
+            "tests/dataclass_transform_example.py:37:2",
+            "tests/dataclass_transform_example.py:60:2",
+            "tests/dataclass_transform_example.py:7:2"
+          ]
+        },
+        {
+          "symbol": "attr._make.Factory",
+          "defining_unit": "src/attr",
+          "calls": 34,
+          "units": [
+            "bench",
+            "tests",
+            "typing_tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "bench/test_benchmarks.py:182:27",
+            "tests/strategies.py:70:52",
+            "typing_tests/baseline.py:180:17",
+            "bench/test_benchmarks.py:69:25",
+            "tests/test_annotations.py:110:35",
+            "tests/test_annotations.py:126:16"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "reduxjs/redux",
+      "sha": "61ebf8596654cf3c4b197e426e302fcb3c2bc13e",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "test/helpers/actionCreators.ts#unknownAction",
+          "defining_unit": "test/helpers",
+          "calls": 22,
+          "units": [
+            "test"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "test/createStore.spec.ts:104:20",
+            "test/createStore.spec.ts:212:20",
+            "test/createStore.spec.ts:217:20",
+            "test/createStore.spec.ts:226:20",
+            "test/createStore.spec.ts:235:20",
+            "test/createStore.spec.ts:244:20"
+          ]
+        },
+        {
+          "symbol": "test/helpers/actionCreators.ts#addTodo",
+          "defining_unit": "test/helpers",
+          "calls": 19,
+          "units": [
+            "test"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "test/applyMiddleware.spec.ts:11:22",
+            "test/applyMiddleware.spec.ts:33:20",
+            "test/applyMiddleware.spec.ts:34:20",
+            "test/applyMiddleware.spec.ts:86:20",
+            "test/bindActionCreators.spec.ts:29:20",
+            "test/bindActionCreators.spec.ts:30:28"
+          ]
+        },
+        {
+          "symbol": "src/compose.ts#compose",
+          "defining_unit": "src",
+          "calls": 16,
+          "units": [
+            "test"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "test/compose.spec.ts:10:14",
+            "test/compose.spec.ts:19:14",
+            "test/compose.spec.ts:20:14",
+            "test/compose.spec.ts:21:14",
+            "test/compose.spec.ts:30:9",
+            "test/compose.spec.ts:33:20"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "spf13/cobra",
+      "sha": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/spf13/cobra.*Command.CommandPath",
+          "defining_unit": "github.com/spf13/cobra",
+          "calls": 17,
+          "units": [
+            "github.com/spf13/cobra/doc"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "doc/man_docs.go:109:31",
+            "doc/man_docs.go:207:40",
+            "doc/man_docs.go:221:18",
+            "doc/man_docs.go:70:33",
+            "doc/man_docs_test.go:53:16",
+            "doc/man_docs_test.go:88:16"
+          ]
+        },
+        {
+          "symbol": "github.com/spf13/cobra.*Command.Name",
+          "defining_unit": "github.com/spf13/cobra",
+          "calls": 15,
+          "units": [
+            "github.com/spf13/cobra/doc"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "doc/man_docs.go:237:61",
+            "doc/man_docs_test.go:100:40",
+            "doc/man_docs_test.go:59:43",
+            "doc/man_docs_test.go:60:43",
+            "doc/man_docs_test.go:63:43",
+            "doc/man_docs_test.go:64:43"
+          ]
+        },
+        {
+          "symbol": "github.com/spf13/cobra.WriteStringAndCheck",
+          "defining_unit": "github.com/spf13/cobra",
+          "calls": 11,
+          "units": [
+            "github.com/spf13/cobra/doc"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "doc/man_docs.go:149:2",
+            "doc/man_docs.go:152:2",
+            "doc/man_docs.go:153:2",
+            "doc/man_docs.go:154:2",
+            "doc/man_docs.go:155:2",
+            "doc/man_docs.go:156:2"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "stretchr/testify",
+      "sha": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+      "language": "Go",
+      "qualifying_symbols": 8,
+      "examples": [
+        {
+          "symbol": "github.com/stretchr/testify/assert.Equal",
+          "defining_unit": "github.com/stretchr/testify/assert",
+          "calls": 232,
+          "units": [
+            "github.com/stretchr/testify",
+            "github.com/stretchr/testify/mock",
+            "github.com/stretchr/testify/require",
+            "github.com/stretchr/testify/suite"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "mock/mock.go:674:9",
+            "package_test.go:10:5",
+            "require/require.go:177:5",
+            "suite/suite_test.go:224:2",
+            "mock/mock_test.go:1257:5",
+            "mock/mock_test.go:1259:4"
+          ]
+        },
+        {
+          "symbol": "github.com/stretchr/testify/assert.False",
+          "defining_unit": "github.com/stretchr/testify/assert",
+          "calls": 41,
+          "units": [
+            "github.com/stretchr/testify/assert/internal/unsafetests",
+            "github.com/stretchr/testify/mock",
+            "github.com/stretchr/testify/require",
+            "github.com/stretchr/testify/suite"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "assert/internal/unsafetests/unsafetests_test.go:27:2",
+            "mock/mock_test.go:1489:2",
+            "require/require.go:565:5",
+            "suite/stats_test.go:28:2",
+            "assert/internal/unsafetests/unsafetests_test.go:30:2",
+            "assert/internal/unsafetests/unsafetests_test.go:32:2"
+          ]
+        },
+        {
+          "symbol": "github.com/stretchr/testify/assert.True",
+          "defining_unit": "github.com/stretchr/testify/assert",
+          "calls": 41,
+          "units": [
+            "github.com/stretchr/testify/assert/internal/unsafetests",
+            "github.com/stretchr/testify/mock",
+            "github.com/stretchr/testify/require",
+            "github.com/stretchr/testify/suite"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "assert/internal/unsafetests/unsafetests_test.go:26:2",
+            "mock/mock_test.go:1469:2",
+            "require/require.go:2039:5",
+            "suite/stats_test.go:17:2",
+            "assert/internal/unsafetests/unsafetests_test.go:29:2",
+            "assert/internal/unsafetests/unsafetests_test.go:33:2"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "typestack/class-transformer",
+      "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+      "language": "TypeScript",
+      "qualifying_symbols": 4,
+      "examples": [
+        {
+          "symbol": "src/decorators/type.decorator.ts#Type",
+          "defining_unit": "src/decorators",
+          "calls": 79,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample3-custom-arrays",
+            "sample/sample4-generics",
+            "sample/sample5-custom-transformer",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample1-simple-usage/Album.ts:10:4",
+            "sample/sample2-iheritance/Album.ts:11:4",
+            "sample/sample3-custom-arrays/Photo.ts:14:4",
+            "sample/sample4-generics/SuperCollection.ts:7:4",
+            "sample/sample5-custom-transformer/User.ts:9:4",
+            "test/functional/basic-functionality.spec.ts:1015:8"
+          ]
+        },
+        {
+          "symbol": "src/decorators/exclude.decorator.ts#Exclude",
+          "defining_unit": "src/decorators",
+          "calls": 53,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample4-generics",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample1-simple-usage/Album.ts:7:4",
+            "sample/sample2-iheritance/Album.ts:8:4",
+            "sample/sample4-generics/SuperCollection.ts:4:4",
+            "test/functional/basic-functionality.spec.ts:126:8",
+            "sample/sample2-iheritance/Authorable.ts:7:4",
+            "sample/sample2-iheritance/Photo.ts:12:4"
+          ]
+        },
+        {
+          "symbol": "src/index.ts#classToPlain",
+          "defining_unit": "src",
+          "calls": 6,
+          "units": [
+            "sample/sample1-simple-usage",
+            "sample/sample2-iheritance",
+            "sample/sample3-custom-arrays",
+            "sample/sample5-custom-transformer"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample1-simple-usage/app.ts:35:20",
+            "sample/sample2-iheritance/app.ts:38:20",
+            "sample/sample3-custom-arrays/app.ts:33:20",
+            "sample/sample5-custom-transformer/app.ts:19:13",
+            "sample/sample1-simple-usage/app.ts:90:21",
+            "sample/sample2-iheritance/app.ts:93:21"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "typestack/class-validator",
+      "sha": "2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603",
+      "language": "TypeScript",
+      "qualifying_symbols": 12,
+      "examples": [
+        {
+          "symbol": "src/validation/Validator.ts#validate",
+          "defining_unit": "src/validation",
+          "calls": 143,
+          "units": [
+            "sample/sample2-using-groups",
+            "sample/sample3-nested-objects",
+            "sample/sample4-custom-validator",
+            "sample/sample6-custom-decorator",
+            "sample/sample8-es6-maps",
+            "sample/sample9-es6-sets",
+            "src",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "sample/sample2-using-groups/app.ts:14:1",
+            "sample/sample3-nested-objects/app.ts:17:1",
+            "sample/sample4-custom-validator/app.ts:16:1",
+            "sample/sample6-custom-decorator/app.ts:16:1",
+            "sample/sample8-es6-maps/app.ts:19:1",
+            "sample/sample9-es6-sets/app.ts:19:1"
+          ]
+        },
+        {
+          "symbol": "src/decorator/common/ValidateBy.ts#buildMessage",
+          "defining_unit": "src/decorator/common",
+          "calls": 97,
+          "units": [
+            "src/decorator/array",
+            "src/decorator/date",
+            "src/decorator/number",
+            "src/decorator/object",
+            "src/decorator/string",
+            "src/decorator/typechecker",
+            "test/functional"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "src/decorator/array/ArrayContains.ts:27:25",
+            "src/decorator/date/MaxDate.ts:23:25",
+            "src/decorator/number/IsDivisibleBy.ts:24:25",
+            "src/decorator/object/IsInstance.ts:28:25",
+            "src/decorator/string/Contains.ts:26:25",
+            "src/decorator/typechecker/IsArray.ts:22:25"
+          ]
+        },
+        {
+          "symbol": "src/decorator/common/ValidateBy.ts#ValidateBy",
+          "defining_unit": "src/decorator/common",
+          "calls": 96,
+          "units": [
+            "src/decorator/array",
+            "src/decorator/date",
+            "src/decorator/number",
+            "src/decorator/object",
+            "src/decorator/string",
+            "src/decorator/typechecker"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "src/decorator/array/ArrayContains.ts:21:10",
+            "src/decorator/date/MaxDate.ts:17:10",
+            "src/decorator/number/IsDivisibleBy.ts:18:10",
+            "src/decorator/object/IsInstance.ts:22:10",
+            "src/decorator/string/Contains.ts:20:10",
+            "src/decorator/typechecker/IsArray.ts:17:10"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "urfave/cli",
+      "sha": "89ad11673146784b702fb14ce1e29f2b864e51c2",
+      "language": "Go",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "github.com/urfave/cli/v3.*Command.Run",
+          "defining_unit": "github.com/urfave/cli/v3",
+          "calls": 2,
+          "units": [
+            "github.com/urfave/cli/v3/examples/example-cli",
+            "github.com/urfave/cli/v3/scripts"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "examples/example-cli/example-cli.go:12:6",
+            "scripts/build.go:164:12"
+          ]
+        },
+        {
+          "symbol": "github.com/urfave/cli/v3.*Command.String",
+          "defining_unit": "github.com/urfave/cli/v3",
+          "calls": 14,
+          "units": [
+            "github.com/urfave/cli/v3/scripts"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "scripts/build.go:181:22",
+            "scripts/build.go:238:34",
+            "scripts/build.go:242:10",
+            "scripts/build.go:299:27",
+            "scripts/build.go:445:10",
+            "scripts/build.go:513:12"
+          ]
+        },
+        {
+          "symbol": "github.com/urfave/cli/v3.*Command.Bool",
+          "defining_unit": "github.com/urfave/cli/v3",
+          "calls": 3,
+          "units": [
+            "github.com/urfave/cli/v3/scripts"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "scripts/build.go:336:10",
+            "scripts/build.go:593:5",
+            "scripts/build.go:655:7"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "trpc/trpc",
+      "sha": "8d09833c76791b2ea7270af174fdab9f1408aeb8",
+      "language": "TypeScript",
+      "qualifying_symbols": 13,
+      "examples": [
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/utils.ts#run",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import",
+          "calls": 32,
+          "units": [
+            "packages/server/src/__tests__",
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import/http",
+            "packages/server/src/unstable-core-do-not-import/stream",
+            "packages/server/src/unstable-core-do-not-import/stream/utils"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "packages/server/src/__tests__/fetchServerResource.ts:15:5",
+            "packages/server/src/adapters/express.ts:30:5",
+            "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:85:7",
+            "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts:277:57",
+            "packages/server/src/unstable-core-do-not-import/stream/jsonl.test.ts:37:21",
+            "packages/server/src/unstable-core-do-not-import/stream/utils/mergeAsyncIterables.test.ts:120:5"
+          ]
+        },
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#getTRPCErrorFromUnknown",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+          "calls": 20,
+          "units": [
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/next-app-dir",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import",
+            "packages/server/src/unstable-core-do-not-import/http",
+            "packages/server/src/unstable-core-do-not-import/stream"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:65:21",
+            "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:103:24",
+            "packages/server/src/adapters/ws.ts:162:23",
+            "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts:203:17",
+            "packages/server/src/unstable-core-do-not-import/middleware.ts:261:37",
+            "packages/server/src/unstable-core-do-not-import/stream/sse.ts:192:21"
+          ]
+        },
+        {
+          "symbol": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts#TRPCError.constructor",
+          "defining_unit": "packages/server/src/unstable-core-do-not-import/error",
+          "calls": 42,
+          "units": [
+            "packages/server/src/adapters",
+            "packages/server/src/adapters/next-app-dir",
+            "packages/server/src/adapters/node-http",
+            "packages/server/src/unstable-core-do-not-import",
+            "packages/server/src/unstable-core-do-not-import/http"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:128:15",
+            "packages/server/src/adapters/next.ts:47:15",
+            "packages/server/src/adapters/node-http/incomingMessageToRequest.ts:109:11",
+            "packages/server/src/unstable-core-do-not-import/http/contentType.ts:113:13",
+            "packages/server/src/unstable-core-do-not-import/middleware.ts:204:15",
+            "packages/server/src/adapters/next-app-dir/nextAppDirCaller.ts:55:21"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "remeda/remeda",
+      "sha": "d02c3bdb5e18cfa53e76f33f4ae525adce515379",
+      "language": "TypeScript",
+      "qualifying_symbols": 0,
+      "examples": [
+        {
+          "symbol": "packages/docs/src/lib/sort-categories.ts#sortByCategories",
+          "defining_unit": "packages/docs/src/lib",
+          "calls": 4,
+          "units": [
+            "packages/docs/src/lib/articles",
+            "packages/docs/src/lib/functions",
+            "packages/docs/src/lib/mapping",
+            "packages/docs/src/lib/v1"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "packages/docs/src/lib/articles/entries.ts:39:5",
+            "packages/docs/src/lib/functions/entries.ts:18:5",
+            "packages/docs/src/lib/mapping/entries.ts:30:5",
+            "packages/docs/src/lib/v1/entries.ts:14:5"
+          ]
+        },
+        {
+          "symbol": "packages/remeda/test/$typed.ts#$typed",
+          "defining_unit": "packages/remeda/test",
+          "calls": 468,
+          "units": [
+            "packages/remeda/src",
+            "packages/remeda/src/internal/types"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "packages/remeda/src/constant.test-d.ts:45:21",
+            "packages/remeda/src/internal/types/ArrayAt.test-d.ts:12:35",
+            "packages/remeda/src/defaultTo.test-d.ts:232:11",
+            "packages/remeda/src/defaultTo.test-d.ts:239:55",
+            "packages/remeda/src/defaultTo.test-d.ts:275:21",
+            "packages/remeda/src/defaultTo.test-d.ts:284:21"
+          ]
+        },
+        {
+          "symbol": "packages/remeda/test/$missingPropertyType.ts#$missingPropertyType",
+          "defining_unit": "packages/remeda/test",
+          "calls": 5,
+          "units": [
+            "packages/remeda/src",
+            "packages/remeda/src/internal/types"
+          ],
+          "qualifies": false,
+          "site_examples": [
+            "packages/remeda/src/filter.test-d.ts:273:25",
+            "packages/remeda/src/internal/types/TupleParts.test-d.ts:310:29",
+            "packages/remeda/src/filter.test-d.ts:279:23",
+            "packages/remeda/src/partialBind.test-d.ts:103:20",
+            "packages/remeda/src/partialLastBind.test-d.ts:103:20"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "reduxjs/redux-toolkit",
+      "sha": "0fd611cc79d44990ac9a040dec4d5cb446233440",
+      "language": "TypeScript",
+      "qualifying_symbols": 26,
+      "examples": [
+        {
+          "symbol": "packages/toolkit/src/configureStore.ts#configureStore@121",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 213,
+          "units": [
+            "examples/action-listener/counter/src",
+            "examples/action-listener/counter/src/services/counter/tests",
+            "examples/publish-ci/expo/src/app",
+            "examples/publish-ci/next/src/app",
+            "examples/publish-ci/next/src/app-core",
+            "examples/publish-ci/react-native",
+            "examples/publish-ci/react-native/src/app",
+            "examples/publish-ci/vite/src/app-core",
+            "examples/query/react/authentication/src/app",
+            "examples/query/react/basic/src",
+            "examples/query/react/infinite-queries/src/app",
+            "examples/query/react/kitchen-sink/src/app",
+            "examples/query/react/mutations/src",
+            "examples/type-portability/bundler/src/app",
+            "examples/type-portability/nodenext-cjs/src/app",
+            "examples/type-portability/nodenext-esm/src/app",
+            "packages/toolkit/src/dynamicMiddleware/tests",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware/tests",
+            "packages/toolkit/src/query/react",
+            "packages/toolkit/src/query/tests",
+            "packages/toolkit/src/tests",
+            "packages/toolkit/src/tests/utils"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/action-listener/counter/src/services/counter/tests/listener.test.ts:25:12",
+            "examples/action-listener/counter/src/store.ts:17:15",
+            "examples/publish-ci/expo/src/app/store.ts:16:17",
+            "examples/publish-ci/next/src/app-core/store.ts:7:3",
+            "examples/publish-ci/next/src/app/ServerApiInfo.tsx:9:17",
+            "examples/publish-ci/react-native/App.test.tsx:204:17"
+          ]
+        },
+        {
+          "symbol": "packages/toolkit/src/createSlice.ts#createSlice@572",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 115,
+          "units": [
+            "examples/action-listener/counter/src/services/counter",
+            "examples/action-listener/counter/src/services/theme",
+            "examples/publish-ci/expo/src/features/counter",
+            "examples/publish-ci/next/src/features/counter",
+            "examples/publish-ci/react-native/src/features/counter",
+            "examples/publish-ci/vite/src/features/counter",
+            "examples/query/react/authentication/src/features/auth",
+            "examples/query/react/kitchen-sink/src/features/auth",
+            "examples/query/react/kitchen-sink/src/features/polling",
+            "examples/type-portability/bundler/src/features/auth",
+            "examples/type-portability/bundler/src/features/polling",
+            "examples/type-portability/nodenext-cjs/src/features/auth",
+            "examples/type-portability/nodenext-cjs/src/features/polling",
+            "examples/type-portability/nodenext-esm/src/features/auth",
+            "examples/type-portability/nodenext-esm/src/features/polling",
+            "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__",
+            "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware/tests",
+            "packages/toolkit/src/query/core",
+            "packages/toolkit/src/query/tests",
+            "packages/toolkit/src/tests"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/action-listener/counter/src/services/counter/slice.ts:16:29",
+            "examples/action-listener/counter/src/services/theme/slice.ts:10:27",
+            "examples/publish-ci/expo/src/features/counter/counterSlice.ts:17:29",
+            "examples/publish-ci/next/src/features/counter/counterSlice.ts:23:29",
+            "examples/publish-ci/react-native/src/features/counter/counterSlice.ts:17:29",
+            "examples/publish-ci/vite/src/features/counter/counterSlice.ts:23:29"
+          ]
+        },
+        {
+          "symbol": "packages/toolkit/src/nanoid.ts#nanoid@11",
+          "defining_unit": "packages/toolkit/src",
+          "calls": 41,
+          "units": [
+            "examples/action-listener/counter/src/services/counter",
+            "examples/query/react/authentication/src/mocks",
+            "examples/query/react/graphql-codegen/src/mocks",
+            "examples/query/react/graphql/src/mocks",
+            "examples/query/react/kitchen-sink/src/features/counter",
+            "examples/query/react/kitchen-sink/src/features/time",
+            "examples/query/react/kitchen-sink/src/mocks",
+            "examples/query/react/mutations/src/mocks",
+            "examples/query/react/prefetching/src/mocks",
+            "examples/type-portability/bundler/src/features/counter",
+            "examples/type-portability/bundler/src/features/time",
+            "examples/type-portability/nodenext-cjs/src/features/counter",
+            "examples/type-portability/nodenext-cjs/src/features/time",
+            "examples/type-portability/nodenext-esm/src/features/counter",
+            "examples/type-portability/nodenext-esm/src/features/time",
+            "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__",
+            "packages/toolkit/src/dynamicMiddleware",
+            "packages/toolkit/src/entities/tests",
+            "packages/toolkit/src/listenerMiddleware",
+            "packages/toolkit/src/query",
+            "packages/toolkit/src/query/core"
+          ],
+          "qualifies": true,
+          "site_examples": [
+            "examples/action-listener/counter/src/services/counter/slice.ts:28:13",
+            "examples/query/react/authentication/src/mocks/handlers.ts:4:15",
+            "examples/query/react/graphql-codegen/src/mocks/db.ts:36:9",
+            "examples/query/react/graphql/src/mocks/db.ts:27:9",
+            "examples/query/react/kitchen-sink/src/features/counter/CounterList.tsx:14:66",
+            "examples/query/react/kitchen-sink/src/features/time/TimeList.tsx:120:6"
+          ]
+        }
+      ]
+    }
+  ]
+}
