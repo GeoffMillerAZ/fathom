@@ -191,7 +191,11 @@ func mineCandidate(ctx context.Context, clone, commit, parent string, runner Tes
 		}
 	}
 	sort.Strings(passToPass)
-	return &FixCommit{Commit: commit, Parent: parent, CreatedAt: strings.TrimSpace(created), Shape: "revert-and-redo",
+	createdAt, err := utcCommitTime(created)
+	if err != nil {
+		return nil, fmt.Errorf("commit %s author date: %w", commit, err)
+	}
+	return &FixCommit{Commit: commit, Parent: parent, CreatedAt: createdAt, Shape: "revert-and-redo",
 		BaseCommit: parent, GoldPatch: code, RevertPatch: reverse, TestPatch: tests,
 		FailToPass: failToPass, PassToPass: passToPass}, nil
 }
@@ -475,4 +479,15 @@ func runGoTests(ctx context.Context, checkout, commit string, args []string, all
 		return nil, fmt.Errorf("go test at %s: %w: %s", commit, runErr, stderr.String())
 	}
 	return results, nil
+}
+
+// utcCommitTime normalizes git's strict ISO 8601 author date (%aI) to RFC 3339
+// in UTC. Git releases differ in how they print a zero offset (Z or +00:00),
+// and a mined task's provenance must read the same on every machine.
+func utcCommitTime(raw string) (string, error) {
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(raw))
+	if err != nil {
+		return "", err
+	}
+	return t.UTC().Format(time.RFC3339), nil
 }

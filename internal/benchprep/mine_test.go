@@ -246,3 +246,22 @@ func TestMineFixCommitsRequiresMatchingPackageAndParentPassEvidence(t *testing.T
 		})
 	}
 }
+
+// TestUTCCommitTime pins a mined commit's time to RFC 3339 in UTC, so git
+// versions that print an offset (+00:00) and those that print Z agree.
+func TestUTCCommitTime(t *testing.T) {
+	for in, want := range map[string]string{
+		"2026-01-02T03:04:05Z":         "2026-01-02T03:04:05Z",
+		"2026-01-02T03:04:05+00:00":    "2026-01-02T03:04:05Z",
+		"2026-01-02T05:04:05+02:00":    "2026-01-02T03:04:05Z",
+		" 2026-01-01T22:04:05-05:00\n": "2026-01-02T03:04:05Z",
+	} {
+		got, err := utcCommitTime(in)
+		if err != nil || got != want {
+			t.Errorf("utcCommitTime(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	if _, err := utcCommitTime("yesterday"); err == nil {
+		t.Error("utcCommitTime accepted a non-RFC 3339 time")
+	}
+}
