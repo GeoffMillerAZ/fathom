@@ -1,8 +1,7 @@
-"""Prepare only the pinned ARM64 vendor payload, without executing it."""
+"""Prepare a pinned vendor architecture payload, without executing it."""
 import argparse
 import hashlib
 import json
-import platform
 import shutil
 import struct
 import zlib
@@ -22,13 +21,13 @@ def disk_floor():
         raise ValueError('native preparation requires at least 20 GiB free')
 
 
-def native_ranges(rows, central_offset):
+def native_ranges(rows, central_offset, prefix=PREFIX):
     ordered = sorted(rows, key=lambda row: row['offset'])
     if len({row['offset'] for row in ordered}) != len(ordered):
         raise ValueError('duplicate local ZIP offsets')
     groups = []
     for index, row in enumerate(ordered):
-        if not row['name'].startswith(PREFIX):
+        if not row['name'].startswith(prefix):
             continue
         end = ordered[index + 1]['offset'] if index + 1 < len(ordered) else central_offset
         overhead = end - row['offset'] - row['compressed']
@@ -44,7 +43,7 @@ def native_ranges(rows, central_offset):
     return groups
 
 
-def unpack_span(data, start, rows, destination):
+def unpack_span(data, start, rows, destination, prefix=PREFIX):
     if not rows or len(rows) > MAX_FILES:
         raise ValueError('native payload file count exceeds budget')
     if any(row['uncompressed'] > MAX_SINGLE_BYTES for row in rows) or sum(row['uncompressed'] for row in rows) > MAX_TOTAL_BYTES:
@@ -52,9 +51,9 @@ def unpack_span(data, start, rows, destination):
     contents, folded = {}, set()
     for row in rows:
         name = row['name']
-        if not name.startswith(PREFIX):
+        if not name.startswith(prefix):
             raise ValueError('unexpected architecture payload')
-        relative = name[len(PREFIX):]
+        relative = name[len(prefix):]
         path = PurePosixPath(relative)
         mode = row.get('external_attributes', 0) >> 16
         if (not relative or path.is_absolute() or '..' in path.parts or '\\' in relative or '\0' in relative or
@@ -101,7 +100,10 @@ def unpack_span(data, start, rows, destination):
                 apphost_sha256=hashlib.sha256(contents['PolicyLanguageServer']).hexdigest())
 
 
-def prepare(cache):
+def prepare(cache, rid="osx-arm64", expected=None):
+    if rid not in ("osx-arm64", "linux-x64"):
+        raise ValueError("unsupported pinned runtime")
+    prefix = "extension/out/artifacts/" + rid + "/"
     disk_floor()
     cache.mkdir(parents=True, exist_ok=True)
     destination = cache / 'payload'
@@ -113,11 +115,11 @@ def prepare(cache):
     if hashlib.sha256(raw).hexdigest() != directory['sha256']:
         raise ValueError('native archive directory identity mismatch')
     all_rows = directory_rows(raw, directory['entries'])
-    rows = [row for row in all_rows if row['name'].startswith(PREFIX)]
+    rows = [row for row in all_rows if row['name'].startswith(prefix)]
     rows.sort(key=lambda row: row['offset'])
     if len(rows) != 455:
         raise ValueError('native architecture entry population changed')
-    groups = native_ranges(all_rows, directory['offset'])
+    groups = native_ranges(all_rows, directory['offset'], prefix)
     entries = {}
     for group in groups:
         parts = []
@@ -129,11 +131,13 @@ def prepare(cache):
             end = group['rows'][index + 1]['offset'] if index + 1 < len(group['rows']) else group['end']
             entries[row['offset']] = block[row['offset'] - group['start']:end - group['start']]
     try:
-        receipt = unpack_span(entries, 0, rows, destination)
+        receipt = unpack_span(entries, 0, rows, destination, prefix)
+        if expected and any(receipt[key] != expected[key] for key in ("files", "bytes", "manifest_sha256", "apphost_sha256")):
+            raise ValueError("native whole-payload SHA-256 identity mismatch")
     except Exception:
         shutil.rmtree(destination, ignore_errors=True)
         raise
-    receipt.update(version=pin['version'], archive_directory_sha256=directory['sha256'],
+    receipt.update(rid=rid, version=pin['version'], archive_directory_sha256=directory['sha256'],
                    fetched_native_ranges=len(groups), fetched_native_bytes=sum(g['end'] - g['start'] for g in groups),
                    kind='native preparation only; not executed', native_executed=False)
     (cache / 'preparation-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
@@ -143,7 +147,6 @@ def prepare(cache):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-cache', type=Path, required=True)
+    parser.add_argument('-rid', choices=['osx-arm64', 'linux-x64'], default='osx-arm64')
     args = parser.parse_args()
-    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise SystemExit('this protocol selects macOS ARM64 only')
-    print(json.dumps(prepare(args.cache.resolve()), sort_keys=True))
+    print(json.dumps(prepare(args.cache.resolve(), args.rid), sort_keys=True))

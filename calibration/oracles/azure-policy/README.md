@@ -6,7 +6,7 @@ references. The canonical reading remains 55,711 matched definitions out of
 The walk's former assertion that no Azure tool evaluates policies offline is
 withdrawn. No reading, tier or generated tracker changes in this audit.
 
-## Native route found, not yet executed
+## Native route found; Linux x64 run pending
 
 Microsoft's `AzurePolicy.azurepolicyextension` 0.2.6 (MIT) contains a
 self-contained `osx-arm64/PolicyLanguageServer`, .NET/ASP.NET 9.0.12 runtime
@@ -28,7 +28,12 @@ the bundled generic LSP client are not evidence of server capabilities.
 source/metadata entries by SHA-256. These are selective source identities,
 not a checksum or execution receipt for the complete native distribution.
 The native ARM64 directory totals 455 entries, 49,565,609 compressed bytes and
-129,976,447 uncompressed bytes. It has not been extracted or run here.
+129,976,447 uncompressed bytes. It was prepared and probed here. The ARM64 wrapper bundles AMD64 policy
+libraries; the official ARM64 .NET 9.0.12 host reaches managed Main but fails
+to load them. Direct apphost and hostfxr attempts terminate before output.
+No native evaluation or complete binding population has been measured.
+T-R9 directs the staged [Linux x64 probe](LINUX-X64-PROBE.md) to a controller
+runner; no Rosetta or global installation is authorized.
 
 ## Reproduce the bounded source audit
 
@@ -55,9 +60,9 @@ their own versioned audits before any renewed ceiling claim. Historical
 EnterprisePolicyAsCode 11.5.8 property reads and Bicep validation were checked
 by the prior assessment; neither supplied positioned parameter-use bindings.
 
-Next, while respecting the 20 GiB disk floor and the serial/load limit, pin
-the actual native payload and test it in isolation with no Azure login,
-external requests or telemetry. Inspect native parsing/evaluation interfaces
+Next, run the pinned Linux x64 probe on the controller-provided runner.
+Both native payloads and the ARM64 .NET host have been measured for identity
+and removed locally after receipts were packaged. Inspect native parsing/evaluation interfaces
 for a complete population of definition/parameter uses before comparison;
 positions may be classified separately, with their authority disclosed.
 Require authored invalid-binding, unused-declaration, namespace and identity

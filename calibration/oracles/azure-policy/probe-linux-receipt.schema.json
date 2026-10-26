@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Azure Policy Linux x64 authored probe receipt, never a calibration reading",
+  "type": "object",
+  "required": ["schema_version", "candidate", "rid", "status", "native_executed", "script_sha256", "inputs_sha256", "payload_manifest_sha256", "isolation", "calibration_measured", "tier_granted"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "candidate": {"const": "AzurePolicy.azurepolicyextension/0.2.6"},
+    "rid": {"const": "linux-x64"},
+    "status": {"enum": ["probe_refused", "namespace_worker_failed", "probe_timeout", "native_probe_failed", "probe_complete_requires_analysis"]},
+    "native_executed": {"type": ["boolean", "null"]},
+    "script_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "inputs_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "payload_manifest_sha256": {"const": "53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4"},
+    "isolation": {"type": "string"},
+    "calibration_measured": {"const": false},
+    "tier_granted": {"const": false},
+    "initialize": {"type": "object"},
+    "capability_keys": {"type": "array", "items": {"type": "string"}},
+    "reference_provider": {"type": "boolean"},
+    "definition_provider": {"type": "boolean"},
+    "cache_command": {"type": "object"},
+    "definition": {"type": "object"},
+    "references": {"type": "object"},
+    "evaluations": {"type": "array", "items": {"type": "object", "required": ["variant", "http_status", "sha256", "bytes"]}},
+    "native_returncode": {"type": "integer"}
+  },
+  "allOf": [{"if": {"properties": {"status": {"const": "probe_complete_requires_analysis"}}}, "then": {"required": ["initialize", "capability_keys", "definition", "references", "evaluations", "native_returncode"]}}]
+}
