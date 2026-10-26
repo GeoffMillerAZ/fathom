@@ -193,3 +193,44 @@ func TestStratifyTaskRefusesDanglingGold(t *testing.T) {
 		t.Fatal("accepted existing dangling symlink as absent base gold")
 	}
 }
+
+// D22 fixes the primary definition before BX-42 reads yield. The secondary
+// restricts issue tokens, while retaining word-tokenized base text and comments.
+func TestStratifyTaskD22Definitions(t *testing.T) {
+	for _, tt := range []struct {
+		name, issue, text, primary, code string
+	}{
+		{"reviewer probe", "Viewing a pull request shows the wrong title", "package example\n// pull request title\n", "lexical", "non-lexical"},
+		{"prose identifier retained", "the uploader retry hangs forever", "package uploader", "lexical", "non-lexical"},
+		{"initial capital is prose", "Uploader fails", "package uploader", "lexical", "non-lexical"},
+		{"backticked lowercase", "the `uploader` fails", "// uploader", "lexical", "lexical"},
+		{"multiword backticks", "`pull request title` fails", "// request", "lexical", "lexical"},
+		{"unmatched backtick", "`uploader fails", "// uploader", "lexical", "lexical"},
+		{"camel case", "CacheEntry fails", "// cacheentry", "lexical", "lexical"},
+		{"snake case", "cache_entry fails", "// cache_entry", "lexical", "lexical"},
+		{"qualified leaf", "Client.DoRequest fails", "func DoRequest() {}", "lexical", "lexical"},
+		{"qualified component", "Client.DoRequest fails", "type Client struct{}", "lexical", "lexical"},
+		{"path component", "src/cache.go fails", "// cache", "lexical", "lexical"},
+		{"unicode camel case", "a读取值B fails", "// a读取值b", "lexical", "lexical"},
+		{"whole tokens", "CacheEntry fails", "// CacheEntrySuffix", "non-lexical", "non-lexical"},
+		{"filtered query", "the and `nil` `id`", "// the and nil id", "non-lexical", "non-lexical"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := StratifyTask(fstest.MapFS{"gold.go": {Data: []byte(tt.text)}}, tt.issue, []string{"gold.go", "created.go"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := json.Marshal(got)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var labels map[string]json.RawMessage
+			if err := json.Unmarshal(data, &labels); err != nil {
+				t.Fatal(err)
+			}
+			if string(labels["d_a"]) != fmt.Sprintf("%q", tt.primary) || string(labels["d_a_code"]) != fmt.Sprintf("%q", tt.code) {
+				t.Fatalf("D22 labels = %s, want d_a=%q d_a_code=%q", data, tt.primary, tt.code)
+			}
+		})
+	}
+}

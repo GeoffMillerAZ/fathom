@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -50,13 +51,14 @@ type LexicalFileRank struct {
 	Score float64 `json:"score"`
 }
 
-// Stratification keeps both pre-declared definitions for the controller
-// to choose later. Each definition is "lexical" or "non-lexical".
+// Stratification keeps D22's primary D-a, secondary D-a-code, and the
+// pre-declared D-b alternative. Each label is "lexical" or "non-lexical".
 type Stratification struct {
-	DefinitionA string            `json:"d_a"`
-	DefinitionB string            `json:"d_b"`
-	LexicalRank int               `json:"lexical_rank,omitempty"`
-	Ranking     []LexicalFileRank `json:"ranking"`
+	DefinitionA     string            `json:"d_a"`
+	DefinitionACode string            `json:"d_a_code"`
+	DefinitionB     string            `json:"d_b"`
+	LexicalRank     int               `json:"lexical_rank,omitempty"`
+	Ranking         []LexicalFileRank `json:"ranking"`
 }
 
 // StratifyTask reads a caller-supplied base-tree snapshot, never a live
@@ -68,13 +70,17 @@ type Stratification struct {
 // Documents use wordToken; query identifiers expand into component words
 // with the same length and stopword filters. Both fold to lowercase. D-a
 // is non-lexical when no query token occurs in any gold file (no substring
-// matches). BM25 uses k1=1.2, b=0.75 and positive IDF
+// matches). D-a-code uses the same document words and query expansion but
+// restricts issue identifiers to backticked tokens or tokens containing
+// _ . / or an uppercase rune after the first rune. An unmatched opening
+// backtick quotes the remainder. Comments count under both definitions.
+// BM25 uses the primary query, k1=1.2, b=0.75 and positive IDF
 // log(1+(N-df+0.5)/(df+0.5)), document lengths in tokens, and unique query
 // terms. Terms accumulate in sorted order. All files are ranked, including
 // zero-score files; ties use ascending slash-separated path. LexicalRank
 // is the best positive-score gold rank, or zero (absent in JSON) when no
 // gold file matches. D-b is lexical only for a positive-score gold in the
-// top 10. An empty query gives two non-lexical definitions and absent rank.
+// top 10. An empty primary query gives all non-lexical labels and absent rank.
 func StratifyTask(subject fs.FS, issue string, goldFiles []string) (Stratification, error) {
 	if len(goldFiles) == 0 {
 		return Stratification{}, fmt.Errorf("stratify: no gold files")
@@ -131,14 +137,17 @@ func StratifyTask(subject fs.FS, issue string, goldFiles []string) (Stratificati
 		}
 		gold[path] = true
 	}
-	querySet := map[string]bool{}
-	for _, term := range ExtractIdentifiers(issue) {
-		for _, word := range wordToken.FindAllString(term, -1) {
-			for _, identifier := range ExtractIdentifiers(word) {
-				querySet[strings.ToLower(identifier)] = true
+	querySet := queryWordSet(ExtractIdentifiers(issue))
+	var codeIdentifiers []string
+	for i, span := range strings.Split(issue, "`") {
+		for _, token := range ExtractIdentifiers(span) {
+			_, firstWidth := utf8.DecodeRuneInString(token)
+			if i%2 == 1 || strings.ContainsAny(token, "_./") || strings.IndexFunc(token[firstWidth:], unicode.IsUpper) >= 0 {
+				codeIdentifiers = append(codeIdentifiers, token)
 			}
 		}
 	}
+	codeQuerySet := queryWordSet(codeIdentifiers)
 	query := make([]string, 0, len(querySet))
 	for term := range querySet {
 		query = append(query, term)
@@ -146,7 +155,7 @@ func StratifyTask(subject fs.FS, issue string, goldFiles []string) (Stratificati
 	sort.Strings(query)
 	df := map[string]int{}
 	totalLength, foundGold := 0, 0
-	result := Stratification{DefinitionA: "non-lexical", DefinitionB: "non-lexical"}
+	result := Stratification{DefinitionA: "non-lexical", DefinitionACode: "non-lexical", DefinitionB: "non-lexical"}
 	for _, doc := range docs {
 		totalLength += doc.length
 		if gold[doc.path] {
@@ -157,6 +166,9 @@ func StratifyTask(subject fs.FS, issue string, goldFiles []string) (Stratificati
 				df[term]++
 				if gold[doc.path] {
 					result.DefinitionA = "lexical"
+					if codeQuerySet[term] {
+						result.DefinitionACode = "lexical"
+					}
 				}
 			}
 		}
@@ -194,4 +206,16 @@ func StratifyTask(subject fs.FS, issue string, goldFiles []string) (Stratificati
 		result.DefinitionB = "lexical"
 	}
 	return result, nil
+}
+
+func queryWordSet(identifiers []string) map[string]bool {
+	terms := map[string]bool{}
+	for _, token := range identifiers {
+		for _, word := range wordToken.FindAllString(token, -1) {
+			for _, identifier := range ExtractIdentifiers(word) {
+				terms[strings.ToLower(identifier)] = true
+			}
+		}
+	}
+	return terms
 }
