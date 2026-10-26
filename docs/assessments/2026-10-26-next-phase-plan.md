@@ -227,6 +227,7 @@ the language share grows.
 - Do not build scheduling, placement or load reading into fathom.
 - Do not tag over red CI, and run one gate at a time.
 
-**Specced, not implemented:** NP-B1 to NP-B12 (bench-prep rows), the labs harness rows, NP-W3's GDEV rows.
+**Already proven:** part of NP-B4 and NP-B7 (BX-84, BX-85 and BX-86, including the `BENCH_UID=` witness).
+**Specced, not implemented:** the rest of NP-B1 to NP-B12 (their bench-prep rows), the labs harness rows, NP-W3's GDEV rows.
 **Planned, not specced:** a fan-out instrument (lanes, rounds, outcome, wall time) in the operator's lane tooling.
 Until it reads, "fan-out saved time" is a claim.
