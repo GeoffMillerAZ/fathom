@@ -42,7 +42,7 @@
       "result": "PASS"
     },
     "collector_file": "calibration/oracles/go-fields-cost/cost.py",
-    "conditions": "All post-manifest launch loads <=9. Final candidate encountered active-run max16.29 and took121.897s; all six observations retained. Gate is median wall, CPU is diagnostic only.",
+    "conditions": "All post-manifest launch loads <=9. Final candidate encountered active-run max 16.29 and took 121.897 s; all six observations retained. Gate is median wall, CPU is diagnostic only.",
     "historical_provenance": "Supersedes original receipt assembled from an earlier uncommitted collector revision. Prior +26.7% and independent +6.9% remain history, not a settled failed-wall conclusion.",
     "median_cpu_seconds": {
       "baseline": 84.419,
