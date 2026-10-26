@@ -34,3 +34,10 @@ The extractor epoch gets its own tools-azure-pipelines bump file. Integration
 must regenerate the frozen language/support surfaces and run its gate; this lane
 does not write generated artifacts. No model decision applies to syntax and
 identity checks.
+
+The X-R1 candidate audit names the editor library, the official agent's legacy
+parser at be18ae23, hosted Preview API 7.1, PyYAML 6.0.3 and the product locator.
+The legacy parser's exhaustive source switch rejects modern stages/jobs/extends.
+The native hosted compiler exists, but needs owner-supplied organization,
+project, pipeline and authentication context; it was not called. Those concrete
+limits replace any inference from an unsuccessful search for an offline tool.
