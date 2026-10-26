@@ -12,8 +12,38 @@ import (
 
 func seedSurfaces() []string {
 	keys := []string{"mcp:find_symbol", "mcp:search", "mcp:symbol_context", "mcp:read_source", "mcp:blast_radius", "mcp:review_diff", "mcp:verify_plan", "mcp:obligations",
-		"hook:stop-hook", "hook:edit-hook", "hook:edit-hook --pre", "hook:prompt-hook", "hook:session-hook", "hook:session-hook --event subagent-start",
-		"hook:readout-hook --event post-tool", "hook:readout-hook --event tool-failure", "hook:readout-hook --event pre-read", "stanza:agents-md"}
+		"stanza:agents-md"}
+	// The Claude Code hook bindings, keyed as cmd/fathom's labHookSurface keys
+	// them (verb, then [event/capability event matcher]). cmd/fathom's
+	// TestCommittedLabsCloseOverShippedSurfaces checks the full shipped set.
+	keys = append(keys,
+		"hook:config audit --hook --event file-changed [file-changed/config-audit FileChanged matcher=CLAUDE.md|AGENTS.md|concerns.cue|config.toml]",
+		"hook:config audit --hook [config-change/config-audit ConfigChange matcher=]",
+		"hook:doctor --brief [setup/setup-doctor Setup matcher=]",
+		"hook:edit-hook --pre [pre-tool/discovery-observe PreToolUse matcher=Grep|Glob|Read]",
+		"hook:edit-hook --pre [pre-tool/guard-pre-edit PreToolUse matcher=Edit|Write|MultiEdit]",
+		"hook:edit-hook --pre [pre-tool/guard-pre-shell PreToolUse matcher=Bash]",
+		"hook:edit-hook --pre [pre-tool/subagent-prime PreToolUse matcher=^(Agent|Task)$]",
+		"hook:edit-hook [post-tool/discovery-observe PostToolUse matcher=mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)]",
+		"hook:edit-hook [post-tool/obligations-post-edit PostToolUse matcher=Edit|Write|MultiEdit]",
+		"hook:edit-hook [post-tool/obligations-post-shell PostToolUse matcher=Bash]",
+		"hook:pre-compact-hook [pre-compact/deposit-pre-compact PreCompact matcher=manual|auto]",
+		"hook:prompt-hook [user-prompt-submit/prompt-obligations UserPromptSubmit matcher=]",
+		"hook:readout-hook --event post-tool [post-tool/readout PostToolUse matcher=Bash]",
+		"hook:readout-hook --event pre-read [pre-tool/read-outline-hint PreToolUse matcher=Read]",
+		"hook:readout-hook --event tool-failure [tool-failure/readout PostToolUseFailure matcher=Bash]",
+		"hook:session-end-hook [session-end/deposit-session-end SessionEnd matcher=]",
+		"hook:session-hook --event cwd-changed [cwd-changed/cwd-prime CwdChanged matcher=]",
+		"hook:session-hook --event cwd-changed [cwd-changed/cwd-prime DirectoryAdded matcher=]",
+		"hook:session-hook --event failed-test-run [tool-failure/test-run-line PostToolUseFailure matcher=Bash]",
+		"hook:session-hook --event instructions-loaded [instructions-loaded/stanza-loaded InstructionsLoaded matcher=]",
+		"hook:session-hook --event subagent-start [subagent-start/subagent-prime SubagentStart matcher=]",
+		"hook:session-hook --event test-run [post-tool/test-run-line PostToolUse matcher=Bash]",
+		"hook:session-hook --event tool-failure [tool-failure/tool-failure-advice PostToolUseFailure matcher=mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*]",
+		"hook:session-hook [session-start/prime SessionStart matcher=startup|resume|clear|compact]",
+		"hook:stop-hook --event subagent-stop [subagent-stop/claim-check SubagentStop matcher=]",
+		"hook:stop-hook [stop/stop-verify Stop matcher=]",
+	)
 	for _, name := range skillsdist.Names {
 		keys = append(keys, "skill:"+name)
 	}
