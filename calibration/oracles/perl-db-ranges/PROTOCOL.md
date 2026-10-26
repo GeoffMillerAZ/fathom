@@ -72,7 +72,7 @@ the subject. App::cpanminus 1.7048, Perl-5 license, archive SHA256
 `59b60907ab9fa4f72ca2004fbe6054911439ae9a906890b4d842a87b25f20f3c`,
 from `https://cpan.metacpan.org/authors/id/M/MI/MIYAGAWA/App-cpanminus-1.7048.tar.gz`,
 runs with its own cache root, `--local-lib-contained`, HTTPS mirror-only,
-`--installdeps --with-test --notest`, and retained distribution archives. Bound the
+`--installdeps --notest --no-lwp --no-wget --curl`, and retained distribution archives. Bound the
 whole install to 600 seconds, nice10 after load<=9, TERM/KILL on timeout. Never
 install globally, edit the subject, or apply dependency patches. Fingerprint the
 local library before/after compiler runs and publish archive names/checksums.
@@ -83,3 +83,9 @@ Record all remaining failures and coverage. If installation fails, record the
 concrete failure and retain the partial no-install reading separately. No
 canonical adoption from a conditional 1.0 range score. The Dancer2 holdout remains
 unspent until this instrument/environment is frozen; no tuning on a spent subject.
+
+Installer command erratum before any dependency-backed compiler run: cpanminus
+1.7048 includes declared test requirements with `--installdeps`; it has no
+`--with-test` flag. The initial setup attempt rejected that flag and its LWP
+transport produced no index. Use the explicit cURL transport above. No compiler
+run, acceptance rule, source pin, install cap, or holdout decision changed.
