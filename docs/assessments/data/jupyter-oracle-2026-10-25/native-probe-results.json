@@ -1,0 +1,82 @@
+{
+  "analysis_python": "Python 3.13.5",
+  "calls": 2,
+  "claim": "native LSP feasibility, not complete call-population truth or a grade",
+  "files": 1,
+  "native_notebook_sync": {
+    "notebookSelector": [
+      {
+        "cells": [
+          {
+            "language": "python"
+          }
+        ],
+        "notebook": {
+          "notebookType": "jupyter-notebook",
+          "scheme": "file"
+        }
+      }
+    ],
+    "save": true
+  },
+  "opaque_magic_lines": 0,
+  "python": "3.13.5",
+  "records": [
+    {
+      "calls": [
+        {
+          "cell": 0,
+          "character": 11,
+          "definitions": [
+            {
+              "category": "external",
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 5191
+                },
+                "start": {
+                  "character": 4,
+                  "line": 5191
+                }
+              }
+            }
+          ],
+          "from": "f",
+          "line": 1,
+          "name": "len",
+          "to": "len"
+        },
+        {
+          "cell": 0,
+          "character": 0,
+          "definitions": [
+            {
+              "category": "subject",
+              "range": {
+                "end": {
+                  "character": 5,
+                  "line": 0
+                },
+                "start": {
+                  "character": 4,
+                  "line": 0
+                }
+              }
+            }
+          ],
+          "from": "<module>",
+          "line": 2,
+          "name": "f",
+          "to": "f"
+        }
+      ],
+      "opaque_magic_lines": 0,
+      "path": "probe.ipynb",
+      "rejected_cells": []
+    }
+  ],
+  "rejected_cells": 0,
+  "resolved_calls": 2,
+  "server": "basedpyright 1.40.2"
+}

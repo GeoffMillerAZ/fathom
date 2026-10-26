@@ -1,0 +1,6360 @@
+{
+  "disclose": [
+    "Diagnostic holdout, not a canonical support promotion: 1945/2071 enumerable sites answered; 126 unknown; 0 scanner-rejected cells; 34 opaque magic lines; all gaps retained in native receipt. Only native-answered pairs enter this diagnostic truth."
+  ],
+  "references": [
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "add_them"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.argsort"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.flatten"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.put"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.ravel"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.repeat"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.reshape"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.reshape().reshape"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.searchsorted"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.sort"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.sum"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr.take"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "arr_f.copy"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "mmap.flush"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.add.accumulate"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.add.reduce"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.add.reduceat"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.concatenate"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.float64.mro"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.hstack"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.issubdtype"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.logical_and.reduce"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.multiply.outer"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.partition"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.sort"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.tile"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "np.vstack"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "pd.Series().groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "pd.Series().groupby().mean"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "values.take"
+    },
+    {
+      "from": "<module>",
+      "path": "appa.ipynb",
+      "to": "zip"
+    },
+    {
+      "from": "add_them",
+      "path": "appa.ipynb",
+      "to": "np.frompyfunc"
+    },
+    {
+      "from": "add_them",
+      "path": "appa.ipynb",
+      "to": "np.vectorize"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "my_rng.standard_normal"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "np.arange().repeat"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "np.multiply.outer"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "np.zeros"
+    },
+    {
+      "from": "arr",
+      "path": "appa.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "arr1",
+      "path": "appa.ipynb",
+      "to": "arr.reshape"
+    },
+    {
+      "from": "arr1",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr2",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr2",
+      "path": "appa.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "arr_1d",
+      "path": "appa.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "arr_c",
+      "path": "appa.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "arr_f",
+      "path": "appa.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "bins",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "col",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "data",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "data",
+      "path": "appa.ipynb",
+      "to": "np.floor"
+    },
+    {
+      "from": "data",
+      "path": "appa.ipynb",
+      "to": "rng.uniform"
+    },
+    {
+      "from": "demeaned",
+      "path": "appa.ipynb",
+      "to": "arr.mean"
+    },
+    {
+      "from": "depth_means",
+      "path": "appa.ipynb",
+      "to": "arr.mean"
+    },
+    {
+      "from": "first",
+      "path": "appa.ipynb",
+      "to": "np.split"
+    },
+    {
+      "from": "first_name",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "floats",
+      "path": "appa.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "indexer",
+      "path": "appa.ipynb",
+      "to": "key.argsort"
+    },
+    {
+      "from": "indexer",
+      "path": "appa.ipynb",
+      "to": "values.argsort"
+    },
+    {
+      "from": "indices",
+      "path": "appa.ipynb",
+      "to": "np.argpartition"
+    },
+    {
+      "from": "ints",
+      "path": "appa.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "key",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "labels",
+      "path": "appa.ipynb",
+      "to": "bins.searchsorted"
+    },
+    {
+      "from": "last_name",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "mean_distance",
+      "path": "appa.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "mean_distance",
+      "path": "appa.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "mmap",
+      "path": "appa.ipynb",
+      "to": "np.memmap"
+    },
+    {
+      "from": "my_rng",
+      "path": "appa.ipynb",
+      "to": "np.random.default_rng"
+    },
+    {
+      "from": "other_arr",
+      "path": "appa.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "result",
+      "path": "appa.ipynb",
+      "to": "np.subtract.outer"
+    },
+    {
+      "from": "rng",
+      "path": "appa.ipynb",
+      "to": "np.random.default_rng"
+    },
+    {
+      "from": "row_means",
+      "path": "appa.ipynb",
+      "to": "arr.mean"
+    },
+    {
+      "from": "sarr",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "sorter",
+      "path": "appa.ipynb",
+      "to": "np.lexsort"
+    },
+    {
+      "from": "values",
+      "path": "appa.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "x",
+      "path": "appa.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "<module>",
+      "path": "appb.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "appb.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "method1",
+      "path": "appb.ipynb",
+      "to": "x.startswith"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "a.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "append_element"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "bool"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "c.count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "datetime.strptime"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "dt.date"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "dt.strftime"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "dt.time"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "getattr"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "int"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "isinstance"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "isiterable"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "template.format"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "type"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "val.encode"
+    },
+    {
+      "from": "<module>",
+      "path": "ch02.ipynb",
+      "to": "val_utf8.decode"
+    },
+    {
+      "from": "b",
+      "path": "ch02.ipynb",
+      "to": "a.replace"
+    },
+    {
+      "from": "c",
+      "path": "ch02.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "data",
+      "path": "ch02.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "data",
+      "path": "ch02.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "dt",
+      "path": "ch02.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "dt2",
+      "path": "ch02.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "dt_hour",
+      "path": "ch02.ipynb",
+      "to": "dt.replace"
+    },
+    {
+      "from": "fval",
+      "path": "ch02.ipynb",
+      "to": "float"
+    },
+    {
+      "from": "isiterable",
+      "path": "ch02.ipynb",
+      "to": "iter"
+    },
+    {
+      "from": "s",
+      "path": "ch02.ipynb",
+      "to": "str"
+    },
+    {
+      "from": "val_utf8",
+      "path": "ch02.ipynb",
+      "to": "val.encode"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "a.count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "a.intersection"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "a.sort"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "a.union"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "a_set.issuperset"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "apply_to_list"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "attempt_float"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "b.sort"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "b_list.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "b_list.insert"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "b_list.pop"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "b_list.remove"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "bind_a_variable"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "by_letter.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "by_letter.setdefault"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "clean_strings"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "d1.items"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "d1.keys"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "d1.update"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "d1.values"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "data.decode"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "dict"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "enumerate"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f.read"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f.seek"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f1.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f1.read"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f1.seek"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f1.tell"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f2.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f2.read"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "f2.tell"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "flattened.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "float"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "func"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "handle.writelines"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "hash"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "itertools.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "map"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "my_function"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "my_function2"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "names_of_interest.extend"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "os.remove"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "reversed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "set"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "sink.write"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "sorted"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "source.read"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "strings.sort"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "sys.getdefaultencoding"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "tup.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "tuple"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "x.extend"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "x.upper"
+    },
+    {
+      "from": "<module>",
+      "path": "ch03.ipynb",
+      "to": "zip"
+    },
+    {
+      "from": "apply_to_list",
+      "path": "ch03.ipynb",
+      "to": "f"
+    },
+    {
+      "from": "attempt_float",
+      "path": "ch03.ipynb",
+      "to": "float"
+    },
+    {
+      "from": "b_list",
+      "path": "ch03.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "by_letter",
+      "path": "ch03.ipynb",
+      "to": "defaultdict"
+    },
+    {
+      "from": "c",
+      "path": "ch03.ipynb",
+      "to": "a.copy"
+    },
+    {
+      "from": "chars",
+      "path": "ch03.ipynb",
+      "to": "f.read"
+    },
+    {
+      "from": "clean_strings",
+      "path": "ch03.ipynb",
+      "to": "func"
+    },
+    {
+      "from": "clean_strings",
+      "path": "ch03.ipynb",
+      "to": "re.sub"
+    },
+    {
+      "from": "clean_strings",
+      "path": "ch03.ipynb",
+      "to": "result.append"
+    },
+    {
+      "from": "clean_strings",
+      "path": "ch03.ipynb",
+      "to": "value.title"
+    },
+    {
+      "from": "d",
+      "path": "ch03.ipynb",
+      "to": "a.copy"
+    },
+    {
+      "from": "data",
+      "path": "ch03.ipynb",
+      "to": "f.read"
+    },
+    {
+      "from": "dict_iterator",
+      "path": "ch03.ipynb",
+      "to": "iter"
+    },
+    {
+      "from": "enough_as",
+      "path": "ch03.ipynb",
+      "to": "name.count"
+    },
+    {
+      "from": "f",
+      "path": "ch03.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "f1",
+      "path": "ch03.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "f2",
+      "path": "ch03.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "func",
+      "path": "ch03.ipynb",
+      "to": "a.append"
+    },
+    {
+      "from": "func",
+      "path": "ch03.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "function_without_return",
+      "path": "ch03.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "gen",
+      "path": "ch03.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "gen",
+      "path": "ch03.ipynb",
+      "to": "squares"
+    },
+    {
+      "from": "lines",
+      "path": "ch03.ipynb",
+      "to": "f.readlines"
+    },
+    {
+      "from": "lines",
+      "path": "ch03.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "lines",
+      "path": "ch03.ipynb",
+      "to": "x.rstrip"
+    },
+    {
+      "from": "loc_mapping",
+      "path": "ch03.ipynb",
+      "to": "enumerate"
+    },
+    {
+      "from": "mapping",
+      "path": "ch03.ipynb",
+      "to": "dict"
+    },
+    {
+      "from": "my_set",
+      "path": "ch03.ipynb",
+      "to": "tuple"
+    },
+    {
+      "from": "remove_punctuation",
+      "path": "ch03.ipynb",
+      "to": "re.sub"
+    },
+    {
+      "from": "result",
+      "path": "ch03.ipynb",
+      "to": "function_without_return"
+    },
+    {
+      "from": "result",
+      "path": "ch03.ipynb",
+      "to": "my_function"
+    },
+    {
+      "from": "result",
+      "path": "ch03.ipynb",
+      "to": "name.count"
+    },
+    {
+      "from": "ret",
+      "path": "ch03.ipynb",
+      "to": "d1.pop"
+    },
+    {
+      "from": "squares",
+      "path": "ch03.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "squares",
+      "path": "ch03.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "tup",
+      "path": "ch03.ipynb",
+      "to": "tuple"
+    },
+    {
+      "from": "tuples",
+      "path": "ch03.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "tuples",
+      "path": "ch03.ipynb",
+      "to": "reversed"
+    },
+    {
+      "from": "tuples",
+      "path": "ch03.ipynb",
+      "to": "zip"
+    },
+    {
+      "from": "unique_lengths",
+      "path": "ch03.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "zipped",
+      "path": "ch03.ipynb",
+      "to": "zip"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "arr.astype"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "arr.cumsum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "arr.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "arr.sort"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "arr.sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "arr.swapaxes"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "bools.all"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "bools.any"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "int_array.astype"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "inv"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.abs"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.add"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.dot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.empty"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.exp"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.in1d"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.load"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.maximum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.ones"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.save"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.savez"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.savez_compressed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.sqrt"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.unique"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.where"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "np.zeros"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "numeric_strings.astype"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.colorbar"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.draw"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.figure"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.imshow"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "plt.title"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "set"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "sorted"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "type"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "walk.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "walk.max"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "walk.min"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "walks.max"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "walks.min"
+    },
+    {
+      "from": "<module>",
+      "path": "ch04.ipynb",
+      "to": "x.dot"
+    },
+    {
+      "from": "X",
+      "path": "ch04.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "arch",
+      "path": "ch04.ipynb",
+      "to": "np.load"
+    },
+    {
+      "from": "arr",
+      "path": "ch04.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "arr",
+      "path": "ch04.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "arr",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr",
+      "path": "ch04.ipynb",
+      "to": "np.zeros"
+    },
+    {
+      "from": "arr",
+      "path": "ch04.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "arr1",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr2",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr2d",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "arr3d",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "bools",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "calibers",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "cond",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "crossing_times",
+      "path": "ch04.ipynb",
+      "to": "np.abs"
+    },
+    {
+      "from": "data",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "data",
+      "path": "ch04.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "draws",
+      "path": "ch04.ipynb",
+      "to": "rng.integers"
+    },
+    {
+      "from": "draws",
+      "path": "ch04.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "float_arr",
+      "path": "ch04.ipynb",
+      "to": "arr.astype"
+    },
+    {
+      "from": "hits30",
+      "path": "ch04.ipynb",
+      "to": "np.abs"
+    },
+    {
+      "from": "int_array",
+      "path": "ch04.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "ints",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "my_arr",
+      "path": "ch04.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "my_list",
+      "path": "ch04.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "my_list",
+      "path": "ch04.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "names",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "numeric_strings",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "out",
+      "path": "ch04.ipynb",
+      "to": "np.zeros_like"
+    },
+    {
+      "from": "points",
+      "path": "ch04.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "remainder",
+      "path": "ch04.ipynb",
+      "to": "np.modf"
+    },
+    {
+      "from": "result",
+      "path": "ch04.ipynb",
+      "to": "np.where"
+    },
+    {
+      "from": "result",
+      "path": "ch04.ipynb",
+      "to": "zip"
+    },
+    {
+      "from": "rng",
+      "path": "ch04.ipynb",
+      "to": "np.random.default_rng"
+    },
+    {
+      "from": "samples",
+      "path": "ch04.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "sorted_arr2",
+      "path": "ch04.ipynb",
+      "to": "np.sort"
+    },
+    {
+      "from": "step",
+      "path": "ch04.ipynb",
+      "to": "random.randint"
+    },
+    {
+      "from": "steps",
+      "path": "ch04.ipynb",
+      "to": "np.where"
+    },
+    {
+      "from": "values",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "walk",
+      "path": "ch04.ipynb",
+      "to": "steps.cumsum"
+    },
+    {
+      "from": "walks",
+      "path": "ch04.ipynb",
+      "to": "steps.cumsum"
+    },
+    {
+      "from": "x",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "x",
+      "path": "ch04.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "xarr",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "xs",
+      "path": "ch04.ipynb",
+      "to": "np.meshgrid"
+    },
+    {
+      "from": "y",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "y",
+      "path": "ch04.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "yarr",
+      "path": "ch04.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "z",
+      "path": "ch04.ipynb",
+      "to": "np.sqrt"
+    },
+    {
+      "from": "zeros_uint32",
+      "path": "ch04.ipynb",
+      "to": "np.zeros"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "data.drop"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "data.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "data.value_counts().sort_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "df.cumsum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "df.describe"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "df.idxmax"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "df.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "df.sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "df1.reindex"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.applymap"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.map"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.rank"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.reindex"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.sort_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.sort_values"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame.tail"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame2.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "frame3.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "np.abs"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "np.exp"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.describe"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.drop"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.rank"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.sort_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.sort_values"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj3.reindex"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj3.to_dict"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "obj4.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "pd.Index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "pd.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "pd.notna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "pd.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch05.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "arr",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "arr",
+      "path": "ch05.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "data",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "data",
+      "path": "ch05.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "data",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df",
+      "path": "ch05.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "df",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df1",
+      "path": "ch05.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "df1",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df1",
+      "path": "ch05.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "df1",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df2",
+      "path": "ch05.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "df2",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df2",
+      "path": "ch05.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "df2",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "f2",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "f2",
+      "path": "ch05.ipynb",
+      "to": "x.max"
+    },
+    {
+      "from": "f2",
+      "path": "ch05.ipynb",
+      "to": "x.min"
+    },
+    {
+      "from": "frame",
+      "path": "ch05.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "frame",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "frame",
+      "path": "ch05.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "frame",
+      "path": "ch05.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "frame",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame2",
+      "path": "ch05.ipynb",
+      "to": "frame.reindex"
+    },
+    {
+      "from": "frame2",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame3",
+      "path": "ch05.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "indices",
+      "path": "ch05.ipynb",
+      "to": "pd.Index"
+    },
+    {
+      "from": "indices",
+      "path": "ch05.ipynb",
+      "to": "pd.Index().get_indexer"
+    },
+    {
+      "from": "labels",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "labels",
+      "path": "ch05.ipynb",
+      "to": "pd.Index"
+    },
+    {
+      "from": "mask",
+      "path": "ch05.ipynb",
+      "to": "obj.isin"
+    },
+    {
+      "from": "new_obj",
+      "path": "ch05.ipynb",
+      "to": "obj.drop"
+    },
+    {
+      "from": "obj",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "obj",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "obj1",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "obj2",
+      "path": "ch05.ipynb",
+      "to": "obj.reindex"
+    },
+    {
+      "from": "obj2",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "obj3",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "obj4",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "price",
+      "path": "ch05.ipynb",
+      "to": "pd.read_pickle"
+    },
+    {
+      "from": "result",
+      "path": "ch05.ipynb",
+      "to": "data.apply"
+    },
+    {
+      "from": "result",
+      "path": "ch05.ipynb",
+      "to": "data.apply().fillna"
+    },
+    {
+      "from": "s1",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "s2",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "ser",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "ser",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "ser2",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "ser2",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "series2",
+      "path": "ch05.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "series2",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "to_match",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "unique_vals",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "uniques",
+      "path": "ch05.ipynb",
+      "to": "obj.unique"
+    },
+    {
+      "from": "val",
+      "path": "ch05.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "volume",
+      "path": "ch05.ipynb",
+      "to": "pd.read_pickle"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "con.commit"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "con.execute"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "con.executemany"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "data.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "data.to_csv"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "data.to_json"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "f.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "failures.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "frame.to_excel"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "frame.to_hdf"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "frame.to_pickle"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "os.remove"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "pd.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "pd.read_hdf"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "pd.read_pickle"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "pd.read_sql"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "perf.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "perf2.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "resp.raise_for_status"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "result2.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "result3.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "store.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "store.put"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "store.select"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "type"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "writer.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch06.ipynb",
+      "to": "xlsx.parse"
+    },
+    {
+      "from": "asjson",
+      "path": "ch06.ipynb",
+      "to": "json.dumps"
+    },
+    {
+      "from": "chunker",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "close_timestamps",
+      "path": "ch06.ipynb",
+      "to": "pd.to_datetime"
+    },
+    {
+      "from": "con",
+      "path": "ch06.ipynb",
+      "to": "sqlite3.connect"
+    },
+    {
+      "from": "cursor",
+      "path": "ch06.ipynb",
+      "to": "con.execute"
+    },
+    {
+      "from": "data",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "data",
+      "path": "ch06.ipynb",
+      "to": "pd.read_json"
+    },
+    {
+      "from": "data",
+      "path": "ch06.ipynb",
+      "to": "resp.json"
+    },
+    {
+      "from": "data_dict",
+      "path": "ch06.ipynb",
+      "to": "zip"
+    },
+    {
+      "from": "db",
+      "path": "ch06.ipynb",
+      "to": "sqla.create_engine"
+    },
+    {
+      "from": "df",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "f",
+      "path": "ch06.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "fec",
+      "path": "ch06.ipynb",
+      "to": "pd.read_parquet"
+    },
+    {
+      "from": "frame",
+      "path": "ch06.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "frame",
+      "path": "ch06.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "frame",
+      "path": "ch06.ipynb",
+      "to": "pd.read_excel"
+    },
+    {
+      "from": "issues",
+      "path": "ch06.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "lines",
+      "path": "ch06.ipynb",
+      "to": "csv.reader"
+    },
+    {
+      "from": "lines",
+      "path": "ch06.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "parsed",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "perf",
+      "path": "ch06.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "perf2",
+      "path": "ch06.ipynb",
+      "to": "pd.read_xml"
+    },
+    {
+      "from": "reader",
+      "path": "ch06.ipynb",
+      "to": "csv.reader"
+    },
+    {
+      "from": "resp",
+      "path": "ch06.ipynb",
+      "to": "requests.get"
+    },
+    {
+      "from": "result",
+      "path": "ch06.ipynb",
+      "to": "json.loads"
+    },
+    {
+      "from": "result",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "result2",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "result3",
+      "path": "ch06.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "rows",
+      "path": "ch06.ipynb",
+      "to": "cursor.fetchall"
+    },
+    {
+      "from": "siblings",
+      "path": "ch06.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "store",
+      "path": "ch06.ipynb",
+      "to": "pd.HDFStore"
+    },
+    {
+      "from": "tables",
+      "path": "ch06.ipynb",
+      "to": "pd.read_html"
+    },
+    {
+      "from": "tot",
+      "path": "ch06.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "tot",
+      "path": "ch06.ipynb",
+      "to": "tot.sort_values"
+    },
+    {
+      "from": "writer",
+      "path": "ch06.ipynb",
+      "to": "pd.ExcelWriter"
+    },
+    {
+      "from": "xlsx",
+      "path": "ch06.ipynb",
+      "to": "pd.ExcelFile"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "cat_s.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "categories.memory_usage"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "choices.sample"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "col.abs"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.abs"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.describe"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.drop_duplicates"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.dropna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.duplicated"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.fillna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.index.map"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.map"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.notna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.rename"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "data.replace"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "df.astype"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "df.dropna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "df.fillna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "df.sample"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "df.take"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "dict"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "dim.take"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "enumerate"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "float_data.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "labels.memory_usage"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "m.end"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "m.groups"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "m.start"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "my_cats_2.as_ordered"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "np.sign"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "pd.cut"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "pd.get_dummies"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "pd.qcut"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "pd.qcut().value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "pd.unique"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "pd.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "re.split"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "regex.findall"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "regex.match"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "regex.split"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "regex.sub"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "s.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "string_data.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "type"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "val.count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "val.find"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "val.index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "val.replace"
+    },
+    {
+      "from": "<module>",
+      "path": "ch07.ipynb",
+      "to": "val.split"
+    },
+    {
+      "from": "N",
+      "path": "ch07.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "age_categories",
+      "path": "ch07.ipynb",
+      "to": "pd.cut"
+    },
+    {
+      "from": "bins",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "bins",
+      "path": "ch07.ipynb",
+      "to": "pd.qcut"
+    },
+    {
+      "from": "cat_s",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "cat_s",
+      "path": "ch07.ipynb",
+      "to": "s.astype"
+    },
+    {
+      "from": "cat_s3",
+      "path": "ch07.ipynb",
+      "to": "cat_s.isin"
+    },
+    {
+      "from": "categories",
+      "path": "ch07.ipynb",
+      "to": "labels.astype"
+    },
+    {
+      "from": "choices",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "column_sampler",
+      "path": "ch07.ipynb",
+      "to": "np.random.permutation"
+    },
+    {
+      "from": "data",
+      "path": "ch07.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "data",
+      "path": "ch07.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "data",
+      "path": "ch07.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "data",
+      "path": "ch07.ipynb",
+      "to": "np.random.uniform"
+    },
+    {
+      "from": "data",
+      "path": "ch07.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "data",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "data_as_string_ext",
+      "path": "ch07.ipynb",
+      "to": "data.astype"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "rng.integers"
+    },
+    {
+      "from": "df",
+      "path": "ch07.ipynb",
+      "to": "rng.uniform"
+    },
+    {
+      "from": "df_with_dummy",
+      "path": "ch07.ipynb",
+      "to": "df.join"
+    },
+    {
+      "from": "dim",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "draws",
+      "path": "ch07.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "dummies",
+      "path": "ch07.ipynb",
+      "to": "pd.get_dummies"
+    },
+    {
+      "from": "float_data",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "fruit_cat",
+      "path": "ch07.ipynb",
+      "to": "df.astype"
+    },
+    {
+      "from": "labels",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "m",
+      "path": "ch07.ipynb",
+      "to": "regex.match"
+    },
+    {
+      "from": "m",
+      "path": "ch07.ipynb",
+      "to": "regex.search"
+    },
+    {
+      "from": "movies",
+      "path": "ch07.ipynb",
+      "to": "pd.read_table"
+    },
+    {
+      "from": "movies_windic",
+      "path": "ch07.ipynb",
+      "to": "dummies.add_prefix"
+    },
+    {
+      "from": "movies_windic",
+      "path": "ch07.ipynb",
+      "to": "movies.join"
+    },
+    {
+      "from": "my_categories",
+      "path": "ch07.ipynb",
+      "to": "pd.Categorical"
+    },
+    {
+      "from": "my_cats_2",
+      "path": "ch07.ipynb",
+      "to": "pd.Categorical.from_codes"
+    },
+    {
+      "from": "ordered_cat",
+      "path": "ch07.ipynb",
+      "to": "pd.Categorical.from_codes"
+    },
+    {
+      "from": "pieces",
+      "path": "ch07.ipynb",
+      "to": "val.split"
+    },
+    {
+      "from": "pieces",
+      "path": "ch07.ipynb",
+      "to": "x.strip"
+    },
+    {
+      "from": "quartiles",
+      "path": "ch07.ipynb",
+      "to": "pd.qcut"
+    },
+    {
+      "from": "regex",
+      "path": "ch07.ipynb",
+      "to": "re.compile"
+    },
+    {
+      "from": "results",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "results",
+      "path": "ch07.ipynb",
+      "to": "pd.Series().groupby"
+    },
+    {
+      "from": "results",
+      "path": "ch07.ipynb",
+      "to": "pd.Series().groupby().agg"
+    },
+    {
+      "from": "results",
+      "path": "ch07.ipynb",
+      "to": "pd.Series().groupby().agg().reset_index"
+    },
+    {
+      "from": "rng",
+      "path": "ch07.ipynb",
+      "to": "np.random.default_rng"
+    },
+    {
+      "from": "s",
+      "path": "ch07.ipynb",
+      "to": "pd.Int64Dtype"
+    },
+    {
+      "from": "s",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "s",
+      "path": "ch07.ipynb",
+      "to": "pd.StringDtype"
+    },
+    {
+      "from": "sampler",
+      "path": "ch07.ipynb",
+      "to": "np.random.permutation"
+    },
+    {
+      "from": "string_data",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "values",
+      "path": "ch07.ipynb",
+      "to": "np.random.uniform"
+    },
+    {
+      "from": "values",
+      "path": "ch07.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "a.combine_first"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "data.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "data.unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "data.unstack().stack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "data2.unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "data2.unstack().stack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "df.unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "df.unstack().stack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "df1.combine_first"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame.groupby().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame.set_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame.sort_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame.swaplevel"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame.swaplevel().sort_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "frame2.reset_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "left1.join"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "left2.join"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "np.concatenate"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "np.where"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "pd.concat"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "pd.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "pd.melt"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "pd.merge"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "periods.to_timestamp"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "pivoted.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "reshaped.reset_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "result.unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch08.ipynb",
+      "to": "unstacked.head"
+    },
+    {
+      "from": "a",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "another",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "arr",
+      "path": "ch08.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "arr",
+      "path": "ch08.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "b",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "data.reindex"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "np.random.uniform"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "pd.Index"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "data",
+      "path": "ch08.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "data2",
+      "path": "ch08.ipynb",
+      "to": "pd.concat"
+    },
+    {
+      "from": "df",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df",
+      "path": "ch08.ipynb",
+      "to": "pd.Index"
+    },
+    {
+      "from": "df1",
+      "path": "ch08.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df1",
+      "path": "ch08.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "df1",
+      "path": "ch08.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "df1",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df1",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "df1",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "df2",
+      "path": "ch08.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df2",
+      "path": "ch08.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "df2",
+      "path": "ch08.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "df2",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df2",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "df2",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "df3",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df3",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "df3",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "df4",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df4",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "df4",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "frame",
+      "path": "ch08.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "frame",
+      "path": "ch08.ipynb",
+      "to": "np.arange().reshape"
+    },
+    {
+      "from": "frame",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "frame2",
+      "path": "ch08.ipynb",
+      "to": "frame.set_index"
+    },
+    {
+      "from": "left",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "left",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "left1",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "left1",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "left1",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "left2",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "left2",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame().astype"
+    },
+    {
+      "from": "lefth",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "lefth",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "lefth",
+      "path": "ch08.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "long_data",
+      "path": "ch08.ipynb",
+      "to": "data.stack"
+    },
+    {
+      "from": "long_data",
+      "path": "ch08.ipynb",
+      "to": "data.stack().reset_index"
+    },
+    {
+      "from": "long_data",
+      "path": "ch08.ipynb",
+      "to": "data.stack().reset_index().rename"
+    },
+    {
+      "from": "melted",
+      "path": "ch08.ipynb",
+      "to": "pd.melt"
+    },
+    {
+      "from": "periods",
+      "path": "ch08.ipynb",
+      "to": "data.pop"
+    },
+    {
+      "from": "periods",
+      "path": "ch08.ipynb",
+      "to": "pd.PeriodIndex"
+    },
+    {
+      "from": "pivoted",
+      "path": "ch08.ipynb",
+      "to": "long_data.pivot"
+    },
+    {
+      "from": "reshaped",
+      "path": "ch08.ipynb",
+      "to": "melted.pivot"
+    },
+    {
+      "from": "result",
+      "path": "ch08.ipynb",
+      "to": "data.stack"
+    },
+    {
+      "from": "result",
+      "path": "ch08.ipynb",
+      "to": "pd.concat"
+    },
+    {
+      "from": "right",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "right",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "right1",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "right2",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "right2",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame().astype"
+    },
+    {
+      "from": "righth",
+      "path": "ch08.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "righth",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "righth_index",
+      "path": "ch08.ipynb",
+      "to": "pd.MultiIndex.from_arrays"
+    },
+    {
+      "from": "s1",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "s2",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "s3",
+      "path": "ch08.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "s4",
+      "path": "ch08.ipynb",
+      "to": "pd.concat"
+    },
+    {
+      "from": "unstacked",
+      "path": "ch08.ipynb",
+      "to": "long_data.set_index"
+    },
+    {
+      "from": "unstacked",
+      "path": "ch08.ipynb",
+      "to": "long_data.set_index().unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.add_patch"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.annotate"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.legend"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.set_title"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.set_xlabel"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.set_xlim"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax.set_ylim"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax1.hist"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax2.scatter"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "ax3.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "df.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "dict"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "fig.subplots_adjust"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.random.randn"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.random.randn().cumsum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal().cumsum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "plt.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "plt.figure"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "plt.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "plt.style.use"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "s.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "sns.barplot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "sns.catplot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "sns.histplot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "sns.pairplot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "sns.set_style"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "spx.asof"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "spx.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch09.ipynb",
+      "to": "tips.head"
+    },
+    {
+      "from": "ax",
+      "path": "ch09.ipynb",
+      "to": "fig.add_subplot"
+    },
+    {
+      "from": "ax",
+      "path": "ch09.ipynb",
+      "to": "sns.regplot"
+    },
+    {
+      "from": "ax1",
+      "path": "ch09.ipynb",
+      "to": "fig.add_subplot"
+    },
+    {
+      "from": "ax2",
+      "path": "ch09.ipynb",
+      "to": "fig.add_subplot"
+    },
+    {
+      "from": "ax3",
+      "path": "ch09.ipynb",
+      "to": "fig.add_subplot"
+    },
+    {
+      "from": "circ",
+      "path": "ch09.ipynb",
+      "to": "plt.Circle"
+    },
+    {
+      "from": "comp1",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "comp2",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "crisis_data",
+      "path": "ch09.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal().cumsum"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "np.random.uniform"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "data",
+      "path": "ch09.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "df",
+      "path": "ch09.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "df",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal().cumsum"
+    },
+    {
+      "from": "df",
+      "path": "ch09.ipynb",
+      "to": "np.random.uniform"
+    },
+    {
+      "from": "df",
+      "path": "ch09.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df",
+      "path": "ch09.ipynb",
+      "to": "pd.Index"
+    },
+    {
+      "from": "fig",
+      "path": "ch09.ipynb",
+      "to": "plt.figure"
+    },
+    {
+      "from": "fig",
+      "path": "ch09.ipynb",
+      "to": "plt.subplots"
+    },
+    {
+      "from": "labels",
+      "path": "ch09.ipynb",
+      "to": "ax.set_xticklabels"
+    },
+    {
+      "from": "macro",
+      "path": "ch09.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "party_counts",
+      "path": "ch09.ipynb",
+      "to": "party_counts.reindex"
+    },
+    {
+      "from": "party_counts",
+      "path": "ch09.ipynb",
+      "to": "pd.crosstab"
+    },
+    {
+      "from": "pgon",
+      "path": "ch09.ipynb",
+      "to": "plt.Polygon"
+    },
+    {
+      "from": "rect",
+      "path": "ch09.ipynb",
+      "to": "plt.Rectangle"
+    },
+    {
+      "from": "s",
+      "path": "ch09.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "s",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "s",
+      "path": "ch09.ipynb",
+      "to": "np.random.standard_normal().cumsum"
+    },
+    {
+      "from": "s",
+      "path": "ch09.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "ticks",
+      "path": "ch09.ipynb",
+      "to": "ax.set_xticks"
+    },
+    {
+      "from": "tips",
+      "path": "ch09.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "trans_data",
+      "path": "ch09.ipynb",
+      "to": "np.log"
+    },
+    {
+      "from": "values",
+      "path": "ch09.ipynb",
+      "to": "np.concatenate"
+    },
+    {
+      "from": "values",
+      "path": "ch09.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "by_column.sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "by_year.apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "cards.extend"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "close_px.info"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "close_px.tail"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "data.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "data.groupby().apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "data.groupby().count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "data.groupby().mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "data.groupby().size"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "deck.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "deck.groupby().apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "deck.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "df.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "df.groupby().count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "df.groupby().mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "df.groupby().size"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "draw"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "frame.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "g.apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "g.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "g.transform"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "grouped.agg"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "grouped.apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "grouped.describe"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "grouped.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "grouped.nsmallest"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "grouped_pct.agg"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "hier_df.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "hier_df.groupby().count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "means.unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "pd.crosstab"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "people.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "people.groupby().count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "people.groupby().min"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "people.groupby().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "quartiles.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "quartiles_samp.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "result.unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "s.fillna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "s.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "s_grouped.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "str"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "tips.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "tips.groupby().apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "tips.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "tips.pivot_table"
+    },
+    {
+      "from": "<module>",
+      "path": "ch10.ipynb",
+      "to": "top"
+    },
+    {
+      "from": "base_names",
+      "path": "ch10.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "base_names",
+      "path": "ch10.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "by_column",
+      "path": "ch10.ipynb",
+      "to": "people.groupby"
+    },
+    {
+      "from": "by_year",
+      "path": "ch10.ipynb",
+      "to": "rets.groupby"
+    },
+    {
+      "from": "card_val",
+      "path": "ch10.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "card_val",
+      "path": "ch10.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "close_px",
+      "path": "ch10.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "columns",
+      "path": "ch10.ipynb",
+      "to": "pd.MultiIndex.from_arrays"
+    },
+    {
+      "from": "data",
+      "path": "ch10.ipynb",
+      "to": "StringIO"
+    },
+    {
+      "from": "data",
+      "path": "ch10.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "data",
+      "path": "ch10.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "data",
+      "path": "ch10.ipynb",
+      "to": "pd.read_table"
+    },
+    {
+      "from": "deck",
+      "path": "ch10.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "df",
+      "path": "ch10.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df",
+      "path": "ch10.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "df",
+      "path": "ch10.ipynb",
+      "to": "np.random.uniform"
+    },
+    {
+      "from": "df",
+      "path": "ch10.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df",
+      "path": "ch10.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "frame",
+      "path": "ch10.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "frame",
+      "path": "ch10.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "g",
+      "path": "ch10.ipynb",
+      "to": "df.groupby"
+    },
+    {
+      "from": "get_stats",
+      "path": "ch10.ipynb",
+      "to": "group.count"
+    },
+    {
+      "from": "get_stats",
+      "path": "ch10.ipynb",
+      "to": "group.max"
+    },
+    {
+      "from": "get_stats",
+      "path": "ch10.ipynb",
+      "to": "group.mean"
+    },
+    {
+      "from": "get_stats",
+      "path": "ch10.ipynb",
+      "to": "group.min"
+    },
+    {
+      "from": "get_stats",
+      "path": "ch10.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "get_wavg",
+      "path": "ch10.ipynb",
+      "to": "np.average"
+    },
+    {
+      "from": "grouped",
+      "path": "ch10.ipynb",
+      "to": "df.groupby"
+    },
+    {
+      "from": "grouped",
+      "path": "ch10.ipynb",
+      "to": "frame.groupby"
+    },
+    {
+      "from": "grouped",
+      "path": "ch10.ipynb",
+      "to": "tips.groupby"
+    },
+    {
+      "from": "hier_df",
+      "path": "ch10.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "hier_df",
+      "path": "ch10.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "map_series",
+      "path": "ch10.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "means",
+      "path": "ch10.ipynb",
+      "to": "df.groupby"
+    },
+    {
+      "from": "means",
+      "path": "ch10.ipynb",
+      "to": "df.groupby().mean"
+    },
+    {
+      "from": "normalized",
+      "path": "ch10.ipynb",
+      "to": "g.transform"
+    },
+    {
+      "from": "people",
+      "path": "ch10.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "people",
+      "path": "ch10.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "pieces",
+      "path": "ch10.ipynb",
+      "to": "df.groupby"
+    },
+    {
+      "from": "quartiles",
+      "path": "ch10.ipynb",
+      "to": "pd.cut"
+    },
+    {
+      "from": "quartiles_samp",
+      "path": "ch10.ipynb",
+      "to": "pd.qcut"
+    },
+    {
+      "from": "regress",
+      "path": "ch10.ipynb",
+      "to": "sm.OLS"
+    },
+    {
+      "from": "regress",
+      "path": "ch10.ipynb",
+      "to": "sm.OLS().fit"
+    },
+    {
+      "from": "result",
+      "path": "ch10.ipynb",
+      "to": "grouped.agg"
+    },
+    {
+      "from": "result",
+      "path": "ch10.ipynb",
+      "to": "tips.groupby"
+    },
+    {
+      "from": "result",
+      "path": "ch10.ipynb",
+      "to": "tips.groupby().describe"
+    },
+    {
+      "from": "rets",
+      "path": "ch10.ipynb",
+      "to": "close_px.pct_change"
+    },
+    {
+      "from": "rets",
+      "path": "ch10.ipynb",
+      "to": "close_px.pct_change().dropna"
+    },
+    {
+      "from": "s",
+      "path": "ch10.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "s",
+      "path": "ch10.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "s_grouped",
+      "path": "ch10.ipynb",
+      "to": "df.groupby"
+    },
+    {
+      "from": "states",
+      "path": "ch10.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "tips",
+      "path": "ch10.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "Day"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "Hour"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "Minute"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "MonthEnd"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "aapl_px.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "close_px.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "close_px.rolling"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "close_px.rolling().mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "close_px.rolling().mean().plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "corr.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "data.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "datetime.strptime"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "df.set_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "df.set_index().resample"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "df.set_index().resample().count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "df2.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ewma30.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "frame.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "frame.resample"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "frame.resample().ffill"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "grouped.count"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "grouped.mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "list"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ma30.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "offset.rollback"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "offset.rollforward"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "p.asfreq"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "p4pm.to_timestamp"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "pd.Period"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "pd.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "pd.to_datetime"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "plt.figure"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "plt.legend"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "plt.style.use"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "pts.to_timestamp"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "resampled.reset_index"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "result.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "stamp.strftime"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "stamp_utc.tz_convert"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "std250.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "str"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "timedelta"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "to_offset"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.asfreq"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.groupby().mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.resample"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.resample().mean"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.resample().ohlc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.resample().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.shift"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts.truncate"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts2.to_period"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts_eastern.tz_convert"
+    },
+    {
+      "from": "<module>",
+      "path": "ch11.ipynb",
+      "to": "ts_utc.tz_convert"
+    },
+    {
+      "from": "annual_frame",
+      "path": "ch11.ipynb",
+      "to": "frame.resample"
+    },
+    {
+      "from": "annual_frame",
+      "path": "ch11.ipynb",
+      "to": "frame.resample().mean"
+    },
+    {
+      "from": "close_px",
+      "path": "ch11.ipynb",
+      "to": "close_px.resample"
+    },
+    {
+      "from": "close_px",
+      "path": "ch11.ipynb",
+      "to": "close_px.resample().ffill"
+    },
+    {
+      "from": "close_px_all",
+      "path": "ch11.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "corr",
+      "path": "ch11.ipynb",
+      "to": "returns.rolling"
+    },
+    {
+      "from": "corr",
+      "path": "ch11.ipynb",
+      "to": "returns.rolling().corr"
+    },
+    {
+      "from": "data",
+      "path": "ch11.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "dates",
+      "path": "ch11.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "dates",
+      "path": "ch11.ipynb",
+      "to": "pd.DatetimeIndex"
+    },
+    {
+      "from": "dates",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "delta",
+      "path": "ch11.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "df",
+      "path": "ch11.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df",
+      "path": "ch11.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df2",
+      "path": "ch11.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "df2",
+      "path": "ch11.ipynb",
+      "to": "np.tile"
+    },
+    {
+      "from": "df2",
+      "path": "ch11.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df2",
+      "path": "ch11.ipynb",
+      "to": "times.repeat"
+    },
+    {
+      "from": "df_daily",
+      "path": "ch11.ipynb",
+      "to": "frame.resample"
+    },
+    {
+      "from": "df_daily",
+      "path": "ch11.ipynb",
+      "to": "frame.resample().asfreq"
+    },
+    {
+      "from": "dup_ts",
+      "path": "ch11.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "dup_ts",
+      "path": "ch11.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "ewma30",
+      "path": "ch11.ipynb",
+      "to": "aapl_px.ewm"
+    },
+    {
+      "from": "ewma30",
+      "path": "ch11.ipynb",
+      "to": "aapl_px.ewm().mean"
+    },
+    {
+      "from": "expanding_mean",
+      "path": "ch11.ipynb",
+      "to": "std250.expanding"
+    },
+    {
+      "from": "expanding_mean",
+      "path": "ch11.ipynb",
+      "to": "std250.expanding().mean"
+    },
+    {
+      "from": "four_hours",
+      "path": "ch11.ipynb",
+      "to": "Hour"
+    },
+    {
+      "from": "frame",
+      "path": "ch11.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "frame",
+      "path": "ch11.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "frame",
+      "path": "ch11.ipynb",
+      "to": "pd.period_range"
+    },
+    {
+      "from": "grouped",
+      "path": "ch11.ipynb",
+      "to": "dup_ts.groupby"
+    },
+    {
+      "from": "hour",
+      "path": "ch11.ipynb",
+      "to": "Hour"
+    },
+    {
+      "from": "idx",
+      "path": "ch11.ipynb",
+      "to": "pd.to_datetime"
+    },
+    {
+      "from": "index",
+      "path": "ch11.ipynb",
+      "to": "pd.PeriodIndex"
+    },
+    {
+      "from": "index",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "long_df",
+      "path": "ch11.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "long_df",
+      "path": "ch11.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "longer_ts",
+      "path": "ch11.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "longer_ts",
+      "path": "ch11.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "longer_ts",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "ma30",
+      "path": "ch11.ipynb",
+      "to": "aapl_px.rolling"
+    },
+    {
+      "from": "ma30",
+      "path": "ch11.ipynb",
+      "to": "aapl_px.rolling().mean"
+    },
+    {
+      "from": "monthly_dates",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "new_periods",
+      "path": "ch11.ipynb",
+      "to": "periods.asfreq"
+    },
+    {
+      "from": "now",
+      "path": "ch11.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "now",
+      "path": "ch11.ipynb",
+      "to": "datetime.now"
+    },
+    {
+      "from": "offset",
+      "path": "ch11.ipynb",
+      "to": "MonthEnd"
+    },
+    {
+      "from": "p",
+      "path": "ch11.ipynb",
+      "to": "pd.Period"
+    },
+    {
+      "from": "p4pm",
+      "path": "ch11.ipynb",
+      "to": "p.asfreq"
+    },
+    {
+      "from": "periods",
+      "path": "ch11.ipynb",
+      "to": "pd.period_range"
+    },
+    {
+      "from": "pts",
+      "path": "ch11.ipynb",
+      "to": "ts.to_period"
+    },
+    {
+      "from": "pts",
+      "path": "ch11.ipynb",
+      "to": "ts2.to_period"
+    },
+    {
+      "from": "resampled",
+      "path": "ch11.ipynb",
+      "to": "df2.set_index"
+    },
+    {
+      "from": "resampled",
+      "path": "ch11.ipynb",
+      "to": "df2.set_index().groupby"
+    },
+    {
+      "from": "resampled",
+      "path": "ch11.ipynb",
+      "to": "df2.set_index().groupby().sum"
+    },
+    {
+      "from": "resampler",
+      "path": "ch11.ipynb",
+      "to": "ts.resample"
+    },
+    {
+      "from": "result",
+      "path": "ch11.ipynb",
+      "to": "returns.rolling"
+    },
+    {
+      "from": "result",
+      "path": "ch11.ipynb",
+      "to": "returns.rolling().apply"
+    },
+    {
+      "from": "result",
+      "path": "ch11.ipynb",
+      "to": "ts.resample"
+    },
+    {
+      "from": "result",
+      "path": "ch11.ipynb",
+      "to": "ts.resample().sum"
+    },
+    {
+      "from": "returns",
+      "path": "ch11.ipynb",
+      "to": "close_px.pct_change"
+    },
+    {
+      "from": "score_at_2percent",
+      "path": "ch11.ipynb",
+      "to": "percentileofscore"
+    },
+    {
+      "from": "spx_rets",
+      "path": "ch11.ipynb",
+      "to": "spx_px.pct_change"
+    },
+    {
+      "from": "stamp",
+      "path": "ch11.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "stamp",
+      "path": "ch11.ipynb",
+      "to": "pd.Timestamp"
+    },
+    {
+      "from": "stamp_moscow",
+      "path": "ch11.ipynb",
+      "to": "pd.Timestamp"
+    },
+    {
+      "from": "stamp_utc",
+      "path": "ch11.ipynb",
+      "to": "stamp.tz_localize"
+    },
+    {
+      "from": "start",
+      "path": "ch11.ipynb",
+      "to": "datetime"
+    },
+    {
+      "from": "std250",
+      "path": "ch11.ipynb",
+      "to": "close_px.pct_change"
+    },
+    {
+      "from": "std250",
+      "path": "ch11.ipynb",
+      "to": "close_px.pct_change().rolling"
+    },
+    {
+      "from": "std250",
+      "path": "ch11.ipynb",
+      "to": "close_px.pct_change().rolling().std"
+    },
+    {
+      "from": "time_key",
+      "path": "ch11.ipynb",
+      "to": "pd.Grouper"
+    },
+    {
+      "from": "times",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "ts",
+      "path": "ch11.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "ts",
+      "path": "ch11.ipynb",
+      "to": "np.arange"
+    },
+    {
+      "from": "ts",
+      "path": "ch11.ipynb",
+      "to": "np.random.permutation"
+    },
+    {
+      "from": "ts",
+      "path": "ch11.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "ts",
+      "path": "ch11.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "ts",
+      "path": "ch11.ipynb",
+      "to": "pd.date_range"
+    },
+    {
+      "from": "ts1",
+      "path": "ch11.ipynb",
+      "to": "ts.tz_localize"
+    },
+    {
+      "from": "ts2",
+      "path": "ch11.ipynb",
+      "to": "np.random.standard_normal"
+    },
+    {
+      "from": "ts2",
+      "path": "ch11.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "ts2",
+      "path": "ch11.ipynb",
+      "to": "ts1.tz_convert"
+    },
+    {
+      "from": "ts_eastern",
+      "path": "ch11.ipynb",
+      "to": "ts.tz_localize"
+    },
+    {
+      "from": "ts_utc",
+      "path": "ch11.ipynb",
+      "to": "ts.tz_localize"
+    },
+    {
+      "from": "tz",
+      "path": "ch11.ipynb",
+      "to": "pytz.timezone"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "data.map"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "data.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "df3.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "model.fit"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "model_cv.fit"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "np.asarray"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "pd.Categorical"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "print"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "results.summary"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "test.fillna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "test.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "test.isna().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "train.fillna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "train.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "train.isna"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "train.isna().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch12.ipynb",
+      "to": "values.append"
+    },
+    {
+      "from": "X",
+      "path": "ch12.ipynb",
+      "to": "dnorm"
+    },
+    {
+      "from": "X_model",
+      "path": "ch12.ipynb",
+      "to": "sm.add_constant"
+    },
+    {
+      "from": "X_test",
+      "path": "ch12.ipynb",
+      "to": "test.to_numpy"
+    },
+    {
+      "from": "X_train",
+      "path": "ch12.ipynb",
+      "to": "train.to_numpy"
+    },
+    {
+      "from": "coef",
+      "path": "ch12.ipynb",
+      "to": "coef.squeeze"
+    },
+    {
+      "from": "coef",
+      "path": "ch12.ipynb",
+      "to": "np.linalg.lstsq"
+    },
+    {
+      "from": "coef",
+      "path": "ch12.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "data",
+      "path": "ch12.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "data_with_dummies",
+      "path": "ch12.ipynb",
+      "to": "data.drop"
+    },
+    {
+      "from": "data_with_dummies",
+      "path": "ch12.ipynb",
+      "to": "data.drop().join"
+    },
+    {
+      "from": "df2",
+      "path": "ch12.ipynb",
+      "to": "data.to_numpy"
+    },
+    {
+      "from": "df2",
+      "path": "ch12.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "df3",
+      "path": "ch12.ipynb",
+      "to": "data.copy"
+    },
+    {
+      "from": "dnorm",
+      "path": "ch12.ipynb",
+      "to": "isinstance"
+    },
+    {
+      "from": "dnorm",
+      "path": "ch12.ipynb",
+      "to": "np.sqrt"
+    },
+    {
+      "from": "dnorm",
+      "path": "ch12.ipynb",
+      "to": "rng.standard_normal"
+    },
+    {
+      "from": "dummies",
+      "path": "ch12.ipynb",
+      "to": "pd.get_dummies"
+    },
+    {
+      "from": "eps",
+      "path": "ch12.ipynb",
+      "to": "dnorm"
+    },
+    {
+      "from": "impute_value",
+      "path": "ch12.ipynb",
+      "to": "train.median"
+    },
+    {
+      "from": "model",
+      "path": "ch12.ipynb",
+      "to": "AutoReg"
+    },
+    {
+      "from": "model",
+      "path": "ch12.ipynb",
+      "to": "LogisticRegression"
+    },
+    {
+      "from": "model",
+      "path": "ch12.ipynb",
+      "to": "sm.OLS"
+    },
+    {
+      "from": "model_cv",
+      "path": "ch12.ipynb",
+      "to": "LogisticRegressionCV"
+    },
+    {
+      "from": "new_data",
+      "path": "ch12.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "noise",
+      "path": "ch12.ipynb",
+      "to": "dnorm"
+    },
+    {
+      "from": "results",
+      "path": "ch12.ipynb",
+      "to": "model.fit"
+    },
+    {
+      "from": "results",
+      "path": "ch12.ipynb",
+      "to": "smf.ols"
+    },
+    {
+      "from": "results",
+      "path": "ch12.ipynb",
+      "to": "smf.ols().fit"
+    },
+    {
+      "from": "rng",
+      "path": "ch12.ipynb",
+      "to": "np.random.default_rng"
+    },
+    {
+      "from": "scores",
+      "path": "ch12.ipynb",
+      "to": "cross_val_score"
+    },
+    {
+      "from": "test",
+      "path": "ch12.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "train",
+      "path": "ch12.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "y",
+      "path": "ch12.ipynb",
+      "to": "np.dot"
+    },
+    {
+      "from": "y_predict",
+      "path": "ch12.ipynb",
+      "to": "model.predict"
+    },
+    {
+      "from": "y_train",
+      "path": "ch12.ipynb",
+      "to": "train.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "agg_counts.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "agg_counts.sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "cframe.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "cframe.str.contains"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "count_subset.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "counts.most_common"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "diversity.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "diversity.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "fec.info"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "fec.map"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "fec.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "filtered.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "filtered.groupby().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "frame.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "frame.info"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "grouped.apply"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "grouped.size"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "grouped.size().unstack"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "info.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "info.info"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "len"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "mean_ratings.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "movies.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "movies.pop"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "movies.pop().str.split"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "names.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "names.groupby().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "names1880.groupby"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "names1880.groupby().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "ndata.info"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "np.linspace"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "np.random.seed"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "np.set_printoptions"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "np.where"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "nutrients.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "nutrients.duplicated"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "nutrients.duplicated().sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "nutrients.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "over_2mm.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "pd.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "pieces.append"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "plt.close"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "plt.figure"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "plt.rc"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "plt.subplots_adjust"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "prop_cumsum.searchsorted"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "range"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "rating_std_by_title.sort_values"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "ratings.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "ratings_by_title.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "result.sort_values"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "result.sort_values().plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "results.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "results.value_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "results.value_counts().head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "sns.barplot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "subset.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "subset.to_numpy"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "subtable.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "subtable.sum"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "table.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "top1000.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "top_counts"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "total_births.info"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "total_births.plot"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "total_births.tail"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "totals.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "tz_counts.head"
+    },
+    {
+      "from": "<module>",
+      "path": "ch13.ipynb",
+      "to": "users.head"
+    },
+    {
+      "from": "agg_counts",
+      "path": "ch13.ipynb",
+      "to": "by_tz_os.size"
+    },
+    {
+      "from": "agg_counts",
+      "path": "ch13.ipynb",
+      "to": "by_tz_os.size().unstack"
+    },
+    {
+      "from": "agg_counts",
+      "path": "ch13.ipynb",
+      "to": "by_tz_os.size().unstack().fillna"
+    },
+    {
+      "from": "all_names",
+      "path": "ch13.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "all_names",
+      "path": "ch13.ipynb",
+      "to": "top1000.unique"
+    },
+    {
+      "from": "bins",
+      "path": "ch13.ipynb",
+      "to": "np.array"
+    },
+    {
+      "from": "bucket_sums",
+      "path": "ch13.ipynb",
+      "to": "grouped.sum"
+    },
+    {
+      "from": "bucket_sums",
+      "path": "ch13.ipynb",
+      "to": "grouped.sum().unstack"
+    },
+    {
+      "from": "by_nutrient",
+      "path": "ch13.ipynb",
+      "to": "ndata.groupby"
+    },
+    {
+      "from": "by_occupation",
+      "path": "ch13.ipynb",
+      "to": "fec.pivot_table"
+    },
+    {
+      "from": "by_tz_os",
+      "path": "ch13.ipynb",
+      "to": "cframe.groupby"
+    },
+    {
+      "from": "cframe",
+      "path": "ch13.ipynb",
+      "to": "frame.copy"
+    },
+    {
+      "from": "cframe",
+      "path": "ch13.ipynb",
+      "to": "frame.notna"
+    },
+    {
+      "from": "clean_tz",
+      "path": "ch13.ipynb",
+      "to": "frame.fillna"
+    },
+    {
+      "from": "count_subset",
+      "path": "ch13.ipynb",
+      "to": "agg_counts.take"
+    },
+    {
+      "from": "count_subset",
+      "path": "ch13.ipynb",
+      "to": "count_subset.reset_index"
+    },
+    {
+      "from": "count_subset",
+      "path": "ch13.ipynb",
+      "to": "count_subset.stack"
+    },
+    {
+      "from": "counts",
+      "path": "ch13.ipynb",
+      "to": "Counter"
+    },
+    {
+      "from": "counts",
+      "path": "ch13.ipynb",
+      "to": "get_counts"
+    },
+    {
+      "from": "data",
+      "path": "ch13.ipynb",
+      "to": "pd.merge"
+    },
+    {
+      "from": "db",
+      "path": "ch13.ipynb",
+      "to": "json.load"
+    },
+    {
+      "from": "db",
+      "path": "ch13.ipynb",
+      "to": "open"
+    },
+    {
+      "from": "diversity",
+      "path": "ch13.ipynb",
+      "to": "diversity.unstack"
+    },
+    {
+      "from": "diversity",
+      "path": "ch13.ipynb",
+      "to": "top1000.groupby"
+    },
+    {
+      "from": "diversity",
+      "path": "ch13.ipynb",
+      "to": "top1000.groupby().apply"
+    },
+    {
+      "from": "fec",
+      "path": "ch13.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "fec_mrbo",
+      "path": "ch13.ipynb",
+      "to": "fec.isin"
+    },
+    {
+      "from": "fig",
+      "path": "ch13.ipynb",
+      "to": "plt.figure"
+    },
+    {
+      "from": "fig",
+      "path": "ch13.ipynb",
+      "to": "plt.subplots"
+    },
+    {
+      "from": "filtered",
+      "path": "ch13.ipynb",
+      "to": "top1000.isin"
+    },
+    {
+      "from": "fnuts",
+      "path": "ch13.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame",
+      "path": "ch13.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "frame",
+      "path": "ch13.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "g",
+      "path": "ch13.ipynb",
+      "to": "count_subset.groupby"
+    },
+    {
+      "from": "genre_ratings",
+      "path": "ch13.ipynb",
+      "to": "ratings_with_genre.groupby"
+    },
+    {
+      "from": "genre_ratings",
+      "path": "ch13.ipynb",
+      "to": "ratings_with_genre.groupby().mean"
+    },
+    {
+      "from": "genre_ratings",
+      "path": "ch13.ipynb",
+      "to": "ratings_with_genre.groupby().mean().unstack"
+    },
+    {
+      "from": "get_counts2",
+      "path": "ch13.ipynb",
+      "to": "defaultdict"
+    },
+    {
+      "from": "get_emp",
+      "path": "ch13.ipynb",
+      "to": "emp_mapping.get"
+    },
+    {
+      "from": "get_occ",
+      "path": "ch13.ipynb",
+      "to": "occ_mapping.get"
+    },
+    {
+      "from": "grouped",
+      "path": "ch13.ipynb",
+      "to": "fec_mrbo.groupby"
+    },
+    {
+      "from": "grouped",
+      "path": "ch13.ipynb",
+      "to": "names.groupby"
+    },
+    {
+      "from": "in1900",
+      "path": "ch13.ipynb",
+      "to": "df.sort_values"
+    },
+    {
+      "from": "indexer",
+      "path": "ch13.ipynb",
+      "to": "agg_counts.sum"
+    },
+    {
+      "from": "info",
+      "path": "ch13.ipynb",
+      "to": "info.rename"
+    },
+    {
+      "from": "info",
+      "path": "ch13.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "labels",
+      "path": "ch13.ipynb",
+      "to": "pd.cut"
+    },
+    {
+      "from": "last_letters",
+      "path": "ch13.ipynb",
+      "to": "names.map"
+    },
+    {
+      "from": "lesley_like",
+      "path": "ch13.ipynb",
+      "to": "all_names.str.contains"
+    },
+    {
+      "from": "letter_prop",
+      "path": "ch13.ipynb",
+      "to": "subtable.sum"
+    },
+    {
+      "from": "letter_prop",
+      "path": "ch13.ipynb",
+      "to": "table.sum"
+    },
+    {
+      "from": "max_foods",
+      "path": "ch13.ipynb",
+      "to": "by_nutrient.apply"
+    },
+    {
+      "from": "mean_ratings",
+      "path": "ch13.ipynb",
+      "to": "data.pivot_table"
+    },
+    {
+      "from": "movies",
+      "path": "ch13.ipynb",
+      "to": "pd.read_table"
+    },
+    {
+      "from": "movies_exploded",
+      "path": "ch13.ipynb",
+      "to": "movies.explode"
+    },
+    {
+      "from": "names",
+      "path": "ch13.ipynb",
+      "to": "names.groupby"
+    },
+    {
+      "from": "names",
+      "path": "ch13.ipynb",
+      "to": "names.groupby().apply"
+    },
+    {
+      "from": "names",
+      "path": "ch13.ipynb",
+      "to": "pd.concat"
+    },
+    {
+      "from": "names1880",
+      "path": "ch13.ipynb",
+      "to": "pd.read_csv"
+    },
+    {
+      "from": "ndata",
+      "path": "ch13.ipynb",
+      "to": "pd.merge"
+    },
+    {
+      "from": "normed_sums",
+      "path": "ch13.ipynb",
+      "to": "bucket_sums.div"
+    },
+    {
+      "from": "normed_sums",
+      "path": "ch13.ipynb",
+      "to": "bucket_sums.sum"
+    },
+    {
+      "from": "nutrients",
+      "path": "ch13.ipynb",
+      "to": "nutrients.drop_duplicates"
+    },
+    {
+      "from": "nutrients",
+      "path": "ch13.ipynb",
+      "to": "nutrients.rename"
+    },
+    {
+      "from": "nutrients",
+      "path": "ch13.ipynb",
+      "to": "pd.DataFrame"
+    },
+    {
+      "from": "nutrients",
+      "path": "ch13.ipynb",
+      "to": "pd.concat"
+    },
+    {
+      "from": "over_2mm",
+      "path": "ch13.ipynb",
+      "to": "by_occupation.sum"
+    },
+    {
+      "from": "percent",
+      "path": "ch13.ipynb",
+      "to": "totals.div"
+    },
+    {
+      "from": "percent",
+      "path": "ch13.ipynb",
+      "to": "totals.sum"
+    },
+    {
+      "from": "prop_cumsum",
+      "path": "ch13.ipynb",
+      "to": "df.sort_values"
+    },
+    {
+      "from": "prop_cumsum",
+      "path": "ch13.ipynb",
+      "to": "df.sort_values().cumsum"
+    },
+    {
+      "from": "rating_std_by_title",
+      "path": "ch13.ipynb",
+      "to": "data.groupby"
+    },
+    {
+      "from": "rating_std_by_title",
+      "path": "ch13.ipynb",
+      "to": "data.groupby().std"
+    },
+    {
+      "from": "ratings",
+      "path": "ch13.ipynb",
+      "to": "pd.read_table"
+    },
+    {
+      "from": "ratings_by_title",
+      "path": "ch13.ipynb",
+      "to": "data.groupby"
+    },
+    {
+      "from": "ratings_by_title",
+      "path": "ch13.ipynb",
+      "to": "data.groupby().size"
+    },
+    {
+      "from": "ratings_with_genre",
+      "path": "ch13.ipynb",
+      "to": "pd.merge"
+    },
+    {
+      "from": "records",
+      "path": "ch13.ipynb",
+      "to": "json.loads"
+    },
+    {
+      "from": "result",
+      "path": "ch13.ipynb",
+      "to": "ndata.groupby"
+    },
+    {
+      "from": "result",
+      "path": "ch13.ipynb",
+      "to": "ndata.groupby().quantile"
+    },
+    {
+      "from": "results",
+      "path": "ch13.ipynb",
+      "to": "count_subset.groupby"
+    },
+    {
+      "from": "results",
+      "path": "ch13.ipynb",
+      "to": "count_subset.groupby().apply"
+    },
+    {
+      "from": "results",
+      "path": "ch13.ipynb",
+      "to": "frame.dropna"
+    },
+    {
+      "from": "results",
+      "path": "ch13.ipynb",
+      "to": "pd.Series"
+    },
+    {
+      "from": "results",
+      "path": "ch13.ipynb",
+      "to": "x.split"
+    },
+    {
+      "from": "results2",
+      "path": "ch13.ipynb",
+      "to": "g.transform"
+    },
+    {
+      "from": "subset",
+      "path": "ch13.ipynb",
+      "to": "tz_counts.head"
+    },
+    {
+      "from": "subtable",
+      "path": "ch13.ipynb",
+      "to": "table.reindex"
+    },
+    {
+      "from": "table",
+      "path": "ch13.ipynb",
+      "to": "filtered.pivot_table"
+    },
+    {
+      "from": "table",
+      "path": "ch13.ipynb",
+      "to": "names.pivot_table"
+    },
+    {
+      "from": "table",
+      "path": "ch13.ipynb",
+      "to": "table.sum"
+    },
+    {
+      "from": "table",
+      "path": "ch13.ipynb",
+      "to": "top1000.pivot_table"
+    },
+    {
+      "from": "top1000",
+      "path": "ch13.ipynb",
+      "to": "grouped.apply"
+    },
+    {
+      "from": "top1000",
+      "path": "ch13.ipynb",
+      "to": "top1000.reset_index"
+    },
+    {
+      "from": "top_counts",
+      "path": "ch13.ipynb",
+      "to": "value_key_pairs.sort"
+    },
+    {
+      "from": "total_births",
+      "path": "ch13.ipynb",
+      "to": "names.pivot_table"
+    },
+    {
+      "from": "total_births",
+      "path": "ch13.ipynb",
+      "to": "top1000.pivot_table"
+    },
+    {
+      "from": "totals",
+      "path": "ch13.ipynb",
+      "to": "grouped.sum"
+    },
+    {
+      "from": "totals",
+      "path": "ch13.ipynb",
+      "to": "grouped.sum().unstack"
+    },
+    {
+      "from": "totals",
+      "path": "ch13.ipynb",
+      "to": "grouped.sum().unstack().fillna"
+    },
+    {
+      "from": "totals",
+      "path": "ch13.ipynb",
+      "to": "totals.sum"
+    },
+    {
+      "from": "tz_counts",
+      "path": "ch13.ipynb",
+      "to": "clean_tz.value_counts"
+    },
+    {
+      "from": "tz_counts",
+      "path": "ch13.ipynb",
+      "to": "frame.value_counts"
+    },
+    {
+      "from": "unique_cands",
+      "path": "ch13.ipynb",
+      "to": "fec.unique"
+    },
+    {
+      "from": "users",
+      "path": "ch13.ipynb",
+      "to": "pd.read_table"
+    }
+  ],
+  "tier": "A",
+  "tool": "basedpyright native notebook definitions (answered subset; diagnostic only)",
+  "version": "basedpyright 1.40.2"
+}
