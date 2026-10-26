@@ -35,7 +35,12 @@ func ProbeParse(p *tsengine.Parser, target ProbeTarget, src []byte) (ProbeParseR
 		return ProbeParseResult{}, err
 	}
 	if target.Preprocess == nil {
-		return ProbeParseResult{Tree: tree, Text: src}, nil
+		n, err := tsErrorCount(p, tree)
+		if err != nil {
+			tree.Close()
+			return ProbeParseResult{}, err
+		}
+		return ProbeParseResult{Tree: tree, Text: src, WrittenErrors: n}, nil
 	}
 	return tsPreprocessedAt(p, tree, src, target.Preprocess, target.PreprocessLenient)
 }

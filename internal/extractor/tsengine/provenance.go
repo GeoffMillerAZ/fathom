@@ -29,6 +29,22 @@ func RenderProvenanceTables(lock GrammarLock) string {
 		fmt.Fprintf(&b, "| `%s` | %s | %s | `%s` | %s | %s | `%s` |\n",
 			r.Blob, r.Repo, r.Tag, r.Commit, r.Licence, strings.Join(eps, ", "), r.TarballSHA256)
 	}
+	patched := false
+	for _, r := range lock.Grammars {
+		if len(r.Patches) > 0 {
+			patched = true
+			break
+		}
+	}
+	if patched {
+		b.WriteString("\n### Applied source patches\n\n")
+		b.WriteString("| Blob | Order | Patch | sha256 |\n|---|--:|---|---|\n")
+		for _, r := range lock.Grammars {
+			for i, p := range r.Patches {
+				fmt.Fprintf(&b, "| `%s` (patched) | %d | `%s` | `%s` |\n", r.Blob, i+1, p.Path, p.SHA256)
+			}
+		}
+	}
 
 	b.WriteString("\n### Committed blobs\n\n")
 	b.WriteString("| Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |\n")

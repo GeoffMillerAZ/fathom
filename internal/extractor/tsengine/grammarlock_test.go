@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -130,6 +131,15 @@ func TestParseGrammarLockStrict(t *testing.T) {
 	if _, err := ParseGrammarLock([]byte(`{"core":{},"toolchain":{},"grammars":[{"blob":"x","licence_url":"y"}]}`)); err == nil {
 		t.Fatal("an unknown row field must be refused")
 	}
+	const patched = `{"core":{},"toolchain":{},"grammars":[{"blob":"x","patches":[{"path":"patches/fix.patch","sha256":"` +
+		`aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` + `"}]}]}`
+	l, err := ParseGrammarLock([]byte(patched))
+	if err != nil || len(l.Grammars[0].Patches) != 1 || l.Grammars[0].Patches[0].Path != "patches/fix.patch" {
+		t.Fatalf("valid patch metadata not parsed: %v, %+v", err, l)
+	}
+	if _, err := ParseGrammarLock([]byte(strings.Replace(patched, `"sha256"`, `"sha25"`, 1))); err == nil {
+		t.Fatal("an unknown patch field must be refused")
+	}
 }
 
 func TestLicenceAllowlist(t *testing.T) {
@@ -142,5 +152,78 @@ func TestLicenceAllowlist(t *testing.T) {
 		if LicenceAllowed(no) {
 			t.Errorf("%q must be refused", no)
 		}
+	}
+}
+
+func TestPatchLockMetadata(t *testing.T) {
+	for _, tc := range []struct{ name, path, hash, licence, want string }{
+		{"valid", "patches/fix.patch", strings.Repeat("a", 64), "MIT", ""},
+		{"nested", "patches/sub/fix.patch", strings.Repeat("a", 64), "MIT", ""},
+		{"traversal", "patches/../fix.patch", strings.Repeat("a", 64), "MIT", "patch"},
+		{"outside", "fix.patch", strings.Repeat("a", 64), "MIT", "patch"},
+		{"absolute", "/tmp/fix.patch", strings.Repeat("a", 64), "MIT", "patch"},
+		{"backslash", `patches\fix.patch`, strings.Repeat("a", 64), "MIT", "patch"},
+		{"extension", "patches/fix.diff", strings.Repeat("a", 64), "MIT", "patch"},
+		{"space", "patches/my fix.patch", strings.Repeat("a", 64), "MIT", "patch"},
+		{"empty patch stem", "patches/.patch", strings.Repeat("a", 64), "MIT", "patch"},
+		{"uppercase hash", "patches/fix.patch", strings.Repeat("A", 64), "MIT", "sha256"},
+		{"short hash", "patches/fix.patch", "abc", "MIT", "sha256"},
+		{"MPL patched", "patches/fix.patch", strings.Repeat("a", 64), "MPL-2.0", "MPL"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			l, dir := fixtureLock(t)
+			l.Grammars[0].Licence = tc.licence
+			l.Grammars[0].Patches = []LockPatch{{Path: tc.path, SHA256: tc.hash}}
+			err := VerifyGrammarLock(l, dir)
+			if tc.want == "" && err != nil {
+				t.Fatal(err)
+			}
+			if tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+				t.Fatalf("want %s: %v", tc.want, err)
+			}
+		})
+	}
+	l, dir := fixtureLock(t)
+	p := LockPatch{Path: "patches/fix.patch", SHA256: strings.Repeat("a", 64)}
+	l.Grammars[0].Patches = []LockPatch{p, p}
+	if err := VerifyGrammarLock(l, dir); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("duplicate: %v", err)
+	}
+}
+
+func TestInTreePatchHashes(t *testing.T) {
+	l, err := LoadGrammarLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyGrammarPatchFiles(l, os.DirFS("grammars")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestVerifyGrammarPatchFiles(t *testing.T) {
+	l, _ := fixtureLock(t)
+	b := []byte("patch bytes")
+	p := LockPatch{Path: "patches/fix.patch", SHA256: sum(b)}
+	l.Grammars[0].Patches = []LockPatch{p}
+	good := fstest.MapFS{"patches/fix.patch": {Data: b}}
+	if err := VerifyGrammarPatchFiles(l, good); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		files fstest.MapFS
+		want  string
+	}{
+		{"wrong hash", fstest.MapFS{"patches/fix.patch": {Data: []byte("other")}}, "sha256"},
+		{"missing", fstest.MapFS{}, "missing"},
+		{"symlink", fstest.MapFS{"patches/fix.patch": {Mode: fs.ModeSymlink}}, "symlink"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := VerifyGrammarPatchFiles(l, tc.files)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %s, got %v", tc.want, err)
+			}
+		})
 	}
 }
