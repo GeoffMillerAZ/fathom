@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "552a586db",
+  "fathom_commit": "b5b4a0965",
   "extractor": "dialect",
   "subjects": [
     {
@@ -44,8 +44,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.477,
-        "extract_cpu_ms": 0.477,
+        "extract_ms": 0.508,
+        "extract_cpu_ms": 0.508,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -60,7 +60,7 @@
     },
     {
       "tier": "A",
-      "tool": "PgBouncer native auth_dbname disabled-target and missing-name ablation",
+      "tool": "PgBouncer native SHOW DATABASES population and exhaustive auth_dbname startup enumeration",
       "version": "PgBouncer 1.26.1"
     }
   ],
@@ -105,9 +105,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 39.47,
+    "throughput_mb_s": 37.06,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 39.47,
+    "wall_throughput_mb_s": 37.06,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -116,8 +116,8 @@
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pgbouncer/pgbouncer: 1 files skipped by ingest's gates (ambiguous)",
-    "pgbouncer/pgbouncer: Native PgBouncer 1.26.1 full canonical population: auth_dbname references use disabled-target and missing-name controls; definition positions remain C. All backend endpoints isolated to a nonexistent private socket; no backend SQL or Docker. One real reference pair is the complete small population, not a broad coverage claim.",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 39.97 MB/CPU-s; run 2: 39.47 MB/CPU-s; run 3: 38.58 MB/CPU-s; median run 2: 39.47 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 552a586db"
+    "pgbouncer/pgbouncer: Native PgBouncer 1.26.1 protocol r2: SHOW DATABASES independently enumerates every native database; classify each unknown-user startup with all other databases disabled before comparing scanner pairs. Full native/scanner pair populations agree. Definitions/ranges remain C. Backend endpoints are nonexistent private sockets; no backend SQL or Docker. One reference is a small population, not broad operational coverage.",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 23.83 MB/CPU-s; run 2: 38.42 MB/CPU-s; run 3: 37.06 MB/CPU-s; median run 3: 37.06 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit b5b4a0965"
   ],
   "disposition": null
 }
