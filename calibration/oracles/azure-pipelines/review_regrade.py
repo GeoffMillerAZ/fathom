@@ -69,6 +69,9 @@ if __name__ == '__main__':
             else:
                 run([args.cfn_python, 'calibration/oracles/cfn-lint/cfn_oracle.py', '-subject', subject,
                      '-out', truth, '-xref-out', xref])
+            expected_version = '13.1.0' if dialect == 'openapi' else '1.52.1'
+            if json.loads(truth.read_text())['version'] != expected_version:
+                raise SystemExit('oracle version mismatch: ' + dialect)
             for label, binary, commit in (('baseline', args.baseline, args.baseline_commit),
                                           ('candidate', args.candidate, args.candidate_commit)):
                 output = args.out / (dialect + '-' + label + '.json')
