@@ -1,5 +1,24 @@
 # kong-oracle (tier A definitions; tier C references)
 
+This page documents the unchanged canonical oracle and historical tier labels.
+The [native diagnostic](NATIVE.md) enumerates 37 semantic pairs and 1,332
+named definitions. Filename ownership (O348) selects only four pairs, all
+`route.service`, and 365 definitions for comparison; those subsets agree.
+The other 33 pairs and 967 definitions in decK-accepted, unowned files were not
+compared. This grants no L2 tier-A recall or full-population L1 grade. The
+excluded 35 resolved sites comprise 31 `plugin.route`, one `plugin.service`
+and three `route.service` sites; deduplication yields 29, one and three pairs.
+There is no host-to-upstream pair in the native population. Independent ranges
+stay C; canonical range authority still needs audit: its tier-A L1 reading
+uses yaml.v3 source positions that decK does not report. This concern remains
+open, and no canonical regrade is performed here. Throughput remains unmeasured. Historical 568 files / 821 definitions /
+10 pairs count nested scratch-root aliases: the distinct owned counts are
+231 files / 365 definitions / four pairs. Ratios and canonical grades are
+unchanged. O347 parent binding, O348 filename coverage and the Supabase DB-less
+acceptance trigger remain open. L3 stays held by D19; no Docker or global
+install is authorized on this helper. Historical route commands below were
+not rerun.
+
 The language-breadth harness's oracle for the `kong` doc-engine dialect (LB-Q-kong, design §1.3, §10). A
 separate Go module (`go.mod`: yaml.v3), never imported by fathom, never a product dependency.
 

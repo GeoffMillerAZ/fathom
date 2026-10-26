@@ -1,0 +1,28 @@
+{
+  "candidate": "Kong decK1.68.0 / pinned go-database-reconciler1.42.4",
+  "purpose": "Full original-population L1/L2 diagnostic, not a canonical L3 regrade",
+  "population": {
+    "cohorts": 9,
+    "native_inputs": 1803,
+    "historical_harness_files": 568,
+    "historical_scored_definitions": 821,
+    "historical_scored_references_C": 10,
+    "source_set": "Union of original restricted-to notes, unchanged shard pins and required kinds; no holdout or corpus addition",
+    "source_identity_correction": "Two historical state-cohort subject SHA fields use synthetic f21aff82817c089498af9973722de03bda3ad634. New receipts use real shard source pins, 34b752ef8dbf5befefb45c2abb72f50e289ee952 and 3e9e2aa4a799494cd8824a27867e366745c091fd; preserve and disclose the existing testdata-to-td YAML-only copy mapping. Do not pretend the old synthetic SHA attests upstream source bytes.",
+    "distinct_native_inputs": 681,
+    "historical_selector_alias_replays": 1122,
+    "scope_correction": "1803 recorded selectors contain 1122 repeated legacy scratch-root aliases for 681 distinct native inputs. Strip only the two disclosed historical roots, retaining all 1803 native queries; require alias truth agreement and compare each distinct source once. No corpus, source byte or native entity is removed."
+  },
+  "rules": [
+    "Query all 1803 original native inputs before reporting a comparison. Within each input enumerate the complete native population before independent location pairing. Enumerate native typed fields, unused/unnamed declarations, unresolved/external/unsupported outcomes and every service/route/plugin scope; no independent parser chooses native definitions or reference denominators.",
+    "Preserve raw typed Host/URL before native normalization using the verified read-only source observer. Go forbids overlays below GOMODCACHE, so overlay a byte-verified private source copy with a scratch modfile; never edit the dependency cache or global configuration.",
+    "The host contract is strict literal native upstream NAME equality. A registry's name-or-ID lookup must not create an upstream-ID host alias. Explicit service/route foreign keys use the owner's native resolver and registry outcomes; nested implicit containment is not relabelled as a written field.",
+    "First require the source-identified native binary, authored race tests, raw-field and native-scope mutation FAIL-to-GREEN, actual extractor-output tripwire, input sensitivity, cap+1 refusals and network-denied official decK cross-checks. The tripwire alone proves no independence claim.",
+    "L1 positions remain C from the existing independent yaml.v3 locator. Match every named native entity one-to-one to a located entity; refusal on missing, extra or ambiguous population. No A range claim and no scanner fallback for missing native facts.",
+    "Native source1MiB/entity-and-field10000/output8MiB caps and 30-second child timeout refuse the whole input/output. No partial refused output becomes truth. Unsupported typed scopes fail closed until a bounded native route is built. Native _config resolves the in-file PluginConfigs map through fillPluginConfig; a missing entry is an owner error, not an external-file route.",
+    "Use no Docker, server, backend, paid call, global install or subject code execution. Native HTTP requests are denied; clean private HOME/environment, two Go workers, bounded child output, private caches, nice10, serial heavy runs, df/free>=20GiB. T-R10 permits this correctness replay to start at 1-minute load<=9. Throughput requires load<=6 and a median of three with conditions; otherwise report throughput and performance-dependent grade as unmeasured.",
+    "Run exact normative tracked-set manifests before and after on each real pinned source clone. Hash copied-path mapping and bytes separately for the two historical shadow cohorts. No source edits; original held L3 families and required kinds stay unchanged.",
+    "Publish ordinal cohort counts, ratios, source hashes, scope/model exclusions and identity receipts only. Raw names, paths, subject people, content, inventories, synthetic-copy git metadata and native logs stay private. X-R2/X-R3/X-R5 before READY; prune measured clones and completed builds immediately.",
+    "Konnect runtime-group/control-plane metadata is not an entity or written binding. Preserve it unchanged: the pinned offline file.Get evaluates Gateway fields without consuming this deployment-routing metadata. Authored equality control must pass with and without it. ServicePackages remain whole-input refusals pending their own native population classification. Local plugin config sources are owner-evaluated auxiliary configuration, outside the unchanged service/route/upstream binding contract."
+  ]
+}
