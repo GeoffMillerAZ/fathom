@@ -1890,7 +1890,20 @@ worktree and your scratch directory.
    `mkdir <scratch>/lang-measure.lock` (retry every 60 s; remove it when the step
    ends). One heavy measurement runs machine-wide at a time.
 
-### 13.0.1 Search before a ceiling (X-R1)
+### 13.0.1 Search before writing or keeping a ceiling (X-R1, X-R4)
+
+- [ ] Before writing or keeping a ceiling, search all five source groups below. Record each
+  source searched in the indexed assessment/provenance note: date, URL or exact command/query,
+  result (including no hits), and any access failure. Recording only candidates found is
+  incomplete; an inaccessible or unsearched source is a disclosed gap, not evidence of absence.
+
+  | Source group | Minimum search |
+  |---|---|
+  | Own toolchain | Compiler/runtime dump flags, introspection and tracing hooks in the language/tool itself. |
+  | SCIP/LSIF producers | Sourcegraph's SCIP and LSIF indexer lists, plus GitHub search for `scip-<lang>`. |
+  | Language servers | The language/tool's language-server ecosystem, including maintained forks and sibling features. |
+  | Package registry | The ecosystem's registry for parsers, type checkers and AST dumpers. |
+  | Runtime tracing | Call/require tracing, including runtime hooks or adapters, as Lua and Ruby already used. |
 
 - [ ] Before claiming no grammar, oracle or resolver can meet a target, list named existing
   candidates with pinned version/commit, primary source, license, available output and reason
@@ -1994,7 +2007,7 @@ worktree and your scratch directory.
   indexed assessment for a doc engine), record the subject commit, subpath, both manifest
   digests, counts/bytes and receipt paths. Separately copy the reading's per-subject `files`
   and `bytes`, list every discovery exclusion rule and reconcile differences from this
-  tracked superset. Review added untracked/ignored paths for generated language inputs;
+  tracked-set approximation. Review added untracked/ignored paths for generated language inputs;
   an unchanged tracked digest alone cannot prove measured-set stability. An exact harness
   discovery receipt needs a separate brief, not another hand-written discovery algorithm.
 - [ ] Pin holdout identity and criteria before measuring or tuning. Keep holdouts outside
@@ -2006,16 +2019,24 @@ worktree and your scratch directory.
 Run this exact manifest recipe from the fathom root, replacing the input placeholders.
 Use the same `SUBJECT` and `SUBPATH` twice, changing only the `RECEIPT` suffix from `before`
 to `after`. It hashes current file contents in tracked, subject-relative paths under the
-subpath, sorted by path bytes. Each UTF-8 JSON line is `[path,content_sha256]`, with ASCII
-escapes and no spaces; the final newline is part of the manifest digest. A missing checkout,
-non-root `SUBJECT`, empty tracked set or missing file fails the command. The NUL-delimited
-`.untracked` receipt includes ignored files too.
-Keep these artifacts until review; commit the commands and summary values in provenance,
-not local artifact paths outside the repo or new reading fields.
+subpath, sorted by path bytes. Each UTF-8 JSON line is `[path,kind,identity]`, with ASCII
+escapes and no spaces; the final newline is part of the manifest digest. Kind `file` hashes
+current regular-file bytes with SHA-256; `symlink` hashes link-target bytes without following
+the link; `gitlink` records the index's submodule commit, not a SHA-256 or its worktree contents.
+Summary `files`/`bytes` count regular files only; `symlinks`/`gitlinks` count the other entries.
+A missing checkout, non-root `SUBJECT`, empty/unmerged index set, missing regular file or
+regular-file/symlink type mismatch fails the command. The NUL-delimited `.untracked` receipt
+includes ignored files too. The reading harness skips symlink entries and may measure eligible
+regular files inside checked-out submodules, subject to connector exclusions and language
+ownership (`cmd/indexbench/langoracle.go`, `internal/connector/local.go` and `gitdiscover.go`).
+Reconcile those differences explicitly; this manifest does not cover submodule contents.
+Keep manifests and subject file lists locally under ignored `workspace/artifacts/` until review.
+Commit only commands, counts, hashes and repo-relative receipt summaries in provenance, never
+subject content or wholesale file lists (X-R3), local absolute paths or new reading fields.
 
 ```sh
 SUBJECT=workspace/calibration/<subject> SUBPATH=. RECEIPT=workspace/artifacts/lang-<id>/<subject>-before python3 - <<'PY'
-import hashlib, json, os, pathlib, subprocess
+import hashlib, json, os, pathlib, stat, subprocess
 root = pathlib.Path(os.environ['SUBJECT']).resolve()
 scope = os.environ['SUBPATH']
 out = pathlib.Path(os.environ['RECEIPT'])
@@ -2024,20 +2045,43 @@ if pathlib.Path(os.fsdecode(top).rstrip('\n')).resolve() != root:
     raise SystemExit('SUBJECT must be the subject Git checkout root')
 def paths(*args):
     return subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z', *args, '--', scope])
-names = sorted(set(paths('--cached').split(b'\0')) - {b''})
-if not names:
+entries = []
+for record in paths('-s', '--cached').split(b'\0'):
+    if not record:
+        continue
+    meta, name = record.split(b'\t', 1)
+    mode, oid, stage = meta.split()
+    if stage != b'0':
+        raise SystemExit('unmerged index: resolve conflicts first')
+    entries.append((name, mode, oid))
+if not entries:
     raise SystemExit('empty tracked set: check SUBJECT and SUBPATH')
 lines, size = [], 0
-for name in names:
-    data = (root / os.fsdecode(name)).read_bytes()
-    size += len(data)
-    lines.append(json.dumps([os.fsdecode(name), hashlib.sha256(data).hexdigest()],
+counts = dict(files=0, symlinks=0, gitlinks=0)
+for name, mode, oid in sorted(entries):
+    path = root / os.fsdecode(name)
+    if mode in (b'100644', b'100755'):
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise SystemExit('tracked regular file has changed type')
+        data = path.read_bytes()
+        kind, identity = 'file', hashlib.sha256(data).hexdigest()
+        counts['files'] += 1
+        size += len(data)
+    elif mode == b'120000':
+        kind, identity = 'symlink', hashlib.sha256(os.readlink(os.fsencode(path))).hexdigest()
+        counts['symlinks'] += 1
+    elif mode == b'160000':
+        kind, identity = 'gitlink', oid.decode('ascii')
+        counts['gitlinks'] += 1
+    else:
+        raise SystemExit('unsupported Git index mode')
+    lines.append(json.dumps([os.fsdecode(name), kind, identity],
                            ensure_ascii=True, separators=(',', ':')) + '\n')
 manifest = ''.join(lines).encode('utf-8')
 out.parent.mkdir(parents=True, exist_ok=True)
 pathlib.Path(str(out) + '.manifest').write_bytes(manifest)
 pathlib.Path(str(out) + '.untracked').write_bytes(paths('--others'))
-summary = dict(sha256=hashlib.sha256(manifest).hexdigest(), files=len(names), bytes=size)
+summary = dict(sha256=hashlib.sha256(manifest).hexdigest(), entries=len(entries), bytes=size, **counts)
 pathlib.Path(str(out) + '.json').write_text(json.dumps(summary, sort_keys=True) + '\n')
 print(json.dumps(summary, sort_keys=True))
 PY
@@ -2175,7 +2219,7 @@ from this ratio-based shortlist because their units differ.
     (`task calibrate-clean -- <id>`); delete unneeded scratch. Retain review receipts under
     `workspace/artifacts/` until review, with a named cleanup owner in the report.
 
-### 13.5.1 Before READY (X-R2)
+### 13.5.1 Before READY (X-R2, X-R3)
 
 - [ ] Reading-schema scope is `docs/bench/readings/lang/*.json`, `holdout/*.json`,
   `tuned/*.json` and `tuned/lf3/*.json`. `parity/` has a different schema and is excluded.
@@ -2190,7 +2234,10 @@ from this ratio-based shortlist because their units differ.
   lands, list each nested reading touched and capture sorted before/after JSON with the
   commands below; explain each intentional changed measured field in provenance/assessment.
   New nested files have no base: record that fact and review their full sorted JSON.
-  This interim diff checks value preservation, not strict nested schema validation.
+  This interim sorted-JSON diff supports preservation review, not strict nested schema
+  validation or automatic semantic equality. `jq -S` may preserve number spellings: list
+  number-literal-only hunks (for example `0.50` versus `0.5`) separately as serialization
+  differences, rather than claiming a changed measurement; review other hunks by field.
   E2-R1..R4 own recursive regrading, byte-canonical/value-preserving serialization, measured
   kind preservation and absent-metric tests. Use their landed tests once available; do not
   build a duplicate checker or count a pattern matching no tests as proof. Today a byte-only
@@ -2199,7 +2246,8 @@ from this ratio-based shortlist because their units differ.
 
   For each existing nested path, set `BASE` to the pre-edit commit and `p` to that reading.
   Run from the repo root. A failed `git show`/`jq` is operational, not an unchanged value.
-  Keep the diff (exit 0 unchanged, 1 changed, greater than 1 operational) with the receipt.
+  Keep the diff (exit 0 identical sorted JSON, 1 differences requiring review, greater than
+  1 operational) with the receipt.
 
   ```sh
   BASE=<pre-edit-commit> p=docs/bench/readings/lang/holdout/<reading>.json
@@ -2214,6 +2262,12 @@ from this ratio-based shortlist because their units differ.
   `bash scripts/check-merge-debris.sh` before READY. Check staged/index content too with
   `bash scripts/check-merge-debris.sh --staged` when preparing the commit. A required
   integrator regeneration is not a worker defect; regenerate only through its generator.
+- [ ] Before READY, run
+  `bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom`
+  (X-R3, ADR-011). Commit counts, hashes and repo-relative summaries; never copy subject
+  content or wholesale file lists into assessment data/provenance. Even public subject
+  filenames can resemble addresses and fail the org-name gate. Keep raw receipts local
+  and ignored; a public upstream source does not exempt copied data from this check.
 - [ ] Verify every `Verified:` line names actual runnable commands, required inputs and
   results, with repo-relative paths to committed files, not local scratch helpers. A list
   of checks or a claimed outcome alone is not a command. Missing dependencies and skipped

@@ -44,6 +44,8 @@ Follow recipe §13.3.1, §13.4.0 and §13.5.1 for the full checks.
 - [ ] Run recipe §13.3.1's exact before/after tracked-set manifest command. Record digests,
   counts, exclusions and reading totals in provenance/assessment. It approximates discovery;
   reconcile differences and inspect generated untracked/ignored inputs after builds/oracles.
+  Hash symlink targets without following links; record gitlink commits, with submodule
+  contents explicitly uncovered. Keep manifests/file lists local; publish summary receipts.
 - [ ] Keep holdout pins/readings outside canonical `calibration/corpus.d/` shards and
   aggregation. Freeze criteria before measurement; audit membership as well as pin timing.
 - [ ] Probe truth independence: perturb extractor output and confirm the raw oracle-truth
@@ -65,15 +67,28 @@ Follow recipe §13.3.1, §13.4.0 and §13.5.1 for the full checks.
   the specified sorted-JSON before/after diff for each touched nested reading. Preserve
   `required_kinds`; absent metrics are not thin evidence. Once #7 E2 tests land, use their
   recursive coverage and require E2-R2 canonical byte equality as well as value preservation.
+  Classify number-literal-only hunks in the interim diff as serialization differences.
 - [ ] Before READY run `go run ./third_party/agentic-kit/cmd/release-notes -check`,
   `bash scripts/check-merge-debris.sh` and, for staged content, the same script `--staged`.
+- [ ] Run `bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom`
+  before READY (X-R3/ADR-011). Commit counts, hashes and repo-relative summaries, never
+  subject content or wholesale file lists; public subject filenames can fail this gate too.
 - [ ] Give actual runnable commands and results in `Verified:`, with needed flags/inputs
   and repo-relative paths to committed files, not scratch helpers. A prose list of checks
   is not verification; disclose skips.
 
 ## 4. Refusing honestly
 
-Before a ceiling, complete the named-candidate checklist in recipe §13.0.1 (X-R1): record existing tools/forks/sibling features, pinned version, source, license, output, scope and exact reason each cannot grade this item. Distinguish untried, unavailable, out-of-scope and measured failure. Existing nonstandard resolvers may need a neighbor item, not a changed population. Keep the search receipt in an indexed assessment and give a trigger that is not already satisfied.
+Before writing or keeping a ceiling, complete recipe §13.0.1 (X-R1/X-R4). Search all five:
+the language/tool's own toolchain (dump flags, introspection, tracing); Sourcegraph's SCIP
+and LSIF indexer lists plus GitHub `scip-<lang>` search; language servers; the package
+registry for parsers/type checkers/AST dumpers; and runtime call/require tracing. Record
+each source searched, date, URL or command/query and result, including misses/access gaps.
+For named candidates record tools/forks/sibling features, pinned version, primary source,
+license, output, scope and exact reason each cannot grade this item. Distinguish untried,
+unavailable, out-of-scope and measured failure. Existing nonstandard resolvers may need a
+neighbor item, not a changed population. Keep the search receipt in an indexed assessment
+and give a trigger that is not already satisfied.
 
 When no allowed grammar meets the at-most-5% ERROR-or-MISSING file gate, the item is refused, not forced: its `LB-Q-<id>` row takes a `[-]` disposition with the measurement and a trigger to retry (for example a newer grammar release). A refusal claims no level and stays disclosed. Do not lower a bar, trim a calibration corpus or hand-label results to pass. An unavailable oracle may instead defer the target or leave a measured partial level; follow recipe §14.2.
 

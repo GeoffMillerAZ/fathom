@@ -140,6 +140,40 @@ JSON values only. The recipe names sorted-JSON receipts for touched nested Readi
 excludes different-schema parity records and leaves frozen baseline regrading to an explicit
 owner scope ruling. The controller-owned hygiene follow-up is tracked in the work order.
 
+## Round-4 recipe verification
+
+R4-F1 was reproduced on the corpus-pinned swift-nio checkout: the previous documented
+manifest block failed with `IsADirectoryError`. Reproduction input:
+`git clone --depth 1 --branch 2.99.0 --single-branch https://github.com/apple/swift-nio.git workspace/calibration/swift-nio`,
+commit `f71c8d2a5e74a2c6d11a0fbe324774b5d6084237` from `calibration/corpus.d/swift.yaml`.
+The corrected [recipe §13.3.1](../design/language-breadth.md#1331-freeze-the-measured-set-and-holdout)
+block was run with `SUBJECT=workspace/calibration/swift-nio`, `SUBPATH=.` and
+`RECEIPT=workspace/artifacts/lang-onboarding-r4/swift-nio-new-before`, then the same inputs
+with receipt suffix `new-after`. Both runs produced:
+
+| Receipt field | Before and after |
+|---|---|
+| `entries` | 761 |
+| `files` (regular only) | 759 |
+| `bytes` (regular only) | 8,973,632 |
+| `symlinks` | 2 |
+| `gitlinks` | 0 |
+| Manifest `sha256` | `4858eecf031436fa4695bc7d19f493c624afb5c24a78e70dfbf6de9f4ce3200c` |
+
+These are tracked-set receipts, not a new Swift reading or a measured-file identity claim.
+Independent checks recomputed the manifest digest, path-byte ordering, regular counts/bytes
+and symlink-target hashes. Raw manifests and source file lists stay in ignored local artifacts.
+Synthetic index fixtures also passed file/directory/dangling symlinks, a gitlink's exact
+index commit, regular/link mutations, ignored generated-input disclosure and refusals for
+wrong types, missing regular files, parent-repository fallthrough, empty scope and unmerged
+index stages. Changing submodule content left the receipt unchanged as explicitly disclosed.
+
+R4-F2 is a receipt-interpretation limit: `jq -S` retains some number literals. Equal JSON
+values with different numeric spellings produced a nonempty diff, so the recipe now requires
+those hunks to be listed separately as serialization differences. E2-R2's byte check, once
+landed, still requires canonical bytes. X-R3 adds the org-name READY test and summary-only
+publication; X-R4 requires receipts from all five search sources even when they find no hits.
+
 ## Evidence limits
 
-Public docs and repository source establish available formats and licenses; they do not establish reduced rounds, wall time, or accuracy for fathom. Some shell requests lacked external DNS; primary web sources and fetched license files establish the matrix. No complete upstream checkout or importer trial was run. The exact pins listed above come from existing committed fathom provenance or public release tags. Nvim queries and each new grammar/query require a fresh 40-hex pin and exact file license before copying. The newer `xberg-io` catalogue has not been compared against fathom's pinned `kreuzberg-dev` snapshot.
+Public docs and repository source establish available formats and licenses; they do not establish reduced rounds, wall time, or accuracy for fathom. Some shell requests lacked external DNS; primary web sources and fetched license files establish the matrix. No importer trial was run. The swift-nio checkout above tests only the receipt recipe, not importer efficacy. The exact pins listed above come from existing committed fathom provenance or public release tags. Nvim queries and each new grammar/query require a fresh 40-hex pin and exact file license before copying. The newer `xberg-io` catalogue has not been compared against fathom's pinned `kreuzberg-dev` snapshot.

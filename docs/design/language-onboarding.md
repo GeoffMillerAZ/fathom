@@ -75,6 +75,10 @@ truth independence, per-subject evidence, mutation sensitivity, adversarial coun
 scoped reading preservation, named ceiling candidates, runnable verification, holdout
 isolation and release-note/debris checks before READY. Stale dependency, write, verify and
 step-24 changelog instructions are aligned with current rules.
+X-R3 adds the ADR-011 org-name test before READY and restricts published receipts to counts,
+hashes and repo-relative summaries. X-R4 requires all five candidate-search source groups,
+with search receipts for misses and access gaps as well as hits, before writing or keeping
+a language/tool ceiling. Raw subject content and wholesale file lists stay local and ignored.
 
 Issue #7 E2 round 2 owns recursive regrading, canonical/value-preserving reading serialization,
 measured-kind preservation and missing-metric grading tests. At reference main `c86095291`,
