@@ -146,9 +146,26 @@ and preserved dot-dot spellings. Temporary paths in launcher tests are resolved,
 including under a symlinked TMPDIR. The candidate version is corrected to 0.2.6.
 No vendor execution, native metric, tier or canonical reading changes here.
 
-Local round-3 validation ran 50 tests: 49 passed and the single real Linux
-namespace regression skipped explicitly off Linux. The four mutants fail then
-restore GREEN. All 14 source hashes in the control summary are regenerated.
-The overmount unit inputs are authored topology examples, not a captured runner
-fixture. The controller-required real runner mountinfo fixture remains pending;
-this branch is not READY until that evidence requirement is satisfied.
+Local round-3 validation after T-R12 ran 53 tests: 52 passed and the single
+real Linux namespace regression skipped explicitly off Linux. The four mutants
+fail then restore GREEN. All 16 source hashes in the control summary and 18
+launcher checksum entries are regenerated. Required release-note, merge-debris,
+ADR-011 and staged hygiene checks pass; no Go code changed.
+
+## T-R12 fixture and namespace observations
+
+The controller supplied the public runner capture from run 40394016064, image
+ubuntu22/20261012.322, kernel 6.8.0-1064-azure. The 29-line mountinfo fixture is
+committed verbatim. The real inherited proc/autofs/binfmt shape selects 28
+reachable mounts. Adding one explicitly authored fresh procfs mount leaves 27,
+with the inherited proc and both binfmt entries hidden; the remount argv never
+contains that hidden binfmt path. The four-mutant suite now tests the naive
+all-mounts parser against this runner-derived case.
+
+The controller observed successful user/network unshare on 22.04 and uid_map
+refusal on 24.04 (kernel 6.17.0-1022-azure) in that same run. A negative control
+replays the exact captured refusal line, checks preparation/vendor never start,
+and admits only its count/hash to the receipt. These controller observations
+are narrower than the mandatory real Linux PID/mount/write regression. That
+regression and vendor execution still await the T-R11 run after review. This
+fixture closes the prior READY evidence gap; no tier or reading changes.

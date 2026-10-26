@@ -28,7 +28,7 @@ def run(out):
     for function,mutant,name in [
         ('require_readonly',lambda path:None,'test_writable_protected_directory_refuses'),
         ('restricted_command',lambda command:list(command),'test_vendor_command_cannot_retain_mount_privileges'),
-        ('parse_mountinfo',hidden_mounts,'test_overmounted_proc_hides_its_inherited_children'),
+        ('parse_mountinfo',hidden_mounts,'test_real_runner_proc_overmount_skips_hidden_binfmt_remount'),
         ('path_variants',lambda path:[path],'test_write_controls_preserve_dot_dot_spellings')]:
         test='test_filesystem_isolation.FilesystemIsolationTest.'+name
         with patch.object(filesystem,function,mutant):
@@ -40,7 +40,8 @@ def run(out):
     files=['filesystem_isolation.py','probe_linux.py','receipt_contract.py',
            'test_filesystem_isolation.py','test_review_probe.py','test_probe_linux.py','probe_filesystem_controls.py',
            'probe-linux-receipt.schema.json','probe-linux-x64.workflow.yml','run_probe_workflow.sh',
-           'native-protocol-r2.json','LINUX-X64-PROBE.md','kernel_filesystem_control.py','test_filesystem_kernel.py']
+           'native-protocol-r2.json','LINUX-X64-PROBE.md','kernel_filesystem_control.py','test_filesystem_kernel.py',
+           'runner-mountinfo-ubuntu-22.04.txt','runner-userns-ubuntu-24.04.stderr.txt']
     summary=dict(tests=result.testsRun,skips=len(result.skipped),mutations=mutations,linux_namespace_executed=linux,
                  linux_control_required_on_runner=True,
                  native_executed=False,calibration_measured=False,tier_granted=False,

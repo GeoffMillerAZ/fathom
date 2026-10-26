@@ -1,5 +1,5 @@
 {
-  "tests": 50,
+  "tests": 53,
   "skips": 1,
   "mutations": [
     {
@@ -39,11 +39,11 @@
     },
     {
       "path": "test_filesystem_isolation.py",
-      "sha256": "c68daa122bcf169cc1c5ff066e7aa0495ceef2a22411723d9648e0a898a2e722"
+      "sha256": "794eec34bc010ccf17060962d7b7bb494c0e6deb5a326617a06b574b76abbd95"
     },
     {
       "path": "test_review_probe.py",
-      "sha256": "0de4ce4ac7f4a75eae0c90581177886d440a1ed5713adaf64dd1b0e93bab608b"
+      "sha256": "f6cd13faae71e9dc21773c0792f5f756949ab687413b1acc38e6794467a320bb"
     },
     {
       "path": "test_probe_linux.py",
@@ -51,7 +51,7 @@
     },
     {
       "path": "probe_filesystem_controls.py",
-      "sha256": "0c011f86a93309daa88cd704c45fe321d2a339de912c75d727ffcd185f8dbd43"
+      "sha256": "364a4b58352d73ad844ecb2c2ee3422c487d74e8856e2e31e8c56711ca39f64f"
     },
     {
       "path": "probe-linux-receipt.schema.json",
@@ -71,7 +71,7 @@
     },
     {
       "path": "LINUX-X64-PROBE.md",
-      "sha256": "cec8e0225da12025324ddab2f00bdb76ad303645b52721fa093311ce7301aef3"
+      "sha256": "17d33770022b430429487a98a58eb39cd94bbadc2862c5bbaa91903b9d8065e7"
     },
     {
       "path": "kernel_filesystem_control.py",
@@ -80,6 +80,14 @@
     {
       "path": "test_filesystem_kernel.py",
       "sha256": "ce5ead7d11aae1f7b8f9d18c6b3e856f0c49162c4c3087f431d078b9982fd563"
+    },
+    {
+      "path": "runner-mountinfo-ubuntu-22.04.txt",
+      "sha256": "af16fe3e1ecafa29ecbee6886d0bfd9aa4f65808110a9ca206352ee272ff75bd"
+    },
+    {
+      "path": "runner-userns-ubuntu-24.04.stderr.txt",
+      "sha256": "6b50086233b9e3c0f8f5ac5e8094da06d7a05f1c3be0b88baf49578943392a94"
     }
   ]
 }

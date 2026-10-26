@@ -54,6 +54,34 @@ class FilesystemIsolationTest(unittest.TestCase):
               '30 20 0:4 / /proc rw - proc proc rw\n')
         self.assertEqual([(Path('/'),'rw'),(Path('/proc'),'rw')],fs.parse_mountinfo(data))
 
+    # T-R12: GitHub-hosted run 40394016064, image ubuntu22/20261012.322,
+    # kernel 6.8.0-1064-azure. The 29-line capture is stored verbatim.
+    def test_real_runner_mountinfo_selects_topmost_binfmt_mount(self):
+        import filesystem_isolation as fs
+        raw=Path(__file__).with_name('runner-mountinfo-ubuntu-22.04.txt').read_text()
+        self.assertEqual(29,len(raw.splitlines()))
+        mounts=fs.parse_mountinfo(raw)
+        self.assertEqual(28,len(mounts))
+        self.assertEqual(len(mounts),len({path for path,_ in mounts}))
+        options=dict(mounts)[Path('/proc/sys/fs/binfmt_misc')]
+        self.assertEqual('rw,nosuid,nodev,noexec,relatime',options)
+
+    def test_real_runner_proc_overmount_skips_hidden_binfmt_remount(self):
+        import filesystem_isolation as fs
+        raw=Path(__file__).with_name('runner-mountinfo-ubuntu-22.04.txt').read_text()
+        # Only this added procfs row models --mount-proc; it was not captured.
+        raw+='900 27 0:99 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw\n'
+        mounts=fs.parse_mountinfo(raw)
+        self.assertEqual(27,len(mounts))
+        self.assertEqual(len(mounts),len({path for path,_ in mounts}))
+        self.assertNotIn(Path('/proc/sys/fs/binfmt_misc'),dict(mounts))
+        with patch.object(fs,'mount_table',return_value=mounts),patch.object(fs.os,'chdir'),patch.object(fs.subprocess,'run') as run:
+            fs.mount_readonly(Path('/authored/scratch'))
+        paths=[call.args[0][-1] for call in run.call_args_list if 'remount,bind,ro' in call.args[0]]
+        self.assertNotIn('/proc/sys/fs/binfmt_misc',paths)
+        self.assertEqual(1,paths.count('/proc'))
+        self.assertEqual(1,paths.count('/'))
+
     def test_last_sibling_mount_hides_earlier_mount_and_descendants(self):
         import filesystem_isolation as fs
         data=('10 1 8:1 / / rw - ext4 root rw\n'

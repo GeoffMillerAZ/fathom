@@ -40,6 +40,21 @@ class ReviewProbeTest(unittest.TestCase):
     def test_preflight_failure_refuses_before_prepare(self):
         self.launch_refusal()
 
+    def test_captured_ubuntu24_uid_map_refusal_is_private_and_stops_prepare(self):
+        # T-R12: same public run 40394016064; kernel 6.17.0-1022-azure.
+        # Replay only the captured stderr and refusal, not a local Linux run.
+        stderr=probe.HERE.joinpath('runner-userns-ubuntu-24.04.stderr.txt').read_bytes()
+        def refuse(command,**kwargs):
+            self.assertIn('--user',command)
+            self.assertIn('--map-root-user',command)
+            kwargs['stderr'].write(stderr)
+            return SimpleNamespace(returncode=1)
+        receipt=self.launch_refusal(error=refuse)
+        self.assertEqual('userns',receipt['failed_stage'])
+        self.assertEqual(len(stderr),receipt['preflight_stderr_bytes'])
+        self.assertEqual(probe.digest(stderr),receipt['preflight_stderr_sha256'])
+        self.assertNotIn('Operation not permitted',json.dumps(receipt))
+
     def test_required_kernel_control_failure_refuses_before_prepare(self):
         self.launch_refusal(controls_failed=True)
 

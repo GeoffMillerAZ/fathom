@@ -102,8 +102,9 @@ outputs stay on the runner and are deleted. The ARM startup/PE-header reports
 are explicitly unreceipted local observations, not calibration proof. The
 current C reading and deferred whole-population work remain unchanged.
 
-Round-2 filesystem controls give the vendor a private verified payload copy,
-HOME and TMP under one writable scratch mount. Reachable mounts outside scratch are remounted read-only. Capability dropping
+Round-3 filesystem controls give the vendor a private verified payload copy,
+HOME and TMP under one writable scratch mount. Reachable mounts outside
+scratch are remounted read-only. Capability dropping
 and EROFS checks of the checkout, runner directories, cache and launcher use
 plain, `/..` and `/proc/..` spellings before execution. Only successful checks
 set the readonly and dot-dot-denial receipt flags. Round 2's root clone and
@@ -112,3 +113,10 @@ chroot remains. A real namespace regression is required on the Linux runner;
 local ARM tests skip that one test and establish no Linux execution proof. The fixed
 run branch, Node 24 action pin and dated runner-successor condition are in
 LINUX-X64-PROBE.md. Local mocked tests grant no Linux isolation proof.
+
+T-R12 supplies a verbatim 29-line public ubuntu-22.04 runner mountinfo fixture
+(run 40394016064, image ubuntu22/20261012.322, kernel 6.8.0-1064-azure).
+Regression tests cover its topmost binfmt mount and a clearly authored fresh
+procfs overmount. A captured ubuntu-24.04 uid_map refusal is replayed as a
+negative control. Source, scope and limits are in LINUX-X64-PROBE.md; full
+Linux kernel regression and vendor startup still await the controller run.

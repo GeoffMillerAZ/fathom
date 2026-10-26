@@ -129,11 +129,22 @@ unused-declaration, namespace and range controls remain necessary. L3 waits
 for D19. The controller reviews the artifact and imports only that validated
 receipt into a fresh clean checkout.
 
-## Outstanding runner fixture
+## T-R12 runner-derived fixture
 
-The stacked-proc parser tests currently use authored mount topology examples.
-They are not a captured runner fixture. A fixture grounded in a real runner
-mountinfo capture, with source identity and privacy-safe projection, is still
-required by the binding round-3 controller finding. The branch is not READY
-and the workflow must not execute the vendor until that requirement and review
-are complete. This does not waive the mandatory Linux kernel control.
+The controller supplied `runner-mountinfo-ubuntu-22.04.txt` verbatim from public
+GitHub-hosted run **40394016064**, image **ubuntu22/20261012.322**, kernel
+**6.8.0-1064-azure**. Its 29 records include the inherited procfs, systemd
+binfmt autofs and the binfmt filesystem mounted above it. The parser test
+selects 28 reachable mounts with one topmost binfmt path. A second test adds
+one explicitly authored procfs overmount row (not part of the capture) and
+requires 27 reachable mounts; neither hidden binfmt entry is remounted.
+The hidden-mount mutant is tested against this runner-derived case.
+
+The same public run established that `unshare --user --map-root-user --net`
+succeeds on 22.04. This is user/network namespace evidence only, not proof
+of the full PID/mount isolation or any vendor API. The controller's 24.04
+contrast (kernel **6.17.0-1022-azure**) refused at uid_map. Its single captured
+stderr line is `runner-userns-ubuntu-24.04.stderr.txt`; a replay verifies refusal
+at userns before preparation or vendor startup, with only stderr count/hash
+in the receipt. This is a captured negative-control replay, not a local Linux
+execution. Neither observation grants a calibration metric or a tier.
