@@ -69,6 +69,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-scala-ceiling](2026-10-26-core-t1-scala-ceiling.md) | The end-line repair and SemanticDB build remain shared-engine and build routes. | LB-Q-scala-rest |
 | 2026-10-26 | [core-t1-svelte-ceiling](2026-10-26-core-t1-svelte-ceiling.md) | The public C-R1 ruling retains the component kind ceiling. | LB-Q-svelte-rest |
 | 2026-10-26 | [core-t1-tailwind-ceiling](2026-10-26-core-t1-tailwind-ceiling.md) | The pinned compiler parser has no full source rule ends. | LB-Q-tailwind-rest |
+| 2026-10-26 | [core-t1-typescript-ceiling](2026-10-26-core-t1-typescript-ceiling.md) | Object-literal method extraction remains the concrete route. | LB-Q-typescript-rest |
 
 ## Companion pages
 
