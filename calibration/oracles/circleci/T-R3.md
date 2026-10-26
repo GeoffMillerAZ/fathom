@@ -150,3 +150,18 @@ and retimes both cohorts three times. It leaves holdouts outside the canonical
 shard. Compiler cross-checks inspect executor fields and inlined command steps;
 no workflow or shell command body executes. The earlier mixed-C readings above
 remain historical comparisons, not the authority of the new instrument.
+
+## X-R4 sources searched, 2026-10-25
+
+| Required source | Named candidate / search result |
+|---|---|
+| Owner toolchain / compiler dumps | CircleCI CLI 1.7.0 `config process` and the preregistered parameter matrix measured; compiler expansions corroborate three vendor bindings. The compiler evaluates one input environment at a time, so disabled definitions remain genuine L1 coverage misses; valid workflows are never deleted. |
+| SCIP and LSIF lists plus GitHub | Read [Sourcegraph's supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP's list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). No CircleCI config producer was listed. GitHub repository query `scip-circleci in:name` returned zero. These bounded misses are not a proof of universal absence. |
+| Language servers | CircleCI's official Apache-2.0 server 0.54.0 at the pinned source/checksum above was queried over every canonical and holdout local binding. References attest all 34; definition disagrees on one same-name job/command target. No absent-native-binding ceiling remains. |
+| Registry parsers / type checkers / AST dumpers | npm lookup of official `@circleci/circleci-config-sdk` 0.12.5 (MIT) describes construction of configs, not evaluation of existing source declarations. Lookup `@circleci/circleci-config-parser` returned 404; web npm query `circleci parser` supplied no additional native evaluator. PyYAML 6.0.3 and yaml.v3 remain independent/source-position instruments, with no new A label. |
+| Runtime call / require tracing | Read CircleCI's [local execution documentation](https://circleci.com/docs/guides/toolkit/how-to-use-the-circleci-local-cli/) and [troubleshooting](https://circleci.com/docs/reference/troubleshoot/): local job execution follows config processing and uses Docker. Docker is forbidden on this machine and running subject job bodies is unnecessary for the measured compiler/LSP binding family. No runtime trace was executed or claimed to attest disabled definitions. |
+
+X-R3 publication uses hashes and byte counts for the three compared compiler
+fragments; subject source bodies and shell commands are not copied into the
+receipt. Equality is checked before summarization. Native LSP ranges remain
+semantic response evidence, with subject pins and no copied source bodies.

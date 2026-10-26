@@ -64,3 +64,9 @@ merge-debris check pass. X-R2 checks are repeated before READY.
 
 Decision models: none. Native bindings, input identity and deterministic
 comparisons require no model judgment.
+
+X-R4's five source searches, including bounded misses, are recorded in T-R3.md.
+The retained L1 coverage limit concerns the measured compiler inputs; the native
+reference ceiling is withdrawn. X-R3 replaces copied compiler fragments with
+canonical JSON digests and byte counts while preserving the three equality
+checks. No subject commands or full file inventories are published.

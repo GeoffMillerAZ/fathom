@@ -8,19 +8,11 @@
       "owner": "check",
       "target": "linux",
       "family": "executor",
-      "expected": {
-        "machine": {
-          "image": "ubuntu-2604:current"
-        },
-        "resource_class": "large.gen3"
-      },
-      "actual": {
-        "machine": {
-          "image": "ubuntu-2604:current"
-        },
-        "resource_class": "large.gen3"
-      },
-      "agrees": true
+      "agrees": true,
+      "expected_sha256": "949434a70f1404ac7aa9fa005e21821334326932eb25dd92b53c2867d0043bab",
+      "expected_bytes": 73,
+      "actual_sha256": "949434a70f1404ac7aa9fa005e21821334326932eb25dd92b53c2867d0043bab",
+      "actual_bytes": 73
     },
     {
       "subject": "CircleCI-Public/circleci-cli",
@@ -28,17 +20,11 @@
       "owner": "check",
       "target": "store_results",
       "family": "command",
-      "expected": {
-        "store_test_results": {
-          "path": "./test-reports"
-        }
-      },
-      "actual": {
-        "store_test_results": {
-          "path": "./test-reports"
-        }
-      },
-      "agrees": true
+      "agrees": true,
+      "expected_sha256": "54a3f3352abee825bf15ddcba450845930426fa19ae3bd27be9f25ccd1596841",
+      "expected_bytes": 48,
+      "actual_sha256": "54a3f3352abee825bf15ddcba450845930426fa19ae3bd27be9f25ccd1596841",
+      "actual_bytes": 48
     },
     {
       "subject": "cypress-io/cypress",
@@ -46,19 +32,11 @@
       "owner": "pack-workflows",
       "target": "pack-workflows",
       "family": "command",
-      "expected": {
-        "run": {
-          "name": "Pack workflows",
-          "command": "./scripts/pack-ci.sh --all\n"
-        }
-      },
-      "actual": {
-        "run": {
-          "name": "Pack workflows",
-          "command": "./scripts/pack-ci.sh --all\n"
-        }
-      },
-      "agrees": true
+      "agrees": true,
+      "expected_sha256": "eaa1fc8c4f9eb94619ab297e7472536738fa1172aa6784f5f8e33e8e7ddfd8ac",
+      "expected_bytes": 74,
+      "actual_sha256": "eaa1fc8c4f9eb94619ab297e7472536738fa1172aa6784f5f8e33e8e7ddfd8ac",
+      "actual_bytes": 74
     }
   ],
   "agreements": 3

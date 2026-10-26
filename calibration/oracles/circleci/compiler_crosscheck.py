@@ -4,6 +4,7 @@ Only config process runs. No pipeline, shell body, container or Docker runs.
 The complete reference population is measured separately by native_refs.py.
 """
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -45,6 +46,12 @@ if __name__ == '__main__':
             expected = next(x for x in source['commands']['pack-workflows']['steps'] if isinstance(x, dict) and 'run' in x)
             actual = next((x for x in compiled['jobs']['pack-workflows']['steps'] if isinstance(x, dict) and isinstance(x.get('run'), dict) and x['run'].get('name') == expected['run']['name']), None)
             checks.append(dict(subject=name, sha=subject['sha'], owner='pack-workflows', target='pack-workflows', family='command', expected=expected, actual=actual, agrees=expected == actual))
+    # Publish digests rather than copying subject fragments (X-R3).
+    for check in checks:
+        for field in ('expected', 'actual'):
+            encoded = json.dumps(check.pop(field), sort_keys=True, separators=(',', ':')).encode()
+            check[field + '_sha256'] = hashlib.sha256(encoded).hexdigest()
+            check[field + '_bytes'] = len(encoded)
     version = subprocess.check_output([str(args.cli.resolve()), 'version'], text=True).strip()
     result = dict(tool='circleci config process', version=version, checks=checks, agreements=sum(c['agrees'] for c in checks))
     args.out.write_text(json.dumps(result, indent=2) + '\n')
