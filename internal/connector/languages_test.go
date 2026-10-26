@@ -101,7 +101,7 @@ var langRowHint = map[string]string{
 	"toml":             "TOML",
 	"json":             "JSON",
 	"package-json":     "package.json",
-	"templ":            "templ",
+	"templ":            ", templ, ",
 	"python-packaging": "pyproject.toml",
 	"maven":            "pom.xml",
 	"msbuild":          ".csproj",
