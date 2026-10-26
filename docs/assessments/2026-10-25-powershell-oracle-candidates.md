@@ -1,36 +1,200 @@
-# PowerShell oracle candidates — 2026-10-25
+# PowerShell oracle candidates — 2026-10-25, measured 2026-10-26
 
-**Measured:** the [committed reading](../bench/readings/lang/powershell.json)
-remains L1 excellent, L2 good and L3 excellent: call precision .9909, recall
-.9949 (B), and import resolution/file-edge precision/recall 1 (A). The spent
-Profiler/posh-git holdout has L2 .9293/.9548 and L3 .9783/1. No new corpus
-measurement, holdout admission or level promotion is claimed by this search.
+The [canonical reading](../bench/readings/lang/powershell.json) remains L1
+excellent, L2 good and L3 excellent: call precision .9909 / recall .9949 at B,
+imports/file edges 1 at A. The existing independent holdout remains separate
+from the canonical corpus. Native command discovery and executed-function
+tracing now have actual measurements; the previous search omitted both.
+No new grade, canonical reading or holdout admission is claimed.
 
-## Named candidates and concrete failures
+**OL-R11:** pinned native Get-Command / InvokeCommand.GetCommand is A only in
+a clean subject-declared load state, recorded in the receipt; undeclared state
+remains unresolvable. Native runtime tracing is A only on its executed population,
+with coverage disclosed. P-T1 forbids grading whole-written-population recall
+from runtime coverage, including a 90% coverage threshold.
+
+## Clean native binder measurement
+
+The [committed recipe](../../calibration/oracles/powershell-native/README.md)
+runs PowerShell **7.6.9**, with profiles and module autoload disabled. It loads
+only the matching subject manifest and records the pinned-runtime Management /
+Utility baseline. Native module-loader source files use that module's private
+session; ordinary test files use global resolution. A module's private functions
+cannot answer arbitrary test-file queries. No fixture is dot-sourced to make its
+functions resolvable. External applications, missing functions, undeclared state
+and literal member invocations remain unresolved and count as misses.
+
+Actual targets come from native CommandInfo.Name / AliasInfo.ResolvedCommand.
+The native AST supplies only original source scope and caller declarations;
+there are no Fathom pairs filtered by whether native discovery answered.
+Native definition origins are recorded as counts and content hashes, never a
+subject file list. The [aggregate receipt](data/powershell-oracle-2026-10-26/measurements.json)
+holds full per-subject counts, module load state and recipe/product identities.
+
+| Original subject / pin | Full original PowerShell scope | Native resolved sites | Unresolved sites retained | Resolved-pair diagnostic P / R |
+|---|---:|---:|---:|---:|
+| Pester 6.2.0 `98e56d65da16` | 272 files / 2,713,762 bytes | 9,443/18,842 (50.12%) | 9,399 (49.88%) | 1,819/4,204 (.4327) / 1,819/1,836 (.9907) |
+| PSScriptAnalyzer 1.25.0 `f05704df81b2`, `Tests` | 241 files / 865,136 bytes | 1,371/5,838 (23.48%) | 4,467 (76.52%) | 274/1,320 (.2076) / 274/282 (.9716) |
+
+These pair diagnostics compare with the resolved native subset, not complete
+source truth. Predictions outside that subset may be unattested, not false
+calls. Resolved-only recall cannot hide the full unresolved-site counts above.
+The unresolved share is far beyond the blind cap; the current binder does not
+establish an excellent whole-population L2 grade.
+
+Pester has 16,667 command sites and 2,175 member sites. Native loader metadata
+identifies 106 original source files belonging to its module; 1,486 command
+queries use module scope and 15,181 use global scope. Resolved definition origins
+are 8,555 site answers in original source and 888 in the pinned runtime, with
+100 distinct origin/content-hash entries. PSScriptAnalyzer has 5,551 commands /
+287 members, all global queries; 897 answers come from its matching released
+module and 474 from the runtime, with two distinct origin/content-hash entries.
+
+The native population retains **17 original UTF-16/NUL-containing files** in
+PSScriptAnalyzer. Product discovery excludes them as binary: 224 files / 775,189
+bytes, exactly 17 files / 89,947 bytes fewer. The prior AST recipe's 244-file /
+15-UTF-16 description does not describe this fresh tracked set. No original
+file is discarded here. Four files have native recovered parse errors; their
+sites remain counted, without claiming complete syntax coverage of malformed
+input. Native parse errors and tree-sitter ERROR/MISSING rates are different
+metrics. The canonical parser was 7.5.4; current 7.6.9 written-name unique pairs
+are 4,218 / 1,489 versus historical 4,214 / 1,486. No equal-metric improvement
+is inferred from that version difference.
+
+## Native executed-function measurement
+
+Command-breakpoint actions expose actual FunctionInfo through native call-stack
+InvocationInfo: resolved target, alias spelling, caller and call-site file/line/
+column. `$PSDebugContext` is null in this action and is not the answer source.
+The decoder checks exact source position and native caller; it never copies a
+parser target or substitutes a parser caller. Cmdlets, members, ambiguous
+callbacks and child-process calls remain unattested in this hook.
+
+| Original subject / declared drivers | Attested full original sites | Executed native-pair recall | Driver result |
+|---|---:|---:|---|
+| Pester default plus its declared remaining phase | 13,332/18,842 (70.76%) | 1,922/2,134 (.9007) | default P tests stop after 3 ANSI-output failures, also reproduced untraced; remaining phase 2,928 passed / 0 failed / 3 skipped |
+| PSScriptAnalyzer's four declared test directories | 3,180/5,838 (54.47%) | 507/511 (.9922) | 1,944 passed / 0 failed / 162 skipped; exit 0 |
+
+Pester's default `test.ps1 -NoBuild` observes 6,117 sites; its own
+`-SkipPTests` option observes 7,606. Their native-event union counts overlapping
+sites once and retains all 18,842 original sites, not just the executed phase.
+PSScriptAnalyzer uses its explicitly declared **Pester 5.7.1**, not Pester 6.2;
+the latter's removed `-Pending` parameter caused two containers to fail in an
+earlier diagnostic run. Its full pinned documentation and compatibility profiles
+are restored for runtime tests, outside the unchanged graded `Tests` subtree.
+Those repaired-environment runs supply the published row.
+
+An owner engine bug was isolated before publication: script-qualified command
+breakpoints in 7.6.9 dereference a null InvocationInfo.ScriptName during
+New-Module. The same original assertion test passes 5/5 without breakpoints,
+fails two with a no-op script-qualified breakpoint, and passes 5/5 with a global
+no-op breakpoint. The final collector uses a global breakpoint and filters by
+native source position plus frozen original membership. It retains 2/2 Pester
+and 1/1 PSScriptAnalyzer breakpoints, completes without an instrumentation
+exception, and preserves both tracked-source digests. The proof fixture includes
+New-Module and kills a regression to script-qualified breakpoints. Earlier
+crashed runs are not evidence for a ceiling.
+
+All runtime pairs are observed actual function calls; precision is unmeasured
+because predictions include unexecuted calls. The remaining 5,510 / 2,658 sites
+stay in coverage counts and never enter executed-only recall. These are measured
+driver/instrument limits, not a claim that no broader trace can observe more.
+No runtime coverage percentage triggers a whole-written-population L2 grade.
+
+## Named candidates and concrete limits
 
 | Candidate / route | Version / revision checked | Outcome |
 |---|---|---|
-| PowerShell reference parser / AST dump | Measured 7.5.4; release 7.6.9 checked | Parser.ParseFile returns syntax. The existing dump emits literal CommandAst and InvokeMemberExpressionAst names; it does not bind dynamic commands or receivers. Native syntax B already supplies L1, but cannot lift L2 to excellent. |
-| PowerShellEditorServices reference/definition index | 4.7.0, release source inspected | ReferenceTable visits ScriptAst with SymbolVisitor and groups by SymbolReference.Id. VisitCommand constructs `fn ` plus a written unqualified name. VisitInvokeMemberExpression constructs `mtd ` plus a string member name, without a receiver's real symbol. It is a static AST/name index, not the requested native resolving binder. No new accuracy or native-tier claim. |
-| PSScriptAnalyzer | 1.25.0, existing measured subject/interface | ScriptAnalyzer's rule diagnostics are not a complete call-target occurrence index. Its AST/rule route cannot turn syntax names into runtime binding; no independent resolved-call export is established. |
-| Native import binding / manifest validation | PowerShell 7.5.4, existing committed recipe | StaticParameterBinder, PowerShell's path rules and Test-ModuleManifest already supply A for the attested imports. This does not change the syntax-only call family into A. Dynamic and CWD-dependent paths remain counted, not silently resolved. |
-| universal-ctags | 6.2.1, existing measured cross-check | No end lines; zero class methods/constructors, here-string false classes and variable noise. Weaker than the existing native AST dump; cannot supply the missing semantic call truth. |
-| Grammar-shipped queries / new grammar pin | tree-sitter-powershell 0.26.5, d3984418 | Checked release equals current pin; no tags.scm producer. Same parser family cannot independently upgrade the oracle. Parameter-default recovery failures remain product parsing gaps. |
-| SCIP producer registry route | scip-code/scip d556dd3c, registry inspected 2026-10-25 | No PowerShell producer in that checked list. This is a scoped negative search, not a claim of universal absence. |
+| Native command discovery | PowerShell 7.6.9, actual full original populations | A under OL-R11 in the recorded declared sessions; measured unresolved counts above prevent a full-population promotion. Module privacy and disabled autoload are enforced, not assumed. |
+| Native function breakpoint tracing | Same released runtime; both original test drivers | A on actual observed executed functions only, with original-site coverage and unexecuted misses disclosed. Cannot grade whole-written L2 recall or precision under P-T1. |
+| Trace-Command CommandDiscovery / MemberResolution | PowerShell 7.6.9, actual generic contract probe | Owner providers emit lookup/selection/type-member diagnostics. The probe confirms both providers and actual events, but no structured caller-file/line/column reference table is exported. No complete corpus pairing or unexecuted recall is claimed; these may extend an executed-only adapter, not the whole-source grading rule. |
+| Set-PSDebug -Trace 2 | PowerShell 7.6.9, executed generic fixture | Emits source execution and variable diagnostics, not independently resolved targets. It cannot independently grade unexecuted references. Raw diagnostics stay private. |
+| Native .NET static member reflection | PowerShell 7.6.9 / its bundled .NET, actual Math.Abs fixture | Exposes static method/overload names. It cannot resolve arbitrary instance receivers or undeclared fixture state. Even granting every member site a perfect answer leaves at least 7,224/18,842 Pester and 4,180/5,838 PSScriptAnalyzer sites unresolved; this member-only route cannot close the current gap. |
+| PowerShell reference parser / AST dump | Existing 7.5.4; current 7.6.9 executed | Native syntax B supplies declarations and literal CommandAst/InvokeMemberExpressionAst scope; syntax alone does not lift L2. Current binder targets are independently obtained from the engine. |
+| PowerShellEditorServices reference/definition index | 4.7.0, release source inspected | ReferenceTable groups SymbolVisitor's written `fn ` and `mtd ` names; it has no receiver-resolving reference in these visitors. A custom name-index export is syntax evidence, not a native resolving answer. |
+| PSScriptAnalyzer | 1.25.0, actual module/subject and source contracts | Native rule diagnostics/AST access do not establish a complete resolved-call index. Its matching declared module supplies the actual engine session above; no diagnostic-to-reference promotion. |
+| Microsoft CodeQL PowerShell extractor | 0.0.1 at `50cc6fcfb330`; source MIT; CLI release 2.27.3 contract checked | Control/data-flow/type-tracking analysis is an independent C route under the binding review, not an admitted owner/maintained-SCIP oracle. Requires a source-built extractor plus separately licensed CodeQL CLI; CLI terms are distinct from source MIT. Not installed/run; no licence prohibition or accuracy result is invented. |
+| System.Management.Automation / PowerShell SDK | NuGet 7.6.9, release present | This is the same native parser/binder implementation already measured, not a second independent oracle. Parser-only exports remain B. |
+| AlterNET PowerShell parser and Embedded variant | Both 11.0.1, NuGet metadata/licence page checked | Editor/LSP wrappers, with PSES listed as the PowerShell language-server component under its own licence. They do not establish a distinct owner or maintained-SCIP producer. Custom semantic exports are independent C; not installed or accuracy-tested. |
+| ShellSyntaxTree | 0.4.0, NuGet metadata | Independent Bash/PowerShell structured AST, C; no native evaluated target population established. Native syntax B already exists. Not corpus-executed. |
+| Meziantou.Framework.Language.Shell | 3.0.5, NuGet metadata | Independent cross-shell concrete syntax tree/diagnostics/editing, C. No owner binding or maintained SCIP status; not corpus-executed. |
+| PsBash.Core / PsBash.Transpiler | Both 0.14.0, NuGet descriptions | Bash input AST and Bash-to-PowerShell emission, outside this PowerShell-input call-reference target. Translated-input output would not create native A truth. |
+| tree-sitter-powershell package / grammar | PyPI 0.26.4 MIT; grammar release 0.26.5 `d3984418` equals product pin | Independent parser queries are C; grammar has no tags.scm producer. Same parser family cannot independently promote the oracle, and the released pin has no parameter-default recovery fix. |
+| Native import binding / manifest validation | Existing 7.5.4 recipe | StaticParameterBinder, native path rules and Test-ModuleManifest already supply A for attested imports; this does not promote call syntax. Dynamic/CWD-dependent paths remain disclosed. |
+| universal-ctags | 6.2.1, existing measured cross-check | No end lines, zero class methods/constructors, here-string false classes and variable noise; weaker than the native AST dump and no resolving call truth. |
+| SCIP/LSIF producer searches | Full tables and repository query checked 2026-10-26 | No PowerShell producer in the checked tables; eight query hits are unrelated script collections. The ten-example scip README is explicitly non-exhaustive, not a registry or universal absence proof. |
 
-**Source inspection:** the decisive server code is release-matched:
-[ReferenceTable](https://github.com/PowerShell/PowerShellEditorServices/blob/v4.7.0/src/PowerShellEditorServices/Services/Symbols/ReferenceTable.cs)
-and [SymbolVisitor](https://github.com/PowerShell/PowerShellEditorServices/blob/v4.7.0/src/PowerShellEditorServices/Services/Symbols/Visitors/SymbolVisitor.cs).
-The existing [AST/import recipe](../../calibration/oracles/powershell-ast/README.md)
-records the executed parser, ctags comparison and import contract. The checked
-[SCIP registry](https://github.com/scip-code/scip/blob/d556dd3c/README.md) supplies
-only the bounded producer search above.
+## Search receipt (X-R4)
 
-**Hypothesis / retry:** LB-Q-powershell-rest retains its present L2 ceiling for
-these candidates. A native resolving call instrument with full-population
-accounting would reopen the comparison; a runtime trace would need measured
-coverage of at least 90% of the in-repo literal population, not merely successful
-test execution. No such trace measurement is claimed here. The separate product
-triggers remain case-insensitive command binding, UTF-16 ingestion, CWD/module
-resolution and grammar recovery, each requiring a fresh holdout under K19/K29.
-No shared engine, canonical corpus, reading, epoch or plan checkbox changes.
+| Required category | Source / query actually checked | Result / limit |
+|---|---|---|
+| Own compiler/runtime | Released 7.6.9 native Parser, InvokeCommand.GetCommand, Get-PSCallStack, Debugger/CommandBreakpoint source, Get-TraceSource, Trace-Command, Set-PSDebug and .NET reflection | Static full populations and runtime drivers measured; sibling trace/reflection contracts executed, limitations above. |
+| SCIP and LSIF | [Sourcegraph supported table](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [writing-indexer table](https://sourcegraph.com/docs/code-navigation/precise-code-navigation/writing_an_indexer), [full LSIF.dev table](https://lsif.dev/), GitHub repository search `scip-powershell` | No producer in checked tables; eight unrelated query hits. [scip README](https://github.com/scip-code/scip/blob/d556dd3c/README.md) is a non-exhaustive example list. |
+| Language servers | PSES [ReferenceTable](https://github.com/PowerShell/PowerShellEditorServices/blob/v4.7.0/src/PowerShellEditorServices/Services/Symbols/ReferenceTable.cs) and [SymbolVisitor](https://github.com/PowerShell/PowerShellEditorServices/blob/v4.7.0/src/PowerShellEditorServices/Services/Symbols/Visitors/SymbolVisitor.cs); released editor-wrapper metadata | Actual visitor grouping is written-name indexing; wrapper does not establish a new native resolved index. |
+| Package registry | [NuGet query](https://azuresearch-usnc.nuget.org/query?q=powershell%20parser&prerelease=false&take=100), [native SDK versions](https://api.nuget.org/v3-flatcontainer/system.management.automation/index.json), [PyPI parser](https://pypi.org/pypi/tree-sitter-powershell/json), matching PowerShell Gallery module packages | NuGet returns 24 hits; relevant parser/editor candidates are named above. Other hits concern Tcl, MOF or CLI parsing, not PowerShell source references. Pins, output/tier limits and declared Pester dependency checked. |
+| Runtime call/require tracing | Own declared test tasks plus native breakpoint/trace/debug/reflection fixture contracts | Measured actual executed function population. Original failures, repaired dependency/data environment and instrumentation bug are disclosed; no missing-runtime excuse or coverage-to-grade promotion. |
+
+Primary source identities: [native engine release](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.9),
+[CodeQL extractor tree](https://github.com/microsoft/codeql/tree/50cc6fcfb330d8d637bc6307df9b50520e41d7fe/powershell),
+[CLI terms](https://github.com/github/codeql-cli-binaries/blob/main/LICENSE.md),
+[PSScriptAnalyzer's declared resource versions](https://github.com/PowerShell/PSScriptAnalyzer/blob/f05704df81b2aca17dc027ee39b3fce106d418fc/tools/installPSResources.ps1),
+[editor-wrapper licence](https://www.nuget.org/packages/Alternet.Studio.Syntax.Parsers.PowerShell/11.0.1/license).
+Searches are bounded and dated; none claims universal absence of a future producer.
+
+## Scope, independence and failure proofs
+
+Exact before/after tracked manifests agree. Pester: 409 regular tracked files /
+5,724,617 bytes, digest `c0ae6755def5de48b890d049d121fdab0ba0b6807426161cf4660eb3eb16180e`.
+PSScriptAnalyzer `Tests`: 250 / 878,391, digest
+`418da8434761da383351ef6a2f04034a1ae44707bc8b6fd861f32638e473c8af`.
+Non-PowerShell files reconcile the larger manifest totals. Both scopes have zero
+symlinks/gitlinks; no submodule contents are claimed. Runtime-only data outside
+`Tests` is not silently added to the graded scope.
+
+Pester's generated non-inline wrapper is declared load-state input, not original
+source membership. Before product scoring, its three generated PowerShell files /
+20,353 bytes are removed, preserving all tracked originals. Fresh scoring then
+matches the exact canonical product counts/bytes, 272 / 2,713,762 and 224 /
+775,189. The [scope-cleanup receipt](data/powershell-oracle-2026-10-26/score-scope.json)
+records only counts, bytes and the recipe-owned build root. No subject exclusion,
+holdout substitution or canonical corpus change is used to fix discovery.
+
+Independence: real `lang-probe` output is placed inside both the subject and native
+output directories and replaced with fabricated pairs. Native binder/runtime
+truth digests remain equal. Changing the known native alias from NativeOne to
+NativeTwo changes exactly two expected caller/target pairs in each route.
+The [proof](data/powershell-oracle-2026-10-26/proof.json) also verifies private
+module visibility, disabled undeclared autoload and unresolved external/member
+calls. The runtime source fixture's New-Module remains valid with the fixed hook.
+
+Mutation: `python3.13 -B calibration/oracles/powershell-native/prove_mutations.py --tools workspace/tools/powershell-native --indexbench workspace/tools/indexbench --out workspace/artifacts/lang-powershell/mutations-final`
+kills ten mutations: parser caller substitution, written-alias substitution,
+callback-guard removal, raw-byte-cap bypass, dropping the second declared phase,
+A-to-C tier, undeclared autoload, private-module scope leakage, static-site-cap
+bypass and script-qualified breakpoints. Each reaches a focused `FAIL:`; source
+is restored in `finally` and GREEN rerun. [Mutation summaries](data/powershell-oracle-2026-10-26/mutations.json)
+record each assertion. The pure decoder/phase-combination suite passes 17 tests.
+
+Caps: native file 3/2, source bytes N/(N-1), static sites N/(N-1) and unique native
+rows 2/1 all refuse the affected unit with no accepted partial oracle. Pure tests
+exercise raw bytes N/(N-1), rows 2/1, sites 2/1, combined bytes N/(N-1) and combined
+rows 2/1, plus truncated JSON, wrong runtime and native refusal. Production limits
+are 2,048 original files, 64 MiB source, 1,000,000 sites/rows, 128 MiB raw bytes and
+exactly two phases per native union, with the same total-byte/row limits. No
+throughput claim is made. Runnable commands/prerequisites are in the recipe;
+raw logs, source, file lists and identity-bearing metadata remain private.
+
+## Disposition / retry
+
+Retain canonical grades. The named owner binder exists and is measured, but its
+clean declared state leaves original references unresolved; native function
+tracing is measured executed-only. Retry L2 when a released owner/maintained-SCIP
+producer independently enumerates materially broader full-source targets under
+the allowed declared state, counting unresolved references as misses, or when a
+controller-serialized product repair is regraded against adequate native truth.
+A runtime coverage threshold is not a retry-to-excellent condition.
+Existing case-insensitive binding, UTF-16 ingestion, CWD/module resolution and
+grammar-recovery product triggers remain separate and require fresh permitted
+measurements. No engine/epoch change, generated file, canonical reading, corpus
+shard or plan checkbox changes here. All binding candidate omissions and minor
+index/spacing/registry/CodeQL findings are addressed.

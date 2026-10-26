@@ -1,0 +1,262 @@
+{
+  "benchmark_product_revision": "2be1340256f7e41dc9b0b98d3ead3b06ab8b96bd",
+  "binder": {
+    "benchmark_product_revision": "2be1340256f7e41dc9b0b98d3ead3b06ab8b96bd",
+    "canonical_reading_changed": false,
+    "oracle_code_sha256": {
+      "ResolveCalls.ps1": "ebc04cf9bf21305d429a77ba22c25c50552304b862ad8f7c529ba77a856b6945",
+      "measure_binder.py": "d3b75154ac083a193f4a5076fda25df5071b718640a7d54ef2ab2d59225ec2ef",
+      "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+    },
+    "ruling": "OL-R11",
+    "subjects": {
+      "pester": {
+        "files": 272,
+        "full_population_policy": "all unresolved original sites retained as misses; resolved-only pair diagnostics do not establish whole-population recall",
+        "historical_reading_bytes": 2713762,
+        "historical_reading_files": 272,
+        "literal_population_sha256": "16f241518024529004f56de20b0706118dc363693d8f68339b0e97919de29e5d",
+        "literal_sites": 18842,
+        "native": {
+          "bytes": 2713762,
+          "command_sites": 16667,
+          "files": 272,
+          "global_context_sites": 15181,
+          "literal_sites": 18842,
+          "load_after": [
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "76088dbc949f5b4fa9dd16203dff1981200e952a4010f960fe05a2d94f668fc9",
+              "name": "Pester",
+              "version": "6.2.0"
+            }
+          ],
+          "load_before": [
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            }
+          ],
+          "manifest_sha256": "be5ddd63a67bc6f5373e26a0ad740de8dc2cd1ee3cd58f1b5d97ae82bc4938e2",
+          "member_sites": 2175,
+          "module_context_sites": 1486,
+          "module_loading_policy": "autoload disabled; explicit matching subject manifest plus recorded pinned-runtime baseline only; profile disabled",
+          "native_module_source_files": 106,
+          "parse_error_files": 0,
+          "resolved_definition_file_contents": 100,
+          "resolved_definition_scope_sites": {
+            "original-subject": 8555,
+            "pinned-runtime": 888
+          },
+          "resolved_definition_sources_sha256": "a176160c96fdbd233453c46628b9ec1081201862572d80b1633ba38daa293a4a",
+          "subject_module": "Pester",
+          "subject_module_version": "6.2.0",
+          "unresolvable_policy": "all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context",
+          "unresolved_sites": 9399
+        },
+        "native_oracle_sha256": "66d7af718ea5c88c2a8092179ea66a21ed8552c3f37231954fe2c5aeafa0e385",
+        "native_pairs": 1836,
+        "new_generated_paths": 0,
+        "original_binary_classified_files": 0,
+        "original_scope": "frozen original Git-tracked eligible source; generated non-inline wrapper is load-state only, outside measurement membership",
+        "population": "all original tracked PowerShell source including UTF-16; no original file discarded",
+        "population_sha256": "02d669f7f23a3ec230c1ffe0f6ac54d8e03b760c9b7c5344d58821db4dd55e10",
+        "preexisting_untracked_or_ignored_paths": 23,
+        "product_discovered_bytes": 2713762,
+        "product_discovered_files": 272,
+        "resolved_pair_diagnostic_counts": {
+          "call_fathom": 4204,
+          "call_fathom_in_truth": 1819,
+          "call_truth": 1836,
+          "call_truth_found": 1819
+        },
+        "resolved_pair_diagnostic_precision": 0.4327,
+        "resolved_pair_diagnostic_recall": 0.9907,
+        "resolved_site_fraction": 0.5011676042882921,
+        "resolved_sites": 9443,
+        "revision": "98e56d65da1642a7158992b50ded240c42a3ac18",
+        "subpath": ".",
+        "tracked_after": {
+          "bytes": 5724617,
+          "entries": 409,
+          "files": 409,
+          "gitlinks": 0,
+          "sha256": "c0ae6755def5de48b890d049d121fdab0ba0b6807426161cf4660eb3eb16180e",
+          "symlinks": 0
+        },
+        "tracked_before": {
+          "bytes": 5724617,
+          "entries": 409,
+          "files": 409,
+          "gitlinks": 0,
+          "sha256": "c0ae6755def5de48b890d049d121fdab0ba0b6807426161cf4660eb3eb16180e",
+          "symlinks": 0
+        },
+        "unique_written_pairs": 4218,
+        "unresolved_sites": 9399,
+        "written_name_pairs_without_equal_native_target": 2397
+      },
+      "psa": {
+        "files": 241,
+        "full_population_policy": "all unresolved original sites retained as misses; resolved-only pair diagnostics do not establish whole-population recall",
+        "historical_reading_bytes": 775189,
+        "historical_reading_files": 224,
+        "literal_population_sha256": "65db3b48ed24d757894a8f794ff1cb0955dda4e5686f3a9c4210097ca39698b9",
+        "literal_sites": 5838,
+        "native": {
+          "bytes": 865136,
+          "command_sites": 5551,
+          "files": 241,
+          "global_context_sites": 5551,
+          "literal_sites": 5838,
+          "load_after": [
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "b69773fc9080cfb958dc13c95e42a625553e9bca5dcbedc27231e5c183a4e869",
+              "name": "PSScriptAnalyzer",
+              "version": "1.25.0"
+            }
+          ],
+          "load_before": [
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            }
+          ],
+          "manifest_sha256": "2b219f688bcdd67101040f845e530b22907d39bbf49089b4b5b2afaba7996791",
+          "member_sites": 287,
+          "module_context_sites": 0,
+          "module_loading_policy": "autoload disabled; explicit matching subject manifest plus recorded pinned-runtime baseline only; profile disabled",
+          "native_module_source_files": 0,
+          "parse_error_files": 4,
+          "resolved_definition_file_contents": 2,
+          "resolved_definition_scope_sites": {
+            "declared-subject-module": 897,
+            "pinned-runtime": 474
+          },
+          "resolved_definition_sources_sha256": "01a04ed00a8f6dbe1686ccd25b3dba3f5a204720f64f9abd2cd88f7ddd2f7d9c",
+          "subject_module": "PSScriptAnalyzer",
+          "subject_module_version": "1.25.0",
+          "unresolvable_policy": "all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context",
+          "unresolved_sites": 4467
+        },
+        "native_oracle_sha256": "620983fa7557d13370c9590a4359ebc50019156da63f55cff6db5267b6cd051a",
+        "native_pairs": 282,
+        "new_generated_paths": 0,
+        "original_binary_classified_files": 17,
+        "original_scope": "frozen original Git-tracked eligible source; generated non-inline wrapper is load-state only, outside measurement membership",
+        "population": "all original tracked PowerShell source including UTF-16; no original file discarded",
+        "population_sha256": "c5193a76a5ba9006fc44d730049db6fa3d94f61ba709ef500482be898019cf0c",
+        "preexisting_untracked_or_ignored_paths": 0,
+        "product_discovered_bytes": 775189,
+        "product_discovered_files": 224,
+        "resolved_pair_diagnostic_counts": {
+          "call_fathom": 1320,
+          "call_fathom_in_truth": 274,
+          "call_truth": 282,
+          "call_truth_found": 274
+        },
+        "resolved_pair_diagnostic_precision": 0.2076,
+        "resolved_pair_diagnostic_recall": 0.9716,
+        "resolved_site_fraction": 0.23484069886947584,
+        "resolved_sites": 1371,
+        "revision": "f05704df81b2aca17dc027ee39b3fce106d418fc",
+        "subpath": "Tests",
+        "tracked_after": {
+          "bytes": 878391,
+          "entries": 250,
+          "files": 250,
+          "gitlinks": 0,
+          "sha256": "418da8434761da383351ef6a2f04034a1ae44707bc8b6fd861f32638e473c8af",
+          "symlinks": 0
+        },
+        "tracked_before": {
+          "bytes": 878391,
+          "entries": 250,
+          "files": 250,
+          "gitlinks": 0,
+          "sha256": "418da8434761da383351ef6a2f04034a1ae44707bc8b6fd861f32638e473c8af",
+          "symlinks": 0
+        },
+        "unique_written_pairs": 1489,
+        "unresolved_sites": 4467,
+        "written_name_pairs_without_equal_native_target": 1215
+      }
+    }
+  },
+  "runtime": {
+    "ruling": "OL-R11",
+    "subjects": {
+      "pester": {
+        "attested_sites": 13332,
+        "coverage": 0.7075681987050207,
+        "driver_status": "completed",
+        "exception_sha256": null,
+        "executed_pair_recall": 0.9006560449859419,
+        "executed_pair_truth": 2134,
+        "executed_pair_truth_found": 1922,
+        "harness_scoped_pair_truth": 2134,
+        "literal_population_sha256": "16f241518024529004f56de20b0706118dc363693d8f68339b0e97919de29e5d",
+        "literal_sites": 18842,
+        "native_events": 490762,
+        "native_pairs": 2134,
+        "native_pairs_outside_product_scope": 0,
+        "original_breakpoints": 2,
+        "retained_breakpoints": 2,
+        "runtime_precision": "unmeasured: predictions include unexecuted calls",
+        "unattested_sites": 5510,
+        "unpaired_native_rows": 596
+      },
+      "psa": {
+        "attested_sites": 3180,
+        "coverage": 0.5447070914696814,
+        "driver_status": "completed",
+        "exception_sha256": null,
+        "executed_pair_recall": 0.9921722113502935,
+        "executed_pair_truth": 511,
+        "executed_pair_truth_found": 507,
+        "harness_scoped_pair_truth": 511,
+        "literal_population_sha256": "65db3b48ed24d757894a8f794ff1cb0955dda4e5686f3a9c4210097ca39698b9",
+        "literal_sites": 5838,
+        "native_events": 192544,
+        "native_pairs": 511,
+        "native_pairs_outside_product_scope": 0,
+        "original_breakpoints": 1,
+        "retained_breakpoints": 1,
+        "runtime_precision": "unmeasured: predictions include unexecuted calls",
+        "unattested_sites": 2658,
+        "unpaired_native_rows": 40
+      }
+    }
+  }
+}

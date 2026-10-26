@@ -1,0 +1,62 @@
+[
+  {
+    "FAIL": "FAIL: test_native_names_do_not_come_from_parser_pair (test_trace_decode.NativeFunctionTests.test_native_names_do_not_come_from_parser_pair)",
+    "file": "trace_decode.py",
+    "mutant": "test_native_names_do_not_come_from_parser_pair",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_alias_target_is_not_written_alias (test_trace_decode.NativeFunctionTests.test_native_alias_target_is_not_written_alias)",
+    "file": "trace_decode.py",
+    "mutant": "test_native_alias_target_is_not_written_alias",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_implicit_callback_is_unattested (test_trace_decode.NativeFunctionTests.test_implicit_callback_is_unattested)",
+    "file": "trace_decode.py",
+    "mutant": "test_implicit_callback_is_unattested",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_bytes_cap_plus_one (test_trace_decode.NativeFunctionTests.test_bytes_cap_plus_one)",
+    "file": "trace_decode.py",
+    "mutant": "test_bytes_cap_plus_one",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_both_original_phases_retained (test_combine_runtime.PhaseCombinationTests.test_both_original_phases_retained)",
+    "file": "combine_runtime.py",
+    "mutant": "drop-second-phase",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "tier",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "autoload",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "privacy",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "site-cap",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "TraceFunctions.ps1",
+    "mutant": "script-qualified-breakpoint",
+    "restored": "GREEN"
+  }
+]
