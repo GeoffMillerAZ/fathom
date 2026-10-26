@@ -162,6 +162,7 @@ func TestAdoptionLabsSectionEmptyRoot(t *testing.T) {
 	}
 	want := map[string]string{
 		"cards": "[]", "card_error": `""`, "closure_gap": `""`, "newest_results": "[]", "ledger_error": `""`, "cases": "[]", "case_error": `""`,
+		"ledger_present": "false", "cases_present": "false",
 		"fixed_observations":    `{"count":0,"ids":[],"fix_proof":"not measured (LAB-24 unbuilt)"}`,
 		"unlinked_observations": `{"count":0,"ids":[],"by_status":{}}`,
 	}
@@ -177,7 +178,8 @@ func TestAdoptionLabsSectionEmptyRoot(t *testing.T) {
 	if code := cmdInstrumentAdoption([]string{"--adoption", "--root", root, "--call-log", filepath.Join(root, "absent.jsonl"), "--url", "http://127.0.0.1:1"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("text exit %d", code)
 	}
-	for _, want := range []string{"labs (calibration/labs.d):", "cards: 0 (no calibration/labs.d)", "fixed observations: 0", "observations without a Lab link: 0"} {
+	for _, want := range []string{"labs (calibration/labs.d):", "cards: 0 (no calibration/labs.d)",
+		"not measured: docs/bench/labs-ledger.jsonl absent", "not measured: calibration/labs.d/<lab>/cases absent", "fixed observations: 0", "observations without a Lab link: 0"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("text lacks %q:\n%s", want, stdout.String())
 		}
@@ -242,5 +244,67 @@ func TestAdoptionLabsSectionCommittedRoot(t *testing.T) {
 	}
 	if got.LedgerError != "" || got.CaseError != "" {
 		t.Errorf("committed root: ledger %q, cases %q", got.LedgerError, got.CaseError)
+	}
+}
+
+// An empty-but-present ledger and cases directory read as measured zero, and
+// the JSON says present.
+func TestAdoptionLabsSectionPresentButEmpty(t *testing.T) {
+	root, shipped := labsFixtureRoot(t)
+	writeLabsFile(t, root, "docs/bench/labs-ledger.jsonl", "")
+	if err := os.MkdirAll(filepath.Join(root, "calibration", "labs.d", "lab-search", "cases"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := adoptionLabsSection(root, shipped, nil)
+	if !got.LedgerPresent || !got.CasesPresent {
+		t.Errorf("present flags = %v %v, want true true", got.LedgerPresent, got.CasesPresent)
+	}
+	var text bytes.Buffer
+	renderAdoptionLabs(&text, &got)
+	for _, want := range []string{"newest ledger row per lab (docs/bench/labs-ledger.jsonl): 0", "cases by split: 0 lab(s) with cases"} {
+		if !strings.Contains(text.String(), want) {
+			t.Errorf("text lacks %q:\n%s", want, text.String())
+		}
+	}
+	if strings.Contains(text.String(), "not measured: docs/bench") || strings.Contains(text.String(), "cases absent") {
+		t.Errorf("present inputs read as not measured:\n%s", text.String())
+	}
+}
+
+// A per-entry file wins on a duplicate id even with no Status line: the id
+// reads "unknown", never the legacy log's status.
+func TestObservationStatusesPerEntryWithoutStatusWins(t *testing.T) {
+	root := t.TempDir()
+	writeLabsFile(t, root, ".fathom/observations.md", "### O5 — five\n- **Status:** fixed in abc\n\n### O6 — six\n- **Status:** open\n")
+	writeLabsFile(t, root, ".fathom/observations/O5.md", "### O5 — five\nno status recorded\n")
+	got, err := observationStatuses(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[5] != "unknown" || got[6] != "open" {
+		t.Errorf("statuses = %v, want O5 unknown and O6 open", got)
+	}
+	sec := adoptionLabsSection(root, nil, nil)
+	if sec.Fixed.Count != 0 {
+		t.Errorf("fixed = %+v, want none", sec.Fixed)
+	}
+}
+
+// An unreadable entry file is named by observationStatuses, as the merged
+// reader names it (I38).
+func TestObservationStatusesNamesUnreadableEntry(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".fathom", "observations"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A dangling symlink is a listed file that cannot be read.
+	if err := os.Symlink(filepath.Join(root, "nowhere"), filepath.Join(root, ".fathom", "observations", "O9.md")); err != nil {
+		t.Skip("symlink unavailable")
+	}
+	if _, _, err := readObservations(root); err == nil || !strings.Contains(err.Error(), "O9.md") {
+		t.Fatalf("readObservations err = %v", err)
+	}
+	if _, err := observationStatuses(root); err == nil || !strings.Contains(err.Error(), "O9.md") {
+		t.Errorf("observationStatuses err = %v, want it to name O9.md", err)
 	}
 }

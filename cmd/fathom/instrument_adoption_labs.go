@@ -33,8 +33,13 @@ type AdoptionLabs struct {
 	// was not checked.
 	CardError string `json:"card_error"`
 	// ClosureGap is CheckLabClosure's error text, verbatim.
-	ClosureGap    string              `json:"closure_gap"`
-	LedgerPath    string              `json:"ledger_path"`
+	ClosureGap string `json:"closure_gap"`
+	LedgerPath string `json:"ledger_path"`
+	// LedgerPresent and CasesPresent tell an absent input (not measured)
+	// from a present empty one. CasesPresent is true when any lab has a
+	// cases/ directory.
+	LedgerPresent bool                `json:"ledger_present"`
+	CasesPresent  bool                `json:"cases_present"`
 	NewestResults []labs.LabResultRow `json:"newest_results"`
 	LedgerError   string              `json:"ledger_error"`
 	Cases         []labs.LabCaseCount `json:"cases"`
@@ -98,6 +103,16 @@ func adoptionLabsSection(root string, shipped []string, shippedErr error) Adopti
 		if err := labs.CheckLabClosure(dir, shipped); err != nil {
 			out.ClosureGap = err.Error()
 		}
+	}
+
+	ledgerPath := filepath.Join(root, filepath.FromSlash(labsLedgerRelPath))
+	// Only a missing file is absent; an unreadable one is named by the
+	// reader below, not folded into "not measured".
+	if _, err := os.Stat(ledgerPath); !os.IsNotExist(err) {
+		out.LedgerPresent = true
+	}
+	if matches, _ := filepath.Glob(filepath.Join(dir, "*", "cases")); len(matches) > 0 {
+		out.CasesPresent = true
 	}
 
 	rows, err := labs.NewestLabResults(filepath.Join(root, filepath.FromSlash(labsLedgerRelPath)))
@@ -174,13 +189,19 @@ func observationIDs(ids []int) []string {
 }
 
 // observationStatuses maps each entry's numeric id to its last Status line,
-// read from the legacy log and then the per-entry files, so a per-entry
-// file's status wins on a duplicate id. Each entry's status comes from its
-// own section, as countOpenObservations reads it. An entry with no Status
-// line is absent. Missing files are empty; read failures are named.
+// read through readObservationSources (the one merged reader's file walk):
+// the legacy log first, then the per-entry files, so a per-entry file wins
+// on a duplicate id. An id whose winning per-entry file has no Status line
+// reads "unknown", never the legacy log's status. A legacy entry with no
+// Status line is absent. Missing files are empty; read failures are named.
 func observationStatuses(root string) (map[int]string, error) {
 	statuses := map[int]string{}
-	scan := func(content string) {
+	sources, err := readObservationSources(root)
+	if err != nil {
+		return statuses, err
+	}
+	for _, src := range sources {
+		content := src.Text
 		heads := observationEntryHeader.FindAllStringSubmatchIndex(content, -1)
 		for i, h := range heads {
 			end := len(content)
@@ -192,58 +213,13 @@ func observationStatuses(root string) (map[int]string, error) {
 				continue
 			}
 			matches := observationStatusLine.FindAllStringSubmatch(content[h[0]:end], -1)
-			if len(matches) == 0 {
-				continue
+			switch {
+			case len(matches) > 0:
+				statuses[id] = strings.TrimSpace(matches[len(matches)-1][1])
+			case src.PerEntry:
+				statuses[id] = "unknown"
 			}
-			statuses[id] = strings.TrimSpace(matches[len(matches)-1][1])
 		}
-	}
-	data, err := os.ReadFile(observationsPath(root))
-	switch {
-	case err == nil:
-		scan(string(data))
-	case !os.IsNotExist(err):
-		return statuses, err
-	}
-	dir := observationsDir(root)
-	des, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return statuses, nil
-	}
-	if err != nil {
-		return statuses, err
-	}
-	type entry struct {
-		id   int
-		name string
-	}
-	var entries []entry
-	for _, de := range des {
-		m := observationEntryFile.FindStringSubmatch(de.Name())
-		if m == nil || de.IsDir() {
-			continue
-		}
-		if n, err := strconv.Atoi(m[1]); err == nil {
-			entries = append(entries, entry{n, de.Name()})
-		}
-	}
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].id != entries[j].id {
-			return entries[i].id < entries[j].id
-		}
-		return entries[i].name < entries[j].name
-	})
-	var problems []string
-	for _, e := range entries {
-		data, err := os.ReadFile(filepath.Join(dir, e.name))
-		if err != nil {
-			problems = append(problems, fmt.Sprintf("observation entry %s unreadable: %v", filepath.ToSlash(filepath.Join(observationsDirRelPath, e.name)), err))
-			continue
-		}
-		scan(string(data))
-	}
-	if len(problems) > 0 {
-		return statuses, fmt.Errorf("%s", strings.Join(problems, "; "))
 	}
 	return statuses, nil
 }
@@ -268,7 +244,11 @@ func renderAdoptionLabs(w io.Writer, l *AdoptionLabs) {
 		}
 	}
 
-	fmt.Fprintf(w, "  newest ledger row per lab (%s): %d\n", l.LedgerPath, len(l.NewestResults))
+	if !l.LedgerPresent {
+		fmt.Fprintf(w, "  newest ledger row per lab: not measured: %s absent\n", l.LedgerPath)
+	} else {
+		fmt.Fprintf(w, "  newest ledger row per lab (%s): %d\n", l.LedgerPath, len(l.NewestResults))
+	}
 	for _, r := range l.NewestResults {
 		fmt.Fprintf(w, "    %s  run=%s task=%s arm=%s verdict=%s\n", r.Lab, r.RunID, r.TaskID, r.Arm, r.Verdict)
 	}
@@ -276,7 +256,11 @@ func renderAdoptionLabs(w io.Writer, l *AdoptionLabs) {
 		fmt.Fprintf(w, "    ⚠ LEDGER: %s\n", l.LedgerError)
 	}
 
-	fmt.Fprintf(w, "  cases by split: %d lab(s) with cases\n", len(l.Cases))
+	if !l.CasesPresent {
+		fmt.Fprintf(w, "  cases by split: not measured: %s/<lab>/cases absent\n", l.CardsDir)
+	} else {
+		fmt.Fprintf(w, "  cases by split: %d lab(s) with cases\n", len(l.Cases))
+	}
 	for _, c := range l.Cases {
 		fmt.Fprintf(w, "    %s  train=%d select=%d confirm=%d\n", c.Lab, c.Train, c.Select, c.Confirm)
 	}
