@@ -93,3 +93,38 @@ Optional throughput refusal leaves the complete correctness receipt intact and
 reports throughput as unmeasured. The YAML-only shadow copies have no independent
 Git identity, so lang-retime refuses them; no synthetic Git identity or performance
 gate bypass is introduced. A regression test covers refusal and excess load.
+
+## Review validation
+
+The fresh replay completed all 1,803 queries over 681 distinct paths with zero
+refusals. All nine normative tracked-set before/after receipts agree and show
+no untracked subject files. The independently located native builds both hash
+to `eab75801aeac775a43f8fec5ea648d2b72828f1352eb9c25fc9fbd218305be35`.
+
+The table separates native enumeration from the filename-selected comparison.
+The matched subset establishes no full-population recall or support grade.
+
+| Cohort | Native named definitions | Compared / matched | Native pairs | Compared / found |
+|---|---:|---:|---:|---:|
+| 1 | 2 | 2 / 2 | 0 | 0 / 0 |
+| 2 | 806 | 154 / 154 | 34 | 2 / 2 |
+| 3 | 2 | 2 / 2 | 0 | 0 / 0 |
+| 4 | 469 | 154 / 154 | 3 | 2 / 2 |
+| 5 | 16 | 16 / 16 | 0 | 0 / 0 |
+| 6 | 9 | 9 / 9 | 0 | 0 / 0 |
+| 7 | 14 | 14 / 14 | 0 | 0 / 0 |
+| 8 | 6 | 6 / 6 | 0 | 0 / 0 |
+| 9 | 8 | 8 / 8 | 0 | 0 / 0 |
+| Total | 1,332 | 365 / 365 | 37 | 4 / 4 |
+
+Ten Python tests, three projection/coverage mutants, 14 native race tests, two
+native mutants, three offline official CLI checks and both focused locator
+race tests pass with no skips. X-R2 release-notes/merge-debris and X-R3
+NoOrgSpecificNames pass. The legacy Docker-dependent test is unverified.
+
+Throughput is unmeasured: the correctness replay started at load 7.48, nice 10,
+with 25.13 GiB free; the timing-stage load was 6.15, above six, so
+no median was attempted. An earlier replay completed correctness but its
+optional timing refused the Git-less shadow copy; the wrapper now retains
+correctness and flags any timing refusal as unmeasured. No performance or
+full-population support grade is claimed.
