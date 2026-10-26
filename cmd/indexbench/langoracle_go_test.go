@@ -105,6 +105,67 @@ func TestCmdLangOracleGoFileEdgesAndImports(t *testing.T) {
 	}
 }
 
+// Go does not narrow def_mapping with DefScoped, but measureSubject must
+// still pass its measured files to SCIP so unmeasured misses are disclosed.
+func TestCmdLangOracleGoUnmeasuredDefinitions(t *testing.T) {
+	subject := t.TempDir()
+	writeTree(t, subject, map[string]string{
+		"go.mod":           "module example.com/m\n\ngo 1.21\n",
+		"main.go":          "package main\ntype T struct { F int }\nfunc main() {}\n",
+		"build/version.go": "package build\nvar Version = \"dev\"\n",
+	})
+	if langbench.SCIPOptionsFor("go", nil).DefScoped {
+		t.Fatal("fixture must exercise a dialect without DefScoped")
+	}
+	const pkg = "scip-go gomod example.com/m v0.0.0 `example.com/m`/"
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-go", Version: "0.2.7"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "main.go", Occurrences: []*scippb.Occurrence{
+				def(pkg+"T#", []int32{1, 0, 1, 23}, 1, 5, 6),
+				def(pkg+"T#F.", nil, 1, 16, 17),
+				def(pkg+"main().", []int32{2, 0, 2, 14}, 2, 5, 9),
+			}},
+			{RelativePath: "build/version.go", Occurrences: []*scippb.Occurrence{
+				def("scip-go gomod example.com/m v0.0.0 `example.com/m/build`/Version.", nil, 1, 4, 11),
+			}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scip := filepath.Join(t.TempDir(), "go.scip")
+	if err := os.WriteFile(scip, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "go.json")
+	var stdout, stderr bytes.Buffer
+	args := []string{"-dialect", "go", "-subject", subject, "-subject-name", "fixture/go",
+		"-scip", scip, "-ctags", filepath.Join(t.TempDir(), "absent"), "-out", out,
+		"-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, _ := readValidReading(t, out)
+	if len(r.Subjects) != 1 || r.Subjects[0].Files != 1 {
+		t.Fatalf("want only main.go measured, got %+v", r.Subjects)
+	}
+	for k, want := range map[string]int{
+		langbench.CntScipDefs: 4, langbench.CntScipDefsMapped: 2,
+		langbench.CntScipDefsOutOfScope: 0, langbench.CntScipGoDefsUnmeasured: 1,
+		"scip_go_defs_unmapped_field": 1, "scip_go_defs_unmapped_package-var": 1,
+	} {
+		if got := r.Counts[k]; got != want {
+			t.Errorf("%s = %d, want %d", k, got, want)
+		}
+	}
+	if !strings.Contains(strings.Join(r.Notes, "\n"), "1 of them in a file the reading does not measure") {
+		t.Error("notes do not disclose the unmeasured definition")
+	}
+}
+
 // goDispatchFixture is one module whose Run calls Greet through an interface
 // two types implement, and whose main calls Run.
 var goDispatchFixture = map[string]string{

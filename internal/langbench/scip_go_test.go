@@ -221,7 +221,7 @@ func TestScoreSCIPGoUnmeasuredDocumentMisses(t *testing.T) {
 	}
 	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-go", Version: "0.2.7"}},
 		Documents: []*scippb.Document{
-			{RelativePath: "build/build.go", Occurrences: []*scippb.Occurrence{def(pkg+"Version.", nil, 2, 4, 11), def(pkg+"init().", []int32{4, 0, 6, 1}, 4, 5, 9)}},
+			{RelativePath: "build/build.go", Occurrences: []*scippb.Occurrence{def(pkg, nil, 0, 8, 13), def(pkg+"Version.", nil, 2, 4, 11), def(pkg+"init().", []int32{4, 0, 6, 1}, 4, 5, 9)}},
 			{RelativePath: "main.go", Occurrences: []*scippb.Occurrence{def(pkg+"Run().", []int32{2, 0, 2, 14}, 2, 5, 8), def(pkg+"T#f.", nil, 3, 1, 2)}},
 		}}
 	raw, err := proto.Marshal(idx)
@@ -236,7 +236,7 @@ func TestScoreSCIPGoUnmeasuredDocumentMisses(t *testing.T) {
 		t.Fatal(err)
 	}
 	for k, want := range map[string]int{
-		CntScipDefs: 4, CntScipDefsMapped: 1, CntScipGoDefsUnmeasured: 2,
+		CntScipDefs: 4, CntScipDefsMapped: 1, CntScipGoDefsUnmeasured: 2, CntScipDefsNamespace: 1,
 		"scip_go_defs_unmapped_field": 1, "scip_go_defs_unmapped_func": 1, "scip_go_defs_unmapped_package-var": 1,
 	} {
 		if got := res.Counts[k]; got != want {
