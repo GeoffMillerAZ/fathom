@@ -203,6 +203,25 @@ For a future fresh subject, the same collector requires its full source pin,
 subject name and `--coverage-floor .95`; the floor is checked against all
 tracked Perl units and all independent named tags before a passing receipt.
 
+`holdout.py` is the committed one-shot orchestration for that future subject.
+Freeze its source commit, remote, license and clean instrument commit in the
+protocol before invoking it. The runner refuses an existing scratch directory,
+writes a source-commit spend register under ignored `workspace/tmp/` and
+`holdout-spent.json` before clone, and records full source/instrument
+commits on every phase plus the built binary hash on build, grade and retime.
+It uses the pinned Perl/PPI/Ctags inputs, installs only the subject's own
+tracked CPAN declaration into an isolated prefix when one exists, then runs
+the unchanged PPI primary, native range companion, fresh indexbench build,
+grade and three retimings. Compiler network and write restrictions remain in
+`runner.py`. It calls `holdout_receipt.py` after a completed run; a missed
+coverage or population gate yields a count/hash receipt with a false criterion.
+No replacement subject has been selected or run by this instrument addition.
+
+```sh
+python3 calibration/oracles/perl-db-ranges/holdout.py --self-test
+python3 calibration/oracles/perl-db-ranges/holdout.py --instrument-repo . --instrument-commit "$FROZEN_INSTRUMENT_COMMIT" --subject "$FROZEN_SUBJECT" --source-commit "$FROZEN_SOURCE_COMMIT" --remote "$FROZEN_REMOTE" --scratch "$FRESH_HOLDOUT_SCRATCH" --perl "$PERL_BINARY" --ctags "$CTAGS_BINARY" --cpanm "$CPANM_BINARY" --cpanm-archive "$CPANM_ARCHIVE"
+```
+
 The harness-only repeat requires a clean full-commit checkout and configured
 `TMPDIR`, `GOTMPDIR` and `GOCACHE` directories outside it. Set
 `PERL_GRADE_RESULTS` to a fresh path under this checkout's `workspace/` or
