@@ -85,7 +85,11 @@ func platformExcludedFiles(ev Evidence, symbol, pkg string) []string {
 		return nil
 	}
 	var excluded []string
-	for _, f := range ge.GoFiles() {
+	files, ok := platformGoFiles(ge)
+	if !ok {
+		return nil
+	}
+	for _, f := range files {
 		if pkg != "" && path.Dir(f.Path) != strings.TrimSuffix(pkg, "/") && !strings.HasPrefix(f.Path, strings.TrimSuffix(pkg, "/")+"/") {
 			continue
 		}
@@ -126,4 +130,18 @@ func applyPlatformExclusion(v *TaskVerdict, t Task, ev Evidence) {
 	if converted && !otherFail {
 		v.Status, v.Label = Unknown, PlatformExcludedLabel
 	}
+}
+
+// platformGoFiles reads the corpus's Go files for the platform check. The
+// check is an optional classification: when an evidence source cannot serve
+// its files (a partial test fake, an unreachable backend), it reports no
+// platform information and the row keeps the verdict it already had, which
+// never weakens a failure.
+func platformGoFiles(ge GoneEvidence) (files []GoFile, ok bool) {
+	defer func() {
+		if recover() != nil {
+			files, ok = nil, false
+		}
+	}()
+	return ge.GoFiles(), true
 }
