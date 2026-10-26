@@ -13,6 +13,21 @@
   "directional_schema_walk_tier": "C",
   "engine_commit": "6db920e72898abb20bf86c22652b401902e34598",
   "format": "crossplane-calibration-review-v1",
+  "historical_filtered_reading_conservation": {
+    "after_inventory_sha256": "e225b707689d03d31406d42dce5c4b9309e40cc83312494f13df6caef412fe20",
+    "base": "6db920e72898abb20bf86c22652b401902e34598",
+    "before_inventory_sha256": "be9a3350211b5c573fc27e42d9897f932c7f640c45979646a60f993a019bac47",
+    "changed_values": [
+      "crossplane.json"
+    ],
+    "eligible": 154,
+    "files": 185,
+    "historical_crossplane_measurements_preserved": true,
+    "protected_byte_identical": 31,
+    "required_kinds_preserved": true,
+    "scope": "Superseded R1 filtered reading only; R2 full-population conservation is in the R2 receipt",
+    "unchanged_bytes": 184
+  },
   "measured_at": "2026-10-26",
   "native_independence": {
     "after_receipt_sha256": "ea5c6ec1acc366b60f1d50e2e78dbe230734ac0f7305ac56d549620c35ff1abb",
@@ -34,6 +49,8 @@
       "subject_sha256": "ff44007f7eada1e65ffdd9ca566c23ce7472073116c725e4e3c35fee79480f3a",
       "subject_unchanged": true
     },
+    "product_control_stdout_scope": "Single JSON line emitted by the committed Go product control; scheduler diagnostics excluded",
+    "product_control_stdout_sha256": "74cb532474c03002cef8f7ae2bec74912dff3480763df2003877e6a68210eded",
     "raw_truth_sha256": "53dd0996bdb4ae29986960997bcdf050acde1bda527e0999ce3ec71c09ca3dd2"
   },
   "native_probe": {
@@ -465,20 +482,6 @@
       "sha": "de7a486ad63acbc9f571777fbc6d0f123ad8e50b"
     }
   ],
-  "reading_conservation": {
-    "after_inventory_sha256": "e225b707689d03d31406d42dce5c4b9309e40cc83312494f13df6caef412fe20",
-    "base": "6db920e72898abb20bf86c22652b401902e34598",
-    "before_inventory_sha256": "be9a3350211b5c573fc27e42d9897f932c7f640c45979646a60f993a019bac47",
-    "changed_values": [
-      "crossplane.json"
-    ],
-    "eligible": 154,
-    "files": 185,
-    "historical_crossplane_measurements_preserved": true,
-    "protected_byte_identical": 31,
-    "required_kinds_preserved": true,
-    "unchanged_bytes": 184
-  },
   "schema_validation_tier": "native instance validation; no definition or binding population certificate",
   "source_conservation": [
     {
@@ -612,14 +615,16 @@
       "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "native_after": {
+      "combined_pipeline_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c",
       "command": "python3 calibration/oracles/crossplane/probe.py --manifest workspace/artifacts/crossplane-r1/manifest.json --out workspace/artifacts/crossplane-r1/final-after.json --scratch workspace/tmp/crossplane-r1-final-after --crossplane \"$TOOLS/crossplane\" --yq \"$TOOLS/yq\"",
       "exit_code": 0,
-      "private_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c"
+      "log_scope": "Combined serialized before-probe, product-control, after-probe and tracked-manifest pipeline; not an individual command stdout log"
     },
     "native_before": {
+      "combined_pipeline_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c",
       "command": "python3 calibration/oracles/crossplane/probe.py --manifest workspace/artifacts/crossplane-r1/manifest.json --out workspace/artifacts/crossplane-r1/final-before.json --scratch workspace/tmp/crossplane-r1-final-before --crossplane \"$TOOLS/crossplane\" --yq \"$TOOLS/yq\"",
       "exit_code": 0,
-      "private_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c"
+      "log_scope": "Combined serialized before-probe, product-control, after-probe and tracked-manifest pipeline; not an individual command stdout log"
     },
     "oracle_race": {
       "command": "go -C calibration/oracles/crossplane test -race -count=1 ./...",
@@ -639,9 +644,10 @@
       "private_log_sha256": "6a0824a25a016bb25950b9898364665b30e9c85b960703c2087e9da7c7e6f025"
     },
     "product_control": {
+      "combined_pipeline_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c",
       "command": "go run ./workspace/tmp/crossplane-proof/product_ablation.go -subject-file \"$LEGACY_AWS_CHECKOUT/apis/cluster/composition.yaml\"",
       "exit_code": 0,
-      "private_log_sha256": "e6e37ee2038c3e714f20b7313e6163659fbb5512b92c598c5f56cb578472f78c"
+      "log_scope": "Combined serialized before-probe, product-control, after-probe and tracked-manifest pipeline; not an individual command stdout log"
     },
     "python_tests": {
       "command": "python3 -m unittest calibration.oracles.crossplane.probe_test",

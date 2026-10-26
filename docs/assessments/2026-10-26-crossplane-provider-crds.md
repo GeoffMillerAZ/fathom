@@ -3,12 +3,13 @@
 ## Verdict
 
 The nine-subject native before/after probes agree exactly, including their raw
-report digest. The product control changes actual extracted output between them. No new native score or support promotion is claimed. The
-historical reading retains 352/354 matched definitions, 63/63 references and
-27/27 cross-file references. P-T1 corrects the inherited definition tier from A
-to C because the older Go oracle selects nested definition candidates with an
-authored walk. Native schema validation accepts candidates but does not enumerate
-that population. Provider schema acceptance does not prove reference or field binding.
+report digest. The product control changes actual extracted output between them.
+No new native score or support promotion is claimed. P-T1 replaces the inherited
+189-file, validator-filtered tier-A population with a full independent tier-C
+walk over 244 canonical files: 428/428 definitions, 86/86 references and 33/33
+cross-file references, with L1/L2/L3 good. Native schema validation accepts
+instances but does not enumerate nested definitions or prove reference or field
+binding. The L2/L3 native-oracle question remains open; no ceiling is established.
 
 ## Scope and intent
 
@@ -20,10 +21,12 @@ The sole canonical shard remains `calibration/corpus.d/crossplane.yaml`.
 
 The original three canonical subjects are preserved. A legacy AWS platform,
 Azure/GCP platforms and three older network composition/XRD subjects add
-exploratory probes, each pinned before new measurement. The first six subjects
-had zero matching Upbound bases; three network subjects were added and all initial
-subjects were retained. `calibration/oracles/crossplane/pins-r1.json` records
-identities, selection criteria and the peeled legacy tag. These are not holdouts.
+exploratory native probes. The first six subjects had zero matching Upbound
+bases. All 21 matched provider bases come from the three network subjects added
+after that result. Their release versions were manually chosen as known legacy
+`spec.resources` examples, with no preregistered version rule. All first-six
+subjects remain. `calibration/oracles/crossplane/pins-r1.json` records the pins
+and the peeled legacy tag. These are not holdouts.
 
 ## Native schema evidence
 
@@ -34,6 +37,8 @@ Upbound AWS 2.0.0, Azure 1.10.0 and GCP 1.10.0 supplied 3,019 CRD files. Their
 content does not establish OCI package equivalence. The pinned sources, tool
 hashes and nine scopes are in `calibration/oracles/crossplane/pins-r1.json`;
 the public counts and hashes are in the [calibration receipt](data/2026-10-26-crossplane-r1.json).
+The [R2 receipt](data/2026-10-26-crossplane-r2.json) records the full-population
+grade and bounded owner-tool probes.
 
 | Subject | YAML files | Compositions / XRDs | Literal bases | Native valid / invalid / missing schema |
 |---|---:|---:|---:|---:|
@@ -48,9 +53,10 @@ the public counts and hashes are in the [calibration receipt](data/2026-10-26-cr
 | upbound/platform-ref-gcp-network-resources | 2 | 1 / 1 | 2 | 3 / 1 / 0 |
 | **Total** | **393** | **42 / 42** | **36** | **241 / 29 / 54** |
 
-This source inventory is separate from `lang-oracle` discovery and the historical
-reading's 189 measured files. It includes schema checks of objects outside that
-old scored file set; the 393 YAML files do not become new scored evidence.
+This source inventory is separate from `lang-oracle` discovery. The native probe
+inspected 393 YAML files; the canonical grade scored 244 Crossplane files from
+the original three subjects. Native schema rows do not become scored tier-A
+definition, reference or cross-file evidence.
 
 The CLI made 282 validation calls and can emit multiple result rows per call;
 the three status totals are result rows, not a 282-item partition. It also emitted
@@ -77,25 +83,39 @@ diagnostics nor that counter proves a Function's runtime binding.
 
 | Source group | Search / primary source | Result and disposition |
 |---|---|---|
-| Own toolchain | [CLI 2.5 command reference](https://docs.crossplane.io/cli/v2.5/command-reference/); [owner validation API](https://pkg.go.dev/github.com/crossplane/cli/v2@v2.5.0/pkg/validate) | Structured schema results, no static referent or patch-binding output. Native candidate under measurement. |
+| Own toolchain | [CLI 2.5 command reference](https://docs.crossplane.io/cli/v2.5/command-reference/); [owner validation API](https://pkg.go.dev/github.com/crossplane/cli/v2@v2.5.0/pkg/validate) | `resource validate` gives schema-instance results, no referent or patch-binding certificate. `composition render` rejects all three exact legacy `spec.resources` Compositions as requiring Pipeline mode before starting a Function or container. `xpkg build` succeeds on both actual package roots and fails on two non-package workflow roots; package metadata is therefore not categorically ungradeable. |
 | SCIP / LSIF | [SCIP producer list](https://github.com/scip-code/scip#tools-using-scip), [Sourcegraph indexer guide](https://sourcegraph.com/docs/code-navigation/writing-an-indexer), [LSIF indexers](https://lsif.dev/); query `github scip-crossplane indexer` | No listed Crossplane producer found. GitHub repository search cache inaccessible. Bounded search miss, not proof of absence. |
-| Language servers | [up xpls 0.34.2](https://pkg.go.dev/github.com/upbound/up@v0.34.2/cmd/up/xpls), [upstream feature issue](https://github.com/crossplane/crossplane/issues/4674); queries `site:github.com/upbound "language server" crossplane` and `site:docs.upbound.io "xpls"` | Existing Apache-2.0 candidate, untried here. Historical issue describes missing patch diagnostics; current behavior is not inferred from that issue. |
-| Package registry / sibling APIs | [patch-and-transform input API](https://pkg.go.dev/github.com/crossplane-contrib/function-patch-and-transform/input/v1beta1), [0.8.2 native patch implementation](https://github.com/crossplane-contrib/function-patch-and-transform/blob/v0.8.2/patches.go) | Typed inputs and instance patch execution are candidates. They do not by themselves certify all static schema fields. Untried. |
-| Runtime tracing / evaluation | Official CLI reference, `composition render` Development runtime and `resource trace` | Local gRPC Function evaluation can avoid containers, but is untried and executes a function. Cluster trace is outside the no-cluster probe. Neither is claimed unavailable. |
+| Language servers | [up xpls 0.34.2](https://pkg.go.dev/github.com/upbound/up@v0.34.2/cmd/up/xpls), [upstream feature issue](https://github.com/crossplane/crossplane/issues/4674) | Initialized for all nine subjects and opened 393 YAML files; 180 diagnostic entries were observed. Initialization advertised only `textDocumentSync: 2`, with no definition or binding capability. Diagnostics do not certify L2/L3 edges. |
+| Package registry / sibling APIs | [patch-and-transform input API](https://pkg.go.dev/github.com/crossplane-contrib/function-patch-and-transform/input/v1beta1), [0.8.2 native patch implementation](https://github.com/crossplane-contrib/function-patch-and-transform/blob/v0.8.2/patches.go) | The Function runtime was not started: exact legacy CLI inputs fail before it. Transforming them to Pipeline would create authored input, so no runtime binding result is claimed. A compatible local Pipeline controller plus Function evaluation remains open. |
+| Upbound CLI | `up` 0.34.2 and 0.38.0, `up composition render` / `up test` | In 0.34.2 the requested render/test commands are absent. In 0.38.0, render on all three exact legacy subjects stops for missing `upbound.yaml`; a pinned modern configuration renderer panics on nil metadata. `up test` dry-run exits 0 but prints `No test files`, so it is not a passing test. |
+| Runtime tracing / evaluation | Official CLI reference, `composition render` Development runtime and `resource trace` | Development runtime can use a local process; exact legacy inputs fail before it. Cluster trace is outside the no-cluster probe. Neither route supplies a binding certificate here. |
 
-## Remaining ceiling
+## Canonical tier-C subjects
 
-The native validator grades schema instances. It does not resolve XRD or Function
-referents and does not execute directional patch expressions. The existing L2/L3
-good ceiling is retained for the measured oracle, with the untried candidates
-above explicitly open. A new probe of xpls or owner Function evaluation, with
-native population and independent truth controls, is the next evidence trigger.
-The existence of those tools is already known and is not a future trigger.
+| Subject | Files | Definitions matched / truth | References found / truth | Cross-file references found / truth | Tiers |
+|---|---:|---:|---:|---:|---|
+| crossplane/crossplane | 238 | 414 / 414 | 80 / 80 | 31 / 31 | C |
+| upbound/platform-ref-aws | 3 | 7 / 7 | 3 / 3 | 1 / 1 | C |
+| upbound/configuration-aws-network | 3 | 7 / 7 | 3 / 3 | 1 / 1 | C |
+| **Total** | **244** | **428 / 428** | **86 / 86** | **33 / 33** | **C** |
+
+Every subject has precision and recall 1 in the six measured accuracy metrics,
+with no extraction faults. Each pooled L3 denominator is 33, above D19's floor
+of 20. Dropping the core subject leaves only two cross-file references, so this
+is concentrated reference-example evidence, not an independent broad holdout.
+
+## Open L2/L3 question
+
+The full tier-C walk measures L2/L3 good. The native validator grades schema
+instances but does not resolve XRD or Function referents or execute directional
+patch expressions. The bounded probes above found no native binding certificate;
+they also do not establish an exhaustive ceiling. A compatible local Pipeline
+controller and Function evaluation, with independent population and truth
+controls, remains a concrete untried route. The L2/L3 tier question is open.
 
 IAC-13's historical assumption that function runtimes require containers is too
-broad: Development runtime can use a local process. This branch does not execute
-that process or claim runtime evidence. A separate bounded evaluation can revisit
-the deferral without adding product behavior.
+broad: Development runtime can use a local process. This work did not execute
+that process or claim runtime evidence.
 
 ## Reproduction and controls
 
@@ -108,15 +128,20 @@ are empty. The public receipt contains only counts, hashes and repository pins.
 The product control removed one actual CrossplaneStep while retaining one root
 CrossplaneResource and seven composed resources. Subject bytes were unchanged.
 The two native receipts and raw-report digests agree exactly. This proves response
-to the chosen perturbation without claiming a native binding certificate.
+to the chosen perturbation without claiming a native binding certificate. The
+before/after verification entries identify one combined pipeline log; the
+product's own single-line stdout has a separate digest in the receipt. These
+are not three independent command logs.
 
-Harness `lang-regrade` at `6db920e72` (full identity in the receipt) computed
-L1/L2/L3 good after the tier correction. All historical counts, metrics, required
-kinds, tenancy, date and extraction commit are conserved. This is a metadata
-correction, so no new throughput measurement is represented. Only the Crossplane
-reading changes among 185 reading files; the other 184 and all 31 baseline/parity
-files remain byte-identical, with required kinds preserved for all 154 eligible
-readings.
+The harness ran `lang-oracle` three times at extraction commit `1b4c93a84`,
+without `-tier-a` or a validator-based file filter. All 244 canonical files and
+composed elements enter the independent tier-C walk. Each run matches 428/428
+definitions, 86/86 references and 33/33 cross-file references. L1/L2/L3 are
+good, with all six accuracy metrics at 1. CPU throughput was 2.86, 2.90 and
+2.98 MB/CPU-s; the harness selected run 2 as the median. This changes the measured
+population, counts and throughput; it is not a metadata-only regrade. Only the
+Crossplane reading changes among 187 reading files; the other 186 and all 31
+baseline/parity files remain byte-identical.
 
 The population-matching mutation failed as expected: bypassing required report
 identity made `test_report_requires_identity_and_reconciles` fail with
@@ -124,10 +149,18 @@ identity made `test_report_requires_identity_and_reconciles` fail with
 regression failed before the correction with `tier = "A", want C`; the full Go
 oracle race suite then passed with the native offline integration test enabled.
 The mixed-file schema regression also failed before its fix and passes afterward.
-Ten Python tests, strict reading round-trip, exact X-R3, release and merge-debris
+Twenty-five Python tests, strict reading round-trip, exact X-R3, release and merge-debris
 checks pass. The controls and log hashes are in the public receipt.
 
 Native and Go jobs ran serially at verified nice 10, with launch load at most 9,
 Go 1.27.3, GOMAXPROCS=2 and GOFLAGS=-p=2 on the shared Apple Silicon helper.
 Concurrent host jobs were not recorded. The controller owns full merged-head
 `task validate`, verification, Linux CI and integration. No plan box is changed.
+
+LB-F157 now describes the P-T1 tier-C qualification and matches the committed
+reading's C tier. Its checkbox is unchanged. Targeted `fathom verify --row
+LB-F157 --strict` reports one claimed row verified, zero failing. The private
+scratch ingest stored source text but failed typed Go loading for 340 of 1,266
+packages because its importer supports export-data v4 while Go 1.27.3 emits v5.
+O1508 records that limitation. The lexical-row result does not certify typed
+ingest or the full plan gate.

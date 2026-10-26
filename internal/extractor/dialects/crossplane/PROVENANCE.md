@@ -42,10 +42,14 @@ its example XR is MIXED and stays Kubernetes (`fusion.CRMixed`).
   probe walks directional field paths at tier C; it creates no product reference or binding edge.
 - **Native validation ran in the 2026-10-26 calibration probe.** The official Crossplane CLI 2.5.0
   validated local core and pinned Upbound source CRDs without fetching images. It checked 21
-  provider-matched literal bases, all valid, but did not enumerate the nested definition population
-  or bind patches. P-T1 therefore places the historical definition oracle at C; reference and
-  cross-file reference tiers remain C. The old registry-fetch refusal is superseded by the owner's
-  calibration-only provider-schema fetch authorization. The product still has no downloader.
+  provider-matched literal bases, all valid; all 21 came from three network subjects selected after
+  an initial six-subject probe found zero matches. Their versions had no preregistered selection
+  rule, so this is exploratory evidence. Validation did not enumerate nested definitions or bind
+  patches. P-T1 grades the full 244-file independent walk at tier C: 428/428 definitions, 86/86
+  references and 33/33 cross-file references; L1/L2/L3 are good. Owner-tool probes have not
+  established a native L2/L3 binding certificate or an exhaustive ceiling. The old registry-fetch
+  refusal is superseded by the owner's calibration-only provider-schema fetch authorization.
+  The product still has no downloader.
 
 ## Calibration
 
