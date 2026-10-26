@@ -1,0 +1,73 @@
+{
+  "checks": {
+    "assessment_index_delta": {
+      "added_rows": 1,
+      "commit": "3c27f953a0e02a055a86296b559718a7cf425f40",
+      "deleted_rows": 0
+    },
+    "combined_52_tests": {
+      "commit": "18b2ef08968f77775cc9724cd4925aa7ca8febfa",
+      "counts": {
+        "test_compdb.py": 16,
+        "test_compiler_probe.py": 4,
+        "test_pool_audit.py": 11,
+        "test_replay_sdk.py": 9,
+        "test_triage.py": 12
+      },
+      "result": "pass"
+    },
+    "merge_debris_staged": {
+      "commit": "3c27f953a0e02a055a86296b559718a7cf425f40",
+      "result": "pass"
+    },
+    "php_assessment_exact_main_bytes": {
+      "base_main": "6db920e72898abb20bf86c22652b401902e34598",
+      "commit": "3c27f953a0e02a055a86296b559718a7cf425f40",
+      "result": "pass"
+    },
+    "replay_9_tests": {
+      "change": "Test creates its ignored workspace parent; compiler profile and production replay logic unchanged.",
+      "commit": "3c27f953a0e02a055a86296b559718a7cf425f40",
+      "result": "pass"
+    },
+    "required_readiness_checks_at_combined_run": {
+      "TestNoOrgSpecificNames": "pass 2.541s",
+      "commit": "18b2ef08968f77775cc9724cd4925aa7ca8febfa",
+      "merge_debris_full": "pass",
+      "merge_debris_staged": "pass",
+      "release_notes": "pass"
+    }
+  },
+  "historical_triage": {
+    "commit": "2e37242431cd3aae8d2efde4ac9f93b6b28f0bf9",
+    "later_extended_sources": [
+      "calibration/oracles/opencl-c/compdb.py",
+      "calibration/oracles/opencl-c/replay-sdk.py",
+      "calibration/oracles/opencl-c/test_compdb.py",
+      "calibration/oracles/opencl-c/test_replay_sdk.py"
+    ],
+    "receipt": "docs/assessments/data/opencl-c-pool-2026-10-26/verification.json",
+    "tests": 45
+  },
+  "limits": [
+    "Run all focused suites and X-R2/X-R3 again on the final implementation before READY.",
+    "Native grammar candidates remain private experiments; no product WASM gate or support reading is asserted."
+  ],
+  "schema": "opencl-c-implementation-verification-v1",
+  "scope": "Instrument and review-fix verification only. No dialect, product grammar, canonical corpus or language level. Each check binds its own source commit; the combined 52-test run is not asserted for the later merge.",
+  "source_snapshot": {
+    "commit": "3c27f953a0e02a055a86296b559718a7cf425f40",
+    "source_sha256": {
+      "calibration/oracles/opencl-c/compdb.py": "cf2707c1e8c95c607136fc9bff6c702d69f0c1a8c9e15330582fff2c416a2dfc",
+      "calibration/oracles/opencl-c/compiler_probe.py": "55bca097457253311e1dce32bfa427ef0344e438550527534ccdaaa820890edb",
+      "calibration/oracles/opencl-c/pool_audit.py": "91c1161c38faf82532b0ed1c6f707aa6eaf37d3e41655ebdb3de9ec7d5fccaa6",
+      "calibration/oracles/opencl-c/replay-sdk.py": "47b38104070b2804c57a35c36b6c3afde8dcbad957fe285060a8745dbd330b00",
+      "calibration/oracles/opencl-c/test_compdb.py": "4b49b55562810d579cb791ee5a03d2a82ab92f397ebba5f4a9cf2a11e5eb9560",
+      "calibration/oracles/opencl-c/test_compiler_probe.py": "6b59c762242582820ef7829cfa4c7ade3c196a398d15e65119afbf0ee2dac3ec",
+      "calibration/oracles/opencl-c/test_pool_audit.py": "26cb39533eaaa58e1b490e942719d252b017ffec8e75d50ee6b6971bd454e376",
+      "calibration/oracles/opencl-c/test_replay_sdk.py": "0ff2b77b96f5a94c5ef6a3173b7afcc09ddb7501c3962baa0601fc25a5dcafe3",
+      "calibration/oracles/opencl-c/test_triage.py": "a584815c766d4be6e3bd28cde22056a6c0f40fec69d368e320978306cb42d239",
+      "calibration/oracles/opencl-c/triage.py": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a"
+    }
+  }
+}

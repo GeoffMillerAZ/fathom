@@ -67,3 +67,5 @@ templates. Those facts affect oracle coverage, not membership in the frozen pool
 The exact variant manifest must be fixed from host source before measuring
 compiler coverage. This audit implements no transform and claims no additional
 compiler run. General grammar repair remains the next implementation step.
+
+The [implementation verification receipt](data/opencl-c-implementation-2026-10-26/verification.json) binds each check to its tested source commit. The inherited 45-test triage receipt describes the frozen triage revision. Compiler-profile extensions change four of those sources; the combined 52-test run and the later 9-test replay check are recorded separately, with no claim that the earlier combined run tested the later merge.
