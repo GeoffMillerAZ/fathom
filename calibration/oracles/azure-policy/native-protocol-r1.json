@@ -1,0 +1,18 @@
+{
+  "candidate": "AzurePolicy.azurepolicyextension/0.2.6",
+  "license": "MIT",
+  "artifact_identity": "extension-source-r1.json pins the immutable release URL, directory SHA-256 and metadata; compute and commit the extracted native payload manifest SHA-256 before execution",
+  "population": "All 5658 canonical policy documents at the existing pinned subject revision; no new subject, exclusion, namespace or resource-family trimming",
+  "rules": [
+    "Check df -h before every heavy step; require at least 20 GiB free, load<=6, nice10 and the lane's serial lock. Keep dependencies, native artifacts, scratch and GOCACHE private to this lane.",
+    "Extract only the self-contained osx-arm64 payload from bounded version-pinned ZIP ranges. Validate directory identity, local headers, CRCs, sizes and paths; refuse symlinks and excessive counts/expansion. Record native hashes before execution.",
+    "Do not activate VS Code, authenticate to Azure, pass ambient credentials, call a paid service or run Docker. Test the native server with a clean private environment and process-local external-network denial; no global security or agent configuration changes.",
+    "First inspect startup, LSP capabilities and the documented loopback evaluation route on authored inputs. A compiled evaluator or generic LSP client method name does not prove a binding or source-position API.",
+    "Require authored valid/invalid-parameter, unused-declaration, namespace, source-position and identity controls before using any evaluated field as oracle truth.",
+    "Enumerate the whole native definition/parameter-use population before comparison. The independent JSON walk may classify positions only with separately disclosed authority, never choose the reference denominator or supply missing native fields.",
+    "Runtime evaluation traces attest visited fields only. Never label recall A over trace-selected or independent-walk-selected pairs. Classify short-circuited, unsupported or unenumerated cases explicitly; fail the native family rather than silently remove them.",
+    "If authored controls establish a complete native route, freeze the canonical subject using the exact normative tracked-set recipe before/after and measure the unchanged population. Otherwise record the concrete native failure or still-unbuilt route; do not call it an oracle-availability ceiling.",
+    "No L3 measurement before the controller's D19 authorization. Publish counts/hashes/relative summaries, never subject content or wholesale file lists.",
+    "Delete measured subjects, native downloads and extracted payload after packaging receipts; retain no source build or Docker artifact. A preparation receipt is not an execution or calibration receipt."
+  ]
+}

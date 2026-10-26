@@ -1,0 +1,93 @@
+{
+  "tests": 53,
+  "skips": 1,
+  "mutations": [
+    {
+      "mutant": "require_readonly",
+      "restored_green": true
+    },
+    {
+      "mutant": "restricted_command",
+      "restored_green": true
+    },
+    {
+      "mutant": "parse_mountinfo",
+      "restored_green": true
+    },
+    {
+      "mutant": "path_variants",
+      "restored_green": true
+    }
+  ],
+  "linux_namespace_executed": false,
+  "linux_control_required_on_runner": true,
+  "native_executed": false,
+  "calibration_measured": false,
+  "tier_granted": false,
+  "sources": [
+    {
+      "path": "filesystem_isolation.py",
+      "sha256": "064c41832b53e722e9229f1a0063db11a3dd44494116400f34fe821a7fb40df5"
+    },
+    {
+      "path": "probe_linux.py",
+      "sha256": "6fda9aa9a7bb6b563301ce2294057ceb0ee162dcf1d7298b5682d5d6b4017f49"
+    },
+    {
+      "path": "receipt_contract.py",
+      "sha256": "66e4354be3a7f4fba287500e5c4b22f11ee3cb0ce1ffb3fc324687d6f79ab6bc"
+    },
+    {
+      "path": "test_filesystem_isolation.py",
+      "sha256": "794eec34bc010ccf17060962d7b7bb494c0e6deb5a326617a06b574b76abbd95"
+    },
+    {
+      "path": "test_review_probe.py",
+      "sha256": "f6cd13faae71e9dc21773c0792f5f756949ab687413b1acc38e6794467a320bb"
+    },
+    {
+      "path": "test_probe_linux.py",
+      "sha256": "c52e06f17e242121bdf0552db8488c2635ff71632bab420d33b5250aa442227c"
+    },
+    {
+      "path": "probe_filesystem_controls.py",
+      "sha256": "364a4b58352d73ad844ecb2c2ee3422c487d74e8856e2e31e8c56711ca39f64f"
+    },
+    {
+      "path": "probe-linux-receipt.schema.json",
+      "sha256": "49356b12641d6116378154f172d22bc33c952b49c6dc2de632493492b743412c"
+    },
+    {
+      "path": "probe-linux-x64.workflow.yml",
+      "sha256": "ccd7c3af7394dd699b8dc6d92a81fb39621311f4b67a0afed911b2b110bdb83d"
+    },
+    {
+      "path": "run_probe_workflow.sh",
+      "sha256": "50bf1dd13a13b9eb6c2f367f932e92d21646f060942b0301368ea8a699f62bfe"
+    },
+    {
+      "path": "native-protocol-r2.json",
+      "sha256": "c3212d4c3b13a08c213d372ac8488fdd10324102056ce0f7894e5702d73f65e0"
+    },
+    {
+      "path": "LINUX-X64-PROBE.md",
+      "sha256": "17d33770022b430429487a98a58eb39cd94bbadc2862c5bbaa91903b9d8065e7"
+    },
+    {
+      "path": "kernel_filesystem_control.py",
+      "sha256": "83af177623c23efa71b559178fed8776e8f754a839e7761687506e96d67400ba"
+    },
+    {
+      "path": "test_filesystem_kernel.py",
+      "sha256": "ce5ead7d11aae1f7b8f9d18c6b3e856f0c49162c4c3087f431d078b9982fd563"
+    },
+    {
+      "path": "runner-mountinfo-ubuntu-22.04.txt",
+      "sha256": "af16fe3e1ecafa29ecbee6886d0bfd9aa4f65808110a9ca206352ee272ff75bd"
+    },
+    {
+      "path": "runner-userns-ubuntu-24.04.stderr.txt",
+      "sha256": "6b50086233b9e3c0f8f5ac5e8094da06d7a05f1c3be0b88baf49578943392a94"
+    }
+  ]
+}

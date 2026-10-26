@@ -1,0 +1,18 @@
+{
+  "version": "AzurePolicy.azurepolicyextension/0.2.6",
+  "archive_directory_sha256": "46a40f189c8ae634b8841a5cc84a46dfe23ffd1f3b68017dd91fef35f1c9cd0d",
+  "metadata_sha256": {
+    "extension/dist/extension.bundle.js": "8714561160070eaa15fc27c17b788203b28334f414c6471812808834307e4dad",
+    "extension/out/artifacts/osx-arm64/PolicyLanguageServer.xml": "432f5eb545fe04dfc54f531026b633d6d4d4d721f030e86df9a3c9a52d1a2c78",
+    "extension/out/artifacts/osx-arm64/PolicyLanguageServer.runtimeconfig.json": "6a7c208660a014c21559fc74ab988bb43f1784ec454a5690ace9fc274d854e2c",
+    "extension/out/artifacts/osx-arm64/PolicyLanguageServer.deps.json": "a8378d67ec75d1f01e049f0c930d08120dd76ce31e30c560770cd08750471c05"
+  },
+  "observations": {
+    "arm64_payload_present": true,
+    "loopback_evaluation_route_present": true,
+    "cache_command_present": true,
+    "native_executed": false,
+    "native_population_measured": false
+  },
+  "kind": "source-only candidate audit; no reading or tier upgrade"
+}
