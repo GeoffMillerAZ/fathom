@@ -43,6 +43,7 @@ def copy_subject(source, dest):
 
 
 def measure(subject, files, nginx, work):
+    subject, nginx, work = subject.resolve(), nginx.resolve(), work.resolve()
     if subject.resolve() == work.resolve() or subject.resolve() in work.resolve().parents:
         raise ValueError('scratch must be outside subject')
     check_subject_links(subject)

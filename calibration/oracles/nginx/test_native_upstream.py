@@ -41,6 +41,21 @@ class ScratchBoundsTest(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('NGINX_NATIVE'), 'set NGINX_NATIVE for authored native control')
 class NativeControlTest(unittest.TestCase):
+    def test_relative_scratch_matches_absolute_scratch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'subject').mkdir()
+            (root / 'work').mkdir()
+            (root / 'subject/nginx.conf').write_text('events {}\nhttp { server { listen 127.0.0.1:19000; } }\n')
+            previous = Path.cwd()
+            try:
+                os.chdir(root)
+                definitions, references, audit = measure(Path('subject'), ['nginx.conf'], Path(os.environ['NGINX_NATIVE']), Path('work'))
+                self.assertTrue(definitions)
+                self.assertEqual(references, [])
+            finally:
+                os.chdir(previous)
+
     def test_actual_loader_distinguishes_target_only_ablation(self):
         with tempfile.TemporaryDirectory() as tmp:
             subject = Path(tmp) / 'subject'
