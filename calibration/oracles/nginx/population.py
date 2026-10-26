@@ -3,9 +3,13 @@ from collections import Counter
 
 MARKER = 'ORACLE_NGINX_UPSTREAM_V1 '
 PASS = {'proxy_pass', 'fastcgi_pass', 'uwsgi_pass', 'scgi_pass', 'grpc_pass', 'memcached_pass'}
+MAX_EVENTS = 10000
+MAX_STDERR_BYTES = 8 * 1024**2
 
 
 def decode_events(stderr):
+    if len(stderr.encode('utf8')) > MAX_STDERR_BYTES:
+        raise ValueError('native observer stderr exceeds whole-profile budget')
     events = []
     for raw in stderr.splitlines():
         if 'ORACLE_NGINX_UPSTREAM_ERROR' in raw:
@@ -14,6 +18,8 @@ def decode_events(stderr):
             raise ValueError('unknown native observer protocol')
         if MARKER not in raw:
             continue
+        if len(events) == MAX_EVENTS:
+            raise ValueError('native observer event count exceeds whole-profile budget')
         fields = raw.split(MARKER, 1)[1].split(' ')
         if len(fields) != 8:
             raise ValueError('incomplete native observer record')

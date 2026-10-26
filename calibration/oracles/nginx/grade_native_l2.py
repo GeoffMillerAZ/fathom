@@ -54,6 +54,7 @@ if __name__ == '__main__':
     parser.add_argument('-build-receipt', type=Path, required=True)
     parser.add_argument('-subjects', type=Path, required=True)
     parser.add_argument('-out', type=Path, required=True)
+    parser.add_argument('-native-population', action='store_true', help='require native observer identity and authored controls')
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     reading = args.out / 'reading.json'
@@ -74,7 +75,8 @@ if __name__ == '__main__':
         files = args.out / (name + '-files.txt')
         files.write_text(''.join(f + '\n' for f in sorted(set(scope))))
         output = args.out / (name + '-native.json')
-        run([args.python, HERE / 'native_upstream.py', '-subject', checkout, '-subject-sha', repo['sha'],
+        runner = 'native_population.py' if args.native_population else 'native_upstream.py'
+        run([args.python, HERE / runner, '-subject', checkout, '-subject-sha', repo['sha'],
              '-files', files, '-nginx', args.nginx, '-build-receipt', args.build_receipt,
              '-work', args.out / (name + '-work'), '-out', output])
         receipts.append(json.loads(output.read_text()))
@@ -82,12 +84,15 @@ if __name__ == '__main__':
              '-subject-name', name, '-subject-sha', repo['sha'],
              '-tool-oracle', output.with_name(output.stem + '-defs.json'),
              '-tool-oracle', output.with_name(output.stem + '-refs.json'), '-only', ','.join(scope),
-             '-out', reading, '-note', 'Native nginx 1.31.6 target-only ablation validates independently selected upstream pairs, not native recall completeness. Reference family and definition placement remain C. No L3 truth, server, backend request or Docker. Scope is the union of all historical disclosures; original count gate remains unchanged. Raw file inventory stays scratch.'])
+             '-out', reading, '-note', ('Native nginx1.31.6 parser enumerates the whole local upstream population before lexical owner classification; every local pair receives target-only ablation. Reference family A; definitions C. No L3 measurement.' if args.native_population else 'Native nginx 1.31.6 target-only ablation validates independently selected upstream pairs, not native recall completeness. Reference family and definition placement remain C.') + ' No server, backend request or Docker. Scope is the union of all historical disclosures; raw file inventory stays scratch.'])
         retime += ['-subject', name + '=' + str(checkout)]
     run(retime)
     result = json.loads(reading.read_text())
     # Native evidence cannot silently change the measured denominator.
-    for key in ('oracle_defs', 'fathom_defs', 'matched', 'ref_truth', 'ref_fathom', 'ref_truth_found', 'ref_fathom_in_truth'):
+    fixed = ('oracle_defs', 'fathom_defs', 'matched')
+    if not args.native_population:
+        fixed += ('ref_truth', 'ref_fathom', 'ref_truth_found', 'ref_fathom_in_truth')
+    for key in fixed:
         if result['counts'].get(key) != prior['counts'].get(key):
             raise SystemExit('original scoped count changed: ' + key)
     summary = {key: result[key] for key in ('dialect', 'fathom_commit', 'counts', 'metrics', 'metric_tiers', 'grade', 'tenancy')}

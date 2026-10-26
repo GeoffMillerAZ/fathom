@@ -1,5 +1,5 @@
 import unittest
-from population import decode_events, local_population
+from population import decode_events, local_population, MAX_EVENTS, MAX_STDERR_BYTES
 
 
 def native_line(domain, pointer, flags, line, path, command, argument, host):
@@ -51,3 +51,14 @@ class NativePopulationTest(unittest.TestCase):
         refs, audit = local_population(events, 'site.conf', lambda event: 'owner')
         self.assertEqual([], refs)
         self.assertEqual(1, audit['implicit_or_external_sites'])
+
+    def test_event_cap_plus_one_refuses_whole_profile(self):
+        row = native_line('http', 1, 0, 1, 'site.conf', 'proxy_pass', 'http://app', 'app')
+        self.assertEqual(MAX_EVENTS, len(decode_events('\n'.join([row] * MAX_EVENTS))))
+        with self.assertRaisesRegex(ValueError, 'event count'):
+            decode_events('\n'.join([row] * (MAX_EVENTS + 1)))
+
+    def test_stderr_cap_plus_one_refuses_whole_profile(self):
+        self.assertEqual([], decode_events('x' * MAX_STDERR_BYTES))
+        with self.assertRaisesRegex(ValueError, 'stderr'):
+            decode_events('x' * (MAX_STDERR_BYTES + 1))

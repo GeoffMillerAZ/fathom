@@ -344,8 +344,12 @@ def nginx_check(root, prefix, nginx, scratch, mode, target, observer=None):
     r = subprocess.run([nginx, "-T", "-p", dst + "/", "-c", main, "-e", err],
                        capture_output=True, text=True, timeout=60)
     if observer is not None:
-        observer(dict(returncode=r.returncode, stderr=r.stderr, stdout=r.stdout,
-                      directory=dst, prefix=prefix, target=target, mode=mode))
+        try:
+            observer(dict(returncode=r.returncode, stderr=r.stderr, stdout=r.stdout,
+                          directory=dst, prefix=prefix, target=target, mode=mode))
+        except Exception:
+            shutil.rmtree(dst, ignore_errors=True)
+            raise
     dump = {}
     for path, text in split_dump(r.stdout).items():
         if path.startswith(dst + "/"):
