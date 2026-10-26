@@ -36,3 +36,21 @@ repos:
         with `#{$variant}` interpolated selectors"
       - "nested `&` rules (`&::-webkit-scrollbar`, `.SelectMenu-list--borderless &`)
         and `@include breakpoint(...)` media wrappers"
+# Fresh holdout for the oracle-span and full-corpus scope repair. Pin and criteria are committed
+# before any oracle run. Do not tune against it. The earlier angular/components holdout remains
+# historical evidence under the old oracle and restricted scope.
+holdout:
+  - name: foundation/foundation-sites
+    url: https://github.com/foundation/foundation-sites
+    ref: v6.9.0
+    sha: f5c7d29db04e459d94a998df9d8fd4a4447e767b
+    licence: MIT
+    idioms:
+      - 'framework partials joined by @import; mixin and function libraries'
+      - 'variables, nested selectors, interpolation and responsive utility generation'
+      - 'keyframes and custom properties alongside shared configuration'
+    notes: >
+      Read every discovered SCSS file, including files the oracle cannot attest. No -only filter.
+      Pre-registered success: L1-L3 excellent under the existing thresholds and oracle tiers,
+      zero faults and three-run median throughput at least 1 MB per CPU second. Report a ceiling
+      when unavailable truth or a real extractor gap prevents this; never trim the subject.
