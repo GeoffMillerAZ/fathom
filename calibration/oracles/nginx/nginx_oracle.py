@@ -275,7 +275,7 @@ WRAPPERS = {
 }
 
 
-def nginx_check(root, prefix, nginx, scratch, mode, target):
+def nginx_check(root, prefix, nginx, scratch, mode, target, observer=None):
     """Run nginx -T on a scratch copy of the prefix directory; return
     (ok, files read, message, {file: text nginx dumped}).
 
@@ -343,6 +343,9 @@ def nginx_check(root, prefix, nginx, scratch, mode, target):
     err = os.path.join(dst, "logs", "error.log")
     r = subprocess.run([nginx, "-T", "-p", dst + "/", "-c", main, "-e", err],
                        capture_output=True, text=True, timeout=60)
+    if observer is not None:
+        observer(dict(returncode=r.returncode, stderr=r.stderr, stdout=r.stdout,
+                      directory=dst, prefix=prefix, target=target, mode=mode))
     dump = {}
     for path, text in split_dump(r.stdout).items():
         if path.startswith(dst + "/"):
@@ -357,7 +360,7 @@ def nginx_check(root, prefix, nginx, scratch, mode, target):
     return r.returncode == 0, set(dump), msg, dump
 
 
-def attest(root, rel, nginx, scratch):
+def attest(root, rel, nginx, scratch, observer=None):
     """Load rel with nginx -T in the first context it is valid in: as the main
     configuration when it holds events or http, else included inside http, then
     inside a server, then inside a location. Returns (ok, files read, message,
@@ -374,7 +377,7 @@ def attest(root, rel, nginx, scratch):
         modes += ["in-http", "in-server", "in-location"]
     msg = ""
     for mode in modes:
-        ok, read, m, dump = nginx_check(root, prefix, nginx, scratch, mode, rel)
+        ok, read, m, dump = nginx_check(root, prefix, nginx, scratch, mode, rel, observer=observer)
         if ok:
             return True, read, "", dump, mode
         msg = msg or m
