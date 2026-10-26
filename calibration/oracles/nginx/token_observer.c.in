@@ -1,0 +1,60 @@
+/* Bench-only observation; original parser results and control flow are retained. */
+static ngx_int_t
+ngx_conf_read_token(ngx_conf_t *cf)
+{
+    ngx_int_t    rc;
+    ngx_uint_t   i, count, end_lf;
+    ngx_str_t   *args, name, hex;
+    ngx_buf_t   *buffer;
+    char        *kind;
+    u_char       encoded[1025];
+
+    ngx_oracle_first_line = 0;
+    rc = ngx_conf_read_token_oracle_impl(cf);
+    if (!ngx_test_config) {
+        return rc;
+    }
+    switch (rc) {
+    case NGX_OK: kind = "simple"; break;
+    case NGX_CONF_BLOCK_START: kind = "block"; break;
+    case NGX_CONF_BLOCK_DONE: kind = "end"; break;
+    case NGX_CONF_FILE_DONE: kind = "file"; break;
+    default: kind = "error"; break;
+    }
+    count = ++ngx_oracle_token_count;
+    if (count > 10000 || cf->conf_file == NULL || cf->args->nelts > 64) {
+        ngx_log_stderr(0, "ORACLE_NGINX_TOKEN_REFUSED count_or_metadata");
+        return rc;
+    }
+    name = cf->conf_file->file.name;
+    if (name.len == 0 || name.len > 512) {
+        ngx_log_stderr(0, "ORACLE_NGINX_TOKEN_REFUSED path_cap");
+        return rc;
+    }
+    args = cf->args->elts;
+    for (i = 0; i < cf->args->nelts; i++) {
+        if (args[i].len > 512) {
+            ngx_log_stderr(0, "ORACLE_NGINX_TOKEN_REFUSED argument_cap");
+            return rc;
+        }
+    }
+    buffer = cf->conf_file->buffer;
+    end_lf = buffer != NULL && buffer->last > buffer->start
+             && buffer->last[-1] == LF;
+    hex.data = encoded;
+    hex.len = name.len * 2;
+    ngx_hex_dump(encoded, name.data, name.len);
+    ngx_log_stderr(0, "ORACLE_NGINX_TOKEN_V1 %ui %s %ui %ui %ui %ui %V",
+                   count, kind, ngx_oracle_first_line, cf->conf_file->line,
+                   end_lf, cf->args->nelts, &hex);
+    for (i = 0; i < cf->args->nelts; i++) {
+        if (args[i].len == 0) {
+            ngx_log_stderr(0, "ORACLE_NGINX_ARG_V1 %ui %ui -", count, i);
+        } else {
+            hex.len = args[i].len * 2;
+            ngx_hex_dump(encoded, args[i].data, args[i].len);
+            ngx_log_stderr(0, "ORACLE_NGINX_ARG_V1 %ui %ui %V", count, i, &hex);
+        }
+    }
+    return rc;
+}

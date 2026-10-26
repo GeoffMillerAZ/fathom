@@ -1,4 +1,6 @@
-# nginx oracle (LB-Q-nginx)
+# nginx canonical oracle (LB-Q-nginx)
+
+The following documents the unchanged canonical reading and its historical B label (LB-F170). P-T1 now treats independent third-party analyzers as C; this restoration records the canonical methodology without granting new B/A authority. The native L1/L2 diagnostic uses the owner's lexer/loader at A; see [NATIVE.md](NATIVE.md). Canonical regrading waits for D19. Docker and global installs are prohibited on this helper; historical Compose routes below are documentation only and have not been rerun here.
 
 Bench-only; never a product dependency. Writes `indexbench lang-oracle`'s tool-oracle JSON for the
 nginx native dialect, and the route targets in a file of their own.
@@ -6,7 +8,7 @@ nginx native dialect, and the route targets in a file of their own.
 | Part | Tier | Tool |
 |---|---|---|
 | definitions, references, cross_references (includes) | B (C without `-nginx`) | nginxinc crossplane 0.5.8 (Apache-2.0), NGINX Inc's parser tool, cross-checked against nginx itself (below) |
-| scope and cross-check | A (nginx's verdict on a file) | `nginx -T` (nginx 1.31.6, `brew install nginx`) on a scratch copy of each file's prefix directory: a file is in scope only where nginx loads it |
+| scope and cross-check | A (nginx's verdict on a file) | `nginx -T` (nginx 1.31.6, private pinned build) on a scratch copy of each file's prefix directory: a file is in scope only where nginx loads it |
 | route targets: the compose side | A (C for a version-1 file) | `docker compose config --format json --no-consistency` (Docker Compose 5.1.4) on every compose file of the nearest project directory; PyYAML 6.0.3 for a version-1 file Compose 5 refuses |
 
 ## Why crossplane is tier B, not C (LB-F170)
@@ -31,15 +33,15 @@ file. L1 reads sym_precision 1 and sym_recall 1 (71 definitions) at tier B: exce
 The route pairs (a `proxy_pass` host joined to a compose service) are not scored: the reading is taken with
 `lang-oracle`, never `lang-routes`, because the pairs stay tier C (crossplane's text joined to Compose) and would
 hold the xref family below B; the include edges are the reading's only xref truth (13 pairs).
-Stretch toward A, not built (LB-Q-nginx-rest): an include edge attested by ablation (remove the `include`, `nginx -T`
+Historical stretch toward A (LB-Q-nginx-rest; upstream half now completed in NATIVE.md, include half open): an include edge attested by ablation (remove the `include`, `nginx -T`
 drops exactly the files the oracle says it loads) and a proxy_pass-to-upstream reference attested by removing the
 upstream block (`nginx -t` then reports `host not found in upstream "<name>" in <file>:<line>`).
 
-## Install (scratch, on the external volume)
+## Install (private scratch)
 
 ```sh
 python3 -m venv <scratch>/venv && <scratch>/venv/bin/pip install -r calibration/oracles/nginx/requirements.txt
-# nginx 1.31.6 (the cross-check that earns tier B): brew install nginx (nginx 1.31.6)
+# Build pinned nginx 1.31.6 privately; see NATIVE.md. Never install globally.
 ```
 
 ## Run
@@ -47,7 +49,7 @@ python3 -m venv <scratch>/venv && <scratch>/venv/bin/pip install -r calibration/
 ```sh
 <scratch>/venv/bin/python calibration/oracles/nginx/nginx_oracle.py -subject <checkout> \
     -out workspace/tmp/oracle/nginx-<subject>.json -routes-out workspace/tmp/oracle/nginx-<subject>-routes.json \
-    -nginx /opt/homebrew/bin/nginx -scratch <scratch dir> -files-out workspace/tmp/oracle/nginx-<subject>-files.txt \
+    -nginx workspace/oracle/nginx-tokens -scratch <scratch dir> -files-out workspace/tmp/oracle/nginx-<subject>-files.txt \
     [-summary-out <file>]
 go run ./cmd/indexbench lang-oracle -dialect nginx -subject <checkout> \
     -tool-oracle workspace/tmp/oracle/nginx-<subject>.json -only "$(paste -sd, <files.txt>)" -out docs/bench/readings/lang/nginx.json
@@ -91,3 +93,22 @@ A subject set under 10 route pairs is too few to read the L3 level honestly (one
 calibration/corpus.d, and that is the threshold used.
 
 The route file is written but, as above, not scored.
+
+## X-R4 source search (2026-10-26)
+
+The [source ledger](candidate-search-r1.json) records queries, pins, licences,
+response hashes and access gaps. L3 is deferred by D19; a native include route
+already exists. No oracle-availability ceiling is asserted.
+
+| Source searched | Candidate/version/licence | Concrete result |
+|---|---|---|
+| [Owner flags](https://nginx.org/en/docs/switches.html), loader/lexer | nginx 1.31.6, BSD-2-Clause | `-T` dump is a native include route; lexer/upstream observers supply measured A L1/L2. Include ablation awaits D19. |
+| [Sourcegraph SCIP list](https://sourcegraph.com/docs/code-navigation/writing-an-indexer), legacy LSIF URL, Microsoft LSIF README, GitHub `scip-nginx` | Lists queried 2026-10-26; no indexer candidate/licence | No nginx entry; GitHub's one hit is unrelated deployment code. Legacy LSIF redirects to current list; direct HTTP 403 and old-version access gaps recorded. |
+| PyPI and GitHub language-server search; versioned primary README | nginx-language-server 0.9.0, GPL-3.0-only | Advertises completion/hover, no binding/include queries; nonpermissive licence, not installed. |
+| PyPI/npm registries and parser/editor source | crossplane 0.5.8 Apache-2.0; tree-sitter-nginx 1.0.1 MIT | crossplane has AST/line/include indices and `--combine`; historical canonical B caveat above. Independent grammar/editor queries remain C under P-T1 and do not attest native bindings. |
+| [Owner runtime logging](https://nginx.org/en/docs/debugging_log.html), configuration callbacks | nginx 1.31.6 BSD-2-Clause | Debug tracing exists; measured read-only callbacks enumerate configuration without starting a server. Include tracing is available, unmeasured under D19. |
+
+`tunnel_pass` is built by default in this pinned nginx and registers an upstream.
+It is currently outside both PASS classifications and the dialect. A subject
+using it refuses the whole native family. Revisit on such a subject or when the
+dialect adds support; no population is silently dropped.

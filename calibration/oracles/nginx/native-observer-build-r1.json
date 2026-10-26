@@ -1,0 +1,71 @@
+{
+  "version": "nginx/1.31.6",
+  "binary_sha256": "da171e53846380fec10e8f0f6d435715e0f591bf4e6701983896efe2fb9fded2",
+  "build_inputs": [
+    {
+      "name": "nginx-1.31.6",
+      "url": "https://nginx.org/download/nginx-1.31.6.tar.gz",
+      "sha256": "974ed5298a5e398e008704ed5db284e655fc270c596493dbccada452448fc9f1",
+      "bytes": 1373124,
+      "license": "BSD-2-Clause"
+    },
+    {
+      "name": "openssl-3.6.2",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz",
+      "sha256": "aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
+      "bytes": 54913556,
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "pcre2-10.47",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.gz",
+      "sha256": "c08ae2388ef333e8403e670ad70c0a11f1eed021fd88308d7e02f596fcd9dc16",
+      "bytes": 2792969,
+      "license": "BSD-3-Clause"
+    }
+  ],
+  "configure_features": [
+    "--with-threads",
+    "--with-pcre-jit",
+    "--with-http_ssl_module",
+    "--with-http_v2_module",
+    "--with-http_v3_module",
+    "--with-http_realip_module",
+    "--with-http_addition_module",
+    "--with-http_sub_module",
+    "--with-http_dav_module",
+    "--with-http_flv_module",
+    "--with-http_mp4_module",
+    "--with-http_gunzip_module",
+    "--with-http_gzip_static_module",
+    "--with-http_auth_request_module",
+    "--with-http_random_index_module",
+    "--with-http_secure_link_module",
+    "--with-http_slice_module",
+    "--with-http_stub_status_module",
+    "--with-mail",
+    "--with-mail_ssl_module",
+    "--with-stream",
+    "--with-stream_ssl_module",
+    "--with-stream_realip_module",
+    "--with-stream_ssl_preread_module"
+  ],
+  "backend_requests_executed": false,
+  "server_started": false,
+  "native_population_observer": {
+    "kind": "native parser-call population observer; no source-walk selection",
+    "shim_sha256": "a195025c136370e5c8b740b30c1ce920f31c2bd41c5454e42ea77887ccec8901",
+    "sources": [
+      {
+        "path": "src/http/ngx_http_upstream.c",
+        "original_sha256": "be2af1ed5b0e484f0810b931961b08963a42d605edba48825160950548fe1794",
+        "observed_sha256": "54973eeca7817476932c8d74ef58d98c94735df61c1380030853d5e045cf34fd"
+      },
+      {
+        "path": "src/stream/ngx_stream_upstream.c",
+        "original_sha256": "288e33eabe40d56b4d720d47017a009ebadf81423d8096a2518af335e9de756d",
+        "observed_sha256": "1462cabc9f3614aafa409cd0765caa267b7544f9a315d672c7e2a713ef51137e"
+      }
+    ]
+  }
+}
