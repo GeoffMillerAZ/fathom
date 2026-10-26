@@ -12,14 +12,14 @@
 //	    automatically (docs/bench/scenarios.md "External corpus (LCA bug
 //	    localization)") — instead of reading a committed corpus file.
 //
-//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-arms <name,name,...>] [-arm-clone <new>=<base>]... [-arm-setup <arm>=<shell line>]... [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
+//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-arms <name,name,...>] [-arm-clone <new>=<base>]... [-arm-setup <arm>=<shell line>]... [-harness claude|fake|null] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
 //	    For each selected cell not already in the cell store: PrepareSubject,
 //	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
 //	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
 //	    stream file name) replays committed transcripts instead of shelling
-//	    out to `claude -p` — the only spend-free way to exercise this
-//	    subcommand (the "dry cell", docs/bench/scenarios.md), and what this
-//	    package's own tests use. -corpus lca is the same sentinel plan
+//	    out to `claude -p` (the "dry cell", docs/bench/scenarios.md).
+//	    `-harness null` makes no edits and gives an empty answer, exercising
+//	    the existing grader without spend. -corpus lca is the same sentinel plan
 //	    documents above; internal/scenariobench.RunExternalCorpus is the
 //	    same pipeline as a package-level call, used directly by this
 //	    package's own tests. -rescore-lost (wave N18 defect 2) never
@@ -512,7 +512,7 @@ func cmdRun(args []string) int {
 	var armSetups armSetupFlag
 	fs.Var(&armSetups, "arm-setup", "ARM=<shell line> (repeatable): append a setup line to arm ARM's worktree setup (runs before session 1), applied after every -arm-clone and before the corpus hash is computed (DP-14)")
 	runID := fs.String("run-id", "", "this run's id (required; stamps CellResult.RunID)")
-	harnessName := fs.String("harness", "claude", "harness to run sessions with: claude (real spend) or fake (replays committed transcripts, no spend)")
+	harnessName := fs.String("harness", "claude", "harness to run sessions with: claude (real spend), fake (replays committed transcripts, no spend), or null (no edits or answer, no spend)")
 	fakeStreamsDir := fs.String("fake-streams-dir", "", "-harness fake: directory holding the committed stream fixtures")
 	fakeStreams := fs.String("fake-streams", "", "-harness fake: JSON map of \"<task>/<arm>[/<role>]\" to a file name under -fake-streams-dir")
 	parallelArms := fs.Bool("parallel-arms", false, "run one task's arms concurrently (RC-16) — each cell prepares its own worktree and, when wired, its own scratch daemon on an independently allocated port, so nothing is shared between them; default off")
@@ -784,7 +784,10 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 		}
 		return cellOutcome{cp: cp, lostReason: reason}, nil
 	}
-	if reason := scenariobench.CellLost(result.Sessions); reason != "" {
+	// The null harness deliberately produces no turns. Keep that dry-run
+	// reading for the existing grader, while retaining every other LOST
+	// check (including absent sessions and instrument errors).
+	if reason := scenariobench.CellLost(result.Sessions); reason != "" && !(harness.Name() == "null" && reason == "no session produced a turn") {
 		return cellOutcome{cp: cp, lostReason: reason}, nil
 	}
 	if err := scenariobench.StoreScenarioCell(cellsDir, result); err != nil {
@@ -1290,6 +1293,8 @@ func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string) (scen
 	switch name {
 	case "claude":
 		return scenariobench.ClaudeHarness{}, nil
+	case "null":
+		return scenariobench.NewNullHarness(), nil
 	case "fake":
 		if streamsDir == "" {
 			return nil, fmt.Errorf("-harness fake requires -fake-streams-dir")
@@ -1302,7 +1307,7 @@ func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string) (scen
 		}
 		return &scenariobench.FakeHarness{StreamsDir: streamsDir, Streams: streams, TaskID: taskID, ArmName: armName}, nil
 	default:
-		return nil, fmt.Errorf("unknown -harness %q (want claude or fake)", name)
+		return nil, fmt.Errorf("unknown -harness %q (want claude, fake or null)", name)
 	}
 }
 
