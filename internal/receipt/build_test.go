@@ -316,3 +316,23 @@ func excerptOf(content []byte, start, end int) ([]byte, bool) {
 	}
 	return []byte(strings.Join(lines[start-1:end], "")), true
 }
+
+// TestBuildReceiptReferenceFact (EVX-9): a references receipt carries one
+// reference fact per file, anchored at the whole file.
+func TestBuildReceiptReferenceFact(t *testing.T) {
+	whole := committedAnchor("b.go", 1, 3, numberedLines(3))
+	whole.Anchor.StartLine, whole.Anchor.EndLine = 0, 0
+	got, err := BuildReceipt(ExportInput{
+		Receipt: core.Receipt{Kind: core.ReceiptKindReferences, Symbol: "Greet", IndexCommit: strings.Repeat("a", 40), Files: []string{"b.go", "a.go"}},
+		Facts:   []FactInput{{Kind: FactReference, Subject: "b.go", Anchors: []CitedAnchor{whole}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Files, []string{"a.go", "b.go"}) || len(got.Facts) != 1 || got.Facts[0].Kind != FactReference {
+		t.Fatalf("references receipt = %+v", got)
+	}
+	if a := got.Facts[0].Anchors[0]; a.Path != "b.go" || a.StartLine != 0 || a.EndLine != 0 {
+		t.Errorf("reference anchor = %+v, want the whole of b.go", a)
+	}
+}

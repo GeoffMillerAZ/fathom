@@ -215,7 +215,7 @@ func verifyAnchors(ctx context.Context, root string, facts []receipt.Fact) (Outc
 	}]bool{}
 	for _, f := range facts {
 		switch f.Kind {
-		case receipt.FactDefinition, receipt.FactCaller, receipt.FactAbsence:
+		case receipt.FactDefinition, receipt.FactCaller, receipt.FactAbsence, receipt.FactReference:
 		default:
 			out.OK = false
 			out.Diff = fmt.Sprintf("fact kind %q is not one an exported receipt carries", f.Kind)
@@ -465,6 +465,10 @@ func verifyFact(dir string, r core.Receipt, f receipt.Fact, truth publicloc.GoTr
 		check.Callers = nil
 		result, err := verifyCallers(dir, check, truth)
 		return result, true, err
+	case receipt.FactReference:
+		// A referencing file need declare nothing: its git rung is the
+		// check, and the references envelope re-derives the file set.
+		return Outcome{OK: true}, true, nil
 	default:
 		return Outcome{}, false, nil
 	}
