@@ -641,7 +641,9 @@
       "generate": false,
       "licence": "MIT",
       "licence_basis": "catalogue",
-      "flags": []
+      "flags": [
+        "grammar-differs:P233/tree-sitter-scss"
+      ]
     },
     "solidity": {
       "catalogue": "solidity",
