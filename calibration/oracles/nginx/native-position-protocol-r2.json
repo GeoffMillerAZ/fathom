@@ -1,0 +1,10 @@
+{
+  "prior": "native-position-protocol-r1.json",
+  "measured_refusal": "Full original-scope replay stops in the fourth cohort because a native source is included more than once; the initial reader deliberately refused repeated evaluation.",
+  "rules": [
+    "Keep every native token and source evaluation in counts. Static source definitions use source-file identity, not include execution multiplicity.",
+    "A repeated source evaluation may share the same source definition set only when its entire native tree, every decoded argument, all token start/end lines, token count and file-end counter exactly equal the earlier evaluation. Record the full evaluation count and callback total.",
+    "Any difference between repeated native source trees refuses the entire family. Never select one occurrence, filter by scanner candidates or change the original input/ingest exclusions.",
+    "Require authored duplicate-include success and differing-repeat refusal controls before the next canonical query. This changes no product engine, metric denominator, subject pin, required kind or L3 reading."
+  ]
+}

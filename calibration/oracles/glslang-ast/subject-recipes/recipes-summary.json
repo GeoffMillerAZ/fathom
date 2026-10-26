@@ -1,0 +1,13 @@
+{
+  "pins": {
+    "vulkan": "1cbc8d87b731b438f47dea00a2e083ba7d59051d",
+    "spirv-cross": "f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7",
+    "vulkan-samples": "69622af06f7652c7fc9b9a9180e7142046315cbc"
+  },
+  "populations": {
+    "vulkan": 353,
+    "spirv-cross": 306,
+    "vulkan-samples": 309
+  },
+  "full_recipe_sha256": "ff074009a9546500213745dc87b4a4fb94bd4a7b683b4a4ace6ad8710cb2756d"
+}

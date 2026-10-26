@@ -1,0 +1,128 @@
+{
+  "benchmark_product_revision": "d3e9888fb480f288f526e566f3108fb0ccd59dab",
+  "native_scope": "executed population only; no recall on unexecuted code",
+  "revalidation_code_sha256": {
+    "audit_runtime.py": "ca38bbe1a87e3032599706fb722f7fcf280878e86d81e35fe4930e7de295d527",
+    "run_traces.py": "b1ddc78db81861d24462da0652f45ed63984a525b820a15e9f2af0a1277e15bb",
+    "trace_decode.py": "9ed1a298f5087a690fdceb5d7be4a635d415c514528106598a531493c67fb509",
+    "trace_hook.rb": "a65596b2c46e87f31bd3b722fb2402aa8711b348e9bb41bb36ae34da02dec225"
+  },
+  "ruling": "OL-R10",
+  "subjects": {
+    "jekyll": {
+      "attested_sites": 3366,
+      "coverage": 0.5326792213957905,
+      "drivers": [
+        {
+          "driver": "jekyll",
+          "exit": 1,
+          "occupied_integration_port_count": 0,
+          "raw_files": 10,
+          "requested_task": "test",
+          "task": "test"
+        }
+      ],
+      "executed_call_recall": 1,
+      "executed_call_truth": 2937,
+      "executed_call_truth_found": 2937,
+      "final_driver_and_decoder_revalidation": "PASS: saved raw events re-decoded; all driver logs checked for instrumentation traceback, timeout and signal; identical native truth",
+      "literal_sites": 6319,
+      "native_counts": {
+        "native_callback_or_ambiguous_caller": 24,
+        "native_events": 40193756,
+        "unattested_native_rows": 10277
+      },
+      "native_oracle_sha256": "074f8418754a692bfefc0c48076d77246387152e9313cee4abcf5d25e9e64f18",
+      "native_pairs": 2937,
+      "original_files": 183,
+      "precision": "unmeasured: diagnostic predictions include unexecuted calls; no whole-population runtime precision grade",
+      "raw_native_files": 10,
+      "scoring_oracle_sha256": "074f8418754a692bfefc0c48076d77246387152e9313cee4abcf5d25e9e64f18",
+      "syntax_population_sha256": "b01da01e3814c0763d5c61328ef85246216ee8087cbc71a75d5b5b5f9d3dcc6b",
+      "trace_hook_sha256": "a65596b2c46e87f31bd3b722fb2402aa8711b348e9bb41bb36ae34da02dec225",
+      "tracked_after": {
+        "bytes": 3251760,
+        "entries": 812,
+        "files": 803,
+        "gitlinks": 0,
+        "sha256": "19fd688eef75327c4d4aab6da126fcb533b0d2158aba89b85fba2c6b8aec5110",
+        "symlinks": 9
+      },
+      "tracked_before": {
+        "bytes": 3251760,
+        "entries": 812,
+        "files": 803,
+        "gitlinks": 0,
+        "sha256": "19fd688eef75327c4d4aab6da126fcb533b0d2158aba89b85fba2c6b8aec5110",
+        "symlinks": 9
+      },
+      "unattested_sites": 2953
+    },
+    "sinatra": {
+      "attested_sites": 2550,
+      "coverage": 0.5994358251057827,
+      "drivers": [
+        {
+          "driver": "sinatra",
+          "exit": 1,
+          "occupied_integration_port_count": 0,
+          "raw_files": 3,
+          "requested_task": "test",
+          "task": "test"
+        },
+        {
+          "driver": "sinatra-contrib",
+          "exit": 1,
+          "occupied_integration_port_count": 0,
+          "raw_files": 2,
+          "requested_task": "spec",
+          "task": "spec"
+        },
+        {
+          "driver": "rack-protection",
+          "exit": 0,
+          "occupied_integration_port_count": 0,
+          "raw_files": 2,
+          "requested_task": "spec",
+          "task": "spec"
+        }
+      ],
+      "executed_call_recall": 0.9981,
+      "executed_call_truth": 2087,
+      "executed_call_truth_found": 2083,
+      "final_driver_and_decoder_revalidation": "PASS: saved raw events re-decoded; all driver logs checked for instrumentation traceback, timeout and signal; identical native truth",
+      "literal_sites": 4254,
+      "native_counts": {
+        "missing_native_caller_range": 12,
+        "native_callback_or_ambiguous_caller": 57,
+        "native_events": 3291449,
+        "unattested_native_rows": 4882
+      },
+      "native_oracle_sha256": "aec1d8ef895a42d642039f4fff2d7221583763284603eb0c0fe070fd4915f9bc",
+      "native_pairs": 2087,
+      "original_files": 151,
+      "precision": "unmeasured: diagnostic predictions include unexecuted calls; no whole-population runtime precision grade",
+      "raw_native_files": 7,
+      "scoring_oracle_sha256": "aec1d8ef895a42d642039f4fff2d7221583763284603eb0c0fe070fd4915f9bc",
+      "syntax_population_sha256": "43cf737ad0b37afe92e87fa49467f816a9b9a5081ab7e62b71d59ee974b1547b",
+      "trace_hook_sha256": "a65596b2c46e87f31bd3b722fb2402aa8711b348e9bb41bb36ae34da02dec225",
+      "tracked_after": {
+        "bytes": 933350,
+        "entries": 292,
+        "files": 292,
+        "gitlinks": 0,
+        "sha256": "92352934f2ec5385f6417ac3b17ae44a69e2a50cd2ce116345c9183f0511c0ac",
+        "symlinks": 0
+      },
+      "tracked_before": {
+        "bytes": 933350,
+        "entries": 292,
+        "files": 292,
+        "gitlinks": 0,
+        "sha256": "92352934f2ec5385f6417ac3b17ae44a69e2a50cd2ce116345c9183f0511c0ac",
+        "symlinks": 0
+      },
+      "unattested_sites": 1704
+    }
+  }
+}

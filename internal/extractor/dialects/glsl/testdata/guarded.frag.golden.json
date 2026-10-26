@@ -1,0 +1,64 @@
+{
+  "symbols": [
+    {
+      "name": "tint",
+      "kind": "GlslVariable",
+      "package": "guarded",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Scene",
+      "kind": "GlslInterfaceBlock",
+      "package": "guarded",
+      "line": 5,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "fallback",
+      "kind": "GlslVariable",
+      "package": "guarded",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "neutral",
+      "kind": "GlslVariable",
+      "package": "guarded",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "GlslFunc",
+      "package": "guarded",
+      "line": 15,
+      "end_line": 27,
+      "signature": "void main()",
+      "calls": [
+        "vec4"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "LOCAL_GAIN",
+      "kind": "GlslMacro",
+      "package": "guarded",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "LocalData",
+      "kind": "GlslStruct",
+      "package": "guarded",
+      "line": 17,
+      "end_line": 19,
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "product_commit": "85ee9a41cb79a25acbee625cce3d5402ad284840",
+  "before": {
+    "call_truth": 332,
+    "call_truth_found": 332,
+    "call_fathom_in_truth": 332,
+    "call_fathom": 623,
+    "precision": 0.5329052969502408,
+    "recall": 1.0
+  },
+  "after": {
+    "call_truth": 332,
+    "call_truth_found": 332,
+    "call_fathom_in_truth": 332,
+    "call_fathom": 590,
+    "precision": 0.5627118644067797,
+    "recall": 1.0
+  },
+  "removed_pairs": 33,
+  "removed_by_kind": {
+    "core_type": 33
+  },
+  "extension_families": {},
+  "family_counts_overlap": true,
+  "disclosure": "A name declared by multiple extensions counts in every declaring specification family; family counts are not additive. Shared function/type spellings retain kind ambiguity.",
+  "registry_catalog_sha256": "43e34f4c96a7ad9ce2aaae7cc1427e16e46d1a4a1f1bd996d5653b088cd1159d",
+  "measurement_evidence": {
+    "kind": "canonical",
+    "before_evidence_sha256": "4a0c4912879d2c60ddfb0e901c01b0cdc8be7ea2768f30c6ef0c0492a1eada38",
+    "after_evidence_sha256": "4e97973d7db8dcb22044ea11cd6195133cd1882bf8fa765d6cd5dbcd3cd4b30c"
+  }
+}
