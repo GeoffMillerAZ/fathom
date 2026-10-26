@@ -12,12 +12,16 @@ type DryRunTaskVerdict struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// dryRunControlVersions are the zero-turn control harnesses BX-36 reads. They
+// share a run id by design, so the cell store keeps each one beside the others.
+var dryRunControlVersions = map[string]bool{"null-1": true, "oracle-1": true, "wrong-patch-1": true}
+
 // DryRunVerdict requires exactly three sound trials of each control for every
 // task and corpus arm. It consumes stored cells without running any harness.
 // Incomplete, duplicate or void evidence is an error, never a kept task.
 // Flakiness takes precedence over stable failures of the expected discrimination.
 func DryRunVerdict(corpus Corpus, cells []CellResult) ([]DryRunTaskVerdict, error) {
-	versions := map[string]bool{"null-1": true, "oracle-1": true, "wrong-patch-1": true}
+	versions := dryRunControlVersions
 	type key struct{ task, arm, version string }
 	grouped := map[key]map[int]CellResult{}
 	tasks := map[string]bool{}
