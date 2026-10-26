@@ -8,8 +8,13 @@ No dependency is added to the product module.
 
 The probe counts any error diagnostic, terminal error, nil AST, recovered bad
 node, walker error or panic as a file in error. All original `.sentinel` files
-are read, including mocks; nothing is rewritten. It also reports mock-path and
-other-path counts separately so generated files cannot hide policy failures.
+are read, including mocks; original bytes decide every admission count. Failures
+are attributed by isolated in-memory diagnostic changes (escaped quotes, keyword
+selector, final newline) only when exactly one change clears all parser errors.
+These changed bytes are never written or graded. Three minimal known-failure
+probes and passing controls document the upstream defects; path layout grants
+no exclusion. Attribution reports counts only, including ambiguous/unclassified
+failures rather than forcing them into a class.
 The source manifest hashes sorted `relative path + NUL + content SHA256 + newline`.
 Published output contains counts/hashes, without subject content or file lists.
 Optional `-details` is for private workspace investigation only.
@@ -19,10 +24,11 @@ GOMODCACHE in the lane's cache, GOWORK=off. Check `uptime`; each heavy command
 starts below load 6 at niceness 10, with no other lane job running.
 
 ```sh
-python calibration/oracles/sentinel-open/fetch.py --out workspace/calibration/sentinel-open
-nice -n 10 go -C calibration/oracles/sentinel-open test ./...
+python3 calibration/oracles/sentinel-open/fetch.py --out workspace/calibration/sentinel-open
+python3 -m unittest discover -s calibration/oracles/sentinel-open -p test_fetch.py
+nice -n 10 go -C calibration/oracles/sentinel-open test -race -count=1 ./...
 nice -n 10 go -C calibration/oracles/sentinel-open build -o ../../../workspace/tools/sentinel-open .
-nice -n 10 python calibration/oracles/sentinel-open/replay.py \
+nice -n 10 python3 calibration/oracles/sentinel-open/replay.py \
   --subjects workspace/calibration/sentinel-open --probe workspace/tools/sentinel-open \
   --out workspace/tmp/sentinel-open-replay
 ```
@@ -36,3 +42,10 @@ This checks feasibility, not parser accuracy against an independent truth.
 It is not a support reading and proves no level. No Sentinel runtime is installed,
 invoked or used by these scripts. OL-R6 forbids publishing benchmark results from
 the EULA-bound runtime; its formatter/evaluator/test output is not an oracle here.
+
+Parser repair must fix the general lexer/parser defects on the full original
+population. An upstream submission requires maintainer approval; a pinned
+fork/patch must satisfy P-R1 and remove nothing graded. Neither a mock-path
+exclusion nor the diagnostic edits above are an admission route. A hypothetical
+escaped-quote fix alone leaves 2/395 failures (0.51%); that is not a measured
+repaired-parser result.

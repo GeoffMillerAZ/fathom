@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -72,6 +73,32 @@ func add(a *totals, b totals) {
 	a.Calls += b.Calls
 }
 
+// Diagnostic counterfactuals only: original parse results always decide admission.
+// A class is attributed only when exactly one isolated change clears all errors.
+// No changed bytes are written, graded, or used as independent oracle evidence.
+func failureCause(src []byte) string {
+	variants := map[string][]byte{}
+	if bytes.Contains(src, []byte(`\"`)) {
+		variants["escaped_quote"] = bytes.ReplaceAll(src, []byte(`\"`), []byte("XX"))
+	}
+	if bytes.Contains(src, []byte(".default")) {
+		variants["keyword_selector"] = bytes.ReplaceAll(src, []byte(".default"), []byte(".default_value"))
+	}
+	if !bytes.HasSuffix(src, []byte("\n")) {
+		variants["no_final_newline"] = append(append([]byte(nil), src...), '\n')
+	}
+	var matches []string
+	for name, changed := range variants {
+		if parse(changed).Errors == 0 {
+			matches = append(matches, name)
+		}
+	}
+	if len(matches) != 1 {
+		return "unclassified_or_multiple"
+	}
+	return matches[0]
+}
+
 func main() {
 	root := flag.String("subject", "", "original subject root")
 	identity := flag.String("identity", "", "public repository and immutable revision")
@@ -100,7 +127,8 @@ func main() {
 	if len(paths) == 0 {
 		panic("no original .sentinel files")
 	}
-	groups := map[string]*totals{"all": {}, "mock_paths": {}, "other_paths": {}}
+	groups := map[string]*totals{"all": {}}
+	causes := map[string]int{"escaped_quote": 0, "keyword_selector": 0, "no_final_newline": 0, "unclassified_or_multiple": 0}
 	manifest := sha256.New()
 	var records []map[string]any
 	for _, p := range paths {
@@ -117,13 +145,9 @@ func main() {
 		fmt.Fprintf(manifest, "%s\x00%x\n", rel, h)
 		r := parse(src)
 		add(groups["all"], r)
-		group := "other_paths"
-		for _, c := range strings.Split(rel, "/") {
-			if c == "mock" || c == "mocks" || strings.HasPrefix(c, "mock-") {
-				group = "mock_paths"
-			}
+		if r.Errors != 0 {
+			causes[failureCause(src)]++
 		}
-		add(groups[group], r)
 		records = append(records, map[string]any{"path": rel, "sha256": hex.EncodeToString(h[:]), "counts": r})
 	}
 	version := "unknown"
@@ -146,6 +170,7 @@ func main() {
 	out := map[string]any{"subject": *identity, "parser": "glennsarti/sentinel-parser", "parser_version": version,
 		"spec": "latest supported by pinned parser", "source_manifest_sha256": hex.EncodeToString(manifest.Sum(nil)),
 		"groups": groups, "scope": "every original .sentinel file, no rewriting or exclusions", "runtime_used": false,
+		"failure_causes": causes, "attribution": "unique isolated in-memory diagnostic change clearing errors; never used for admission",
 		"classification": "open product-parser feasibility only; not independent oracle accuracy"}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")

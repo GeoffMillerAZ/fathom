@@ -3,6 +3,7 @@
 import argparse
 import io
 from pathlib import Path
+import sys
 import tarfile
 import urllib.request
 
@@ -13,6 +14,8 @@ SUBJECTS = {
 
 
 def main():
+    if sys.version_info < (3, 13):
+        raise SystemExit('Python 3.13+ is required for safe archive extraction')
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--out', required=True, type=Path)
     args = ap.parse_args()

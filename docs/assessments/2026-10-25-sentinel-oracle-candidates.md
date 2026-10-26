@@ -8,10 +8,19 @@ this assessment no longer treats an absent tree-sitter grammar as absence of a p
 **Measured, open parser only:** latest main `3a328c0dcfb9` reports files in error
 in **30/386** original terraform-sentinel-policies files and **0/9** original
 policy-library-gcp-databases-terraform files: **30/395 = 7.59%** pooled, above the
-5% full-discovery admission bar. There are zero panics. The split outside mock paths
-is **2/87 + 0/3 = 2/90 (2.22%)**; mock paths account for the other 28 failures.
-This narrower split passes 5%, so this is a viable policy-body parser route,
-not proof that Sentinel cannot be read. No files were excluded or repaired to pass.
+5% full-discovery admission bar. There are zero panics. All 30 failures are
+attributed to general parser defects: **28 escaped-quote string failures,
+1 keyword selector (`.default`), and 1 missing final newline**. They are not
+mock-specific: policies can contain any of these constructs. No path split or
+exclusion is an admission route. No original files were excluded or repaired to pass.
+
+Attribution uses a separate diagnostic replay: for each failing original, try
+one isolated in-memory change per defect, and assign a cause only if exactly
+one clears all errors. No changed bytes are written or used for admission.
+All 30 classify uniquely; zero are ambiguous/unclassified. Three minimal known-failure
+probes and passing controls in `main_test.go` reproduce these defects independently
+of subject layout. Fixing escaped quotes alone would leave 2/395 (0.51%) failures;
+this arithmetic is a repair hypothesis, not a measured fixed-parser result.
 The [aggregate receipts](data/sentinel-open-2026-10-25/) contain counts, source
 manifest digests and probe identity; the [committed recipe](../../calibration/oracles/sentinel-open/README.md)
 replays all original files. A parser's own diagnostics are feasibility evidence,
@@ -21,7 +30,7 @@ not independent accuracy or a support reading. No level is claimed.
 
 | Candidate / route | Version / revision checked | Concrete outcome / limit |
 |---|---|---|
-| glennsarti/sentinel-parser | v0.0.3 `4fd6abca97e7`; main `3a328c0dcfb949ba8e9247b577eb1cac14134a1e` | Apache-2.0, Go. Main measured above; tag-to-main comparison changes only CI and dependency manifests, not parser code. Open product-parser condition is met. Full-discovery error rate is over 5%; non-mock rate is under 5%. It cannot independently grade a product that uses the same parser. |
+| glennsarti/sentinel-parser | v0.0.3 `4fd6abca97e7`; main `3a328c0dcfb949ba8e9247b577eb1cac14134a1e` | Apache-2.0, Go. Main measured above; tag-to-main comparison changes only CI and dependency manifests, not parser code. Open product-parser condition is met. Full-discovery error rate is over 5%, due to three general lexer/parser defects; repair must retain all original inputs. It cannot independently grade a product that uses the same parser. |
 | clarkmcc/warden-rs | `4e6d612d45cd0b94df69635892c1c5863dfe2b8d` | Toy Rust parser/interpreter; immutable tree has no LICENSE/COPYING file. Rejected for absent reuse licence, not measured or incorporated. |
 | Public Sentinel language specification | v0.40.x page dated 2025-09-17 | EBNF can guide a separate reader, but is not an executable oracle. A second dependency-free native reader would require ADR-048's second-language admission review and an independent publishable oracle. |
 | Sentinel fmt | Runtime release index 0.41.0; public docs 0.40.x | Formatter/source validation contract, not an open parser API. EULA restricts publishing related benchmark results; OL-R6 forbids a runtime-graded reading in this public repository. No runtime results published. |
@@ -59,8 +68,9 @@ All searches checked 2026-10-25; negatives describe these sources, not universal
 ## Current disposition and two independent conditions
 
 The old parser-absence ceiling is withdrawn. The open parser is available; its
-present full-discovery result needs repair or an explicitly governed scope decision,
-with the passing policy-body split disclosed above. No product dialect was built
+present full-discovery result needs repair: prepare an upstream fix for maintainer
+approval, or a pinned fork/patch under P-R1 that removes nothing graded. Path
+exclusions do not repair the defects. No product dialect was built
 or level measured in this correction. Under OL-R6, **no EULA-runtime-graded reading
 may be committed**. A publishable oracle therefore independently needs a licence
 change, an owner-approved non-runtime route, or a second independent licensed open

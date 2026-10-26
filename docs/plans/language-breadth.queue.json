@@ -5966,7 +5966,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sentinel",
     "worker_model": "sonnet",
-    "notes": "OL-R8: open-parser trigger fired; glennsarti/sentinel-parser main 3a328c0dcfb9 measured 30/395 full-discovery files in error (7.59%), including 2/90 outside mock paths (2.22%); no scope narrowed; parser availability is separate from full-scope admission and a publishable independent oracle (OL-R6); tags remains the unimplemented queue engine pending a governed reader admission; no level claimed"
+    "notes": "OL-R8: open-parser trigger fired; glennsarti/sentinel-parser main 3a328c0dcfb9 measured 30/395 full-discovery files in error (7.59%), escaped quotes 28, keyword selector 1, missing final newline 1; repair general defects via upstream fix with maintainer approval or pinned fork/patch under P-R1, never path exclusion; parser availability is separate from full-scope admission and a publishable independent oracle (OL-R6); tags remains the unimplemented queue engine pending a governed reader admission; no level claimed"
   },
   {
     "id": "pgbouncer",

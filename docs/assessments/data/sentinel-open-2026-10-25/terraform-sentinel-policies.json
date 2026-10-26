@@ -1,5 +1,12 @@
 {
+  "attribution": "unique isolated in-memory diagnostic change clearing errors; never used for admission",
   "classification": "open product-parser feasibility only; not independent oracle accuracy",
+  "failure_causes": {
+    "escaped_quote": 28,
+    "keyword_selector": 1,
+    "no_final_newline": 1,
+    "unclassified_or_multiple": 0
+  },
   "groups": {
     "all": {
       "bad_nodes": 8028,
@@ -9,29 +16,11 @@
       "files": 386,
       "files_in_error": 30,
       "panics": 0
-    },
-    "mock_paths": {
-      "bad_nodes": 8023,
-      "bytes": 2612519,
-      "call_nodes": 300,
-      "error_diagnostics": 10932,
-      "files": 299,
-      "files_in_error": 28,
-      "panics": 0
-    },
-    "other_paths": {
-      "bad_nodes": 5,
-      "bytes": 279662,
-      "call_nodes": 1284,
-      "error_diagnostics": 8,
-      "files": 87,
-      "files_in_error": 2,
-      "panics": 0
     }
   },
   "parser": "glennsarti/sentinel-parser",
   "parser_version": "v0.0.4-0.20260211131028-3a328c0dcfb9",
-  "probe_sha256": "b3963dbf9013b1c0cf04f62fb813757471168afe94945240fdbd3afd6eb91fa3",
+  "probe_sha256": "c4112f2aadd766b81c91ae826aa3cfbdc61e84a962acecdf53f241fa508d6feb",
   "runtime_used": false,
   "scope": "every original .sentinel file, no rewriting or exclusions",
   "source_manifest_sha256": "392f735f566ce53096b076d092bc2d9ee446273632d77908c38c1f10a75e8954",
