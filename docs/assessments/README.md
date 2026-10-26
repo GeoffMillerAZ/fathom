@@ -80,6 +80,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-25 | [lua-oracle-candidates](2026-10-25-lua-oracle-ceiling.md), [data](data/lua-oracle-2026-10-25/probe-summary.json) | LuaLS and EmmyLua need a tier ruling; native Telescope trace reaches 81.01%, below 90% | ADR-048, LB-Q-lua-rest; independent L2/L3 triggers |
 | 2026-10-25 | [react-oracle-candidates](2026-10-25-react-oracle-candidates.md), [probe](data/react-oracle-2026-10-25/summary.json) | Compiler selection omits class components; docgen and typed TS graphs do not supply complete native React roles | ADR-048, LB-Q-react-rest |
 | 2026-10-25 | [rego-oracle-candidates](2026-10-25-rego-oracle-candidates.md) | OPA already provides complete native A import truth; OPA1.21.4 and Regal0.43.0 routes cannot repair missing product import edges | ADR-048, LB-Q-rego-rest |
+| 2026-10-25 | [jupyter-oracle-candidates](2026-10-25-jupyter-oracle-ceiling.md), [modern diagnostic](data/jupyter-oracle-2026-10-25/modern-comparison-summary.json) | Direct notebook coverage 1,945/2,071; pair diagnostics are AST-derived C, not resolved targets; canonical support unchanged | ADR-048, LB-Q-jupyter-rest, OL-R4 |
 
 ## Companion pages
 
