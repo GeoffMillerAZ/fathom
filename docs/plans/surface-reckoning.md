@@ -127,9 +127,9 @@ LB-F367 proved no secret value is stored and that symbol_context withholds a sen
 
 ## Follow-up: unsupported deletion-reference coverage
 
-Controller F8 (2026-10-26) keeps this pre-existing case separate from the Go field-only adoption branch. Owner: core-t1; no implementation is included here.
+Review of the Go field-symbol branch (2026-10-26) keeps this pre-existing case separate from the Go field-only adoption branch. Owner: core-t1; no implementation is included here.
 
-- [ ] A missing target such as NoSuchSymbol, or a Go variable/constant whose reference edges are not indexed, never receives a proven-zero deletion receipt: retain recorded referents, name the missing target or unsupported reference coverage, and keep typed function/method zero-referent checks working. Add end-to-end regressions for all three cases before claiming the fix. {id: CT1-SD-1, symbol: safeDeleteCheckAnswer, package: internal/mcp, reachable_from: TestBlastRadiusDeleteUnknownOrGoValueIsNotProvenZero}
+- [ ] A missing target such as NoSuchSymbol, or a Go variable/constant whose reference edges are not indexed, never receives a proven-zero deletion receipt: retain recorded referents, name the missing target or unsupported reference coverage, keep typed function/method zero-referent checks working, and preserve field-reference uncertainty for bare-name Go field queries (`n`, `Inner`) and Go-qualified queries (`p.T.n`) that find_symbol resolves. Add end-to-end regressions for all three unresolved cases and the field-spelling controls before claiming the fix. {id: CT1-SD-1, symbol: safeDeleteCheckAnswer, package: internal/mcp, reachable_from: TestBlastRadiusDeleteUnknownOrGoValueIsNotProvenZero}
 
 ## Measurements
 
