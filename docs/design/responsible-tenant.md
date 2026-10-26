@@ -1808,3 +1808,13 @@ Pre-registered with the rows:
 - **Q2.** RT-197 changes the latency of `/refresh-file` when a graph is resident: a rebuild of about 1–1.6 s
   instead of `ReplacePackage`'s median 1.23 s, with a tail of up to 54 s. Is that within the pre-edit hook's
   budget for the refresh, or does RT-197 take the scoped patch?
+
+**Decision models (2026-10-26, §18).** None applies (ADR-073). Every choice in §18 is a deterministic function of
+what the registry and the store hold:
+- which entries were resident before the move;
+- the ladder's level;
+- `resolve`'s fixed lookup order.
+
+No typed question through the port would improve on that. A model could guess which services to re-warm, but the
+resident set already says exactly that, at no cost. The fallback with provider `none` is the design itself. The
+opt-out is eviction as today (K7, K8). RT-M15 and K9 are the measurements that keep or kill each part.
