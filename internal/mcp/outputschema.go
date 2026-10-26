@@ -418,6 +418,10 @@ type blastRadiusResult struct {
 	DepthCapped  bool          `json:"depth_capped"`
 	MaxDepth     int           `json:"max_depth"`
 	ByDepth      []blastBucket `json:"by_depth"`
+	// Go fields in changed files are separate from the traversable graph:
+	// their references are not indexed, so they never consume MaxSymbols.
+	ChangedFields     []changedFieldRow `json:"changed_fields,omitempty"`
+	ChangedFieldCount int               `json:"changed_field_count,omitempty"`
 	// References (wave lg): the listed symbols reached through a
 	// reference to a Go type, not a call.
 	References []string `json:"references"`

@@ -434,6 +434,13 @@ func rankSymbolEntries(services []string, sets map[string]symbolSource, tokens [
 			if s == 0 {
 				continue
 			}
+			if lkind == "gofield" {
+				// C-R14: ScoreFields is at most 100 per token plus 50 for
+				// a phrase. Keep that score's field-to-field ordering while
+				// placing every field below any non-field match. The same
+				// adjusted score drives top-k pruning and SearchWith's sort.
+				s -= console.MaxQueryTokens*100 + 50
+			}
 			total++
 			cands = append(cands, symbolCand{e: src.Entry(i), svc: svc, href: href, score: s})
 			if limit > 0 && len(cands) >= 4*limit+256 {

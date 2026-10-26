@@ -77,8 +77,8 @@
     },
     "count_field": "symbols",
     "budget_ms": 500,
-    "bytes": 1757,
-    "result_count": 11,
+    "bytes": 1852,
+    "result_count": 7,
     "displaced": 0
   },
   {
@@ -154,7 +154,7 @@
     },
     "count_field": "candidates",
     "budget_ms": 250,
-    "bytes": 1470,
+    "bytes": 1518,
     "result_count": 3,
     "displaced": 0
   }

@@ -157,3 +157,74 @@ reports field_references_indexed false and says field references are not indexed
 This query-only correction changes no full-ingest reading or cost path. The
 pre-existing missing-target and Go variable/constant cases remain separately
 filed as CT1-SD-1; that row also preserves the field-spelling controls.
+
+## C-R14 consumer compatibility
+
+C-R14 reopens the field pass after the broader consumer tests exposed ranking,
+impact seeding and stale fixture counts. Matching Go fields now rank below
+functions, methods and types, preserving text relevance among fields. The
+symbol-group route already implements 50-row pages with offset-plus-limit
+lookup; its old first-page assertion confused page length with total matches.
+The replacement checks every JSON/HTML page, unique rows and next/previous links
+against the advertised total, preserving access to every match.
+
+For `blast_radius kind:"change"`, changed fields are depth-zero changed facts in
+`changed_fields`, counted separately by `changed_field_count`, with the note
+"field references not indexed". They neither seed nor bridge the traversal and
+do not consume `max_symbols`; the graph-symbol and depth-bucket counts describe
+only the traversable radius. Field-free responses retain their prior shape.
+The unbounded verification/review analysis defaults remain unchanged.
+
+C-R14 comments identify the two updated fixture expectations: payment-service
+ingest has 12 symbols including five fields, and the oracle fixture maps three
+definitions including its field. The generated `TestCmdLangTracker` and
+`TestLanguagesTrackerIsGenerated` checks stay with the controller at landing;
+both require the same unregenerated `docs/languages.md`. The earlier nine-package suite did not cover
+all consumers; it is not the C-R14 verification gate. The focused five-package race passes, including the previously failing consumer
+controls, with an independent read-only diff review finding no issues. Actual
+browser inspection of the disposable synthetic handler showed callable-first
+ranking and 91 matching symbols reachable as 50 plus 41 rows through Next. The
+preview was stopped after inspection. Expanded race verification and the final
+C-R14 result are recorded after execution below.
+
+These are query and test corrections. They change no extraction, full-ingest
+cost path, frozen SCIP index, language reading or epoch, so the recorded K17
+measurements and Wave C regrades remain valid for their measured paths.
+
+Expanded race coverage ran `bash scripts/fathom-go.sh test -race -count=1
+-timeout=30m -skip "^TestCmdLangTracker$" ./cmd/fathom ./cmd/indexbench
+./pkg/client ./internal/...` in 1,338.625s at launch load 5.986. It covered
+144 packages: 141 passed, one had no tests, and two exposed expected fixture
+work. `TestPayloadReplay` correctly detected the deliberate seven-symbol graph
+radius plus four separate fields: 1,757 -> 1,852 bytes (+95, +5.4%). C-R14
+authorizes that disclosure; its committed collector regenerates the golden.
+`TestLanguagesTrackerIsGenerated` checks the same controller-owned language
+board as `TestCmdLangTracker`; the board is not regenerated in this lane.
+The expanded run exited 1, not a clean-suite pass. The two affected packages
+are rerun after regeneration, with only the named board assertion excluded.
+
+The committed `TestPayloadReplay -update` collector regenerated the measured
+fields. Besides the deliberate blast-radius delta, it refreshed localize's
+payload from 1,470 to 1,518 bytes (within 5%, still three candidates). No
+authored arguments, budgets or count fields changed. The full affected-package
+race rerun passes: `internal/indexbench` and `internal/langbench`, excluding
+only `TestLanguagesTrackerIsGenerated`. Together with the broad run's 141
+passing packages, this verifies all 143 test-bearing packages in the required
+scope except the two controller-owned board assertions; one additional
+package has no tests. No production source changed after the broad run.
+
+The final release-note, merge-debris and org-name batch passes (21.441s at
+launch load 7.392). The fragment was corrected to its required single heading
+after the check rejected two headings. Added-line/new-file privacy scanning
+found no subject identities. The independent read-only review
+found no issues in the production delta. No generated board was written.
+
+Passing replay and affected-package commands:
+
+```sh
+bash scripts/fathom-go.sh test -race -count=1 -run "^TestPayloadReplay$" ./internal/indexbench -update
+bash scripts/fathom-go.sh test -race -count=1 -skip "^TestLanguagesTrackerIsGenerated$" ./internal/indexbench ./internal/langbench
+bash scripts/fathom-go.sh run ./third_party/agentic-kit/cmd/release-notes -check
+bash scripts/check-merge-debris.sh
+bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom
+```

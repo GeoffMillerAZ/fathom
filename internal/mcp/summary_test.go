@@ -100,7 +100,9 @@ func TestBlastRadiusSummary_Fauxtown(t *testing.T) {
 		"service": "ledger-service", "changed_files": []string{"ledger-service/ledger.go"},
 	})
 	summary, _ := payload["summary"].(string)
-	want := "depth 0: 7 changed symbols; affected tests: 0"
+	// Go fields are separately disclosed because their references are not
+	// indexed; the seven traversable graph symbols retain the old radius.
+	want := "depth 0: 7 changed symbols; affected tests: 0; 4 changed fields (field references not indexed)"
 	if summary != want {
 		t.Errorf("summary = %q, want %q", summary, want)
 	}

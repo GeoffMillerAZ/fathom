@@ -152,10 +152,12 @@ func TestCmdLangOracleGoUnmeasuredDefinitions(t *testing.T) {
 	if len(r.Subjects) != 1 || r.Subjects[0].Files != 1 {
 		t.Fatalf("want only main.go measured, got %+v", r.Subjects)
 	}
+	// C-R14: the field-only member pass maps T.F; the unmeasured package
+	// variable remains counted as an unmapped definition.
 	for k, want := range map[string]int{
-		langbench.CntScipDefs: 4, langbench.CntScipDefsMapped: 2,
+		langbench.CntScipDefs: 4, langbench.CntScipDefsMapped: 3,
 		langbench.CntScipDefsOutOfScope: 0, langbench.CntScipGoDefsUnmeasured: 1,
-		"scip_go_defs_unmapped_field": 1, "scip_go_defs_unmapped_package-var": 1,
+		"scip_go_defs_unmapped_field": 0, "scip_go_defs_unmapped_package-var": 1,
 	} {
 		if got := r.Counts[k]; got != want {
 			t.Errorf("%s = %d, want %d", k, got, want)
