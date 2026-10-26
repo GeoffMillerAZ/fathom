@@ -68,6 +68,20 @@ func TestCandidateDiffAdmitsOnlyCppGrammarDelta(t *testing.T) {
 		t.Fatal("accepted changed product preprocessing")
 	}
 }
+
+func TestExternalCandidateDiffRefusesEmbeddedGrammarDelta(t *testing.T) {
+	root, baseline, candidate := gitCandidateFixture(t)
+	if err := candidateDiffAllowedForMode(root, baseline, candidate, true); err == nil {
+		t.Fatal("external audit accepted a production C++ grammar lock/blob change")
+	}
+	writeFixtureFile(t, root, "calibration/oracles/scip-clang/cpp-screen/README.md", "external audit helper")
+	gitFixtureCommand(t, root, "add", ".")
+	gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "helper")
+	newHead := gitFixtureCommand(t, root, "rev-parse", "HEAD")
+	if err := candidateDiffAllowedForMode(root, candidate, newHead, true); err != nil {
+		t.Fatalf("external audit refused helper-only delta: %v", err)
+	}
+}
 func TestCandidateDiffAdmitsHelperObservationOnly(t *testing.T) {
 	root, _, baseline := gitCandidateFixture(t)
 	writeFixtureFile(t, root, "calibration/oracles/scip-clang/cpp-screen/main.go", "diagnostic helper")

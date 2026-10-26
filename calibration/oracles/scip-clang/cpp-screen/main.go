@@ -46,23 +46,37 @@ type config struct {
 	ProductRevision                               string  // tests supply a synthetic identity; production reads build VCS
 	SubjectRevision                               string  // tests supply a synthetic pin; production reads checkout HEAD
 	Candidate                                     bool
+	CandidateLock, CandidateModule                string
 	ProductRoot                                   string // tests supply an isolated Git repo; production uses this checkout
 }
 
 var candidatePaths = map[string]bool{
-	"internal/extractor/tsengine/grammars/grammars.lock.json": true,
-	"internal/extractor/tsengine/grammars/cpp.wasm.gz":        true,
-	"internal/extractor/tsengine/grammars/PROVENANCE.md":      true,
-	"calibration/oracles/scip-clang/cpp-screen/main.go":       true,
-	"calibration/oracles/scip-clang/cpp-screen/main_test.go":  true,
-	"calibration/oracles/scip-clang/cpp-screen/README.md":     true,
-	".fathom/observations/O1504.md":                           true,
+	"internal/extractor/tsengine/grammars/grammars.lock.json":            true,
+	"internal/extractor/tsengine/grammars/cpp.wasm.gz":                   true,
+	"internal/extractor/tsengine/grammars/PROVENANCE.md":                 true,
+	"calibration/oracles/scip-clang/cpp-screen/main.go":                  true,
+	"calibration/oracles/scip-clang/cpp-screen/main_test.go":             true,
+	"calibration/oracles/scip-clang/cpp-screen/README.md":                true,
+	"calibration/oracles/scip-clang/cpp-screen/parser_audit.go":          true,
+	"calibration/oracles/scip-clang/cpp-screen/parser_audit_disabled.go": true,
+	"calibration/oracles/scip-clang/cpp-screen/parser_audit_test.go":     true,
+	"calibration/oracles/scip-clang/build-willbooster.py":                true,
+	"calibration/oracles/scip-clang/build-willbooster_test.py":           true,
+	"calibration/oracles/scip-clang/cpp-report.py":                       true,
+	"calibration/oracles/scip-clang/cpp-report_test.py":                  true,
+	"internal/extractor/tsengine/grammar_audit.go":                       true,
+	"internal/extractor/tsengine/grammar_audit_test.go":                  true,
+	".fathom/observations/O1504.md":                                      true,
 }
 
 func gitBytes(root string, args ...string) ([]byte, error) {
 	return exec.Command("git", append([]string{"-C", root}, args...)...).Output()
 }
 func candidateDiffAllowed(root, baseline, candidate string) error {
+	return candidateDiffAllowedForMode(root, baseline, candidate, false)
+}
+
+func candidateDiffAllowedForMode(root, baseline, candidate string, external bool) error {
 	if !fullSHA(baseline) || !fullSHA(candidate) || baseline == candidate {
 		return errors.New("candidate_revisions")
 	}
@@ -86,6 +100,15 @@ func candidateDiffAllowed(root, baseline, candidate string) error {
 		p := string(name)
 		if !candidatePaths[p] {
 			return errors.New("candidate_unrelated_change")
+		}
+		if external && (p == "internal/extractor/tsengine/grammars/grammars.lock.json" || p == "internal/extractor/tsengine/grammars/cpp.wasm.gz") {
+			return errors.New("candidate_embedded_grammar_change")
+		}
+		if p == "internal/extractor/tsengine/grammar_audit.go" || p == "internal/extractor/tsengine/grammar_audit_test.go" {
+			content, err := gitBytes(root, "show", candidate+":"+p)
+			if err != nil || !bytes.HasPrefix(content, []byte("//go:build fathom_grammar_audit\n")) {
+				return errors.New("candidate_audit_tag")
+			}
 		}
 		changed[p] = true
 	}
@@ -170,26 +193,30 @@ type partition struct {
 	Faults  int `json:"faults"`
 }
 type receipt struct {
-	Status              string    `json:"status"`
-	Mode                string    `json:"mode,omitempty"`
-	BaselineRevision    string    `json:"baseline_revision,omitempty"`
-	FailureCode         string    `json:"failure_code,omitempty"`
-	CountsComplete      bool      `json:"counts_complete"`
-	Files               int       `json:"files"`
-	Bytes               int64     `json:"bytes"`
-	Written             partition `json:"written"`
-	Selected            partition `json:"selected"`
-	ReadingSHA256       string    `json:"reading_sha256,omitempty"`
-	UnmatchedSHA256     string    `json:"unmatched_sha256,omitempty"`
-	PopulationSHA256    string    `json:"population_sha256,omitempty"`
-	SourceSHA256        string    `json:"source_sha256,omitempty"`
-	ProductRevision     string    `json:"product_revision,omitempty"`
-	ProductBinarySHA256 string    `json:"product_binary_sha256,omitempty"`
-	GrammarBlobSHA256   string    `json:"grammar_blob_sha256,omitempty"`
-	GrammarEntryPoint   string    `json:"grammar_entry_point,omitempty"`
-	GrammarCommit       string    `json:"grammar_commit,omitempty"`
-	Preprocess          bool      `json:"preprocess"`
-	PreprocessSelected  int       `json:"preprocess_selected"`
+	Status                    string    `json:"status"`
+	Mode                      string    `json:"mode,omitempty"`
+	BaselineRevision          string    `json:"baseline_revision,omitempty"`
+	FailureCode               string    `json:"failure_code,omitempty"`
+	CountsComplete            bool      `json:"counts_complete"`
+	Files                     int       `json:"files"`
+	Bytes                     int64     `json:"bytes"`
+	Written                   partition `json:"written"`
+	Selected                  partition `json:"selected"`
+	ReadingSHA256             string    `json:"reading_sha256,omitempty"`
+	UnmatchedSHA256           string    `json:"unmatched_sha256,omitempty"`
+	PopulationSHA256          string    `json:"population_sha256,omitempty"`
+	SourceSHA256              string    `json:"source_sha256,omitempty"`
+	ProductRevision           string    `json:"product_revision,omitempty"`
+	ProductBinarySHA256       string    `json:"product_binary_sha256,omitempty"`
+	GrammarBlobSHA256         string    `json:"grammar_blob_sha256,omitempty"`
+	GrammarEntryPoint         string    `json:"grammar_entry_point,omitempty"`
+	GrammarCommit             string    `json:"grammar_commit,omitempty"`
+	AuditGrammarVersion       string    `json:"audit_grammar_version,omitempty"`
+	AuditRuntimeVersion       string    `json:"audit_runtime_version,omitempty"`
+	AuditGrammarArchiveSHA256 string    `json:"audit_grammar_archive_sha256,omitempty"`
+	AuditRuntimeArchiveSHA256 string    `json:"audit_runtime_archive_sha256,omitempty"`
+	Preprocess                bool      `json:"preprocess"`
+	PreprocessSelected        int       `json:"preprocess_selected"`
 }
 
 type reading struct {
@@ -507,8 +534,17 @@ func productIdentity(c config) (string, string, error) {
 }
 func measure(c config) (receipt, error) {
 	r := receipt{Status: "failed"}
+	external := c.CandidateLock != "" || c.CandidateModule != ""
+	if external {
+		r.Mode = "external-candidate-diagnostic"
+		if !c.Candidate || c.CandidateLock == "" || c.CandidateModule == "" {
+			return failure(r, "candidate_arguments")
+		}
+	}
 	if c.Candidate {
-		r.Mode = "candidate-diagnostic"
+		if !external {
+			r.Mode = "candidate-diagnostic"
+		}
 	}
 	lim := bounds(c)
 	if c.Subject == "" || c.SubjectName == "" || c.Reading == "" || c.Unmatched == "" || lim.JSONBytes < 0 || lim.Files < 0 || lim.SourceBytes < 0 || lim.TotalBytes < 0 {
@@ -580,7 +616,7 @@ func measure(c config) (receipt, error) {
 		if root == "" {
 			root = "."
 		}
-		if err := candidateDiffAllowed(root, read.FathomCommit, r.ProductRevision); err != nil {
+		if err := candidateDiffAllowedForMode(root, read.FathomCommit, r.ProductRevision, external); err != nil {
 			return failure(r, "candidate_diff_refused")
 		}
 	} else if r.ProductRevision != read.FathomCommit {
@@ -589,6 +625,17 @@ func measure(c config) (receipt, error) {
 	lock, err := tsengine.LoadGrammarLock()
 	if err != nil {
 		return failure(r, "grammar_lock")
+	}
+	var audit *auditCandidate
+	if external {
+		audit, err = loadAuditCandidate(c)
+		if err != nil {
+			return failure(r, "candidate_module_refused")
+		}
+		r.AuditGrammarVersion = audit.GrammarVersion
+		r.AuditRuntimeVersion = audit.RuntimeVersion
+		r.AuditGrammarArchiveSHA256 = audit.GrammarArchiveSHA256
+		r.AuditRuntimeArchiveSHA256 = audit.RuntimeArchiveSHA256
 	}
 	var parser *tsengine.Parser
 	tsengine.ResetPeakModulePages()
@@ -626,14 +673,22 @@ func measure(c config) (receipt, error) {
 		}
 		if parser == nil {
 			row, ok := lock.Row(target.Blob)
-			if !ok || row.BlobSHA256 == "" || (!c.Candidate && ((read.Grammar.Blob != "" && read.Grammar.Blob != target.Blob) || (read.Grammar.BlobSHA256 != "" && read.Grammar.BlobSHA256 != row.BlobSHA256))) {
+			if !ok || target.Blob != "cpp" || target.EntryPoint != "tree_sitter_cpp" || row.BlobSHA256 == "" || (!c.Candidate && ((read.Grammar.Blob != "" && read.Grammar.Blob != target.Blob) || (read.Grammar.BlobSHA256 != "" && read.Grammar.BlobSHA256 != row.BlobSHA256))) {
 				return failure(r, "grammar_mismatch")
 			}
-			r.GrammarBlobSHA256 = row.BlobSHA256
-			r.GrammarCommit = row.Commit
+			if external {
+				r.GrammarBlobSHA256 = audit.ModuleSHA256
+			} else {
+				r.GrammarBlobSHA256 = row.BlobSHA256
+				r.GrammarCommit = row.Commit
+			}
 			r.GrammarEntryPoint = target.EntryPoint
 			r.Preprocess = target.Preprocess != nil
-			parser, err = tsengine.NewParser(context.Background(), target.Blob, target.EntryPoint)
+			if external {
+				parser, err = openAuditParser(context.Background(), audit)
+			} else {
+				parser, err = tsengine.NewParser(context.Background(), target.Blob, target.EntryPoint)
+			}
 			if err != nil {
 				return parserFault(r, "parser_fault", "raw", index+1, err)
 			}
@@ -645,7 +700,7 @@ func measure(c config) (receipt, error) {
 			if err != nil {
 				return parserFault(r, "query_fault", "raw", index+1, err)
 			}
-		} else if target.Blob != readBlob(lock, r.GrammarBlobSHA256) || target.EntryPoint != r.GrammarEntryPoint || (target.Preprocess != nil) != r.Preprocess {
+		} else if target.Blob != "cpp" || target.EntryPoint != r.GrammarEntryPoint || (target.Preprocess != nil) != r.Preprocess {
 			return failure(r, "grammar_variant")
 		}
 		raw, err := parser.Parse(src)
@@ -813,7 +868,10 @@ func validateOutputFor(c config) error {
 	if err != nil {
 		return err
 	}
-	for _, input := range []string{c.Subject, c.Reading, c.Unmatched} {
+	for _, input := range []string{c.Subject, c.Reading, c.Unmatched, c.CandidateLock, c.CandidateModule} {
+		if input == "" {
+			continue
+		}
 		p, err := canonical(input)
 		if err != nil {
 			return err
@@ -870,6 +928,8 @@ func main() {
 	flag.StringVar(&c.Unmatched, "unmatched", "", "private JSON unmatched receipt")
 	flag.StringVar(&c.Out, "out", "", "ignored workspace receipt path")
 	flag.BoolVar(&c.Candidate, "candidate", false, "audit-only candidate parser diagnostic against a baseline reading")
+	flag.StringVar(&c.CandidateLock, "candidate-lock", "", "private external C++ audit lock under ignored workspace")
+	flag.StringVar(&c.CandidateModule, "candidate-module", "", "private external C++ raw WASM under ignored workspace")
 	flag.Parse()
 	if err := run(c); err != nil {
 		fmt.Fprintln(os.Stderr, "cpp-screen:", err)
