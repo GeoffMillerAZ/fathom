@@ -1271,11 +1271,11 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "tree-sitter-grammars/tree-sitter-scss",
-    "licence": "MIT (verify at pin)",
+    "grammar_source": "P233/tree-sitter-scss",
+    "licence": "MIT",
     "oracle": [
-      "ctags",
-      "dart-sass loadedUrls (A, the import graph)"
+      "sass-parser 0.4.57 (A, Dart Sass definitions and spans)",
+      "dart-sass 1.105.1 loadedUrls (A, compiled import graph)"
     ],
     "calibration_subjects": [
       "twbs/bootstrap",
@@ -1303,7 +1303,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-scss",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges",
+    "notes": "Measured L1-L3 excellent on the full discovered bootstrap v5.3.8 and primer/css v22.3.2 corpus (234 files, no -only): range_agreement 1, sym_precision .9649, call_precision .9741 and import/file precision and recall 1. The reference parser exposes exclusive source.end spans; the oracle converts them to inclusive ends and reads loop-variable token spans. Bootstrap test loads use its unchanged runner preamble with sass-true 9.0.0. Fresh foundation-sites v6.9.0 holdout, pinned before reading, reads L2: L1/L2 excellent, L3 unmet on file_edge_precision .8239 (25 of 142 file pairs unattested). LB-Q-scss-rest records the full-scope oracle ceiling; the earlier angular/components holdout remains historical evidence under the old oracle and restricted scope.",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains dart-sass loadedUrls (tier A, the import graph)"
   },
   {
