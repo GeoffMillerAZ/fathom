@@ -112,3 +112,27 @@ frozen SCIP index. L1/L2/L4 remain excellent and L3 good; file-edge precision
 is .9235, recall .6255, and median throughput 15.68 MB/CPU-s. No producer
 rerun, criterion change or tuning occurred. The field-only scope and its
 remaining excellence limits are unchanged.
+
+## Wave C regrade
+
+The clean Wave C tree 6eff4e2ecad732f233859bbba44732e4d2b80666,
+including 6db920e72, was regraded from the same frozen canonical,
+independent and spent Gin SCIP indexes. The [separate Wave C
+receipt](data/2026-10-26-core-t1-go-members-wave-c-regrade.json) preserves
+the first merged-tree receipt and records the new binary hash, input hashes,
+phase loads/times, reading hashes and median-of-three throughput.
+
+Every canonical and independent count, metric and grade reproduces the prior
+merged-tree result: L4 good, def_mapping .9345 and typed_recall .9889;
+L1-L3 excellent. Their new medians are 20.43 and 20.83 MB/CPU-s. Gin's counts,
+metrics and grades also reproduce: L3 good, L4 excellent, median 15.70
+MB/CPU-s. All nine phases passed below launch load 9. No SCIP producer ran,
+and no holdout tuning occurred. Issue #17 class 2 remains three counted
+unmeasured internal/build definitions; O1237 remains the earlier L2 dispatch
+attribution. The field-only implementation scope and excellence limits are
+unchanged.
+
+The final Wave C nine-package race suite passed (331.81s), including the
+field refresh/build-equality controls. Only the controller-owned generated
+tracker assertion was excluded. Wave C focused reading/SCIP controls, X-R2,
+X-R3 and merge-debris checks passed. No new production change followed the regrade.

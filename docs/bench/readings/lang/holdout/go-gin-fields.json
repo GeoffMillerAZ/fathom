@@ -10,7 +10,7 @@
     "L4": "excellent"
   },
   "measured_at": "2026-10-26",
-  "fathom_commit": "d28ff1d94ae56b86f271a35c70367cf03a96bd5c",
+  "fathom_commit": "6eff4e2ecad732f233859bbba44732e4d2b80666",
   "extractor": "incumbent",
   "subjects": [
     {
@@ -89,8 +89,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 27.558000000000003,
-        "extract_cpu_ms": 34.324000000000005,
+        "extract_ms": 27.660999999999994,
+        "extract_cpu_ms": 34.29299999999999,
         "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -201,9 +201,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 15.68,
+    "throughput_mb_s": 15.7,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 19.53,
+    "wall_throughput_mb_s": 19.46,
     "max_file_ms": 6,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -214,6 +214,7 @@
     "ctags:packageName": 4
   },
   "notes": [
+    "K29 regrade of the already spent Gin v1.10.0 holdout on the C-R13 merged harness at d28ff1d94ae56b86f271a35c70367cf03a96bd5c using its frozen SCIP index; no new producer execution, criterion change or tuning. L1/L2/L4 remain excellent, L3 good (file-edge precision .9235, recall .6255).",
     "GoType covers every named type; ctags struct and type both map to struct",
     "gin-gonic/gin: 177 references to a Go package are a namespace's (K18): out of typed_recall, counted (scip_edges_namespace_target); a reference whose enclosing definition is itself unmapped stays an unmapped endpoint of its from class (LB-F344)",
     "gin-gonic/gin: 244 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`))",
@@ -234,8 +235,8 @@
     "go: file_edge_precision and file_edge_recall score the typed go/packages pass's edges (fusion.EnrichTypedEdges, the cross-file edges ingest stores for Go, run in process into an in-memory store), and import_resolution each import spec resolved by Go's own loader (go/packages, the typed pass's environment) to the measured files of the package it names; Go has no tags dialect and no file resolver (LB-F58)",
     "import_resolution: 6 of 6 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.0435 (6 of 138) and recall 1 (6 of 6); 15 of 429 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured; 15 oracle references on import statements left out because their symbol is defined in more than one file",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 17.14 MB/CPU-s; run 2: 14.08 MB/CPU-s; run 3: 15.68 MB/CPU-s; median run 3: 15.68 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit d28ff1d94ae56b86f271a35c70367cf03a96bd5c",
-    "K29 regrade of the already spent Gin v1.10.0 holdout on the C-R13 merged harness at d28ff1d94ae56b86f271a35c70367cf03a96bd5c using its frozen SCIP index; no new producer execution, criterion change or tuning. L1/L2/L4 remain excellent, L3 good (file-edge precision .9235, recall .6255)."
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 17.11 MB/CPU-s; run 2: 15.70 MB/CPU-s; run 3: 14.53 MB/CPU-s; median run 2: 15.70 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 6eff4e2ecad732f233859bbba44732e4d2b80666",
+    "Wave C K29 regrade of the already spent Gin holdout at 6eff4e2ecad732f233859bbba44732e4d2b80666 from its frozen SCIP index: every count, metric and grade unchanged, L3 good/L4 excellent; median-of-three extraction rate 15.70 MB/CPU-s. No producer rerun or tuning."
   ],
   "disposition": null
 }

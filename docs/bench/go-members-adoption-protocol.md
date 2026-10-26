@@ -165,3 +165,31 @@ cli/cli's tracked internal/build package, which RT-145's default directory
 filter leaves unmeasured (issue #17 class 2). The O1237 L2 dispatch shift
 predates the field pass; same-oracle metrics remain unchanged. No interface
 methods or field-reference edges entered this field-only implementation.
+
+## Wave C same-index regrade
+
+After Wave C was merged, the clean tree
+6eff4e2ecad732f233859bbba44732e4d2b80666 (including 6db920e72) was
+graded again from the same five frozen SCIP indexes and subject pins. The
+[Wave C receipt](../assessments/data/2026-10-26-core-t1-go-members-wave-c-regrade.json)
+is separate from the earlier C-R13 receipt and records the new indexbench
+binary hash, phase loads/times, raw and published reading hashes, and the
+prior receipt hash. No producer ran. All nine phases exited 0 with launch load
+below 9.
+
+Canonical and independent counts, metrics and grades are identical to the
+first merged-tree reading and to each other: L4 good, def_mapping .9345,
+typed_recall .9889, with L1-L3 excellent. Their new median-of-three rates are
+20.43 and 20.83 MB/CPU-s. The spent Gin holdout remains L3 good/L4 excellent,
+with median 15.70 MB/CPU-s. Issue #17's three unmeasured internal/build
+definitions, O1237's earlier L2 attribution and the field-only scope remain
+unchanged. These timings replace the current reading's timings; the earlier
+receipt remains a dated measurement of its named tree.
+
+Wave C verification: the full nine-package race suite passed in 331.81s on
+the merged implementation (core, extractor, callgraph, fusion, langbench,
+routes, indexbench, memo and SCIP export). The generated tracker assertion
+was excluded because the controller owns regeneration. The focused merged
+Go/SCIP/refresh tests, release-note check, merge-debris check and ADR-011
+org-name test also passed. All readings and cost receipts remain attributed
+to their named measured sources; no new cost measurement is claimed.
