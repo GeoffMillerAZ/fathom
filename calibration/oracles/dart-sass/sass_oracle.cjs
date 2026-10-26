@@ -15,12 +15,12 @@
 //                (node_modules) is served an empty stylesheet by a stub importer so the compile goes on; it is
 //                no file of the subject. A statement in a file no successful compile loaded, or naming no
 //                loaded file (a branch not taken, a package), is counted and written with no `to_path`;
-//                `sass:` built-in modules name no file.
+//                `sass:` built-in modules name no file. Optional load paths and a preamble let the
+//                compiler evaluate a subject with external setup; only successful loadedUrls attest loads.
 //
 // A file sass-parser cannot parse (0.4.57 rejects a keyframe selector written as a percentage, `0% { }`, which
 // Dart Sass itself compiles) has no definition truth, and a file whose loads no successful compile evaluated has
-// no import truth: both are named on stderr and left out of `-files-out`, the files the reading measures
-// (`lang-oracle -only`). The tier is A for what each part attests (§1.3: the
+// no import truth: both are named on stderr. The tier is A for what each part attests (§1.3: the
 // language's own implementation); source.end is exclusive and is converted to an inclusive end line.
 //
 //   calls        design 1.8 W5 (w5_refs.cjs): the name references of the module graph, walked from the same trees
@@ -30,7 +30,7 @@
 // Bench-only, MIT, installed into scratch:
 //     npm install --prefix <scratch>/npm sass-parser@0.4.57 sass@1.105.1
 //     NODE_PATH=<scratch>/npm/node_modules node calibration/oracles/dart-sass/sass_oracle.cjs <subject> <files.txt> \
-//         [-files-out <parsed.txt>] > <out>.json
+//         [-files-out <parsed.txt>] [-load-path <directory> ...] [-preamble <file>] > <out>.json
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -44,9 +44,23 @@ const root = path.resolve(args[0]);
 const files = fs.readFileSync(args[1], 'utf8').split('\n').filter(Boolean).sort();
 const fo = args.indexOf('-files-out');
 const filesOut = fo >= 0 ? args[fo + 1] : '';
+const loadPaths = [];
+let preambleFile = '';
+for (let i = 2; i < args.length; i++) {
+  const flag = args[i];
+  if (!['-files-out', '-load-path', '-preamble'].includes(flag) || !args[i + 1]) {
+    throw new Error('expected -files-out <file>, -load-path <directory>, or -preamble <file>');
+  }
+  const value = args[++i];
+  if (flag === '-load-path') loadPaths.push(path.resolve(value));
+  else if (flag === '-preamble') preambleFile = path.resolve(value);
+}
+const preamble = preambleFile ? fs.readFileSync(preambleFile, 'utf8') : '';
 
 const out = { tool: 'dart-sass', version: '', tier: 'A', definitions: [], imports: [] };
 const stats = { files: files.length, parse_failures: [], compiled_ok: 0, compile_failed: 0, statements: 0, paired: 0,
+  compile_fallback_attempted: 0, compile_fallback_succeeded: 0, compile_fallback_failed: 0,
+  setup: { load_paths: loadPaths.length, preamble: Boolean(preambleFile) },
   unattested_file: 0, no_loaded_target: 0, ambiguous: 0, builtin: 0, plain_css: 0, definitions: {} };
 const statements = []; // {path, line, url, kind}
 const parsed = [];
@@ -204,22 +218,42 @@ for (const rel of files) {
 const loadedBy = []; // sets of repo-relative paths, one per successful compile
 const silent = { warn() {}, debug() {} };
 let stubbed = 0;
+// A custom importer runs before Sass's loadPaths. Defer URLs that those paths can load so the
+// real compiler records their file: URLs; the stub remains for unresolved external packages.
+const onLoadPath = (url) => !path.isAbsolute(url) && loadPaths.some((dir) =>
+  candidates('entry.scss', url).some((candidate) => fs.existsSync(path.join(dir, candidate))));
 const stub = {
-  canonicalize(url) { return url.startsWith('sass:') ? null : new URL('stub:' + encodeURIComponent(url)); },
+  canonicalize(url) { return url.startsWith('sass:') || onLoadPath(url) ? null : new URL('stub:' + encodeURIComponent(url)); },
   load() { stubbed++; return { contents: '', syntax: 'scss' }; },
 };
 for (const rel of files) {
+  const filename = path.join(root, rel);
+  const options = { logger: silent, style: 'expanded', importers: [stub], loadPaths };
+  let compiled;
   try {
-    const r = sass.compile(path.join(root, rel), { logger: silent, style: 'expanded', importers: [stub] });
+    compiled = sass.compile(filename, options);
+  } catch (e) {
+    if (preambleFile) {
+      stats.compile_fallback_attempted++;
+      try {
+        compiled = sass.compileString(preamble + fs.readFileSync(filename, 'utf8'),
+          { ...options, url: pathToFileURL(filename) });
+        stats.compile_fallback_succeeded++;
+      } catch (fallbackError) {
+        stats.compile_fallback_failed++;
+      }
+    }
+  }
+  if (compiled) {
     const set = new Set();
-    for (const u of r.loadedUrls) {
+    for (const u of compiled.loadedUrls) {
       if (u.protocol !== 'file:') continue;
       const p = path.relative(root, fileURLToPath(u)).split(path.sep).join('/');
-      if (!p.startsWith('../')) set.add(p);
+      if (p !== '..' && !p.startsWith('../') && !path.isAbsolute(p)) set.add(p);
     }
     loadedBy.push(set);
     stats.compiled_ok++;
-  } catch (e) {
+  } else {
     stats.compile_failed++;
   }
 }
@@ -267,10 +301,11 @@ for (const st of statements) {
   ];
 }
 out.version = 'sass ' + sass.info.split('\n')[0].split('\t')[1] + ', sass-parser ' + pkgVersion('sass-parser');
+stats.version = out.version;
 const byPath = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 out.definitions.sort((a, b) => byPath(a, b) || a.line - b.line || (a.kind + a.name < b.kind + b.name ? -1 : 1));
 out.imports.sort((a, b) => byPath(a, b) || a.line - b.line || (a.module < b.module ? -1 : 1));
-// -files-out: the files both parts attest, the reading's -only scope: sass-parser parsed it, and no compile left
+// -files-out: optional diagnostic list of files both parts attest: sass-parser parsed it, and no compile left
 // its loads unevaluated (a file whose every compile failed, on a test framework's mixins or a package's
 // variables, has statements with no truth).
 const unevaluated = new Set(statements.filter((st) => !st.url.startsWith('sass:') && !loadedBy.some((l) => l.has(st.path))).map((st) => st.path));

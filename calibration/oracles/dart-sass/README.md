@@ -18,8 +18,11 @@ writes the neutral oracle file `indexbench lang-oracle -tool-oracle` reads:
   subjects (O851): it tags numbers as classes (`25rem`, `5`), skips a class after `+` and the
   variables of a multi-variable `@each`, and writes no end line, so the parser is the L1 oracle
   (D2's precedent).
-- `imports`, from **Dart Sass** 1.105.1's compiler: each file is compiled alone (`sass.compile`); a
-  compile that succeeds attests the files it loaded (`loadedUrls`). Each `@use`, `@forward` and Sass
+- `imports`, from **Dart Sass** 1.105.1's compiler: each file is compiled alone (`sass.compile`);
+  optional `-load-path <directory>` flags add Sass load paths. If compilation fails and
+  `-preamble <file>` was supplied, the oracle retries with `sass.compileString` using the
+  preamble before the original source and the original file URL. Only a successful compile's
+  `loadedUrls` attest files it loaded. Each `@use`, `@forward` and Sass
   `@import` sass-parser reads in a loaded file is paired with the one loaded file its URL can name
   under Sass's load rule (the name or its `_` partial with `.scss`, `.sass` or `.css`, or the
   directory's `_index`/`index` file). A package outside the subject (node_modules) is served an
@@ -36,18 +39,23 @@ writes the neutral oracle file `indexbench lang-oracle -tool-oracle` reads:
   subject and names the closure does not define are counted in `disclose`, and every name no read of a file
   resolves is a `call_exclusion` that leaves both sides of that file's pairs.
 
-Scope (`-files-out`, the reading's `-only`): a file sass-parser cannot parse (0.4.57 rejects a
-keyframe selector written as a percentage, `0% { }`, which Dart Sass compiles) has no definition
-truth, and a file whose loads no successful compile evaluated (a test file needing sass-true's
-mixins) has no import truth; both are named on stderr and left out.
+Scope: measure **every** corpus file as subject tenancy. A file sass-parser cannot parse
+(0.4.57 rejects a keyframe selector written as a percentage, `0% { }`, which Dart Sass
+compiles) has no definition truth. A file whose loads no successful compile evaluated has
+no import truth. The stderr stats disclose these oracle-blind files, and the benchmark counts
+their missing truth as false results. `-files-out` writes the attested subset for diagnosis;
+do not pass it to `indexbench lang-oracle -only` for the main reading. External load-path files
+are compilation support, never subject definitions or imports. Stderr reports compiler and
+parser versions, setup counts (never paths or preamble text), and fallback attempts, successes,
+and failures.
 
 MIT; bench-only, installed into scratch:
 
     npm install --prefix <scratch>/npm sass-parser@0.4.57 sass@1.105.1
     git -C <subject> ls-files '*.scss' | sort > files.txt
     NODE_PATH=<scratch>/npm/node_modules node calibration/oracles/dart-sass/sass_oracle.cjs <subject> files.txt \
-        -files-out parsed.txt > out.json
-    indexbench lang-oracle -dialect scss -subject <subject> -tool-oracle out.json -only "$(paste -sd, parsed.txt)" \
+        -load-path <support-directory> -preamble <setup.scss> > out.json
+    indexbench lang-oracle -dialect scss -subject <subject> -tool-oracle out.json \
         -out docs/bench/readings/lang/scss.json
 
 Regression test: `NODE_PATH=<scratch>/npm/node_modules node --test calibration/oracles/dart-sass/sass_oracle.test.cjs`.

@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -70,5 +70,47 @@ test('definitions use inclusive parser spans and loop variable tokens', () => {
     assert.equal(defs.some((d) => d.name === 'fake'), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('configured load paths and preamble attest only successful subject loads', () => {
+  const scratch = path.join(__dirname, '../../../workspace/tmp');
+  fs.mkdirSync(scratch, { recursive: true });
+  const fixture = fs.mkdtempSync(path.join(scratch, 'sass-oracle-'));
+  try {
+    const subject = path.join(fixture, 'subject');
+    const support = path.join(fixture, 'support');
+    const unused = path.join(fixture, 'unused');
+    for (const dir of [subject, support, unused]) fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(subject, '_local.scss'), '$tone: blue;\n');
+    fs.writeFileSync(path.join(subject, 'works.scss'), '@import "local";\n@include harness-test;\n');
+    fs.writeFileSync(path.join(subject, 'fails.scss'), '@import "local";\n@include absent-test;\n');
+    fs.writeFileSync(path.join(support, '_harness.scss'), '@mixin harness-test { .external { color: red; } }\n');
+    fs.writeFileSync(path.join(fixture, 'preamble.scss'), '@import "harness";\n');
+    fs.writeFileSync(path.join(fixture, 'files.txt'), '_local.scss\nfails.scss\nworks.scss\n');
+    const run = (extra) => {
+      const result = spawnSync(process.execPath, [path.join(__dirname, 'sass_oracle.cjs'), subject,
+        path.join(fixture, 'files.txt'), ...extra], { env: process.env, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+      return { oracle: JSON.parse(result.stdout), stats: JSON.parse(result.stderr) };
+    };
+    const plain = run([]);
+    assert.equal(plain.stats.compiled_ok, 1);
+    assert.equal(plain.oracle.imports.find((i) => i.path === 'works.scss').to_path, '');
+    const configured = run(['-load-path', unused, '-load-path', support,
+      '-preamble', path.join(fixture, 'preamble.scss')]);
+    assert.equal(configured.stats.compile_fallback_attempted, 2);
+    assert.equal(configured.stats.compile_fallback_succeeded, 1);
+    assert.equal(configured.stats.compile_fallback_failed, 1);
+    assert.deepEqual(configured.stats.setup, { load_paths: 2, preamble: true });
+    assert.match(configured.stats.version, /^sass .*sass-parser /);
+    assert.equal(configured.oracle.imports.find((i) => i.path === 'works.scss').to_path, '_local.scss');
+    assert.equal(configured.oracle.imports.find((i) => i.path === 'fails.scss').to_path, '');
+    assert.equal(configured.oracle.imports.some((i) => i.path.includes('support') || i.module === 'harness'), false);
+    assert.equal(configured.oracle.definitions.some((d) => d.name === 'harness-test' || d.name === 'external'), false);
+    assert.equal(JSON.stringify(configured).includes(fixture), false);
+    assert.equal(JSON.stringify(configured).includes('@import "harness"'), false);
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
   }
 });
