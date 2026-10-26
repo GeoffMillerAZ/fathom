@@ -33,3 +33,18 @@ reachable files for `-only`.
 Runs (2026-10-19): bazelbuild/examples `rules` (54 rules, 54 definitions, 76 references, 39 cross references),
 `configurations` (50 call sites, 67 references, 25), grpc/grpc v1.84.0 (11,178 rules, 2,466 call sites, 2,450
 definitions, 3,297 references, 2,024 cross references).
+
+## Native failure is not empty truth (tools L1 audit)
+
+A nonzero query exit (including `--keep_going` partial results), a failed version
+probe, or an empty version now exits nonzero before any oracle JSON is written.
+Previously those paths could publish tier-A output with missing/partial or
+unidentified native evidence. Tests use process-failure doubles only to exercise
+this refusal; no mock result is used as calibration truth.
+
+`python3 -m unittest discover -s calibration/oracles/bazel-query` checks both
+failure paths. The native development-class audit uses Bazel 8.7.0 in batch
+mode with bounded JVM/loading concurrency, a scratch output root and a scratch
+repository cache. The version wrapper must pass `--version` directly, since
+combining it with startup options makes Bazel reject it. L1 diagnostic readings
+keep only the native definitions; they do not regrade L3 before D19.

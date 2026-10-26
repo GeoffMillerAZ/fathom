@@ -211,7 +211,12 @@ def main():
            "--proto:instantiation_stack", "--proto:definition_stack", "--noimplicit_deps", "--keep_going"] + a["extra"]
     p = subprocess.run(cmd, cwd=subject, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     sys.stderr.write("\n".join(p.stderr.strip().split("\n")[-6:]) + "\n")
-    ver = subprocess.run([a["bazel"], "--version"], cwd=subject, stdout=subprocess.PIPE, text=True).stdout.strip()
+    if p.returncode != 0:
+        sys.exit("bazel_oracle: native query failed (exit %d); no truth emitted" % p.returncode)
+    version = subprocess.run([a["bazel"], "--version"], cwd=subject, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if version.returncode != 0 or not version.stdout.strip():
+        sys.exit("bazel_oracle: native version unavailable; no truth emitted")
+    ver = version.stdout.strip()
     rules = []
     for l in p.stdout.splitlines():
         if not l.strip():
