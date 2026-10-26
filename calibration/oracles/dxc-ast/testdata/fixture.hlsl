@@ -1,6 +1,6 @@
-// A fixture written for dxc-ast's parser test: each definition kind the oracle
-// writes, a struct's methods (one defined out of line), member and static
-// calls, a cbuffer, and a call a macro body spells.
+// A fixture for dxc-ast's parser test: each definition kind the oracle writes,
+// a struct's methods (one out of line), member and static calls, a cbuffer, a
+// macro body's call, and a reference by address alone into fixture-tone.hlsli.
 #include "fixture.hlsli"
 
 #define SCALE(x) frac(x)
@@ -28,5 +28,5 @@ float4 main(float4 c : COLOR) : SV_Target
     Material m;
     m.rough = c.w;
     float s = helper(r.len() * m.rough) + SCALE(c.x);
-    return float4(r.at(s), 1) * tint;
+    return float4(r.at(s), 1) * tint * exposure;
 }

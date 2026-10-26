@@ -14,7 +14,9 @@ import (
 // some units) names them in `scope`. Its definitions and calls are graded on
 // those files alone, so a file outside is neither a recall nor a precision
 // miss, while the run itself (tenancy, file edges) still covers every file,
-// and the reading discloses how many files the oracle's scope held.
+// and the reading discloses how many files the oracle's scope held: an
+// imports oracle's reference pair from b.hlsl, outside the scope, is file-edge
+// truth (H6-R3).
 func TestCmdLangOracleToolOracleScope(t *testing.T) {
 	subject := t.TempDir()
 	for name, src := range map[string]string{
@@ -31,11 +33,16 @@ func TestCmdLangOracleToolOracleScope(t *testing.T) {
  "calls": [{"path": "a.hlsl", "from": "Main", "to": "Helper"}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	refs := filepath.Join(t.TempDir(), "refs.json")
+	if err := os.WriteFile(refs, []byte(`{"tool": "dxc-ast", "version": "test", "tier": "B",
+ "imports": [{"path": "b.hlsl", "line": 1, "to_path": "a.hlsl", "same_package": true}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	out := filepath.Join(t.TempDir(), "hlsl.json")
 	var stdout, stderr bytes.Buffer
 	if code := cmdLangOracle([]string{"-dialect", "hlsl", "-subject", subject, "-ctags", filepath.Join(t.TempDir(), "none"),
 		"-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "hlsl", "dialect.json"),
-		"-tool-oracle", dump, "-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, &stdout, &stderr); code != 0 {
+		"-tool-oracle", dump, "-tool-oracle", refs, "-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	r, raw := readValidReading(t, out)
@@ -46,6 +53,9 @@ func TestCmdLangOracleToolOracleScope(t *testing.T) {
 		if got := r.Counts[k]; got != want {
 			t.Errorf("%s = %d, want %d (b.hlsl is outside the oracle's scope)\n%s", k, got, want, raw)
 		}
+	}
+	if got := r.Counts[langbench.CntFileEdgesTruth]; got != 1 {
+		t.Errorf("file_edges_truth = %d, want 1 (b.hlsl -> a.hlsl: the run's file edges cover every file, the scope aside)\n%s", got, raw)
 	}
 	if !bytes.Contains(raw, []byte("1 of 2 measured files")) {
 		t.Errorf("the oracle's scope is not disclosed:\n%s", raw)
