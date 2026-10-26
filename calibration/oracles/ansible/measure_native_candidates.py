@@ -78,6 +78,8 @@ def measure(subject, work):
                 file.kind = 'playbook'
             record['kind'] = file.kind
             if file.kind not in ('playbook', 'tasks', 'handlers'):
+                record['not_task_family'] = True
+                lint.append(record)
                 continue
             data = parse_yaml_linenumbers(file)
             for task in task_in_list(data, file, file.kind):
@@ -133,7 +135,8 @@ def main():
                        inventory_rejected=sum(f['returncode'] != 0 for f in inv),
                        inventory_totals=dict(Counter({key: sum(f.get('counts', {}).get(key, 0) for f in inv)
                                                       for key in ('groups', 'hosts', 'children', 'memberships')})),
-                       lint_files=len(lint), tasks=len(tasks), positioned_tasks=sum(t['line'] > 0 for t in tasks),
+                       yaml_candidates=len(lint), lint_files=sum(not f.get('not_task_family', False) for f in lint),
+                       native_kind_counts=dict(sorted(Counter(f.get('kind', 'load-error') for f in lint).items())), tasks=len(tasks), positioned_tasks=sum(t['line'] > 0 for t in tasks),
                        unnamed_tasks=sum(t['unnamed'] for t in tasks),
                        normalization_errors=sum(bool(t.get('normalization_error')) for t in tasks),
                        children=len(children), existing_children=sum(c['exists'] for c in children),
@@ -144,7 +147,7 @@ def main():
     summary = dict(versions={name: importlib.metadata.version(name) for name in ('ansible-core', 'ansible-lint', 'ansible-runner')},
                    subjects=summaries, tasks_executed=False, dependencies_installed=False,
                    inventory_authority='A for native groups/hosts/children; source ranges not measured',
-                   lint_authority='controller P-T1 ruling pending; candidate measurement, no grade change',
+                   lint_authority='A for the owner-evaluated fields under Q7; bounded candidate measurement, no whole-family grade change',
                    raw_sha256=digest(raw))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(summary, indent=2)+'\n')
