@@ -1,0 +1,170 @@
+{
+  "dialect": "scss",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "ffa03ef61",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "foundation/foundation-sites",
+      "sha": "f5c7d29db04e459d94a998df9d8fd4a4447e767b",
+      "files": 135,
+      "bytes": 415943,
+      "counts": {
+        "call_fathom": 1384,
+        "call_fathom_in_truth": 1323,
+        "call_pairs_excluded_fathom": 1404,
+        "call_truth": 1325,
+        "call_truth_found": 1323,
+        "callables": 396,
+        "callables_signed": 396,
+        "fathom_defs": 2976,
+        "file_edges_agree": 117,
+        "file_edges_fathom": 142,
+        "file_edges_truth": 117,
+        "import_edges_agree": 117,
+        "import_edges_fathom": 142,
+        "import_edges_truth": 117,
+        "import_oracle_out_of_scope": 1,
+        "import_oracle_unpaired": 0,
+        "imports": 154,
+        "imports_in_repo": 117,
+        "imports_resolved_agree": 117,
+        "imports_unattested": 25,
+        "kind_equal": 2972,
+        "matched": 2972,
+        "oracle_defs": 2994,
+        "range_eligible": 2972,
+        "range_ok": 2972
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "rule",
+        "selector",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:SCSSModule": 135
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 144.09,
+        "extract_cpu_ms": 151.61099999999993,
+        "max_file_ms": 6,
+        "peak_module_pages": 318,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "dart-sass",
+      "version": "sass 1.105.1, sass-parser 0.4.57"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9559,
+    "call_recall": 0.9985,
+    "def_mapping": null,
+    "file_edge_precision": 0.8239,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9987,
+    "sym_recall": 0.9927,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "function",
+    "selector",
+    "variable"
+  ],
+  "kind_intersection": [
+    "function",
+    "rule",
+    "selector",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 1384,
+    "call_fathom_in_truth": 1323,
+    "call_pairs_excluded_fathom": 1404,
+    "call_truth": 1325,
+    "call_truth_found": 1323,
+    "callables": 396,
+    "callables_signed": 396,
+    "fathom_defs": 2976,
+    "file_edges_agree": 117,
+    "file_edges_fathom": 142,
+    "file_edges_truth": 117,
+    "import_edges_agree": 117,
+    "import_edges_fathom": 142,
+    "import_edges_truth": 117,
+    "import_oracle_out_of_scope": 1,
+    "import_oracle_unpaired": 0,
+    "imports": 154,
+    "imports_in_repo": 117,
+    "imports_resolved_agree": 117,
+    "imports_unattested": 25,
+    "kind_equal": 2972,
+    "matched": 2972,
+    "oracle_defs": 2994,
+    "range_eligible": 2972,
+    "range_ok": 2972
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 2.74,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.89,
+    "max_file_ms": 6,
+    "peak_module_pages": 318,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:SCSSModule": 135
+  },
+  "notes": [
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "foundation/foundation-sites: 1 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "foundation/foundation-sites: Complete discovered SCSS corpus, no -only filter; sass-parser rejected 1 source files, still extracted and counted. Reference compiles: 59 succeeded, 77 failed; 36 import statements remain unattested.",
+    "foundation/foundation-sites: W5 (design 1.8): L2 is name references over the @use/@forward/@import closure, walked from sass-parser's tree (tier A for the tree, the binding the harness's own walk): 5508 references read, 2549 resolve to a definition in the referring file's closure, 45 name a sass: built-in module member, 0 name a package outside the subject, 960 read a parameter (no definition), 1954 name nothing the closure defines; every name no read of a file resolves leaves both sides, counted",
+    "import_resolution: 117 of 117 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.8239 (117 of 142) and recall 1 (117 of 117); 25 of 154 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 1 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 2.76 MB/CPU-s; run 2: 2.73 MB/CPU-s; run 3: 2.74 MB/CPU-s; median run 3: 2.74 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit ffa03ef61"
+  ],
+  "disposition": null
+}

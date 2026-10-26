@@ -1,0 +1,1 @@
+SCSS calibration now measures Dart Sass definition end spans and keeps the complete discovered source corpus in tenancy. The calibration subjects read L1-L3 excellent; a fresh independent holdout reads L1-L2 excellent and L3 unmet on unattested import pairs.
