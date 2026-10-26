@@ -177,3 +177,61 @@ Offline regression tests invoke no oracle:
 Two samples that define the same global name (`iDivUp`, `main`, a kernel) are one SCIP symbol, since scip-clang
 names a global by no file or translation unit, so the index's file-edge truth over the whole set draws an edge to
 every definer: the truth is scoped to link units (per CMake executable, round 3 B, scip_file_edges_link_unit).
+
+## C++ producer audit (core-t1, canonical subjects only)
+
+`cpp-audit.py` is a measurement driver for the pinned fmt, json and spdlog
+population. It leaves the product extractor and shared grading harness unchanged.
+It does not select or read a holdout. Keep all native JSON, compiler diagnostics,
+SCIP indexes, unmatched pairs and file inventories under ignored `workspace/`.
+Only the generated readings and sanitized count/hash receipts are candidates for
+publication, after the organization-name and evidence-privacy checks.
+
+The audit compares scip-clang 0.4.0 and 0.4.1 against the same full, untranslated
+CMake databases. Their arm64-darwin binary SHA-256 values are respectively
+`ff042fbc8a029f09f4b69fc7692e290e21c52923593207ee52d4e7439473ec64` and
+`34a2eb7a5ef9bbe9849cded59f4eb22a2331bd5b64a5cec2b17ee09b8aa515de`.
+Both tagged licenses are Apache-2.0, SHA-256
+`96b8b909d18f94921214e3995e4c12483826b12ca64dd93fc710b87e1bc5a08a`.
+The existing `run.sh` remains guarded at 0.4.0. For each verified binary,
+the raw index command is:
+
+```bash
+(cd "$CPP_SUBJECT" && "$SCIP_CLANG_BINARY" \
+  --compdb-path "$CPP_COMPILATION_DATABASE" --index-output-path "$CPP_INDEX" \
+  --jobs 2 --no-progress-report --log-level warning)
+```
+
+Run that command serially under `nice -n 10`, after the one-minute load is at
+most 9, while holding the shared measurement lock. Configure each subject with
+its own options above. The audit's full databases contain 51, 93 and 141 entries;
+their unique subject/outside units are 31/0, 78/0 and 34/107. Retain all entries,
+including the 107 fetched dependency units in spdlog's database. Expose each
+external database to Fathom through the subject-root `compile_commands.json`
+symlink and keep all build trees outside the subjects. In each disposable subject,
+add only `/compile_commands.json` to its local `.git/info/exclude` if the subject
+does not already ignore that non-language link. This lets `lang-retime` enforce
+a clean checkout without removing the resolver input; the manifest recipe below
+still inventories the ignored link. Do not ignore any language source. The exact tracked-set
+recipe in design §13.3.1 runs before and after configuration and measurement;
+its private file lists must not be published.
+
+The native phase builds the three committed Go oracle modules and runs the
+preprocessor, call-site and AST-range adapters serially. The grade phase consumes
+frozen indexes and complete native output. It measures both the historical
+`-only` scope and the full C++ population, retaining these as distinct readings
+for each SCIP version. Ctags remains L1's oracle; SCIP grades the call/typed/file
+families, with native call sites and preprocessing as companions. No compiler
+error, stopped unit or missing companion may become a successful partial result.
+
+Set the explicit directory and executable arguments shown by
+`python3 calibration/oracles/scip-clang/cpp-audit.py --help`. Set `TMPDIR`,
+`GOTMPDIR`, `GOCACHE` and `GOMODCACHE` to the assigned isolated cache, `GOWORK=off`,
+`GOFLAGS=-p=2`, and `GOMAXPROCS=2`. Use a fresh private work directory for a failed
+phase. The native and grade phases share the same work directory and input
+receipts. The published receipt records counts and hashes, not local tool paths
+or compiler output. Synthetic controls run without subjects or oracles:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 calibration/oracles/scip-clang/cpp-audit_test.py
+```
