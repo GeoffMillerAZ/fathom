@@ -325,7 +325,7 @@ The one breaking change removes `fathom intent render --playbook`.
 - Rich readouts choose raw or enriched through one deterministic policy table: a failure, or a success with protected diagnostic lines, gets its injected line only when a record names a file the session edited (or a definition the working tree changed) or a test the last run failed; every other call stays raw, and the hook row names the answer with `decided_by: table`.
 - `fathom readout fit` fits the policy table's byte floor and long-read cut offline on a seeded half of the outcomes the readout report replays and scores both halves with Wilson bounds; `--write` saves them to `~/.fathom/readouts/policy.toml`, which rich mode then reads in place of the built-in cut points, and doctor names that file or an invalid one.
 - Tech packs can carry add-only readout rules in a `readouts` key. A pinned pack's rule extracts records or adds lines under `[readouts] mode = rich` once its own fixtures pass; a rule with no fixture, a failing one or a stage that drops lines is withheld and named by doctor's readouts row. `fathom rules fixtures` runs those rules' fixtures the same way, so a kit's own CI reads what an adopter's loader serves.
-- Test impact and test selection cover non-Go tests: `test_impact`, `related_tests` and `tests select` name pytest, jest and JUnit tests, and an ingested test-kit envelope joins its cases to them by file and name. A case that matches no test is named by `tests ingest`.
+- Test impact and test selection cover non-Go tests: `test_impact`, `related_tests` and `tests select` name pytest, jest and JUnit tests, and an ingested test kit envelope joins its cases to them by file and name. A case that matches no test is named by `tests ingest`.
 - The console's /progress page lists certificate and invariant-enforcement regressions with the commit where each first read otherwise, and an empty list says what it checked. Conservation planes are not listed: no plane reading is stored between runs.
 
 ### Changed
@@ -943,7 +943,7 @@ surface, and nineteen new languages and manifest formats were added
 - **Add opt-in, loopback-only `theme-guide` on app-kit's exact `dc77e66` mirror (re-vendored from the side-branch pin `bcfeb8e`) with synthetic Observatory states and source-preserving preview/reset/export over an app-owned baseline.**
 - **`fathom intent doctrine [--kind visions|bets] [--json]` shows where each vision of the series the router names stands (DP-3, DP-4; ADR-026 amendment 2026-09-25).**
 - **`fathom conserve` reports the reading set: changed functions no attested test reaches (CV-60..65, ADR-044 amended 2026-09-25).**
-- **`fathom.conserve/v1` findings and `fathom.certify.gaps/v1` targets now carry a source location (RK-36 anchors).**
+- **`fathom.conserve/v1` findings and `fathom.certify.gaps/v1` targets now carry a source location (review kit span anchors).**
 - **`fathom conserve --since <ref>` is the refactor-conservation report (vision 34, ADR-044).** Six self-registering planes report `conserved`, `losses` or `unproven`, never a score, and `--strict` exits 1 on any `losses`.
 - **The proof-integrity plane catches a certifying test tampered with, not just deleted.**
 - **`conserve` extracts a capability inventory (`api:`, `json:`, `route:`, `env:`, `rpc:`, `cli:` and configured-pattern keys) at base and head and reports the delta.**
@@ -951,7 +951,7 @@ surface, and nineteen new languages and manifest formats were added
 - **`fathom refactor plan <target>` writes a gate-ready plan for retiring one symbol, import or package (a pinned baseline, ratcheted `gone:` rows); `fathom refactor status` reports each ratchet's live count (CV-33, CV-34).**
 - **`fathom report evidence` gives, per service, typed edge share, edge tier per language, certificate density and inventory counts, ranking no service by tooling maturity (CV-39).**
 - **The pre-push hook and `review`/`review_diff` carry conservation too.**
-- **Test certifications through stage 3 (vision 33, ADR-043): `fathom certify status|gaps|manifest|orphans|suggest`, `fathom tests ingest`, `fathom verify certified_by` and a `certifications` review dimension over test-kit declarations and attested runs.**
+- **Test certifications through stage 3 (vision 33, ADR-043): `fathom certify status|gaps|manifest|orphans|suggest`, `fathom tests ingest`, `fathom verify certified_by` and a `certifications` review dimension over the test kit declarations and attested runs.**
 - **The daemon's memory is observable and returns freed heap to the OS on a schedule (O108).** Correction (INC-23, INC-24): an earlier draft claimed it was "bounded at the peaks"; the real bound is the responsible-tenant program (ADR-047), and the instrument is `phys_footprint` (`fathom resources`), not `heap_sys`.
 - **The decision port, off by default (vision 32, ADR-042): `[decide] provider = none | llm | typesafe` in `.fathom/config.toml`, and with `none` nothing is called.**
 - **Claims gain bi-temporal validity (ADR-041 decision 7, SU-19).**
@@ -1035,7 +1035,7 @@ surface, and nineteen new languages and manifest formats were added
 - **`read_source` gains `max_bytes` (default 8KB); `find_symbol` on a Go interface carries `implementations`.**
 - **The findings loop's governed import lands (ADR-040, FL-1..FL-14).** `fathom findings import` (and `pkg/client.ImportFindings`) derives one content-addressed claim per finding under a provisioned `[findings] subject`, and a producer catalog caps the served tier and refuses a `fathom`-origin producer.
 - **The findings loop (ADR-040): `fathom init` scaffolds a commented `[findings]` section in `.fathom/config.toml`, and a new `fathom-findings` skill documents import, inspection and refutation.**
-- **Measurement corpus `testdata/scenariobench/findings-loop.json` (FL-24, `task bench-scenario-findings`): four tasks, each a real gap this repo's own tree carries, anchored to a review-kit finding served (full arm) or withheld (control arm) — committed only, not run.**
+- **Measurement corpus `testdata/scenariobench/findings-loop.json` (FL-24, `task bench-scenario-findings`): four tasks, each a real gap this repo's own tree carries, anchored to a review kit finding served (full arm) or withheld (control arm) — committed only, not run.**
 - **Findings are served at the point of work (ADR-040): the pre- and post-edit hooks print an "open findings on this file" advisory block, capped at 3 findings and 1,200 bytes, with drifted anchors flagged and superseded or refuted findings never shown.**
 - **The edit hook asks a one-key verdict when a served governing rule is ignored (surface reckoning SR-48, F-31).**
 - **`fathom doctor --stranger` times install to first proven answer against G16's 5-minute bar (surface reckoning SR-53, F-51).**
@@ -1961,7 +1961,7 @@ budgeted answers. Detail: `docs/changelog/0.4.0.md`.
 **Explicit-empty bindings/guards accepted as valid (O7, O22, IO-7)**
 - O22's fix accepted the ABSENT field but kept `bindings: []` a loud error; the fleet's activate skill, kit packs, and review fix-pass all standardize the explicit literal, so doctor FAILed an adopter file fathom's own tooling prescribes.
 - Now one vocabulary: `bindings: []` and `guards: []` load clean and pass ValidateStrict (schema `[_, ...]` constraints dropped in schema/binding + schema/guard); only present-and-malformed entries fail.
-- Live proof: platform-engineering's standing `binding_file FAIL` is now PASS.
+- Live proof: platform's standing `binding_file FAIL` is now PASS.
 - Pinned by TestExplicitEmptyBindings / TestExplicitEmptyGuards; prior rejection-asserting negatives inverted.
 
 **review --budget-seconds bounds the advisory channel (O9, IO-9)**
@@ -1972,7 +1972,7 @@ budgeted answers. Detail: `docs/changelog/0.4.0.md`.
 
 **doctor: lefthook gates recognized through variable indirection (IO-5, O23)**
 - `checkLefthookGates` no longer requires the literal substring "fathom verify"; `lefthookInvokes` matches literal, path-suffixed, or shell-variable spellings (`"$FATHOM" verify`, `${FATHOM} verify`).
-- Closes the audit's live false negative where a correctly-gated repo (platform-engineering's pre-push loop) was told to add a gate it already had.
+- Closes the audit's live false negative where a correctly-gated repo (platform's pre-push loop) was told to add a gate it already had.
 - The audit's other two doctor findings (`binary_fresh` HEAD comparison, `hooks_firing` repo-relative call log) were already fixed at HEAD by the O23 wave; the audit ran a stale repo binary, the deploy-skew lesson the reconcile design exists to close.
 
 **Plan grammar: quoted braces preserved, unparseable blocks loud (O4, GI-7, IO-6)**
