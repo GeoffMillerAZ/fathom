@@ -350,7 +350,7 @@
     "licence": "MIT",
     "oracle": [
       "ctags",
-      "sqlglot (C, FK call pairs)"
+      "sql-native-catalog (A, inline FK execution; PGlite 0.5.11 PostgreSQL 18.6, pgvector 0.0.12 and SQLite; calibration/oracles/sql-native)"
     ],
     "calibration_subjects": [
       "sqitchers/sqitch",
@@ -375,9 +375,9 @@
     "engine": "tags",
     "plan_row": "LB-Q-sql",
     "worker_model": "sonnet",
-    "retargeted": "2026-09-28 (owner decision D2, Opus triage): subjects restricted to the families the grammar supports (ANSI, SQLite, PostgreSQL) with lang-oracle -only; lerocha/chinook-database dropped (its SQLite/PostgreSQL files are 400-600 KB data dumps whose parse trees exceed the 64 MiB module cap, RT-107, and fault; its T-SQL/MySQL/Oracle/Db2 files are unsupported families), devrimgunduz/pagila added (PostgreSQL schema, MIT); sqitch keeps its SQLite and plain fixture files, not its psql-templated pg.sql. L2 oracle: sqlglot FK pairs, tier C (D5).",
+    "retargeted": "2026-09-28 (owner decision D2, Opus triage): subjects restricted to the families the grammar supports (ANSI, SQLite, PostgreSQL) with lang-oracle -only; lerocha/chinook-database dropped (its SQLite/PostgreSQL files are 400-600 KB data dumps whose parse trees exceed the 64 MiB module cap, RT-107, and fault; its T-SQL/MySQL/Oracle/Db2 files are unsupported families), devrimgunduz/pagila added (PostgreSQL schema, MIT); sqitch keeps its SQLite and plain fixture files, not its psql-templated pg.sql. L2 oracle was sqlglot FK pairs, tier C (D5); replaced 2026-10-25 under OL-R1 by native SQL catalog execution, with all 17 scoped inline pairs including the 3 temporal pairs sqlglot omitted.",
     "port_of": "sqlextract.go (regex)",
-    "notes": "port; tables, views, columns, functions, indexes; FK references as L2 edges; dialect variance disclosed"
+    "notes": "port; tables, views, columns, functions, indexes; FK references as L2 edges; dialect variance disclosed; native SQL L2 excellent on 17/17 pairs; original D2 scope unchanged, non-CREATE failures disclosed"
   },
   {
     "id": "package-json",
@@ -5733,43 +5733,32 @@
   },
   {
     "id": "conftest",
-    "name": "Conftest policies (policy/*.rego, conftest.toml)",
+    "name": "Conftest configuration (conftest.toml; policies ride Rego)",
     "kind": "tooling",
     "tier": "T4",
-    "target_level": "L2",
-    "grammar_source": "rides LB-Q-rego's grammar + pure-go:go-toml/v2",
-    "licence": "verify at pin",
+    "target_level": "L1",
+    "grammar_source": "pure-go:github.com/pelletier/go-toml/v2",
+    "licence": "n/a",
     "oracle": [
-      "conftest verify / conftest parse (tier A)"
+      "Conftest native commands.readInConfig + viper.InConfig (tier A membership), independent tomli positions"
     ],
     "calibration_subjects": [
       "open-policy-agent/conftest"
     ],
     "depends_on": [
-      "LB-F1",
-      "LB-F12",
-      "LB-F13",
-      "LB-F15",
-      "LB-F16",
-      "LB-F17",
-      "LB-F2",
-      "LB-F20",
-      "LB-F21",
-      "LB-F22",
-      "LB-F3",
-      "LB-F4",
       "LB-F8",
       "LB-F9",
-      "LB-F5",
-      "LB-F7",
-      "LB-F11",
-      "LB-Q-rego"
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
     ],
     "wave": 6,
-    "engine": "tags+doc",
+    "engine": "doc",
     "plan_row": "LB-Q-conftest",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; taken up by wave pc (2026-10-02) once LB-Q-rego proved [x]: the policies ride the native Rego dialect, and the L2 target has no truth in conftest.toml (no reference within the file); deferred for the owner's retarget (LB-Q-conftest-rest)"
+    "notes": "T-R1 (controller 2026-10-25): L1 configuration keys only; policies stay with oracle-langs. Q4 retains full-option ranges. Native key loader works; shared TOML value-end locator misses multiline spans and T-R2 forbids ENGINE work this wave. No dialect or canonical reading is integrated.",
+    "retargeted": "T-R1 (2026-10-25): L2 policies+configuration -> L1 configuration only; an intra-config reference target was unsupported by the domain. Policies stay with Rego."
   },
   {
     "id": "cedar",

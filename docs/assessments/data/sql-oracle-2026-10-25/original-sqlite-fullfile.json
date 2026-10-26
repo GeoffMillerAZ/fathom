@@ -1,0 +1,9 @@
+{
+  "file_count": 28,
+  "publication": "sql-aggregate-v1",
+  "raw_json_sha256": "4f268a5ea5be86b8fa346fa1039a27e9246e46925cf3803201d033b07fc5b46a",
+  "records_sha256": "ae276a5a1f5a893ebe3400c000543866576d7f20bba01441328affffb610b0b2",
+  "rejected": 11,
+  "sqlite": "3.43.2",
+  "success": 17
+}

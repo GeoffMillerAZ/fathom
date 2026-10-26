@@ -1,0 +1,27 @@
+package commands
+
+import (
+ "encoding/json"
+ "os"
+ "sort"
+ "testing"
+ "github.com/spf13/viper"
+)
+
+// TestFathomOracleConfigKeys instruments the pinned CLI's own configuration
+// loader. It executes neither a policy nor a command's application body.
+func TestFathomOracleConfigKeys(t *testing.T) {
+ file:=os.Getenv("FATHOM_ORACLE_CONFIG")
+ output:=os.Getenv("FATHOM_ORACLE_KEYS")
+ if file==""||output=="" {t.Fatal("oracle paths required")}
+ if _,err:=os.Stat(file);err!=nil{t.Fatal(err)}
+ viper.Reset()
+ viper.Set("config-file",file)
+ if err:=readInConfig();err!=nil{t.Fatal(err)}
+ if viper.ConfigFileUsed()==""{t.Fatal("native loader did not read a file")}
+ var keys []string
+ for k:=range viper.AllSettings(){if viper.InConfig(k){keys=append(keys,k)}}
+ sort.Strings(keys)
+ b,err:=json.Marshal(keys);if err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(output,b,0600);err!=nil{t.Fatal(err)}
+}
