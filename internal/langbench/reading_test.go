@@ -159,7 +159,8 @@ func TestLevelMetToolFormats(t *testing.T) {
 // TestLevelMetL3Evidence is owner ruling D19 (E1, E2): each graded L3 metric counts only when
 // its own denominator, summed over the subjects, holds at least 20 references. A thin metric is
 // not measured, which caps L3 at good; L3 is unmet, with the evidence stated on the grade, only
-// when every graded L3 metric is thin. There is no subject minimum.
+// when every graded L3 metric is thin and none is missing: a metric nobody measured is the
+// level's cause, not thin evidence. There is no subject minimum.
 func TestLevelMetL3Evidence(t *testing.T) {
 	tool := func(truth, fathom int) []Subject {
 		return []Subject{{Name: "a", Files: 1, Counts: map[string]int{CntXrefTruth: truth, CntXrefFathom: fathom}}}
@@ -175,18 +176,20 @@ func TestLevelMetL3Evidence(t *testing.T) {
 		kind     string
 		subjects []Subject
 		noL3     bool
+		drop     []string
 		level    string
 		l3       string
 		reason   string
 	}{
-		{"19 references", "tooling", tool(19, 19), false, "L2", GradeUnmet, "evidence: 19 references, under 20"},
-		{"20 references", "tooling", tool(20, 20), false, "L3", GradeExcellent, ""},
-		{"20 in one subject is enough", "tooling", tool(2445, 2445), false, "L3", GradeExcellent, ""},
-		{"a precision denominator under 20", "tooling", tool(40, 19), false, "L3", GradeGood, ""},
-		{"import_resolution under 20", "language", lang(6, 772, 700), false, "L3", GradeGood, ""},
-		{"every L3 metric under 20", "language", lang(19, 19, 19), false, "L2", GradeUnmet, "evidence: 19 references, under 20"},
-		{"file edges summed across subjects", "language", lang(20, 20, 20), false, "L3", GradeExcellent, ""},
-		{"no L3 metric graded", "tooling", tool(0, 0), true, "L2", GradeNotAttempted, ""},
+		{"19 references", "tooling", tool(19, 19), false, nil, "L2", GradeUnmet, "evidence: 19 references, under 20"},
+		{"20 references", "tooling", tool(20, 20), false, nil, "L3", GradeExcellent, ""},
+		{"20 in one subject is enough", "tooling", tool(2445, 2445), false, nil, "L3", GradeExcellent, ""},
+		{"a precision denominator under 20", "tooling", tool(40, 19), false, nil, "L3", GradeGood, ""},
+		{"import_resolution under 20", "language", lang(6, 772, 700), false, nil, "L3", GradeGood, ""},
+		{"every L3 metric under 20", "language", lang(19, 19, 19), false, nil, "L2", GradeUnmet, "evidence: 19 references, under 20"},
+		{"file edges summed across subjects", "language", lang(20, 20, 20), false, nil, "L3", GradeExcellent, ""},
+		{"no L3 metric graded", "tooling", tool(0, 0), true, nil, "L2", GradeNotAttempted, ""},
+		{"a thin metric beside a missing one", "tooling", tool(19, 19), false, []string{MXrefPrecision}, "L2", GradeUnmet, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := baseReading(tc.kind)
@@ -202,6 +205,9 @@ func TestLevelMetL3Evidence(t *testing.T) {
 					r.Metrics[m] = f(0.97)
 				}
 			}
+			for _, m := range tc.drop {
+				delete(r.Metrics, m)
+			}
 			r.MetricTiers = tiers("A", r.Metrics)
 			r.Subjects = tc.subjects
 			level, grade := LevelMet(r)
@@ -209,6 +215,18 @@ func TestLevelMetL3Evidence(t *testing.T) {
 				t.Errorf("LevelMet = %s %+v, want %s with L3 %s (%q)", level, grade, tc.level, tc.l3, tc.reason)
 			}
 		})
+	}
+}
+
+// TestL3DenominatorCoversEveryL3Metric keeps the evidence rule total: a graded L3 metric with
+// no l3Denominator entry would read as zero references and silently fail its level.
+func TestL3DenominatorCoversEveryL3Metric(t *testing.T) {
+	for _, kind := range []string{"language", "tooling"} {
+		for _, th := range thresholdsFor(kind)["L3"] {
+			if _, ok := l3Denominator[th.metric]; !ok {
+				t.Errorf("%s L3 metric %s has no l3Denominator entry", kind, th.metric)
+			}
+		}
 	}
 }
 

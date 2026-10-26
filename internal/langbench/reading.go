@@ -347,8 +347,9 @@ func LevelMet(r Reading) (string, Grade) {
 }
 
 // gradeLevel grades one level's metrics. At L3 a metric under MinL3Evidence is not
-// measured; when every graded L3 metric is, the level is unmet, allThin is set and thin is
-// the most evidence any of them held.
+// measured; when every graded L3 metric is, and none is missing, the level is unmet, allThin
+// is set and thin is the most evidence any of them held. A missing metric is never thin
+// evidence: it is the level's own cause.
 func gradeLevel(r Reading, level string, ts []threshold) (grade string, thin int, allThin bool) {
 	measured, missing, thinMetrics := 0, 0, 0
 	grade = GradeExcellent
@@ -390,8 +391,10 @@ func gradeLevel(r Reading, level string, ts []threshold) (grade string, thin int
 		grade = minGrade(grade, mg)
 	}
 	switch {
-	case measured == 0 && thinMetrics > 0:
+	case measured == 0 && thinMetrics > 0 && missing == 0:
 		return GradeUnmet, thin, true
+	case measured == 0 && thinMetrics > 0:
+		return GradeUnmet, 0, false
 	case measured == 0:
 		return GradeNotAttempted, 0, false
 	case missing > 0:
