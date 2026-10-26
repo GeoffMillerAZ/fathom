@@ -1,0 +1,7 @@
+name: dart_sass_resolver_oracle
+publish_to: none
+environment:
+  sdk: '>=3.13.7 <4.0.0'
+dependencies:
+  sass: 1.106.1
+  sass_api: 18.1.0

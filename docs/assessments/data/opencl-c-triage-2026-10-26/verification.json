@@ -1,0 +1,45 @@
+{
+  "scope": "Triage only, no support grade",
+  "conditions": {
+    "nice": 10,
+    "start_load_one_max": 9,
+    "GOWORK": "off",
+    "GOFLAGS": "-p=2",
+    "GOMAXPROCS": 2,
+    "tree_sitter": "0.25.2"
+  },
+  "source_sha256": {
+    "triage.py": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a",
+    "compiler_probe.py": "a275d618b1ec97425cb9b7d0540c285d4540c744c526dc14b4a60e27af03958c",
+    "probe.cl": "b62ed7c9dafe2018914562cc0f70b437a1a0b8406b7d031c98221070181cce23",
+    "pins.json": "144600c298e2be4f6706f7bdf7143a4790306362b17eaace1d4d9740d32b87b1"
+  },
+  "focused_tests": [
+    {
+      "command": "workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_triage.py",
+      "passed": 12
+    },
+    {
+      "command": "workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_compiler_probe.py",
+      "passed": 4
+    }
+  ],
+  "integrity_proofs": [
+    "raw Git blob OIDs reject assume-unchanged, skip-worktree and symlink tampering",
+    "native parser consumes immutable captured bytes even during transient original-file mutation",
+    "compiler uses private read-only snapshots copied from verified kernel bytes",
+    "explicit pin checks survive optimized Python; assert mutant makes optimized-entrypoint test fail"
+  ],
+  "public_receipt_sha256": {
+    "native-sdk.json": "34c5fb3c54c1f803b1d70ccdf3625b43f30b9a2068041a95b42067b70492da8c",
+    "native-hashcat.json": "462fd4547a1e0ac4d846d2661c80e69d601c616509a074d0c4e2281481c28b25",
+    "compiler.json": "9481b06cb68b67284f556b40247af0c493f852dfafed065197d527fc8359d1ad"
+  },
+  "limits": [
+    "Native triage is not a WASM gate or performance proof",
+    "Compiler AST capabilities are not an independent grading adapter",
+    "No ceiling or canonical corpus is added"
+  ],
+  "historical_source_commit": "f682981fe367c4e34ba5d2e7e1ac11dd0a2626dc",
+  "source_hash_scope": "Historical source_sha256 values describe this commit, not later documentation labels or the replacement pipeline."
+}

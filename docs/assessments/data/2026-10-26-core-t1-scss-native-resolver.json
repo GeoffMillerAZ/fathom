@@ -1,0 +1,167 @@
+{
+  "all_nonimport_counts_metrics_and_families_unchanged": true,
+  "canonical_after_sha256": "6ee270ce825bc573735d5ac68c330beee6ad04cbc3e64e3dd6646d66658a02bd",
+  "canonical_before_sha256": "11920d9c51c5ece04fa62531dcee9dffa4641bb488e1740dcc23c50c9ed2e150",
+  "digest_representation": "Derived public receipt: package-manifest digests use an algorithm tag sha256:; each suffix exactly equals the raw collector hex digest. Other digest fields retain raw hex.",
+  "harness_commit": "7775a770864950c2456822d675de2ba37fd404e1",
+  "native_instrument_commit": "b88cd1376b7b9e60bb2f008098676bdba6a27cec",
+  "posthoc_foundation_original_sha256": "2f671c401354394a6671eebc8ba65b2dd999d2de714d8ba29f4c44b0e79bba98",
+  "posthoc_foundation_reading_sha256": "5b64ecdaab7c78613444119e1f218092855283dfb0277f089bd4565f42db8490",
+  "posthoc_is_fresh_validation": false,
+  "protocol": "calibration/oracles/dart-sass-resolver/PROTOCOL.md",
+  "subjects": [
+    {
+      "adapter_sha256": "196e71a86d584e80de09a60c7ea5690aebfd6988ccd5738b06f80edd48c59d73",
+      "dart_binary_sha256": "5f36d10cbdb3206fd6951e3090975d23b2f9659c41c2d17a7c8e183888f3f08d",
+      "native_counts": {
+        "ambiguous_native_dependencies": 0,
+        "declared_dependencies": 173,
+        "failure_records": 0,
+        "inherited_primary_attestations": 173,
+        "missing_native_statement_count": 1,
+        "parse_failures": 0,
+        "primary_unresolved_coverage_count": 1,
+        "resolved_dependencies": 172,
+        "skipped": {
+          "builtin": 0,
+          "css": 0,
+          "external": 0,
+          "out_of_scope": 0
+        },
+        "source_files": 122,
+        "unmapped_native_by_kind": {},
+        "unmapped_native_dependencies": 0,
+        "unpositioned_native_by_kind": {},
+        "unpositioned_native_count": 0,
+        "unpositioned_native_resolved_count": 0,
+        "unpositioned_native_unresolved_count": 0,
+        "unresolved_dependencies": 1,
+        "unresolved_native_dependencies": 1
+      },
+      "package_config_sha256": "ee489675b234cec7b1c1d48bda17a1e37084bec35b02dfb3d1a19db97379ca52",
+      "package_manifest_sha256": {
+        "sass": "sha256:6c91f2367dfff6fa05f311b13e0ad530bed7ab91e2444a8aa6875fa19d2d2efc",
+        "sass_api": "sha256:03788f8a0f309c866218104ee83d22b3cf17b0c28ecc90f1f483ae7431efcdff"
+      },
+      "primary_counts": {
+        "imports": 174,
+        "resolved_to_path": 173
+      },
+      "primary_sha256": "a800049b395888dcc55855ceb469278f5dd0aa931add1d93cf6bec69a0c96a4b",
+      "result_sha256": "0fef4e4871ba4a98349139d3be15f5d2bee86850a37a1c28f3a9e982c019f90d",
+      "scope": ".",
+      "source_count": 122,
+      "source_pin": "cabce0f8b59fb5ac36ad56d772d9c54f23ba63ebedd7daa3daf4dc2274ac961e",
+      "subject_sha": "25aa8cc0b32f0d1a54be575347e6d84b70b1acd7"
+    },
+    {
+      "adapter_sha256": "196e71a86d584e80de09a60c7ea5690aebfd6988ccd5738b06f80edd48c59d73",
+      "dart_binary_sha256": "5f36d10cbdb3206fd6951e3090975d23b2f9659c41c2d17a7c8e183888f3f08d",
+      "native_counts": {
+        "ambiguous_native_dependencies": 0,
+        "declared_dependencies": 155,
+        "failure_records": 0,
+        "inherited_primary_attestations": 139,
+        "missing_native_statement_count": 0,
+        "parse_failures": 0,
+        "primary_unresolved_coverage_count": 16,
+        "resolved_dependencies": 139,
+        "skipped": {
+          "builtin": 0,
+          "css": 0,
+          "external": 0,
+          "out_of_scope": 0
+        },
+        "source_files": 113,
+        "unmapped_native_by_kind": {},
+        "unmapped_native_dependencies": 0,
+        "unpositioned_native_by_kind": {},
+        "unpositioned_native_count": 0,
+        "unpositioned_native_resolved_count": 0,
+        "unpositioned_native_unresolved_count": 0,
+        "unresolved_dependencies": 16,
+        "unresolved_native_dependencies": 16
+      },
+      "package_config_sha256": "ee489675b234cec7b1c1d48bda17a1e37084bec35b02dfb3d1a19db97379ca52",
+      "package_manifest_sha256": {
+        "sass": "sha256:6c91f2367dfff6fa05f311b13e0ad530bed7ab91e2444a8aa6875fa19d2d2efc",
+        "sass_api": "sha256:03788f8a0f309c866218104ee83d22b3cf17b0c28ecc90f1f483ae7431efcdff"
+      },
+      "primary_counts": {
+        "imports": 155,
+        "resolved_to_path": 139
+      },
+      "primary_sha256": "33c02071e2a5068b3d73ce91d891eb1ccd16711ef61ab5cedeb076b4c42f6a68",
+      "result_sha256": "0b660d6028cb4d44d9f1bd81066d5f522e2cc489ce576e3ba376bfc6f8b987b5",
+      "scope": ".",
+      "source_count": 113,
+      "source_pin": "cca76c2651a7615c58855ea794afd61412ede7fd963983b1184b27a5fc1c0954",
+      "subject_sha": "be70cda91066df154f76e634d7ce993f205d282e"
+    },
+    {
+      "adapter_sha256": "196e71a86d584e80de09a60c7ea5690aebfd6988ccd5738b06f80edd48c59d73",
+      "dart_binary_sha256": "5f36d10cbdb3206fd6951e3090975d23b2f9659c41c2d17a7c8e183888f3f08d",
+      "native_counts": {
+        "ambiguous_native_dependencies": 0,
+        "declared_dependencies": 163,
+        "failure_records": 0,
+        "inherited_primary_attestations": 118,
+        "missing_native_statement_count": 0,
+        "parse_failures": 0,
+        "primary_unresolved_coverage_count": 20,
+        "resolved_dependencies": 143,
+        "skipped": {
+          "builtin": 9,
+          "css": 0,
+          "external": 0,
+          "out_of_scope": 0
+        },
+        "source_files": 136,
+        "unmapped_native_by_kind": {},
+        "unmapped_native_dependencies": 0,
+        "unpositioned_native_by_kind": {},
+        "unpositioned_native_count": 0,
+        "unpositioned_native_resolved_count": 0,
+        "unpositioned_native_unresolved_count": 0,
+        "unresolved_dependencies": 11,
+        "unresolved_native_dependencies": 11
+      },
+      "package_config_sha256": "ee489675b234cec7b1c1d48bda17a1e37084bec35b02dfb3d1a19db97379ca52",
+      "package_manifest_sha256": {
+        "sass": "sha256:6c91f2367dfff6fa05f311b13e0ad530bed7ab91e2444a8aa6875fa19d2d2efc",
+        "sass_api": "sha256:03788f8a0f309c866218104ee83d22b3cf17b0c28ecc90f1f483ae7431efcdff"
+      },
+      "primary_counts": {
+        "imports": 163,
+        "resolved_to_path": 143
+      },
+      "primary_sha256": "6fb62453734d91f1128380761ce96ebe18da5eb6d27214bcdd85c95283e404e6",
+      "result_sha256": "3f8902f92ab1f2e64832e30d956761d124c0204118966075ac0d74a5b49637bc",
+      "scope": ".",
+      "source_count": 136,
+      "source_pin": "54fd849137b0bb8596970c5361c6fbdd1d095581f19afa658c6a29eed0de5a2c",
+      "subject_sha": "f5c7d29db04e459d94a998df9d8fd4a4447e767b"
+    }
+  ],
+  "timing_phases": [
+    {
+      "exit": 0,
+      "launch_load": 8.7138671875,
+      "phase": "scss-native-canonical-retime",
+      "seconds": 3.969
+    },
+    {
+      "exit": 0,
+      "launch_load": 8.255859375,
+      "phase": "scss-native-foundation-retime",
+      "seconds": 2.146
+    }
+  ],
+  "versions": {
+    "Dart": "3.13.7",
+    "native_sass": "1.106.1",
+    "primary_sass": "1.105.1",
+    "sass_api": "18.1.0",
+    "sass_parser": "0.4.57"
+  }
+}
