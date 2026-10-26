@@ -41,7 +41,16 @@ import (
 		test!: [#Text, ...#Text]
 		suite_seconds!: number & >0
 		flake_runs!:    int & >=3
-		l0_reading!:    #Text
+		suite_tests?:   int & >0
+		// Leaf tests only, counted from a machine-readable suite run (D28).
+		excluded?: [...{test!: #Text, reason!: #Text, log!: #Text}]
+		if excluded != _|_ {
+			if len(excluded) > 0 {
+				suite_tests!:    int & >0
+				_excluded_limit: true & (len(excluded) <= suite_tests*2/100)
+			}
+		}
+		l0_reading!: #Text
 		// The controller assigns held-out at vetting (BX-44), after Q2.
 		split?: "dev" | "held-out"
 		task_sources!: [#TaskSource, ...#TaskSource]

@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import time
@@ -27,19 +28,29 @@ def shell_command(language, stage, command):
     elif stage != 'network-probe':
         command = 'cd /work/source && ( ' + command + ' )'
     if language == 'TypeScript':
-        command = 'corepack enable && ( ' + command + ' )'
+        command = 'mkdir -p /work/bin && export PATH=/work/bin:$PATH && corepack enable --install-directory /work/bin && ( ' + command + ' )'
     return 'set -e; ' + command
 
 def measure(config, job, trials_only=False):
+    machine = platform.machine().lower()
+    native = {'arm64': ('linux/arm64', 'aarch64'), 'aarch64': ('linux/arm64', 'aarch64'),
+              'x86_64': ('linux/amd64', 'x86_64'), 'amd64': ('linux/amd64', 'x86_64')}
+    native_platform, expected_uname = native[machine]
     name = config['id']
     source = Path(config['source']).resolve()
     work = job / 'builds' / name
     work.mkdir(parents=True, exist_ok=True)
+    work.chmod(0o777)  # Bind mount must be writable by the container's uid 1000.
     (work / 'tmp').mkdir(exist_ok=True)
+    # UID 1000 is absent from some official images. Keep user lookup local to
+    # the container, independent of the host's accounts and home directory.
+    (work / 'passwd').write_text('root:x:0:0:container:/root:/bin/sh\nfixture:x:1000:1000:fixture:/work/home:/bin/sh\nnobody:x:65534:65534:container:/nonexistent:/usr/sbin/nologin\n')
+    (work / 'group').write_text('root:x:0:\nfixture:x:1000:\nnogroup:x:65534:\n')
     def run(stage, command, offline):
         container_name = 'bench-trial-' + uuid.uuid4().hex
-        argv = ['docker', 'run', '--rm', '--name', container_name, '--network', 'none' if offline else 'bridge',
-                '--cpus', '4', '--tmpfs', '/work/tmp:rw,exec', '-v', str(source) + ':/subject:ro', '-v', str(work) + ':/work',
+        argv = ['docker', 'run', '--user', '1000:1000', '--platform', native_platform, '--rm', '--name', container_name, '--network', 'none' if offline else 'bridge',
+                '--cpus', '4', '--tmpfs', '/work/tmp:rw,exec,mode=1777,uid=1000,gid=1000', '-v', str(source) + ':/subject:ro', '-v', str(work) + ':/work',
+                '-v', str(work / 'passwd') + ':/etc/passwd:ro', '-v', str(work / 'group') + ':/etc/group:ro',
                 '-v', str(Path(__file__).resolve().parents[2] / 'bench.d') + ':/bench-inputs:ro',
                 '-w', '/subject', '-e', 'TMPDIR=/work/tmp', '-e', 'COREPACK_HOME=/work/corepack',
                 '-e', 'UV_PROJECT_ENVIRONMENT=/work/venv', '-e', 'UV_CACHE_DIR=/work/uv-cache',
@@ -56,7 +67,7 @@ def measure(config, job, trials_only=False):
                      '-e', 'npm_config_offline=true', '-e', 'PNPM_CONFIG_OFFLINE=true',
                      '-e', 'pnpm_config_verify_deps_before_run=warn', '-e', 'COREPACK_ENABLE_NETWORK=0',
                      '-e', 'HTTP_PROXY=', '-e', 'HTTPS_PROXY=', '-e', 'ALL_PROXY=']
-        command = shell_command(config['language'], stage, command)
+        command = 'printf \'BENCH_UNAME_M=\'; uname -m; ' + shell_command(config['language'], stage, command)
         argv += [config.get('image', IMAGES[config['language']]), 'sh', '-c', command]
         lease = (job / 'offline-trials.lock').open('w')
         if offline:
@@ -73,7 +84,11 @@ def measure(config, job, trials_only=False):
             except KeyboardInterrupt:
                 subprocess.run(['docker', 'kill', container_name], capture_output=True)
                 raise
-        result = {'command': command, 'seconds': round(time.monotonic() - start, 3),
+        lines = log.read_text(errors='replace').splitlines()
+        uname_m = next((line.split('=', 1)[1] for line in lines if line.startswith('BENCH_UNAME_M=')), None)
+        if code == 0 or uname_m is not None:
+            assert uname_m == expected_uname, 'container architecture is not native'
+        result = {'uname_m': uname_m, 'command': command, 'seconds': round(time.monotonic() - start, 3),
                   'started_at': started_at, 'exit_code': code, 'network': 'none' if offline else 'bridge',
                   'log': log.name, 'log_sha256': hashlib.sha256(log.read_bytes()).hexdigest()}
         lease.close()
@@ -82,7 +97,7 @@ def measure(config, job, trials_only=False):
     pin = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
     lock = source / config['lock']
     result = {k: v for k, v in config.items() if k != 'source'}
-    result.update(sha=pin, image=config.get('image', IMAGES[config['language']]), platform='linux/arm64', cpus=4,
+    result.update(sha=pin, image=config.get('image', IMAGES[config['language']]), platform=native_platform, cpus=4,
                   lockfile_sha256=hashlib.sha256(lock.read_bytes()).hexdigest())
     if trials_only:
         prior = json.loads((job / 'receipts' / (name + '-suite.json')).read_text())
@@ -90,6 +105,7 @@ def measure(config, job, trials_only=False):
         result['setup'] = prior['setup']
     else:
         result['setup'] = run('setup', config['setup'], False)
+    result['uname_m'] = result['setup'].get('uname_m')
     result['runs'] = []
     receipt = job / 'receipts' / (name + '-suite.json')
     def checkpoint():
