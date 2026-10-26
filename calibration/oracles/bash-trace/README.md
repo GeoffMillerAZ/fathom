@@ -83,26 +83,25 @@ replacement source builtin or fabricated subject globals. Empty files, failed
 loads and ambiguous/unchanged native metadata provide no witness. Native RETURN
 has already popped a sourced-file frame and cannot recover an empty file's name.
 
-RETURN frames independently supply actual executed function/caller names and
-native invocation filenames/line. Scope pairing requires one and only one original
-command on that line, a literal command and matching lexical/native caller.
-Computed, ambiguous, external, builtin, unexecuted and relative-frame calls stay
-unattested in the complete original command denominator. Actual targets may
-differ from written aliases. Runtime recall covers executed native pairs only;
-precision and whole-written L2 recall are unmeasured. No runtime coverage threshold
-promises whole-written L2. A zero source-literal denominator is unmeasured, never
-perfect coverage. Observed source-pair diagnostics do not hide unattested sites.
-Scoring uses separate oracle files: A for actual executed function pairs and C
-for the source-pair comparison whose original literal population is selected by
-independent shfmt syntax. Even 100% observed coverage cannot promote that scope
-selection under P-T1. Native opened filenames are actual executed facts; no
-whole-source tier-A grade is inferred. No source diagnostic runs without an
-observed source edge. This conservative classification does not rewrite the
-canonical static B reading.
-Every literal source site remains in coverage, including absolute targets outside
-the original checkout, which are counted separately and cannot yield in-subject
-edges. The canonical static recipe excluded those external absolute sites; this
-native coverage denominator is disclosed independently.
+RETURN frames independently supply executed caller file, function and target
+names. Every pair with both native filenames absolute and inside the original
+checkout enters the census before any shfmt lookup. Ambiguous, dynamic, missing
+syntax sites and differing lexical callers suppress only site-coverage hits.
+The graded executed population is the census restricted to the unchanged eligible
+original caller files. Replay asserts that the scorer retains exactly that set;
+other in-root caller files are counted separately. Nothing is filtered by product
+answers. Executed recall includes dynamic dispatch and implicit ERR/EXIT callbacks;
+these differ from the canonical written syntax population. Runtime precision and
+whole-written L2 recall are unmeasured. No runtime coverage threshold promises a
+whole-written grade. Source comparisons remain C because independent syntax selects
+that literal population; zero source sites are unmeasured, never perfect coverage.
+
+The review correction reuses the recorded native executions, never re-executes
+the subjects. `redecode.py` first verifies every raw digest and the original
+instrument hashes against the committed capture revision, then re-decodes with
+the current native-only pairing code. An empty syntax population must produce
+identical native pairs. Historical capture/proof code and current decoder/check
+code have separate hashes; no old execution is relabelled as a new collector run.
 
 Both traps return zero: Bash restores the interrupted/function status itself.
 Returning that status from the observer can trip errexit or a subject's inherited
@@ -111,7 +110,9 @@ fails with each old observer, then passes with native statuses preserved. It als
 requires actual CALL bytes and empty stderr, so a missing hook cannot pass.
 GNU Bash 4+ deduplicates exact quoted native function records per process before
 writing; no target, caller or source position is normalized or substituted.
-Legacy 3.2 emits bounded raw records without associative-array deduplication.
+Legacy 3.2 emits raw records without associative-array deduplication or a
+per-process record cap; only the shared 32 MiB trace / field limits bound it.
+An over-limit legacy trace refuses the whole unit, never an accepted prefix.
 Some original tests explicitly invoke the system Bash as well as the pinned GNU
 Bash. The receipt retains every observed native version/fullpath flag and the
 system Bash binary hash/version; those calls are not relabelled as GNU 5.3.20.
@@ -159,7 +160,8 @@ without following them and count Gitlinks without claiming their contents.
 Caps refuse the entire affected unit: 2,048 original files, 64 MiB total source,
 2 MiB per source file, 1,000,000 source/command sites, 32 MiB per native trace,
 1,000,000 NUL fields, 1 MiB per field, and 100,000 unique native function records
-per GNU Bash process. Native overflow writes a refusal marker, never an accepted
+per GNU Bash >=4 process. Bash 3.2 has no per-process record cap; its bounds
+are the decoder's shared 32 MiB/field limits and 64 MiB OS file limit. Native overflow writes a refusal marker, never an accepted
 partial oracle. The child's OS file limit is 64 MiB, strictly above the decoder's
 32 MiB cap, so OS-truncated evidence cannot pass. SCIP has 32 MiB, 2,048 documents
 and 1,000,000 occurrences. Source/parser/SCIP/namespace fixture caps may only lower production limits.
@@ -189,7 +191,7 @@ output directories, changes it to fabricated pairs and requires unchanged raw
 source/function/SCIP truth digests. Known source-file/function/alias input changes
 must change native truth. It also checks definitions-only and shadowed-builtin
 loads, no shadowed-source witness, strict status preservation and native cap
-refusal. Twenty-nine mutation tests kill changed target/caller/line pairing, byte/field/scope/
+refusal. The original twenty-nine mutation tests kill changed target/caller/line pairing, byte/field/scope/
 document caps, guessed CWD, nonzero observer status, variable-as-command and
 missing-file denominator logic, parser bytes/nesting, incremental site caps,
 dropped external source sites, skipped tests counted as passes and incomplete
@@ -222,3 +224,34 @@ at nice10 after the disk guard, with no performance claim. Without that explicit
 flag, the proof still waits for load <=6. Other original native captures retain
 their recorded guards. Q7 also permits remaining Go checks with at most two
 workers; it does not waive disk limits or permit concurrent heavy jobs.
+
+## Binding first-review correction
+
+The corrected native census is NVM 489 in-root identities / 457 eligible callers,
+450 found (.9847), and Bats 248 / 248, 225 found (.9073). The 32 NVM identities
+outside the original eligible caller-file set are disclosed, not silently dropped.
+shfmt still attests only 496/9,147 and 254/1,423 written sites. Certified NVM
+site-unpaired rows are 24,926; rejected phase rows are 22,071, reported separately.
+
+After the same disk/cache/nice prerequisites above, offline replay needs only
+original sources, shfmt and indexbench; it needs no new GNU Bash/Rust build:
+
+```sh
+nice -n 10 python3 -B calibration/oracles/bash-trace/fetch.py --scope-only --out workspace/tools/bash-review
+nice -n 10 python3 -B calibration/oracles/bash-trace/redecode.py --native workspace/artifacts/lang-bash/nvm-functions --subject workspace/tools/bash-review/nvm --shfmt workspace/tools/bash-review/shfmt --out workspace/artifacts/lang-bash/redecoded-r1/nvm --capture-revision db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c
+nice -n 10 python3 -B calibration/oracles/bash-trace/redecode.py --native workspace/artifacts/lang-bash/bats-final-v4 --subject workspace/tools/bash-review/bats --shfmt workspace/tools/bash-review/shfmt --out workspace/artifacts/lang-bash/redecoded-r1/bats --capture-revision db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c
+nice -n 10 bash scripts/fathom-go.sh build -o workspace/tools/indexbench ./cmd/indexbench
+nice -n 10 python3 -B calibration/oracles/bash-trace/replay.py --tools workspace/tools/bash-review --indexbench workspace/tools/indexbench --nvm-native workspace/artifacts/lang-bash/redecoded-r1/nvm --bats-native workspace/artifacts/lang-bash/redecoded-r1/bats --out workspace/artifacts/lang-bash/runtime-review2
+nice -n 10 python3 -B calibration/oracles/bash-trace/prove_mutations.py --unit-only --out workspace/artifacts/lang-bash/mutations-review1
+python3 -B calibration/oracles/bash-trace/evidence.py --capture workspace/artifacts/lang-bash --tools workspace/tools/bash-review --historical-base db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c --runtime-folder runtime-review2 --mutations-folder mutations-review1 --nvm-folder redecoded-r1/nvm --bats-folder redecoded-r1/bats
+```
+
+All 31 current unit mutants fail and restore GREEN, including independent native
+pairs on ambiguous/dynamic lines and complete rejection of timed phase measures.
+The original 29-mutation/native execution proof is retained as historical evidence
+at the capture revision. It is not claimed as a new execution of modified code.
+
+The historical capture commit must be available in the branch history for the
+receipt checker and offline re-decoder. A shallow clone must fetch that ancestor
+first. Historical checks validate committed bytes at that revision; current
+code hashes validate the modified decoder and receipt reader.

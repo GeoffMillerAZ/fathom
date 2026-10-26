@@ -1,4 +1,4 @@
-"""Actual native function names, with strict line/caller ambiguity refusal."""
+"""Native pairs are frame-only; independent syntax gates site coverage only."""
 from collections import defaultdict
 from pathlib import Path
 
@@ -25,9 +25,10 @@ def decode(path,root,population,max_bytes=32<<20,max_fields=1_000_000,max_field_
             relative=Path(caller_file).resolve().relative_to(root).as_posix()
             Path(callee_file).resolve().relative_to(root)
         except ValueError:unknown+=1;continue
+        pairs.add((relative,caller,callee))
         candidates=byline.get((relative,int(line)),[])
         if len(candidates)!=1:unknown+=1;continue
         index,site=candidates[0]
         if not site['literal'] or site['from']!=caller:unknown+=1;continue
-        pairs.add((relative,caller,callee));hits.add(index)
+        hits.add(index)
     return pairs,hits,unknown

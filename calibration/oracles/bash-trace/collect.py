@@ -18,6 +18,13 @@ def child_limits():
     # truncated file at the OS limit cannot be accepted as complete evidence.
     resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 1024 * 1024, 64 * 1024 * 1024))
 
+def merge_function_phase(destination_pairs,destination_hits,pairs,hits,unpaired,*,changed,timed,exit_code):
+    """A rejected phase contributes neither pairs, coverage nor unpaired volume."""
+    if changed or timed or exit_code<0:return 0
+    merge_observations(destination_pairs,pairs)
+    destination_hits.update(hits)
+    return unpaired
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument('--subject', required=True)
@@ -71,7 +78,7 @@ def main():
     if len(sites)>1_000_000:raise ValueError('whole-unit refusal: original source site cap')
     function_population=collect_call_sites(root,files,shfmt,syntax)
     validate(root,files,sites,function_population['sites'])
-    function_pairs=set();function_hits=set();function_unknown=0
+    function_pairs=set();function_hits=set();function_unknown=0;function_discarded=0
     hits = set()
     runs = []
     imports = set()
@@ -135,22 +142,22 @@ def main():
         (rows, unknown) = decode(trace, child)
         native_versions.update(tuple(fields) for kind,fields in events(trace) if kind=='VERSION')
         native_pairs,native_hits,unpaired_functions=decode_functions(function_trace,child,function_population)
-        function_unknown+=unpaired_functions
-        native_unknown += unknown
+        function_unknown+=merge_function_phase(function_pairs,function_hits,native_pairs,native_hits,unpaired_functions,changed=changed,timed=timed,exit_code=code)
+        if changed or timed or code<0:function_discarded+=unpaired_functions
         if not changed and not timed and code >= 0:
-            merge_observations(function_pairs,native_pairs);function_hits.update(native_hits)
+            native_unknown += unknown
             for (p, line, target) in rows:
                 matching = [s for s in sites if s['path'] == p and s['line'] == line]
                 if len(matching) == 1:
                     hits.add((p, line))
                     merge_observations(imports,[(p,line,target)])
-        runs.append({'path': rel, 'exit': code, 'timeout': timed, 'changed_source': changed, 'native_function_pairs':len(native_pairs),'native_function_sites':len(native_hits),'native_entries': len(rows), 'unknown_native_frames': unknown,'phase':phase.relative_to(out).as_posix(),'raw_sha256':{p.name:sha(p) for p in [trace,function_trace,log,status]}})
+        runs.append({'path': rel, 'exit': code, 'timeout': timed, 'changed_source': changed, 'native_function_pairs':len(native_pairs),'native_function_sites':len(native_hits),'native_entries': len(rows), 'unknown_native_frames': unknown,'function_site_unpaired_rows':unpaired_functions,'phase':phase.relative_to(out).as_posix(),'raw_sha256':{p.name:sha(p) for p in [trace,function_trace,log,status]}})
         shutil.rmtree(child)
         if (i + 1) % 25 == 0:
             print(f'{i + 1}/{len(selected)} files; {len(hits)}/{len(sites)} literal sites attested', flush=True)
     tracked_after=tracked_manifest('after')
     if tracked_before!=tracked_after:raise ValueError('whole-unit refusal: original tracked source changed')
-    result = {'function_pairs':[{'path':p,'from':f,'to':t} for p,f,t in sorted(function_pairs)],'function_literal_sites':function_population['literal_sites'],'function_all_sites':len(function_population['sites']),'function_dynamic_sites':function_population['dynamic_sites'],'function_attested_sites':len(function_hits),'function_unknown_rows':function_unknown,'tracked_before':tracked_before,'tracked_after':tracked_after,'complete': len(runs) == len(selected), 'selected_native_inputs': len(selected), 'requested_fullpath': n.fullpath, 'bash_binary_sha256': sha(pathlib.Path(bash)), 'bash_version': subprocess.check_output([bash, '--version'], text=True).splitlines()[0], 'shfmt_version': subprocess.check_output([shfmt, '--version'], text=True).strip(), 'subject_files': len(files), 'instrument_sha256': instrument, 'source_sha256': manifest, 'literal_sites': sites, 'dynamic_or_no_argument': dynamic, 'unparsed': unparsed, 'runs': runs, 'attested_sites': len(hits), 'denominator': len(sites), 'coverage': len(hits) / len(sites) if sites and not n.functions_only else None, 'unknown_native_frames': native_unknown, 'imports': [{'path': p, 'line': l, 'to_path': t} for (p, l, t) in sorted(imports)], 'unattested': [s for s in sites if (s['path'], s['line']) not in hits]}
+    result = {'function_pairs':[{'path':p,'from':f,'to':t} for p,f,t in sorted(function_pairs)],'function_literal_sites':function_population['literal_sites'],'function_all_sites':len(function_population['sites']),'function_dynamic_sites':function_population['dynamic_sites'],'function_attested_sites':len(function_hits),'function_unknown_rows':function_unknown,'discarded_function_site_unpaired_rows':function_discarded,'tracked_before':tracked_before,'tracked_after':tracked_after,'complete': len(runs) == len(selected), 'selected_native_inputs': len(selected), 'requested_fullpath': n.fullpath, 'bash_binary_sha256': sha(pathlib.Path(bash)), 'bash_version': subprocess.check_output([bash, '--version'], text=True).splitlines()[0], 'shfmt_version': subprocess.check_output([shfmt, '--version'], text=True).strip(), 'subject_files': len(files), 'instrument_sha256': instrument, 'source_sha256': manifest, 'literal_sites': sites, 'dynamic_or_no_argument': dynamic, 'unparsed': unparsed, 'runs': runs, 'attested_sites': len(hits), 'denominator': len(sites), 'coverage': len(hits) / len(sites) if sites and not n.functions_only else None, 'unknown_native_frames': native_unknown, 'imports': [{'path': p, 'line': l, 'to_path': t} for (p, l, t) in sorted(imports)], 'unattested': [s for s in sites if (s['path'], s['line']) not in hits]}
     result.update(native_versions=[{'version':v,'fullpath':flag=='1'} for v,flag in sorted(native_versions)],
         system_bash_binary_sha256=sha(pathlib.Path('/bin/bash')),
         system_bash_version=subprocess.check_output(['/bin/bash','--version'],text=True).splitlines()[0],

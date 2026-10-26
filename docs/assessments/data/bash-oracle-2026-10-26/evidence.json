@@ -38,161 +38,50 @@
     "shared_failed_tests": 6,
     "source_changed": false
   },
-  "independence": {
-    "allow_loaded_host_owner_Q7": true,
-    "calls_after_extractor_change": "f4b7340977bcd158d854f5297fd9b443ef469ad45a2f842c17c888e7fb190f98",
-    "calls_after_native_change": "f5937d778d612e02826824834f59d87b4b263e2f9314f8c05ed7d51bac86325b",
-    "calls_before": "f4b7340977bcd158d854f5297fd9b443ef469ad45a2f842c17c888e7fb190f98",
-    "calls_raw_after_extractor_change_sha256": "094aa23a96a91feeb498388ba8ea282712d44e01fddd8f90f485911ca0bf22d8",
-    "calls_raw_before_sha256": "094aa23a96a91feeb498388ba8ea282712d44e01fddd8f90f485911ca0bf22d8",
-    "canonical_reading_changed": false,
-    "code_sha256": {
-      "README.md": "d00f84d4a19d78c7439a979ecbd10477e599fa5dd9ddbcd943885bdb1828f4d8",
-      "bash-pins.json": "52d372564b02af14027aa172de89f9f75200cf269228a7267e976cd3019234c2",
-      "build_bash.py": "32b4c1efab67dab39ffbb03cd2c7bd7b6f0ccee5c66b2a46684555a671fd01ca",
-      "build_scip.py": "3268b1f02f004d383f21c3b8b0b43f31ed3aa80eeb9d0a9cc4700176aa5a6ff3",
-      "call_sites.py": "01c9c369bf55f36f6318c2c7965f30d4d487ee880a66a96ab0166e4afda0d832",
-      "collect.py": "db064d339412ac6a848fef8b21895f6f99976846d5f5cca3ad2966cd444322ce",
-      "control.py": "80dfa5cce520b2b44a05c0f30b37c86cafca8a55c13f2705f1a2a356d1659dac",
-      "entry_hook.sh": "b8f98692daedf014dace66d1c440a4ce9b82f7b51c1ce6baf4241395c08fb738",
-      "evidence.py": "649d3f5eee8323a7f2ece449df2b62a445348dc420f702e3cd6bc35b3726478b",
-      "fetch.py": "b03c4db39b0367dff987b28ad460a1b6fe30e449b777944212d63a25da04e879",
-      "function_decode.py": "029fe16b3d2ed2cd5d0922b8bf80e39f5edb04aeb412bc6822f1b92d9214e7ee",
-      "function_hook.sh": "57e17a3829ffc7ff59753c301f56725d74f464c960e55f8470c2a5956aafe553",
-      "lookup.sh": "e1089140db83fd8b3db97f3621e82d3d31b79af22e23d1498e8d71b37f4e0687",
-      "measure_lookup.py": "819b8fc2c912e5ba141d438c776f62e322ffc041f8c593fb36241caafdf8608b",
-      "measure_scip.py": "c3b456e4e7a15ff918caf0eed0c9a22c6e245286b262e2e1b4ec17764a649a57",
-      "probe_contracts.py": "e67e0440817b09cad3427c970d7e8fe766e69b79001257023ef8985fb8e7eeaa",
-      "prove_mode.py": "8b500cfbf3282eaeb1daad8127c1861d7ae4c62f97b921441d3f4dfa4c9165ff",
-      "prove_mutations.py": "324490d87c6f4d358ccd97d1f90a440352ca75aa3bf7b960417b30fbabe2feb7",
-      "prove_native.py": "f1fcb88dc8379bab4c76890707cffd046f2b431251d650fbc115aeb053fc2a06",
-      "replay.py": "5740bbb58a5e1cc777d510debf66a7b1fdc0c8d6654dd2e24620a4f627e903d4",
-      "runtime_copy.py": "97fd653bccb1171c2582ea6b4af34f175dec99954e0a3a01b7286a866c33c45e",
-      "rust-pins.json": "6fc8cca56e43fe20d60f408eb66724d6544c833e457273db79bf86405b5b1b21",
-      "scip_audit.py": "ea9f6c61417c61df0baf9080bd83f89ebdc0010ff83df35e3e3717210d148194",
-      "scope_limits.py": "ecf2aa4733e572a46429ea622c9e8737815ef57580de96cc98abb58ad4c91874",
-      "supervise.py": "26ee52de748438e71b6c85656c8f12a3fce6c707b14d486cedf0e8cee59f1897",
-      "syntax_scope.py": "d7e712140b145700758555db6dc1f459be8bd088fb36c6258a46a9e9b78aa47d",
-      "test_control.py": "e9799b9c8dc04c914f0302c242d209037372cd0d1aa3c74fd6dd3fa16551f71b",
-      "test_function_decode.py": "8914a457b0e4df4ba16d69c86153eb72ee727a58ccc47e47d170d7d88a7b9d7e",
-      "test_lookup.py": "d48928cdb82e4251bec0199fbb8f4da390e23100eae810249138007a6b71de13",
-      "test_replay.py": "17a4b5cba32dc1b0824cdd72c590b7ff919b663158083c2e85613ea8010d56d8",
-      "test_runtime_copy.py": "43cda60f83a4a2aadffae8e90b47a4d869ceae268a481ffeb6230a8daf38b8cb",
-      "test_scip_audit.py": "004d2a669fe36ea046fd0e47f93ed98721d5670f27e4520491d19cb27943042c",
-      "test_scope_limits.py": "055f057a4f67e8197fd79770afeacab6391df4826e672f61c2ebeb274b41a29c",
-      "test_supervise.py": "b6b855756e5246d32e38146b91fb273ebb3eda3c362c9a4e5dcad99eae5a8815",
-      "test_syntax_scope.py": "004526247fc90db021fd79688c9168025a4bd2dc903d67fc53b395bd6d5372f3",
-      "test_trace.py": "bdca92862c89057c859e376a5a4db186fcd13b82dfba9d04a1742d61b3d1d011",
-      "trace_driver.py": "f5360980caef96e5671dde29fa326edf827050171892f967c3fb9d70c6ba797e",
-      "trace_hook.sh": "85ad1602120abea3f56fcd8c22b47d5e70e99c71a6063922a8219e7f5e4ab9a0",
-      "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
-    },
-    "native_alias_change": "exactly one actual driver/target pair changes from target_one to target_two",
-    "nice": 10,
-    "observed_start_load": 9.49365234375,
-    "performance_claim": false,
-    "scip_after_extractor_change": "918a6117f86238be9e0c4afc4789faeb79b61ba4fd7e79e4b9e4c12e7bb5d9fd",
-    "scip_after_native_change": "c2712bbc330b6e36a3578adc8ab832bd95f024f44e7ec58dec6700aa37c2a5d5",
-    "scip_before": "918a6117f86238be9e0c4afc4789faeb79b61ba4fd7e79e4b9e4c12e7bb5d9fd",
-    "shadowed_metadata_builtin_edges": 2,
-    "shadowed_source_edges": 0,
-    "source_after_extractor_change": "228a376de52ad3b92eb933fff6e687c1541e279023221917bcdb45e7b87484c1",
-    "source_after_native_change": "377b173e96fdaf10d18409f48847067224a53eb860cbd1612e8b0530cc650a4f",
-    "source_before": "228a376de52ad3b92eb933fff6e687c1541e279023221917bcdb45e7b87484c1",
-    "source_fixture_edges": 6,
-    "source_raw_after_extractor_change_sha256": "b07c0129e063e437d25ca1188a314d9065ffe798bb3511813b7fac99574962b2",
-    "source_raw_before_sha256": "b07c0129e063e437d25ca1188a314d9065ffe798bb3511813b7fac99574962b2"
+  "current_code_sha256": {
+    "README.md": "4c3ba0d44df5507f85f4e5dd0f1035aa54a2a62a9ad00f928bf574d108f8a2d1",
+    "bash-pins.json": "52d372564b02af14027aa172de89f9f75200cf269228a7267e976cd3019234c2",
+    "build_bash.py": "32b4c1efab67dab39ffbb03cd2c7bd7b6f0ccee5c66b2a46684555a671fd01ca",
+    "build_scip.py": "3268b1f02f004d383f21c3b8b0b43f31ed3aa80eeb9d0a9cc4700176aa5a6ff3",
+    "call_sites.py": "01c9c369bf55f36f6318c2c7965f30d4d487ee880a66a96ab0166e4afda0d832",
+    "collect.py": "b7d5c52857de7fe40172d6f6089b6c12a0d7a7c4dac7a69d7cbca034bf241402",
+    "control.py": "80dfa5cce520b2b44a05c0f30b37c86cafca8a55c13f2705f1a2a356d1659dac",
+    "entry_hook.sh": "b8f98692daedf014dace66d1c440a4ce9b82f7b51c1ce6baf4241395c08fb738",
+    "evidence.py": "5a09c63e7f2df437a34fb1f57128fd0d1ea87b00b25326e86a9a41155c045d46",
+    "fetch.py": "fa55ac93354fad463964a1aea623bec1233099cb9c509b20730b629efdb6eb49",
+    "function_decode.py": "eb150adde8b427f7b1939c3e7ee7334fa6dfae20d4a69910d08d0b41f71193ac",
+    "function_hook.sh": "57e17a3829ffc7ff59753c301f56725d74f464c960e55f8470c2a5956aafe553",
+    "lookup.sh": "e1089140db83fd8b3db97f3621e82d3d31b79af22e23d1498e8d71b37f4e0687",
+    "measure_lookup.py": "819b8fc2c912e5ba141d438c776f62e322ffc041f8c593fb36241caafdf8608b",
+    "measure_scip.py": "c3b456e4e7a15ff918caf0eed0c9a22c6e245286b262e2e1b4ec17764a649a57",
+    "probe_contracts.py": "e67e0440817b09cad3427c970d7e8fe766e69b79001257023ef8985fb8e7eeaa",
+    "prove_mode.py": "8b500cfbf3282eaeb1daad8127c1861d7ae4c62f97b921441d3f4dfa4c9165ff",
+    "prove_mutations.py": "3834aca1d05171963bfbc1c821b11500683c1c360c866b4ae6b938dc0a0c1752",
+    "prove_native.py": "f1fcb88dc8379bab4c76890707cffd046f2b431251d650fbc115aeb053fc2a06",
+    "redecode.py": "1bb8e5f328248147b5aa6811a370ebf71f3be7dbe374fec263f70eed62410bc9",
+    "replay.py": "61632fbbeadcf7c179417b5d16ac4ee21f2d7c774c2d1f3f1dc1f8ffbe8f49e5",
+    "runtime_copy.py": "97fd653bccb1171c2582ea6b4af34f175dec99954e0a3a01b7286a866c33c45e",
+    "rust-pins.json": "6fc8cca56e43fe20d60f408eb66724d6544c833e457273db79bf86405b5b1b21",
+    "scip_audit.py": "ea9f6c61417c61df0baf9080bd83f89ebdc0010ff83df35e3e3717210d148194",
+    "scope_limits.py": "ecf2aa4733e572a46429ea622c9e8737815ef57580de96cc98abb58ad4c91874",
+    "supervise.py": "26ee52de748438e71b6c85656c8f12a3fce6c707b14d486cedf0e8cee59f1897",
+    "syntax_scope.py": "d7e712140b145700758555db6dc1f459be8bd088fb36c6258a46a9e9b78aa47d",
+    "test_control.py": "e9799b9c8dc04c914f0302c242d209037372cd0d1aa3c74fd6dd3fa16551f71b",
+    "test_function_decode.py": "f8d0e816398b1833b041138fc0ce8b3e94c277e68d8e170242024aea4eebd8fc",
+    "test_lookup.py": "d48928cdb82e4251bec0199fbb8f4da390e23100eae810249138007a6b71de13",
+    "test_replay.py": "17a4b5cba32dc1b0824cdd72c590b7ff919b663158083c2e85613ea8010d56d8",
+    "test_runtime_copy.py": "43cda60f83a4a2aadffae8e90b47a4d869ceae268a481ffeb6230a8daf38b8cb",
+    "test_scip_audit.py": "004d2a669fe36ea046fd0e47f93ed98721d5670f27e4520491d19cb27943042c",
+    "test_scope_limits.py": "055f057a4f67e8197fd79770afeacab6391df4826e672f61c2ebeb274b41a29c",
+    "test_supervise.py": "b6b855756e5246d32e38146b91fb273ebb3eda3c362c9a4e5dcad99eae5a8815",
+    "test_syntax_scope.py": "004526247fc90db021fd79688c9168025a4bd2dc903d67fc53b395bd6d5372f3",
+    "test_trace.py": "bdca92862c89057c859e376a5a4db186fcd13b82dfba9d04a1742d61b3d1d011",
+    "trace_driver.py": "f5360980caef96e5671dde29fa326edf827050171892f967c3fb9d70c6ba797e",
+    "trace_hook.sh": "85ad1602120abea3f56fcd8c22b47d5e70e99c71a6063922a8219e7f5e4ab9a0",
+    "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
   },
-  "lookup": {
-    "bash_binary_sha256": "7b4da0fdf20be7d952c46449280d1eda8eecec4cb9de8659beb98c9e0bd42fa1",
-    "code_sha256": {
-      "call_sites.py": "01c9c369bf55f36f6318c2c7965f30d4d487ee880a66a96ab0166e4afda0d832",
-      "lookup.sh": "e1089140db83fd8b3db97f3621e82d3d31b79af22e23d1498e8d71b37f4e0687",
-      "measure_lookup.py": "819b8fc2c912e5ba141d438c776f62e322ffc041f8c593fb36241caafdf8608b",
-      "runtime_copy.py": "97fd653bccb1171c2582ea6b4af34f175dec99954e0a3a01b7286a866c33c45e",
-      "scope_limits.py": "ecf2aa4733e572a46429ea622c9e8737815ef57580de96cc98abb58ad4c91874",
-      "syntax_scope.py": "d7e712140b145700758555db6dc1f459be8bd088fb36c6258a46a9e9b78aa47d"
-    },
-    "policy": "Independent syntax selects source sites; native namespace answers establish availability in the recorded union, not context-sensitive native reference/caller truth. No whole-source grade or runtime coverage inferred.",
-    "subjects": {
-      "bats": {
-        "load_contract": "session-wide union of tracked Bash libraries from package files manifest; no test body loaded",
-        "loaded_code_sha256": "1666bb0e41e094bc3bde933ec1058768829f0429fdb1da9325b6111cb8681d69",
-        "loaded_files": 8,
-        "native_available_sites": 955,
-        "native_builtins": 61,
-        "native_functions": 75,
-        "native_raw_sha256": "5fe562e2c98870b30040facf0178f416da56da85c090fdfb0c9b04127fe87621",
-        "original_bytes": 162377,
-        "original_files": 68,
-        "population_sha256": "80101bb2d891757d71823d8f1dc68d616ac344103c26fa582ab3dd790e69cb7f",
-        "revision": "713504bc0224a19b3d7c7958c18dc07f64f54b44",
-        "sites": 1423,
-        "tracked_after": {
-          "bytes": 650570,
-          "entries": 364,
-          "files": 354,
-          "gitlinks": 0,
-          "sha256": "f0bf8208af25476fc5fb48ea102ddca0cc44cf4a6a65cd5f45da39aff933e94e",
-          "symlinks": 10
-        },
-        "tracked_before": {
-          "bytes": 650570,
-          "entries": 364,
-          "files": 354,
-          "gitlinks": 0,
-          "sha256": "f0bf8208af25476fc5fb48ea102ddca0cc44cf4a6a65cd5f45da39aff933e94e",
-          "symlinks": 10
-        },
-        "unavailable_by_kind": {
-          "dynamic": 53,
-          "file": 138,
-          "missing": 277
-        },
-        "unavailable_sites": 468
-      },
-      "nvm": {
-        "load_contract": "original documented nvm.sh --no-use loader",
-        "loaded_code_sha256": "457ab6390336a0c938d0f2229c8fd985a5e7f21d9c59ec5e97c8ff31321c98b2",
-        "loaded_files": 1,
-        "native_available_sites": 4902,
-        "native_builtins": 61,
-        "native_functions": 116,
-        "native_raw_sha256": "476a00160d32ce4c6dd6f0e79b4de82691b76121857ae0b1b91a6d56e35e7415",
-        "original_bytes": 475959,
-        "original_files": 277,
-        "population_sha256": "038a9a195385b9845d6f9473ceecf97e25a75376617b20b1f87ad60d9e7114f1",
-        "revision": "1889911f0841e669de0be5bd02c737a3f1fd20fa",
-        "sites": 9147,
-        "tracked_after": {
-          "bytes": 1312327,
-          "entries": 404,
-          "files": 402,
-          "gitlinks": 1,
-          "sha256": "97e64fd9b84af483db62e4ff7d8d4df2e4ae18a290152b90e2ea5c6d91692a15",
-          "symlinks": 1
-        },
-        "tracked_before": {
-          "bytes": 1312327,
-          "entries": 404,
-          "files": 402,
-          "gitlinks": 1,
-          "sha256": "97e64fd9b84af483db62e4ff7d8d4df2e4ae18a290152b90e2ea5c6d91692a15",
-          "symlinks": 1
-        },
-        "unavailable_by_kind": {
-          "dynamic": 1514,
-          "file": 783,
-          "missing": 1948
-        },
-        "unavailable_sites": 4245
-      }
-    },
-    "tier": "C",
-    "tool": "GNU Bash type / compgen / declare namespace audit",
-    "version": "GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin24.3.0)"
-  },
-  "mutations": [
+  "historical_capture_revision": "db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c",
+  "historical_mutations": [
     {
       "FAIL": "FAIL: test_actual_native_alias_target_is_truth (test_function_decode.NativeFunctionTests.test_actual_native_alias_target_is_truth)",
       "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_actual_native_alias_target_is_truth",
@@ -426,6 +315,410 @@
       "restored": "GREEN"
     }
   ],
+  "independence": {
+    "allow_loaded_host_owner_Q7": true,
+    "calls_after_extractor_change": "f4b7340977bcd158d854f5297fd9b443ef469ad45a2f842c17c888e7fb190f98",
+    "calls_after_native_change": "f5937d778d612e02826824834f59d87b4b263e2f9314f8c05ed7d51bac86325b",
+    "calls_before": "f4b7340977bcd158d854f5297fd9b443ef469ad45a2f842c17c888e7fb190f98",
+    "calls_raw_after_extractor_change_sha256": "094aa23a96a91feeb498388ba8ea282712d44e01fddd8f90f485911ca0bf22d8",
+    "calls_raw_before_sha256": "094aa23a96a91feeb498388ba8ea282712d44e01fddd8f90f485911ca0bf22d8",
+    "canonical_reading_changed": false,
+    "code_sha256": {
+      "README.md": "d00f84d4a19d78c7439a979ecbd10477e599fa5dd9ddbcd943885bdb1828f4d8",
+      "bash-pins.json": "52d372564b02af14027aa172de89f9f75200cf269228a7267e976cd3019234c2",
+      "build_bash.py": "32b4c1efab67dab39ffbb03cd2c7bd7b6f0ccee5c66b2a46684555a671fd01ca",
+      "build_scip.py": "3268b1f02f004d383f21c3b8b0b43f31ed3aa80eeb9d0a9cc4700176aa5a6ff3",
+      "call_sites.py": "01c9c369bf55f36f6318c2c7965f30d4d487ee880a66a96ab0166e4afda0d832",
+      "collect.py": "db064d339412ac6a848fef8b21895f6f99976846d5f5cca3ad2966cd444322ce",
+      "control.py": "80dfa5cce520b2b44a05c0f30b37c86cafca8a55c13f2705f1a2a356d1659dac",
+      "entry_hook.sh": "b8f98692daedf014dace66d1c440a4ce9b82f7b51c1ce6baf4241395c08fb738",
+      "evidence.py": "649d3f5eee8323a7f2ece449df2b62a445348dc420f702e3cd6bc35b3726478b",
+      "fetch.py": "b03c4db39b0367dff987b28ad460a1b6fe30e449b777944212d63a25da04e879",
+      "function_decode.py": "029fe16b3d2ed2cd5d0922b8bf80e39f5edb04aeb412bc6822f1b92d9214e7ee",
+      "function_hook.sh": "57e17a3829ffc7ff59753c301f56725d74f464c960e55f8470c2a5956aafe553",
+      "lookup.sh": "e1089140db83fd8b3db97f3621e82d3d31b79af22e23d1498e8d71b37f4e0687",
+      "measure_lookup.py": "819b8fc2c912e5ba141d438c776f62e322ffc041f8c593fb36241caafdf8608b",
+      "measure_scip.py": "c3b456e4e7a15ff918caf0eed0c9a22c6e245286b262e2e1b4ec17764a649a57",
+      "probe_contracts.py": "e67e0440817b09cad3427c970d7e8fe766e69b79001257023ef8985fb8e7eeaa",
+      "prove_mode.py": "8b500cfbf3282eaeb1daad8127c1861d7ae4c62f97b921441d3f4dfa4c9165ff",
+      "prove_mutations.py": "324490d87c6f4d358ccd97d1f90a440352ca75aa3bf7b960417b30fbabe2feb7",
+      "prove_native.py": "f1fcb88dc8379bab4c76890707cffd046f2b431251d650fbc115aeb053fc2a06",
+      "replay.py": "5740bbb58a5e1cc777d510debf66a7b1fdc0c8d6654dd2e24620a4f627e903d4",
+      "runtime_copy.py": "97fd653bccb1171c2582ea6b4af34f175dec99954e0a3a01b7286a866c33c45e",
+      "rust-pins.json": "6fc8cca56e43fe20d60f408eb66724d6544c833e457273db79bf86405b5b1b21",
+      "scip_audit.py": "ea9f6c61417c61df0baf9080bd83f89ebdc0010ff83df35e3e3717210d148194",
+      "scope_limits.py": "ecf2aa4733e572a46429ea622c9e8737815ef57580de96cc98abb58ad4c91874",
+      "supervise.py": "26ee52de748438e71b6c85656c8f12a3fce6c707b14d486cedf0e8cee59f1897",
+      "syntax_scope.py": "d7e712140b145700758555db6dc1f459be8bd088fb36c6258a46a9e9b78aa47d",
+      "test_control.py": "e9799b9c8dc04c914f0302c242d209037372cd0d1aa3c74fd6dd3fa16551f71b",
+      "test_function_decode.py": "8914a457b0e4df4ba16d69c86153eb72ee727a58ccc47e47d170d7d88a7b9d7e",
+      "test_lookup.py": "d48928cdb82e4251bec0199fbb8f4da390e23100eae810249138007a6b71de13",
+      "test_replay.py": "17a4b5cba32dc1b0824cdd72c590b7ff919b663158083c2e85613ea8010d56d8",
+      "test_runtime_copy.py": "43cda60f83a4a2aadffae8e90b47a4d869ceae268a481ffeb6230a8daf38b8cb",
+      "test_scip_audit.py": "004d2a669fe36ea046fd0e47f93ed98721d5670f27e4520491d19cb27943042c",
+      "test_scope_limits.py": "055f057a4f67e8197fd79770afeacab6391df4826e672f61c2ebeb274b41a29c",
+      "test_supervise.py": "b6b855756e5246d32e38146b91fb273ebb3eda3c362c9a4e5dcad99eae5a8815",
+      "test_syntax_scope.py": "004526247fc90db021fd79688c9168025a4bd2dc903d67fc53b395bd6d5372f3",
+      "test_trace.py": "bdca92862c89057c859e376a5a4db186fcd13b82dfba9d04a1742d61b3d1d011",
+      "trace_driver.py": "f5360980caef96e5671dde29fa326edf827050171892f967c3fb9d70c6ba797e",
+      "trace_hook.sh": "85ad1602120abea3f56fcd8c22b47d5e70e99c71a6063922a8219e7f5e4ab9a0",
+      "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+    },
+    "native_alias_change": "exactly one actual driver/target pair changes from target_one to target_two",
+    "nice": 10,
+    "observed_start_load": 9.49365234375,
+    "performance_claim": false,
+    "scip_after_extractor_change": "918a6117f86238be9e0c4afc4789faeb79b61ba4fd7e79e4b9e4c12e7bb5d9fd",
+    "scip_after_native_change": "c2712bbc330b6e36a3578adc8ab832bd95f024f44e7ec58dec6700aa37c2a5d5",
+    "scip_before": "918a6117f86238be9e0c4afc4789faeb79b61ba4fd7e79e4b9e4c12e7bb5d9fd",
+    "shadowed_metadata_builtin_edges": 2,
+    "shadowed_source_edges": 0,
+    "source_after_extractor_change": "228a376de52ad3b92eb933fff6e687c1541e279023221917bcdb45e7b87484c1",
+    "source_after_native_change": "377b173e96fdaf10d18409f48847067224a53eb860cbd1612e8b0530cc650a4f",
+    "source_before": "228a376de52ad3b92eb933fff6e687c1541e279023221917bcdb45e7b87484c1",
+    "source_fixture_edges": 6,
+    "source_raw_after_extractor_change_sha256": "b07c0129e063e437d25ca1188a314d9065ffe798bb3511813b7fac99574962b2",
+    "source_raw_before_sha256": "b07c0129e063e437d25ca1188a314d9065ffe798bb3511813b7fac99574962b2"
+  },
+  "lookup": {
+    "bash_binary_sha256": "7b4da0fdf20be7d952c46449280d1eda8eecec4cb9de8659beb98c9e0bd42fa1",
+    "code_sha256": {
+      "call_sites.py": "01c9c369bf55f36f6318c2c7965f30d4d487ee880a66a96ab0166e4afda0d832",
+      "lookup.sh": "e1089140db83fd8b3db97f3621e82d3d31b79af22e23d1498e8d71b37f4e0687",
+      "measure_lookup.py": "819b8fc2c912e5ba141d438c776f62e322ffc041f8c593fb36241caafdf8608b",
+      "runtime_copy.py": "97fd653bccb1171c2582ea6b4af34f175dec99954e0a3a01b7286a866c33c45e",
+      "scope_limits.py": "ecf2aa4733e572a46429ea622c9e8737815ef57580de96cc98abb58ad4c91874",
+      "syntax_scope.py": "d7e712140b145700758555db6dc1f459be8bd088fb36c6258a46a9e9b78aa47d"
+    },
+    "policy": "Independent syntax selects source sites; native namespace answers establish availability in the recorded union, not context-sensitive native reference/caller truth. No whole-source grade or runtime coverage inferred.",
+    "subjects": {
+      "bats": {
+        "load_contract": "session-wide union of tracked Bash libraries from package files manifest; no test body loaded",
+        "loaded_code_sha256": "1666bb0e41e094bc3bde933ec1058768829f0429fdb1da9325b6111cb8681d69",
+        "loaded_files": 8,
+        "native_available_sites": 955,
+        "native_builtins": 61,
+        "native_functions": 75,
+        "native_raw_sha256": "5fe562e2c98870b30040facf0178f416da56da85c090fdfb0c9b04127fe87621",
+        "original_bytes": 162377,
+        "original_files": 68,
+        "population_sha256": "80101bb2d891757d71823d8f1dc68d616ac344103c26fa582ab3dd790e69cb7f",
+        "revision": "713504bc0224a19b3d7c7958c18dc07f64f54b44",
+        "sites": 1423,
+        "tracked_after": {
+          "bytes": 650570,
+          "entries": 364,
+          "files": 354,
+          "gitlinks": 0,
+          "sha256": "f0bf8208af25476fc5fb48ea102ddca0cc44cf4a6a65cd5f45da39aff933e94e",
+          "symlinks": 10
+        },
+        "tracked_before": {
+          "bytes": 650570,
+          "entries": 364,
+          "files": 354,
+          "gitlinks": 0,
+          "sha256": "f0bf8208af25476fc5fb48ea102ddca0cc44cf4a6a65cd5f45da39aff933e94e",
+          "symlinks": 10
+        },
+        "unavailable_by_kind": {
+          "dynamic": 53,
+          "file": 138,
+          "missing": 277
+        },
+        "unavailable_sites": 468
+      },
+      "nvm": {
+        "load_contract": "original documented nvm.sh --no-use loader",
+        "loaded_code_sha256": "457ab6390336a0c938d0f2229c8fd985a5e7f21d9c59ec5e97c8ff31321c98b2",
+        "loaded_files": 1,
+        "native_available_sites": 4902,
+        "native_builtins": 61,
+        "native_functions": 116,
+        "native_raw_sha256": "476a00160d32ce4c6dd6f0e79b4de82691b76121857ae0b1b91a6d56e35e7415",
+        "original_bytes": 475959,
+        "original_files": 277,
+        "population_sha256": "038a9a195385b9845d6f9473ceecf97e25a75376617b20b1f87ad60d9e7114f1",
+        "revision": "1889911f0841e669de0be5bd02c737a3f1fd20fa",
+        "sites": 9147,
+        "tracked_after": {
+          "bytes": 1312327,
+          "entries": 404,
+          "files": 402,
+          "gitlinks": 1,
+          "sha256": "97e64fd9b84af483db62e4ff7d8d4df2e4ae18a290152b90e2ea5c6d91692a15",
+          "symlinks": 1
+        },
+        "tracked_before": {
+          "bytes": 1312327,
+          "entries": 404,
+          "files": 402,
+          "gitlinks": 1,
+          "sha256": "97e64fd9b84af483db62e4ff7d8d4df2e4ae18a290152b90e2ea5c6d91692a15",
+          "symlinks": 1
+        },
+        "unavailable_by_kind": {
+          "dynamic": 1514,
+          "file": 783,
+          "missing": 1948
+        },
+        "unavailable_sites": 4245
+      }
+    },
+    "tier": "C",
+    "tool": "GNU Bash type / compgen / declare namespace audit",
+    "version": "GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin24.3.0)"
+  },
+  "mutations": [
+    {
+      "FAIL": "FAIL: test_actual_native_alias_target_is_truth (test_function_decode.NativeFunctionTests)",
+      "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_actual_native_alias_target_is_truth",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_decode.py",
+      "mutant": "pairs.add((relative,caller,'fabricated'))",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_wrong_native_caller_cannot_use_parser_guess (test_function_decode.NativeFunctionTests)",
+      "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_wrong_native_caller_cannot_use_parser_guess",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_decode.py",
+      "mutant": "or False",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_multiple_commands_on_one_line_stay_unattested (test_function_decode.NativeFunctionTests)",
+      "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_multiple_commands_on_one_line_stay_unattested",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_decode.py",
+      "mutant": "if not candidates:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_byte_cap_plus_one (test_function_decode.NativeFunctionTests)",
+      "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_byte_cap_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_decode.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_each_native_cap_refuses_limit_plus_one (test_trace.NativeTrace) (kwargs={'max_fields': 2})",
+      "command": "python3 -B -m unittest test_trace.NativeTrace.test_each_native_cap_refuses_limit_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "trace_driver.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_missing_native_cwd_is_unknown_not_process_cwd (test_trace.NativeTrace)",
+      "command": "python3 -B -m unittest test_trace.NativeTrace.test_missing_native_cwd_is_unknown_not_process_cwd",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "trace_driver.py",
+      "mutant": "if not cwd:\n                cwd = str(root)",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_debug_observer_preserves_errexit_conditionals_and_status (test_trace.NativeTrace)",
+      "command": "python3 -B -m unittest test_trace.NativeTrace.test_debug_observer_preserves_errexit_conditionals_and_status",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "trace_hook.sh",
+      "mutant": "  return \"$__oracle_status\"\n}",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_return_observer_does_not_trigger_subject_err_trap (test_trace.NativeTrace)",
+      "command": "python3 -B -m unittest test_trace.NativeTrace.test_return_observer_does_not_trigger_subject_err_trap",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_hook.sh",
+      "mutant": "  return \"$__oracle_return_status\"\n}",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_each_source_cap_accepts_n_then_refuses_n_plus_one (test_scope_limits.ScopeRefusalTests) (field='files')",
+      "command": "python3 -B -m unittest test_scope_limits.ScopeRefusalTests.test_each_source_cap_accepts_n_then_refuses_n_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "scope_limits.py",
+      "mutant": "if not files:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_variable_is_not_a_bound_command (test_scip_audit.ScipAuditTests)",
+      "command": "python3 -B -m unittest test_scip_audit.ScipAuditTests.test_variable_is_not_a_bound_command",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "scip_audit.py",
+      "mutant": "elif symbol.startswith(('scip-shell system ','local ')):",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_complete_population_keeps_unindexed_file_sites (test_scip_audit.ScipAuditTests)",
+      "command": "python3 -B -m unittest test_scip_audit.ScipAuditTests.test_complete_population_keeps_unindexed_file_sites",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "scip_audit.py",
+      "mutant": "unattested_command_sites=0",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_caps_accept_n_then_refuse_n_plus_one (test_scip_audit.ScipAuditTests) (kwargs={'max_documents': 1})",
+      "command": "python3 -B -m unittest test_scip_audit.ScipAuditTests.test_caps_accept_n_then_refuse_n_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "scip_audit.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_call_site_cap_stops_before_later_parser_failure (test_syntax_scope.OriginalScopeTests)",
+      "command": "python3 -B -m unittest test_syntax_scope.OriginalScopeTests.test_call_site_cap_stops_before_later_parser_failure",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "call_sites.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_parser_byte_cap_accepts_n_then_refuses_n_plus_one (test_syntax_scope.OriginalScopeTests)",
+      "command": "python3 -B -m unittest test_syntax_scope.OriginalScopeTests.test_parser_byte_cap_accepts_n_then_refuses_n_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "syntax_scope.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_parser_nesting_cap_accepts_n_then_refuses_n_plus_one (test_syntax_scope.OriginalScopeTests)",
+      "command": "python3 -B -m unittest test_syntax_scope.OriginalScopeTests.test_parser_nesting_cap_accepts_n_then_refuses_n_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "syntax_scope.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_source_site_cap_accepts_n_then_refuses_n_plus_one (test_syntax_scope.OriginalScopeTests)",
+      "command": "python3 -B -m unittest test_syntax_scope.OriginalScopeTests.test_source_site_cap_accepts_n_then_refuses_n_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "syntax_scope.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_external_absolute_source_stays_in_full_population (test_syntax_scope.OriginalScopeTests)",
+      "command": "python3 -B -m unittest test_syntax_scope.OriginalScopeTests.test_external_absolute_source_stays_in_full_population",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "syntax_scope.py",
+      "mutant": "external += 1\n            continue",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_skip_is_not_a_pass_and_failure_is_retained (test_control.DriverOutcomeTests)",
+      "command": "python3 -B -m unittest test_control.DriverOutcomeTests.test_skip_is_not_a_pass_and_failure_is_retained",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "control.py",
+      "mutant": "s == 'ok'",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_truncated_or_repeated_results_cannot_certify_driver_completion (test_control.DriverOutcomeTests) (text='1..2\\nok 1 partial\\n')",
+      "command": "python3 -B -m unittest test_control.DriverOutcomeTests.test_truncated_or_repeated_results_cannot_certify_driver_completion",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "control.py",
+      "mutant": "",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_perfect_observed_coverage_cannot_promote_independent_source_population (test_replay.DiagnosticTierTests)",
+      "command": "python3 -B -m unittest test_replay.DiagnosticTierTests.test_perfect_observed_coverage_cannot_promote_independent_source_population",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "replay.py",
+      "mutant": "'tier':'A' if mode=='calls' else 'A'",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_symlink_identity_and_copy_isolation (test_runtime_copy.RuntimeCopyTests)",
+      "command": "python3 -B -m unittest test_runtime_copy.RuntimeCopyTests.test_symlink_identity_and_copy_isolation",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "runtime_copy.py",
+      "mutant": "symlinks=False",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_git_metadata_is_copied_without_shared_worktree_reference (test_runtime_copy.RuntimeCopyTests)",
+      "command": "python3 -B -m unittest test_runtime_copy.RuntimeCopyTests.test_git_metadata_is_copied_without_shared_worktree_reference",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "runtime_copy.py",
+      "mutant": "shutil.ignore_patterns('node_modules','.git')",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_missing_native_caller_ranges_are_disclosed (test_scip_audit.ScipAuditTests)",
+      "command": "python3 -B -m unittest test_scip_audit.ScipAuditTests.test_missing_native_caller_ranges_are_disclosed",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "scip_audit.py",
+      "mutant": "return 'A'",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_repeated_observations_do_not_expand_but_cap_plus_one_refuses (test_scope_limits.NativeUnionTests)",
+      "command": "python3 -B -m unittest test_scope_limits.NativeUnionTests.test_repeated_observations_do_not_expand_but_cap_plus_one_refuses",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "scope_limits.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_driver_scratch_is_inside_allowed_cache (test_runtime_copy.RuntimeCopyTests)",
+      "command": "python3 -B -m unittest test_runtime_copy.RuntimeCopyTests.test_driver_scratch_is_inside_allowed_cache",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "runtime_copy.py",
+      "mutant": "result[key]=inherited.get(key,str(scratch))",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_driver_scratch_is_inside_allowed_cache (test_runtime_copy.RuntimeCopyTests)",
+      "command": "python3 -B -m unittest test_runtime_copy.RuntimeCopyTests.test_driver_scratch_is_inside_allowed_cache",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "runtime_copy.py",
+      "mutant": "HOME=inherited.get('HOME',str(home))",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_available_requires_native_inventory_and_matching_kind (test_lookup.LookupTests)",
+      "command": "python3 -B -m unittest test_lookup.LookupTests.test_available_requires_native_inventory_and_matching_kind",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "measure_lookup.py",
+      "mutant": "name in native_names",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_lookup_caps_accept_n_refuse_n_plus_one (test_lookup.LookupTests) (kwargs={'max_records': 1})",
+      "command": "python3 -B -m unittest test_lookup.LookupTests.test_lookup_caps_accept_n_refuse_n_plus_one",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "measure_lookup.py",
+      "mutant": "if False:",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_multiple_commands_on_one_line_stay_unattested (test_function_decode.NativeFunctionTests)",
+      "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_multiple_commands_on_one_line_stay_unattested",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_decode.py",
+      "mutant": "if len(byline.get((relative,int(line)),[]))==1:pairs.add((relative,caller,callee))",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_dynamic_call_cannot_impersonate_a_literal (test_function_decode.NativeFunctionTests)",
+      "command": "python3 -B -m unittest test_function_decode.NativeFunctionTests.test_dynamic_call_cannot_impersonate_a_literal",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "function_decode.py",
+      "mutant": "if any(s['literal'] for _,s in byline.get((relative,int(line)),[])):pairs.add((relative,caller,callee))",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_rejected_phase_drops_every_function_measure (test_function_decode.CertifiedPhaseTests)",
+      "command": "python3 -B -m unittest test_function_decode.CertifiedPhaseTests.test_rejected_phase_drops_every_function_measure",
+      "cwd": "calibration/oracles/bash-trace",
+      "file": "collect.py",
+      "mutant": "if changed or exit_code<0:return 0",
+      "restored": "GREEN"
+    }
+  ],
   "nvm_driver_outcomes": [
     {
       "failed": null,
@@ -482,26 +775,35 @@
       "timeout": false
     }
   ],
-  "policy": "Supplementary only: A executed-pair recall, C product-assisted SCIP pair diagnostics and C namespace availability; no canonical promotion, raw subject content or whole-source grade.",
+  "policy": "Offline review correction: native frames enumerate all in-root pairs; A recall uses only unchanged eligible caller-file membership, and syntax gates coverage only. Rejected phases contribute no accepted counts. Original native execution/proof hashes are pinned to historical_capture_revision; current decoder and checks are separately hashed.",
   "runtime": {
-    "benchmark_product_revision": "6db920e72898abb20bf86c22652b401902e34598",
+    "benchmark_product_revision": "0ded53658ba326103a05927155c7681a4a1d6068",
     "canonical_reading_changed": false,
+    "code_revision": null,
     "code_sha256": {
-      "replay.py": "5740bbb58a5e1cc777d510debf66a7b1fdc0c8d6654dd2e24620a4f627e903d4"
+      "replay.py": "61632fbbeadcf7c179417b5d16ac4ee21f2d7c774c2d1f3f1dc1f8ffbe8f49e5"
     },
-    "scope": "A executed function-pair recall; separate C source-pair comparison with independently selected syntax scope; no whole-written L2/L3 grade",
+    "scope": "A executed native pair recall on unchanged eligible caller files; all in-root native identities and outside-caller-scope counts disclosed; syntax selects coverage only; separate C source-pair comparison with independently selected syntax scope; no whole-written L2/L3 grade",
     "subjects": {
       "bats": {
         "bash_binary_sha256": "7b4da0fdf20be7d952c46449280d1eda8eecec4cb9de8659beb98c9e0bd42fa1",
         "bash_version": "GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin24.3.0)",
+        "capture_code_revision": "db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c",
         "command_sites": 1423,
+        "decoder_code_sha256": {
+          "collect.py": "b7d5c52857de7fe40172d6f6089b6c12a0d7a7c4dac7a69d7cbca034bf241402",
+          "function_decode.py": "eb150adde8b427f7b1939c3e7ee7334fa6dfae20d4a69910d08d0b41f71193ac",
+          "redecode.py": "1bb8e5f328248147b5aa6811a370ebf71f3be7dbe374fec263f70eed62410bc9"
+        },
+        "discarded_function_site_unpaired_rows": 0,
         "driver_exit_histogram": {
           "1": 1
         },
         "dynamic_command_sites": 53,
-        "executed_native_pairs": 222,
-        "executed_pair_recall": 0.9594594594594594,
-        "executed_pairs_found": 213,
+        "eligible_native_pairs": 248,
+        "executed_native_pairs": 248,
+        "executed_pair_recall": 0.907258064516129,
+        "executed_pairs_found": 225,
         "function_attested_sites": 254,
         "function_population_sha256": "80101bb2d891757d71823d8f1dc68d616ac344103c26fa582ab3dd790e69cb7f",
         "function_site_coverage": 0.17849613492621222,
@@ -520,7 +822,9 @@
           "trace_driver.py": "f5360980caef96e5671dde29fa326edf827050171892f967c3fb9d70c6ba797e",
           "trace_hook.sh": "85ad1602120abea3f56fcd8c22b47d5e70e99c71a6063922a8219e7f5e4ab9a0"
         },
+        "legacy_C_selected_pair_count": 222,
         "literal_command_sites": 1370,
+        "native_pairs_outside_original_caller_scope": 0,
         "native_pairs_outside_product_scope": 0,
         "native_phase_raw_sha256": [
           {
@@ -552,7 +856,7 @@
         "revision": "713504bc0224a19b3d7c7958c18dc07f64f54b44",
         "runtime_environment_policy": "fresh per-phase HOME/temp/npm/XDG roots; host shell/NVM/Git/npm overrides removed; no PROFILE override; native system mktemp may remain unavailable under lane-only writes",
         "runtime_precision": "unmeasured: unexecuted predictions are not judged",
-        "scored_executed_pairs": 222,
+        "scored_executed_pairs": 248,
         "shfmt_version": "v3.14.1",
         "source_attested_sites": 0,
         "source_changed_children": 0,
@@ -565,6 +869,11 @@
         "source_probe_enabled": false,
         "source_unique_native_edges": 0,
         "source_unknown_frames": 0,
+        "syntax_selection_independence": {
+          "empty_syntax_same_pairs": true,
+          "native_pairs": 248,
+          "sha256": "054df3a95b6f9c1baf8b8cce2968aaae58a752ee2371e925b23499d1db064d26"
+        },
         "system_bash_binary_sha256": "0a04cf6417c3e21bd3a8e98430ae4ee658e23ec5f2724119a0ca25f5ba41e3be",
         "system_bash_version": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin24)",
         "timeouts": 0,
@@ -588,19 +897,27 @@
       "nvm": {
         "bash_binary_sha256": "7b4da0fdf20be7d952c46449280d1eda8eecec4cb9de8659beb98c9e0bd42fa1",
         "bash_version": "GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin24.3.0)",
+        "capture_code_revision": "db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c",
         "command_sites": 9147,
+        "decoder_code_sha256": {
+          "collect.py": "b7d5c52857de7fe40172d6f6089b6c12a0d7a7c4dac7a69d7cbca034bf241402",
+          "function_decode.py": "eb150adde8b427f7b1939c3e7ee7334fa6dfae20d4a69910d08d0b41f71193ac",
+          "redecode.py": "1bb8e5f328248147b5aa6811a370ebf71f3be7dbe374fec263f70eed62410bc9"
+        },
+        "discarded_function_site_unpaired_rows": 22071,
         "driver_exit_histogram": {
           "-9": 1,
           "2": 8
         },
         "dynamic_command_sites": 1514,
-        "executed_native_pairs": 318,
-        "executed_pair_recall": 1.0,
-        "executed_pairs_found": 318,
+        "eligible_native_pairs": 457,
+        "executed_native_pairs": 489,
+        "executed_pair_recall": 0.9846827133479212,
+        "executed_pairs_found": 450,
         "function_attested_sites": 496,
         "function_population_sha256": "038a9a195385b9845d6f9473ceecf97e25a75376617b20b1f87ad60d9e7114f1",
         "function_site_coverage": 0.05422542910243796,
-        "function_unpaired_rows": 46997,
+        "function_unpaired_rows": 24926,
         "instrument_sha256": {
           "build_bash.py": "32b4c1efab67dab39ffbb03cd2c7bd7b6f0ccee5c66b2a46684555a671fd01ca",
           "call_sites.py": "01c9c369bf55f36f6318c2c7965f30d4d487ee880a66a96ab0166e4afda0d832",
@@ -615,8 +932,10 @@
           "trace_driver.py": "f5360980caef96e5671dde29fa326edf827050171892f967c3fb9d70c6ba797e",
           "trace_hook.sh": "85ad1602120abea3f56fcd8c22b47d5e70e99c71a6063922a8219e7f5e4ab9a0"
         },
+        "legacy_C_selected_pair_count": 318,
         "literal_command_sites": 7633,
-        "native_pairs_outside_product_scope": 0,
+        "native_pairs_outside_original_caller_scope": 32,
+        "native_pairs_outside_product_scope": 32,
         "native_phase_raw_sha256": [
           {
             "child.log": "07fd96525d6022a0733e43f38f396f2bbc6769dd837af9b3a6d3ab7edc738e49",
@@ -695,7 +1014,7 @@
         "revision": "1889911f0841e669de0be5bd02c737a3f1fd20fa",
         "runtime_environment_policy": "fresh per-phase HOME/temp/npm/XDG roots; host shell/NVM/Git/npm overrides removed; no PROFILE override; native system mktemp may remain unavailable under lane-only writes",
         "runtime_precision": "unmeasured: unexecuted predictions are not judged",
-        "scored_executed_pairs": 318,
+        "scored_executed_pairs": 457,
         "shfmt_version": "v3.14.1",
         "source_attested_sites": 0,
         "source_changed_children": 0,
@@ -708,6 +1027,11 @@
         "source_probe_enabled": false,
         "source_unique_native_edges": 0,
         "source_unknown_frames": 0,
+        "syntax_selection_independence": {
+          "empty_syntax_same_pairs": true,
+          "native_pairs": 489,
+          "sha256": "561874b9d7ef9f559deb1c1c388d0ffb79e4c3d188fa4f4dc9de698435505772"
+        },
         "system_bash_binary_sha256": "0a04cf6417c3e21bd3a8e98430ae4ee658e23ec5f2724119a0ca25f5ba41e3be",
         "system_bash_version": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin24)",
         "timeouts": 1,
@@ -980,27 +1304,27 @@
   "witness_diagnostic_C": {
     "bats": {
       "accepted_identities_without_original_definition_witness": 0,
-      "accepted_pair_identities": 222,
+      "accepted_pair_identities": 248,
       "policy": "Definition-witness counts concern raw rows sharing accepted pair identities, not a complete event-crossing census. Literal ERR registration matches explain a different runtime population; every unmatched pair stays scored.",
       "raw_identities_with_both": 5,
-      "raw_identities_with_original_definition": 222,
+      "raw_identities_with_original_definition": 248,
       "raw_identities_with_outside_original_definition": 5,
       "tier": "C source-contract diagnostic only; no native truth or score filtering",
-      "unmatched_executed_pairs": 9,
-      "unmatched_pairs_whose_target_occurs_in_simple_literal_ERR_registration": 9,
-      "unmatched_target_identity_sha256": "c643ccc243eb372d3b169f941b72954e7fa0c9a2e63bde6cd32c7b4721040da9"
+      "unmatched_executed_pairs": 23,
+      "unmatched_pairs_whose_target_occurs_in_simple_literal_ERR_registration": 10,
+      "unmatched_target_identity_sha256": "6f247a59af961c00722135256b11ff698f632c44e561b224e38fa09fd246e8bd"
     },
     "nvm": {
-      "accepted_identities_without_original_definition_witness": 0,
-      "accepted_pair_identities": 318,
+      "accepted_identities_without_original_definition_witness": 3,
+      "accepted_pair_identities": 489,
       "policy": "Definition-witness counts concern raw rows sharing accepted pair identities, not a complete event-crossing census. Literal ERR registration matches explain a different runtime population; every unmatched pair stays scored.",
       "raw_identities_with_both": 3,
-      "raw_identities_with_original_definition": 318,
-      "raw_identities_with_outside_original_definition": 3,
+      "raw_identities_with_original_definition": 486,
+      "raw_identities_with_outside_original_definition": 6,
       "tier": "C source-contract diagnostic only; no native truth or score filtering",
-      "unmatched_executed_pairs": 0,
+      "unmatched_executed_pairs": 7,
       "unmatched_pairs_whose_target_occurs_in_simple_literal_ERR_registration": 0,
-      "unmatched_target_identity_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "unmatched_target_identity_sha256": "e61471a30d8c7d7cbe0929c5c03577d1c3c27a89aeb9f4ddd9715a1829fa9bfe"
     }
   }
 }

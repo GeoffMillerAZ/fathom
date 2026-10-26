@@ -2,6 +2,7 @@
 """Export counts/hashes only, or verify the committed supplementary Bash receipt."""
 import argparse,hashlib,json,re
 from pathlib import Path
+from redecode import historical_hash
 
 HERE=Path(__file__).resolve().parent
 REPO=HERE.parents[2]
@@ -16,7 +17,7 @@ def check(data,verify_code=True):
     assert data['canonical_reading_sha256']==sha(REPO/'docs/bench/readings/lang/bash.json')
     runtime,scip,lookup=(data[k] for k in ['runtime','scip','lookup'])
     assert lookup['tier']=='C' and scip['scoring_tier'].startswith('C ')
-    assert len(data['mutations'])==29
+    assert len(data['mutations'])==(31 if 'historical_capture_revision' in data else 32)
     assert all(r['FAIL'].startswith('FAIL:') and r['restored']=='GREEN' for r in data['mutations'])
     proof=data['independence']
     for prefix in ['source','calls','scip']:
@@ -34,12 +35,13 @@ def check(data,verify_code=True):
         assert l['native_available_sites']+l['unavailable_sites']==l['sites']
         assert s['audit']['native_command_sites']+s['audit']['unattested_command_sites']==l['sites']
         assert s['audit']['function_definitions_without_native_enclosing_range']>0
-        assert 0<=r['executed_pairs_found']<=r['scored_executed_pairs']<=r['executed_native_pairs']
+        assert 0<=r['executed_pairs_found']<=r['scored_executed_pairs']==r.get('eligible_native_pairs',r['scored_executed_pairs'])<=r['executed_native_pairs']
+        assert r['native_pairs_outside_product_scope']==r['executed_native_pairs']-r['scored_executed_pairs']
         assert r['source_coverage'] is None and r['observed_source_diagnostic_counts'] is None
         assert r['source_changed_children']==0
         witness=data['witness_diagnostic_C'][name]
-        assert witness['accepted_pair_identities']==witness['raw_identities_with_original_definition']==r['executed_native_pairs']
-        assert witness['accepted_identities_without_original_definition_witness']==0
+        assert witness['accepted_pair_identities']==r['executed_native_pairs']
+        assert witness['raw_identities_with_original_definition']+witness['accepted_identities_without_original_definition_witness']==r['executed_native_pairs']
         assert witness['unmatched_executed_pairs']==r['scored_executed_pairs']-r['executed_pairs_found']
         assert witness['unmatched_pairs_whose_target_occurs_in_simple_literal_ERR_registration']<=witness['unmatched_executed_pairs']
         for unit in [r,s,l]:assert unit['tracked_before']==unit['tracked_after']==r['tracked_before']
@@ -48,32 +50,38 @@ def check(data,verify_code=True):
         row=control[key];assert row['tests']==row['passed']+row['skipped']+row['failed']
     assert control['only_observed_failed_tests']+control['shared_failed_tests']==control['observed']['failed']
     assert control['only_control_failed_tests']+control['shared_failed_tests']==control['control']['failed']
-    def visit(value):
+    def visit(value,revision=None):
         if isinstance(value,dict):
+            revision=value.get('code_revision',revision)
             for k,v in value.items():
-                if verify_code and k in ['code_sha256','instrument_sha256']:
+                if verify_code and k in ['code_sha256','instrument_sha256','decoder_code_sha256','current_code_sha256']:
+                    code_revision=value.get('capture_code_revision',revision) if k=='instrument_sha256' else revision
+                    if k in ['decoder_code_sha256','current_code_sha256']:code_revision=None
                     for filename,digest in v.items():
                         path=HERE/filename
-                        assert path.parent==HERE and path.is_file() and sha(path)==digest,filename+' code drift'
-                else:visit(v)
+                        assert path.parent==HERE and path.is_file()
+                        actual=historical_hash(code_revision,filename) if code_revision else sha(path)
+                        assert actual==digest,filename+' code drift'
+                else:visit(v,revision)
         elif isinstance(value,list):
-            for item in value:visit(item)
-    visit(data)
+            for item in value:visit(item,revision)
+    visit(data,data.get('historical_capture_revision'))
     return True
 
 
 
-def witness_diagnostic(capture,tools,name,folder):
+def witness_diagnostic(capture,tools,name,folder,runtime_folder="runtime-final"):
     from function_decode import decode as validate_raw
     native=capture/folder
     row=json.loads((native/'summary.json').read_text())
     keys={(x['path'],x['from'],x['to']) for x in row['function_pairs']}
     inside,outside=set(),set()
     original=set(row['source_sha256'])
-    child=(native/'child').resolve()
+    raw_root=Path(row.get('raw_evidence_root',native)).resolve()
+    child=(raw_root/'child').resolve()
     for phase in row['runs']:
         if phase['timeout'] or phase['exit']<0 or phase['changed_source']:continue
-        trace=native/phase['phase']/'functions.trace'
+        trace=raw_root/phase['phase']/'functions.trace'
         assert sha(trace)==phase['raw_sha256']['functions.trace']
         validate_raw(trace,child,{'sites':[]})  # fixed bounded native decoder
         fields=trace.read_bytes().split(b'\0')
@@ -91,7 +99,7 @@ def witness_diagnostic(capture,tools,name,folder):
         source=tools/name/relative
         assert sha(source)==digest
         handlers.update(m[1] for m in re.findall(r"\btrap\s+(['\"])([A-Za-z_][A-Za-z0-9_:.+-]*)\1\s+ERR\b",source.read_text()))
-    unmatched=json.loads((capture/'runtime-final'/(name+'-calls-unmatched.json')).read_text())['calls']['oracle_only']
+    unmatched=json.loads((capture/runtime_folder/(name+'-calls-unmatched.json')).read_text())['calls']['oracle_only']
     return dict(tier='C source-contract diagnostic only; no native truth or score filtering',
         accepted_pair_identities=len(keys),raw_identities_with_original_definition=len(inside),
         raw_identities_with_outside_original_definition=len(outside),raw_identities_with_both=len(inside&outside),
@@ -107,10 +115,31 @@ def main():
     p.add_argument('--capture',type=Path,help='private artifact root from README commands')
     p.add_argument('--tools',type=Path)
     p.add_argument('--out',type=Path,default=DEFAULT)
+    p.add_argument('--historical-base',help='committed capture revision for an offline review refresh')
+    p.add_argument('--runtime-folder',default='runtime-final')
+    p.add_argument('--mutations-folder',default='mutations-final')
+    p.add_argument('--nvm-folder',default='nvm-functions')
+    p.add_argument('--bats-folder',default='bats-final-v4')
     a=p.parse_args()
     if a.capture:
         assert a.tools,'--tools required for capture'
         def read(folder,filename='summary.json'):return json.loads((a.capture/folder/filename).read_text())
+        if a.historical_base:
+            import subprocess
+            data=json.loads(subprocess.check_output(['git','show',a.historical_base+':docs/assessments/data/bash-oracle-2026-10-26/evidence.json']))
+            data['historical_capture_revision']=a.historical_base
+            data['historical_mutations']=data['mutations']
+            data['mutations']=read(a.mutations_folder,'mutations.json')
+            data['runtime']=read(a.runtime_folder)
+            data['runtime']['code_revision']=None
+            data['current_code_sha256']={p.name:sha(p) for p in HERE.iterdir() if p.is_file()}
+            data['witness_diagnostic_C']={name:witness_diagnostic(a.capture.resolve(),a.tools.resolve(),name,folder,a.runtime_folder) for name,folder in [('nvm',a.nvm_folder),('bats',a.bats_folder)]}
+            data['policy']='Offline review correction: native frames enumerate all in-root pairs; A recall uses only unchanged eligible caller-file membership, and syntax gates coverage only. Rejected phases contribute no accepted counts. Original native execution/proof hashes are pinned to historical_capture_revision; current decoder and checks are separately hashed.'
+            check(data)
+            a.out.parent.mkdir(parents=True,exist_ok=True)
+            a.out.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
+            print('PASS: exported corrected native population and historical/current provenance')
+            return
         # These producers already export counts, hashes and software contracts only.
         # Never include native traces, source manifests/pairs, SCIP docs or driver logs.
         data=dict(canonical_reading_changed=False,canonical_reading_sha256=sha(REPO/'docs/bench/readings/lang/bash.json'),

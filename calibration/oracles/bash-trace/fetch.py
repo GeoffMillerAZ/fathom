@@ -11,7 +11,7 @@ SUBJECTS={'nvm':('nvm-sh/nvm','1889911f0841e669de0be5bd02c737a3f1fd20fa'),
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True);args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True);p.add_argument('--scope-only',action='store_true',help='original subjects and shfmt only, for offline re-decoding');args=p.parse_args()
     base=args.out.resolve();base.mkdir(parents=True,exist_ok=True)
     for name,(repository,pin) in SUBJECTS.items():
         root=base/name
@@ -25,6 +25,7 @@ def main():
     download('https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_arm64',binary,
              'b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5')
     binary.chmod(0o755)
+    if args.scope_only:return
     archive=base/'urchin.tgz'
     download('https://registry.npmjs.org/urchin/-/urchin-0.0.5.tgz',archive,'caa836710230bf0b82caa54375cd5609c7083336910b83202156e2424b4139d0')
     harness=base/'urchin'

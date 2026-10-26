@@ -47,16 +47,15 @@ function frames and compiler filenames. shfmt 3.14.1 supplies original source
 scope and callers only. Source entry events witness an actual opened file;
 definitions-only sources require changed native declare -F metadata. No guessed
 CWD target or replacement source builtin supplies truth. Empty, failed or
-ambiguous loads remain unattested. RETURN function frames provide actual native
-targets, paired only with a unique literal original command and matching caller.
-Computed and ambiguous sites, builtins, external commands and unexecuted sites
-remain in coverage; executed recall counts all observed native pairs. Separate
-source-pair comparison retains C because independent shfmt selects its original
-literal population. Native opened filenames are executed facts; even perfect
-coverage cannot establish owner enumeration under P-T1. This does not rewrite
-the historical canonical static B reading. External absolute literal source
-sites remain in coverage and are counted separately. Runtime
-precision and whole-written L2 recall are unmeasured.
+ambiguous loads remain unattested. RETURN frames enumerate caller file, caller function and executed target using
+native fields alone. Every absolute, in-root pair enters the census, even when
+its line is ambiguous, dynamic, absent from shfmt, or has a different lexical
+caller. Independent shfmt now decides only site-coverage hits. Grading is limited
+to the unchanged original eligible caller files, and replay asserts the scorer
+keeps exactly those native pairs. Full in-root and out-of-caller-scope counts are
+both disclosed. Native opened filenames are executed facts; source comparison
+retains C because independent syntax selects that population. Runtime precision,
+whole-written L2 recall and whole-source L3 remain unmeasured.
 
 The original NVM driver uses its declared Urchin 0.0.5 and its Makefile's test-bash
 rule for every original test subdirectory. The pinned nvmrc Gitlink fixture is
@@ -70,8 +69,8 @@ to the environment; observer-only failures remain an explicit measurement limita
 
 | Instrumented execution | Original files / bytes | Attested original command sites | Native executed pairs | Native pair recall | Driver outcome |
 |---|---:|---:|---:|---:|---|
-| NVM, declared Make/Urchin phases | 277 / 475,959 | 496/9,147 (5.42%) | 318 | 318/318 (1.0000) | 9 phases attempted; first timed out at 120 seconds, its entire event set discarded; other eight exit 2 |
-| Bats, declared suite | 68 / 162,377 | 254/1,423 (17.85%) | 222 | 213/222 (.9595) | 459 TAP results: 410 pass / 23 skip / 26 fail, exit 1; no timeout |
+| NVM, declared Make/Urchin phases | 277 / 475,959 | 496/9,147 (5.42%) | 489 in-root / 457 eligible callers | 450/457 (.9847) | 9 phases attempted; first timed out at 120 seconds, its pair/site/unpaired contributions discarded; other eight exit 2 |
+| Bats, declared suite | 68 / 162,377 | 254/1,423 (17.85%) | 248 in-root / 248 eligible callers | 225/248 (.9073) | 459 TAP results: 410 pass / 23 skip / 26 fail, exit 1; no timeout |
 
 NVM's eight completed driver phases report 45 passes and 45 failures in total;
 the timed-out phase's incomplete outcomes are not certified. Original requested
@@ -87,23 +86,21 @@ source sites (including one external absolute path) and six dynamic/no-argument
 sites, with source coverage unmeasured. Bats has zero literal source sites and 34
 dynamic/no-argument sites, also unmeasured. No L3 diagnostic runs for either.
 
-Bats's nine unmatched executed pairs all target the function registered by the
-original subject as its ERR handler. The native records originate at failing
-commands or harness calls, rather than explicit written calls to that handler.
-This is an implicit runtime callback population absent from the canonical lexical
-call metric, explaining why executed .9595 does not reproduce canonical recall.
-All nine remain misses in the executed-pair denominator. They are not removed to
-make runtime recall perfect, and they are not evidence that ordinary lexical
-extraction should invent ERR-dispatch edges. Replaying the committed recipe emits
-the private `bats-calls-unmatched.json` and raw native frames needed to inspect
-this classification; only counts and hashes are published. The explanation is a
-source-contract diagnostic, separate from native truth and grading. The exporter
-checks that all nine missed target identities occur in the subject's simple
-literal ERR registrations; it exports only counts and a target-identity hash.
-Every accepted pair identity also has a raw original-definition witness. Three
-NVM and five Bats identities additionally have raw witnesses defined outside the
-original eligible file set; none is outside-only. These are identity-level
-counts, not a complete crossing-event census, and do not widen the product scope.
+The binding review found that the former 318/318 and 213/222 denominators were
+selected by tier-C shfmt sites. Those figures are withdrawn as tier-A recall.
+Re-decoding all 40 hash-verified raw files yields 489 NVM / 248 Bats in-root native
+identities without syntax selection. NVM has 32 identities whose callers are
+outside the original eligible Bash file set; none is an unresolved in-scope pair.
+The unchanged eligible-file population is 457 / 248, with 450 / 225 found.
+Seven NVM and 23 Bats misses remain. They include computed command dispatch and
+implicit ERR/EXIT callbacks, rather than only the nine previously retained ERR
+callbacks. The difference from the historical selected-population counts is 132/139 and
+12/26; that excluded subpopulation was strongly biased toward difficult cases. All eligible misses now remain
+in the denominator. These executed binding populations differ from canonical
+lexical syntax, so neither figure rewrites the canonical reading. Source-contract
+miss diagnostics remain C and cannot filter native truth. Raw rows sharing an
+accepted native identity may also refer to copied/generated definitions; the
+receipt counts those separately without widening original caller scope.
 
 The untraced Bats control yields 430 pass / 23 skip / 6 fail, exit 1. All six
 failures are shared with tracing; 20 are observer-only and none control-only.
@@ -114,11 +111,13 @@ not every shared failure is attributed to the environment. The receipt stores
 counts and a failed-name-set hash, never subject test names or raw output.
 Runtime evidence describes the instrumented execution only. Native versions
 5.3.20 (fullpath enabled) and nested system 3.2.57 (fullpath unavailable) are
-recorded separately. Native unpaired rows are 46,997 and 49,532 respectively:
-external/relative filenames, ambiguous lines, computed commands and unmatched
-callers do not become fabricated original pairs. No original site is removed
-from coverage. Native target and caller strings, rather than parser-created
-endpoints, define accepted executed pairs.
+recorded separately. Certified site-unpaired rows are 24,926 for NVM and
+49,532 for Bats. NVM's 22,071 rejected-phase rows are a separate diagnostic,
+excluded from accepted pair, coverage and unpaired totals. Site-unpaired rows
+include in-scope ambiguity, dynamic commands and lexical-caller mismatches as
+well as relative/outside native frames; they do not select the native recall
+population. The old 46,997 NVM aggregate mixed accepted and rejected phases and
+is withdrawn. No original site is removed from coverage.
 
 ## Named candidates and limits
 
@@ -126,6 +125,10 @@ endpoints, define accepted executed pairs.
 |---|---|---|
 | [GNU Bash native frames/builtins](https://www.gnu.org/software/bash/manual/bash.html) | 5.3.20; nested system 3.2.57 recorded separately | Actual native measurements above; executed-only function truth and witnessed source entries. Unsupported fullpath is disclosed. No coverage threshold grades whole-written L2. |
 | [GNU Bash parser/check/trace flags](https://www.gnu.org/software/bash/manual/html_node/Invoking-Bash.html) | 5.3.20, GPL-3.0-or-later CLI; actual authored contract probe | File-mode pretty-print emits normalized Bash source without original positions or resolved-reference records; command-string mode executes the fixture instead. A third-party walk over printed source is not an owner-bound-reference export. Native execution hooks above obtain actual targets rather than treating printed command text as binding. |
+| [GNU Bash xtrace / PS4 / BASH_XTRACEFD and BASH_COMMAND](https://www.gnu.org/software/bash/manual/html_node/Bash-Variables.html) | GNU 5.3.20; native xtrace also exists in system 3.2.57, which lacks BASH_XTRACEFD | Source-contract check: xtrace prints expanded executed commands; DEBUG's BASH_COMMAND exposes the running command text. These can refine attribution on multi-command/dynamic lines. Neither enumerates unexecuted references. The corrected native pair census needs neither a literal command nor unique shfmt site; xtrace is an additional coverage/attribution route, not dismissed as impossible. No original-subject xtrace run or accuracy claim. |
+| [kcov Bash engine](https://github.com/SimonKagstrom/kcov/blob/v43/src/engines/bash-engine.cc) | v43, GPL-2.0 CLI | Versioned engine source uses PS4 / xtrace and BASH_XTRACEFD where supported to obtain executed-line coverage. It can extend runtime coverage; coverage reports do not supply whole-written resolved call pairs. Not installed or corpus-scored, so no measured failure is claimed. |
+| [bashcov runner](https://github.com/infertux/bashcov/blob/v4.0.1/lib/bashcov/runner.rb) | RubyGems 4.0.1, MIT | Versioned runner enables xtrace with PS4 and BASH_XTRACEFD, then computes coverage. It can extend executed trace attribution; it supplies no unexecuted binding population or automatic whole-written L2 grade. Registry and source contracts checked, not installed/scored. |
+| [Oils osh parser / AST dump](https://oils.pub/release/0.38.0/doc/getting-started.html) | 0.38.0 release docs; project Apache-2.0 licence | Documented `osh -n --ast-format text` dumps an independent Bash-compatible syntax tree: tier C for Bash. Oils also documents its own xtrace output route, but executing the subjects with an alternative interpreter would change the declared GNU runtime contract. No install, source translation or corpus-accuracy measurement was attempted. |
 | [scip-shell](https://github.com/jelmer/scip-shell/tree/v0.1.0) | Released v0.1.0, bd95dfa882c2 | Entire original populations indexed and native occurrences audited; measured unattested commands above remain misses even under favorable A classification. Source symbols represent written paths rather than filenames actually opened by Bash. |
 | [bash-language-server](https://www.npmjs.com/package/bash-language-server/v/5.8.1) | 5.8.1, MIT | Independent parser/name/source resolution, not the GNU engine or a separate maintained SCIP export; custom reference exports remain C. No measured corpus-accuracy claim is made for this route. |
 | [ShellCheck](https://github.com/koalaman/shellcheck/tree/v0.11.0) | 0.11.0, GPL-3.0-or-later CLI | Independent static analysis and source-following diagnostics; JSON diagnostics do not supply a whole-source resolved caller/target table or actual opened filenames. Its static path cross-check already informs canonical B evidence. |
@@ -158,7 +161,7 @@ as measured accuracy failures. The concrete sources and queries follow.
 | SCIP / LSIF | [Sourcegraph full indexer list](https://sourcegraph.com/docs/code-navigation/writing-an-indexer) and [precise-navigation table](https://sourcegraph.com/docs/code-navigation/precise-code-navigation) and [LSIF.dev](https://lsif.dev/); GitHub repositories API queries `scip-bash` and `scip shell` | 39 scip-bash hits did not supply a Bash producer; the 69-result sibling query found released scip-shell, which was built and measured. The short scip README example list is non-exhaustive. |
 | Language servers | [bash-language-server 5.8.1 registry](https://registry.npmjs.org/bash-language-server/5.8.1) and [reference/source resolver](https://github.com/bash-lsp/bash-language-server) | Independent static names, no engine-bound table or second producer established. |
 | Package registries | PyPI `/pypi/bashlex/json` and `/pypi/bashparser/json`; npm `/bash-parser/latest` and `/bash-language-server/latest`; NuGet `query?q=bash parser` and exact nuspec URLs above; released [Cargo.toml](https://github.com/jelmer/scip-shell/blob/v0.1.0/Cargo.toml) / Cargo.lock | Named relevant candidates above; five NuGet hits included a CLI-argument parser outside this task. Missing licence metadata is not a claimed ban. |
-| Runtime call / require tracing | [Original NVM Makefile](https://github.com/nvm-sh/nvm/blob/v0.40.5/Makefile), Urchin 0.0.5 registry, [Bats package task](https://github.com/bats-core/bats-core/blob/v1.12.0/package.json); GNU hooks, bashdb/bashprof contracts above; local DTrace `-n BEGIN` probe | Declared harness measurements and bounded native observers above; failures and coverage retained. Direct-input probes and broken earlier hooks are not used as ceiling evidence. |
+| Runtime call / require tracing | [Original NVM Makefile](https://github.com/nvm-sh/nvm/blob/v0.40.5/Makefile), Urchin 0.0.5 registry, [Bats package task](https://github.com/bats-core/bats-core/blob/v1.12.0/package.json); GNU xtrace/PS4/BASH_XTRACEFD/BASH_COMMAND contracts; kcov v43 engine source, bashcov 4.0.1 registry/runner, Oils 0.38.0 AST/xtrace docs; bashdb/bashprof contracts above; local DTrace `-n BEGIN` probe | Declared harness measurements and bounded native observers above; failures and coverage retained. Direct-input probes and broken earlier hooks are not used as ceiling evidence. |
 
 ## Proof and disposition
 
@@ -182,9 +185,10 @@ bytes. Original checkouts have no new untracked or ignored files after probes.
 Dependencies, generated tests, runtime downloads and disposable Git metadata stay
 in private runtime copies. No raw source/file list or subject people are committed.
 
-All 42 regressions pass, including the same suite in a fresh isolated copy with
-no pre-existing workspace. All 29 deliberate mutants fail their focused assertion,
-then pass after restoration. The mutation receipt names each changed file, mutant,
+All 44 current regressions pass, including the same suite in a fresh isolated copy with
+no pre-existing workspace. All 31 current unit mutants fail their focused assertion, then pass after
+restoration. The original 29 mutants/native-mode proof remain historical at the
+capture revision; no new subject execution is claimed. The mutation receipt names each changed file, mutant,
 runnable command, FAIL line and restored GREEN. Actual GNU/SCIP independence passes:
 changing real product outputs to fabricated pairs leaves native source/function
 raw digests and SCIP bytes unchanged; changing known source/function/alias inputs
@@ -193,8 +197,11 @@ zero shadowed-source edges, two edges under shadowed metadata builtins, preserve
 strict error statuses and whole-unit native overflow refusal. A separate actual
 function-only collection proves that a nonzero source population stays unmeasured
 with no DEBUG source events. No disabled probe becomes 0% or perfect source coverage.
-All 39 top-level probe files and the measured collector subsets are hash-checked
-by the committed receipt reader. Supplementary product revision is `6db920e72`.
+Historical 39-file proof/capture hashes are checked against the reviewed Git
+revision; current decoder, replay, regressions and receipt code are separately
+hash-checked. The offline replay verifies all raw digests before decoding and
+requires identical native pairs with an empty syntax population. Product scoring
+was rerun with indexbench built from the merged branch.
 Q7 permits remaining checks under elevated host load at nice10 with at most two
 Go workers; no throughput or canonical performance result is inferred.
 
@@ -208,7 +215,8 @@ runs with `python3 -B -m unittest discover -s calibration/oracles/bash-trace -p
 | Combined native pair/source union | 1,000,000 each | `test_scope_limits.NativeUnionTests.test_repeated_observations_do_not_expand_but_cap_plus_one_refuses` |
 | Native function bytes / fields / field bytes | 32 MiB / 1,000,000 / 1 MiB | `test_function_decode` byte, field-count and field-bytes cap+1 tests |
 | Native source bytes / fields / field bytes | 32 MiB / 1,000,000 / 1 MiB | `test_trace.NativeTrace.test_each_native_cap_refuses_limit_plus_one` |
-| Per-process unique GNU function records | 100,000 | Actual `prove_native.py` lower-cap overflow refuses the unit, never accepted prefix truth |
+| Per-process unique GNU function records, Bash >=4 only | 100,000 | Actual `prove_native.py` lower-cap overflow refuses the unit, never accepted prefix truth |
+| Legacy Bash 3.2 raw records | No per-process cap; shared 32 MiB/field decoder limits, with 64 MiB OS limit | The recorded 3.2 processes are bounded by whole-unit refusal only; the >=4 native lower-cap proof does not cover them |
 | SCIP bytes / documents / occurrences | 32 MiB / 2,048 / 1,000,000 | `test_scip_audit.ScipAuditTests.test_caps_accept_n_then_refuse_n_plus_one` |
 | Parser output per stream / structural nesting | 32 MiB / 256 | `test_syntax_scope` parser-byte and parser-nesting cap+1 tests, bounded before decoding |
 | Incremental source/call sites | 1,000,000 each | `test_syntax_scope` source-site cap+1 and call-site early-refusal tests |
@@ -262,6 +270,13 @@ bash scripts/check-merge-debris.sh
 bash scripts/check-merge-debris.sh --staged
 ```
 
-The README gives the actual independent native and 29-mutation proof commands,
+The README gives the historical native and current 31-unit-mutation proof commands,
 including every input flag. The canonical reading bytes, holdout sets and generated
 board are unchanged. The controller retains full integration validation.
+
+Binding review disposition: Major 1 is corrected by a native-only denominator
+and an empty-syntax invariance check; Minor 1 by certified-phase aggregation and
+separate rejected rows; Minor 2 by accurately limiting the per-process cap claim
+to Bash >=4; Minor 3 by attaching this assessment's row to the index table; Minor 4
+by the four versioned trace/parser contract rows above. Historical execution
+artifacts were reused after digest checks; no new subject test pass is claimed.
