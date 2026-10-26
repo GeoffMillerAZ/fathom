@@ -1,25 +1,94 @@
 package extractor
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // simulinkIdentityGolden holds the calibration models' per-model counts, no model content.
 const simulinkIdentityGolden = "testdata/simulink_identity.json"
 
-// simulinkCounts is what the identity golden records of one model.
+// simulinkCounts is what the identity golden records of one model: counts and two digests,
+// no model content.
 type simulinkCounts struct {
 	Blocks    int `json:"blocks"`
 	Signals   int `json:"signals"` // distinct
 	ModelRefs int `json:"model_refs"`
 	Calls     int `json:"calls"` // the Calls ExtractDoc emits, summed over its nodes
 	CrossFile int `json:"cross_file"`
+	// SignalsSHA is simulinkSignalsDigest's, CallsSHA simulinkCallsDigest's (owner decision
+	// D21, S5-R5): totals alone pass a reader that reverses every edge.
+	SignalsSHA string `json:"signals_sha256"`
+	CallsSHA   string `json:"calls_sha256"`
+}
+
+// simulinkSignalsDigest is the sha256 over a model's signals as sorted `Src\x00Dst` lines.
+func simulinkSignalsDigest(sigs []SimulinkSignal) string {
+	lines := make([]string, len(sigs))
+	for i, s := range sigs {
+		lines[i] = s.Src + "\x00" + s.Dst
+	}
+	return simulinkDigest(lines)
+}
+
+// simulinkCallsDigest is the sha256 over each emitted node's line: its Name, then its Calls
+// sorted, NUL-separated; the lines sorted.
+func simulinkCallsDigest(nodes []core.SymbolNode) string {
+	lines := make([]string, len(nodes))
+	for i, n := range nodes {
+		calls := slices.Clone(n.Calls)
+		sort.Strings(calls)
+		lines[i] = strings.Join(append([]string{n.Name}, calls...), "\x00")
+	}
+	return simulinkDigest(lines)
+}
+
+func simulinkDigest(lines []string) string {
+	sort.Strings(lines)
+	h := sha256.New()
+	for _, l := range lines {
+		h.Write([]byte(l))
+		h.Write([]byte{'\n'})
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// TestSimulinkIdentityDigests: the digests change when a signal joins other blocks, here the
+// one signal reversed, so the identity golden fails such a reader.
+func TestSimulinkIdentityDigests(t *testing.T) {
+	src := slxPackage(t, "simulink/systems/system_root.xml", `<System><Block Name="A" SID="1"/><Block Name="B" SID="2"/>`+
+		`<Line><P Name="Src">1#out:1</P><P Name="Dst">2#in:1</P></Line></System>`)
+	m, err := ReadSimulinkModel("m.slx", src)
+	if err != nil || len(m.Signals) != 1 {
+		t.Fatalf("%d signals, %v", len(m.Signals), err)
+	}
+	r, _ := NewSimulinkExtractor().ExtractDoc("svc", "m.slx", src)
+	rev := []SimulinkSignal{{Src: m.Signals[0].Dst, Dst: m.Signals[0].Src}}
+	if simulinkSignalsDigest(m.Signals) == simulinkSignalsDigest(rev) {
+		t.Error("the signals digest does not see a reversed signal")
+	}
+	nodes := slices.Clone(r.Nodes)
+	for i := range nodes {
+		switch nodes[i].Name {
+		case "m/A":
+			nodes[i].Calls = nil
+		case "m/B":
+			nodes[i].Calls = []string{"m/A"}
+		}
+	}
+	if simulinkCallsDigest(r.Nodes) == simulinkCallsDigest(nodes) {
+		t.Error("the calls digest does not see a reversed call")
+	}
 }
 
 // TestSimulinkCalibrationIdentity is S4-R4: every .slx and .mdl under CALIBRATION_DIR (the
@@ -47,7 +116,8 @@ func TestSimulinkCalibrationIdentity(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		c := simulinkCounts{Blocks: len(m.Blocks), Signals: len(m.Signals), ModelRefs: len(m.ModelRefs), CrossFile: len(r.CrossFile)}
+		c := simulinkCounts{Blocks: len(m.Blocks), Signals: len(m.Signals), ModelRefs: len(m.ModelRefs), CrossFile: len(r.CrossFile),
+			SignalsSHA: simulinkSignalsDigest(m.Signals), CallsSHA: simulinkCallsDigest(r.Nodes)}
 		for _, n := range r.Nodes {
 			c.Calls += len(n.Calls)
 		}
