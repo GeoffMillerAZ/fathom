@@ -242,3 +242,134 @@ func TestSimulinkDecoderStrict(t *testing.T) {
 		t.Errorf("bare attribute names: %v; want ErrSimulinkCap", err)
 	}
 }
+
+// simulinkRefsJSON is a graphicalInterface.json of n model references, each blockPath to
+// model m<i>.
+func simulinkRefsJSON(n int, blockPath string) string {
+	var b strings.Builder
+	b.WriteString(`{"GraphicalInterface": {"ModelReferences": [`)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		fmt.Fprintf(&b, `{"BlockPath": %q, "ModelName": "m%d"}`, blockPath, i)
+	}
+	b.WriteString(`]}}`)
+	return b.String()
+}
+
+// simulinkRefsXML is n packed model references, in a graphicalInterface.xml part (or the
+// diagram's inline GraphicalInterface) or a .mdl's.
+func simulinkRefsXML(n int, mdl bool) string {
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		if mdl {
+			fmt.Fprintf(&b, "ModelReference {\nModelRefBlockPath \"$bdroot/R%d|m%d\"\n}\n", i, i)
+		} else {
+			fmt.Fprintf(&b, `<ModelReference><P Name="ModelRefBlockPath">$bdroot/R%d|m%d</P></ModelReference>`, i, i)
+		}
+	}
+	return b.String()
+}
+
+// TestReadSimulinkModelRefCaps is S5-R2: model references are read under caps from every
+// source, SimulinkMaxModelRefs per model and SimulinkMaxValue per BlockPath or ModelName, and
+// graphicalInterface.json is decoded as a bounded token stream (its values nest at most
+// SimulinkMaxDepth); past a cap the model is ErrSimulinkCap and read as nothing, never a
+// truncated list.
+func TestReadSimulinkModelRefCaps(t *testing.T) {
+	sys := "simulink/systems/system_root.xml"
+	block := `<System><Block Name="K" SID="1"/></System>`
+	jsonPkg := func(gi string) []byte {
+		return slxPackage(t, sys, block, "simulink/graphicalInterface.json", gi)
+	}
+	xmlPkg := func(n int) []byte {
+		return slxPackage(t, sys, block, "simulink/graphicalInterface.xml", "<GraphicalInterface>"+simulinkRefsXML(n, false)+"</GraphicalInterface>")
+	}
+	inlinePkg := func(n int) []byte {
+		return slxPackage(t, "simulink/blockdiagram.xml", `<ModelInformation><Model Name="m"><GraphicalInterface>`+
+			simulinkRefsXML(n, false)+`</GraphicalInterface><System><Block Name="K" SID="1"/></System></Model></ModelInformation>`)
+	}
+	mdl := func(n int) []byte {
+		return []byte("Model {\nGraphicalInterface {\n" + simulinkRefsXML(n, true) + "}\nSystem {\nBlock {\nName \"K\"\n}\n}\n}\n")
+	}
+	at := simulinkLetters(SimulinkMaxValue, 11) // compresses as a real value does, inside the ratio cap
+	ok := map[string][]byte{
+		"json at the ref cap":    jsonPkg(simulinkRefsJSON(SimulinkMaxModelRefs, "$bdroot/K")),
+		"json value at the cap":  jsonPkg(simulinkRefsJSON(1, at)),
+		"xml at the ref cap":     xmlPkg(SimulinkMaxModelRefs),
+		"inline at the ref cap":  inlinePkg(SimulinkMaxModelRefs),
+		"mdl at the ref cap":     mdl(SimulinkMaxModelRefs),
+		"json nested at the cap": jsonPkg(`{"Other": ` + strings.Repeat("[", SimulinkMaxDepth-1) + strings.Repeat("]", SimulinkMaxDepth-1) + `, "ModelReferences": [{"BlockPath": "$bdroot/K", "ModelName": "a"}]}`),
+	}
+	for name, src := range ok {
+		rel := "m.slx"
+		if strings.HasPrefix(name, "mdl") {
+			rel = "m.mdl"
+		}
+		m, err := ReadSimulinkModel(rel, src)
+		if err != nil || len(m.Blocks) != 1 || len(m.ModelRefs) == 0 {
+			t.Errorf("%s: %d blocks, %d model refs, %v; want it read", name, len(m.Blocks), len(m.ModelRefs), err)
+		}
+	}
+	past := map[string][]byte{
+		"json past the ref cap":   jsonPkg(simulinkRefsJSON(SimulinkMaxModelRefs+1, "$bdroot/K")),
+		"json BlockPath too long": jsonPkg(simulinkRefsJSON(1, at+"p")),
+		"json ModelName too long": jsonPkg(`{"ModelReferences": {"BlockPath": "$bdroot/K", "ModelName": "` + at + `p"}}`),
+		"json skipped too long":   jsonPkg(`{"Other": "` + at + `p", "ModelReferences": []}`),
+		"json nested too deep":    jsonPkg(`{"Other": ` + strings.Repeat("[", SimulinkMaxDepth+1) + strings.Repeat("]", SimulinkMaxDepth+1) + `}`),
+		"xml past the ref cap":    xmlPkg(SimulinkMaxModelRefs + 1),
+		"inline past the ref cap": inlinePkg(SimulinkMaxModelRefs + 1),
+		"mdl past the ref cap":    mdl(SimulinkMaxModelRefs + 1),
+	}
+	why := map[string]string{ // the cap that must end each
+		"json past the ref cap":   "past 4096 model references",
+		"json BlockPath too long": "a string is longer than",
+		"json ModelName too long": "a string is longer than",
+		"json skipped too long":   "a string is longer than",
+		"json nested too deep":    "JSON values nest past",
+		"xml past the ref cap":    "past 4096 model references",
+		"inline past the ref cap": "past 4096 model references",
+		"mdl past the ref cap":    "past 4096 model references",
+	}
+	for name, src := range past {
+		rel := "m.slx"
+		if strings.HasPrefix(name, "mdl") {
+			rel = "m.mdl"
+		}
+		m, err := ReadSimulinkModel(rel, src)
+		r, _ := NewSimulinkExtractor().ExtractDoc("svc", rel, src)
+		if !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), why[name]) ||
+			len(m.Blocks) != 0 || len(m.ModelRefs) != 0 || len(r.Nodes) != 0 || len(r.CrossFile) != 0 {
+			t.Errorf("%s: %d blocks, %d model refs, %d nodes, %d cross-file, %v; want ErrSimulinkCap and nothing",
+				name, len(m.Blocks), len(m.ModelRefs), len(r.Nodes), len(r.CrossFile), err)
+		}
+	}
+}
+
+// TestReadSimulinkModelRefsJSONDecode: the token stream reads graphicalInterface.json as the
+// decode into a map and a struct did: GraphicalInterface wins over a top-level list, field
+// names match without case, a member given twice is its last value, and an element that is
+// not a reference object is skipped.
+func TestReadSimulinkModelRefsJSONDecode(t *testing.T) {
+	sys := "simulink/systems/system_root.xml"
+	cases := map[string]struct {
+		gi   string
+		want []SimulinkModelRef
+	}{
+		"inner wins": {`{"ModelReferences": [{"BlockPath": "a/X", "ModelName": "top"}], "GraphicalInterface": {"ModelReferences": {"BlockPath": "$bdroot/Y", "ModelName": "in"}}}`,
+			[]SimulinkModelRef{{"m/Y", "in"}}},
+		"any case": {`{"ModelReferences": [{"blockpath": "a/X", "MODELNAME": "c"}]}`, []SimulinkModelRef{{"a/X", "c"}}},
+		"last member": {`{"ModelReferences": [{"BlockPath": "a/X", "ModelName": "one"}], "ModelReferences": [{"BlockPath": "a/Y", "ModelName": "two"}]}`,
+			[]SimulinkModelRef{{"a/Y", "two"}}},
+		"mixed list": {`{"ModelReferences": ["s", 1, [{"BlockPath": "a/Z", "ModelName": "no"}], {"BlockPath": "a/X", "ModelName": "ok", "Extra": {"k": [1, 2]}}, {"BlockPath": "a/W"}]}`,
+			[]SimulinkModelRef{{"a/X", "ok"}}},
+		"not an object": {`[1, 2]`, nil},
+	}
+	for name, c := range cases {
+		m, err := ReadSimulinkModel("m.slx", slxPackage(t, sys, `<System/>`, "simulink/graphicalInterface.json", c.gi))
+		if err != nil || fmt.Sprint(m.ModelRefs) != fmt.Sprint(c.want) {
+			t.Errorf("%s: %v, %v; want %v", name, m.ModelRefs, err, c.want)
+		}
+	}
+}

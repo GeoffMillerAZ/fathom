@@ -87,11 +87,31 @@ func TestReadSimulinkModelHeapBound(t *testing.T) {
 	for i := 0; i < SimulinkMaxBlocks; i++ {
 		fmt.Fprintf(&mdlBlocks, "Block {\nBlockType Gain\nName \"b%d\"\nSID \"%d\"\n}\n", i, i)
 	}
+	// S5-R2: 878,537 model references in graphicalInterface.json, each to a model of three
+	// pseudo-random letters (31.6 MB inflated), and one 30 MiB BlockPath of two letters.
+	var refs strings.Builder
+	refs.WriteString(`{"ModelReferences":[`)
+	for i, seed := 0, uint32(17); i < 878_537; i++ {
+		if i > 0 {
+			refs.WriteString(",")
+		}
+		seed = seed*1664525 + 1013904223
+		fmt.Fprintf(&refs, `{"BlockPath":"a","ModelName":"%c%c%c"}`, 'a'+seed>>24%26, 'a'+seed>>16%26, 'a'+seed>>8%26)
+	}
+	refs.WriteString(`]}`)
+	huge := []byte(simulinkLetters(30<<20, 19))
+	for i := range huge {
+		huge[i] = 'a' + huge[i]%2
+	}
+	block := `<System><Block Name="K" SID="1"/></System>`
+	gi := "simulink/graphicalInterface.json"
 	cases := []struct {
 		name string
 		src  []byte
 		cap  bool // the shape is past a cap
 	}{
+		{"refflood slx", slxPackage(t, root, block, gi, refs.String()), true},
+		{"hugeref slx", slxPackage(t, root, block, gi, `{"ModelReferences":{"BlockPath":"`+string(huge)+`","ModelName":"m"}}`), true},
 		{"element flood slx", slx(slxNoise(SimulinkMaxElements-2, `<P Name="Dst">%s</P>`, false)), false},
 		{"block flood slx", slx(slxNoise(SimulinkMaxBlocks, `<Block Name="%s" SID="1" BlockType="G" Ref="r"/>`, false)), false},
 		// F1: one start tag of about 3.9M attributes, inside the ratio cap.

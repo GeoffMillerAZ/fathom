@@ -99,6 +99,10 @@ const (
 	// line to 1,000 others, are 8.3M entries in a 5.8 KB package. The most a calibration model
 	// emits is 6,665.
 	SimulinkMaxCalls = 1 << 16
+	// SimulinkMaxModelRefs is the most model references a model may hold, from any of
+	// graphicalInterface.json, its .xml, the diagram's inline GraphicalInterface or a .mdl's.
+	// The most a calibration model holds is 4.
+	SimulinkMaxModelRefs = 4096
 )
 
 // simulinkPaths is what is left of a model's path caps as its blocks are read.
@@ -737,8 +741,7 @@ func (m *SimulinkModel) readSLX(src []byte) error {
 	} else {
 		m.Layout = SimulinkLayoutSystems
 	}
-	m.slxModelRefs(parts, diagram, budget)
-	return nil
+	return m.slxModelRefs(parts, diagram, budget)
 }
 
 // slxWalk walks systems, splicing a <System Ref> stub's part in place. A splice nests no
@@ -838,36 +841,13 @@ func xmlDsts(n *xnode, out []simulinkEnd) []simulinkEnd {
 }
 
 // slxModelRefs reads the model references: graphicalInterface.json, else its .xml, else the
-// diagram's inline GraphicalInterface.
-func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode, budget *simulinkBudget) {
+// diagram's inline GraphicalInterface. Past a cap it is ErrSimulinkCap, never a truncated list.
+func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode, budget *simulinkBudget) error {
 	if b, ok := parts["simulink/graphicalInterface.json"]; ok {
-		var doc map[string]json.RawMessage
-		if json.Unmarshal(b, &doc) != nil {
-			return
+		if err := m.jsonModelRefs(b, budget); err != nil {
+			return fmt.Errorf("simulink: graphicalInterface.json: %w", err)
 		}
-		if inner, ok := doc["GraphicalInterface"]; ok {
-			doc = nil
-			if json.Unmarshal(inner, &doc) != nil {
-				return
-			}
-		}
-		raw := bytes.TrimSpace(doc["ModelReferences"])
-		type ref struct{ BlockPath, ModelName string }
-		var list []ref
-		if bytes.HasPrefix(raw, []byte("{")) {
-			var one ref
-			if json.Unmarshal(raw, &one) == nil {
-				list = append(list, one)
-			}
-		} else if len(raw) > 0 {
-			_ = json.Unmarshal(raw, &list)
-		}
-		for _, r := range list {
-			if r.BlockPath != "" && r.ModelName != "" {
-				m.ModelRefs = append(m.ModelRefs, SimulinkModelRef{BlockPath: m.refPath(r.BlockPath), ModelName: r.ModelName})
-			}
-		}
-		return
+		return nil
 	}
 	var gi *xnode
 	if b, ok := parts["simulink/graphicalInterface.xml"]; ok {
@@ -878,20 +858,253 @@ func (m *SimulinkModel) slxModelRefs(parts map[string][]byte, diagram *xnode, bu
 		gi = &xnode{kids: diagram.children("GraphicalInterface")}
 	}
 	if gi == nil {
-		return
+		return nil
 	}
 	for _, r := range gi.all("ModelReference", nil) {
-		m.addPackedRef(r.prop("ModelRefBlockPath"))
+		if err := m.addPackedRef(r.prop("ModelRefBlockPath")); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-// addPackedRef reads `$bdroot/Child|model`, split at the last `|`.
-func (m *SimulinkModel) addPackedRef(packed string) {
+// jsonModelRefs reads graphicalInterface.json's ModelReferences, one object or a list of
+// them, at the top level or (until R2026a) inside GraphicalInterface, which wins when both
+// are there. The part is decoded as a token stream, never into a tree: no string in it may
+// pass SimulinkMaxValue (checked on its bytes first), no value nest past SimulinkMaxDepth,
+// each reference spends an element of budget and the references stop at
+// SimulinkMaxModelRefs, each past its cap an ErrSimulinkCap. A part that is not a JSON
+// object reads as no references.
+func (m *SimulinkModel) jsonModelRefs(b []byte, budget *simulinkBudget) error {
+	if err := jsonStringCap(b); err != nil {
+		return err
+	}
+	d := json.NewDecoder(bytes.NewReader(b))
+	last, lines := 0, 0
+	line := func() int { // offsets only grow, so the lines are counted once
+		off := min(int(d.InputOffset()), len(b))
+		lines += bytes.Count(b[last:off], []byte("\n"))
+		last = off
+		return lines + 1
+	}
+	var top, inner []SimulinkModelRef
+	hasInner := false
+	// object reads one object's members, its ModelReferences into refs; nested reads a
+	// GraphicalInterface member as an object of its own.
+	var object func(refs *[]SimulinkModelRef, nested bool) error
+	object = func(refs *[]SimulinkModelRef, nested bool) error {
+		for d.More() {
+			k, err := d.Token()
+			if err != nil {
+				return err
+			}
+			switch k {
+			case "ModelReferences":
+				*refs = nil // a member given twice is its last value, as a decode into a map reads it
+				if err := m.jsonRefList(d, refs, budget, line); err != nil {
+					return err
+				}
+			case "GraphicalInterface":
+				if !nested {
+					if open, err := jsonOpens(d, '{'); err != nil {
+						return err
+					} else if open {
+						hasInner, inner = true, nil
+						if err := object(&inner, true); err != nil {
+							return err
+						}
+						if _, err := d.Token(); err != nil { // the closing brace
+							return err
+						}
+					}
+					continue
+				}
+				fallthrough
+			default:
+				if err := jsonSkip(d, 0); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if open, err := jsonOpens(d, '{'); err != nil || !open {
+		if errors.Is(err, ErrSimulinkCap) {
+			return err
+		}
+		return nil
+	}
+	if err := object(&top, false); err != nil {
+		if errors.Is(err, ErrSimulinkCap) {
+			return err
+		}
+		return nil
+	}
+	refs := top
+	if hasInner {
+		refs = inner
+	}
+	for _, r := range refs {
+		if len(m.ModelRefs) == SimulinkMaxModelRefs {
+			return fmt.Errorf("%w: past %d model references", ErrSimulinkCap, SimulinkMaxModelRefs)
+		}
+		m.ModelRefs = append(m.ModelRefs, SimulinkModelRef{BlockPath: m.refPath(r.BlockPath), ModelName: r.ModelName})
+	}
+	return nil
+}
+
+// jsonRefList reads a ModelReferences value, one reference object or a list of them, into
+// refs: a reference with both a BlockPath and a ModelName, any other value skipped.
+func (m *SimulinkModel) jsonRefList(d *json.Decoder, refs *[]SimulinkModelRef, budget *simulinkBudget, line func() int) error {
+	t, err := d.Token()
+	if err != nil {
+		return err
+	}
+	one := func() error { // the reference object whose opening brace was just read
+		if err := budget.take("ModelReference", line()); err != nil {
+			return err
+		}
+		var r SimulinkModelRef
+		for d.More() {
+			k, err := d.Token()
+			if err != nil {
+				return err
+			}
+			key, _ := k.(string)
+			v, err := d.Token()
+			if err != nil {
+				return err
+			}
+			str, isStr := v.(string)
+			switch {
+			case !isStr:
+				if dl, ok := v.(json.Delim); ok {
+					if err := jsonSkip(d, jsonDelimDepth(dl)); err != nil {
+						return err
+					}
+				}
+			case strings.EqualFold(key, "BlockPath"): // field names match as a decode into a struct does
+				r.BlockPath = str
+			case strings.EqualFold(key, "ModelName"):
+				r.ModelName = str
+			}
+		}
+		if _, err := d.Token(); err != nil {
+			return err
+		}
+		if r.BlockPath != "" && r.ModelName != "" {
+			if len(*refs) == SimulinkMaxModelRefs {
+				return fmt.Errorf("%w: line %d: past %d model references", ErrSimulinkCap, line(), SimulinkMaxModelRefs)
+			}
+			*refs = append(*refs, r)
+		}
+		return nil
+	}
+	switch t {
+	case json.Delim('{'):
+		return one()
+	case json.Delim('['):
+		for d.More() {
+			v, err := d.Token()
+			if err != nil {
+				return err
+			}
+			if v == json.Delim('{') {
+				if err := one(); err != nil {
+					return err
+				}
+			} else if dl, ok := v.(json.Delim); ok {
+				if err := jsonSkip(d, jsonDelimDepth(dl)); err != nil {
+					return err
+				}
+			}
+		}
+		_, err := d.Token()
+		return err
+	}
+	return nil
+}
+
+// jsonDelimDepth is how deep an opening delimiter leaves the value it opens: 1, or 0 for a
+// closing one (which a decoder never hands a value position).
+func jsonDelimDepth(dl json.Delim) int {
+	if dl == '{' || dl == '[' {
+		return 1
+	}
+	return 0
+}
+
+// jsonOpens reads the next token, reporting whether it opens the delimiter want; any other
+// value is skipped whole.
+func jsonOpens(d *json.Decoder, want json.Delim) (bool, error) {
+	t, err := d.Token()
+	if err != nil {
+		return false, err
+	}
+	if t == want {
+		return true, nil
+	}
+	if dl, ok := t.(json.Delim); ok {
+		return false, jsonSkip(d, jsonDelimDepth(dl))
+	}
+	return false, nil
+}
+
+// jsonSkip skips the rest of a value depth levels open (0 a whole value still to read), an
+// ErrSimulinkCap once it nests past SimulinkMaxDepth.
+func jsonSkip(d *json.Decoder, depth int) error {
+	for first := depth == 0; first || depth > 0; first = false {
+		t, err := d.Token()
+		if err != nil {
+			return err
+		}
+		switch t {
+		case json.Delim('{'), json.Delim('['):
+			if depth++; depth > SimulinkMaxDepth {
+				return fmt.Errorf("%w: JSON values nest past %d deep", ErrSimulinkCap, SimulinkMaxDepth)
+			}
+		case json.Delim('}'), json.Delim(']'):
+			depth--
+		}
+	}
+	return nil
+}
+
+// jsonStringCap is an ErrSimulinkCap when a JSON string in b, a key or a value, spans more
+// than SimulinkMaxValue bytes as written (its decoded text is no longer), checked before the
+// decoder allocates one.
+func jsonStringCap(b []byte) error {
+	in, start := false, 0
+	for i := 0; i < len(b); i++ {
+		switch c := b[i]; {
+		case !in && c == '"':
+			in, start = true, i+1
+		case in && c == '\\':
+			i++
+		case in && c == '"':
+			if in = false; i-start > SimulinkMaxValue {
+				return fmt.Errorf("%w: line %d: a string is longer than %d bytes", ErrSimulinkCap, bytes.Count(b[:start], []byte("\n"))+1, SimulinkMaxValue)
+			}
+		}
+	}
+	if in && len(b)-start > SimulinkMaxValue {
+		return fmt.Errorf("%w: an unclosed string is longer than %d bytes", ErrSimulinkCap, SimulinkMaxValue)
+	}
+	return nil
+}
+
+// addPackedRef reads `$bdroot/Child|model`, split at the last `|`; past SimulinkMaxModelRefs
+// it is ErrSimulinkCap. Its text is a kept value, so it is no longer than SimulinkMaxValue.
+func (m *SimulinkModel) addPackedRef(packed string) error {
 	cut := strings.LastIndex(packed, "|")
 	if cut <= 0 || cut == len(packed)-1 {
-		return
+		return nil
+	}
+	if len(m.ModelRefs) == SimulinkMaxModelRefs {
+		return fmt.Errorf("%w: past %d model references", ErrSimulinkCap, SimulinkMaxModelRefs)
 	}
 	m.ModelRefs = append(m.ModelRefs, SimulinkModelRef{BlockPath: m.refPath(packed[:cut]), ModelName: packed[cut+1:]})
+	return nil
 }
 
 // --- .mdl ---------------------------------------------------------------------------
@@ -1137,7 +1350,9 @@ func (m *SimulinkModel) readMDL(src []byte) error {
 	}
 	for _, gi := range model.children("GraphicalInterface") {
 		for _, r := range gi.children("ModelReference") {
-			m.addPackedRef(r.prop("ModelRefBlockPath"))
+			if err := m.addPackedRef(r.prop("ModelRefBlockPath")); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
