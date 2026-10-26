@@ -8,10 +8,21 @@ from collections import Counter
 import hashlib
 import importlib.metadata
 import json
+import locale
 import os
 from pathlib import Path
 import subprocess
 import sys
+
+
+def utf8_locale():
+    for name in ('C.UTF-8', 'en_US.UTF-8'):
+        try:
+            locale.setlocale(locale.LC_CTYPE, name)
+            return name
+        except locale.Error:
+            pass
+    raise RuntimeError('Ansible requires an available UTF-8 locale')
 
 
 def digest(value):
@@ -96,7 +107,7 @@ def main():
     # Set before importing Ansible: every cache, config and plugin setting is private.
     private = work / 'home'; private.mkdir(exist_ok=True)
     config = work / 'ansible.cfg'; config.write_text('[defaults]\nretry_files_enabled=False\n')
-    os.environ.update(ANSIBLE_HOME=str(private), ANSIBLE_CONFIG=str(config),
+    os.environ.update(LC_ALL=utf8_locale(), LC_CTYPE=utf8_locale(), ANSIBLE_HOME=str(private), ANSIBLE_CONFIG=str(config),
                       ANSIBLE_LOCAL_TEMP=str(work / 'tmp'),
                       ANSIBLE_INVENTORY_UNPARSED_IS_FAILED='true',
                       ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED='true',
