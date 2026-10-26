@@ -16,10 +16,11 @@ func init() { offlineCommands["dryrun"] = cmdDryRun }
 // cmdDryRun reads existing cells. Running controls remains the run verb's job.
 func cmdDryRun(args []string) int {
 	flags := newFlagSet("dryrun")
-	corpusPath := flags.String("corpus", "", "scenario corpus JSON (required)")
+	corpusPath := flags.String("corpus", "", "path to the scenario corpus JSON, or \""+externalCorpusSentinel+"\" to build one from -dataset (required)")
+	datasetPath := flags.String("dataset", "", datasetFlagUsage)
 	cellsDir := flags.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "stored null, oracle and wrong-patch cells, 3 trials each")
 	arm := flags.String("arm", "", "restrict to this corpus arm (use an unwired arm for offline controls)")
-	runID := flags.String("run-id", "", "restrict to this run id (otherwise duplicate trials are refused)")
+	runID := flags.String("run-id", "", "restrict to this run id; controls may share a run id (otherwise duplicate trials are refused)")
 	asJSON := flags.Bool("json", false, "print sorted DryRunVerdict as JSON")
 	if err := flags.Parse(args); err != nil {
 		return 2
@@ -28,7 +29,7 @@ func cmdDryRun(args []string) int {
 		fmt.Fprintln(os.Stderr, "scenariobench dryrun: -corpus is required")
 		return 2
 	}
-	corpus, sha, err := loadCorpusOrLCA(*corpusPath, "")
+	corpus, sha, err := loadCorpusOrLCA(*corpusPath, *datasetPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench dryrun: %v\n", err)
 		return 2

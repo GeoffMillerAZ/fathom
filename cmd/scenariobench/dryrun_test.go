@@ -59,7 +59,7 @@ func TestCmdDryRun(t *testing.T) {
 
 func TestCmdDryRunHelp(t *testing.T) {
 	help := captureStderr(t, func() { run([]string{"dryrun", "-help"}) })
-	for _, want := range []string{"null, oracle and wrong-patch", "3 trials", "-json"} {
+	for _, want := range []string{"null, oracle and wrong-patch", "3 trials", "-json", "controls may share a run id"} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("missing %q: %s", want, help)
 		}
@@ -114,5 +114,47 @@ func TestCmdDryRunSelectArm(t *testing.T) {
 	})
 	if out != "T1: keep\n" {
 		t.Fatalf("selected arm: %q", out)
+	}
+}
+
+func TestCmdDryRunSharedRunID(t *testing.T) {
+	dir := t.TempDir()
+	repo, commit := gitFixtureSubject(t)
+	path := writeCorpusFixture(t, dir, repo, commit)
+	corpus, err := scenariobench.LoadScenarioCorpus(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus.Sources = []scenariobench.SourcePin{{Name: "fixture", Revision: "fixture-pin"}}
+	corpus.Tasks[0].Category = scenariobench.CategoryLocalization
+	corpus.Tasks[0].Oracle = scenariobench.Oracle{Localization: true}
+	corpus.Tasks[0].Gold = scenariobench.Gold{Files: []string{"thing.go"}}
+	data, err := json.Marshal(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cells := filepath.Join(dir, "cells")
+	for _, name := range []string{"null", "oracle", "wrong-patch"} {
+		captureStdout(t, func() {
+			rc := run([]string{"run", "-corpus", path, "-root", filepath.Join(dir, "root"), "-cells", cells, "-raw-dir", filepath.Join(dir, "raw"), "-trials", "3", "-run-id", "shared", "-harness", name, "-harness-version", name + "-1"})
+			want := 1
+			if name == "oracle" {
+				want = 0
+			}
+			if rc != want {
+				t.Errorf("%s exit=%d, want %d", name, rc, want)
+			}
+		})
+	}
+	out := captureStdout(t, func() {
+		if rc := run([]string{"dryrun", "-corpus", path, "-cells", cells, "-run-id", "shared"}); rc != 0 {
+			t.Errorf("dryrun exit=%d", rc)
+		}
+	})
+	if out != "T1: keep\n" {
+		t.Fatalf("shared controls: %q", out)
 	}
 }
