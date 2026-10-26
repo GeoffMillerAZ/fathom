@@ -1,0 +1,247 @@
+[
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-1",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:7dbb23397e36d406e2b9dc9258af230eef99d46712827f8b8cd42cb2a34b874b",
+    "requestKey": "sha256:5c9d8c6bee11ad72806ee29cd6c953123aea55c805d840e8ebb4ef6bb7f6afc4",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "supported",
+          "Probabilities": {
+            "supported": 0.8,
+            "contradicted": 0.05,
+            "mixed": 0.05,
+            "unsupported": 0.05,
+            "unknown": 0.05
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-2",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:e3ac4e421b6ec9b8883eacb49be846490de6e0d181eb2118170fae888adb56df",
+    "requestKey": "sha256:242c28b61842dae598e5a4714f906cf37d838eb280e00688d14a8308d928c39c",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "contradicted",
+          "Probabilities": {
+            "supported": 0.05,
+            "contradicted": 0.8,
+            "mixed": 0.05,
+            "unsupported": 0.05,
+            "unknown": 0.05
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-3",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:62214644e78a0b6a4d283c59f791b85f8da867ed717a92fd94a71ff52042eb5a",
+    "requestKey": "sha256:afba0e0e5aef8008d480492a21df8c709174b419b8ddd44aba84bd6997fdab9e",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "mixed",
+          "Probabilities": {
+            "supported": 0.05,
+            "contradicted": 0.05,
+            "mixed": 0.8,
+            "unsupported": 0.05,
+            "unknown": 0.05
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-4",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:264134da835a890bfe07441f4f9ea843c90fc97b5c05143885b079e8c79c8e73",
+    "requestKey": "sha256:0727e6810b1d7876a6094f73cae314bdd0b262ce9da91b2ccf69d6c0d3b7e2a4",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "unsupported",
+          "Probabilities": {
+            "supported": 0.05,
+            "contradicted": 0.05,
+            "mixed": 0.05,
+            "unsupported": 0.8,
+            "unknown": 0.05
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-5",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:5644715effb3ec91ba0911dc8bef1e353f46b0eefdd6e4bf2acf9c843068c258",
+    "requestKey": "sha256:acc9f519b83bfe1fb1527948a341a1dd52a94f9ad044d371d14c9276e59dca40",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "unknown",
+          "Probabilities": {
+            "supported": 0.05,
+            "contradicted": 0.05,
+            "mixed": 0.05,
+            "unsupported": 0.05,
+            "unknown": 0.8
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-6",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:7f7eb1f6e7eebe90d1ab84e9f0cb3edcf355ff1a30ede9bff48805bfc75fd540",
+    "requestKey": "sha256:0829b183544ee3fb618b7a89c6ac87eae303bc74abbc3811e5fdef555b5ce799",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "supported",
+          "Probabilities": {
+            "supported": 0.8,
+            "contradicted": 0.05,
+            "mixed": 0.05,
+            "unsupported": 0.05,
+            "unknown": 0.05
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  },
+  {
+    "version": "decision-lab.capture/1",
+    "caseId": "retrieval-7",
+    "packDigest": "sha256:96527aae7d109d94e817d5a5736e1dc2a85c1bb4afa33b0f8156c3ef11b32b31",
+    "inputDigest": "sha256:607c86fc6e597ffa722e7f15f506562c332632878ae4214c7286fec9f038919a",
+    "requestKey": "sha256:4e096f90ca5440523fba06bc034470a575375b3571a8a150befd1f8c9f3fe05b",
+    "attemptCount": 1,
+    "answerCacheHits": [],
+    "response": {
+      "Provider": "fixture-provider",
+      "Model": "fixture-model",
+      "Answers": {
+        "support": {
+          "ID": "support",
+          "Kind": "choice",
+          "Choice": "unknown",
+          "Probabilities": {
+            "supported": 0.05,
+            "contradicted": 0.05,
+            "mixed": 0.05,
+            "unsupported": 0.05,
+            "unknown": 0.8
+          },
+          "Confidence": 0.75
+        }
+      },
+      "Invalid": {},
+      "Declined": {},
+      "Usage": {
+        "InputTokens": 0,
+        "OutputTokens": 0
+      },
+      "Latency": 0
+    }
+  }
+]

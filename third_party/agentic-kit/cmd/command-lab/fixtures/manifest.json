@@ -1,0 +1,1 @@
+{"version":"command-lab.manifest/1","expectedSourceIds":["one","two","three"],"sources":[{"id":"one","format":"normalized","path":"cmd/command-lab/fixtures/normalized.jsonl"},{"id":"two","format":"codex","path":"cmd/command-lab/fixtures/codex.jsonl"},{"id":"three","format":"claude","path":"cmd/command-lab/fixtures/claude.jsonl"}]}

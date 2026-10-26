@@ -1,0 +1,237 @@
+{
+  "version": "prose-lab.fixture/2",
+  "id": "freeform-brief",
+  "type": "freeform-brief",
+  "length_band": "short",
+  "purpose": "Brief a reviewer on a synthetic library reading-room pilot and the decision still needed.",
+  "facts": [
+    {
+      "id": "f-01",
+      "text": "The fictional Orchard Reading Room tested a two-week reservation pilot with 12 invented participants.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-02",
+      "text": "Nine participants used at least one reserved seat during the pilot.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-03",
+      "text": "The pilot logged 34 reservations and six no-shows.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-04",
+      "text": "Definition: Participants could reserve one seat for at most two hours per day under the pilot rule.",
+      "kind": "definition",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-05",
+      "text": "Definition: The room has eight seats in this fictional exercise.",
+      "kind": "definition",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-06",
+      "text": "Proposed: A proposed next step is a four-week extension using the same eight seats.",
+      "kind": "proposed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-07",
+      "text": "The extension is pending a reviewer decision and has not started.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-08",
+      "text": "The pilot did not measure whether reservations improved reading outcomes.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-09",
+      "text": "Proposed: A proposed extension measure is the number of turned-away requests per week.",
+      "kind": "proposed",
+      "required": false,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    },
+    {
+      "id": "f-10",
+      "text": "The six no-shows were logged, but their reasons are unknown.",
+      "kind": "observed",
+      "required": true,
+      "occurred_at": "2026-03-04T12:00:00Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "s-01",
+      "title": "What happened",
+      "instruction": "Summarize the pilot and observed use without guessing reasons.",
+      "fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-04",
+        "f-05",
+        "f-10"
+      ],
+      "required_fact_ids": [
+        "f-01",
+        "f-02",
+        "f-03",
+        "f-05",
+        "f-10"
+      ]
+    },
+    {
+      "id": "s-02",
+      "title": "Decision needed",
+      "instruction": "State the proposed extension, pending decision, and measurement gap.",
+      "fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08",
+        "f-09"
+      ],
+      "required_fact_ids": [
+        "f-06",
+        "f-07",
+        "f-08"
+      ]
+    }
+  ],
+  "required_goals": [
+    {
+      "id": "g-fidelity",
+      "statement": "Preserve the exact scenario facts and their observed, proposed, assumed, or defined status.",
+      "acceptance": "Every factual assertion agrees with a relevant supplied fact; no changed actor, number, date, or status.",
+      "method": "Independent reviewer compares claims with the fixed fact ledger."
+    },
+    {
+      "id": "g-coverage",
+      "statement": "Cover all required facts and section purposes.",
+      "acceptance": "Each required fact appears accurately in an appropriate section and each section fulfills its instruction.",
+      "method": "Independent reviewer checks required fact IDs and section instructions against the output."
+    },
+    {
+      "id": "g-purpose",
+      "statement": "A reviewer can decide whether to extend the pilot while seeing the measurement gap.",
+      "acceptance": "The document supports its stated reader decision or action within its declared scope.",
+      "method": "Independent reviewer assesses the fixed purpose and audience against the output."
+    },
+    {
+      "id": "g-no-invention",
+      "statement": "Do not add unsupported facts, outcomes, causal conclusions, or authority.",
+      "acceptance": "No material claim exceeds the supplied facts, including headings, lists, tables, and captions.",
+      "method": "Independent reviewer audits all factual text and planted negative assertions."
+    },
+    {
+      "id": "g-status",
+      "statement": "Keep observed results, proposed actions, assumptions, definitions, and unknowns distinct.",
+      "acceptance": "The output never presents a proposal as enacted, an assumption as observed, or an unresolved matter as settled.",
+      "method": "Independent reviewer classifies material assertions against source status and explicit unknowns."
+    }
+  ],
+  "negative_cases": [
+    {
+      "id": "n-01",
+      "fault": "wrong-valid-citation",
+      "target_fact_id": "f-02",
+      "mutated_assertion": "Nine participants showed improved reading outcomes.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-02",
+      "fault": "number-mutation",
+      "target_fact_id": "f-03",
+      "mutated_assertion": "The pilot logged 43 reservations.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-03",
+      "fault": "date-mutation",
+      "target_fact_id": "f-01",
+      "mutated_assertion": "The pilot lasted four weeks.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-04",
+      "fault": "unsupported-cause",
+      "target_fact_id": "f-10",
+      "mutated_assertion": "No-shows occurred because seats were uncomfortable.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-05",
+      "fault": "conflict",
+      "target_fact_id": "f-07",
+      "mutated_assertion": "The four-week extension is already running.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    },
+    {
+      "id": "n-06",
+      "fault": "heading-laundering",
+      "target_fact_id": "f-08",
+      "mutated_assertion": "Measured improvement in reading outcomes",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention"
+      ]
+    },
+    {
+      "id": "n-07",
+      "fault": "unknown-authority",
+      "target_fact_id": "f-06",
+      "mutated_assertion": "The reviewer approved the extension.",
+      "expected": "hold",
+      "criterion_ids": [
+        "g-fidelity",
+        "g-no-invention",
+        "g-status"
+      ]
+    }
+  ],
+  "length_goal": {
+    "criterion_id": "g-length-freeform-brief",
+    "class": "advisory",
+    "min_words": 100,
+    "max_words": 200,
+    "reason": "A short decision brief may cover its facts below the advisory target; independent usefulness, unknowns and audience review remain required."
+  }
+}

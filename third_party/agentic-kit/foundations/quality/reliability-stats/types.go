@@ -29,12 +29,10 @@
 //
 // # Non-guarantees (stated as plainly as the guarantees)
 //
-//   - No multiple-comparison correction is applied anywhere. A caller
-//     that runs many tests must pre-register its comparisons (fix the
-//     hypotheses before looking at the data) and correct the family-wise
-//     error rate itself; running Wilcoxon over every scenario and
-//     reporting the smallest p is exactly the theater this package does
-//     not prevent.
+//   - Tests never apply multiple-comparison correction implicitly. A
+//     caller must pre-register its comparisons (fix the hypotheses before
+//     looking at the data), then pass the complete family to HolmAdjust.
+//     Reporting only the smallest unadjusted p is not protected.
 //   - PairedBootstrapCI is a PERCENTILE interval, not BCa or studentized:
 //     it is biased for skewed statistics and needs enough tasks to mean
 //     anything — with one task it collapses to the point estimate.
@@ -77,6 +75,10 @@ var (
 	// ErrInvalidSample is returned when a sample contains NaN or ±Inf.
 	ErrInvalidSample = errors.New("reliabilitystats: sample contains NaN or Inf")
 
+	// ErrInconsistentCluster is returned when trials of one task resolve
+	// to different independent clusters.
+	ErrInconsistentCluster = errors.New("reliabilitystats: task belongs to multiple clusters")
+
 	// ErrInvalidResamples is returned when a bootstrap is asked for fewer
 	// than one replicate.
 	ErrInvalidResamples = errors.New("reliabilitystats: resamples must be >= 1")
@@ -86,15 +88,19 @@ var (
 	ErrInvalidLevel = errors.New("reliabilitystats: level must be in (0, 1)")
 )
 
-// Observation is one paired trial: Task identifies the cluster the trial
-// belongs to (the scenario, problem, or prompt) and Diff is the
-// treatment-minus-baseline score for that trial. All trials of one Task
+// Observation is one paired trial: Task identifies its scenario, problem,
+// or prompt and Diff is the treatment-minus-baseline score for that trial. All trials of one Task
 // are resampled together.
 //
 // CUE mirror: #Observation in schema.cue.
 type Observation struct {
-	// Task is the cluster id; non-empty.
+	// Task is the task id; non-empty.
 	Task string `json:"task"`
+
+	// Cluster is an optional independent cluster id for WildClusterBootstrapCI
+	// (for example a repository). Empty defaults to Task. Every trial of a
+	// task must resolve to the same cluster. PairedBootstrapCI ignores it.
+	Cluster string `json:"cluster,omitempty"`
 
 	// Diff is treatment minus baseline for this trial.
 	Diff float64 `json:"diff"`
@@ -115,9 +121,13 @@ type Interval struct {
 	// of each task's mean Diff).
 	Point float64 `json:"point"`
 
-	// Tasks is the number of distinct clusters the interval resampled —
-	// the unit count a reader should weigh the interval by.
+	// Tasks is the number of distinct tasks in the estimator.
+	// For PairedBootstrapCI these are also the resampling clusters.
 	Tasks int `json:"tasks"`
+
+	// Clusters is the number of independent multiplier clusters used by
+	// WildClusterBootstrapCI. It is unset for PairedBootstrapCI.
+	Clusters int `json:"clusters,omitempty"`
 }
 
 // WilcoxonResult is the outcome of a two-sided Wilcoxon signed-rank test.

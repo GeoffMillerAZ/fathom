@@ -1,0 +1,7 @@
+# fathom:begin v1 sha256:d13ae62c0dba8865155667cd8c02f0c60ca74e87d01470b6a819dd7f93a8ef98
+owned.json
+leases.jsonl
+scip/
+receipts.jsonl
+memories.jsonl
+# fathom:end

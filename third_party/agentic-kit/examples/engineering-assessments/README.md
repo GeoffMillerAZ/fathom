@@ -10,7 +10,7 @@ go test -race ./examples/engineering-assessments
 The JSON includes complete profiles, observations, rule traces and content-addressed
 artifacts. No provider, secret, external effect, service or evidence database is needed.
 
-- The retained resume_as_code receipt goes through the real benchmark summarizer.
+- The retained consumer-c receipt goes through the real benchmark summarizer.
   Missing cost produces required `unknown` and no optimization score.
 - Scripted prompt classifications run through `PromptScreener.Run`. A refused prompt
   cannot reach the protected continuation; a benign request executes a counter tool.

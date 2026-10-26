@@ -34,7 +34,7 @@ ignored in CI and under `GOWORK=off` — the `require v0.0.0` + `replace` pair i
 what keeps those builds and `go mod tidy` working. Skip either half and one of
 the two worlds breaks.
 
-### Replace + full vendoring, no `go.work` (throughline's pattern)
+### Replace + full vendoring, no `go.work` (consumer-a's pattern)
 
 The second production consumer keeps the `require` + `replace` pair, runs
 `go mod vendor`, and commits `vendor/` — with **no** `go.work`:
@@ -55,7 +55,7 @@ setup. What it costs, honestly:
   `go mod vendor`. Make re-vendoring a habit after every kit pull, or add a
   freshness check: building with `-mod=readonly` bypasses `vendor/` and
   resolves the `replace` to the sibling at HEAD (exactly what the kit's
-  `task throughline-check` does).
+  `task consumer-a-check` does).
 - **Keep the `require` version honest.** Bump it to the real tag that matches
   what you vendored, so the declaration is correct if the `replace` is ever
   dropped.
@@ -224,7 +224,7 @@ it documents which `Span` type is canonical.
   cue-vet + `go test -race ./...`) is the contract** — if it's green at a tag,
   that tag is safe to build on.
 - `task downstream-check` builds and tests both downstream consumers (fathom
-  and throughline) against kit HEAD, so the patterns in this doc are exercised
+  and consumer-a) against kit HEAD, so the patterns in this doc are exercised
   continuously, not just documented.
 
 ## 6. Data handling, honestly

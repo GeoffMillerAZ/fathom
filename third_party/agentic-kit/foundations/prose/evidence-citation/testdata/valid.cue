@@ -25,7 +25,7 @@ _emptyResult: evidencecitation.#CitationResult & {
 	Citation: ""
 }
 
-// A throughline-style parser vocabulary (tag names are caller data).
+// A consumer-a-style parser vocabulary (tag names are caller data).
 _chatParser: evidencecitation.#ParserConfig & {
 	TagNames: ["span", "authority"]
 }

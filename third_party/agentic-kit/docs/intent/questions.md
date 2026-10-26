@@ -12,7 +12,7 @@ ratification = owner hand-back." Blocks: eval-runner verdicts being citable. Ans
 by: Geoff.
 
 **Q7. What baseline should the first attended prose pilot beat?** Choose
-`resume_as_code`'s constrained fact-to-document workflow before throughline's contested
+`consumer-c`'s constrained fact-to-document workflow before consumer-a's contested
 evidence. Synthetic contract tests have passed; accepted supported claims, false blocks
 and human review effort still need an authorized real-workload baseline. No production
 content or semantic effectiveness is inferred from the provider/lesson adoption.

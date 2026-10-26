@@ -1,0 +1,11 @@
+{
+  "id": "C03",
+  "slug": "decision-remote-wire",
+  "axis": "component",
+  "acceptance": "OpenAI Decisions wire maps supported answers/refusals and passes offline conformance",
+  "method": "deterministic source plus scoped test",
+  "source": "foundations/decision/openai/conformance_test.go",
+  "test": "TestOpenAIPassesConformance",
+  "group": "decision",
+  "non_guarantee": "Component test does not prove consumer adoption, live model quality, or all entrypoints."
+}

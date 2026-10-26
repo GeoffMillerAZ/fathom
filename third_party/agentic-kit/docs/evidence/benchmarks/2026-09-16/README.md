@@ -25,7 +25,7 @@ to the same test passes. No gate bypass, network or cassette regeneration was us
 ## Real consumer, synthetic inputs
 
 [Overlay bridge](../../../../examples/benchmark-evidence/README.md) ran inside actual
-resume_as_code `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`, `cmd/redteam`.
+consumer-c `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`, `cmd/redteam`.
 `go list` confirmed the proposed kit root, not the consumer's vendored kit. A temporary
 module file used app-kit `d22871195401594f1083e2952d938ec5dfd655d3` and the proposed kit;
 `GOWORK=off GOPROXY=off`, `-mod=readonly`, `-race`, `-count=1`.
@@ -52,18 +52,18 @@ production adoption. All commands used offline module resolution.
 
 | Consumer revision | Build | Tests |
 |---|---|---|
-| throughline `a007075fab6ac156be44de46df941cce4a0915ed` | PASS | PASS; candidate and frozen-kit baseline, including architecture subprocesses |
+| consumer-a `a007075fab6ac156be44de46df941cce4a0915ed` | PASS | PASS; candidate and frozen-kit baseline, including architecture subprocesses |
 | fathom `68a534854f1bb8d4e68b2377a2ff4d198e6bef48` | PASS | Known failure: `TestNarrowProfileSchemaBytes`, 34,821 bytes exceeds 34,000 |
-| growing-gardens-bi `7503dd1c270bf6ceb72d42c742f507b9513db0dc` | PASS | Known failure: 14 finance cases lack `../../tmp/financials.json`; no private fixture copied |
+| consumer-b `7503dd1c270bf6ceb72d42c742f507b9513db0dc` | PASS | Known failure: 14 finance cases lack `../../tmp/financials.json`; no private fixture copied |
 
-Throughline needed identical offline, temporary-only module graph normalization for
+Consumer-a needed identical offline, temporary-only module graph normalization for
 candidate and frozen kit `8b252304978bd249e06658f2bd6be81194ae3df5`: x/sys .46→.47
 and x/sync sums .21→.22. Command-scoped `GOFLAGS=-mod=readonly` made architecture-test
 subprocesses use the same mode; otherwise default-vendor consistency checks failed.
 No actual go.mod, vendor or global Go configuration was changed. Fathom/GGB failures
 were already reproduced against the prior kit in the earlier delivery assessment.
 Fathom's final run used `env -u GOFLAGS ... go test -mod=readonly ./...`: applying
-Throughline's inherited GOFLAGS also trips Fathom's environment-integrity test. Clearing
+Consumer-a's inherited GOFLAGS also trips Fathom's environment-integrity test. Clearing
 that command-local variable leaves only the known schema-size failure.
 The aggregate downstream gate is **not green**; no main merge or tag is claimed.
 

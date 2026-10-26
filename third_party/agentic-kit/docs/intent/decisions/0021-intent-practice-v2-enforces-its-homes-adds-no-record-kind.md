@@ -20,7 +20,7 @@ commits in seven weeks. 4 of 182 rejected alternatives carry `wins if`, no recor
 rejected, and the measured miss (an owner request a fathom record had decided) is one a docs
 search finds. Horizon did not predict promotion (3 of 4 promoted futures were `later`); seam value
 ratings drove an owner ask. 52% of orchestrator briefs cite governing ids; Claude subagents read
-the router in 9% of sessions. In platform-engineering `F1` has 7 homes and `G1` 5, review-kit
+the router in 9% of sessions. In platform-repo `F1` has 7 homes and `G1` 5, review-kit
 links out 60 times, 1,239 lines cite a root ADR by bare id, and Codex at the root loads no nested
 `AGENTS.md` (root to cwd, 32 KiB cap). A per-change `intent.md` (secondary sources) is one idea in
 the requester's words, the first artifact of a per-change chain; no harness loads one.

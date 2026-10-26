@@ -150,7 +150,7 @@ func validateInstalledHost(root *os.Root, rootPath, host string) (hostOwnership,
 		return own, policy, errors.New("guard binary missing or drifted")
 	}
 	stat, err := os.Stat(own.Binary)
-	if err != nil || stat.Mode().Perm()&0111 == 0 {
+	if err != nil || stat.Mode().Perm()&0o111 == 0 {
 		return own, policy, errors.New("guard binary is not executable")
 	}
 	return own, policy, nil

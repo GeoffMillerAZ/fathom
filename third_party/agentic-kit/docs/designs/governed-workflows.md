@@ -74,7 +74,7 @@ Chat Completions adapter. Unknown provider family cannot count as an independent
 
 Compose the existing evidence, prose, review and provenance foundations into
 `kits/governed-prose-kit`. The first fixture is a synthetic facts-to-document workflow
-shaped like resume_as_code; the next adds throughline-style conflicting evidence.
+shaped like consumer-c; the next adds consumer-a-style conflicting evidence.
 Neither consumer is claimed to have adopted the new pipeline yet.
 
 ```mermaid
@@ -188,7 +188,7 @@ tests; local policy changes remain local decisions. Never sync raw private trans
 or grant execution authority through a retrieved memory.
 
 The first transfer uses the kit's unobserved-control coverage defect and
-resume_as_code's unknown-provider-family boundary (0009). Input is public synthetic;
+consumer-c's unknown-provider-family boundary (0009). Input is public synthetic;
 origin/remedy bind actual public code snapshots. This is retrospective extraction,
 not a claim that sharing caused existing repairs or measured production improvement.
 

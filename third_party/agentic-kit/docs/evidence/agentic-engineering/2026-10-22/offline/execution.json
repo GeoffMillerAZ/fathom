@@ -1,0 +1,11 @@
+{
+  "root": "/Volumes/m2ext/code/geoffmilleraz/agentic-kit",
+  "steps": [
+    {"argv": ["python3", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/run_checks.py"], "exit_code": 0, "receipt": "commands.json and five test logs"},
+    {"argv": ["python3", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/run_negative_scans.py"], "exit_code": 0, "receipt": "negative_scans.json and three scan logs; individual rg exits 1 mean no matches"},
+    {"argv": ["python3", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/build_inputs.py"], "exit_code": 0, "receipt": "subject_manifest.json, profile.json, input.json, C01-C18 definition/evidence files"},
+    {"argv": ["go", "run", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/assess.go", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/input.json", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/assessment.json"], "exit_code": 0, "stdout": "required_status=fail criteria=18 soft_score=<nil>"},
+    {"argv": ["cue", "vet", "foundations/quality/fitness-function-registry/profile.cue", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/profile.json", "-d", "#Profile"], "exit_code": 0},
+    {"argv": ["cue", "vet", "foundations/quality/fitness-function-registry/profile.cue", "/Volumes/m2ext/tmp/agentic-kit-uplift-evaluation-20261022/assessment.json", "-d", "#Assessment"], "exit_code": 0}
+  ]
+}

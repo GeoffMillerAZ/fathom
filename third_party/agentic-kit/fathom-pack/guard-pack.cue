@@ -39,7 +39,7 @@ guards: [
 	{
 		// from agentic-kit fathom-pack v0.1 (kit-self)
 		command_scopes: ["git commit --no-verify*", "git push --no-verify*"]
-		note: "Never --no-verify. Opt out only with LEFTHOOK=0, and only when the hook itself is broken — and if it is broken, that's an observation to file, not a workaround to normalize. Exported-API changes: run task downstream-check against the real consumers (fathom, throughline) before tagging."
+		note: "Never --no-verify. Opt out only with LEFTHOOK=0, and only when the hook itself is broken — and if it is broken, that's an observation to file, not a workaround to normalize. Exported-API changes: run task downstream-check against the real consumers (fathom, consumer-a) before tagging."
 	},
 
 	// ── CONSUMER group: repos that import the kit ──

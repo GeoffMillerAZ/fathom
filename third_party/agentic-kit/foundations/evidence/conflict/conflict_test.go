@@ -342,7 +342,7 @@ func mkProposition(id, canonical, subject string) assertion.Proposition {
 //
 // This test mirrors the shape of a real consumer that:
 //   - Generates PropositionIDs as "prop-{sha256hex[:16]}" digests (like
-//     throughline's investigate.PropositionIDFromKey).
+//     consumer-a's investigate.PropositionIDFromKey).
 //   - Stores evidence spans keyed by a record ID (e.g. "rec-{uuid}").
 //
 // The IDs are invented (org-agnostic); the SHAPE is real.

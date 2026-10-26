@@ -1,6 +1,6 @@
 # Benchmark evidence: first consumer bridge
 
-This overlay-only test runs inside resume_as_code's actual `cmd/redteam` package at
+This overlay-only test runs inside consumer-c's actual `cmd/redteam` package at
 `7a6c56a26dd10a7cf80128d23ef13bab90377ae8`. It uses its existing scripted critics,
 `Faithfulness`, provider-family checks and `Ladder`, then converts accepted, rejected
 and unavailable results into the kit's experimental benchmark receipts.
@@ -10,7 +10,7 @@ call occurs. All data is synthetic and zero durations are injected; unknown cost
 unknown. The statistical comparator must refuse this bundle. This is a consumer-code
 integration proof, **not adoption, a live benchmark or an effectiveness result**.
 
-`resume_as_code_test.go.txt` is deliberately not a Go package in the kit: importing a
+`consumer-c_test.go.txt` is deliberately not a Go package in the kit: importing a
 consumer would invert dependencies and introduce external requirements. Use a Go test
 overlay mapping `<consumer>/cmd/redteam/kit_benchmark_pilot_test.go` to this file. Use a
 temporary copy of that consumer's go.mod/go.sum with an explicit kit replacement and

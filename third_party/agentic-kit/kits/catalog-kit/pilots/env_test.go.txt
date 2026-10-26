@@ -1,0 +1,119 @@
+package catalog
+
+import (
+	"encoding/hex"
+	"errors"
+	"reflect"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/geoffmilleraz/agentic-kit/foundations/knowledge/catalog"
+	catalogkit "github.com/geoffmilleraz/agentic-kit/kits/catalog-kit"
+)
+
+// The effective catalog is always the value returned by CUE LoadWith.
+// Typed Entry values live beside the discovery-only common projection.
+func pilotEnvSlug(key string) string { return "k" + hex.EncodeToString([]byte(key)) }
+
+func pilotEnvProjection(baseline, effective Catalog) (catalogkit.Bundle, map[string]Entry, error) {
+	keys := make([]string, 0, len(effective))
+	for key := range effective {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	sidecars := make(map[string]Entry, len(keys))
+	baseChildren := make([]catalog.AuthoredNode, 0, len(baseline))
+	extChildren := make([]catalog.AuthoredNode, 0, len(keys))
+	for _, key := range keys {
+		sidecars[key] = effective[key]
+		node := catalog.AuthoredNode{
+			Slug: pilotEnvSlug(key), Title: key,
+			StableKey: key, Source: "env-kit:LoadWith", Extractor: "cue-unify-validate",
+		}
+		if _, exists := baseline[key]; exists {
+			baseChildren = append(baseChildren, node)
+		}
+		if prior, exists := baseline[key]; !exists || !reflect.DeepEqual(prior, effective[key]) {
+			extChildren = append(extChildren, node)
+		}
+	}
+	root := catalog.AuthoredNode{Slug: "tools", Title: "Loaded tools", StableKey: "tools-root", Source: "env-kit"}
+	baseRoot, extRoot := root, root
+	baseRoot.Children, extRoot.Children = baseChildren, extChildren
+	bundle, err := catalogkit.Resolve(catalogkit.Spec{Version: 1, Layers: []catalogkit.Layer{{Name: "baseline", Nodes: []catalog.AuthoredNode{baseRoot}}, {Name: "extension", Requires: []string{"baseline"}, Nodes: []catalog.AuthoredNode{extRoot}}}}, catalogkit.Policy{})
+	return bundle, sidecars, err
+}
+
+func TestCatalogKitPilotEnvLoadedCatalogAndContradiction(t *testing.T) {
+	declared := []byte(`{"pilot-tool":{"nix":{"mode":"attr","attr":"pilot-tool"},"versionArgs":"version"},"jq":{"versionArgs":"--version"}}`)
+	effective, _, err := LoadWith(declared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline, _, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(effective) != len(baseline)+1 || effective["pilot-tool"].Nix == nil || effective["pilot-tool"].Nix.Attr != "pilot-tool" || effective["jq"].Nix == nil || effective["jq"].Nix.Attr != baseline["jq"].Nix.Attr {
+		t.Fatalf("LoadWith did not unify addition and refinement: %+v", effective)
+	}
+	bundle, sidecars, err := pilotEnvProjection(baseline, effective)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalogkit.VerifyBundle(bundle); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(bundle.Order, []string{"baseline", "extension"}) {
+		t.Fatalf("common precedence: %v", bundle.Order)
+	}
+	seen := map[string]bool{}
+	for _, row := range catalogkit.Rows(bundle) {
+		if row.StableKey == "tools-root" {
+			continue
+		}
+		entry, ok := effective[row.StableKey]
+		if !ok || seen[row.StableKey] || row.Source != "env-kit:LoadWith" || !reflect.DeepEqual(sidecars[row.StableKey], entry) {
+			t.Fatalf("projected key or typed entry changed: %q", row.StableKey)
+		}
+		seen[row.StableKey] = true
+		wantLayers := []string{"baseline"}
+		if _, present := baseline[row.StableKey]; !present {
+			wantLayers = []string{"extension"}
+		} else if !reflect.DeepEqual(baseline[row.StableKey], effective[row.StableKey]) {
+			wantLayers = []string{"baseline", "extension"}
+		}
+		if !reflect.DeepEqual(row.Layers, wantLayers) {
+			t.Fatalf("common metadata layers for %s = %v want %v", row.StableKey, row.Layers, wantLayers)
+		}
+	}
+	if len(seen) != len(effective) || len(sidecars) != len(effective) {
+		t.Fatalf("coverage rows=%d sidecars=%d loaded=%d", len(seen), len(sidecars), len(effective))
+	}
+	// A newly inserted key cannot shift any prior path ID.
+	withSibling := make(Catalog, len(effective)+1)
+	for k, v := range effective {
+		withSibling[k] = v
+	}
+	withSibling["a-before-all"] = Entry{Nix: &NixEntry{Mode: "attr", Attr: "added"}}
+	augmented, _, err := pilotEnvProjection(baseline, withSibling)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	for _, row := range catalogkit.Rows(bundle) {
+		ids[row.StableKey] = row.ID
+	}
+	for _, row := range catalogkit.Rows(augmented) {
+		if before, ok := ids[row.StableKey]; ok && before != row.ID {
+			t.Fatalf("insertion renamed %s: %s -> %s", row.StableKey, before, row.ID)
+		}
+	}
+	contradiction := []byte(`{"cmake":{"nix":{"mode":"inputs","inputs":{"3.31":{"rev":"abc","attr":"cmake"}}}}}`)
+	_, _, err = LoadWith(contradiction)
+	var conflict *ExtensionConflictError
+	if !errors.As(err, &conflict) || !strings.Contains(err.Error(), "cmake") {
+		t.Fatalf("contradiction passed or wrong refusal: %v", err)
+	}
+}

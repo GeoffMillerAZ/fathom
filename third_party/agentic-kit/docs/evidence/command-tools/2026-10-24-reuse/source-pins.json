@@ -1,0 +1,12 @@
+{
+  "baseline": "7eafe27911522abd91827aec6c97cc4309ba645f",
+  "files": {
+    "cmd/command-guard/scanner.go": "62c78411d603f4391b4288028b5e73817ca564e22b44fbe84f7279cab0c32c78",
+    "cmd/command-guard/scanner_test.go": "ba69ffe11f6ac05c4ca9e531c69c161a6b22421ba3d800845e78a082289f21e2",
+    "cmd/command-guard/scanner_reuse_test.go": "b84cfdce07b146bec011e3756b38aa779f5d55075d4284aeb34eaf5cb8add2ce",
+    "cmd/command-guard/git.go": "27ed53bdaeb1b62f1c5729f055581e405ac1f0b8fec5538991d4d364d078579f",
+    "cmd/command-guard/schema.cue": "4e9af3e2c5997150199db32719acd9b68b3df91ebbf58582cddcab83b227eaac"
+  },
+  "candidateBinarySHA256": "bc94695338afcc633c9a0ca3a72b07625a4a4d8756cca7425ff32778af490ee1",
+  "vcsModified": true
+}

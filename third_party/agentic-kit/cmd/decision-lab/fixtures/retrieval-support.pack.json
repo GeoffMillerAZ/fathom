@@ -1,0 +1,28 @@
+{
+  "version": "decision-lab.pack/1",
+  "id": "retrieval-support",
+  "templateVersion": "v1",
+  "confidenceRecipe": "decision.Confidence/1",
+  "readingRecipe": "decision.NewReading/1",
+  "provider": "fixture-provider",
+  "resolvedModel": "fixture-model",
+  "policyEpoch": "policy-v1",
+  "owner": "kit-maintainer",
+  "fallback": "Show the cited source and request human verification.",
+  "baseline": "Deterministic retrieval and citation inspection.",
+  "killCriterion": "Retire if unsupported claims are marked supported above the site bar.",
+  "questions": [
+    {
+      "id": "support",
+      "instructions": "Classify the relationship between one atomic claim and captured source text. Preserve evidence that both supports and contradicts it; missing or insufficient source is unknown.",
+      "options": [
+        {"name": "supported", "criteria": "Source directly entails claim"},
+        {"name": "contradicted", "criteria": "Source directly contradicts claim without support"},
+        {"name": "mixed", "criteria": "Source contains both direct support and contradiction"},
+        {"name": "unsupported", "criteria": "Available source neither entails nor contradicts claim"},
+        {"name": "unknown", "criteria": "Source missing or insufficient"}
+      ],
+      "favorableOptions": ["supported"]
+    }
+  ]
+}

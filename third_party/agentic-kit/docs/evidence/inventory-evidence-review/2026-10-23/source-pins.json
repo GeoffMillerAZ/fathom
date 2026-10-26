@@ -1,0 +1,117 @@
+{
+  "version": "design-source-pins/1",
+  "captured_at": "2026-10-23T20:54:34Z",
+  "purpose": "Scoped design sources; working-tree digests do not establish committed implementation or runtime qualification.",
+  "repos": [
+    {
+      "id": "agentic-kit",
+      "head": "5af1c0b10ecb6b245b3f032b62cbe85ef2f71138",
+      "working_tree_dirty": true,
+      "files": [
+        {
+          "path": "kits/catalog-kit/README.md",
+          "bytes": 13479,
+          "sha256": "ea1fdcb82926d5d3208f9ebf041705007ad48b109f03809ce536354d805e920a"
+        },
+        {
+          "path": "kits/investigation/types.go",
+          "bytes": 5002,
+          "sha256": "c2425e220336d70c5bcdebe92dd075caf6346cae55e3dae69b0a4e902a286ae9"
+        },
+        {
+          "path": "foundations/evidence/case-file/types.go",
+          "bytes": 10283,
+          "sha256": "80cdc618db96570a074dfff58c7aaaa0ffb1ce90ca01e83dc4e9f818499c137c"
+        },
+        {
+          "path": "foundations/telemetry/read-manifest/readmanifest.go",
+          "bytes": 7405,
+          "sha256": "2a2791db6136e0c13425b1063fa8f8b4b490dc6e1fe28a8027d066bf4f887541"
+        },
+        {
+          "path": "foundations/quality/fitness-function-registry/profile.go",
+          "bytes": 25707,
+          "sha256": "8f58982ffb234995923bd42086160613ca8fdf59aaf343885052c9acd01c435f"
+        },
+        {
+          "path": "docs/intent/decisions/0024-independent-kits-share-identity-not-authority.md",
+          "bytes": 2350,
+          "sha256": "cd36a96f6de940c0dc74ce6c4a21502499f02aa14d29e935434595cdf8bbd04e"
+        },
+        {
+          "path": "docs/intent/decisions/0036-assignments-compose-goals-evidence-and-stopping-rules.md",
+          "bytes": 3160,
+          "sha256": "4207f3cda59a56f1b96154372f9cbb20b6372093c3e42bd6cb0c6e8b71ca2e7c"
+        }
+      ]
+    },
+    {
+      "id": "platform-repo",
+      "head": "821c509035a8bbd98907c83b54372bec70116425",
+      "working_tree_dirty": true,
+      "files": [
+        {
+          "path": "docs/adr/0096-dispositions-inventory-and-catalog-federation.md",
+          "bytes": 12123,
+          "sha256": "522ff94b272c6692c2eb87b837ee08bd86981698b0cffd7d0c47d3e610a97ea5"
+        },
+        {
+          "path": "kits/review-consumer/README.md",
+          "bytes": 12855,
+          "sha256": "d01095b7f4c3dcf0d2c57cd8cb365c03ef8225b29e0eb32a0a106fbc630befaf"
+        },
+        {
+          "path": "kits/review-consumer/internal/core/core.go",
+          "bytes": 16008,
+          "sha256": "9407e90e6b48c290a3498f8be3ebe90daecb516cd56f7371f9666e8971767e4e"
+        },
+        {
+          "path": "kits/review-consumer/internal/inventory/inventory.go",
+          "bytes": 9760,
+          "sha256": "a415bfd3c5cff9acd41327bdabcfeecfca50d09b3a54b17da4ed1e894a9dca72"
+        },
+        {
+          "path": "kits/review-consumer/internal/cli/sound.go",
+          "bytes": 9256,
+          "sha256": "39885f2638e4c1d03d58b2535968362ddf488b5a9c3b432835d80cc77fa55eb3"
+        },
+        {
+          "path": "docs/designs/platform-design-contracts.md",
+          "bytes": 27221,
+          "sha256": "06e51909f89d565444dcdc0b013e2a5f1d83d108039ffcdac58567cc9a730158"
+        },
+        {
+          "path": "docs/designs/platform-assurance-atlas.md",
+          "bytes": 17212,
+          "sha256": "ce3e3c065a3da404bfe2f3d69c38347ec911d5b940d52f03c8ce6f14bf8c4736"
+        },
+        {
+          "path": "docs/designs/platform-assurance-delivery.md",
+          "bytes": 11741,
+          "sha256": "0004204c012fe618e815be90a02533a21f2a06b352ac4e1f9256664f9d4ab089"
+        },
+        {
+          "path": "docs/designs/platform-design-ledger.md",
+          "bytes": 150089,
+          "sha256": "0abb2f40d2fb92aa7251a3e4cca6f54935ceb6b3a516b85294396de4debf7261"
+        }
+      ]
+    }
+  ],
+  "consultation_captures": [
+    {
+      "consultation": 1,
+      "kind": "bounded local terminal capture",
+      "sha256": "79477d0037e58ac23d635f6cf2db767b9538a9583014656cd887bc6ce7c277f2",
+      "bytes": 33328,
+      "retained_artifact": "/Volumes/m2ext/backups/agentic-kit/design-reviews/2026-10-23-inventory-evidence/astra-consultation-1.txt"
+    },
+    {
+      "consultation": 2,
+      "kind": "bounded local terminal capture",
+      "sha256": "f21ae4a9523167ba8a19d369aab614c55f9118cd1c6850f769d79610830f979e",
+      "bytes": 21770,
+      "retained_artifact": "/Volumes/m2ext/backups/agentic-kit/design-reviews/2026-10-23-inventory-evidence/astra-consultation-2.txt"
+    }
+  ]
+}

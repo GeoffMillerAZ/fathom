@@ -1,0 +1,59 @@
+{
+  "version": "prose-lab.review-scope/2",
+  "id": "headless-paired-scope-v2",
+  "corpus_digest": "da99d1c025764c445967dd8d71c56e63992108feaa682d1ba81685155c0688bd",
+  "goal_scope_digest": "41988f2f526415763d64faa7193e477f1370c56bfd2a0e269427dbbf0c004403",
+  "base_scope_digest": "fe12741de1f91c0063a05172e4dd0e66bd580b40cf8afe937a4bd366086ecee8",
+  "extensions": [
+    {
+      "id": "technical-design--lp-rhetorical-scope",
+      "document_id": "technical-design",
+      "kind": "observed-development",
+      "role": "rhetorical-framing",
+      "fact_ids": [
+        "f-05"
+      ],
+      "assertion": "The defined design goal is therefore narrow: to preserve acknowledged readings across a receiver restart in the pilot.",
+      "expected": "supported",
+      "provenance": {
+        "source_digest": "7cd0aff9d9c75359859579637f86a581a51dea226b5c3b6b79e29355ee0f109c",
+        "method": "independent-agent-heuristic-and-owner-source-review",
+        "reason": "The sentence identifies the defined pilot goal; narrow is contextual scoping, without a changed actor, number, achieved result or production authority."
+      }
+    },
+    {
+      "id": "technical-design--lp-document-absence",
+      "document_id": "technical-design",
+      "kind": "observed-development",
+      "role": "document-scope-overclaim",
+      "fact_ids": [
+        "f-29"
+      ],
+      "assertion": "The pilot itself is proposed for an isolated host with synthetic inputs and no production device connection, so nothing in this document describes enacted or production behavior.",
+      "expected": "unsupported",
+      "provenance": {
+        "source_digest": "7cd0aff9d9c75359859579637f86a581a51dea226b5c3b6b79e29355ee0f109c",
+        "method": "independent-agent-heuristic-and-owner-source-review",
+        "reason": "A proposed isolated pilot does not entail that all document text avoids enacted behavior. The same node states the observed current receiver behavior."
+      }
+    },
+    {
+      "id": "technical-design--material-scope-exclusion",
+      "document_id": "technical-design",
+      "kind": "authored-contrast",
+      "role": "material-scope-exclusion",
+      "fact_ids": [
+        "f-05",
+        "f-16",
+        "f-27"
+      ],
+      "assertion": "The pilot's narrow scope covers only preserving acknowledged readings across a restart; validation and duplicate handling are outside that scope.",
+      "expected": "unsupported",
+      "provenance": {
+        "source_digest": "b6dc0c4fa61b217fd5784355f33a9d301f53c8a1dd4afa3a22edf3db7f288cf5",
+        "method": "fixture-author",
+        "reason": "The fixed proposal rejects mixed-validity batches and the pilot requires duplicate/retry receipt and conflict checks; these are not outside its scope."
+      }
+    }
+  ]
+}

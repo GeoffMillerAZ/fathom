@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Catalog Overrides"
+  short_description: "Review explicit catalog overrides and semantic floors"
+  default_prompt: "Use $catalog-policy to review this catalog override."

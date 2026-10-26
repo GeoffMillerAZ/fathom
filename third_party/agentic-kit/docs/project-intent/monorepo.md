@@ -96,7 +96,7 @@ A baseline assessment is dated evidence, not a second living backlog.
 
 Extracting a component into its own repository touches more than its directory, and no
 item is one edited line. Count and fix each before the move; the counts size the split
-(platform-engineering's measured counts as the example):
+(platform-repo's measured counts as the example):
 
 - ids that collide once cited from outside (`F1` had 7 homes, `G1` 5) → `<scope> <id>`;
 - file-relative links into the root (its review-kit links out 60 times) → qualified links;

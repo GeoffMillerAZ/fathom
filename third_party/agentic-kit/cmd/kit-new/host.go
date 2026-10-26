@@ -17,9 +17,11 @@ import (
 	"time"
 )
 
-const hostFormatVersion = 1
-const hostMaxBytes = 1 << 20
-const hostMaxBinaryBytes = 128 << 20
+const (
+	hostFormatVersion  = 1
+	hostMaxBytes       = 1 << 20
+	hostMaxBinaryBytes = 128 << 20
+)
 
 // hostDeps keeps time and host processes injectable. Unset now defaults to
 // time.Now; command defaults to bounded, context-cancellable execution.

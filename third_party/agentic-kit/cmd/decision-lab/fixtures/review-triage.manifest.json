@@ -1,0 +1,55 @@
+{
+  "version": "decision-lab.manifest/1",
+  "datasetKind": "synthetic",
+  "packDigest": "sha256:db7d7d69835b3c1088beb8f44d2ba77be24d6d07c6443f4ac8740e6269725de7",
+  "cases": [
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "case-1",
+        "subjectId": "finding-1",
+        "revision": "r1",
+        "capturedState": "A changed access check returns allowed before checking tenant ownership. Source excerpt is included."
+      },
+      "independentUnitId": "unit-1",
+      "labels": {
+        "triage": {
+          "choice": "inspect",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "case-2",
+        "subjectId": "finding-2",
+        "revision": "r1",
+        "capturedState": "The finding alleges a leak but gives no source excerpt or affected path."
+      },
+      "independentUnitId": "unit-2",
+      "labels": {
+        "triage": {
+          "choice": "unknown",
+          "provenance": "frontier"
+        }
+      }
+    },
+    {
+      "input": {
+        "version": "decision-lab.input/1",
+        "caseId": "case-3",
+        "subjectId": "finding-3",
+        "revision": "r1",
+        "capturedState": "The reported branch is dead code; the source excerpt shows the caller returns earlier."
+      },
+      "independentUnitId": "unit-3",
+      "labels": {
+        "triage": {
+          "choice": "defer",
+          "provenance": "frontier"
+        }
+      }
+    }
+  ]
+}
