@@ -5340,13 +5340,13 @@
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
-    "grammar_source": "a Jinja tree-sitter grammar (verify at pin, licence allowlist)",
-    "licence": "verify at pin",
+    "grammar_source": "bennypowers/tree-sitter-jinja-dialects 4f832fe with optional-else source patch",
+    "licence": "MIT",
     "oracle": [
       "jinja2.meta.find_referenced_templates (A, extends, include and import edges)"
     ],
     "calibration_subjects": [
-      "two public Flask or Ansible repositories with templates, pinned at row start"
+      "openstack/kolla 27e42412114c29669f70a298f89c54abc6a7f4ac (kolla/docker), openstack/kolla-ansible 4b493ef36ace2b90257ecf94feb00e2c6e8014c9 (ansible/roles)"
     ],
     "depends_on": [
       "LB-Q-html"
@@ -5355,7 +5355,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-jinja2",
     "worker_model": "sonnet",
-    "notes": "blocks, macros and the template graph, Ansible's templates/ directories are a common carrier"
+    "notes": "blocks, macros and the template graph; explicit .j2/.jinja/.jinja2 dispatched; templates/*.html by sniff remains deferred because .html dispatch and resolution belong to HTML"
   },
   {
     "id": "serverless",

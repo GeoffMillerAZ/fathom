@@ -9,10 +9,10 @@ at commit `4f832fe6feeae8c9e5963d835bec0272a8331b47` (MIT).
 
 - **Grammar.** Built from that upstream commit with the in-tree
   `internal/extractor/tsengine/grammars/patches/jinja2/optional-else.patch`
-  (SHA-256 `3f907a87e66f7e219057a1735fbfebcddbf10dde69063c52070f4ee659b7be32`).
+  (SHA-256 `ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86`).
   The patch allows a conditional without an else and preserves loop-filter precedence.
   The shared patch mechanism is P-R1 (`50675f456`). The unmodified production
-  `build.sh` built the pinned source and patch twice with matching raw WASM SHA-256
+  `build.sh` repeatedly built the same patched source with matching raw WASM SHA-256
   `71680f5fead32c2881a5e486e8dc79a71656e3be60fff7b714667673b5f30e25`
   (212061 bytes raw, 71302 bytes compressed).
 - **Queries.** `tags.scm` and `imports.scm` were written here from owned fixture
@@ -33,9 +33,9 @@ All 108 upstream corpus cases (105 existing, 3 added) and eight independent
 Jinja 3.1.6 legal/invalid controls pass.
 
 Three full-oracle receipts are in `workspace/artifacts/jinja-final-run{1,2,3}.json`:
-520 files, 734576 bytes, 1124 definitions, 683 calls, 189 resolved imports/file
+520 files, 734576 bytes, 1124 definitions, 687 qualified calls, 189 resolved imports/file
 edges, L1–L3 excellent, 3 files with ERROR or MISSING (0.58%), zero faults, and
-5.20/5.10/5.14 MB/CPU-s. The median is 5.14. These receipts measure full
+4.77/4.93/5.08 MB/CPU-s. The median is 4.93. These receipts measure full
 extraction accuracy and throughput; the native error count alone measures only
 parse coverage. Three remaining parse errors involve splatted arguments, extra
 filter arguments, and a numeric dotted attribute.
