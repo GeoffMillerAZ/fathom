@@ -49,7 +49,7 @@ Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://s
 | Own toolchain / parser | [Astro compiler registry](https://registry.npmjs.org/@astrojs/compiler/latest) reports **4.0.0**, already the measured compiler pin; it does not repair the shared TypeScript query. |
 | SCIP / LSIF | The shared catalog searches and [GitHub `scip-astro` query](https://github.com/search?q=scip-astro&type=repositories) produced no subject-validated Astro indexer. This is a search limit. |
 | Language server | [Astro LSP registry](https://registry.npmjs.org/@astrojs/language-server/latest) reports **2.17.3**; [changelog](https://github.com/withastro/astro/blob/main/packages/language-tools/language-server/CHANGELOG.md) records a 2.17.3 patch after the 2.17.0 `astro2tsx` update. **LIVE UNMEASURED**: public reference requests must prove complete original-source component positions; the patch is not that proof. |
-| Registry AST | [Compiler package](https://registry.npmjs.org/@astrojs/compiler/latest) parses and maps Astro syntax but the frozen defaulted-props miss is extractor-side. |
+| Registry AST / scope analysis | [Compiler package](https://registry.npmjs.org/@astrojs/compiler/latest) parses and maps Astro syntax but the frozen defaulted-props miss is extractor-side. [astro-eslint-parser 3.2.0](https://www.npmjs.com/package/astro-eslint-parser) provides scope references and variables, **LIVE UNMEASURED**, tier C under P-T1; it does not change C-R4's extractor-side miss. |
 | Runtime tracing | [Astro dev toolbar](https://docs.astro.build/en/guides/dev-toolbar/) observes rendered pages, not all component definitions or references. |
 
 The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.
