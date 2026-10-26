@@ -23,7 +23,7 @@
     "src/loader.c": "26ef0c7f99943d2d89303803ef24e04bda8dd35d48c4d0d6012b906341d6a78c",
     "src/client.c": "baa2fb5acf5b837fe127fa1549b1589be7ae47832d5e99728b6383ca0f458882"
   },
-  "population": "Every claimed config and every declared same-file auth_dbname pair in the original canonical corpus; currently one pauthz -> authdb pair in test/test.ini. No extractor output is consumed.",
+  "population": "Every claimed config and every declared same-file auth_dbname pair in the original canonical corpus; scanner population recorded only by count and population_sha256. No extractor output is consumed. Wording corrected after review; r1 did not establish native recall completeness.",
   "rules": [
     "Read original configs whole; never delete source definitions or move corpus members.",
     "Native SHOW DATABASES/PEERS/USERS/CONFIG attests membership; source positions stay C.",
