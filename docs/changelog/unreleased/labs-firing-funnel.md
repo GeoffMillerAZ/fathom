@@ -1,0 +1,7 @@
+### Added
+
+- `fathom labs`, the offline feature-lab verb. `labs corpus` cuts this repository's local Claude Code transcripts into decision points — a salted session hash, the call's place in event order, the calls before it and the next three, each call's name and input shape class — writes them per session under `workspace/labs/sessions/` and prints aggregates only: the eligibility verdicts, the reason each unclassified point could not be read, and every malformed, oversize, unreadable or duplicate line the decoder could not use. `labs fire` reads the firing funnel per lab surface from the same corpus (eligible and should-not margins, fired and false fires, the delivered share, the substitute tool that served each missed point, recall and specificity with Wilson intervals), and with `--write --run-id ID --criterion ID --prereg-sha SHA` appends one replay row per surface to `docs/bench/labs-ledger.jsonl`. Neither subverb asks the daemon, reaches the network or spends. Stages that cannot be measured are named, never reported as zero.
+
+### Changed
+
+- A `#Result` row in `schema/labs` now requires the arm pins unless its arm is `replay`, and a replay row requires a `replay` block instead — the sha256 of the corpus it decoded and the fathom commit that read it. A replay reads past sessions, whose plugin digest, stanza and tool descriptions at the time are not knowable, so it names the provenance it can prove rather than stamping pins it cannot.
