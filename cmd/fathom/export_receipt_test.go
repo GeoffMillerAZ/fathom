@@ -15,7 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
@@ -36,12 +38,25 @@ func Hello() string {
 func Lonely() {}
 `
 
+// exportReceiptFixtureTestSrc reaches Hello and, through it, Greet.
+const exportReceiptFixtureTestSrc = `package pkg
+
+import "testing"
+
+func TestHello(t *testing.T) {
+	if Hello() != "hi" {
+		t.Fatal("no greeting")
+	}
+}
+`
+
 func exportReceiptFixture(t *testing.T) (root, storePath string) {
 	t.Helper()
 	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer suppression reaches the run
 	repo := newSelfSkipGitRepo(t)
 	repo.writePlan("go.mod", "module example.invalid/rcpt\n\ngo 1.22\n")
 	repo.writePlan("pkg/a.go", exportReceiptFixtureSrc)
+	repo.writePlan("pkg/a_test.go", exportReceiptFixtureTestSrc)
 	repo.commitAll("a")
 	storePath = filepath.Join(t.TempDir(), "s.sqlite")
 	var out, errBuf bytes.Buffer
@@ -139,6 +154,9 @@ func TestCmdExportReceiptRefusesUnknownKind(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("a refused export wrote %q", out.String())
+	}
+	if want := "want symbol_location, callers, references or certification"; !strings.Contains(errBuf.String(), want) {
+		t.Errorf("refusal = %q, want it to name every kind (%q)", errBuf.String(), want)
 	}
 }
 
@@ -299,5 +317,189 @@ func TestCmdExportReceiptRedactHelp(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "[--no-excerpts] [--keep-service] [-o FILE]") {
 		t.Error("export receipt summary omits --keep-service")
+	}
+}
+
+// seedCertification writes one certifications-layer claim per test name
+// to storePath, each certifying target over pkg/a.go.
+func seedCertification(t *testing.T, storePath string, target string, tests ...string) {
+	t.Helper()
+	ctx := context.Background()
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	obs, err := st.QueryObservations(ctx, "rcpt", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claims []core.SemanticClaim
+	for _, test := range tests {
+		key := ""
+		for _, o := range obs {
+			if n := o.ToSymbolNode(); n.Name == test {
+				key = n.Key()
+			}
+		}
+		if key == "" {
+			t.Fatalf("the index holds no %s", test)
+		}
+		meta, err := json.Marshal(certify.Meta{
+			Test: test, Strength: "asserts", State: "live", RunDigest: "run-" + test,
+			TestSymbolKey: key, TargetKind: "invariant", TargetID: target, TestFile: "pkg/a_test.go",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		claims = append(claims, core.SemanticClaim{
+			ClaimID: core.ClaimID(certify.Layer, certify.Kind, target, key), ServiceID: "rcpt",
+			Layer: certify.Layer, Kind: certify.Kind, Subject: target, Rule: test + " certifies " + target,
+			Scope: []string{"pkg/a.go"}, Tier: core.TierVerified, Status: core.ClaimFresh,
+			ReproKey: key, CompiledAt: time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), Meta: meta,
+		})
+	}
+	if err := st.PutClaims(ctx, claims, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func verifyReceiptFile(t *testing.T, root, path string) (int, string) {
+	t.Helper()
+	var out, errBuf bytes.Buffer
+	code := run([]string{"receipt", "verify", "--repo", root, path}, &out, &errBuf)
+	return code, out.String() + errBuf.String()
+}
+
+// TestExportReceiptAllKindsRequireCleanAndBars: each of the four kinds,
+// exported from exportReceiptFixture, verifies with exit 0 and stays under
+// the 256 KB bar; after an edit to the work tree --require-clean exits 1
+// and names the uncommitted path.
+func TestExportReceiptAllKindsRequireCleanAndBars(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, "I-fixture", "TestHello")
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		kind string
+		args []string
+	}{
+		{"symbol_location", []string{"--symbol", "Greet"}},
+		{"callers", []string{"--symbol", "Greet"}},
+		{"references", []string{"--symbol", "Greet"}},
+		{"certification", []string{"--test", "TestHello", "--target", "I-fixture"}},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			path := filepath.Join(dir, tc.kind+".json")
+			args := append([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", tc.kind, "--require-clean", "-o", path}, tc.args...)
+			start := time.Now()
+			var out, errBuf bytes.Buffer
+			if code := run(args, &out, &errBuf); code != 0 {
+				t.Fatalf("export exit %d: %s", code, errBuf.String())
+			}
+			elapsed := time.Since(start)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("%s receipt: %d bytes, exported in %s", tc.kind, len(data), elapsed)
+			if len(data) > 256<<10 {
+				t.Errorf("%s receipt is %d bytes, over the 256 KB bar", tc.kind, len(data))
+			}
+			var r receipt.ExportedReceipt
+			if err := json.Unmarshal(data, &r); err != nil {
+				t.Fatal(err)
+			}
+			if string(r.Kind) != tc.kind || len(r.Facts) == 0 {
+				t.Fatalf("receipt = %+v, want a %s receipt with facts", r, tc.kind)
+			}
+			if tc.kind == "certification" {
+				if r.Test != "pkg/pkg.TestHello" || r.Target != "invariant:I-fixture" || r.Strength != "asserts" || r.RunDigest != "run-TestHello" {
+					t.Errorf("certification envelope = %+v", r.Receipt)
+				}
+				if len(r.Reached) != 2 || !strings.HasSuffix(r.Reached[0], ".Greet") || !strings.HasSuffix(r.Reached[1], ".Hello") {
+					t.Errorf("reached = %v, want Greet and Hello", r.Reached)
+				}
+				if len(r.Facts) != 3 {
+					t.Errorf("facts = %+v, want the test's and each reached symbol's definition", r.Facts)
+				}
+			}
+			if tc.kind == "references" && strings.Join(r.Files, ",") != "pkg/a.go" {
+				t.Errorf("files = %v, want pkg/a.go", r.Files)
+			}
+			if code, msg := verifyReceiptFile(t, root, path); code != 0 {
+				t.Errorf("receipt verify exit %d:\n%s", code, msg)
+			}
+		})
+	}
+
+	// The index reads the edited bytes: its anchor is uncommitted.
+	if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte(exportReceiptFixtureSrc+"\n// edited\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"ingest", "--service", "rcpt", "--path", root, "--store", storePath}, &out, &errBuf); code != 0 {
+		t.Fatalf("re-ingest exit %d: %s", code, errBuf.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	path := filepath.Join(dir, "dirty.json")
+	code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "Greet", "--require-clean", "-o", path}, &out, &errBuf)
+	if code != 1 || !strings.Contains(errBuf.String(), "pkg/a.go") {
+		t.Fatalf("--require-clean on a dirty tree: exit %d, stderr %q; want 1 naming pkg/a.go", code, errBuf.String())
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("--require-clean wrote no output before refusing: %v", err)
+	}
+	errBuf.Reset()
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "Greet", "-o", path}, &out, &errBuf); code != 0 {
+		t.Errorf("without --require-clean a dirty tree exports: exit %d: %s", code, errBuf.String())
+	}
+}
+
+// TestExportReceiptReferencesTamperedFile: a file added to an exported
+// references receipt is a difference.
+func TestExportReceiptReferencesTamperedFile(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	r, _ := exportReceipt(t, storePath, "--symbol", "Greet", "--kind", "references")
+	r.Files = append(r.Files, "pkg/a_test.go")
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "tampered.json")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, msg := verifyReceiptFile(t, root, path); code != 1 || !strings.Contains(msg, "pkg/a_test.go") {
+		t.Errorf("tampered references receipt: exit %d, want 1 naming pkg/a_test.go:\n%s", code, msg)
+	}
+}
+
+// TestExportReceiptCertificationClaimChoice: --test and --target must pick
+// exactly one claim; none or several is an error naming the candidates.
+func TestExportReceiptCertificationClaimChoice(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, "I-one", "TestHello")
+	seedCertification(t, storePath, "I-two", "TestHello")
+	for _, tc := range []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{"missing", []string{"--test", "TestHello", "--target", "I-none"}, []string{"no certification", "TestHello → invariant:I-one", "TestHello → invariant:I-two"}},
+		{"ambiguous", []string{"--test", "TestHello"}, []string{"2 certifications", "TestHello → invariant:I-one", "TestHello → invariant:I-two"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			args := append([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification"}, tc.args...)
+			if code := run(args, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			for _, w := range tc.want {
+				if !strings.Contains(errBuf.String(), w) {
+					t.Errorf("error %q does not name %q", errBuf.String(), w)
+				}
+			}
+		})
 	}
 }

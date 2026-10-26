@@ -1,0 +1,2 @@
+### Added
+- `fathom export receipt` writes all four receipt kinds: `--kind references` (the declaring file and every typed-edge caller's file, each a whole-file `reference` fact) and `--kind certification` (`--test`/`--target` pick one certifications-layer claim; reached symbols are the claim's scope files the test reaches over the call graph). `--require-clean` writes the receipt, then exits 1 naming each anchor that is not committed. `fathom receipt verify` checks the new `reference` fact by its git rung.
