@@ -15,4 +15,4 @@ repos:
     licence: MIT
     subpath: eng/pipelines
     sparse: ["eng/pipelines/**", "LICENSE.TXT"]
-    idioms: ["multi-stage pipelines", "explicit dependsOn job and stage names", "template expansion left unmeasured"]
+    idioms: ["multi-stage pipelines", "dependsOn mostly template expressions (no literal same-file pairs)", "template expansion left unmeasured"]

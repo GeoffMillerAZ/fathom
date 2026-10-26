@@ -814,9 +814,6 @@ func (p *Pipeline) RegisterExtractor(ext string, e extractor.Extractor) {
 // and ExtractForBench so the language-breadth harness measures exactly
 // the dispatch ingest runs (LB-F23).
 func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *siblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool) {
-	if ae, ak, aok := azurePipelineDispatch(relPath, content, idx); aok {
-		return ae, ak, true, false
-	}
 	base := filepath.Base(relPath)
 	ext := filepath.Ext(relPath)
 	if ke, kk, kok := p.checkovDispatch(relPath); kok {
@@ -868,6 +865,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 				kind := Classify(relPath, content, idx)
 				toolKind = kind
 				if kind == ToolUnclassified {
+					if ae, ak, aok := azurePipelineDispatch(relPath, content, idx); aok {
+						return ae, ak, true, false
+					}
 					return nil, kind, false, true
 				}
 				e, ok = p.toolExts[kind]
