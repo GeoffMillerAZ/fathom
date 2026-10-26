@@ -106,6 +106,12 @@ const workerRowPromptFmt = "You are one worker in a team completing this task:\n
 // attempt used, silently overwriting it: 32 of 140 cells' on-disk
 // transcript was a different session than the one the cell record scored.
 func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+	// Offline controls receive gold only in a cell-scoped copy, never in an agent prompt.
+	if scoped, ok := h.(interface {
+		withTask(context.Context, Task) Harness
+	}); ok {
+		h = scoped.withTask(ctx, task)
+	}
 	cellRawDir, err := allocateRawAttemptDir(cellRawBase(task, armName, opts))
 	if err != nil {
 		return nil, fmt.Errorf("running sessions for task %s: %w", task.ID, err)
