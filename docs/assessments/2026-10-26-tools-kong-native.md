@@ -35,3 +35,34 @@ native position claim. X-R4's remaining source families still need recorded
 checks before any renewed ceiling. Native L2 work is open; L3 waits for D19,
 and a shared parent-binding selector remains under T-R2. No model decision
 applies.
+
+
+## Native authored prototype and full-population preregistration
+
+The pinned owner SDK now builds through a verified private source copy and
+read-only overlay, with no module-cache/global edits. Twelve native Go race
+tests and four Python projection tests pass with zero skips. Raw Host and
+consumer/group population mutants fail then restore green; a locator-filtered
+native multiset mutant also fails. An actual Fathom-output removal is a future
+hidden-read tripwire; changed input alters native truth. Three network-denied
+official decK1.68.0 renders agree on the tested fields, including the URL-only
+versus explicit-host distinction. A strict host-name control prevents the
+native registry's ID alias from becoming a literal host/name binding. Source,
+entity and serialized-output cap+1 tests refuse completely.
+
+The full original input set is 1,803 across nine cohorts, while existing ingest
+gates score 568 files/821 definitions. Two historical SHA fields identify a
+synthetic copy commit. Protocolr2 uses actual source shard pins and separately
+hashes the existing YAML-only testdata-to-td copy mapping. No source byte,
+required kind, holdout membership, canonical L3 reading or corpus is changed.
+The native Go population chooses definitions/fields; independent yaml.v3 only
+attaches C ranges and cannot trim its multiset. Full population is still open,
+not an availability ceiling or a new A metric claim.
+
+The five-source ledger is calibration/oracles/kong/candidate-search-r1.json,
+with versioned primary runtime/parser/LSP candidates and access gaps. The native
+commands and all authored receipts are linked from NATIVE.md. A legacy full
+module test run attempted docker compose config and failed without starting a
+container. That selection was wrong for this helper: only the focused new
+L1/L2 location tests are verified; the held L3 test is explicitly unverified,
+and no test or golden was weakened. No model decision applies.

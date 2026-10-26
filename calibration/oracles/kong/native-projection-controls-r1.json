@@ -1,0 +1,7 @@
+{
+  "tests": 4,
+  "skips": 0,
+  "mutant": "filter native definition multiset by independent locator candidates",
+  "failure_line": "FAIL: test_locator_omission_extra_and_tier_change_refuse_whole_input (test_native_projection.NativeProjectionTest)",
+  "restored_green": true
+}

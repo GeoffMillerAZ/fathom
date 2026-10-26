@@ -1,5 +1,13 @@
 # kong-oracle (tier A definitions; tier C references)
 
+This page documents the unchanged canonical oracle and historical tier labels.
+The [native written-field prototype](NATIVE.md) withdraws the former
+foreign-key availability premise: the owner's typed reader exposes written
+fields before normalization. Full native measurement remains open. Independent
+yaml.v3 positions stay C in that diagnostic; the canonical range authority
+needs audit. L3 remains held by D19. No Docker/global install is authorized on
+this helper; historical route commands below have not been rerun.
+
 The language-breadth harness's oracle for the `kong` doc-engine dialect (LB-Q-kong, design §1.3, §10). A
 separate Go module (`go.mod`: yaml.v3), never imported by fathom, never a product dependency.
 

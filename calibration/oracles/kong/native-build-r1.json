@@ -1,0 +1,16 @@
+{
+  "tool": "Kong owner typed loader probe",
+  "version": "go-database-reconciler v1.42.4",
+  "deck_version": "1.68.0",
+  "native_source_commit": "3e9e2aa4a799494cd8824a27867e366745c091fd",
+  "go_version": "go version go1.27.3 darwin/arm64",
+  "module_sum": "h1:CxeipG/dWIHi73bztg6BU7lIwotOKP1FUmfbz7sp6PE=",
+  "module_go_mod_sum": "h1:/lEPLhpDI1x+OOhQ+JeY3OsxvXYN04o12AmqzN7llRQ=",
+  "binary_sha256": "30604dedff995ed409dbd32f30a20f0d73a31e30861f0eb427ab1189cfdb5ede",
+  "original_types_sha256": "ced094953139c76d0162a9b1109f836c5e5470ae22f20d0e0d7ec274016e8f4a",
+  "observed_types_sha256": "b6464e4a91ab7216a55ca30b77b3728ce4982c0e3f839a796309246b4d09c181",
+  "instrument_sha256": "4dedc06a8c6609686dceb6f6f380c2e5bec77fdf9a9a16bdd7051792f0c925b3",
+  "probe_source_sha256": "f5dbc68699bc94e4dc3fe4dcf434b75dc66685afb566335baa611dfc93e7c591",
+  "native_runtime_executed": false,
+  "calibration_measured": false
+}
