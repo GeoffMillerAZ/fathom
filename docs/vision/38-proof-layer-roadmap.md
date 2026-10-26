@@ -403,6 +403,10 @@ Wave 1 derives on read and adds no table.
 
 Every machine serves its own checkouts through its own loopback fathom, with no central shared daemon or daemon-to-daemon calls; git moves code, attested receipts move evidence and index snapshots will move the index on existing operator carriers (ADR-078 D1–D3). The multi-machine guide and shipped `fathom-offload` skill ship now; receipt identity columns wait for RT-M1 PASS, and helper-machine cold start names an IXS phase 1 consumer after RT-M1 PASS and IXS-M0b parity, without unparking that plan.
 
+### 9.14 Amended 2026-10-25 (owner-architect): feature labs and experiments
+
+Feature labs (`docs/design/feature-labs.md`, plan `docs/plans/feature-labs.md`, LAB-, issue #13) give each fathom feature a card with its firing criterion, helped metric (the plugin against the plugin minus that one feature) and kill, read the firing funnel from replayed sessions at $0 and from capped live forks, keep lab and decision-port results in one ledger the ledger oracle reads, and prove each observation's fix by the test its fix commit added; P0 spends $0, P1 spends agent budget under the owner's 2026-10-26 lift on building the harness and a no-claim shakedown, and the component-level complement of bench prep runs no head-to-head.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
