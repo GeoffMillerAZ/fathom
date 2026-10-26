@@ -22,19 +22,21 @@ are not a dialect throughput reading or comparable to canonical timing. This is 
 reading's 48/49 definitions and 74/75 references; those old values are preserved
 and this is not a same-subject extractor improvement.
 
-The ceiling is the full reference family's tier C. Candidate routes checked:
+The reading's reference family remains C, but the ceiling is reopened by the
+vendor language server. Candidate routes checked:
 
 | Candidate | Version | Concrete limitation |
 |---|---|---|
 | CircleCI CLI `config process` | 1.7.0 | Run on every registered case; attests workflow/job and requires pairs, but output inlines declared commands and executors, losing those source references. |
 | CircleCI CLI `config validate` | 1.7.0 | Its help exposes config validation, not source command/executor identity pairs; acceptance alone cannot locate the referenced declaration. |
-| CircleCI native compiler ablation | 1.7.0 | Not implemented or ruled impossible; requires fresh subjects and one-at-a-time command/executor mutations. This is the next route, not an unavailable instrument. |
+| CircleCI YAML language server | 0.54.0, 9c9c4cedb448caa2444bc89672233e4dae66eeea, Apache-2.0 | Verified native Darwin ARM64 release; official definition/reference methods address commands and executors. Whole canonical/holdout comparison is preregistered in lsp-protocol-r2.json; results and W4 tier ruling pending. |
+| CircleCI native compiler ablation | 1.7.0 | A secondary unimplemented route; no longer claimed necessary before checking the maintained vendor server. |
 | Independent `yaml.v3` AST walk | v3.0.1 | Run for declared commands/executors; independent parser evidence is C, not native evaluation. |
 
  Compiler workflow/job pairs
 are native, while command/executor pairs still come from an independent YAML
-walk after inlining. Native ablation must attest those pairs before a tier can
-rise, on fresh preregistered subjects exercising both families. A perfect small
+walk after inlining. The vendor server must be measured on every local use in all eight existing
+subjects, with a controller W4 tier ruling before any tier change. A perfect small
 holdout is not a reason to relabel the mixed oracle. No product extraction,
 shared engine, epoch, generated board or plan checkbox changed.
 

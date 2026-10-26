@@ -78,3 +78,13 @@ at a time with the start load at most 6. No runtime workflow was started.
 The three timing values are retained for provenance only: total extraction CPU
 is sub-millisecond, the spread is 2.5 times, and this is not an informative
 throughput reading or comparable to canonical throughput.
+
+
+## Review follow-up: vendor language server
+
+The handwritten timing/adapter notes have been removed from the measured JSON;
+the disclosures stay here and in the assessment. Original instrument output is
+preserved. The native-LSP comparison protocol is `lsp-protocol-r2.json`, committed
+before querying the eight subject configurations. Vendor 0.54.0 resolves source
+command/executor names; its full-cohort comparison and W4 ruling are pending.
+The former native-ablation-only ceiling is reopened. No tier has changed.
