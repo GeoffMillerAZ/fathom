@@ -30,7 +30,8 @@ skipped the changed work is invalid under K27. Any unavailable or mismatched wor
 passing cost claim until explained.
 
 Separately, run universal-ctags 6.2.1 and scip-go 0.2.7 on the calibration subjects at the source
-SHAs in calibration/corpus.d/go.yaml. Reproduce the historical baseline with the unchanged
+SHAs in calibration/corpus.d/go.yaml and the independent
+docs/bench/go-fields-holdout.yaml record, which is never canonical corpus input. Reproduce the historical baseline with the unchanged
 binary where possible, then read the candidate and every affected Go reading. Keep the
 independent Gin holdout frozen, index/read once, and never tune against it. Take three timing
 runs on each final reading. Grades come from the existing harness and oracle tiers. A native
