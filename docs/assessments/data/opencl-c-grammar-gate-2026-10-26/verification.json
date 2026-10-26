@@ -29,7 +29,7 @@
     "convention": "template-convention-search.json: bounded five-project search found no second independent exact match; code search 401 is no absence proof",
     "gate": "G-R6 intermediate non-clBLAS <=19 fired; whole-pool <=19 native gate failed; runtime prepass and owner ruling remain pending",
     "holdout": "semicolonless-holdout.json: 2/53, reused diagnostic after tuning, not independent validation",
-    "original_baseline": "screen.json, builds.json, holdout.json remain historical original candidate receipts; original five-build descriptor and four candidate metadata predate the sixth row",
+    "original_baseline": "screen.json, builds.json, holdout.json remain historical original candidate receipts; original five-build descriptor and five candidate metadata predate the sixth row",
     "original_patch_rebuild": "baseline-review-build.json: fresh 137/137 baseline for direct comparison",
     "primary": "semicolonless-screen.json: 53/386 (13.73%), 10 error-to-clean, zero regressions or faults, 13 non-clBLAS",
     "semicolonless_build": "semicolonless-build.json: 145/145 corpus cases; parser.c SHA-256 a80b70ec3ff815bf6c80a2f86f2035ee2a0f1d838cc48c40f108a22fde4ef116"
