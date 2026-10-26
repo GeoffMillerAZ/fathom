@@ -1,0 +1,154 @@
+{
+  "baseline_full_commit": "6db920e72898abb20bf86c22652b401902e34598",
+  "date": "2026-10-26",
+  "grades": {
+    "baseline": {
+      "binary_sha256": "0724ee15ea809de346496b3937dee4d9aeb57fab6929a9c6a233ebbf85c9403c",
+      "commit": "6db920e72",
+      "counts": {
+        "fathom_defs": 3111,
+        "kind_equal": 3111,
+        "matched": 3111,
+        "oracle_defs": 3111,
+        "range_eligible": 3111,
+        "range_ok": 3111,
+        "ref_fathom": 4254,
+        "ref_fathom_in_truth": 4197,
+        "ref_truth": 4197,
+        "ref_truth_found": 4197,
+        "xref_fathom": 2160,
+        "xref_fathom_in_truth": 2147,
+        "xref_truth": 3528,
+        "xref_truth_found": 2147
+      },
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "good",
+        "L4": "not-applicable"
+      },
+      "metrics": {
+        "ref_precision": 0.9866,
+        "ref_recall": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "xref_precision": 0.994,
+        "xref_recall": 0.6086
+      },
+      "run_sha256": [
+        "0e6f3cfaec42ddf45418cc44556b3cdbbb968b6265e2cf23f0423c325c36676b",
+        "bda07b42d89db0cab04b395e718c4cceb9b509d2c2378fd11682a6b5d5b31044",
+        "3407be2f5ff4d96f7f0d680bc5d94c471a7c01d594478357e3eaf5b0fcce4335"
+      ],
+      "selected_reading_sha256": "0e6f3cfaec42ddf45418cc44556b3cdbbb968b6265e2cf23f0423c325c36676b",
+      "selected_run": 1
+    },
+    "repaired": {
+      "binary_sha256": "73e4a71fc12a11adb0f402af15dc0e51b11b39e8a71a53b6862ca925331165f8",
+      "commit": "2ff8b2ac3",
+      "counts": {
+        "fathom_defs": 3111,
+        "kind_equal": 3111,
+        "matched": 3111,
+        "oracle_defs": 3111,
+        "range_eligible": 3111,
+        "range_ok": 3111,
+        "ref_fathom": 4254,
+        "ref_fathom_in_truth": 4197,
+        "ref_truth": 4197,
+        "ref_truth_found": 4197,
+        "xref_fathom": 3541,
+        "xref_fathom_in_truth": 3528,
+        "xref_truth": 3528,
+        "xref_truth_found": 3528
+      },
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      },
+      "metrics": {
+        "ref_precision": 0.9866,
+        "ref_recall": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "xref_precision": 0.9963,
+        "xref_recall": 1
+      },
+      "run_sha256": [
+        "1c49ebe123ba144ecb4cc0cdf9cc40aac60cb101f4b8718092ce37107b458651",
+        "a89ab28e455c9fbfbcb2fe26f559dbf5dc3a782b1803ae1a251740ad3d764466",
+        "6a419cf4b5224f849abd576d56ca8bc3e615c02f7b42f14899b223964739b006"
+      ],
+      "selected_reading_sha256": "1c49ebe123ba144ecb4cc0cdf9cc40aac60cb101f4b8718092ce37107b458651",
+      "selected_run": 1
+    }
+  },
+  "native_tool": "OpenTofu 1.13.0",
+  "oracle_binary_sha256": "6c4cb6fe34bd8ed236aff394fb72ff840e5063f90adfd7646998a6c0481a3890",
+  "pin_manifest_sha256": "14397e8a99b5ec4ecaa04d073a042ab9bdf2d7e0b53124523ca5035d52470a46",
+  "repaired_full_commit": "2ff8b2ac3d188268c52bff320eddf93242b8248a",
+  "subjects": [
+    {
+      "baseline": {
+        "bytes": 523029,
+        "files": 87,
+        "xref_found": 651,
+        "xref_truth": 866
+      },
+      "definitions": 1234,
+      "measured_file_count": 87,
+      "measured_file_list_sha256": "da94221048ea88dc1e16ee1d5e9b7fd14462d1bc84d64202ed9cdb374217c698",
+      "oracle_raw_sha256": "971c519395747e6acdd924c10a76fe80a159c23caab4dbad5fa8e297a16e01c5",
+      "pinned_module_instances": 173,
+      "pinned_module_manifest_sha256": "0bcafd5cec878238092b1c08b32037679347b7e38ddefc1753d6cfeb34907ada",
+      "raw_truth_unchanged": true,
+      "references": 1807,
+      "repaired": {
+        "bytes": 523029,
+        "files": 87,
+        "xref_found": 866,
+        "xref_truth": 866
+      },
+      "repository": "terraform-aws-modules/terraform-aws-eks",
+      "subject_sha": "323c633629b8e4306d94eb1392d7400a80143621",
+      "tracked_bytes": 1463937,
+      "tracked_entries": 185,
+      "tracked_manifest_sha256": "4942ec801eec929b1b57aa1d0ade9031dff6e43dd83e97bb668278f99ba0d641",
+      "xref_truth": 866,
+      "xref_truth_floor": 866
+    },
+    {
+      "baseline": {
+        "bytes": 453543,
+        "files": 77,
+        "xref_found": 1496,
+        "xref_truth": 2662
+      },
+      "definitions": 1877,
+      "measured_file_count": 77,
+      "measured_file_list_sha256": "f9da93412b738ee2b76d773f5ea1f3d9cf18829bff93e04ecff5adc8e16888a9",
+      "oracle_raw_sha256": "eae3d77584576a22e6ace39c6bcd78eaf2cb230072ea859e022aceda31d5f134",
+      "pinned_module_instances": 47,
+      "pinned_module_manifest_sha256": "0e239007f851aa74bdb5a96fe6c1b2450172412c3121e1abb9eccf11de3cddd9",
+      "raw_truth_unchanged": true,
+      "references": 2390,
+      "repaired": {
+        "bytes": 453543,
+        "files": 77,
+        "xref_found": 2662,
+        "xref_truth": 2662
+      },
+      "repository": "terraform-aws-modules/terraform-aws-vpc",
+      "subject_sha": "b3abd6df2ecf052451a361ed55b8f06f8742a795",
+      "tracked_bytes": 934669,
+      "tracked_entries": 111,
+      "tracked_manifest_sha256": "ece5bc158190f26a791493a69d8a139bb8610501e943e28c540012d7df73e37d",
+      "xref_truth": 2662,
+      "xref_truth_floor": 2662
+    }
+  ],
+  "tier": "A",
+  "tracked_set_recipe_sha256": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+}
