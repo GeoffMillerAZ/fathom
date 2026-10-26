@@ -34,3 +34,20 @@ node calibration/oracles/sass-grammar/reference.cjs "$SASS_SCRATCH/gate.json" "$
 ```
 
 On Linux, replace `cc -dynamiclib` with `cc -shared` and name the output `.so`. The `gate.json` records each file's error diagnostics, including a location fallback when `has_error` lacks an `ERROR` or missing descendant. The `reference.json` reports which grammar failures the independent `sass-parser` accepts. The pinned calibration had 123 grammar-error files (53 Bulma, 70 Vuetify), with 51 and 66 respectively on files accepted by `sass-parser`.
+
+Before committing a reading, publish counts and hashes rather than the raw file
+lists or compiler messages (X-R3):
+
+```sh
+python3 calibration/oracles/sass-grammar/publish.py --self-test
+python3 calibration/oracles/sass-grammar/publish.py \
+  --gate "$SASS_SCRATCH/gate.json" --reference "$SASS_SCRATCH/reference.json" \
+  --out "$SASS_SCRATCH/public-summary.json"
+```
+
+Keep raw gate/reference outputs in scratch. `publish.py` can also sanitize the
+historical combined receipt (reference_crosscheck embedded) without --reference.
+The committed 2026-10-26 receipt was sanitized from that historical combined
+receipt, preserving its provenance metadata and counts. No native measurement
+was rerun during sanitization. Diagnostic/rejection lists are represented by
+counts, kind histograms and SHA-256, never wholesale source file lists or messages.

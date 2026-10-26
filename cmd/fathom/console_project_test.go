@@ -51,8 +51,20 @@ func shellFields(cmd string) []string {
 }
 
 // dropVolatileVerbFields removes the fields two runs of one verb cannot
-// share: `intent audit`'s "ms" is that run's own elapsed time.
+// share: `intent audit`'s "ms" is that run's own elapsed time. It also drops
+// the fields a page omits by ruling: the Operate page's adoption section
+// skips `labs` (LAB-6 brief, console_operate.go:233).
 func dropVolatileVerbFields(verb string, docs ...any) {
+	// The Operate page skips the adoption report's labs section (LAB-6),
+	// which TestAdoptionLabsSectionSkippedOnConsole pins as null there.
+	if strings.Contains(verb, "instrument --adoption") {
+		for _, d := range docs {
+			if m, ok := d.(map[string]any); ok {
+				delete(m, "labs")
+			}
+		}
+		return
+	}
 	if !strings.Contains(verb, "intent audit") {
 		return
 	}
