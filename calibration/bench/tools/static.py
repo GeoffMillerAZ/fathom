@@ -1,6 +1,9 @@
+import sys
+sys.dont_write_bytecode = True
+from bench_paths import job_dir, workspace_path
 import os
 import pathlib, subprocess, json, re, hashlib, datetime, collections
-ROOT=pathlib.Path.cwd(); JOB=pathlib.Path(os.environ['BENCH_JOB'])
+ROOT=pathlib.Path.cwd(); JOB=job_dir()
 def istest(p):
  return bool(re.search(r'(^|/)(tests?|specs?|__tests__)(/|$)|(^|/)(test_[^/]*|[^/]*_test)\.py$|_test\.go$|\.(test|spec)\.[cm]?[jt]sx?$',p))
 for receipt in sorted((JOB/'receipts').glob('*.json')):
@@ -27,12 +30,12 @@ for receipt in sorted((JOB/'receipts').glob('*.json')):
    elif 'Redistribution and use in source and binary forms' in text:
     spdx='BSD-3-Clause' if ('Neither the name' in text or 'neither the name' in text) else 'BSD-2-Clause'
    d['licences'].append({'path':f,'spdx':spdx,'sha256':hashlib.sha256(b).hexdigest()})
- hist=git('log',d['sha'],'--since=2024-10-25T00:00:00Z','--until=2026-10-26T00:00:00Z','--no-merges','--format=@@%H%x09%aI%x09%s','--name-only').decode(errors='replace')
+ hist=git('log',d['sha'],'--since=2024-10-25T00:00:00Z','--until=2026-10-26T00:00:00Z','--no-merges','--format=@@%H%x09%cI%x09%s','--name-only').decode(errors='replace')
  both=[]
  for block in hist.split('@@')[1:]:
   ls=block.strip().splitlines(); sha,date,subject=ls[0].split('\t',2); paths=[p for p in ls[1:] if p]
   tests=[p for p in paths if istest(p)]; prod=[p for p in paths if not istest(p) and pathlib.Path(p).suffix in extensions]; other=[p for p in paths if not istest(p)]
-  if tests and other: both.append({'sha':sha,'date':date,'subject':subject,'tests':tests,'non_tests':other,'primary_language_non_tests':prod,'fix_message':bool(re.search(r'(?i)\b(fix|bug|regression)\b',subject))})
+  if tests and other: both.append({'sha':sha,'date':date,'subject':subject,'tests':tests,'non_tests':other,'primary_language_non_tests':prod,'fix_message':bool(re.search(r'(?i)\b(fix(es|ed)?|bugs?|regressions?)\b',subject))})
  d['yield']={'since':'2024-10-25T00:00:00Z','until':'2026-10-26T00:00:00Z','test_and_non_test_commits':len(both),'fix_message_subset':sum(x['fix_message'] for x in both),'primary_language_source_commits':sum(bool(x['primary_language_non_tests']) for x in both),'primary_language_source_fix_message_subset':sum(bool(x['primary_language_non_tests']) and x['fix_message'] for x in both),'replayed':0,'issue_examples':[x for x in both if x['fix_message'] and re.search(r'#\d+',x['subject'])][:3]}
  (JOB/'receipts'/f"{d['id']}-history.json").write_text(json.dumps(both,indent=2)+'\n')
  d['lockfiles']=[{'path':f,'sha256':hashlib.sha256(git('show',d['sha']+':'+f)).hexdigest()} for f in files if f in ['go.sum','package-lock.json','yarn.lock','pnpm-lock.yaml','uv.lock','poetry.lock','pdm.lock']]

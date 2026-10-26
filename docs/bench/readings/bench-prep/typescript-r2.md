@@ -1,5 +1,9 @@
 # TypeScript lock-bound retry and candidate search
 
+Historical round-2 screen: D26 supersedes C6 below; `c5-r3.json` supersedes
+the C5 estimates with committer dates and the widened regex. Current dispositions
+are in `README.md`; the suite receipts below remain historical.
+
 Measured on 2026-10-26 (UTC). These C3 measurements supersede round 1. C4
 remains unrun. No paid API was called. Full pins, licence hashes, lock hashes,
 commands, times, exit codes and log hashes are in `typescript-r2.json`.
@@ -45,8 +49,8 @@ No organization exceeds two candidates. Fleet-index membership is unknown.
 | remeda/remeda | `d02c3bdb5e18cfa53e76f33f4ae525adce515379` | MIT | 65,796 | 12.62, 14.416, 13.375 / 0,0,0 | 56 / 21 | 0 | refuse C6 |
 | reduxjs/redux-toolkit | `0fd611cc79d44990ac9a040dec4d5cb446233440` | MIT | 86,935 | 92.494, 73.5, 78.397 / 0,0,0 | 96 / 30 | 26 | retained draft |
 
-Immer's valid full-script failure is its locked Flow binary's unsupported Linux
-arm64 platform. Its source and build tests pass before Flow fails. Tsyringe's
+Immer's C3 refusal is scoped to the locked Flow binary on **linux/arm64**.
+It is not evidence of failure on another architecture or on macOS. Its source and build tests pass before Flow fails. Tsyringe's
 C2 and C6 refusals and Redux's C6 refusal stand independently of their corrected
 C3 results. Remeda's npm workspace script was selected from its own manifest;
 its root has no test script. The three added candidates are trpc, Remeda and
@@ -63,7 +67,7 @@ trpc warm-up hit Unix-socket EPERM on the shared temp filesystem. That invalid
 attempt was interrupted, logged and replaced by an ephemeral Linux tmpfs at
 `/work/tmp`. Interrupted attempts are not counted as completed C3 failures. The Node 22 warm-up is also invalid for trpc's `engines.node: ^24.0.0`. It was replaced with the exact `.nvmrc` runtime, Node 24.21.0, whose image digest is recorded in the JSON. The final complete Node 24 warm-up fails the full default script; no further trial is needed to disprove three green runs, and no passing subset was substituted.
 
-Class-transformer has zero qualifying commits since 2025-01-17 and
+Class-transformer has zero qualifying commits since 2024-10-25 and
 class-validator has six in the entire window since 2024-10-25. Both fail C5's
 post-cutoff half for any model cutoff after 2024-10-25; they remain candidates
 for BX-M0, which excludes C5. **TypeScript: no viable BX-44 subject yet**;

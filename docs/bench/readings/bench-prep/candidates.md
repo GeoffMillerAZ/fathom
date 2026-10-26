@@ -1,12 +1,12 @@
 # Benchmark preparation: measured candidate subjects
 
-The [current round-2 reading index](README.md) supersedes this historical candidate table and its original C3/C6 results.
+The [current D26 reading index](README.md) supersedes this historical candidate table and its original C3/C6 results.
 
 Measured on 2026-10-26 (UTC; round-1 receipt labels used the previous date). Scope: issue #18 subject-preparation lane, the design’s subject criteria and manifest fields, and BX-1 through BX-5. This is a **draft candidate reading**, not BX-3/BX-4 vetting or BX-5 index acceptance. No plan boxes are checked.
 
 Drafts kept: Go 3 kept / 2 refused, Python 5 kept / 0 refused, TypeScript 2 retained for BX-M0 / 2 independent refusals / 1 C3 harness re-run pending. “Kept” means retained for later vetting after this preparation pass; it does not mean all seven design criteria pass.
 
-C4 was deliberately not run. C5 below is an estimate from history, with zero fail-before/pass-after replays and the post-cutoff half pending Q2. The fleet registry is unreachable, so the design’s additional C7 fleet-index exclusion is unknown. C7’s requested checks (not fathom; at most two per organization) pass for all 15 candidates. No agent or paid API was invoked.
+C4 was deliberately not run. C5 below is an estimate from history, with zero fail-before/pass-after replays and the post-cutoff half pending Q2. The fleet registry is unreachable, so the design’s additional C7 fleet-index exclusion is unknown. C7’s original checks missed the committed corpus: spf13/cobra is already a subject in `calibration/corpus.yaml:268`, so it fails C7 and is a prior read. It remains refused independently of C6. Other fleet exclusions remain unknown. No agent or paid API was invoked.
 
 ## Measurement contract and commands
 
@@ -453,8 +453,38 @@ The current subject-preparation receipts are the vetting record, not a prior exp
 
 Rich is dev-forced: `testdata/scenariobench/lca/lca-bugloc.json` contains task `textualize/rich/2212/2197`, and `docs/bench/scenario-runs.md` and `docs/bench/scenarios-ledger.jsonl` record its pilots. Rich and marshmallow were both read in `docs/bench/readings/repository-facts/roles-r1.md`. Their manifests name these committed files in `contamination.prior_reads` and set `split: dev`; the schema refuses held-out with a nonempty prior-read list (D25). Held-out assignment otherwise belongs to the controller at BX-44 after Q2.
 
-F5: class-transformer has **0** qualifying co-change commits since 2025-01-17; class-validator has **6** in the entire window since 2024-10-25. Both fail C5's post-cutoff half (15 required) for any model cutoff after 2024-10-25. Neither can be a BX-44 subject at these pins. Both can still count toward BX-M0, which excludes C5. **TypeScript: no viable BX-44 subject yet**.
+F5: class-transformer has **0** qualifying co-change commits since 2024-10-25; class-validator has **6** in the entire window since 2024-10-25. Both fail C5's post-cutoff half (15 required) for any model cutoff after 2024-10-25. Neither can be a BX-44 subject at these pins. Both can still count toward BX-M0, which excludes C5. **TypeScript: no viable BX-44 subject yet**.
 
 F11: the word-bounded C5 recount gives urfave/cli **204 / 134** broad co-changes / fix-message matches, with 196 primary-language source co-changes and **127** primary-source fix-message matches. The old 135 broad fix-message count included substrings such as “prefix”. All 15 corrected counts are in `c5-corrections.json`; no fix replay was performed. Historical receipts retain their original values.
 
 All dates and timestamps in this reading use UTC; elapsed measurements are wall seconds. The Part B readings will report new measurements separately; the round-1 timings and C6 evidence above remain historical.
+
+## Round-3 corrections (F17–F21)
+
+Cobra fails C7: `calibration/corpus.yaml:268` contains spf13/cobra in fathom's
+own corpus. That committed corpus entry is also a prior read and would force
+its split to dev; it is refused, not a held-out candidate. The former claim
+that the requested C7 checks passed for every candidate is withdrawn.
+
+The same D23 reason is recorded for **all twelve draft candidates**, including
+pytest and redux-toolkit, in `draft-status-r3.json`. Admission manifests are
+deferred until the controller observes star/age metadata at vetting. The ten
+existing files are historical preparation drafts, not admission manifests;
+none is exempt from this deferral. No missing metadata was invented and the
+network allowance was used only for package fetches.
+
+`c5-r3.json` recounts all twenty candidates with committer dates for both the
+UTC window and recorded dates, and case-insensitive
+`\b(fix(es|ed)?|bugs?|regressions?)\b`. It supersedes all earlier C5 estimates,
+including `c5-corrections.json`; zero fixes were replayed. The pinned
+linux/arm64 uv wheel is installed with `--require-hashes` using
+`calibration/bench.d/uv-requirements.txt`. Python C6 resolution uses CPython
+3.12.15; the attrs parser-version reconciliation is in `verification-r3.md`.
+
+All writing tools now require an explicit `workspace/` output root.
+`issue_links.py` reads clones from `BENCH_SUBJECTS`. Both suite wrappers mount
+`/subject:ro` and stage tracked source plus Git metadata into `/work/source`;
+node_modules, virtual environments, caches and builds live below `/work`.
+The wrappers are edited instruments, not exact source snapshots of old runs.
+The schema's prior-read negative now changes only `bench.split` of a valid
+prior-read fixture; tests check every committed manifest's prior-read path.

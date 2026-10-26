@@ -24,6 +24,14 @@ subject: #Subject & {
 	}
 }
 
+// Prior reads are concrete evidence and keep the subject in the dev split.
+priorReadSubject: subject & {
+	bench: {
+		split: "dev"
+		contamination: prior_reads: ["docs/bench/scenario-runs.md"]
+	}
+}
+
 // No split until controller vetting (D25).
 unassigned: #Subject & {
 	name:    "sample/subject"

@@ -42,14 +42,14 @@ def istest(path):
     return bool(re.search(r'(^|/)(tests?|specs?|__tests__)(/|$)|(^|/)(test_[^/]*|[^/]*_test)\.py$|_test\.go$|\.(test|spec)\.[cm]?[jt]sx?$', path))
 history = []
 for block in git('log', sha, '--since=2024-10-25T00:00:00Z', '--until=2026-10-26T00:00:00Z',
-                 '--no-merges', '--format=@@%H%x09%aI%x09%s', '--name-only').decode(errors='replace').split('@@')[1:]:
+                 '--no-merges', '--format=@@%H%x09%cI%x09%s', '--name-only').decode(errors='replace').split('@@')[1:]:
     entries = block.strip().splitlines()
     commit, date, subject = entries[0].split('\t', 2)
     tests = [p for p in entries[1:] if istest(p)]
     other = [p for p in entries[1:] if p and not istest(p)]
     if tests and other:
         history.append({'sha': commit, 'date': datetime.datetime.fromisoformat(date.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
-                        'fix_message': bool(re.search(r'\b(fix|bug|regression)\b', subject, re.I)),
+                        'fix_message': bool(re.search(r'\b(fix(es|ed)?|bugs?|regressions?)\b', subject, re.I)),
                         'tests': tests, 'primary_source': [p for p in other if Path(p).suffix in extensions]})
 result = {'sha': sha, 'language': a.language, 'primary_lines': sum(lines.values()), 'files': len(lines),
           'licences': licences, 'full_history': git('rev-parse', '--is-shallow-repository').decode().strip() == 'false',

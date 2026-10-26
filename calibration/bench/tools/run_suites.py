@@ -1,15 +1,19 @@
+import sys
+sys.dont_write_bytecode = True
+from bench_paths import job_dir, workspace_path
 import os
 import pathlib, subprocess, json, time, sys, os
-ROOT=pathlib.Path.cwd(); JOB=pathlib.Path(os.environ['BENCH_JOB'])
+ROOT=pathlib.Path.cwd(); JOB=job_dir()
 IMAGES={'Go':'golang:1.27-bookworm','Python':'python:3.12-bookworm','TypeScript':'node:22-bookworm'}
 def run(d,stage,command,offline=False,limit=900):
  name=d['id']; work=JOB/'builds'/name; work.mkdir(exist_ok=True); (work/'tmp').mkdir(exist_ok=True)
- argv=['docker','run','--rm','--network','none' if offline else 'bridge','--cpus','4','-v',str(pathlib.Path(os.environ['BENCH_SUBJECTS'])/name)+':/subject','-v',str(work)+':/work','-w','/subject','-e','TMPDIR=/work/tmp','-e','GIT_CONFIG_COUNT=1','-e','GIT_CONFIG_KEY_0=safe.directory','-e','GIT_CONFIG_VALUE_0=/subject']
+ argv=['docker','run','--rm','--network','none' if offline else 'bridge','--cpus','4','-v',str(pathlib.Path(os.environ['BENCH_SUBJECTS'])/name)+':/subject:ro','-v',str(work)+':/work','-w','/subject','-e','TMPDIR=/work/tmp','-e','GIT_CONFIG_COUNT=3','-e','GIT_CONFIG_KEY_0=safe.directory','-e','GIT_CONFIG_VALUE_0=/subject','-e','GIT_CONFIG_KEY_1=safe.directory','-e','GIT_CONFIG_VALUE_1=/subject/.git','-e','GIT_CONFIG_KEY_2=safe.directory','-e','GIT_CONFIG_VALUE_2=/work/source']
  if d['language']=='Go':
   cache=JOB/'builds/go-cache'; cache.mkdir(exist_ok=True)
   argv+=['-v',str(cache)+':/cache','-e','GOMODCACHE=/cache/mod','-e','GOCACHE=/cache/build','-e','GOTOOLCHAIN=local','-e','GOMAXPROCS=4','-e','GOFLAGS=-mod=readonly']
   if offline:argv+=['-e','GOPROXY=off']
  if offline: argv+=['-e','PIP_NO_INDEX=1','-e','npm_config_offline=true','-e','HTTP_PROXY=','-e','HTTPS_PROXY=','-e','ALL_PROXY=']
+ command = ('(test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && ' if stage == 'setup' else '') + 'cd /work/source && ' + command
  argv += [IMAGES[d['language']],'sh','-c',command]
  start=time.monotonic()
  with open(JOB/'logs'/f'{name}-{stage}.log','w') as log:

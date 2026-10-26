@@ -1,5 +1,8 @@
 # Large-band search and remaining gaps
 
+Historical round-2 screen. Current product-only C6 counts and dispositions are
+in `c6-r2.json` and `README.md`; C5 estimates are superseded by `c5-r3.json`.
+
 Measured on 2026-10-26 (UTC). The selection target was fixed by review: add a
 75k–150k primary-language candidate per language where one exists. Trpc and
 redux-toolkit cover TypeScript in `typescript-r2.md`; this reading adds Go and

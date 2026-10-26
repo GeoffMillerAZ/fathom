@@ -3,14 +3,14 @@
 `inventory.py SUBJECT LANGUAGE` reads tracked blobs at HEAD with `git archive`,
 counts primary-language LF lines (including tests/generated/examples), hashes
 licences and locks, and counts history co-changes in the fixed UTC window using
-`\b(fix|bug|regression)\b`. It emits JSON to stdout. Full-history status is
+`\b(fix(es|ed)?|bugs?|regressions?)\b`. It emits JSON to stdout. Full-history status is
 reported; counts are estimates, never fail-before/pass-after replay evidence.
 
 `BENCH_JOB="$job" python3 calibration/bench/tools/remeasure.py CONFIG.json`
 accepts a JSON array with `id`, `source` (a detached clone), `language`, `lock`
 (relative to the clone), `setup` and `test`. An optional `image` is an exact digest override for a subject runtime (trpc and redux-toolkit use Node 24.21.0). `stop_on_failed_warmup` records a complete failed warm-up as a C3 counterexample and leaves timed trials unrun. Setup is online for package fetches;
 one warm-up and exactly three timed trials use `docker --network none --cpus 4`
-and pinned arm64 images. Ephemeral Linux tmpfs at `/work/tmp` supports Unix sockets that the shared mount rejects. Source is mounted at `/subject`, job-owned work at
+and pinned arm64 images. Ephemeral Linux tmpfs at `/work/tmp` supports Unix sockets that the shared mount rejects. Source is mounted read-only at `/subject`, tracked source is staged at `/work/source`, and job-owned work at
 `/work`. Logs and JSON receipts go to the job. A job-local flock serializes every
 offline subprocess; lock waiting is excluded from elapsed time. Each trial records its raw log hash, exit code and command. The final harness also records UTC starts; early valid retry receipts have elapsed times only. The optional `--trials-only`
 reuses a successful setup receipt at the same SHA and lock hash. It does not
@@ -30,9 +30,9 @@ signatures with the project's TypeScript options, including path aliases, and
 disambiguates declarations by their line. TSCONFIG is relative to SUBJECT and
 defaults to `tsconfig.json`. The oracle is TypeScript 5.9.3, installed separately.
 Interface method/call signatures are excluded; diagnostics and dynamic dispatch
-are not C4 claims. `recount.py LANGUAGE SUBJECT RESOLVED_ROWS.json` applies D24
+are not C4 claims. `recount.py LANGUAGE SUBJECT RESOLVED_ROWS.json` applies D26 on D24 units
 to the full resolved site lists: directory units for Python/TypeScript, import
-packages for Go, external Go tests merged, defining-unit calls excluded.
+packages for Go, defining-unit calls excluded; test, example, benchmark, sample, docs and tool callers excluded. Use `--policy D24` only for historical recounts.
 
 Python uses uv 0.13.5 `sync --frozen --no-default-groups --group GROUP` (dev for
 Starlette, tests for marshmallow/Click/attrs), then invokes the installed Python
@@ -49,3 +49,10 @@ controller work. No paid model API is used by any instrument here.
 `verify_r2.py --archive "$archive"` checks the committed structured archive
 checksum, all 73 member hashes, the 42 timed trials and their 39 green exits
 against the committed readings. It rejects a different or altered archive.
+
+The current scripts are edited after the historical round-2 runs. Read their
+status and hashes in `instruments-r3.json`; old receipt commands remain unchanged
+as historical evidence. `BENCH_JOB` must be under `workspace/`. The section-5
+mount contract supplies `/bench-inputs:ro`; uv 0.13.5 is installed using the
+committed hash-pinned `uv-requirements.txt`. Rich copies its committed export
+from `/bench-inputs` before setup reads `/work/requirements.txt`.

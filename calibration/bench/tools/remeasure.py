@@ -1,4 +1,7 @@
+import sys
+sys.dont_write_bytecode = True
 """Lock-bound preparation and offline trials; configuration supplies package-native commands."""
+from bench_paths import job_dir
 import argparse
 import fcntl
 import hashlib
@@ -25,11 +28,15 @@ def measure(config, job, trials_only=False):
     def run(stage, command, offline):
         container_name = 'bench-trial-' + uuid.uuid4().hex
         argv = ['docker', 'run', '--rm', '--name', container_name, '--network', 'none' if offline else 'bridge',
-                '--cpus', '4', '--tmpfs', '/work/tmp:rw,exec', '-v', str(source) + ':/subject', '-v', str(work) + ':/work',
+                '--cpus', '4', '--tmpfs', '/work/tmp:rw,exec', '-v', str(source) + ':/subject:ro', '-v', str(work) + ':/work',
+                '-v', str(Path(__file__).resolve().parents[2] / 'bench.d') + ':/bench-inputs:ro',
                 '-w', '/subject', '-e', 'TMPDIR=/work/tmp', '-e', 'COREPACK_HOME=/work/corepack',
                 '-e', 'UV_PROJECT_ENVIRONMENT=/work/venv', '-e', 'UV_CACHE_DIR=/work/uv-cache',
-                '-e', 'UV_PYTHON_DOWNLOADS=never', '-e', 'GIT_CONFIG_COUNT=1',
+                '-e', 'UV_PYTHON_DOWNLOADS=never', '-e', 'GIT_CONFIG_COUNT=3',
                 '-e', 'GIT_CONFIG_KEY_0=safe.directory', '-e', 'GIT_CONFIG_VALUE_0=/subject',
+                '-e', 'GIT_CONFIG_KEY_1=safe.directory', '-e', 'GIT_CONFIG_VALUE_1=/subject/.git',
+                '-e', 'GIT_CONFIG_KEY_2=safe.directory', '-e', 'GIT_CONFIG_VALUE_2=/work/source',
+                '-e', 'PIP_CACHE_DIR=/work/pip-cache', '-e', 'GOPATH=/work/gopath',
                 '-e', 'GOTOOLCHAIN=local', '-e', 'GOFLAGS=-mod=readonly', '-e', 'GOMAXPROCS=4']
         if config['language'] == 'Go':
             argv += ['-e', 'GOMODCACHE=/work/gomodcache', '-e', 'GOCACHE=/work/gocache']
@@ -38,6 +45,10 @@ def measure(config, job, trials_only=False):
                      '-e', 'npm_config_offline=true', '-e', 'PNPM_CONFIG_OFFLINE=true',
                      '-e', 'pnpm_config_verify_deps_before_run=warn', '-e', 'COREPACK_ENABLE_NETWORK=0',
                      '-e', 'HTTP_PROXY=', '-e', 'HTTPS_PROXY=', '-e', 'ALL_PROXY=']
+        if stage == 'setup':
+            command = '(test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && ' + command
+        elif stage != 'network-probe':
+            command = 'cd /work/source && ' + command
         if config['language'] == 'TypeScript':
             command = 'corepack enable && ' + command
         argv += [config.get('image', IMAGES[config['language']]), 'sh', '-c', command]
@@ -98,6 +109,6 @@ if __name__ == '__main__':
     parser.add_argument('config', type=Path)
     parser.add_argument('--trials-only', action='store_true', help='reuse successful setup receipt at the same pin and lock; rerun warm-up and three trials')
     args = parser.parse_args()
-    job = Path(os.environ['BENCH_JOB']).resolve()
+    job = job_dir()
     for config in json.loads(args.config.read_text()):
         measure(config, job, args.trials_only)

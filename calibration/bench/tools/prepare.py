@@ -1,9 +1,12 @@
+import sys
+sys.dont_write_bytecode = True
+from bench_paths import job_dir, workspace_path
 import os
 import concurrent.futures, subprocess, pathlib, json, urllib.request, time
-ROOT=pathlib.Path.cwd(); JOB=pathlib.Path(os.environ['BENCH_JOB'])
+ROOT=pathlib.Path.cwd(); JOB=job_dir()
 subjects={'Go':['go-chi/chi','pressly/goose','spf13/cobra','stretchr/testify','urfave/cli'],'Python':['pallets/click','marshmallow-code/marshmallow','python-attrs/attrs','Textualize/rich','encode/starlette'],'TypeScript':['immerjs/immer','typestack/class-transformer','typestack/class-validator','microsoft/tsyringe','reduxjs/redux']}
 def prep(item):
- lang,repo=item; name=repo.replace('/','--'); dest=pathlib.Path(os.environ['BENCH_SUBJECTS'])/name
+ lang,repo=item; name=repo.replace('/','--'); dest=workspace_path(os.environ['BENCH_SUBJECTS'])/name
  with open(JOB/'logs'/f'{name}-clone.log','w') as log:
   p=subprocess.run(['git','clone','https://github.com/'+repo+'.git',str(dest)],stdout=log,stderr=log)
  if p.returncode: return [repo,'clone_failed']

@@ -1,6 +1,10 @@
+import sys
+sys.dont_write_bytecode = True
+from bench_paths import job_dir, workspace_path
 import os
+import platform
 import ast, pathlib, subprocess, collections, json
-JOB=pathlib.Path(os.environ['BENCH_JOB']); ROOT=pathlib.Path.cwd()
+JOB=job_dir(); ROOT=pathlib.Path.cwd()
 def analyze(d):
  root=pathlib.Path(os.environ['BENCH_SUBJECTS'])/d['id']; paths=subprocess.check_output(['git','-C',str(root),'ls-files','-z'],text=True).split('\0')[:-1]
  trees={}; defs=set(); aliases={}; imports={}
@@ -64,6 +68,7 @@ def analyze(d):
  rows=[{'symbol':s,'calls':len(set(sites)),'modules':sorted(mods[s]),'sites':sorted(set(sites))} for s,sites in calls.items()]
  rows.sort(key=lambda x:(-len(x['modules']),-x['calls'],x['symbol']))
  (JOB/'receipts'/f"{d['id']}-fanin.json").write_text(json.dumps(rows,indent=2)+'\n')
+ (JOB/'receipts'/f"{d['id']}-interpreter.json").write_text(json.dumps({'implementation':platform.python_implementation(),'version':platform.python_version()},indent=2)+'\n')
  print(d['name'],[(x['symbol'],x['calls'],len(x['modules'])) for x in rows[:4]],flush=True)
 for f in (JOB/'receipts').glob('*.json'):
  d=json.loads(f.read_text())
