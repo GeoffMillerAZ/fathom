@@ -1,0 +1,516 @@
+{
+  "scope": "Public issue #3\u2013#7 owner review finding groups; one item per published R-code plus one integration gate comment. These are not replayed defects or measured time savings.",
+  "baseline_checkout": "743a914307baa286ccc5a6d8b92069910617b706",
+  "cases": [
+    {
+      "owner_item": "C5-R1",
+      "slug": "cuda-stand-ins-outside-measured-scope",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/4",
+      "bad_submission_head": "5b1a6c9f1023ded404ed6bff59e8aa50fd278be3",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:18-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Reject truth pairs from header functions outside ClangScope.",
+      "missing_inputs": [
+        "CUDA scope fixture, compiler ranges and index; a generic truth-scope assertion.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "C5-R2",
+      "slug": "cuda-generated-files-pollute-measured-set",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/4",
+      "bad_submission_head": "5b1a6c9f1023ded404ed6bff59e8aa50fd278be3",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.3:16-17",
+        "13.4:20-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": true,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Measured-file count, bytes, and digest exclude CMake CompilerIdCUDA outputs and match the pinned subject.",
+      "missing_inputs": [
+        "Pinned cuda-samples checkout and driver outputs; a measured-file manifest check.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "subject-file selection before measurement"
+    },
+    {
+      "owner_item": "C5-R3",
+      "slug": "cuda-blind-defs-depend-on-fathom-nodes",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/4",
+      "bad_submission_head": "5b1a6c9f1023ded404ed6bff59e8aa50fd278be3",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:18-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Blind truth callers come only from compiler ranges, independent of fathom nodes.",
+      "missing_inputs": [
+        "ClangCUDA range companion and crafted nested-function probe.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "C5-R4",
+      "slug": "cuda-tier-mutants-survive-tests",
+      "class": "test_gate_effectiveness",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/4",
+      "bad_submission_head": "5b1a6c9f1023ded404ed6bff59e8aa50fd278be3",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:18-21",
+        "13.5:22"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Tier-feed and default-to-A mutations fail; untiered feeds and indexes refuse.",
+      "missing_inputs": [
+        "New oracle-tier fixtures and mutation probes; runnable CUDA oracle tools.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "H6-R1",
+      "slug": "hlsl-body-macros-dropped",
+      "class": "extracted_kind_coverage",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/5",
+      "bad_submission_head": "038a96d41859e92dd12984e10f62d983b56e4f01",
+      "repaired_head": "7bede16c6b516a95d88e94347ba979d393057890",
+      "repair_source": "https://github.com/GeoffMillerAZ/fathom/issues/5#issuecomment-6405593526",
+      "recipe_steps": [
+        "13.2:9-12"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": true,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "A #define inside a function body remains an HlslMacro in the golden.",
+      "missing_inputs": [
+        "Body-local macro golden fixture; proposed generic kind-coverage check."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "H6-R2",
+      "slug": "hlsl-type-reference-false-pairs",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/5",
+      "bad_submission_head": "038a96d41859e92dd12984e10f62d983b56e4f01",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:18-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Only the sugared type contributes references; ambiguous duplicate type names are skipped and counted.",
+      "missing_inputs": [
+        "DXC AST fixture with aliases and duplicate declarations; semantic adjudication.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "H6-R3",
+      "slug": "hlsl-oracle-mutants-survive-tests",
+      "class": "test_gate_effectiveness",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/5",
+      "bad_submission_head": "038a96d41859e92dd12984e10f62d983b56e4f01",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:18-21",
+        "13.5:22"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Address-reference, SamePackage and scope-filter mutations fail focused oracle tests.",
+      "missing_inputs": [
+        "New DXC AST oracle fixtures and mutation probes.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "H6-R4",
+      "slug": "hlsl-pooled-ratio-hides-subject-margins",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/5",
+      "bad_submission_head": "038a96d41859e92dd12984e10f62d983b56e4f01",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Reading notes expose each subject L3 ratio alongside the pooled result.",
+      "missing_inputs": [
+        "Per-subject oracle and reading outputs; disclosure policy.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "S5-R1",
+      "slug": "simulink-short-name-count-flood",
+      "class": "resource_bounds_failure_semantics",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/6",
+      "bad_submission_head": "04d9c7d708ca5b4cc2c93c7893fd0dad802d7a11",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.2:10",
+        "13.4:21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Fan-pair and duplicate-source shapes refuse at count caps before excessive Call or signal output.",
+      "missing_inputs": [
+        "Adversarial .slx and .mdl fixtures; bounded heap/ingest test.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "S5-R2",
+      "slug": "simulink-model-reference-flood",
+      "class": "resource_bounds_failure_semantics",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/6",
+      "bad_submission_head": "04d9c7d708ca5b4cc2c93c7893fd0dad802d7a11",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.2:10",
+        "13.4:21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Reference count and value caps refuse flood/huge-path packages within the shared budget.",
+      "missing_inputs": [
+        "Adversarial JSON/XML/inline/.mdl model-reference fixtures; heap measurement.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "S5-R3",
+      "slug": "simulink-overbudget-partial-read",
+      "class": "resource_bounds_failure_semantics",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/6",
+      "bad_submission_head": "04d9c7d708ca5b4cc2c93c7893fd0dad802d7a11",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.2:10",
+        "13.4:21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "An over-budget graphicalInterface.xml fails the whole model, with no partial observations.",
+      "missing_inputs": [
+        "In-budget model containing an over-budget refs part; extractor refusal test.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "S5-R4",
+      "slug": "simulink-stress-tests-outside-gate",
+      "class": "test_gate_effectiveness",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/6",
+      "bad_submission_head": "04d9c7d708ca5b4cc2c93c7893fd0dad802d7a11",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.5:22"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Heap and hashburn tests run in validate and fail when path-keyed hashing is removed.",
+      "missing_inputs": [
+        "Non-race gate wiring; revised CPU-sensitive stress assertions.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "S5-R5",
+      "slug": "simulink-identity-golden-pins-totals-only",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/6",
+      "bad_submission_head": "04d9c7d708ca5b4cc2c93c7893fd0dad802d7a11",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Reversing signal or Call edges changes per-model digests and fails identity verification.",
+      "missing_inputs": [
+        "194-model corpus and edge-level digests; exact identity oracle.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "S5-R6",
+      "slug": "simulink-measured-maxima-stale",
+      "class": "oracle_measurement_evidence",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/6",
+      "bad_submission_head": "04d9c7d708ca5b4cc2c93c7893fd0dad802d7a11",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21",
+        "13.5:23"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Re-measured three-run maxima and throughput agree with the reading and ADR.",
+      "missing_inputs": [
+        "Repeatable model stress subjects and measurement host; corrected record.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "E2-R1",
+      "slug": "l3-regrade-skips-holdout-and-tuned",
+      "class": "reading_regrade_documentation_contract",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/7",
+      "bad_submission_head": "a9c3c367c652486cbeda889c49c0bb6f9a5b1321",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21",
+        "13.5:22-23"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": true,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Regrade visits every committed reading, including subdirectories, and lists changed grades/levels.",
+      "missing_inputs": [
+        "Tree-wide reading enumerator; expected before/after inventory.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "repository-wide reading acceptance"
+    },
+    {
+      "owner_item": "E2-R2",
+      "slug": "reading-json-not-canonical",
+      "class": "reading_regrade_documentation_contract",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/7",
+      "bad_submission_head": "a9c3c367c652486cbeda889c49c0bb6f9a5b1321",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21",
+        "13.5:22"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": true,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Every committed reading round-trips byte-identically through MarshalReading without JSON value change.",
+      "missing_inputs": [
+        "Canonical serializer check and value-equality baseline.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "repository-wide reading acceptance"
+    },
+    {
+      "owner_item": "E2-R3",
+      "slug": "regrade-erases-required-kinds",
+      "class": "reading_regrade_documentation_contract",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/7",
+      "bad_submission_head": "a9c3c367c652486cbeda889c49c0bb6f9a5b1321",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": true,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Regrade preserves measured required_kinds under a nonembedded manifest.",
+      "missing_inputs": [
+        "Before/after reading comparison and manifest context for astro/dockerfile.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "repository-wide reading acceptance"
+    },
+    {
+      "owner_item": "E2-R4",
+      "slug": "missing-l3-metric-treated-as-thin",
+      "class": "reading_regrade_documentation_contract",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/7",
+      "bad_submission_head": "a9c3c367c652486cbeda889c49c0bb6f9a5b1321",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.4:20-21"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "A missing L3 metric is unmet for that metric, not an all-thin result.",
+      "missing_inputs": [
+        "Focused grading test; owner-approved semantic rule.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    },
+    {
+      "owner_item": "E2-R5",
+      "slug": "plan-prose-contradicts-regraded-readings",
+      "class": "reading_regrade_documentation_contract",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/7",
+      "bad_submission_head": "a9c3c367c652486cbeda889c49c0bb6f9a5b1321",
+      "repaired_head": null,
+      "repair_source": null,
+      "recipe_steps": [
+        "13.5:22-23"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": true,
+        "bad_head_available_locally": true,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "Plan and queue claims reflect the current reading level/grade and distinguish historical values.",
+      "missing_inputs": [
+        "Claim-to-reading mapping and rules for historical prose; proposed consistency check.",
+        "Public repaired head for a before/after replay."
+      ],
+      "proposed_scope": "repository-wide plan/reading acceptance; prose equivalence remains unmeasured"
+    },
+    {
+      "owner_item": "issue #3 gate comment",
+      "slug": "lang-retime-exec-noctx-lint",
+      "class": "test_gate_effectiveness",
+      "source": "https://github.com/GeoffMillerAZ/fathom/issues/3#issuecomment-6405720667",
+      "bad_submission_head": null,
+      "repaired_head": "3b77ae9c4",
+      "repair_source": "https://github.com/GeoffMillerAZ/fathom/issues/3#issuecomment-6405720667",
+      "recipe_steps": [
+        "13.5:22",
+        "13.6:26"
+      ],
+      "replayability": {
+        "candidate_for_generic_preflight": false,
+        "bad_head_available_locally": false,
+        "repaired_head_available_locally": false,
+        "status": "not measured"
+      },
+      "expected_preflight_result": "The existing validate gate fails a bare exec.Command in lang-retime and passes after correction.",
+      "missing_inputs": [
+        "Exact pre-fix submission head; repaired commit is public but absent locally."
+      ],
+      "proposed_scope": "outside generic-preflight experiment"
+    }
+  ],
+  "snapshot_date": "2026-10-25",
+  "coverage": {
+    "finding_groups": 20,
+    "generic_preflight_candidates": 5,
+    "candidates_with_documented_repaired_head": 0,
+    "replayed_cases": 0,
+    "time_savings": "unmeasured"
+  },
+  "wave_rounds": {
+    "definition": "Named submission/revision cycles including requested rounds awaiting outcomes; not individual reviewer passes or landed-round counts",
+    "lanes": {
+      "cuda": 5,
+      "hlsl": 6,
+      "simulink": 5,
+      "matlab": 2,
+      "wgsl": 2,
+      "glsl": 1
+    },
+    "total": 21,
+    "source": "Controller-authorized aggregate wave evidence; private operational identifiers excluded",
+    "elapsed_time": "unmeasured"
+  }
+}

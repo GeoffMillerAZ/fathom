@@ -60,6 +60,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-16 | [interception-seams](2026-10-16-interception-seams.md) | Thirteen hook seams; two Very high (the readouts view, a deterministic claim check at Stop), each Medium or higher one ends in a 7-day reading with no false answer | readouts design section 20, G41, F79, RO-37 to RO-47, MOD-20, IXS-14 |
 | 2026-10-16 | [decision-models](2026-10-16-decision-models.md) | Decision models pay now only as $0 scaffolding (kill, consent, disclosure, a fitted table, the `ask` spine at provider none); whether a fast model reads code is a stage-gated experiment, at most $2 then $8; the port is hexagonal | ADR-073, I66, G42, Q37, F34 in part, F80, F81, KS-, EXP-, AQ-, RJ-, JG- |
 | 2026-10-17 | [intent-practice](2026-10-17-intent-practice.md) | Keep the practice (cheap, read): delivery was the weak link, so v0.15.0 retires `INTENT.md` and generates edit-time intent from the router; seven alternatives rejected for now with wins-if lines; K1 to K6 are due 2026-11-17 and unread | ADR-074, IV-1 to IV-10, F86, F9, O1134 to O1137 |
+| 2026-10-25 | [language-onboarding](2026-10-25-language-onboarding.md), [cases](data/2026-10-25-language-onboarding-cases.json) | Upstream reuse already exists; 21 observed GPU-wave rounds and 20 public finding groups justify a replay proposal, with savings unmeasured | ADR-048, ADR-073, ADR-075, G15; proposed language-onboarding plan LH-1 to LH-5 |
 
 ## Companion pages
 
