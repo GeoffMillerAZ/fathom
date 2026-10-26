@@ -1,6 +1,6 @@
 # tailwind named ceiling routes (X-R1)
 
-The committed reading is unchanged: level L3, grades L1 good, L2 excellent, L3 excellent, L4 not-attempted.
+Measured baseline: [tailwind reading](../bench/readings/lang/tailwind.json). No new reading is claimed.
 
 | Candidate or route | Version / rule | Checked evidence and concrete limit |
 |---|---|---|

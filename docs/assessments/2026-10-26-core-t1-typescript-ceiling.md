@@ -1,6 +1,6 @@
 # typescript named ceiling routes (X-R1)
 
-The committed reading is unchanged: level L4, grades L1 good, L2 excellent, L3 excellent, L4 excellent.
+Measured baseline: [typescript reading](../bench/readings/lang/typescript.json). No new reading is claimed.
 
 | Candidate or route | Version / rule | Checked evidence and concrete limit |
 |---|---|---|
