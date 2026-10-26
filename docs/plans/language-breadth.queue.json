@@ -3350,7 +3350,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "crossplane beta validate (tier A, offline schemas)"
+      "independent yaml.v3 walk (tier C, full canonical scope; native schema validation is calibration only)"
     ],
     "calibration_subjects": [
       "crossplane/crossplane (examples subpath)",
