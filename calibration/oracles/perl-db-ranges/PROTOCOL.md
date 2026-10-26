@@ -1,0 +1,50 @@
+# Perl compiler end-range audit
+
+Preregistered before canonical runs. This audits a live candidate discovered by
+X-R4; it does not assert that other Perl tooling has been exhausted.
+
+- Compiler: Perl 5.34.1, executable checksum recorded in scratch metadata.
+  `%DB::sub` is the compiler-populated debugger table documented by
+  [perldebguts](https://perldoc.perl.org/5.34.2/perldebguts).
+  `PERL5DB` with `-d -c` reads it at CHECK. Ordinary program bodies do not run,
+  but BEGIN, UNITCHECK, CHECK and `use` can run. Both subjects are pinned public
+  calibration code, compiled without editing or installing their dependencies.
+- Name identity: Universal Ctags 6.2.1 supplies source-written subroutine names.
+  A native record joins only one tag in the same file within two lines whose
+  name is exactly the compiler key or its final package component. The match
+  must also be unique in reverse. Ambiguous or missing matches abstain and
+  are counted. End lines remain the compiler's, without source scanning.
+  The compiler's start can be the body brace, so it is retained separately;
+  the neutral companion uses the independently tagged declaration line.
+- Full canonical subjects, unchanged: mojo v9.50 at
+  `7b99f4adce82a45fd0965ef4dd56550b4f5ee89b` (Artistic-2.0) and Perl-Critic
+  v1.154 at `382d701fd1129822c98fdcdb08403a733a24dc08`
+  (Artistic-1.0-Perl OR GPL-1.0-or-later), as in `corpus.d/perl.yaml`.
+  No `-only`, source rewrite, dependency install, daemon, or corpus-shard edit.
+- Freeze adapter and synthetic controls before each full run. The compiler
+  range companion sits beside the unchanged PPI 1.270 primary call oracle.
+  Ctags remains L1 truth; PPI remains tier-C L2 truth. This tier-B companion
+  contributes range counts only. Record all file counts, compilation failures,
+  native/tag/join counts and range coverage. Unobserved definitions do not
+  become successes. Packages, anonymous subs, forwards and unavailable compile
+  dependencies remain disclosed limits.
+- Run one heavy phase at a time under nice 10, launching only at one-minute
+  load <=9. Compiler per-file limit 2 seconds, total 600 seconds including
+  load waits; TERM then KILL on timeout. Do not silently drop timed-out files.
+  Verify source Git identity and tracked source hashes before and after.
+- Compare every original non-range count with the committed Perl reading.
+  A difference must be explained before adoption. Use the existing thresholds:
+  L1 range agreement >=.90 for excellent, plus all other gates. A numerical
+  conditional range result does not establish complete compiler coverage.
+  Retain L2's tier-C ceiling. Retiming, if needed, uses three unchanged runs.
+- Holdout, frozen before first read and excluded from the canonical shard:
+  PerlDancer/Dancer2 v2.2.2, commit
+  `90b6e651c1f1a7c576072fdd039ef15afecb67a5`, Perl-5 terms
+  (Artistic-1.0-Perl OR GPL-1.0-or-later), checked in the pinned
+  [LICENSE](https://github.com/PerlDancer/Dancer2/blob/90b6e651c1f1a7c576072fdd039ef15afecb67a5/LICENSE)
+  and `dist.ini`. It is unspent until the canonical adapter is frozen, then
+  runs once without tuning. A failed or incomplete audit can leave it unspent.
+- Publish only counts, hashes and repo-relative summaries. Raw source manifests,
+  native keys, compiler diagnostics and per-file failures stay in scratch.
+  Commit a dated assessment and actual measured reading separately from the
+  canonical reading if coverage or oracle validity remains unresolved.
