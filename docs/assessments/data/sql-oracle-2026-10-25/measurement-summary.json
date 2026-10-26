@@ -1,0 +1,51 @@
+{
+  "counts": {
+    "call_fathom": 17,
+    "call_fathom_in_truth": 17,
+    "call_truth": 17,
+    "call_truth_found": 17,
+    "callables": 102,
+    "callables_signed": 102,
+    "fathom_defs": 774,
+    "kind_equal": 771,
+    "matched": 771,
+    "oracle_defs": 786,
+    "range_eligible": 147,
+    "range_ok": 138
+  },
+  "counts_equal": true,
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9388,
+    "signature_coverage": 1,
+    "sym_precision": 0.9961,
+    "sym_recall": 0.9809,
+    "typed_recall": null
+  },
+  "metrics_equal": true,
+  "oracle_code_sha256": {
+    "pg_catalog.mjs": "4fda8d828fb5c11a40e545e86ba8a2840465603c9081d7a678389842fb1ada4e",
+    "replay.py": "89af31b6ae34ddec62ca1ab61a449da82aaf0c83e6805f22be4a85c86e654e43",
+    "sql_native.py": "1de905e86b98fcc9f6befcceff395f3d727d379a7089ff583ebcd1a72cffaa22",
+    "test_pg_native.mjs": "a794eb56954a7e700a9f8eadba78ea858b17608d4460f9ec40af539815b7b719",
+    "test_sql_native.py": "5cd97054dd57b8d81e511d5c2c8730456f70279db3650d5184adfe49ef60b71a"
+  },
+  "runs_mb_per_cpu_second": [
+    2.1,
+    2.09,
+    1.98
+  ],
+  "selected_run": 2
+}

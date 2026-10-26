@@ -1,0 +1,179 @@
+# Language onboarding assessment (2026-10-25)
+
+The existing harness already covers upstream query reuse. The expanded census finds ten public source-history defects for the 15 additions: eight mechanical and two semantic. Nine associate with seven additions; one is a shared stale golden. Nine defects are post-first-reading followups; MATLAB also self-repaired bytecode before its first reading. A separate GPU sample contains 20 documented review finding groups and 21 observed revision/review rounds across six lanes. Named-round counts outside the six measured GPU lanes remain unknown. Individual reviewer-pass counts and end-to-end elapsed time remain unmeasured for all lanes. The public GPU sample repeatedly concerns oracle truth, measurement identity, test effectiveness and reading contracts. LH-R2 rejects the replay and importer for now. The deliverable is guidance in the existing recipe/skill, with no tooling or time-saving claim.
+
+**Claim grades:** *measured* means read from the cited git objects, public issue reports or upstream source on this date. Counts are measured only within the explicitly included sources. Review/API gaps mean they are lower bounds on all findings. Savings and proposed check effectiveness are *hypothesis*. End-to-end elapsed time and review rounds without a recorded start/review trail are *unmeasured*. No worker-hour estimate is inferred from commit dates.
+
+**Decision link:** this informs the proposed [language-onboarding design](../design/language-onboarding.md) and retired [LH task references](../plans/language-onboarding.md). Governing accepted records are ADR-048, ADR-073 and ADR-075, with G15, I38, I54, I55 and I62. The [unnumbered decision draft](../design/language-onboarding-decision-draft.md) records the LH-R2 null and wins-if conditions; no record ID is allocated.
+
+## Historical census
+
+Scope and method: the 15 most recent **landed, distinct LB-Q additions with a new top-level** `docs/bench/readings/lang/<id>.json` in this checkout at `743a914307baa286ccc5a6d8b92069910617b706`. Two rows can share one commit. Refusals (for example Jinja2 under the tenancy floor, GLSL at the grammar gate) and re-measurements of existing readings are excluded. The linked SHA is the commit that first added the reading, **not** an inferred work start or review round. Public issues #3–#7 describe newer GPU work and are a separate, selected review sample; their counts must not be projected onto these 15 additions.
+
+| Addition (LB-Q) | First reading commit | Named iteration / individual reviewer passes | End-to-end elapsed | Source-history defects |
+|---|---|---|---|---|
+| WGSL | [26c6045e2](https://github.com/GeoffMillerAZ/fathom/commit/26c6045e24a89b8d7e0495b72284f529eed3a179) | [r2 merge](https://github.com/GeoffMillerAZ/fathom/commit/ca6be765a342ce53af349f0e51bcb872fade0db0); reviewer-pass count unknown | unknown | 1 note-syntax defect: `83539fb81` (post-reading) |
+| MATLAB | [a64f5bcdd](https://github.com/GeoffMillerAZ/fathom/commit/a64f5bcddfc99b7cff9303da0f3f33d5ad724c91) | [r2 merge](https://github.com/GeoffMillerAZ/fathom/commit/8b0d08f7bf65aed20042e010c7e049f8d58b22bf); reviewer-pass count unknown | unknown | 1 pre-reading bytecode self-repair: `29b6419a5`; 1 semantic stale-note fix: `743a91430` |
+| ProxySQL | [304a954e7](https://github.com/GeoffMillerAZ/fathom/commit/304a954e741ad227878e4163182739bfd75daa92) | unknown | unknown | None identified in the inspected window |
+| PgBouncer | [f1cf2dd0c](https://github.com/GeoffMillerAZ/fathom/commit/f1cf2dd0cfaf6afc36345a7df0647b138fc47755) | unknown | unknown | 1 tracked-bytecode defect: `c62caefcf` (two files counted once) |
+| Fathom concerns | [914ff6403](https://github.com/GeoffMillerAZ/fathom/commit/914ff640370a42a1be0136ee9e4a19ca1c261935) | unknown | unknown | None identified in the inspected window |
+| Fathom layer packs | [914ff6403](https://github.com/GeoffMillerAZ/fathom/commit/914ff640370a42a1be0136ee9e4a19ca1c261935) | unknown | unknown | None identified in the inspected window |
+| Checkov policies | [7833a4159](https://github.com/GeoffMillerAZ/fathom/commit/7833a4159566f650543a4f62514b2fa518b3be71) | unknown | unknown | None identified in the inspected window |
+| Tailwind CSS v4 | [9443e0a11](https://github.com/GeoffMillerAZ/fathom/commit/9443e0a119f92173bd1d2cce9794ec67c8a2ece5) | unknown | unknown | None identified in the inspected window |
+| Nix | [74b6b5d6b](https://github.com/GeoffMillerAZ/fathom/commit/74b6b5d6b29612ffd14e5369a170c2220d1d522b) | unknown | unknown | 1 format defect: `7ac02b4ef` |
+| Thrift IDL | [a7dfa5cf0](https://github.com/GeoffMillerAZ/fathom/commit/a7dfa5cf02c68f037f0b4990f23a193e455feeba) | unknown | unknown | 2 merge-introduced defects: format and backup, `0637ab558` |
+| Objective-C | [e1824a503](https://github.com/GeoffMillerAZ/fathom/commit/e1824a50327bee3004d3d400029323a4fbbae2cc) | unknown | unknown | 1 oracle host-path defect: `441b225e6` |
+| Solidity | [aac50482c](https://github.com/GeoffMillerAZ/fathom/commit/aac50482c9e42ce2135aa35e981f750bc975d745) | unknown | unknown | 1 semantic chronology correction: `441b225e6` |
+| Prisma | [2f2d31c29](https://github.com/GeoffMillerAZ/fathom/commit/2f2d31c29d3ee0c42fbd0a712990563c4a26c62f) | unknown | unknown | None identified in the inspected window |
+| Bazel | [1898793e7](https://github.com/GeoffMillerAZ/fathom/commit/1898793e7e08e67eadeaefd2d72b2219d1dc1178) | unknown | unknown | None identified in the inspected window |
+| Tiltfile | [1898793e7](https://github.com/GeoffMillerAZ/fathom/commit/1898793e7e08e67eadeaefd2d72b2219d1dc1178) | unknown | unknown | None identified in the inspected window |
+
+The two r2 merge subjects alone establish iteration labels. The authorized aggregate census below measures named review/revision cycles, not individual reviewer passes or labor hours within a round. No source records a reliable first-work timestamp for any of the 15. First reading to later commit is a **commit-observed interval**, not end-to-end elapsed; a same-commit reading/landing would falsely appear to take zero time. No elapsed estimate is made.
+
+## Source-history fixes for the 15 additions
+
+The [mechanical census](data/2026-10-25-language-onboarding-mechanical.json) records exact public bad parents, repairs, actual diff contents, check availability and timing for every classified fix since 2026-10-19 through the census cutoff, including the pre-reading self-repair added under R2-F2. These are defect counts per addition, not review rounds. One repair can fix two defects; two bytecode files from one mistake count once. The ten defects comprise format 2, stray file 3, hygiene/note 4, and stale golden 1. Within hygiene/note, the Solidity chronology and MATLAB stale-number corrections require semantic evidence, leaving eight mechanical defects. Missing follow-up evidence means a lower bound, never a defect-free claim.
+
+| Defect and attribution | Public bad -> repaired pair | Check and phase evidence |
+|---|---|---|
+| Nix strategy formatting | [`a637fcb9`](https://github.com/GeoffMillerAZ/fathom/commit/a637fcb9cba755c0d7076d5420910ca6e88648ea) -> [`7ac02b4ef`](https://github.com/GeoffMillerAZ/fathom/commit/7ac02b4ef3e6e89275c6fd50f8e944e756faa385) | Existing required `fmt-check`; first-reading tree already unformatted. Read-only `command gofmt -d` comparison: 12 diff lines bad, zero fixed. |
+| Thrift strategy formatting | [`ae915dbee`](https://github.com/GeoffMillerAZ/fathom/commit/ae915dbeefdb743076bd3faa402b0d3a52edfccd) -> [`0637ab558`](https://github.com/GeoffMillerAZ/fathom/commit/0637ab55809cf7a4a2cdf03c9c60c21ef1eb047d) | Existing required `fmt-check`; bad 12 diff lines, fixed zero. First reading and both merge parents were clean; merge introduced it after oracle work. |
+| Thrift tracked sed backup | Same pair | Tracked backup deleted. `merge-debris-check` did not exist at the bad head; it exists at the census baseline after [`067e842f`](https://github.com/GeoffMillerAZ/fathom/commit/067e842f27c848bf812513bd35d57b14e0963d0f). This is merge-stage debris, not an integrator regeneration defect. |
+| Objective-C oracle fallback | [`f3ff6f461`](https://github.com/GeoffMillerAZ/fathom/commit/f3ff6f461fa6d7919ba68d80a0432ada24d2a3a7) -> [`441b225e6`](https://github.com/GeoffMillerAZ/fathom/commit/441b225e68dc5ad3443c599a026c99471c1b221a) | Removes a machine-specific home-directory fallback already present at first reading. Existing `TestNoOrgSpecificNames` explicitly excludes `calibration/`, so does not cover this path. |
+| Solidity holdout chronology | Same pair | Corrects a provenance chronology claim using worker-history evidence. A tree-only preflight cannot verify the correction. |
+| PgBouncer tracked bytecode | [`f1cf2dd0c`](https://github.com/GeoffMillerAZ/fathom/commit/f1cf2dd0cfaf6afc36345a7df0647b138fc47755) -> [`c62caefcf`](https://github.com/GeoffMillerAZ/fathom/commit/c62caefcf2f1d8514a9d5ba14548eb21b7b97d8b) | Two tracked `.pyc` files at first reading, zero fixed. Existing merge-debris suffix checks do not cover bytecode. |
+| MATLAB pre-reading bytecode | [`76d49713d`](https://github.com/GeoffMillerAZ/fathom/commit/76d49713d28e99891ca1900915cda18166c95776) -> [`29b6419a5`](https://github.com/GeoffMillerAZ/fathom/commit/29b6419a5f4454dca3e7acc3feba992c444049f2) | One tracked `.pyc` self-repaired before first reading. Included in staged-source hygiene history, with no reviewer round or labor saving attributed. |
+| Shared epoch receipt goldens | [`4989197d3`](https://github.com/GeoffMillerAZ/fathom/commit/4989197d3a0c0cbeebeb1e694da55293b08d1095) -> [`d6cccab59`](https://github.com/GeoffMillerAZ/fathom/commit/d6cccab59b76f285001bded1f41ba4c71e4d3c4a) | Existing `TestCmdExportReceiptRedactGoldens`; two fingerprints changed in one shared defect. No defensible one-addition attribution. Later [`648afb65c`](https://github.com/GeoffMillerAZ/fathom/commit/648afb65c) normalizes the epoch. Do not re-create that already-fixed test problem. |
+| WGSL note heading | [`4524f8e62`](https://github.com/GeoffMillerAZ/fathom/commit/4524f8e6252bd8750a22d65cb850d95e0122c2e0) -> [`83539fb81`](https://github.com/GeoffMillerAZ/fathom/commit/83539fb81f49923cc17d9763f6178d49ce5080f1) | Existing `changelog-check` rejects the second heading; it appeared after first reading. |
+| MATLAB stale note | [`c97a74a16`](https://github.com/GeoffMillerAZ/fathom/commit/c97a74a16029183667ce1910f67c4ffa38100f34) -> [`743a91430`](https://github.com/GeoffMillerAZ/fathom/commit/743a914307baa286ccc5a6d8b92069910617b706) | Syntax check cannot verify a note's numeric agreement with a remeasurement. Semantic review after retiming. |
+
+The integration-stage supplement [`7e08e9651`](https://github.com/GeoffMillerAZ/fathom/commit/7e08e9651dfe8c6b1a9907d946ab3458336a2707) -> [`3b77ae9c4`](https://github.com/GeoffMillerAZ/fathom/commit/3b77ae9c4015d0d3db52344ba283d3105dabc6c1) is the existing tenancy lint catching `exec-noctx` late in shared `lang-retime`. Its [public gate report](https://github.com/GeoffMillerAZ/fathom/issues/3#issuecomment-6405720667) establishes the late catch and repair. Both revisions are available. Include it when testing earlier integration-gate feedback, but do not count it as a sixteenth language addition or a defect present before an addition's oracle. It is the same integration finding already included in the 20-group GPU sample, not a new twenty-first group.
+
+Excluded from defect counts: required integrator regeneration [`e3414799a`](https://github.com/GeoffMillerAZ/fathom/commit/e3414799a), [`789e8d5f0`](https://github.com/GeoffMillerAZ/fathom/commit/789e8d5f0), and [`f3ff6f461`](https://github.com/GeoffMillerAZ/fathom/commit/f3ff6f461). The last can be a bad parent for an unrelated later repair without its regeneration being a defect. MATLAB's pre-reading self-repair is now included in the expanded source-history population; the original post-reading stratum remains nine defects.
+
+## Public GPU wave: reviewed findings, deduplicated by owner item
+
+The owner review bodies provide 19 distinct named groups, one per R-item: [CUDA C5-R1..R4](https://github.com/GeoffMillerAZ/fathom/issues/4), [HLSL H6-R1..R4](https://github.com/GeoffMillerAZ/fathom/issues/5), [Simulink S5-R1..R6](https://github.com/GeoffMillerAZ/fathom/issues/6), and [L3 evidence E2-R1..R5](https://github.com/GeoffMillerAZ/fathom/issues/7). The [wave integration gate comment](https://github.com/GeoffMillerAZ/fathom/issues/3#issuecomment-6405720667) adds one independently identified lint failure, fixed at [`3b77ae9c4`](https://github.com/GeoffMillerAZ/fathom/commit/3b77ae9c4). **20 documented finding groups total**, not 20 separately reproduced defects. One owner item may contain multiple related defects; it is counted once. These are reviews of selected difficult work, not a representative defect rate for the 15 additions above.
+
+| Class | Count | Deduplicated public items | Recipe step expected to catch it; gap where absent |
+|---|---|---|---|
+| Oracle truth, measured-set identity, and measurement disclosure | 7 | C5-R1 (out-of-scope stand-ins), C5-R2 (generated files in subject), C5-R3 (truth derived from fathom), H6-R2 (false type references), H6-R4 (pooled ratio hides per-subject misses), S5-R5 (identity golden pins totals only), S5-R6 (wrong measured maxima) | §13.3 steps 16–17 pin subject; §13.4 steps 18–21 inspect oracle and reading. Neither requires a measured-file digest, truth-independence probe, or per-subject ratio disclosure. |
+| Tests and gate that fail to catch a regression | 4 | C5-R4 (tier feed/default mutants survive), H6-R3 (four oracle mutants survive), S5-R4 (stress tests absent from gate), issue #3 integration `exec-noctx` lint | §13.2 steps 10–12 require red goldens/probe; §13.5 step 22 runs language tests; §13.6 step 26 reports verification. Mutation sensitivity and non-race stress-gate inclusion are not explicit. The lint belongs in the existing validate gate, not a language-specific preflight. |
+| Resource bounds and all-or-nothing failure | 3 | S5-R1 (signal/call count floods), S5-R2 (uncapped model references), S5-R3 (silent partial read) | §13.2 step 10's syntax-error fixture and §13.4 step 21's fault/resource measurement could expose symptoms; no adversarial count-cap or whole-model refusal check is prescribed. Security-specific review remains necessary. |
+| Extracted kind coverage | 1 | H6-R1 (body macros dropped by locals filter) | §13.2 steps 9–12: required kinds, hand-written golden with nested fixture, then `lang-probe`; add a body-local macro case. |
+| Reading, regrade, and documentation contract | 5 | E2-R1 (holdouts/tuned readings missed), E2-R2 (noncanonical JSON), E2-R3 (`required_kinds` erased), E2-R4 (missing metric treated as thin), E2-R5 (plan prose contradicts readings) | §13.4 steps 20–21 regrade/inspect; §13.5 steps 22–23 regenerate tracker and prove row. Before LH-R2, no all-readings sweep or round-trip/value-preservation checklist was explicit; recipe §13.5.1 now requires it, while E2 implementation remains in flight. |
+| **Total** | **20** | 19 owner review items + 1 integration gate finding | Counts are groups from public review, not measured preflight preventions. |
+
+## GPU-wave round census
+
+*Measured from the controller-authorized aggregate wave record and the public lane issues.* These six lanes are a supplementary wave sample, overlapping the 15-addition census in MATLAB and WGSL. Do not add the two sample sizes together. A round is a named submission/revision cycle (r1, r2, …), including a requested round awaiting its outcome. It is not a count of individual reviewer passes, a claim that every round landed, or elapsed worker time.
+
+| Lane | Observed rounds | Aggregate review outcomes and historical readings |
+|---|---|---|
+| CUDA | 5 (r1–r5) | r1/r2 required fixes; r3 and later review still found oracle-truth and test-effectiveness defects; r5 was requested. Reported call precision progressed .8226 -> .9334 -> .9889; file-edge recall .1223 -> .8789 after link-unit scoping. Those ratio gains did not settle later oracle-independence findings. |
+| HLSL | 6 (r1–r6) | Early refusal rulings were revised as parse-error accounting changed; r3 remained refused at 33/644 (5.1%), r4 measured 18/644 (2.8%). Later review required kind, oracle and test fixes; r6 was requested. r4 throughput was .93 MB/CPU-s in its original environment versus 2.04 on reference hardware. |
+| Simulink | 5 (r1–r5) | Successive rounds were held on crashes, memory/count bounds, identity and test coverage. r2 review reproduced an attribute-flood case at 1,151 MiB RSS; r3 bounded its tested cases to at most 163 MiB, then new signal/path and CPU cases were found. r4 did not land; r5 was requested. |
+| MATLAB | 2 (r1–r2) | Ratios were strong but the initial throughput shortfall prevented acceptance; reference-hardware remeasurement resolved it. r1 reported .94 MB/CPU-s, r2's original environment .71, and the reference median of three was 2.22. |
+| WGSL | 2 (r1–r2) | r1 was held on measured-set exclusion, archive identity and data shape. r2 plus integration corrections documented the negative-test exclusion and rebuilt blob; reference throughput median was 9.14 MB/CPU-s. |
+| GLSL | 1 (r1) | Refusal was retained with method corrections: 272/968 files (28.1%) were in error. Grammar coverage, rather than query scaffolding, was the recorded ceiling. |
+| **Total** | **21** | **Six lanes, with requested/in-flight rounds included and outcomes distinguished above.** |
+
+The aggregate round counts are observed, rather than inferred from commit counts. The ratios and resource figures are historical checkpoints, not a parallel support tracker or a claim that each intermediate oracle survived review. The [public integration issue](https://github.com/GeoffMillerAZ/fathom/issues/3) and lane issues [#4](https://github.com/GeoffMillerAZ/fathom/issues/4), [#5](https://github.com/GeoffMillerAZ/fathom/issues/5), [#6](https://github.com/GeoffMillerAZ/fathom/issues/6), and [#7](https://github.com/GeoffMillerAZ/fathom/issues/7) provide the separately counted public finding sample. The private aggregate source is not published. No reliable start/stop accounting supports end-to-end elapsed time or labor-hour savings for these lanes.
+
+The 20-group finding-class census remains limited to the 19 named public review items and one public integration finding. Earlier private review outcomes explain the observed round sequence but are not silently added to that class-count denominator. The earlier PR access failure has been resolved by the retry below. Zero current formal PR reviews does not establish how many private reviewer passes occurred.
+
+## Replay inventory and coverage
+
+The [20-group GPU inventory](data/2026-10-25-language-onboarding-cases.json) remains contextual evidence. E2-R1..R5 concern a cross-cutting harness rule change, not onboarding additions, and supply no onboarding catch credit. C5-R2 needs a CUDA-specific measured-set adapter, not a general mechanical preflight. The prior five generic-preflight candidate labels are withdrawn. The independent [mechanical census](data/2026-10-25-language-onboarding-mechanical.json) retains the historical public bad/fixed pairs.
+
+Public review access was retried successfully on 2026-10-25 (2026-10-26 UTC). The all-state PR listing returned [#12](https://github.com/GeoffMillerAZ/fathom/pull/12) and [#23](https://github.com/GeoffMillerAZ/fathom/pull/23). For each, the reviews and inline-comment endpoints returned HTTP 200 with zero entries; the discussion endpoint returned two comments, with no next page. The committed GPU inventory records endpoint counts and discussion URLs. This closes the earlier HTTP-403 access gap for these public PRs; it does not manufacture formal reviewer passes or reveal unavailable private reviews.
+
+LH-R1 explicitly authorizes aggregate rounds per lane, review outcomes, finding classes, and **readings with numbers**. The historical per-round figures above use that authorization. Their source is the controller's aggregate record, rather than a public independently rerun measurement. Private operational identifiers, people, host names and paths remain excluded.
+
+## Current harness, before a new build
+
+The [recipe](../design/language-breadth.md) §13.2 step 11 already orders a starter search: grammar `queries/tags.scm`, Aider's `*-tags.scm`, then nvim-treesitter `locals.scm`. It asks for pinned provenance, license checks, hand-written goldens, `lang-probe`, and independent calibration. `cmd/indexbench/langdraft.go` already converts a pinned `locals.scm` into `tags.scm` and optional `imports.scm`: one kept definition capture becomes `@name` plus an outer `@definition.<kind>`; it drops scopes, references, parameters, fields and other kinds, flags unsupported predicates, reports inheritance without following it, checks source revision/license, and optionally compiles against a dialect. It does **not** discover files, import grammar/Aider/Helix tags, validate semantic accuracy, or prove calibration. Its test fixture has 19 patterns: 11 kept, 1 import, 7 dropped, 2 flagged (`cmd/indexbench/langdraft_test.go`). This is parser behavior, not a real-language efficiency result.
+
+Other reuse already implemented: `lang-pin` pre-fills grammar lock rows from `kreuzberg-dev/tree-sitter-language-pack` catalogue at `b7fc9ae9f7149697fb2ca320bad0156c18ee6519` (`docs/plans/language-breadth.grammars.json`, MIT catalogue claim, then per-grammar verdict); `lang-linguist` imports Linguist data at `5fbdfcb8133be2bed88bf3ce62b2335f50474525` (`docs/plans/language-breadth.linguist.json`, MIT). The Bash dialect starts from Aider's `bash-tags.scm` at `ff191affc6e1413f33dad914d9930a5993aad853`; its provenance documents an actual debugging pass because Aider's `@name.definition.*` captures compiled but were not read by fathom's `@name` matcher (`internal/extractor/dialects/bash/PROVENANCE.md`). Grammar tags also seed PHP, C++, C, Java, Rust and C# dialects; their headers record revisions. `lang-oracle -tags-query` already accepts independent pinned tags, locals and outline queries as tier-C *definition* oracles. It refuses the source used to draft the dialect, avoiding circular evidence (`docs/design/language-breadth.md` §1.5).
+
+## Existing-work matrix
+
+| Source and reproducible reference | Exact license file / status | Capture semantics and fit | Decision for this lane |
+|---|---|---|---|
+| [Tree-sitter code navigation](https://tree-sitter.github.io/tree-sitter/4-code-navigation.html), core `v0.26.11` / `64402de2857cc197ecc4ca3bc144ea91fda7e72e` (repo lock); individual grammar commits in `grammars.lock.json` | Core [LICENSE](https://github.com/tree-sitter/tree-sitter/blob/v0.26.11/LICENSE), MIT; **each grammar and `queries/` separately checked** by §8.2 | `@definition.<kind>` on outer node and `@name` on identifier match fathom's base convention; `@reference.call` can seed calls. Fathom still needs `@body`, its kind mapping, imports and goldens. | First starter, already in recipe. A discovery/check report might remove misses; a new importer needs measured benefit. |
+| [Aider repo-map](https://github.com/Aider-AI/aider/blob/v0.86.0/aider/repomap.py) and [query attribution](https://github.com/Aider-AI/aider/blob/main/aider/queries/tree-sitter-languages/README.md), release `v0.86.0`; Bash's exact [source query](https://github.com/Aider-AI/aider/blob/ff191affc6e1413f33dad914d9930a5993aad853/aider/queries/tree-sitter-language-pack/bash-tags.scm) pinned above | [LICENSE.txt](https://github.com/Aider-AI/aider/blob/v0.86.0/LICENSE.txt), Apache-2.0; README attributes the underlying grammar queries, so check each origin too | Repo map consumes `@name.definition.*` and `@name.reference.*`, unlike fathom's literal `@name` plus outer `@definition.*`. Files can supply AST shapes but need capture rewrite and calibration. Bash proves a silent compatibility failure is possible. | Keep as second starter. A capture-convention preflight has a concrete failure mode to replay. |
+| [Helix adding languages](https://github.com/helix-editor/helix/blob/master/book/src/guides/adding_languages.md), release [`25.07.1`](https://github.com/helix-editor/helix/releases/tag/25.07.1); existing JS oracle `ba40e547426b0f9896c8bdc699a4ab11f2b37dbc` | [LICENSE at oracle commit](https://github.com/helix-editor/helix/blob/ba40e547426b0f9896c8bdc699a4ab11f2b37dbc/LICENSE), MPL-2.0 (raw file verified) | `tags.scm` can use familiar tags captures and its `textobjects.scm` can suggest body ranges. `; inherits:` needs resolution. Existing JS tier-C oracle measures definitions but did not meet excellent. | Compare as independent oracle where eligible; §8.2 allows MPL files **unmodified only**, so do not adapt Helix queries into dialects. |
+| [nvim-treesitter query docs](https://github.com/nvim-treesitter/nvim-treesitter/blob/main/CONTRIBUTING.md), rolling `main` (no upstream release; **pin a 40-hex commit and selected file before use**) | Repository [LICENSE](https://github.com/nvim-treesitter/nvim-treesitter/blob/main/LICENSE), Apache-2.0; verify any separate per-language query repository | `locals.scm` uses `@local.definition[.<kind>]`, scope/reference captures and `; inherits:`; current docs say locals are retained for limited backwards compatibility and are not used by the plugin. Fathom's `lang-draft` already handles this format but deliberately loses scope semantics. | Existing fallback only. No batch import until per-language query availability and conversion yield are measured. |
+| [Zed language extension docs](https://zed.dev/docs/extensions/languages), release [`v1.25.2`](https://github.com/zed-industries/zed/releases/tag/v1.25.2); existing TS [oracle file](https://github.com/zed-industries/zed/blob/588e7c52415187f75ff8d87fc3e3e6b84fa5820c/crates/grammars/src/typescript/outline.scm) `588e7c52415187f75ff8d87fc3e3e6b84fa5820c` | [README licensing](https://github.com/zed-industries/zed/blob/588e7c52415187f75ff8d87fc3e3e6b84fa5820c/README.md#licensing) and [LICENSE-GPL](https://github.com/zed-industries/zed/blob/588e7c52415187f75ff8d87fc3e3e6b84fa5820c/LICENSE-GPL) at oracle commit: **primarily GPL-3.0-or-later**; [LICENSE-APACHE](https://github.com/zed-industries/zed/blob/v1.25.2/LICENSE-APACHE) covers marked components. Oracle file has no license header. | `outline.scm` uses `@item` plus `@name`; `@item` node type must map to kind. It can surface omissions, but editor outline items need not match fathom's definition policy. | Do not adapt or ship this GPL query as a starter. ADR-048’s 2026-09-29 D5 amendment permits a pinned, nonvendored external definitions oracle with the license recorded and AGPL refused. The historical tuned reading explicitly records GPL. This is a different reuse boundary from shipping dialect queries. |
+| [Universal Ctags JSON output](https://docs.ctags.io/en/stable/man/ctags-json-output.5.html), harness oracle version [`v6.2.1`](https://github.com/universal-ctags/ctags/releases/tag/v6.2.1) | [COPYING at tag](https://github.com/universal-ctags/ctags/blob/v6.2.1/COPYING), GPL-2.0 | JSON tags expose names, kinds, locations, optional `end`; parser coverage and end lines vary by language. Already the tier-B L1 subprocess oracle. It supplies evidence, not a portable fathom query or L2 calls. | Reuse existing oracle, report absent parsers/end lines before choosing a target grade. Do not vendor its parsers. |
+| [GitHub Linguist detection](https://github.com/github-linguist/linguist/blob/main/docs/how-linguist-works.md), pinned import `5fbdfcb8133be2bed88bf3ce62b2335f50474525` | [LICENSE](https://github.com/github-linguist/linguist/blob/main/LICENSE), MIT; [sample contributions](https://github.com/github-linguist/linguist/blob/main/CONTRIBUTING.md) can have individual provenance | `languages.yml`, `heuristics.yml` and samples help extension/filename/shebang/sniff routing. Ruby regex and classifier behavior are not wholesale RE2-compatible; `lang-linguist` already drops non-RE2 patterns and warns on collisions. Samples are fixtures candidates only after license review. | Existing routing draft suffices; test collisions and false positives on holdouts. |
+| [SCIP protocol](https://github.com/scip-code/scip/blob/main/README.md), protocol repo `main` read 2026-10-25; harness pins indexers per reading (e.g. `scip-python 0.6.6`, `scip-clang 0.4.0`) | [LICENSE](https://github.com/scip-code/scip/blob/main/LICENSE), Apache-2.0; check each indexer repository separately | Semantic definitions/references are stronger L2-L4 evidence where a maintained indexer runs. `client.ImportSCIP` already maps typed edges by position; `lang-oracle` already calibrates. Build/dependency cost is language-specific. | Use existing indexer path; no new adapter proposed. |
+| [tree-sitter-language-pack](https://github.com/xberg-io/tree-sitter-language-pack), existing pinned catalogue `b7fc9ae9f7149697fb2ca320bad0156c18ee6519` under prior `kreuzberg-dev` name | [LICENSE](https://github.com/xberg-io/tree-sitter-language-pack/blob/main/LICENSE), MIT; bundled grammar licenses are separate | Catalogue supplies candidate repos/revisions/ABIs, not quality or source compatibility. Its current bindings/bundles are not a substitute for fathom's pinned WASM/wazero build. | Keep `lang-pin`; independently check grammar tree and 5% parse-error gate. |
+| [Stack graphs](https://github.com/github/stack-graphs), tree-sitter-stack-graphs `v0.10.0` per [changelog](https://github.com/github/stack-graphs/blob/main/tree-sitter-stack-graphs/CHANGELOG.md) | [LICENSE-MIT](https://github.com/github/stack-graphs/blob/main/LICENSE-MIT) or [LICENSE-APACHE](https://github.com/github/stack-graphs/blob/main/LICENSE-APACHE); repository archived 2025-09-09 | A separate cross-file scope graph and rule language. Not a tags query or a cheap starter for a dialect. Existing `LB-X4` refused a general resolver while measured strategies cover current cases. | Do not revive without a measured cross-file miss class and an `LB-X4` revisit decision. |
+
+## Outcome under LH-R2: tooling rejected for now
+
+The pre-oracle scheduling population supplies only one supported case, below the original
+three-case/two-addition bar. The staged-hygiene predicates were built from the same cases
+they would be scored on. Adding MATLAB gives three known hygiene cases across three additions,
+not an independent efficacy test. No replay or scorer is approved or implemented.
+
+The read-only screen in the [mechanical data](data/2026-10-25-language-onboarding-mechanical.json)
+finds bytecode paths MATLAB 1 -> 0 and PgBouncer 2 -> 0, and Objective-C host-root files 2 -> 0.
+Both screens return 0 at cutoff `743a91430` and reference main `5b84aa5b4`. These counts are
+shape checks, not gate execution, runtime cost or prospective round savings. The [design](../design/language-onboarding.md)
+contains the count-only commands and their source-readability precondition.
+
+The [decision data](data/2026-10-25-language-onboarding-criteria.json) retires the experiment.
+The [unnumbered draft](../design/language-onboarding-decision-draft.md) rejects new onboarding
+preflight tooling and a general importer, each with a concrete wins-if condition. Existing
+ignore/debris and hygiene-scanner seams can receive ordinary fixes only under separate
+authorization; this lane changes guidance and records only.
+
+The cheap deliverable addresses the measured oracle/test/resource evidence gaps: file digests,
+truth independence, per-subject ratios, mutation sensitivity, adversarial count caps and a
+scoped reading-preservation check. X-R1/X-R2 add named candidate searches, runnable verification,
+canonical/holdout isolation and release-note/debris checks before READY. #7 E2 round 2 owns
+relevant recursive/canonical/kind/metric tests and is not duplicated here. At reference main
+`c86095291`, its new tests are still unmerged; current strict round-trip coverage is top-level
+JSON values only. The recipe names sorted-JSON receipts for touched nested Reading files,
+excludes different-schema parity records and leaves frozen baseline regrading to an explicit
+owner scope ruling. The controller-owned hygiene follow-up is tracked in the work order.
+
+## Round-4 recipe verification
+
+R4-F1 was reproduced on the corpus-pinned swift-nio checkout: the previous documented
+manifest block failed with `IsADirectoryError`. Reproduction input:
+`git clone --depth 1 --branch 2.99.0 --single-branch https://github.com/apple/swift-nio.git workspace/calibration/swift-nio`,
+commit `f71c8d2a5e74a2c6d11a0fbe324774b5d6084237` from `calibration/corpus.d/swift.yaml`.
+The corrected [recipe §13.3.1](../design/language-breadth.md#1331-freeze-the-measured-set-and-holdout)
+block was run with `SUBJECT=workspace/calibration/swift-nio`, `SUBPATH=.` and
+`RECEIPT=workspace/artifacts/lang-onboarding-r4/swift-nio-new-before`, then the same inputs
+with receipt suffix `new-after`. Both runs produced:
+
+| Receipt field | Before and after |
+|---|---|
+| `entries` | 761 |
+| `files` (regular only) | 759 |
+| `bytes` (regular only) | 8,973,632 |
+| `symlinks` | 2 |
+| `gitlinks` | 0 |
+| Manifest `sha256` | `4858eecf031436fa4695bc7d19f493c624afb5c24a78e70dfbf6de9f4ce3200c` |
+
+These are tracked-set receipts, not a new Swift reading or a measured-file identity claim.
+Independent checks recomputed the manifest digest, path-byte ordering, regular counts/bytes
+and symlink-target hashes. Raw manifests and source file lists stay in ignored local artifacts.
+Synthetic index fixtures also passed file/directory/dangling symlinks, a gitlink's exact
+index commit, regular/link mutations, ignored generated-input disclosure and refusals for
+wrong types, missing regular files, parent-repository fallthrough, empty scope and unmerged
+index stages. Changing submodule content left the receipt unchanged as explicitly disclosed.
+
+R4-F2 is a receipt-interpretation limit: `jq -S` retains some number literals. Equal JSON
+values with different numeric spellings produced a nonempty diff, so the recipe now requires
+those hunks to be listed separately as serialization differences. E2-R2's byte check, once
+landed, still requires canonical bytes. X-R3 adds the org-name READY test and summary-only
+publication; X-R4 requires receipts from all five search sources even when they find no hits.
+
+## Evidence limits
+
+Public docs and repository source establish available formats and licenses; they do not establish reduced rounds, wall time, or accuracy for fathom. Some shell requests lacked external DNS; primary web sources and fetched license files establish the matrix. No importer trial was run. The swift-nio checkout above tests only the receipt recipe, not importer efficacy. The exact pins listed above come from existing committed fathom provenance or public release tags. Nvim queries and each new grammar/query require a fresh 40-hex pin and exact file license before copying. The newer `xberg-io` catalogue has not been compared against fathom's pinned `kreuzberg-dev` snapshot.
