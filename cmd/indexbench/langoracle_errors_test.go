@@ -50,8 +50,13 @@ func TestCmdLangOracleFilesWithError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s := strings.Join(lines, "\n"); strings.Contains(s, "ERROR") || strings.Contains(s, "MISSING") {
-		t.Errorf("lang-probe now shows the missing node; the S-expression could count it:\n%s", s)
+	s := strings.Join(lines, "\n")
+	_, tree, ok := strings.Cut(s, "; tree\n")
+	if !ok || strings.Contains(tree, "ERROR") || strings.Contains(tree, "MISSING") {
+		t.Errorf("lang-probe's S-expression no longer omits the missing node:\n%s", s)
+	}
+	if !strings.Contains(s, "in error (1 ERROR or MISSING nodes)") {
+		t.Errorf("probe diagnostic does not count the missing node:\n%s", s)
 	}
 	_ = os.Remove(out)
 }

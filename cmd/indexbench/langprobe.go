@@ -80,6 +80,8 @@ func probeLines(target extractor.ProbeTarget, src []byte) ([]string, error) {
 	switch {
 	case res.WrittenErrors == 0:
 		note = "; parse: read as written (no error)"
+	case res.Candidates == 0:
+		note = fmt.Sprintf("; parse: read as written, in error (%d ERROR or MISSING nodes)", res.WrittenErrors)
 	case res.Candidate > 0:
 		note = fmt.Sprintf("; parse: pre-parse candidate %d of %d (the file holds %d ERROR or MISSING nodes as written; the dialect's pre-parse step blanked spans, same lines)", res.Candidate, res.Candidates, res.WrittenErrors)
 	default:

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // TestCmdLangProbe (LB-F20, design §10, §13 step 12): the probe prints a
@@ -64,5 +66,20 @@ func TestCmdLangProbe(t *testing.T) {
 	}
 	if code := cmdLangProbe([]string{"-dialect", "python"}, &out, &errb); code != 2 {
 		t.Errorf("no file: exit %d, want 2", code)
+	}
+}
+
+func TestLangProbeReportsErrorsWithoutPreprocess(t *testing.T) {
+	target, err := extractor.ProbeTargetFor("c", "broken.c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines, err := probeLines(target, []byte("void broken( {"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := strings.Join(lines, "\n")
+	if !strings.Contains(out, "read as written, in error (") || strings.Contains(out, "pre-parse candidates") {
+		t.Fatalf("misleading parse diagnostic:\n%s", out)
 	}
 }
