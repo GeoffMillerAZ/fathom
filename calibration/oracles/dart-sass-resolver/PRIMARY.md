@@ -35,8 +35,8 @@ NODE_PATH="$SCRATCH/npm/node_modules" node \
 That plain command applies to subjects without runner setup, such as Primer.
 The canonical Bootstrap 0.5.1 primary used the subject runner's sass-true
 9.0.0 Sass load path and its unchanged preamble. In the private canonical
-output, 122 parser inputs had 3 rejections; 44 standalone compiles succeeded,
-78 failed, and 6 of 84 fallback attempts succeeded with this setup. Reproduce
+output, 122 parser inputs had 3 rejections; 44 compiles succeeded
+(38 standalone plus 6 of 84 preamble fallbacks), and 78 finally failed. Reproduce
 the setup with the pinned subject, using the same package version:
 
 ```sh

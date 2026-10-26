@@ -228,3 +228,11 @@ The [count/hash receipt](data/2026-10-26-core-t1-scss-bourbon-runner-posthoc.jso
 comes from the committed `publish_posthoc.py`, which checks the pinned source,
 cross-arm fingerprints, exact six phases, load limits and three timing labels.
 The instrument revision is `9029a10d7`; no extractor or acceptance rule changed.
+
+R3 clarification: the frozen-primary and runner-primary neutral JSON digests
+are identical. Runner paths increased successful compiles from 58/86 to
+83/86, but the primary pairs targets relative to the importer, so the same
+40 configured-load-path imports remain `no_loaded_target`. The native resolver
+attests those 40; the full-population product failure remains .5294. This
+[configured-load-path finding](2026-10-26-core-t1-scss-load-path-gap.md) is owned
+separately from fresh native-oracle validation.

@@ -1,7 +1,8 @@
 {
+  "artifact_failure_count": 0,
   "call_truth": 1954,
   "call_truth_found": 1949,
-  "collector_sha256": "c22b7477341f9c2b388c4fde2fbd0fd06bac1a8881699d1ae3189b25a5b20cb8",
+  "collector_sha256": "e00814e5671c0c2bd0cb41aa7004c1391148dd2ed315d108b85d86287c6cd091",
   "compiled": 279,
   "compiled_coverage": 0.813411,
   "coverage_floor": null,
@@ -16,6 +17,7 @@
     "l1_excellent": true,
     "max_file_at_most_2_seconds": true,
     "named_pairing_floor_passed": false,
+    "phase_execution_and_load_pass": true,
     "range_agreement_at_least_0_90": true,
     "throughput_median_at_least_1_mb_cpu_s": true
   },
@@ -441,6 +443,7 @@
     "spent.sha256": "bc25c1a23f393927ff5877aff02f6945d32349720cf706b3b38497997ac2060a"
   },
   "instrument_commit": "500a867de528dfe651b3ec5b61d1779625c6e595",
+  "invalid_artifacts": [],
   "legacy_phase_provenance_incomplete": true,
   "local_library_sha256": "b8b99e2e35d1bc4a2430bfeffe5d31488d18a1123363ceac2eaf5346fb4eae7a",
   "metric_tiers": {
@@ -469,6 +472,56 @@
     6.17138671875,
     6.0771484375,
     6.0771484375
+  ],
+  "phase_outcomes": [
+    {
+      "exit": 0,
+      "launch_load": 4.95556640625,
+      "phase": "clone-once",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 4.95556640625,
+      "phase": "checkout-pin",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 4.95556640625,
+      "phase": "install-declared-dependencies",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 8.92919921875,
+      "phase": "ppi-primary",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 8.92919921875,
+      "phase": "compiler-ranges",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 6.17138671875,
+      "phase": "build-indexbench",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 6.0771484375,
+      "phase": "grade-holdout",
+      "timed_out": false
+    },
+    {
+      "exit": 0,
+      "launch_load": 6.0771484375,
+      "phase": "retime-three",
+      "timed_out": false
+    }
   ],
   "phase_seconds": [
     1.713,
