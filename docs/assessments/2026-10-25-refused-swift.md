@@ -55,6 +55,22 @@ an index store, and a compatible pinned toolchain. It was inspected, not run or
 validated against these subjects. L3 import resolution and typed edges remain
 unmeasured here; the existence of a producer does not prove either.
 
+## Candidate ledger (X-R1)
+
+The measured ceiling is the product parser gate, not the absence of a Swift oracle.
+A working build-index producer cannot repair that parser. Inspected candidates are
+kept distinct from candidates actually run:
+
+| Candidate and version or pin | Check and concrete limit |
+|---|---|
+| alex-pinkus/tree-sitter-swift 35245fb; native survey 0.7.3, 5f435e2, b42acc4, 0.7.4/171fa3b, 0c5444e, 4bdb925, 12dd8a3, 2907592, d36d452, 3589c87, 9e3b87f | Committed WASM 35245fb reproduces 123/642 ERROR-or-MISSING, including 36 ERROR files. The recorded native survey's best total is 119/642. None clears the 5% gate. Only 35245fb was measured under the WASM harness here. |
+| Swift compiler parser, Apple Swift 6.4, `swiftc -frontend -parse-as-library -dump-parse` | Existing validated tier-B L1/L2 oracle. Its syntax dump is not resolved import or typed-edge truth, and invoking a compiler is not the admitted WASM product parser. |
+| SourceKit-LSP / IndexStoreDB, Swift 6.4 toolchain route | Inspected build-index route, not run on these subjects here. It needs a compatible toolchain and subject build/index store. No L3 or L4 grade is claimed from inspection, and this route does not change the product grammar's 123/642 gate. |
+| jarvis-intelligence/scip-swift 4ad1ce9e4826785604aed5fd529913efb1733df7, Apache-2.0 | Inspected README and licence, not run. macOS 14+, compatible pinned toolchain and a subject build with index-store data are required. This is an existing candidate to evaluate after the parse gate, not a missing producer or a failed oracle measurement. |
+| In-tree grammar patch route, P-R1 mechanism 50675f4564032d4a2c1d6fbaaa362bd95e2a0b65 | Admitted route, no Swift patch has been measured. It must clear at least 91 current gate-error files, including at least four ERROR-node files, as derived below. No untested patch is claimed to fail or pass. |
+
+No holdout was added to the canonical Swift corpus shard.
+
 ## Retry routes and arithmetic
 
 The ceiling holds. Retry an allowlisted upstream grammar commit **or a reviewed
