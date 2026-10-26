@@ -1,0 +1,9 @@
+[
+  {
+    "DOC": "<probe>",
+    "defines": [],
+    "fields": [],
+    "name": "LuaLS",
+    "type": "luals.config"
+  }
+]

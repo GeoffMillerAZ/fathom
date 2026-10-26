@@ -1,0 +1,28 @@
+{
+  "generalDiagnostics": [
+    {
+      "file": "<probe>/control.py",
+      "message": "Result of call expression is of type \"int\" and is not used; assign to variable \"_\" if this is intentional",
+      "range": {
+        "end": {
+          "character": 3,
+          "line": 2
+        },
+        "start": {
+          "character": 0,
+          "line": 2
+        }
+      },
+      "rule": "reportUnusedCallResult",
+      "severity": "warning"
+    }
+  ],
+  "summary": {
+    "errorCount": 0,
+    "filesAnalyzed": 1,
+    "informationCount": 0,
+    "timeInSec": 0.107,
+    "warningCount": 1
+  },
+  "version": "1.40.2"
+}
