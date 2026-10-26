@@ -7,6 +7,12 @@ renderer does not fit the existing language-bench summary. No kit runtime or pin
 changes. `go test -race ./cmd/indexbench ./internal/langbench` covers the command's
 summary, refusals, scope preservation and dry-run behavior.
 
+CLI contribution review (BX-19): no candidate. The null harness and its
+zero-turn dry-run handling belong to the benchmark's domain policy. The
+`cli flags help` capability search (profile `cli`, catalog `3ee2c1f`) returned
+no items. Existing flag help and exit conventions remain in use; fixture
+tests prove help discovery and a graded failure without spend.
+
 CLI contribution review (2026-10-24, WR-9): no candidate. Writer-version grouping is
 fathom's evidence semantics and retains the gauge's existing text/JSON rendering.
 `search_capabilities` query `cli output`, profile `cli`, returned `cli.output`
