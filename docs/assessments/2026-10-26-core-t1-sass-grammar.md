@@ -55,3 +55,24 @@ The scripts and full setup commands now live in
 `calibration/oracles/sass-grammar/README.md`, `gate.py`, and `reference.cjs`.
 They check the frozen subject commits, clean trees and all 219 source files. No holdout was
 used: both subjects are syntax-gate calibration, never an excellent/support claim.
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / compiler | [Dart Sass 1.106.1](https://registry.npmjs.org/sass/latest) and [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/latest) are newer first-party parser/compile hits. No new grammar was parse-gated; a reference-parser version does not make fb280c41 pass. |
+| SCIP / LSIF | Shared catalogs and [GitHub `scip-sass` search](https://github.com/search?q=scip-sass&type=repositories) yielded no measured indented-Sass indexer. |
+| Language server | [VS Code CSS/SCSS service](https://github.com/microsoft/vscode-css-languageservice) does not document indented `.sass` grammar admission; no Sass-owned LSP was established by the bounded search. This negative search does not prove impossibility. |
+| Registry AST | [sass_api 18.1.0](https://pub.dev/api/packages/sass_api) parses Sass/SCSS AST with spans. [`findDependencies`](https://pub.dev/documentation/sass_api/latest/sass_api/) supplies static URLs, not resolved file pairs; neither is a production Tree-sitter grammar. **LIVE UNMEASURED** as a future first-party oracle only. |
+| Runtime/load tracing | [Sass compile/load API](https://sass-lang.com/documentation/js-api/) can report successful loads, not repair the candidate’s 123/219 source syntax errors. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.
+
+X-R3 publication follow-up: the existing receipt is now a sanitized counts/hash
+summary produced by committed `calibration/oracles/sass-grammar/publish.py`.
+The 219/123 native and 213/117 reference-crosscheck measurements are unchanged.
+Raw per-file diagnostics and compiler messages remain scratch artifacts; the
+public receipt retains their hashes and aggregate diagnostic kinds. This is a
+publication correction, not a new corpus reading or grammar result.
