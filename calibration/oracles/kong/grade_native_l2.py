@@ -54,7 +54,20 @@ def original_scope(prior, name):
     notes = [note for note in prior['notes'] if note.startswith(prefix)]
     if not notes:
         raise ValueError('no original scope; refuse to invent one')
-    return sorted({p for note in notes for p in note[len(prefix):].split(' (-only;', 1)[0].split(', ')})
+    raw = sorted({p for note in notes for p in note[len(prefix):].split(' (-only;', 1)[0].split(', ')})
+    normalized = []
+    for path in raw:
+        # Historical -only expansion inserted the scratch root once or twice.
+        # Preserve every recorded selector as a query, but compare each actual
+        # source only once. This does not discover or remove native entities.
+        for root in ('workspace/calibration/kong-td/deck/',
+                     'workspace/calibration/kong-td/go-database-reconciler/'):
+            while path.startswith(root):
+                path = path[len(root):]
+        if Path(path).is_absolute() or '..' in Path(path).parts or path.startswith('workspace/'):
+            raise ValueError('unsafe or unknown historical scope alias')
+        normalized.append(path)
+    return normalized
 
 
 def shadow_copy(source, dest):
@@ -162,6 +175,7 @@ def measure(args):
             mapping = shadow_copy(source, target)
         definitions, references, outcomes = [], [], Counter()
         raw_entities = raw_fields = unnamed = 0
+        observed = {}
         input_hashes = []
         for input_index, rel in enumerate(scope):
             path = target / rel
@@ -172,12 +186,19 @@ def measure(args):
             work = folder / ('input-' + str(input_index))
             try:
                 native = native_query(args.native, data.decode('utf8'), work)
-                raw_entities += len(native['native_entities']);raw_fields += len(native['native_written_fields'])
-                unnamed += sum(not node.get('name') for node in native['native_entities'])
                 located_raw = subprocess.check_output([str(args.locator), '-locate-source', str(path)], timeout=30)
                 located = json.loads(located_raw)
                 defs, refs, classified = project(rel, native, located)
-                definitions.extend(defs);references.extend(refs);outcomes.update(classified)
+                digest = sha(json.dumps([defs, refs, classified, len(native['native_entities']),
+                                        len(native['native_written_fields'])], sort_keys=True).encode())
+                if rel in observed:
+                    if observed[rel] != digest:
+                        raise ValueError('historical selector alias replay changed native truth')
+                else:
+                    observed[rel] = digest
+                    raw_entities += len(native['native_entities']);raw_fields += len(native['native_written_fields'])
+                    unnamed += sum(not node.get('name') for node in native['native_entities'])
+                    definitions.extend(defs);references.extend(refs);outcomes.update(classified)
             except (ValueError, subprocess.SubprocessError, UnicodeError) as error:
                 refused.append(dict(cohort=ordinal, input_ordinal=input_index, source_sha256=sha(data),
                                     reason_class=type(error).__name__, reason_sha256=sha(str(error).encode())))
@@ -185,7 +206,7 @@ def measure(args):
         if before != after or before['untracked_entries']:
             raise ValueError('original tracked set changed')
         all_rows.append(dict(cohort=ordinal, source_sha=repo['sha'], historical_source_sha=subject['sha'],
-                             native_inputs=len(scope), native_entities=raw_entities, native_written_fields=raw_fields,
+                             native_queries=len(scope), distinct_native_inputs=len(set(scope)), alias_replays=len(scope)-len(set(scope)), native_entities=raw_entities, native_written_fields=raw_fields,
                              native_unnamed_entities=unnamed, named_definitions=len(definitions),
                              semantic_references=len(references), outcomes=dict(outcomes),
                              input_manifest_sha256=sha(json.dumps(input_hashes, sort_keys=True).encode()),
@@ -193,7 +214,7 @@ def measure(args):
         for suffix, tier, defs, refs in [('defs', 'C', definitions, []), ('refs', 'A', [], references)]:
             (folder / (suffix + '.json')).write_text(json.dumps(dict(tool='pinned Kong native typed loader/registry; independent C positions',
                     version='go-database-reconciler1.42.4', tier=tier, definitions=defs, references=refs)))
-        comparisons.append((ordinal, target, repo['sha'], scope, folder))
+        comparisons.append((ordinal, target, repo['sha'], sorted(set(scope)), folder))
         mappings += ['-subject', 'cohort-' + str(ordinal) + '=' + str(target)]
     summary = dict(kind='full original-population Kong L1/L2 diagnostic; canonical reading unchanged',
                    native_binary_sha256=identity['binary_sha256'], cohorts=all_rows, refusals=refused,

@@ -113,3 +113,11 @@ asserted.
 | Language-server primary README/registry; dedicated query | YAML Language Server2.0.0 MIT | Schema/symbol services are independent C, not Kong foreign-key evaluation. Dedicated query zero; no global absence claim; not installed. |
 | Package registry and typed parser sources | kongfig1.5.3 MIT; GDR1.42.4 Apache-2.0; yaml.v3 3.0.1 Apache-2.0/MIT | kongfig uses legacy apis/consumers and live Admin API, with optional JS; not installed/executed. Native SDK is stronger; yaml.v3 only C locations. |
 | Runtime configuration parse/tracing source | Kong3.9.1 Apache-2.0 | `kong config parse` invokes declarative parse_file; import is a separate mutating route. Available untried Kong/OpenResty route; no runtime build/install/Docker. Version3.14.0 source attempts404; pinned3.9.1 source read. |
+
+The first full replay refused at a nonexistent historical selector, before any
+comparison. Its 1,803 recorded selectors include repeated scratch-root aliases:
+681 distinct native inputs and 1,122 alias replays. The corrected driver strips
+only the two disclosed legacy roots (including their repeated occurrence),
+queries all 1,803 selectors, requires identical projected truth for aliases and
+compares each actual source once. Scope tests reproduce the old failure then
+pass; traversal and unknown scratch roots refuse. No source or entity is removed.

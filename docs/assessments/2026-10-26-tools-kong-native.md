@@ -72,3 +72,11 @@ job and free>=20GiB. The driver separately gates three-run timing at load<=6
 and discloses conditions; otherwise throughput and the performance-dependent
 grade remain unmeasured. Azure T-R9 branch9a36618c9 stays frozen for review
 and the controller-provided Linux x64 receipt.
+
+The first full replay refused at a nonexistent historical selector, before any
+comparison. Its 1,803 recorded selectors include repeated scratch-root aliases:
+681 distinct native inputs and 1,122 alias replays. The corrected driver strips
+only the two disclosed legacy roots (including their repeated occurrence),
+queries all 1,803 selectors, requires identical projected truth for aliases and
+compares each actual source once. Scope tests reproduce the old failure then
+pass; traversal and unknown scratch roots refuse. No source or entity is removed.

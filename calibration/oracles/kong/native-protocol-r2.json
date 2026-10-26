@@ -8,7 +8,10 @@
     "historical_scored_definitions": 821,
     "historical_scored_references_C": 10,
     "source_set": "Union of original restricted-to notes, unchanged shard pins and required kinds; no holdout or corpus addition",
-    "source_identity_correction": "Two historical state-cohort subject SHA fields use synthetic f21aff82817c089498af9973722de03bda3ad634. New receipts use real shard source pins, 34b752ef8dbf5befefb45c2abb72f50e289ee952 and 3e9e2aa4a799494cd8824a27867e366745c091fd; preserve and disclose the existing testdata-to-td YAML-only copy mapping. Do not pretend the old synthetic SHA attests upstream source bytes."
+    "source_identity_correction": "Two historical state-cohort subject SHA fields use synthetic f21aff82817c089498af9973722de03bda3ad634. New receipts use real shard source pins, 34b752ef8dbf5befefb45c2abb72f50e289ee952 and 3e9e2aa4a799494cd8824a27867e366745c091fd; preserve and disclose the existing testdata-to-td YAML-only copy mapping. Do not pretend the old synthetic SHA attests upstream source bytes.",
+    "distinct_native_inputs": 681,
+    "historical_selector_alias_replays": 1122,
+    "scope_correction": "1803 recorded selectors contain 1122 repeated legacy scratch-root aliases for 681 distinct native inputs. Strip only the two disclosed historical roots, retaining all 1803 native queries; require alias truth agreement and compare each distinct source once. No corpus, source byte or native entity is removed."
   },
   "rules": [
     "Query all 1803 original native inputs before reporting a comparison. Within each input enumerate the complete native population before independent location pairing. Enumerate native typed fields, unused/unnamed declarations, unresolved/external/unsupported outcomes and every service/route/plugin scope; no independent parser chooses native definitions or reference denominators.",
