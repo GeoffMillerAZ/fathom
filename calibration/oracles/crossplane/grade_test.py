@@ -9,6 +9,10 @@ import tempfile
 from calibration.oracles.crossplane import grade
 
 
+def setUpModule():
+    (grade.REPO / "workspace/tmp").mkdir(parents=True, exist_ok=True)
+
+
 class GradeContractTest(unittest.TestCase):
     def test_invalid_engine_commit_removes_stale_output(self):
         with tempfile.TemporaryDirectory(dir=grade.REPO / "workspace/tmp") as directory:

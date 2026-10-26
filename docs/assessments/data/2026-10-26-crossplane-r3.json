@@ -1,0 +1,309 @@
+{
+  "archive_changes": "Azure/GCP network metadata copied from other subjects is corrected. Legacy AWS archive standardized from annotated-tag object to peeled commit; relative entries and contents conserved.",
+  "archive_verification_after": {
+    "archives": [
+      {
+        "archive_bytes": 14998578,
+        "archive_sha256": "df441abc366960aea6a74ed1f065219fcb3f082dd11d83a4655ccc85f164e7ea",
+        "matches_pin": true,
+        "repo": "crossplane/crossplane",
+        "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb"
+      },
+      {
+        "archive_bytes": 16836,
+        "archive_sha256": "949e85810f1b0e88cfdb59c991572f529fe810399044152cc1bb07142aee8ad3",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-aws",
+        "sha": "be065e6afe89e656080557bacf1732168502e325"
+      },
+      {
+        "archive_bytes": 15296,
+        "archive_sha256": "9cfd40edc7fb70dcab6357bc4460ed34b81bc43a841d7bfe6a65d2c678dd7613",
+        "matches_pin": true,
+        "repo": "upbound/configuration-aws-network",
+        "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d"
+      },
+      {
+        "archive_bytes": 15049,
+        "archive_sha256": "2e040ac8c1889d6e4e6b9837e0fa95a6226e8de10e5465f5287960f5062f93df",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-aws",
+        "sha": "e5d15551795ebde328c443c5da22d8e25c485831"
+      },
+      {
+        "archive_bytes": 90467,
+        "archive_sha256": "559fff62e9a72c4bf3f115a98a37ad1eda4e9d32261634f616cf6d6c9e75b335",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-azure",
+        "sha": "779d9f11b513235b742afda59b7d3ddc0b98c271"
+      },
+      {
+        "archive_bytes": 19343,
+        "archive_sha256": "28d2bb39cdffe1d6fcf5f42cd8dd7f410f13b1f9540cdd54bee642099351aa41",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-gcp",
+        "sha": "c0c14f604bd8c8d39bdf558527c8ca4f76625878"
+      },
+      {
+        "archive_bytes": 17259,
+        "archive_sha256": "a35165afec003469c4321805cafeec2b8b4c3b42e9e185d49a4c795361c09bf9",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-aws",
+        "sha": "35b8fe68dee1d838017b98e803e9246fdd1d2905"
+      },
+      {
+        "archive_bytes": 1102094,
+        "archive_sha256": "9d759db32112ea0e782e4a866fd642a53c396df3bcaa974e129fcffa946aa7b9",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-azure",
+        "sha": "f220bbc67937fc004966c47c4327e7a3abbb331f"
+      },
+      {
+        "archive_bytes": 12174,
+        "archive_sha256": "ff349fc47e2ca25af65fc2e11e06a5159cbd26ce86c8383cf8a65f15a2ab5e64",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-gcp",
+        "sha": "816daa642508a21d44870042c040c0525f43d191"
+      },
+      {
+        "archive_bytes": 18874239,
+        "archive_sha256": "af3679f99446d3f9550cd2057ed6b4f77c0a510933a359a4042b4ad7f838ae07",
+        "matches_pin": true,
+        "repo": "upbound/provider-aws",
+        "sha": "44afb1a357e36a32e939f79a34e92ecb1cd06beb"
+      },
+      {
+        "archive_bytes": 9602372,
+        "archive_sha256": "66666db0fe1bbd7c5c077856c6ee11e56efc38df34ad7391ae358b65d4f5fa14",
+        "matches_pin": true,
+        "repo": "upbound/provider-azure",
+        "sha": "3738e5c7725cb15decd238a1126b50a5be799235"
+      },
+      {
+        "archive_bytes": 8302449,
+        "archive_sha256": "a79cfd19af123c8a3733493baa50f4f587fad3d61c8cade04da16f2354c932f2",
+        "matches_pin": true,
+        "repo": "upbound/provider-gcp",
+        "sha": "de7a486ad63acbc9f571777fbc6d0f123ad8e50b"
+      }
+    ],
+    "checked": 12,
+    "matched": 12,
+    "pins_sha256": "155567137fbb0c59e56d69acd97f5020b6b2b59a0d66b9f539f2c0d8aa7dc1ed"
+  },
+  "archive_verification_before": {
+    "archives": [
+      {
+        "archive_bytes": 14998578,
+        "archive_sha256": "df441abc366960aea6a74ed1f065219fcb3f082dd11d83a4655ccc85f164e7ea",
+        "matches_pin": true,
+        "repo": "crossplane/crossplane",
+        "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb"
+      },
+      {
+        "archive_bytes": 16836,
+        "archive_sha256": "949e85810f1b0e88cfdb59c991572f529fe810399044152cc1bb07142aee8ad3",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-aws",
+        "sha": "be065e6afe89e656080557bacf1732168502e325"
+      },
+      {
+        "archive_bytes": 15296,
+        "archive_sha256": "9cfd40edc7fb70dcab6357bc4460ed34b81bc43a841d7bfe6a65d2c678dd7613",
+        "matches_pin": true,
+        "repo": "upbound/configuration-aws-network",
+        "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d"
+      },
+      {
+        "archive_bytes": 15049,
+        "archive_sha256": "2e040ac8c1889d6e4e6b9837e0fa95a6226e8de10e5465f5287960f5062f93df",
+        "matches_pin": false,
+        "repo": "upbound/platform-ref-aws",
+        "sha": "e5d15551795ebde328c443c5da22d8e25c485831"
+      },
+      {
+        "archive_bytes": 90467,
+        "archive_sha256": "559fff62e9a72c4bf3f115a98a37ad1eda4e9d32261634f616cf6d6c9e75b335",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-azure",
+        "sha": "779d9f11b513235b742afda59b7d3ddc0b98c271"
+      },
+      {
+        "archive_bytes": 19343,
+        "archive_sha256": "28d2bb39cdffe1d6fcf5f42cd8dd7f410f13b1f9540cdd54bee642099351aa41",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-gcp",
+        "sha": "c0c14f604bd8c8d39bdf558527c8ca4f76625878"
+      },
+      {
+        "archive_bytes": 17259,
+        "archive_sha256": "a35165afec003469c4321805cafeec2b8b4c3b42e9e185d49a4c795361c09bf9",
+        "matches_pin": true,
+        "repo": "upbound/platform-ref-aws",
+        "sha": "35b8fe68dee1d838017b98e803e9246fdd1d2905"
+      },
+      {
+        "archive_bytes": 1102094,
+        "archive_sha256": "9d759db32112ea0e782e4a866fd642a53c396df3bcaa974e129fcffa946aa7b9",
+        "matches_pin": false,
+        "repo": "upbound/platform-ref-azure",
+        "sha": "f220bbc67937fc004966c47c4327e7a3abbb331f"
+      },
+      {
+        "archive_bytes": 12174,
+        "archive_sha256": "ff349fc47e2ca25af65fc2e11e06a5159cbd26ce86c8383cf8a65f15a2ab5e64",
+        "matches_pin": false,
+        "repo": "upbound/platform-ref-gcp",
+        "sha": "816daa642508a21d44870042c040c0525f43d191"
+      },
+      {
+        "archive_bytes": 18874239,
+        "archive_sha256": "af3679f99446d3f9550cd2057ed6b4f77c0a510933a359a4042b4ad7f838ae07",
+        "matches_pin": true,
+        "repo": "upbound/provider-aws",
+        "sha": "44afb1a357e36a32e939f79a34e92ecb1cd06beb"
+      },
+      {
+        "archive_bytes": 9602372,
+        "archive_sha256": "66666db0fe1bbd7c5c077856c6ee11e56efc38df34ad7391ae358b65d4f5fa14",
+        "matches_pin": true,
+        "repo": "upbound/provider-azure",
+        "sha": "3738e5c7725cb15decd238a1126b50a5be799235"
+      },
+      {
+        "archive_bytes": 8302449,
+        "archive_sha256": "a79cfd19af123c8a3733493baa50f4f587fad3d61c8cade04da16f2354c932f2",
+        "matches_pin": true,
+        "repo": "upbound/provider-gcp",
+        "sha": "de7a486ad63acbc9f571777fbc6d0f123ad8e50b"
+      }
+    ],
+    "checked": 12,
+    "matched": 9,
+    "pins_sha256": "beca2575d7bb158f4943a32e6a7936455c203db98aaa2c9cf998b20512a434e5"
+  },
+  "base_commit": "4e7eea67a24a48d2c9df46740560c7cb16b0344d",
+  "calibration_only": true,
+  "canonical_evidence": "2026-10-26-crossplane-r2.json; exact reading and native measurements unchanged in R3",
+  "canonical_reading_sha256": "a5276b619248d6d74e9ea562e8f5acc0c8bb153fb9a7abd75f5552a94f6b69d7",
+  "format": "crossplane-r3-fixes-v1",
+  "legacy_aws_archive_equivalence": {
+    "equal": true,
+    "historical_tag_object_archive": {
+      "entries": 29,
+      "sha256": "d93fb849b8895e48ba833099de6884e1aa6d2af6440d51d22c12b01391749095"
+    },
+    "peeled_commit_archive": {
+      "entries": 29,
+      "sha256": "d93fb849b8895e48ba833099de6884e1aa6d2af6440d51d22c12b01391749095"
+    }
+  },
+  "limits": "No native binding ceiling or new runtime evaluation claimed. R2 scratch typed-ingest limitation O1508 remains a historical failed run; controller owns full merged-head gate and CI.",
+  "owner_routes": [
+    {
+      "binary_url": "https://releases.crossplane.io/stable/v1.20.0/bin/darwin_arm64/crank",
+      "command": "crossplane beta convert pipeline-composition",
+      "scope": "owner translation followed by native Development-runtime render; tier B at most for executed population",
+      "sha256": "8ea4ee891e3f76db262c10964dfe539026975af47511f1c1ac92cb812072ee4d",
+      "status": "untried",
+      "version": "1.20.0"
+    },
+    {
+      "command": "crossplane xrd convert",
+      "scope": "owner XR schema generator could settle the notDeclared field-path diagnostic",
+      "status": "untried",
+      "version": "2.5.0"
+    }
+  ],
+  "plan_rows": {
+    "LB-F157": "Original tier-A deliverable and pattern restored, claim withdrawn as refused under controller F12",
+    "LB-IAC-crossplane-pt1": "New full-population qualification, unchecked for controller claim"
+  },
+  "privacy": {
+    "baseline_or_allowlist_changed": false,
+    "new_line_scan": {
+      "at_or_author": 27,
+      "email": 0,
+      "identity_metadata": 0
+    },
+    "whole_file_secret_hits": 2,
+    "whole_file_secret_hits_unchanged_on_main": 2
+  },
+  "qualification": "P-T1 full canonical walk: 244 files; 428/428 definitions; 86/86 references; 33/33 cross-file references; all six accuracy tiers C; exact harness bytes",
+  "queue_fix_commit": "24c6dc502ac13ba0c706834c585bf6b593fdb705",
+  "reading_conservation": {
+    "after_inventory_sha256": "6d2f46818068e8039b41011b68e78480dd842bc45e5a5e6fd5e3941a5f5477a6",
+    "base": "4e7eea67a24a48d2c9df46740560c7cb16b0344d",
+    "before_inventory_sha256": "c68b08b5d7d0376449c95ea6acd3750990cabfb1c5892751a98fa047f2182af1",
+    "changed_values": [
+      "crossplane.json"
+    ],
+    "files": 187,
+    "protected_byte_identical": 31,
+    "required_kinds_preserved": true,
+    "unchanged_bytes": 186
+  },
+  "verification": {
+    "archive_downloads_before_fix": {
+      "command": "python3 calibration/oracles/crossplane/verify_archives.py --archives \"$ARCHIVES\" --out workspace/artifacts/crossplane-r3/archive-pins-before.json --fetch",
+      "exit_code": 1,
+      "private_log_sha256": "e1a993acb5e9ff80c2743dabaa63c272ca6e797723cab0b5b55b85e0bbced108",
+      "scope": "Ran the final checker against pre-fix pins; 9/12 match, expected exit1"
+    },
+    "archive_pins_after_fix": {
+      "command": "python3 calibration/oracles/crossplane/verify_archives.py --archives \"$ARCHIVES\" --out workspace/artifacts/crossplane-r3/archive-pins-after.json",
+      "exit_code": 0,
+      "private_log_sha256": "5a9a92b383ae01552f321716eb3c33ac0d4dac1f5c4b382622b94b16aaec375f"
+    },
+    "fresh_python_tests": {
+      "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test calibration.oracles.crossplane.verify_archives_test",
+      "exit_code": 0,
+      "private_log_sha256": "a1e79af371e47a446916ff5fd9596ef0727bc3c8abb5b97778c86ccd4e7ba0ba",
+      "scope": "27 tests in a copied empty source root containing only the committed Python files and pins; workspace did not exist before running"
+    },
+    "merge_debris": {
+      "command": "bash scripts/check-merge-debris.sh",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "new_plan_contract": {
+      "command": "fathom verify --strict --row LB-IAC-crossplane-pt1 --service iac-crossplane-r2 --store workspace/db/crossplane-r2.sqlite --plan docs/plans/language-breadth.md --ledger workspace/artifacts/crossplane-r3/verify-ledger.jsonl",
+      "exit_code": 0,
+      "private_log_sha256": "d2355907cb51ca187d51a7238cef0ae5ec84987ec1bbd2906fa135dd8a707dc5",
+      "scope": "Open row contract matches; 0 claimed, 0 verified, 0 failing. No checkbox claim or full-gate pass"
+    },
+    "org_names": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "exit_code": 0,
+      "private_log_sha256": "d87a648896fffc92cbc4fac43cccb4020a237917b36063de03fa68ed4eab5fcc"
+    },
+    "python_before_fix": {
+      "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test",
+      "exit_code": 1,
+      "private_log_sha256": "0cf7964f15664441f7a044e0afc6cc4ba41eaec5e63c268d8a3ca0f5ab652962",
+      "scope": "25 tests in the same isolated setup before F10, six FileNotFoundError errors"
+    },
+    "python_tests": {
+      "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test calibration.oracles.crossplane.verify_archives_test",
+      "exit_code": 0,
+      "private_log_sha256": "043c1a2e8c572e05bdfba2f92476340228eba1ce3827d9887b5093a3eb44cc19"
+    },
+    "reading_roundtrip": {
+      "command": "go test -race ./internal/langbench -run '^TestCommittedReadingsRoundTrip$' -count=1",
+      "exit_code": 0,
+      "private_log_sha256": "589bcc30aaab90006de05fa4c8487728cae4176a96ce1f5abbfe94af564b1753"
+    },
+    "release_notes": {
+      "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
+      "exit_code": 0,
+      "private_log_sha256": "6ba1d7c182d176b885253a66d563f45eb3d3c5813e951127bc4cd9177cd89365"
+    },
+    "withdrawn_plan_row": {
+      "command": "fathom verify --strict --row LB-F157 --service iac-crossplane-r2 --store workspace/db/crossplane-r2.sqlite --plan docs/plans/language-breadth.md --ledger workspace/artifacts/crossplane-r3/verify-ledger.jsonl",
+      "exit_code": 0,
+      "private_log_sha256": "91450f9ef0a54e348bd8058a5bd008d0fd7dd805339aab35d1452c42871d83de",
+      "scope": "Historical row is skipped/refused: 0 claimed, 0 verified, 0 failing"
+    }
+  },
+  "visible_delta": "L1 excellent -> good; independent tier C under P-T1"
+}

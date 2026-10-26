@@ -16,7 +16,9 @@ binding. The L2/L3 native-oracle question remains open; no ceiling is establishe
 IAC-19 / GAP1-34 uses provider CRDs as calibration-only oracle inputs. ADR-048
 and I54 require measured support; I56 prohibits an implicit product downloader.
 The owner authorized the provider-schema fetch trigger. F25 remains deferred.
-No product engine, dependency layer, queue, generated board or plan box changes.
+No product engine, dependency layer or generated board changes. F11 corrects only
+the Crossplane queue oracle string in its own commit. F12 withdraws the historical
+LB-F157 claim and uses a new, unchecked qualification row.
 The sole canonical shard remains `calibration/corpus.d/crossplane.yaml`.
 
 The original three canonical subjects are preserved. A legacy AWS platform,
@@ -74,7 +76,9 @@ The probe treats `FromCompositeFieldPath` as reading the matching XRD schema and
 an authored tier-C schema walk. Among 63 patches, it produced 41 directional
 field-path diagnostics: 33 `declared`, one `notDeclared`, and seven `unmodeled`.
 The `notDeclared` path is absent from the raw XRD; Crossplane can add fields to a
-generated XR schema, so this is not a native invalid-field result. Twenty-two
+generated XR schema, so this is not a native invalid-field result. The owner CLI's
+[`crossplane xrd convert`](https://docs.crossplane.io/cli/v2.5/command-reference/#crossplane-xrd-convert)
+can generate that XR CRD and is an untried route to resolve this one diagnostic. Twenty-two
 patch forms were unsupported; one patchSet definition is counted separately.
 Mixed files supply neither native input nor XRD schemas to this diagnostic. Neither the 41
 diagnostics nor that counter proves a Function's runtime binding.
@@ -86,7 +90,7 @@ diagnostics nor that counter proves a Function's runtime binding.
 | Own toolchain | [CLI 2.5 command reference](https://docs.crossplane.io/cli/v2.5/command-reference/); [owner validation API](https://pkg.go.dev/github.com/crossplane/cli/v2@v2.5.0/pkg/validate) | `resource validate` gives schema-instance results, no referent or patch-binding certificate. `composition render` rejects all three exact legacy `spec.resources` Compositions as requiring Pipeline mode before starting a Function or container. `xpkg build` succeeds on both actual package roots and fails on two non-package workflow roots; package metadata is therefore not categorically ungradeable. |
 | SCIP / LSIF | [SCIP producer list](https://github.com/scip-code/scip#tools-using-scip), [Sourcegraph indexer guide](https://sourcegraph.com/docs/code-navigation/writing-an-indexer), [LSIF indexers](https://lsif.dev/); query `github scip-crossplane indexer` | No listed Crossplane producer found. GitHub repository search cache inaccessible. Bounded search miss, not proof of absence. |
 | Language servers | [up xpls 0.34.2](https://pkg.go.dev/github.com/upbound/up@v0.34.2/cmd/up/xpls), [upstream feature issue](https://github.com/crossplane/crossplane/issues/4674) | Initialized for all nine subjects and opened 393 YAML files; 180 diagnostic entries were observed. Initialization advertised only `textDocumentSync: 2`, with no definition or binding capability. Diagnostics do not certify L2/L3 edges. |
-| Package registry / sibling APIs | [patch-and-transform input API](https://pkg.go.dev/github.com/crossplane-contrib/function-patch-and-transform/input/v1beta1), [0.8.2 native patch implementation](https://github.com/crossplane-contrib/function-patch-and-transform/blob/v0.8.2/patches.go) | The Function runtime was not started: exact legacy CLI inputs fail before it. Transforming them to Pipeline would create authored input, so no runtime binding result is claimed. A compatible local Pipeline controller plus Function evaluation remains open. |
+| Package registry / sibling APIs | [patch-and-transform input API](https://pkg.go.dev/github.com/crossplane-contrib/function-patch-and-transform/input/v1beta1), [0.8.2 native patch implementation](https://github.com/crossplane-contrib/function-patch-and-transform/blob/v0.8.2/patches.go) | The Function runtime was not started: exact legacy CLI inputs fail before it. The owner's [Crossplane 1.20.0 `beta convert pipeline-composition`](https://docs.crossplane.io/cli/v2.2/command-reference/#beta-convert-pipeline-composition) can translate those inputs before local Pipeline rendering; its [official Darwin arm64 checksum](https://releases.crossplane.io/stable/v1.20.0/bin/darwin_arm64/crank.sha256) is `8ea4ee891e3f76db262c10964dfe539026975af47511f1c1ac92cb812072ee4d`. This route is untried and would yield tier B at most for the executed population. A compatible local Pipeline controller plus Function evaluation remains open. |
 | Upbound CLI | `up` 0.34.2 and 0.38.0, `up composition render` / `up test` | In 0.34.2 the requested render/test commands are absent. In 0.38.0, render on all three exact legacy subjects stops for missing `upbound.yaml`; a pinned modern configuration renderer panics on nil metadata. `up test` dry-run exits 0 but prints `No test files`, so it is not a passing test. |
 | Runtime tracing / evaluation | Official CLI reference, `composition render` Development runtime and `resource trace` | Development runtime can use a local process; exact legacy inputs fail before it. Cluster trace is outside the no-cluster probe. Neither route supplies a binding certificate here. |
 
@@ -111,7 +115,9 @@ instances but does not resolve XRD or Function referents or execute directional
 patch expressions. The bounded probes above found no native binding certificate;
 they also do not establish an exhaustive ceiling. A compatible local Pipeline
 controller and Function evaluation, with independent population and truth
-controls, remains a concrete untried route. The L2/L3 tier question is open.
+controls, remains a concrete untried route. Owner conversion by Crossplane
+1.20.0 would be owner-translated input, rather than an authored rewrite, but
+no conversion or Function execution is claimed here. The L2/L3 tier question is open.
 
 IAC-13's historical assumption that function runtimes require containers is too
 broad: Development runtime can use a local process. This work did not execute
@@ -155,12 +161,27 @@ checks pass. The controls and log hashes are in the public receipt.
 Native and Go jobs ran serially at verified nice 10, with launch load at most 9,
 Go 1.27.3, GOMAXPROCS=2 and GOFLAGS=-p=2 on the shared Apple Silicon helper.
 Concurrent host jobs were not recorded. The controller owns full merged-head
-`task validate`, verification, Linux CI and integration. No plan box is changed.
+`task validate`, verification, Linux CI and integration.
 
-LB-F157 now describes the P-T1 tier-C qualification and matches the committed
-reading's C tier. Its checkbox is unchanged. Targeted `fathom verify --row
-LB-F157 --strict` reports one claimed row verified, zero failing. The private
-scratch ingest stored source text but failed typed Go loading for 340 of 1,266
-packages because its importer supports export-data v4 while Go 1.27.3 emits v5.
-O1508 records that limitation. The lexical-row result does not certify typed
-ingest or the full plan gate.
+Round 3 preserves LB-F157's original tier-A deliverable and contract, but marks
+that claim withdrawn (`[-]`, disposition `refused`) under the controller's F12
+instruction. It no longer reuses that ID for the P-T1 correction. The replacement
+`LB-IAC-crossplane-pt1` has its own full-population evidence contract and remains
+unchecked for the controller. The earlier one-row lexical verification in the
+R2 receipt is historical and does not certify this replacement.
+
+F8 independently fetched every subject/provider archive from its own repository
+and peeled commit: all twelve now match their recorded digest and byte count.
+Azure/GCP network archive metadata had been copied from other versions; both
+are corrected. The legacy AWS archive pin also changed from its annotated tag
+object to its peeled commit; all 29 relative entries and contents are identical.
+The reproducible setup checker rejects a copied digest or wrong commit root.
+F10 reproduced six errors in an otherwise fresh Python tree without `workspace/`;
+the test modules now create the required scratch directory. All 27 tests pass,
+including two new archive-identity checks. The [R3 receipt](data/2026-10-26-crossplane-r3.json)
+records these results. Neither the canonical reading nor the native results
+changed. F13 explicitly records the published L1 excellent-to-good downgrade.
+
+The private R2 scratch ingest stored source text but failed typed Go loading for
+340 of 1,266 packages because its importer supports export-data v4 while Go
+1.27.3 emits v5. O1508 records that limitation; no full plan-gate pass is claimed.

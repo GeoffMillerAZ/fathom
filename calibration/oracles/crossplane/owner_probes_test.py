@@ -18,6 +18,10 @@ SPEC.loader.exec_module(owner)
 TMP = HERE.parents[2] / "workspace/tmp"
 
 
+def setUpModule():
+    TMP.mkdir(parents=True, exist_ok=True)
+
+
 class OwnerProbeTest(unittest.TestCase):
     @mock.patch.object(owner.time, "sleep")
     @mock.patch.object(owner.os, "getloadavg", side_effect=[(10.5, 0, 0), (8.5, 0, 0)])

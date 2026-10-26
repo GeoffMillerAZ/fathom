@@ -34,8 +34,8 @@
       "sha": "e5d15551795ebde328c443c5da22d8e25c485831",
       "ref": "v0.9.0",
       "prior_probe": true,
-      "archive_sha256": "63b927fec8deeab661f66aad0c5f0071b3dcfdf98eb25551eff2fd4606698ad1",
-      "archive_bytes": 15086,
+      "archive_sha256": "2e040ac8c1889d6e4e6b9837e0fa95a6226e8de10e5465f5287960f5062f93df",
+      "archive_bytes": 15049,
       "licence": "Apache-2.0",
       "tag_object": "ac16dd220d7ec7c67849e62ef13338fff88b6434"
     },
@@ -76,8 +76,8 @@
       "scope": [
         "package/cluster/network/**"
       ],
-      "archive_sha256": "559fff62e9a72c4bf3f115a98a37ad1eda4e9d32261634f616cf6d6c9e75b335",
-      "archive_bytes": 90467,
+      "archive_sha256": "9d759db32112ea0e782e4a866fd642a53c396df3bcaa974e129fcffa946aa7b9",
+      "archive_bytes": 1102094,
       "licence": "Apache-2.0",
       "selection": "Manually selected after the first six-subject probe found zero Upbound managed-base matches; no preregistered version rule. Scope is the legacy spec.resources network Composition and XRD. Exploratory, not a holdout."
     },
@@ -89,8 +89,8 @@
       "scope": [
         "cluster/network/**"
       ],
-      "archive_sha256": "28d2bb39cdffe1d6fcf5f42cd8dd7f410f13b1f9540cdd54bee642099351aa41",
-      "archive_bytes": 19343,
+      "archive_sha256": "ff349fc47e2ca25af65fc2e11e06a5159cbd26ce86c8383cf8a65f15a2ab5e64",
+      "archive_bytes": 12174,
       "licence": "Apache-2.0",
       "selection": "Manually selected after the first six-subject probe found zero Upbound managed-base matches; no preregistered version rule. Scope is the legacy spec.resources network Composition and XRD. Exploratory, not a holdout."
     }

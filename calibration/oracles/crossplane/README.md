@@ -33,6 +33,23 @@ belong in an operator-specified ignored cache or `workspace/`. None are vendored
 Check each source's Apache-2.0 licence at its fixed commit. Fetching is a manual
 calibration setup action. The product gains no downloader or dependency.
 
+Verify every subject/provider archive against its own repository and peeled
+commit, from the repository root. `--fetch` is an explicit setup download;
+omit it to verify the cached archives offline. The command exits nonzero on any
+digest, size or commit-root mismatch and publishes only counts and hashes:
+
+```sh
+python3 calibration/oracles/crossplane/verify_archives.py \
+  --archives workspace/artifacts/crossplane-r3/archives \
+  --out workspace/artifacts/crossplane-r3/archive-pins.json --fetch
+```
+
+Round 3 independently checked all twelve archives. The Azure/GCP network pins
+had incorrectly reused other versions' archive metadata; both are corrected.
+The legacy AWS pin previously described its annotated-tag-object archive. It
+now describes the peeled-commit archive, whose 29 relative entries and contents
+match the old archive. No subject commit, scope or measured reading changes.
+
 ## Reproduce the probe
 
 Use Python 3.9 or later, the pinned Crossplane CLI and yq v4.47.1. Their SHA-256
