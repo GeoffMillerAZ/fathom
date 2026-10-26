@@ -1,0 +1,3278 @@
+{
+  "source_revision": "6af574a14089ccfee87efe230ebcdd8742859813",
+  "source_archive_sha256": "fa80b86e5c2d91c3088b67a128d4070f2520dac6bb823f0538f4870ec9e50942",
+  "candidate_identity_schema": "fathom.glsl.registry-review-candidate.v1",
+  "input_ledger": "candidate-audit-typed.json",
+  "row_count": 406,
+  "counts": {
+    "prose_or_metadata_non_signature": 342,
+    "illustrative_code": 25,
+    "conversion_table": 12,
+    "host_api": 13,
+    "builtin_declaration": 14
+  },
+  "rows": [
+    {
+      "source": "AMD/AMD_debug_output.txt",
+      "source_sha256": "dcca3609afd24e53d4064c7aadae9022c52e5e7f3b1320d74fb15c5773bb983a",
+      "line": 11,
+      "candidate_sha256": "26f1734061b4ffd55b6ba19ee109748a52b9767cc9414d352e8f2ea50f63e299",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_depth_clamp_separate.txt",
+      "source_sha256": "47a053ef594b3f574474531fb2428b1d877b2f3d00ff25b15e8cce008182bd1b",
+      "line": 11,
+      "candidate_sha256": "862db7175ff4f499527a84ab19702d636fcab2b17e83b8f3cb7669e15dab2c0d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_gcn_shader.txt",
+      "source_sha256": "f9ece9ebf5202c377dc22c962a749010ce7160ffadc25a0db25976352c3050fe",
+      "line": 11,
+      "candidate_sha256": "30ddfb9defbbebafedf07a01ffa3793cf70c73e89687966ed8ddbac5abd0f7b2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_interleaved_elements.txt",
+      "source_sha256": "f0ad06bdd8c4378d8571c5e0c10145dc48ca3f5dfc4577105719e4cb7a547f44",
+      "line": 11,
+      "candidate_sha256": "26869016f5c46cfdd3b1b7e8796f148f111f855a891f7ddecd7978e241bc80b7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_name_gen_delete.txt",
+      "source_sha256": "466da6af552bcc41e00fffc90208c59f3fe38d6d38fd96be352ecde882637537",
+      "line": 20,
+      "candidate_sha256": "00bc1e35ead9f2e0e05a732532caab2c078b4e382ec00a3d714b8def1790be3b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_occlusion_query_event.txt",
+      "source_sha256": "aa8586768a0f4740c3fd86a7dca4bbd51924794716fc6a69db005605634c3aa6",
+      "line": 11,
+      "candidate_sha256": "8f89f17addd1e6a052111707de2e2c5abb11ab32631ddf62deb832d9040a0185",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_performance_monitor.txt",
+      "source_sha256": "86895b2c2389e64345198471958bcbf8087f9273915933c04f3127a23732b8b6",
+      "line": 19,
+      "candidate_sha256": "2f6751c6d843d019ae76b8380e55bfa4925bc6948d5eeb3b0c4d317431fe3960",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_query_buffer_object.txt",
+      "source_sha256": "cb6397991fe16ec227d4b355fea8257cede0086949802ab7642ec6a3700bb8e7",
+      "line": 11,
+      "candidate_sha256": "ac6b36f924d1d883caf3d00cedce893d7948e1c9a98b2527742d028deaa81e64",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_shader_atomic_counter_ops.txt",
+      "source_sha256": "2c0606f64f8d99c5fbf8b7ccd2496170499e7d2de8d640939faf295959369257",
+      "line": 11,
+      "candidate_sha256": "88e211a0b8d0d779601926249282fffbaecdc1256b84bfd442f9838e082d4669",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_shader_stencil_value_export.txt",
+      "source_sha256": "31596a1270bbbe675953dbbc3713e24e29dc0361da49a137cede513be0731db7",
+      "line": 41,
+      "candidate_sha256": "b197bf17957227f55bd61ca1ded8e375399158298a69f21651dd66b632c507d5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_sparse_texture.txt",
+      "source_sha256": "e2c1b90b4929e9914f8af113df23863f7f70deda9a7e1a1aac1f02cff58f42f9",
+      "line": 55,
+      "candidate_sha256": "5c5326d622efa14143c07ea02807774f6b067458626a76f118b89869d6956b17",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_transform_feedback4.txt",
+      "source_sha256": "9d40bebf37bbdcb949225cebe037bd1de9c09a349a3d587be0f058ba70c23711",
+      "line": 16,
+      "candidate_sha256": "1e602b3f789fc5cead6f28ef1c150c47810fce3e8c0ea66df4476908ceaef3ea",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_vertex_shader_viewport_index.txt",
+      "source_sha256": "f6931e65f239284750aabbbcf090214f8d79a52b9f72ddc2d5e4e217e9dc0469",
+      "line": 146,
+      "candidate_sha256": "985d4f8924cfffd8bb9dabfc41b45701086d6c52fb50fdd74616b1fa911b7e2f",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "AMD/AMD_vertex_shader_viewport_index.txt",
+      "source_sha256": "f6931e65f239284750aabbbcf090214f8d79a52b9f72ddc2d5e4e217e9dc0469",
+      "line": 153,
+      "candidate_sha256": "c8bd79d31c0901c6058f50125eb98258b52ef53989ce3e74506bbf9a0a50fa61",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ANDROID/ANDROID_extension_pack_es31a.txt",
+      "source_sha256": "405bbc48c5c1d92be7fad8b9bdcffdef02c4d638978ab755d2cdbe8c4c29f8f7",
+      "line": 11,
+      "candidate_sha256": "2ec2a09fdb7cfa34cea7d53ca7191a11acbabc17a76c9e4531a4c012f5004fc2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ANGLE/ANGLE_framebuffer_multisample.txt",
+      "source_sha256": "45c0c6d0d0849f915b11d3c3df531e28e48f602188e381663459ad4f4f12eba6",
+      "line": 38,
+      "candidate_sha256": "169db817b4a8abae989cf6e77246d5d67869b2e1852f11a544190250147d118f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ANGLE/ANGLE_framebuffer_multisample.txt",
+      "source_sha256": "45c0c6d0d0849f915b11d3c3df531e28e48f602188e381663459ad4f4f12eba6",
+      "line": 66,
+      "candidate_sha256": "cf8e7f06195454f4d3f62de325cbe81dc9c047d8efd6e92e0961bb61c51a8300",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_float_pixels.txt",
+      "source_sha256": "b116c15e456af8363969a727ad5af1ce77811ded450984676d79608b3d8cedeb",
+      "line": 30,
+      "candidate_sha256": "050e64cd3dbc8da8a6798f51baa92c02289e3dbd463e5ef6f84ddaa370b87ad7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_float_pixels.txt",
+      "source_sha256": "b116c15e456af8363969a727ad5af1ce77811ded450984676d79608b3d8cedeb",
+      "line": 32,
+      "candidate_sha256": "ddcec29b9a7737a7e8d893ef35096c39cfe95d34bf945f6449746f02acf52f80",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_float_pixels.txt",
+      "source_sha256": "b116c15e456af8363969a727ad5af1ce77811ded450984676d79608b3d8cedeb",
+      "line": 34,
+      "candidate_sha256": "69459ff42e41b51ba49a12b2f43790c6df454709a7fa018649ea01b8c53b6045",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_sync.txt",
+      "source_sha256": "fbff3ecc3416056166c7d18ba7a5d747aeb2d7615f6aadf2f55bbb4b44a51d54",
+      "line": 16,
+      "candidate_sha256": "82a6b8b15e72a73da004dc47c4854f1f08f06a189da7be35f84a4a02dc5cc331",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_vertex_array_range.txt",
+      "source_sha256": "0ad88bb9092e5b4a7bbaec1d608c0c129393ce21cf718dbe8f3e0dc5af831366",
+      "line": 59,
+      "candidate_sha256": "5a4c1ec7548e8f1a17991e1da85d6a9621aca392d93ab2c7287e0a00ac3f480b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_vertex_array_range.txt",
+      "source_sha256": "0ad88bb9092e5b4a7bbaec1d608c0c129393ce21cf718dbe8f3e0dc5af831366",
+      "line": 137,
+      "candidate_sha256": "fd04101f3e6853d34683dc454b080f012b0f82c8442ef9f206ececcf136bcb7e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "APPLE/APPLE_vertex_array_range.txt",
+      "source_sha256": "0ad88bb9092e5b4a7bbaec1d608c0c129393ce21cf718dbe8f3e0dc5af831366",
+      "line": 139,
+      "candidate_sha256": "5d8a0e00bf519d8ef15252e7ef4237d5001ab9cf77f0632bd891a7c4b22c9840",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_ES3_1_compatibility.txt",
+      "source_sha256": "461fdccbd57799f9490954d20fe69b80c740becec53ea8f3474e2f2e293206d1",
+      "line": 342,
+      "candidate_sha256": "ab6a9f09e00bddb9e0bddcd159135aca323eb02853dfedb3ea3d315e541db5a2",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_arrays_of_arrays.txt",
+      "source_sha256": "3e48e28b88c9822312c4ead37249a189c22845f7578f6933e1ac814f9f19788b",
+      "line": 11,
+      "candidate_sha256": "c4cf19a6fe6e758085d68dcb02d6aba8a383da18be361878a2337a3541c8a958",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_arrays_of_arrays.txt",
+      "source_sha256": "3e48e28b88c9822312c4ead37249a189c22845f7578f6933e1ac814f9f19788b",
+      "line": 99,
+      "candidate_sha256": "6f73954444bafbd3f64a847b2cc034fa557cc45b52b477874e9fdf5e824073b0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_arrays_of_arrays.txt",
+      "source_sha256": "3e48e28b88c9822312c4ead37249a189c22845f7578f6933e1ac814f9f19788b",
+      "line": 201,
+      "candidate_sha256": "169ab984891b4b166163885f84574c80cac7248a44858abbbfd7bdb5d7bef0fd",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_bindless_texture.txt",
+      "source_sha256": "aebe0ea1dc63dfe21eacb17cb6f92f6e3442bc31c0823e7652dc5cb81f4cae51",
+      "line": 695,
+      "candidate_sha256": "f622b8292fec7417df639395031b9c39a4df9ddfcb4eb347ee33cf12e89a1efa",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_bindless_texture.txt",
+      "source_sha256": "aebe0ea1dc63dfe21eacb17cb6f92f6e3442bc31c0823e7652dc5cb81f4cae51",
+      "line": 720,
+      "candidate_sha256": "0a84662f7e15a9b92169f21411dc8e08f2a8c1717d53d17e37235c5fc814c891",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_buffer_storage.txt",
+      "source_sha256": "959da5571fe1f73e98957ee6427ca89816facd96c0b9c1154930e2e7330021fd",
+      "line": 11,
+      "candidate_sha256": "e3d917a807bba23b1f6e1b05e1c67eed16e4ad11edf0270ab8dae95a3da6be57",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_cl_event.txt",
+      "source_sha256": "26f4be8fd887fdc8760d5fb3e656ed5805258d2e452681e303708a247924189c",
+      "line": 15,
+      "candidate_sha256": "1aedbc5b806680eae52ddfcde051a811ddedb5844cb271e3a6302bc30c3194c6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_clear_buffer_object.txt",
+      "source_sha256": "cc2c0875f74e49d9d331adbdf583c77bf6d54230a9434d05192c5f48a42c22cc",
+      "line": 11,
+      "candidate_sha256": "3aceefee9c47beea545f0b2662c09e7d111fbdd173a90f957c9aea77f632e1a5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_clip_control.txt",
+      "source_sha256": "c2d393311ba8552e86e0491a8286f7967ce5200950859b6bce32fde710889dde",
+      "line": 94,
+      "candidate_sha256": "4df04697697f9d0549476ee0e8067a4c8db1ff7fe34c861ba5efdadb95473acd",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_create_context_no_error.txt",
+      "source_sha256": "a8b826f58fee31b46499fe18db33b1009f8b8a406ebe5b38138becf847f81fcd",
+      "line": 12,
+      "candidate_sha256": "dad1ae016ded7d5eeea92770098d8f91d6b075fc3104ecfc842349d0c62152b5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_debug_output.txt",
+      "source_sha256": "cfcd02eab72ee39f0f3deefa7403760e86c3cc0e713c2e0a6dc230ed07f0968e",
+      "line": 11,
+      "candidate_sha256": "30fe483c3a2f8ba3deaba46b21eb3f3ba3f2bc24c9f1f55db7a86b953c694453",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_depth_clamp.txt",
+      "source_sha256": "6e663472a248963ad3f14a0395cf3e8da52c68918c1d5462b616b9eda3da9008",
+      "line": 11,
+      "candidate_sha256": "1709d2ee35aefef43cc4d8b14c20d6be07517578cf9d62d6ff7919a5191349f2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_depth_texture.txt",
+      "source_sha256": "10b09e1ecebc595ddb8095e0a53e0b5ea452b195f8e93460aed239f2219805ef",
+      "line": 11,
+      "candidate_sha256": "3c7130e1a463f7fbffc3e8427cf541259e869394c85450dbeb0ba21a76c26d04",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_depth_texture.txt",
+      "source_sha256": "10b09e1ecebc595ddb8095e0a53e0b5ea452b195f8e93460aed239f2219805ef",
+      "line": 32,
+      "candidate_sha256": "fd7d11940c687d3d9fef11ac1d1b64de381468cd41f09efe451244e6c28e8f79",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_derivative_control.txt",
+      "source_sha256": "10ce6fca3c332c139991b6681d8fdac4a71ee88f6ff5f31b3255c4833cc2ac9a",
+      "line": 11,
+      "candidate_sha256": "fea92d3f149b68ff3e839c8246174663eedd91b6ee6a24d15dcec31898517793",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_direct_state_access.txt",
+      "source_sha256": "ac0614b0489f5aa823bdc05da36573f87179ce9a03dfa6727bd4d9aba29f1032",
+      "line": 11,
+      "candidate_sha256": "bb95b7d9c27187f2a5b2af0b3198f6a9be9d92f0daadd54d50adc5558a9e9b49",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_direct_state_access.txt",
+      "source_sha256": "ac0614b0489f5aa823bdc05da36573f87179ce9a03dfa6727bd4d9aba29f1032",
+      "line": 12,
+      "candidate_sha256": "e13d49167255b8fd4642ca28c7bcf2a3a69d7aa1bd733a75845dadef9579812f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_enhanced_layouts.txt",
+      "source_sha256": "e5f5cb506cbb375875c4c554b390e6434ae4fb514262bf8ac5f4be0cff12d914",
+      "line": 11,
+      "candidate_sha256": "d9b4c2c81df3ee0e5626a0b134da97b4cef372f4c01eb6923bde78041bfddb73",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_enhanced_layouts.txt",
+      "source_sha256": "e5f5cb506cbb375875c4c554b390e6434ae4fb514262bf8ac5f4be0cff12d914",
+      "line": 1145,
+      "candidate_sha256": "4ad9a77e2c7052c35fed243e7290a35ebf3a852f101a8f40d1ddd270ea3fcfa2",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_framebuffer_object.txt",
+      "source_sha256": "252f19ccd0149e7f2b813cc1de27f2d5a36a041a959b75d42979dc22d24fae51",
+      "line": 50,
+      "candidate_sha256": "8c97e8f7fed17e5aa6ad3db08a38135a87418a6b34a58abe2411cc814282cf3c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_framebuffer_object.txt",
+      "source_sha256": "252f19ccd0149e7f2b813cc1de27f2d5a36a041a959b75d42979dc22d24fae51",
+      "line": 166,
+      "candidate_sha256": "4865743b3dd21c5814bda49e37d884910e71ae22a18a6256a71cb534300ba6b0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_framebuffer_object.txt",
+      "source_sha256": "252f19ccd0149e7f2b813cc1de27f2d5a36a041a959b75d42979dc22d24fae51",
+      "line": 218,
+      "candidate_sha256": "ae2074e059a678fda7da2382530ef5086bfa4dabd251addf4226312afd38dc81",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_geometry_shader4.txt",
+      "source_sha256": "35fc0e1c38e50968b27f6d41d8dfe02d694686abe93012e4555297b44fb2e1f0",
+      "line": 90,
+      "candidate_sha256": "3852e8f333974436a84463582cded96c4ae3b574b5f961f2f36832edb12ac909",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gl_spirv.txt",
+      "source_sha256": "45ec29db073ff9a6a6c7065f63d47b6d3c7a822ee8c43efcd30a30b0f8051beb",
+      "line": 121,
+      "candidate_sha256": "67eeb4067bea03c8406023fe0781fb7f8a2df8b4a47cdfc9b4301d0abb040ce7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gl_spirv.txt",
+      "source_sha256": "45ec29db073ff9a6a6c7065f63d47b6d3c7a822ee8c43efcd30a30b0f8051beb",
+      "line": 220,
+      "candidate_sha256": "a6550aacd12ea0b30f61224002c2d7e10a565194a7453c890d59979a90cd6a81",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gl_spirv.txt",
+      "source_sha256": "45ec29db073ff9a6a6c7065f63d47b6d3c7a822ee8c43efcd30a30b0f8051beb",
+      "line": 241,
+      "candidate_sha256": "914a627c0b22da93b13eb468f667eb602a0d45d073cf672fae5dececd848f565",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gl_spirv.txt",
+      "source_sha256": "45ec29db073ff9a6a6c7065f63d47b6d3c7a822ee8c43efcd30a30b0f8051beb",
+      "line": 242,
+      "candidate_sha256": "12022b4903d98b3cb3c9b36e275bb4138fc9e4235ecb291c3aafb1cb86ecfd7a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gl_spirv.txt",
+      "source_sha256": "45ec29db073ff9a6a6c7065f63d47b6d3c7a822ee8c43efcd30a30b0f8051beb",
+      "line": 272,
+      "candidate_sha256": "42487489cd64114f4519ff76d869c48f9a1d5745a622d61d3112b04b0ae46635",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gl_spirv.txt",
+      "source_sha256": "45ec29db073ff9a6a6c7065f63d47b6d3c7a822ee8c43efcd30a30b0f8051beb",
+      "line": 273,
+      "candidate_sha256": "59665fba0748d830b18e17a34019c3d572de5650c256a0190f39337ae44886dc",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 100,
+      "candidate_sha256": "81bc35a455013ce8a6986bfe2a5477bdb6365272e34ebddc47f6a069fdfc8562",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 596,
+      "candidate_sha256": "b286f3d1d8361d086cf2ac4970ef6ea3a2543359448075d2214d3e76d6a5104c",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 736,
+      "candidate_sha256": "724c2948324f2fd3ba3e8fb43b7a18d71ff371f480ca6d6609d93e04137e982c",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 829,
+      "candidate_sha256": "0fccc83c2680ff65d1777446a54b04489bef1791a23e20ee8a6feabf42a9c4f2",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 830,
+      "candidate_sha256": "ac3fe2bc9f98b216c76d6263866a660753c173922d8422dbaac064f5ec77b8ee",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 831,
+      "candidate_sha256": "5eb8f86cc6a58f85e6403f50a9c988b50910e89af497916a8139b05c2fd81742",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 833,
+      "candidate_sha256": "1318ba44e9887a348179487b4170a4d39b634b3d4af3ad9a574a571aee6bb354",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 834,
+      "candidate_sha256": "4714010bea7e0d7225ee0111b86e15dd5696b6b856e6ff2fea96877aeb3550fa",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader5.txt",
+      "source_sha256": "debfa409fb6ba536294657997912af173398e026dd033956441464eb843a510e",
+      "line": 835,
+      "candidate_sha256": "0a407e390d8b87681b0e1aeb91d2ecda51ceb5284d908aefa9be258b426ee147",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader_fp64.txt",
+      "source_sha256": "61d7baf4b9656219e96b63458d948bd73eb2148d8d59ff00c6b745de5f3f5ee0",
+      "line": 466,
+      "candidate_sha256": "f3ed66479b241c8ca0c2ed044a09605a54c3a7ddf87f9c28e20d64f099fe9dbd",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader_fp64.txt",
+      "source_sha256": "61d7baf4b9656219e96b63458d948bd73eb2148d8d59ff00c6b745de5f3f5ee0",
+      "line": 467,
+      "candidate_sha256": "8542825b5ca2a9782d99b42301ba78c7ec27e53416a2c5a7893a168bf449fb81",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader_fp64.txt",
+      "source_sha256": "61d7baf4b9656219e96b63458d948bd73eb2148d8d59ff00c6b745de5f3f5ee0",
+      "line": 468,
+      "candidate_sha256": "2d69981ff9988feb8d5791644af419cb2005471404c6c5b0ededfa834f57dfaa",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader_fp64.txt",
+      "source_sha256": "61d7baf4b9656219e96b63458d948bd73eb2148d8d59ff00c6b745de5f3f5ee0",
+      "line": 469,
+      "candidate_sha256": "d78745e90416a651a4bb626919483dea76321c04d195a074171304ffb2996111",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader_fp64.txt",
+      "source_sha256": "61d7baf4b9656219e96b63458d948bd73eb2148d8d59ff00c6b745de5f3f5ee0",
+      "line": 613,
+      "candidate_sha256": "6a40288de2dfdb29a9e337ccc12bf4d661f002405c9250037731e9912d108d40",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_gpu_shader_fp64.txt",
+      "source_sha256": "61d7baf4b9656219e96b63458d948bd73eb2148d8d59ff00c6b745de5f3f5ee0",
+      "line": 624,
+      "candidate_sha256": "6153d01fc1f23df814e193cb70a3258331e42e68edc707f0053c1e736ea8cae8",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_indirect_parameters.txt",
+      "source_sha256": "455e89174c3946e5e40e29fb137e589ea37e0487cd6562665741fd21fbf366a1",
+      "line": 11,
+      "candidate_sha256": "b49d7105df58ddac92f6dddd9d6a84d4a91dca8595aeb2e827686b8bbf53690b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_internalformat_query.txt",
+      "source_sha256": "ac8215fc8e67aa83512344c624a20617eb1c9d809b9773967b9f60c7a5a96a9e",
+      "line": 12,
+      "candidate_sha256": "753079bf24fb862e6051a765aff718e451858ee48a27b5cbc6926ebed8b09068",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_internalformat_query2.txt",
+      "source_sha256": "7f78387febbe35bb0f22b2183d29a0611a68f46e1a40f82da7befbe1ffbf1c8a",
+      "line": 11,
+      "candidate_sha256": "4867d1b0a37f6c0d3251cdbdd60d984dd9421409deba7ccab17db3babaa1157d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_map_buffer_range.txt",
+      "source_sha256": "a5b6d57d52fec638617e563c8dc8c9cb928187f4fd7eccd47e19d49744182bcb",
+      "line": 12,
+      "candidate_sha256": "ee30ab071e2ebc8f745260202284c3cb55e36d50037ea106515fa01fd1090dc4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_occlusion_query.txt",
+      "source_sha256": "9ef3dbd24140027159c79b05f12dd337f4b063f540767a504c8510f233e23236",
+      "line": 120,
+      "candidate_sha256": "a10f47de6316df2ee0cbe163a72ce186c76c5492ca47066118d7db92ebab7da2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_parallel_shader_compile.txt",
+      "source_sha256": "e1fa09b728275f3e508a4fc067c6f569fbd4cd55ba2459e7f34f114501c6ab04",
+      "line": 11,
+      "candidate_sha256": "82fd0cef7df6afbf342da9c3dc30b8d23c7c13db2e5ae771fbdb4d7b500ebb02",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_pixel_buffer_object.txt",
+      "source_sha256": "6b70597600e3000c00ba2af7253645cad0c42c620173cb28c7f86e78ccff9d0d",
+      "line": 76,
+      "candidate_sha256": "ced6dfbf807129606b19b2d96d444d9a2f5aa832881d8d7c4a6df19a1f3a5685",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_pixel_buffer_object.txt",
+      "source_sha256": "6b70597600e3000c00ba2af7253645cad0c42c620173cb28c7f86e78ccff9d0d",
+      "line": 119,
+      "candidate_sha256": "2b00a16dcfc9c9665e3e20f8b22cb646656178d9d3306cfb7174907ac675a932",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_polygon_offset_clamp.txt",
+      "source_sha256": "fbf707ee87cc9da2048a9f9251f1aba87cf08282bbfa48595f4d0fe0071324eb",
+      "line": 11,
+      "candidate_sha256": "1ae0e8cbdabf47d3a0d5fd4f0d3304ec00971c28da71f0276c4de5e99873e1d7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_query_buffer_object.txt",
+      "source_sha256": "cc48cf9b5ef003806325e5b63b6805ba12c84fa0d02d02ca6e66d50f8212bb6e",
+      "line": 11,
+      "candidate_sha256": "c0753dde76fa7ce60c4e3d48e3a21eafb619e9e1707b487e282eb27eb7024b7e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_separate_shader_objects.txt",
+      "source_sha256": "e1a506537480ebc90c19cc49fa52078d1456b5a9686c3b4f6d6d6b94f6cb5e22",
+      "line": 1639,
+      "candidate_sha256": "0652ab5c2d01e3aa24d487c5bad863f349beb616896c88df298f073427904593",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_separate_shader_objects.txt",
+      "source_sha256": "e1a506537480ebc90c19cc49fa52078d1456b5a9686c3b4f6d6d6b94f6cb5e22",
+      "line": 1716,
+      "candidate_sha256": "5557517284b798754c2f0788d0dfa8f1f8fdf31f0671347fb2f494c8e6c99151",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_atomic_counter_ops.txt",
+      "source_sha256": "0fdc703f38512ae1aa348fde078639d7e0dc09f304cfb70580f6e26887821844",
+      "line": 11,
+      "candidate_sha256": "6b20c4477cd85b69324bb650e201956b83f6ff0dfeb3e9c257b242ec7cf9139a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_atomic_counters.txt",
+      "source_sha256": "4de0aece019fe3ede72f7d153fcbaa090595a88607d4d6eaeed6a8dcda4ca259",
+      "line": 101,
+      "candidate_sha256": "892921a92d8361e874d74800658aa1693e38bcf929e0ba2935b78c2f3a58e11b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_ballot.txt",
+      "source_sha256": "0cd372012118b33cd84c774bbd765889b1b67f8e6463ef4d7391d21dcb3d5ede",
+      "line": 11,
+      "candidate_sha256": "0fbbcc1c2b6cdd3c58c490d6c0ae4cb03bfca44471ef3e6e553c7544334a89cb",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_clock.txt",
+      "source_sha256": "4c0083707b4c717bb1228b590144cb709dcfc7eb332ea8125080567791c298e6",
+      "line": 11,
+      "candidate_sha256": "f54bb6992ef53ef8921a36d5dc2b49c035e8d25e0db3b47965a8dc990e5f05ab",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_draw_parameters.txt",
+      "source_sha256": "cc6dd1cc4180a0195b32e7a5833da0e75692dcdc4440d33463a5b6e9c75d9b59",
+      "line": 11,
+      "candidate_sha256": "509d8e0fdac02254aa4ecb47a86ea53489cdbe8c63c131de151369746f3c3c87",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_group_vote.txt",
+      "source_sha256": "f915cf2fe510aa10e7a896fc342a82bfe4d8ef82c2b144c8fe6ff031e0a0acb0",
+      "line": 107,
+      "candidate_sha256": "52cb977a83525b9940c16f42699ff0dda253ab7550f4f44ade3f069ef4680680",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_image_load_store.txt",
+      "source_sha256": "2d5372264be4bab5d7f2c49f67c364dff82d09011b7f171ceb70309e3f56c803",
+      "line": 1388,
+      "candidate_sha256": "c81bdc001f7f10208e5a5e3884394aa823b18d41f28a11ee183e02d2abc3283d",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_image_load_store.txt",
+      "source_sha256": "2d5372264be4bab5d7f2c49f67c364dff82d09011b7f171ceb70309e3f56c803",
+      "line": 1484,
+      "candidate_sha256": "3b1819127bb175dd1cf2af5396d7df9e5d069080412fa88c53c2bcbe28b0de40",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_shader_image_load_store.txt",
+      "source_sha256": "2d5372264be4bab5d7f2c49f67c364dff82d09011b7f171ceb70309e3f56c803",
+      "line": 1485,
+      "candidate_sha256": "e24122adb9adedf1025db82a1ce33c8e95124568b9bd7454fd88f58b3a943881",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "ARB/ARB_shader_image_load_store.txt",
+      "source_sha256": "2d5372264be4bab5d7f2c49f67c364dff82d09011b7f171ceb70309e3f56c803",
+      "line": 1814,
+      "candidate_sha256": "da324ced7e9259a05864102c0e4fa8d4db627613ddd2820bdb35e9ccae7d6950",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_precision.txt",
+      "source_sha256": "ecf890406953be37e870f2cb68243b511abae4613624058cbba8744e8cd17d25",
+      "line": 11,
+      "candidate_sha256": "a61729a15fc19109daef66397f2208ff12da3bd5f1e5b9f74bfa761bf4699001",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_precision.txt",
+      "source_sha256": "ecf890406953be37e870f2cb68243b511abae4613624058cbba8744e8cd17d25",
+      "line": 67,
+      "candidate_sha256": "5280389973551889fedd303e36ebbdb80d5be96faa24528827ae12565d752606",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shader_subroutine.txt",
+      "source_sha256": "41c06fbefdb298bf0f55b24fb7fae8ca424a32b14005299cc63b8cffe0f503ab",
+      "line": 366,
+      "candidate_sha256": "76a4e6287bcbe6a6594a5c0720ec4cef7a7bd3ae2e12937fa0810dfd7ed3c74d",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shading_language_420pack.txt",
+      "source_sha256": "55382a5b6ffa98621ba2f5a3e478e2326864e990da5024f791cbecc625260d93",
+      "line": 11,
+      "candidate_sha256": "dda57eb2f31679a549b15133a72b94bc95c2a5494f24f1e19ea9de4d5dfac243",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shading_language_include.txt",
+      "source_sha256": "35e585da722b3b403625b81f952f19b4822c78360650fbf713b4032dcbfc3800",
+      "line": 11,
+      "candidate_sha256": "e38faaad0a16b0e4562a944a9e8c2eecd022115b09967208876c2e3a8731364f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shading_language_include.txt",
+      "source_sha256": "35e585da722b3b403625b81f952f19b4822c78360650fbf713b4032dcbfc3800",
+      "line": 506,
+      "candidate_sha256": "36860f99341d7197c0029986592ce1e98cf380ea6e9cfdd7bc3eda3f62ecda2e",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shading_language_include.txt",
+      "source_sha256": "35e585da722b3b403625b81f952f19b4822c78360650fbf713b4032dcbfc3800",
+      "line": 533,
+      "candidate_sha256": "c716d53fe2acfd7b6ceeac319bcd81ec36a94d4dce4787d007615c30751fe0d3",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shadow.txt",
+      "source_sha256": "0851159b4a60e42f35121696ed5387610bd4cd7738444ef7683c7c125c106bf7",
+      "line": 11,
+      "candidate_sha256": "0e89462c2d493db08faf2f5a766fb3e3b3a488d227d5c043e928595d689e734c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shadow_ambient.txt",
+      "source_sha256": "156155efcb227607411050f52f1e8aa8e1ffda8ac2f2316f9627dcda341993ce",
+      "line": 11,
+      "candidate_sha256": "a2026254d3da0034baa1adfe7c0a03d763ba8f3bfe683767842aceeadcca42d3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_shadow_ambient.txt",
+      "source_sha256": "156155efcb227607411050f52f1e8aa8e1ffda8ac2f2316f9627dcda341993ce",
+      "line": 56,
+      "candidate_sha256": "233bc17cd774e899ca9a3d351b43e5b0a10df1c50eabc0321b858fa569428dcd",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_sparse_buffer.txt",
+      "source_sha256": "3a39a78a489a6ad01e4332eaad3a5fb888290ea9c620efe62453f87ab180d8db",
+      "line": 11,
+      "candidate_sha256": "0134aba503f657d058b38ea2bb48b5fe5b08f778d2ba173211b8e6f156d3b969",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_sparse_texture.txt",
+      "source_sha256": "91c37d10e77240578b5667b9f961244f52eb498d64a0e927e98f344ec4f8da03",
+      "line": 75,
+      "candidate_sha256": "24aa73cecefbcf9ad62ad7600ed4caa282cb28b0821c09421e06ecf683b800cf",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_sparse_texture2.txt",
+      "source_sha256": "e38fe533526f1e77fe4f1ff4fea7fa05565ce6550a1d07d25c966cbf46d33813",
+      "line": 88,
+      "candidate_sha256": "a85d44b62d3468f78856cc2041994f219631a6786e4e004d55c1232838453ea6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_sync.txt",
+      "source_sha256": "fd23d39bfdd774b8ca243d5f79be720f3876668ac424b8696e2d47243f09fa99",
+      "line": 23,
+      "candidate_sha256": "9741dc1b729adebc6ea3aebff5b40a3205764a121f7f00bd56beae67371fefd5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_tessellation_shader.txt",
+      "source_sha256": "9dfef9d67b041f4d7a38e70bd6646a267827a81f72b6723eaf551233953a3d12",
+      "line": 1718,
+      "candidate_sha256": "70cceedf6559766aa5c9a7e4a8c0038092e07fd7e43d7ceb5d5e12f1c591c448",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_tessellation_shader.txt",
+      "source_sha256": "9dfef9d67b041f4d7a38e70bd6646a267827a81f72b6723eaf551233953a3d12",
+      "line": 1780,
+      "candidate_sha256": "2e0edd48652e0afd9de3777e4ed89e06b8da4e62df738c94d799ac7c70b33f57",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_tessellation_shader.txt",
+      "source_sha256": "9dfef9d67b041f4d7a38e70bd6646a267827a81f72b6723eaf551233953a3d12",
+      "line": 2024,
+      "candidate_sha256": "9ac0d86446bea208bab3b27accad9e0322aa5603f92410e0ce077385ec15689e",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_buffer_object.txt",
+      "source_sha256": "1f0d5715058c993311d45ed14e59858e7debb6f492ce6fd0a2299caf547b4148",
+      "line": 82,
+      "candidate_sha256": "da8c7735740b6a0a940b1c2d67962be4c90cc408ed77308e51ce1497df7a669f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_buffer_range.txt",
+      "source_sha256": "dedc990cd1df010f6489ff1a8248fb91c23f0375bf8ed9e9e6699e2a8ff2d157",
+      "line": 11,
+      "candidate_sha256": "d11a53b073186d66b61d857264b2b2362040d2664b2b031cefc362d05e790ac1",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_filter_anisotropic.txt",
+      "source_sha256": "40496df116fa02343c0a4ddfa1fa32b4c94f30ccd1ac95962adab4873287bfdc",
+      "line": 12,
+      "candidate_sha256": "fe3e2f347605c4c5a6b4319e4a9fb9a8ce52c77c83b63b334dfb64bee0be4dac",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_filter_minmax.txt",
+      "source_sha256": "9fdeb30110945e39e9c4b2e4f3e9a56e4bb2e17b7ee83a884de37be02666e7c0",
+      "line": 11,
+      "candidate_sha256": "5ab367ed5b286aba2368ea94c8eda232f53ceb040028b6553f994ae043cbec19",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_rgb10_a2ui.txt",
+      "source_sha256": "2af8e84787448aaa9bb8d81a3ff08c270ea332b170ab375f99e03e97441ffe7b",
+      "line": 11,
+      "candidate_sha256": "9006d4a63c57e552b12768ba35adbdc742ad852c34adbf26f78ab0fce6ad6e35",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_rgb10_a2ui.txt",
+      "source_sha256": "2af8e84787448aaa9bb8d81a3ff08c270ea332b170ab375f99e03e97441ffe7b",
+      "line": 65,
+      "candidate_sha256": "0c16be92b4fc4a029354c33e9ca1ed8123c192244be8103fe4ec52448d945692",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_storage.txt",
+      "source_sha256": "6879474e53c56cf8506934f8c985c819affde580abb323df6df9db9eadabee44",
+      "line": 11,
+      "candidate_sha256": "aa57f448b6b295656e1f304e4be193a06171ede0c09bd328967d023b78cc293a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_texture_storage_multisample.txt",
+      "source_sha256": "a5944209a61f913dd8bef3d6c0ea5955e3a01acb148b13d6e2c9a107962cc9b0",
+      "line": 11,
+      "candidate_sha256": "6b5887efb8f3be71145c3ae29b280de61307b7360665dc93d0f9af5d06b1a1d8",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_transform_feedback3.txt",
+      "source_sha256": "729cf7408c89bfeab2e2794765e1b84f5a5cbb1744cd3fb0b8511f7959e1c5c7",
+      "line": 11,
+      "candidate_sha256": "0e0b923efd1f7ef0a06898d42a24d027790d79c4d84664ab1fc30a1f3087a765",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_transpose_matrix.txt",
+      "source_sha256": "455572370850f2a2604022860ac82675708961e78461c44a8943c0500625d50e",
+      "line": 11,
+      "candidate_sha256": "8aa155b8201d3fa68857e5473d17d0f3fea0e228259f0c4b4947768072b4792c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_vertex_attrib_64bit.txt",
+      "source_sha256": "54d1fd94d3d2fbc56945df02d0c222039bdb84e0c7a7ed3f386dd7872b173d62",
+      "line": 516,
+      "candidate_sha256": "ca7aa4cba43e20d41d3ec7daec542722c96628d11eebf921e1f48d345803091f",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_vertex_buffer_object.txt",
+      "source_sha256": "83468c41f39ddf0365e26b7b19820d66d970484cd99caa7948d34400ae77a815",
+      "line": 132,
+      "candidate_sha256": "05c1181656fdf8b02006356bf1faa7019eec8c2a1b327790f32ff5bcd06368cc",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_vertex_program.txt",
+      "source_sha256": "a5901ee424291bcfbde88a57fd807dc6b0ce96584bb99086cd9779560d443a66",
+      "line": 111,
+      "candidate_sha256": "172330e26bb2401ec5634758bd5a0239b2f86cd7bb3746b80d2364509dd73b27",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/ARB_vertex_type_2_10_10_10_rev.txt",
+      "source_sha256": "1eb152782bd978e31d86b368bac5dac43ede875115225b7c8bde4c9418eab5c8",
+      "line": 11,
+      "candidate_sha256": "ad1c11017bc23a59c5e3b8959c9b41b4f4668ecc9254583832649c8c97834ece",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/GLX_ARB_create_context.txt",
+      "source_sha256": "7c6c3ef9bd5cd65df99f476bead8222e23118c8f8835f907b93ff53cdadfce80",
+      "line": 13,
+      "candidate_sha256": "4a37f88a0049adc9a00ca2de678e409f3377316e7d7636e6211c2e8f7dfa1b8f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/GLX_ARB_create_context_robustness.txt",
+      "source_sha256": "92c1645bebca94cc3429c0ede3b190fb23b631417335a5206a74e8e1dc1e469a",
+      "line": 11,
+      "candidate_sha256": "cc4adcb465f20baf8b4fbeeaa295d474cd7d7b2b68c9a8c3a744260b67b4dd47",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/GLX_ARB_get_proc_address.txt",
+      "source_sha256": "cbbe86427b4335c12be41bff3722d31157939b5b9313865b09f95be709cb4768",
+      "line": 11,
+      "candidate_sha256": "c80381c2590a061ab74604e5421b455fc29e68a50d822c73a9f67b466b84da8d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/GLX_ARB_get_proc_address.txt",
+      "source_sha256": "cbbe86427b4335c12be41bff3722d31157939b5b9313865b09f95be709cb4768",
+      "line": 12,
+      "candidate_sha256": "2c065b2feae70ecd55dcdf281c0222b4dc4b28e2e11646eba14d503c188bbcf3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/GLX_ARB_get_proc_address.txt",
+      "source_sha256": "cbbe86427b4335c12be41bff3722d31157939b5b9313865b09f95be709cb4768",
+      "line": 50,
+      "candidate_sha256": "ef0accef8496a0d2524e8716fad608a63e094a5c509f9782d767890bd239cd33",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/WGL_ARB_create_context.txt",
+      "source_sha256": "e7defff2a14e84fa352c92da8b1b40cd0d91c05c51435536d88349514f015f52",
+      "line": 13,
+      "candidate_sha256": "f2603c0e8679ec4415a6384245185f7a5f1aac16a2e36d842f8964ef106ae5e9",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/WGL_ARB_create_context_robustness.txt",
+      "source_sha256": "d97a8f95ca277d59a8bcffc92861545cc85269bfcee242378073795a67925bb0",
+      "line": 11,
+      "candidate_sha256": "966939faf5bf60ddd9cd1b03e38b6f57fc313e3ee06b0f0b76a17d0d34b9610c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "ARB/WGL_ARB_pixel_format.txt",
+      "source_sha256": "3ed8b23bc58c66e60c62d3e047c6dbd473f7ff9d6df4d64f0e237053af48579a",
+      "line": 107,
+      "candidate_sha256": "3348550316d7d68ae22a892248fa8c85d8127c884d2508780adc94f451319556",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_EGL_image_storage.txt",
+      "source_sha256": "5c2a61d95b7554f6e4ca187ff5d2dda1c2393f5288d419bc0a850145ae7c461a",
+      "line": 11,
+      "candidate_sha256": "9ddab6147842869b2e7ce3209f808685f69b7d25b7a24caa4bef1bf00c66d6a5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_base_instance.txt",
+      "source_sha256": "c02603c699708809a740fa76cbf9c4d679d5f549d96e3d006ee713ed1ec8ed02",
+      "line": 25,
+      "candidate_sha256": "ef998616dfbd11ccdb0eb68236cc506af55bd079179cda66819bf4b5409c026d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_blend_func_extended.txt",
+      "source_sha256": "7223ff5c3f5484d86c5dca9eafbef79477d30594ba9cdc62b32d5d95ad58c647",
+      "line": 54,
+      "candidate_sha256": "1aeac929f2367c9239d1a08854685ce2b3432fff689ce9f0708c0c53803f6c70",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_buffer_storage.txt",
+      "source_sha256": "d330afd8f02540bb64b8b77929eb54e7c9ac107e516b0d229f2581a6bd51d59e",
+      "line": 25,
+      "candidate_sha256": "935e15c3e36b2b2f44c8679b0e391f6fbc610aadcb9d0ba05dec76327247b39d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_compressed_ETC1_RGB8_sub_texture.txt",
+      "source_sha256": "5b03c64b6d51e4d7b8b5e813a29fd390cc0504b84a4d2843a31b935902d39d94",
+      "line": 11,
+      "candidate_sha256": "3bd63e6c8f91243e840b2edc2d73d337af44f7b0a9fc2db431922f76915f1312",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_compressed_ETC1_RGB8_sub_texture.txt",
+      "source_sha256": "5b03c64b6d51e4d7b8b5e813a29fd390cc0504b84a4d2843a31b935902d39d94",
+      "line": 16,
+      "candidate_sha256": "6ee77feffb227f97aff822a51fd476b8c107c17d178a010f73cc00ecb3a677c2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_depth_clamp.txt",
+      "source_sha256": "2256949bc6a3c02f26a284ddd0260db3dfe2fd2e0ef72873e9831e46f25796dd",
+      "line": 11,
+      "candidate_sha256": "06442aeea4f5535469aaf9f537fed0a3dd9ae86143a056571323f3f90692bb2e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_direct_state_access.txt",
+      "source_sha256": "3b3f443d82bc8a4ce188b754fc270e330be8ede9081697a1c3653bd8082999e7",
+      "line": 222,
+      "candidate_sha256": "92fc1d5940eaf8e552f4169cb40012177669656a5c3f03148e2e1a98d9634430",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_direct_state_access.txt",
+      "source_sha256": "3b3f443d82bc8a4ce188b754fc270e330be8ede9081697a1c3653bd8082999e7",
+      "line": 311,
+      "candidate_sha256": "348b30b94d42c8fc4196d064596609d8728902bc65c0ad6b94436a9a52ae27ce",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_direct_state_access.txt",
+      "source_sha256": "3b3f443d82bc8a4ce188b754fc270e330be8ede9081697a1c3653bd8082999e7",
+      "line": 337,
+      "candidate_sha256": "75be434ccaf05be4733c9401f14d0076d5e6c2e9aa87e8afb957401dfe0ad744",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_draw_buffers.txt",
+      "source_sha256": "39a8ec30faf20c4a9cd7d144b47e74615cf99f6ed6d7f3473a7d371a2349bf50",
+      "line": 26,
+      "candidate_sha256": "7cfa7b522cd2dbbf40964727d9fb5ce4fa4812deb917173ace1a3235e9965c36",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_draw_buffers.txt",
+      "source_sha256": "39a8ec30faf20c4a9cd7d144b47e74615cf99f6ed6d7f3473a7d371a2349bf50",
+      "line": 391,
+      "candidate_sha256": "59096530fb0d4536742d3f4128ff17acbe5657ebf0bd2aca5730d1e141901cda",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_draw_buffers_indexed.txt",
+      "source_sha256": "6889bcd86ed2f5d9ca668873bf3e1f92725ac3f14bc8ab79a5aeb3c21f7931d0",
+      "line": 43,
+      "candidate_sha256": "019887580391143feedcf07d6cd3d7747a8ced37887dd5011ff8d1af9052e45c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_draw_elements_base_vertex.txt",
+      "source_sha256": "d56ec54f14e04e8f35164ec74b364bf0f1a2f712def6001099fc52aea85feca5",
+      "line": 24,
+      "candidate_sha256": "4a91391457569b835e1d5dd175b3fbc0aa98a13b2b1c9ca4a9733330cf40e7bb",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_draw_range_elements.txt",
+      "source_sha256": "d0120435782e245f70ce3a5182dbb53c22aec02466e102be7970ee5a23cc2b3d",
+      "line": 20,
+      "candidate_sha256": "85935a4538b5defee63ff15fe5e434a1a528f5fc3e4a985bae5b8a8bfad1b2c4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "EXT/EXT_draw_transform_feedback.txt",
+      "source_sha256": "2e1415818f5ed3a694ad05c22aced94d0350d096192f82a2ebf73fb4e1b35651",
+      "line": 11,
+      "candidate_sha256": "6bbc2b8245c18194a8dfe4322c6c44a68c0934dc756fc212fc33edee477df362",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_external_buffer.txt",
+      "source_sha256": "93af03d57d9264e63c32561fffd96fe64b7e9f79d9e28f13160b3324860760b0",
+      "line": 11,
+      "candidate_sha256": "fb40966fec31956dba41222d8679a4039fd7094a0c26074cabf4590d93c0b051",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_float_blend.txt",
+      "source_sha256": "b97d2626aebd7437c660715fd9ce888714153f7fd8f152fda07e1c80aca6dc9e",
+      "line": 15,
+      "candidate_sha256": "50862d9c4ebc9b523c748dbcc55069fd17d776f6ffbd3452cc58841cdaa4b5a9",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_frag_depth.txt",
+      "source_sha256": "2bece5dfa6f357c176fb96d02bd221ec4fe2b37d9f73d88a1239f6d5d2e60cfa",
+      "line": 19,
+      "candidate_sha256": "4f76c7c8328210da0e7441017423b4aef8abd774b299fe18c19d879a41140670",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_fragment_shading_rate.txt",
+      "source_sha256": "d5f0f36ad70c19c0a2d90802d178cdddde45d8bb00538fd164d12d946055b06c",
+      "line": 23,
+      "candidate_sha256": "66f49daffd62a9d28b6840fb407dd8fdb928aebfbaebfdac029a2f046c891aa7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_framebuffer_multisample.txt",
+      "source_sha256": "55e5d2c678f7b15f5210dc0b3ce90eda339f86f21b564cbf7aac44d687875884",
+      "line": 87,
+      "candidate_sha256": "c252e0c5171a70e5b26d578df2df8a8604e2b81a2d5d4ecc0905c982daea49eb",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_framebuffer_object.txt",
+      "source_sha256": "cc30255f8d0c1e2b00799b69a525be5335bbbf0779e880e611f977c6586335be",
+      "line": 119,
+      "candidate_sha256": "f85cb707c928e6f8056d257e38028b285c8bdeaef3aec898441f42e7094c83f8",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_framebuffer_object.txt",
+      "source_sha256": "cc30255f8d0c1e2b00799b69a525be5335bbbf0779e880e611f977c6586335be",
+      "line": 171,
+      "candidate_sha256": "d2cefc5ebd2cb048091d72c5cf5b8e491ea87f965d5b2e3df819ae396eec9cad",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_geometry_shader.txt",
+      "source_sha256": "dadffc9dc14ba880598af910ea2e34435819a52d13f82c55648602204af29e9d",
+      "line": 12,
+      "candidate_sha256": "4bef3cf30f6bc39ecd71e1b5d85aceb08f0db3ebea4b3a9b3b8580b563559f74",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_geometry_shader.txt",
+      "source_sha256": "dadffc9dc14ba880598af910ea2e34435819a52d13f82c55648602204af29e9d",
+      "line": 34,
+      "candidate_sha256": "4b27427d11c893084f03ed62b4c7a7b73dfe057b301743b0331efd89aa3bb964",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_geometry_shader.txt",
+      "source_sha256": "dadffc9dc14ba880598af910ea2e34435819a52d13f82c55648602204af29e9d",
+      "line": 89,
+      "candidate_sha256": "48fb9c99ccf242e7ef4bd070d3932065157d165304c8233d0085d11ba86687b2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_geometry_shader4.txt",
+      "source_sha256": "461e69ce328027039be61194120c5de070dec995ea93de51fa548323fe50a4e5",
+      "line": 73,
+      "candidate_sha256": "22b5f01414d1d17fc2450b53ed766d92681011b4136604d8a8a81a1bf01e1de9",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader4.txt",
+      "source_sha256": "2a7144ce3136d2fad7c2a0b4a270405c4de864d70ea46230607a0a139c5ee5a5",
+      "line": 1544,
+      "candidate_sha256": "8a523352b54a7ba11033299129857a7a7d7f7b5fb88c4222996196b991363a56",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader4.txt",
+      "source_sha256": "2a7144ce3136d2fad7c2a0b4a270405c4de864d70ea46230607a0a139c5ee5a5",
+      "line": 1558,
+      "candidate_sha256": "b0603242d85a100449b0c2fc5331b34509f8a9e118424df9589528767cc8996b",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader4.txt",
+      "source_sha256": "2a7144ce3136d2fad7c2a0b4a270405c4de864d70ea46230607a0a139c5ee5a5",
+      "line": 1572,
+      "candidate_sha256": "e9ea3f4a96cdd388ff6ba43b422592d2d895037ec3fe557681d80d3543a7b09a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader4.txt",
+      "source_sha256": "2a7144ce3136d2fad7c2a0b4a270405c4de864d70ea46230607a0a139c5ee5a5",
+      "line": 1591,
+      "candidate_sha256": "444339bddd31f007014a3ede8b1f8fdcafb050696753e3d49783bae0a9c2ad3b",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader4.txt",
+      "source_sha256": "2a7144ce3136d2fad7c2a0b4a270405c4de864d70ea46230607a0a139c5ee5a5",
+      "line": 1649,
+      "candidate_sha256": "e5a4cabd2359b09e9b0699bdbd54acdcb7b78e8d632696f34536009a30a2567b",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader5.txt",
+      "source_sha256": "66a0221ea28829de24cadb9c077efa34e911bdd4bff80e367a2661112b803376",
+      "line": 11,
+      "candidate_sha256": "da1a8d81bf567c7a6e724a20c7252d92c9413337f8f74ed5c5b76381b34ca6d3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader5.txt",
+      "source_sha256": "66a0221ea28829de24cadb9c077efa34e911bdd4bff80e367a2661112b803376",
+      "line": 33,
+      "candidate_sha256": "a5ac39852271aa14edca846355e0a8b64fe8aec77771c01a2ecff9bb0c1a4b4d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader5.txt",
+      "source_sha256": "66a0221ea28829de24cadb9c077efa34e911bdd4bff80e367a2661112b803376",
+      "line": 82,
+      "candidate_sha256": "5462fbcc94b98cb278f6640a88e5e96a42fbce0cca4915604f79f06fd1b1c867",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_gpu_shader5.txt",
+      "source_sha256": "66a0221ea28829de24cadb9c077efa34e911bdd4bff80e367a2661112b803376",
+      "line": 155,
+      "candidate_sha256": "424d99a87cb35acea2bd9f4fce67b658cb7022a7790083529a03991f244938dd",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_map_buffer_range.txt",
+      "source_sha256": "2117e896b24bf89e68a8f210c5c302966f11045752529c18cbcc4d4e8e298544",
+      "line": 16,
+      "candidate_sha256": "11cfd2e51d33bb49357f282fb7da8cec635838d8a71036a63c3822cef551ebe2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_multi_draw_indirect.txt",
+      "source_sha256": "e5b1233c02a0d0e0412c9bd5968c4770d156746c87110b427b6e64e704b28b8b",
+      "line": 25,
+      "candidate_sha256": "ed5b413e3419c16d0ee59a567f7951b308a2e116bba247e4b134192a7e591a1d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_multiple_textures.txt",
+      "source_sha256": "770fd04eb6061efdb84cdece59258aa8272da119fe1586ac9b1e5fe0160dc781",
+      "line": 99,
+      "candidate_sha256": "fbd6ce6df2f506b7fa53ec54bf773d92235e3cf6dc17da0d1ff4a7c9bb57c0dd",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "EXT/EXT_multiple_textures.txt",
+      "source_sha256": "770fd04eb6061efdb84cdece59258aa8272da119fe1586ac9b1e5fe0160dc781",
+      "line": 126,
+      "candidate_sha256": "fc081e5f369cf3ec9fa384b0849c72ddd3d0bb39df7a269b4da38e364fbb0400",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "EXT/EXT_multiple_textures.txt",
+      "source_sha256": "770fd04eb6061efdb84cdece59258aa8272da119fe1586ac9b1e5fe0160dc781",
+      "line": 133,
+      "candidate_sha256": "c3e96701b416f5847d54c5a1fe73c04233d6eb9fc7d375de34afa5a634ae156b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "EXT/EXT_multisampled_render_to_texture2.txt",
+      "source_sha256": "4fa530ab7f274c85861544beb1ab90cabded8927473ce6d1c0c5ef9c89f79ba8",
+      "line": 22,
+      "candidate_sha256": "98d51def9ed32c521495ae0629e21b68f5cfd3f59b1178abb4e025753452fcaa",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_multiview_draw_buffers.txt",
+      "source_sha256": "38672eaa234c057b870c8f43e919b0a59696be51e6f51d3c6cc3ddffe8f7e5d1",
+      "line": 17,
+      "candidate_sha256": "fc42f477fefed924bc6c45665a267d1d7cabc40b0a7df357f259080a5f4c8232",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_multiview_draw_buffers.txt",
+      "source_sha256": "38672eaa234c057b870c8f43e919b0a59696be51e6f51d3c6cc3ddffe8f7e5d1",
+      "line": 301,
+      "candidate_sha256": "df48183427fdda91b3ca3143ed0c8ba9d1f41d6a009bbdd6cfc0f935c1bb4374",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "EXT/EXT_multiview_draw_buffers.txt",
+      "source_sha256": "38672eaa234c057b870c8f43e919b0a59696be51e6f51d3c6cc3ddffe8f7e5d1",
+      "line": 366,
+      "candidate_sha256": "e89e37d726c56366e53db6cccb0bc6d89b4d47e55b4a005a65e62917f8b95443",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "EXT/EXT_polygon_offset_clamp.txt",
+      "source_sha256": "3b2cb8c9c1348cd180557b1b7b958d750ed387953a67db9b38f0d9fa80de5c44",
+      "line": 11,
+      "candidate_sha256": "8da88916d3d19ca53df4ad812c213c20bcd8d71ac74e357ea5120619042a257f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_primitive_bounding_box.txt",
+      "source_sha256": "fb78c53dbcccc2b7810519d8af4e8a3750d2c6b585d86b99dc72d0e152eb94b3",
+      "line": 11,
+      "candidate_sha256": "52a1886082a024a6b6d63cfc59480cd44e288bd6e4f5246716dd30ae28d9e9ef",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_primitive_bounding_box.txt",
+      "source_sha256": "fb78c53dbcccc2b7810519d8af4e8a3750d2c6b585d86b99dc72d0e152eb94b3",
+      "line": 61,
+      "candidate_sha256": "7d813dd0cb9baaa8edfe798382f924ade9b9c33a8df2dd5cdc2e1c2bb7ae63e6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_protected_textures.txt",
+      "source_sha256": "78b9cce3f1e29b015cfa2a53fc245b9cf6191dedadccaa09f3565937c76998b6",
+      "line": 24,
+      "candidate_sha256": "2eb5c058bb56df4d8a905fba522a5608c160c4b2e8794165e7c9b2ee2d70810e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_read_format_bgra.txt",
+      "source_sha256": "16e1efc0616758adf851c78c7ddc5c069e96cf3f135362fdef8b805f80ee8782",
+      "line": 15,
+      "candidate_sha256": "26cf445baed714f615279e35ee2b5c7e7d855f6c3f4399e1294e2105491d838b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_separate_specular_color.txt",
+      "source_sha256": "277ddfbb07a38f82982150a919639f1baeb378955835ffbb5c591f5ce6576b62",
+      "line": 50,
+      "candidate_sha256": "5fdfae3bcda3d8d0c391a2b75b855fd123e87047a748daa24d88a64323914ed6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_group_vote.txt",
+      "source_sha256": "035ed0dbeb126aff137f0d758ea8ac264595d3fa3ef0e6eaa01bed212213337f",
+      "line": 87,
+      "candidate_sha256": "e2a900d5a322f90535481ec08a6e20fd16844601f6d46bdcb603b8ef78ac1f59",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_image_load_store.txt",
+      "source_sha256": "7a68aaf8604b098747f4647b518c833150333ee0930d9fd6f797b064691945cd",
+      "line": 1164,
+      "candidate_sha256": "ed1fd64dc03b87f22f4f88a275ff291341f7c262db3c73051d6f63acdce0a713",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_image_load_store.txt",
+      "source_sha256": "7a68aaf8604b098747f4647b518c833150333ee0930d9fd6f797b064691945cd",
+      "line": 1165,
+      "candidate_sha256": "d1caed3ee9d86830b0645da300ee65122221545af4dc2c5f50ce873dec938680",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_image_load_store.txt",
+      "source_sha256": "7a68aaf8604b098747f4647b518c833150333ee0930d9fd6f797b064691945cd",
+      "line": 1476,
+      "candidate_sha256": "b62d91c030f0e2b60aacddc1f4ebed04f3c208949178164fe705332987163325",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 11,
+      "candidate_sha256": "634075100499a9a6580d98cacfa868ff3c4f97185877fce0cb78986d2e25ed98",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 24,
+      "candidate_sha256": "bd5ba16e98f074dd2eb95f83200e953296479d55907034b26ffb876dd74979d1",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 131,
+      "candidate_sha256": "45413dca897e7f5d16633fa0f19330788ac96a8ede28664c69787e53cb5b06d0",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 165,
+      "candidate_sha256": "28ed42c532ae5614b9cae6b09bac8d9a252dbda98a4a914eeef716fec293176b",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 166,
+      "candidate_sha256": "fcda9aaee2f57c92c6517cc1c735beeba6c71e67f53ddf43ea70d4b7deb22287",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 167,
+      "candidate_sha256": "b43725436293283985b7d0d56a138305ad12cc5cfbd75e8d039bd219c796ad35",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 169,
+      "candidate_sha256": "4aeae28762c49bf5d7683db92dc2c8468fd9ba43daa0c076c08460fd6dbcc41a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 170,
+      "candidate_sha256": "0c059b8e022b0c44dce9951a3abc90d153f858f21ca6ac10fde1d3ec645e3583",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_implicit_conversions.txt",
+      "source_sha256": "902599679d0f08ab9996d7f86c6cf3b6ae9abeeb2638cb78c81167cdc10ac5c8",
+      "line": 171,
+      "candidate_sha256": "427e1c8a89f4732f1d0343ef33d94e01f2bfd89f55b1a7b90f31b80f5528fad7",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "EXT/EXT_shader_integer_mix.txt",
+      "source_sha256": "b11cba19d4f582373ef0d587a82c7840f197acf2f1438fa67cde574141bb7dae",
+      "line": 11,
+      "candidate_sha256": "00328c52f6081474a2033876f63ffb8de4298201e8204c35a2c868a6a3f183b2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_io_blocks.txt",
+      "source_sha256": "3cdbcc8a08715b2b2c3d7807136c887e142ac0ac75ad6da95439ac5edadde6af",
+      "line": 11,
+      "candidate_sha256": "76a87967cc51da78f2363c6518b4d31b0154a90a757f5e0cedbc6d84731eec1c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_io_blocks.txt",
+      "source_sha256": "3cdbcc8a08715b2b2c3d7807136c887e142ac0ac75ad6da95439ac5edadde6af",
+      "line": 28,
+      "candidate_sha256": "b8d003abfcfdd508105e0cd7756732898b353ddc1a439425d788c2438b3a5ebf",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_io_blocks.txt",
+      "source_sha256": "3cdbcc8a08715b2b2c3d7807136c887e142ac0ac75ad6da95439ac5edadde6af",
+      "line": 442,
+      "candidate_sha256": "94f8a3f8be18a07b5645b60ab72d69db99c833f6b2644972e3e8625403f774ee",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_non_constant_global_initializers.txt",
+      "source_sha256": "eb22eee2aebfd6c941a18b8eb7badd064af3ba0a07f8a20cd8ffb6f17f7fb8b8",
+      "line": 38,
+      "candidate_sha256": "8f427d7fb354f700e4fd10b804278514b225add2aa867a76418796c1574e4c01",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_pixel_local_storage.txt",
+      "source_sha256": "0b67ef0e42b35bddf2b39bd3f03b0ece3ad90febb60b21e7e4e83b7a6a5e340e",
+      "line": 227,
+      "candidate_sha256": "8699ac270a788be90b74a42b4ffc6cefd2e13a481267e1d23b642e27842866aa",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_pixel_local_storage2.txt",
+      "source_sha256": "6a1bdfa27c9e71962adb204984b63970532f283469362a8b672f61ccb0e983f7",
+      "line": 18,
+      "candidate_sha256": "45102e30831584c1af15dea6062683d59ceeaf67d6d1ccf4a761c2a76ec7f50b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 75,
+      "name": "texture2DLodEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 78,
+      "name": "texture2DProjLodEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 81,
+      "name": "texture2DProjLodEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 85,
+      "name": "textureCubeLodEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 95,
+      "name": "texture2DGradEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 99,
+      "name": "texture2DProjGradEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 103,
+      "name": "texture2DProjGradEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_shader_texture_lod.txt",
+      "source_sha256": "164999aa5d78a509c100bfa3cc819c1ddc809309bb439d22d0232d08b945c16f",
+      "line": 108,
+      "name": "textureCubeGradEXT",
+      "return_type": "vec4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "EXT/EXT_sparse_texture.txt",
+      "source_sha256": "f5e2e15f0cae95b5a1e29709b5b523f3e5afb6537197afb67add237e4daece20",
+      "line": 25,
+      "candidate_sha256": "7740dbc5cec1293565d5f72a66b8c10037941964f3b828c200348341d7f9cdf5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_sparse_texture.txt",
+      "source_sha256": "f5e2e15f0cae95b5a1e29709b5b523f3e5afb6537197afb67add237e4daece20",
+      "line": 75,
+      "candidate_sha256": "af8d00127830ae865fb16c38843a29e5e011111456f0c94f5485b3f59749c036",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_sparse_texture2.txt",
+      "source_sha256": "a8c54287d1505c50c3567d53af42abe5f89ad867486d183cfe0e87494422790d",
+      "line": 89,
+      "candidate_sha256": "f6c022e74d5050c00a91f43b3df9e6d644fb39ddc20a8add13dc1f7d2b80c189",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_tessellation_shader.txt",
+      "source_sha256": "b48ff0838050c3f823e4ad6a6deb81bada74f3eaf3166bec6ed91c6520ada06e",
+      "line": 12,
+      "candidate_sha256": "60703b1fadbb4ff76189d5d06c08d1dd77d6de06e72f798edd03a86c38d6167d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_tessellation_shader.txt",
+      "source_sha256": "b48ff0838050c3f823e4ad6a6deb81bada74f3eaf3166bec6ed91c6520ada06e",
+      "line": 37,
+      "candidate_sha256": "4d790ca59b90386053f4e82bbba0b2e62731595a494651531259be4b26a2536d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texenv_op.txt",
+      "source_sha256": "7c773572eacb790ff8297aee19434ed03cd7102ee622a512e3118824ab74b83f",
+      "line": 11,
+      "candidate_sha256": "3b9a56847a31bff3abbda0ae21e81d476af62ed84e676ff4dc72a443153e93a4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texenv_op.txt",
+      "source_sha256": "7c773572eacb790ff8297aee19434ed03cd7102ee622a512e3118824ab74b83f",
+      "line": 12,
+      "candidate_sha256": "fd2a40cec83c7b7ac651dc9d464d3c7d817e75e789a7599b0dfeafaf7929438e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_array.txt",
+      "source_sha256": "4f7d570abd3f2d45bdacbcd0f80395886bdd314ea981fe044c9c40e602642368",
+      "line": 76,
+      "candidate_sha256": "631e068b7b6a657585f098b62b31d587cf72a3b01027d9ba9e5355fe447066ef",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_buffer.txt",
+      "source_sha256": "3be6732d748185b5761836073b9d6d7ac92d4be263b6e72ff36418a6fcf0bbbf",
+      "line": 11,
+      "candidate_sha256": "fd2852ac304eb39da92f747943ab9eee6fa78b9164435e458f8be65c673e466a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_buffer.txt",
+      "source_sha256": "3be6732d748185b5761836073b9d6d7ac92d4be263b6e72ff36418a6fcf0bbbf",
+      "line": 31,
+      "candidate_sha256": "5bee9d2a37bbb6572c6cac7af4e97a98c688f6e3461e42bd86d77a483993f696",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_buffer_object.txt",
+      "source_sha256": "f2131251abff603eb555d75bb290bfe2a759b4847a43458ba87e65da55e4c16a",
+      "line": 68,
+      "candidate_sha256": "4cb99802fc663421910c504902f1c2360934b54ca9e37a90de57ce78992c8f7e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_cube_map_array.txt",
+      "source_sha256": "13b9194ddbafced9a3d26de3bd887d373af984ebb114dc54075d5e0e80fbb780",
+      "line": 11,
+      "candidate_sha256": "8d5fb6f67102b9700380ac6a1bfea42b46210579b1b6897073c1043431ba9e4b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_cube_map_array.txt",
+      "source_sha256": "13b9194ddbafced9a3d26de3bd887d373af984ebb114dc54075d5e0e80fbb780",
+      "line": 28,
+      "candidate_sha256": "370557821f98ddc9d2ce211e8771dae93c410f99a0cdac47a5ec75e99b6d9d20",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_env_combine.txt",
+      "source_sha256": "5e544292c3ac9f733bf7d6799d0dd0b05c29c6a60f179ebdf0286220abe88242",
+      "line": 11,
+      "candidate_sha256": "2bf978cdb512e42ede972005c14a18212ecffcce23276bc66a78c90e6c6d499a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_query_lod.txt",
+      "source_sha256": "7984dba615f79b77b6193db3b7231cff05faa5f03a6055b241ff03fd6398e138",
+      "line": 11,
+      "candidate_sha256": "606c7d8ae17ddfd07f8244976997a758ee13a0a648f9fba7f8a5fa86e57fab2a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_sRGB_R8.txt",
+      "source_sha256": "e20237a52a5467ccd3c49aa1f0e51efd0dbd1ac535f71be1062899bb4c1bae71",
+      "line": 20,
+      "candidate_sha256": "3c8d1ef2a2dd5454208738395b1d43afd3052ea75db347890839fb7ac5d12f13",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_sRGB_RG8.txt",
+      "source_sha256": "d38af1323ccad7e8e05caae9de8ec029492b1deb792dc18f97a0d0b8dfcdd401",
+      "line": 20,
+      "candidate_sha256": "67f6a0d2470924c280b7f8e616f0140ead16370887ad1c0b23f1f0c2d20c881e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_storage.txt",
+      "source_sha256": "e8efad067224a78efe3007e3b42a60f6b421b0fd37bb6ed994e13089c4585b10",
+      "line": 11,
+      "candidate_sha256": "df45bed726221a42023876990d3a7fc2b2e62ff5a2c4f000219c5004e97c9fd4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_type_2_10_10_10_REV.txt",
+      "source_sha256": "afe744443a5aa6411e01a5065a6267d45505737845817930bae7a34bb08a7ed7",
+      "line": 21,
+      "candidate_sha256": "53d8f54a36c55015e98ca5fc7ec3841e1dde5c0f23dfd03ae26a967f91bdfe06",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_view.txt",
+      "source_sha256": "e9b127ff51c7d41acf47e3aa7db88a9404b9ca92aa7d86fa7fcb3066ca8df19e",
+      "line": 11,
+      "candidate_sha256": "4304f978f3c258fe916a2508484b165a78cf62a8354441a0d6b958c51790bd17",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_texture_view.txt",
+      "source_sha256": "e9b127ff51c7d41acf47e3aa7db88a9404b9ca92aa7d86fa7fcb3066ca8df19e",
+      "line": 26,
+      "candidate_sha256": "a3b973629047e1acbc5c6e4dd37cb04e7fe55b5dee802fbe7600f97347269d3b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_transform_feedback.txt",
+      "source_sha256": "e7bc4626f43e289e27725ef37b6ee2c4ab17f0eadd9ef320634598e7c814fe78",
+      "line": 19,
+      "candidate_sha256": "9a9cf70dfe46d230e0e51a34d0fdb1cca4e79ebb48730fc54e7698f8ec3a548b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_transform_feedback.txt",
+      "source_sha256": "e7bc4626f43e289e27725ef37b6ee2c4ab17f0eadd9ef320634598e7c814fe78",
+      "line": 20,
+      "candidate_sha256": "d1c03c013f0dd7c61a762a7639c8b94466950ae3ea9858e16d1a8ccf5c438293",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/EXT_transform_feedback.txt",
+      "source_sha256": "e7bc4626f43e289e27725ef37b6ee2c4ab17f0eadd9ef320634598e7c814fe78",
+      "line": 21,
+      "candidate_sha256": "765e6bfcb190f63e7229beaa2f0cb475e12d61616a5b37a5d27314719395d8ae",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/GLX_EXT_create_context_es2_profile.txt",
+      "source_sha256": "405ae8230ac2b1b32764f10d0dfd0bc1776afe499b9594387fd1bf10a5fb4fd4",
+      "line": 17,
+      "candidate_sha256": "03a54920346d217c1c7e5efbb8fa28e3b38bb4e72cc9c2f0263563b989b676ef",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/GLX_EXT_create_context_es2_profile.txt",
+      "source_sha256": "405ae8230ac2b1b32764f10d0dfd0bc1776afe499b9594387fd1bf10a5fb4fd4",
+      "line": 18,
+      "candidate_sha256": "33835849adaa71c880eb2ac4e01da4cf6d31ad8c532cefd92248f4079b12c7bb",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/WGL_EXT_colorspace.txt",
+      "source_sha256": "478596ff13d6ff8eb08c0fad07b28ea876a00f4b676b1c814af8f3f07f753c05",
+      "line": 11,
+      "candidate_sha256": "47dbdd4be6334802a7cab52eeec52dcd596b74934cb112c8f2175ef7af3c4cc3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/WGL_EXT_create_context_es2_profile.txt",
+      "source_sha256": "99fe85988507e330eaea716b2bb6afe53fe4b0a72b9c70ad0e4e9b6c0e3ff27d",
+      "line": 17,
+      "candidate_sha256": "d848520972a57aeb84b4ba71a986a75235ed910a836f2d0ffc00b7deda9853ff",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "EXT/WGL_EXT_create_context_es2_profile.txt",
+      "source_sha256": "99fe85988507e330eaea716b2bb6afe53fe4b0a72b9c70ad0e4e9b6c0e3ff27d",
+      "line": 18,
+      "candidate_sha256": "f8a5753c06a764ca43de425a7d41fdef89c1f8869b225d9b6f6e6cfbe1191aad",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "FJ/FJ_shader_binary_GCCSO.txt",
+      "source_sha256": "c13119f64e463c976e9abe494d52766c7134cb2220dbcb2cb96f76f4065c26e0",
+      "line": 17,
+      "candidate_sha256": "cdcfe58109353bdcff05b7cd97c3da55eecfa7816a0f1e07e3f43a3857b568d6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "HUAWEI/HUAWEI_program_binary.txt",
+      "source_sha256": "fa167db30b445eb172652916459d1f81e42d6952ec673d2ef9138e256b58da4c",
+      "line": 15,
+      "candidate_sha256": "e73c4cb497a23a1ea1195f08f6949d4fe7877ca0f2fe1be27dab578e57b03e8f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "HUAWEI/HUAWEI_shader_binary.txt",
+      "source_sha256": "8a7b7171a74c67a5ed18a907a1ecae6c9891b1dc4f38cc117916bf9066ca3544",
+      "line": 15,
+      "candidate_sha256": "de8fef5a5b9811ab8075f5d40c37f95582aca2e7edd9aaf2824b7986c8250e4c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "IMG/IMG_bindless_texture.txt",
+      "source_sha256": "a008ff7b97a2297bef3d3bdc04d881b8411b4a8a3518e4633842983704f046e7",
+      "line": 11,
+      "candidate_sha256": "a38a8b5f69629c2e195869830622d0db8ff8d4f7e7e3cf8f9b2c148ce80cb971",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "IMG/IMG_framebuffer_downsample.txt",
+      "source_sha256": "6f843a00ad6c7488960fa54f86df4d32b4ae95cb7704f02d9b6a63d276ca9ace",
+      "line": 15,
+      "candidate_sha256": "2d9f61f4652094b240376f82445a099657afedac69608239d0c8c32106fb7278",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "IMG/IMG_read_format.txt",
+      "source_sha256": "f47cecc2bbbc2b35b08defe923d15a386e0c683239df30ffd556735b47b1ac94",
+      "line": 15,
+      "candidate_sha256": "d6a3c85f38f54b017268bd5b594bb4e2025ba657cf49e8115fcd2ec891df2898",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "INTEL/GLX_INTEL_swap_event.txt",
+      "source_sha256": "a192c35667f6c8dbb2710a05f0d7da880b9dede20b1f2ca245e3bead09b81250",
+      "line": 15,
+      "candidate_sha256": "5c439fd11e573fb05f73492da1de10600714ac8c6248b38a7d746a67ce59bfd3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "INTEL/GLX_INTEL_swap_event.txt",
+      "source_sha256": "a192c35667f6c8dbb2710a05f0d7da880b9dede20b1f2ca245e3bead09b81250",
+      "line": 16,
+      "candidate_sha256": "2dbb9c73586aff907c378873059c95a5f7639a067ded1cb4eca01129f27b816c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "INTEL/INTEL_blackhole_render.txt",
+      "source_sha256": "e3326e9c783d9630cf5c3713764b95c28eab8c5cd49649eba2007bfdf6aa5365",
+      "line": 15,
+      "candidate_sha256": "4c45bb6701a21226572a9988f1133305debbc1798d56f3d3db29e7b22e4c0a3b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "INTEL/INTEL_conservative_rasterization.txt",
+      "source_sha256": "b67cae0181d2ea178c8d72c004d07b1f43504e8835c18b4bf25d15754fa64ff5",
+      "line": 47,
+      "candidate_sha256": "9a5c78e303cd62fb2b999f6babb4232ab9610cf11164b69fa3e7c642f3d6bc22",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_context_flush_control.txt",
+      "source_sha256": "084578e08cde8e97ef03103ca57586a6bd6cc3896efd73f1b8a9fa52894336c4",
+      "line": 14,
+      "candidate_sha256": "aca2e62395bb9409e575bbc608ba69bd515e2910861138a980548164f0c08824",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_debug.txt",
+      "source_sha256": "cbf267a4d88fd18b71b9adcd94ba4a92101a73d28579a85ee78d2940ead70383",
+      "line": 11,
+      "candidate_sha256": "a2f7b291dc43eddb8c8db8859552ddbacb3a0ddd53c6d7b73e3bc375f559216c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_no_error.txt",
+      "source_sha256": "f29fbeb4919c942f8d39a05850efc10360b3f06b06e08e98b43f0e9760c5e034",
+      "line": 23,
+      "candidate_sha256": "94a7b7431657eac0db8333bd96719204d3c3d641470af4855ce6109a94eb56b8",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_robust_buffer_access_behavior.txt",
+      "source_sha256": "db2ff11dead5f471cf1791330a9f64ec5d1add307dea80c8bf5feeebf8fed7ba",
+      "line": 11,
+      "candidate_sha256": "2a2dc59e466e10c37cc01a1997f053c3be05d78156efba7175ae4120ceb6c997",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_robustness.txt",
+      "source_sha256": "83bd64e6ca1fc3daafbfb9b1cddfd3b65d25f7e446f603ed3eee49fd6dff7ded",
+      "line": 17,
+      "candidate_sha256": "41ebd94f1c941f18b6813878401d7c7dcb3e2a9bd7958583e981a43353b3718d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_texture_compression_astc_hdr.txt",
+      "source_sha256": "ef1d6ac631bb149e336c9478746b16c1b1a3ed25b9d9567233861d46e0764406",
+      "line": 12,
+      "candidate_sha256": "545e03f9a9e407cbc87b1cc57bdfd87f32645c50e72f493146cae0cd44c7f2cf",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_texture_compression_astc_hdr.txt",
+      "source_sha256": "ef1d6ac631bb149e336c9478746b16c1b1a3ed25b9d9567233861d46e0764406",
+      "line": 13,
+      "candidate_sha256": "772eeb9f2d0e99eb71bbee3ea89591c0bc9df05ab8a9d7d8e824bf80cc26a818",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "KHR/KHR_texture_compression_astc_sliced_3d.txt",
+      "source_sha256": "4d55da2876df0ff40c02cc00dd5c5ecf161978706e7253c79f4b0d8e108e386c",
+      "line": 11,
+      "candidate_sha256": "c44161377785683d4f9663cecf417b15a0b2a5d3886bace765234aab842a740f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/GLX_MESA_copy_sub_buffer.txt",
+      "source_sha256": "9ea301c89826c73d61a2b32e6414f3df08956b026f3d14061cac45829cd48981",
+      "line": 11,
+      "candidate_sha256": "70b99fbf10a734d06d0b3521eee0ab82d1d33aab9908884ee630f76bf58459e5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/GLX_MESA_pixmap_colormap.txt",
+      "source_sha256": "fbe916f15d1ffed4314ff19d32c8de9529d0ee916c7395c0adfb5e2f77824afd",
+      "line": 11,
+      "candidate_sha256": "377e5dbcc11594c7b23a17dbda9dc98a2d9b74c7ab0fe3ab632f90f22b9dcf92",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/GLX_MESA_release_buffers.txt",
+      "source_sha256": "4e767e62475b1896a057412b0b1dac218c2b7b59767cc33f2732d94b54d31cf7",
+      "line": 11,
+      "candidate_sha256": "65b9c597203f35e9a354bdaeb54743ffe2b89594dfe260dd59f53d4341668eac",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/GLX_MESA_set_3dfx_mode.txt",
+      "source_sha256": "23a54f82bb8f36cf730a87c6a77b4a30b6aed9542987de307f1bff3b46d2108f",
+      "line": 11,
+      "candidate_sha256": "10198884222bc23f1feb3f888e48ff484bac01e7ad968da313e8d8b50ae3b590",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/MESA_bgra.txt",
+      "source_sha256": "806ea1410d3ba833793818319e526c97950dedb130c3e7649dede6f9a0db11f1",
+      "line": 11,
+      "candidate_sha256": "e5b70a9de0862169e617fffeb5afc66d9db284639bfbd221f5dde3d91ba1ed27",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/MESA_program_binary_formats.txt",
+      "source_sha256": "a8cf4317919196c1a5ce53c7811c726fd5202574c351d62d800388338a6ab1b5",
+      "line": 17,
+      "candidate_sha256": "45c664301141f00e12ff84d58eb1dd948756e46ef1f45aca2f3b12faf46669b7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 50,
+      "candidate_sha256": "ccf4b5c363d0b1bba5115d4bf83440fb0b9c363d73ec2c60082ad65ee04bf703",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 206,
+      "candidate_sha256": "cff8bd43a927b5fee5fe2c9f1fb899e3c0e377704af746574920968099fd5155",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 207,
+      "candidate_sha256": "ed38e00fd927e0b7dd33f601bd66c8c564a89646c90c758a47f5ce038f5a4a9a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 208,
+      "candidate_sha256": "f22ed753236a8b412d37dfacbd46c876228ea6835c61b2d5413096ec322c1cc9",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 210,
+      "candidate_sha256": "92b76bb7f5703d60a18dcb465c36097636b52e720db897db232f35415bbde0b5",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 211,
+      "candidate_sha256": "54cfc72c7786cdffc44d7a3be430ff7988ec5b0b3bd538360799359cbf2122ef",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "MESA/MESA_shader_integer_functions.txt",
+      "source_sha256": "31226db770f7e87e49ad75e6b25e046410ee6cc49448fc897eef2b906fd645c9",
+      "line": 212,
+      "candidate_sha256": "96102d0f8a158a636bd429e4cea1382b620b0a0e0357332911a1ca66db1bdf3b",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "illustrative_code"
+    },
+    {
+      "source": "NV/GLX_NV_multigpu_context.txt",
+      "source_sha256": "324f2b4ff817e591c5fad6a6e3cc473d7dc2051ac87187ad32f958eed34a3409",
+      "line": 11,
+      "candidate_sha256": "62a4448d2ac6a2b3cbaa9f0c98449b90f826f5303235aa5939ee0468348fb002",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_bgr.txt",
+      "source_sha256": "dff7538edde57f30d975915a86e8c9cfc62da0f5977df6a6f203abbf6e3b5900",
+      "line": 17,
+      "candidate_sha256": "95596eded596bd2716f19ff334fe77a12a72fe50efd1d969a9b302c30003e1f0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_bindless_texture.txt",
+      "source_sha256": "1f8f2a7ef455df699a96cb68e83f0a9465928bd884c452edc00c607ac8f29bb3",
+      "line": 667,
+      "candidate_sha256": "9c0ec8d989eaee0a866534097667dff84fb6ef136ed64fe79619c6fe0005c962",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_bindless_texture.txt",
+      "source_sha256": "1f8f2a7ef455df699a96cb68e83f0a9465928bd884c452edc00c607ac8f29bb3",
+      "line": 692,
+      "candidate_sha256": "cf66eec9b4eeef81927d56cda9be720f13fa5b51e584c2f4b6a669b5cdb53e9a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_clip_space_w_scaling.txt",
+      "source_sha256": "9ca58408a9d3beb35a30fcab0fbecd5150b85e191187b61c9f758b6eb2e60f44",
+      "line": 49,
+      "candidate_sha256": "3b330e30b8b9df402ac7db9429970c732b9eafb4a82aba153b4df522fbba6cf7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_compute_shader_derivatives.txt",
+      "source_sha256": "2d51bb0d8387580d26fca4b2ca47c261a0658f6b1765599bcd08984ace9a7f12",
+      "line": 51,
+      "candidate_sha256": "80321a5dc3b38327c7be51264cdd6013b204e5f731fbf57993214504ec33a01a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_fragment_program2.txt",
+      "source_sha256": "c909cf403dbe793c8f06d789ebff47b05ae54cd2a062dc89fd78d6868fcbf17c",
+      "line": 50,
+      "candidate_sha256": "e8a62e68b5a1619b7070db892d92c6e907d551fbda231950da21f2dbc1c0c005",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_fragment_shader_interlock.txt",
+      "source_sha256": "f0d2c9f2d69adc08e149f98b10d78fd24fe12403464cb60072582a051cfbb9e9",
+      "line": 40,
+      "candidate_sha256": "c3cb6f79910aae78fad0a6ec079c024596106030eabf7003f04021dfd39d3ceb",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_geometry_shader_passthrough.txt",
+      "source_sha256": "010abfe8d0c5d04901cd7b3c030e5fbd68c4ea9d2c41926e85301cad5586a6a4",
+      "line": 200,
+      "candidate_sha256": "0ce8432a1330d3b4bc42413d9ada8127d1702634a637d42b9212c79ee66e55b6",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_geometry_shader_passthrough.txt",
+      "source_sha256": "010abfe8d0c5d04901cd7b3c030e5fbd68c4ea9d2c41926e85301cad5586a6a4",
+      "line": 273,
+      "candidate_sha256": "ef7facea544f8e78ff735fa05cf9c6e5286c6922245c62f541434486860c536c",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_geometry_shader_passthrough.txt",
+      "source_sha256": "010abfe8d0c5d04901cd7b3c030e5fbd68c4ea9d2c41926e85301cad5586a6a4",
+      "line": 274,
+      "candidate_sha256": "22307409c8a570e4632b111884ffa1db5fdbd8afa3843beffa14001d2f74e35a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_geometry_shader_passthrough.txt",
+      "source_sha256": "010abfe8d0c5d04901cd7b3c030e5fbd68c4ea9d2c41926e85301cad5586a6a4",
+      "line": 275,
+      "candidate_sha256": "1e6726c0c392dc9f9384da6f252c9dd6c04d25c2ab9c45afc65bdd55165222ca",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_gpu_program4.txt",
+      "source_sha256": "ceff2fe39752015eb53f44f1c28eb7eb7be3149b1fe88419ec5b6aa0ac1777d5",
+      "line": 78,
+      "candidate_sha256": "1f8167139ceb73cc3527b605deb22e99acf8bb31e5f6d5559e2e4568b4756c32",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 680,
+      "candidate_sha256": "c21efea23eda14b3f63e09e59b1d1179bcd325d8a03b807b00b8a48a38525558",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 681,
+      "candidate_sha256": "1388b1da45bd32115b2007b9b4dfc684e024c086745a32df85916469d76a09c8",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 682,
+      "candidate_sha256": "5d9654c92f55b9ae1f117e60da1131c351dccef455877c6418e04203e83c23eb",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 683,
+      "candidate_sha256": "ec8f1b4eb82984e89396afb4bfa57fcd022ddee9adc13d5cc035a7eb46833f8f",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 685,
+      "candidate_sha256": "bf01c19efcf0ace6f0e98149ea1cacce99b56c409ee145d142dc3ac90da9fd2d",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 686,
+      "candidate_sha256": "522389cc427bacfb6cb602912ef4c67b494fbe5a7c34d6b5c59aa484db538a2a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 687,
+      "candidate_sha256": "fe7d328958e3e1b572dc10c72b0c11a6d0281a3e0a03e80a278fbf388e05e70a",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 688,
+      "candidate_sha256": "ec188be2f5cb972346b868879dfbf54e9c24ada044e9126023658623592cfcd9",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "conversion_table"
+    },
+    {
+      "source": "NV/NV_gpu_shader5.txt",
+      "source_sha256": "c7eb14e12ae20251a97af801dbc79f015e9344c155d929a851746877f027a1f3",
+      "line": 846,
+      "candidate_sha256": "1c8aa6fefa46131bc16fc66bba257f53b399f4c3c33f02430e0b734068686eb4",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_image_formats.txt",
+      "source_sha256": "d7fa38c903656713d0a8b28d58146f4f201cae40aa101a87d48a54b3b9c51639",
+      "line": 24,
+      "candidate_sha256": "c124bbe02754dd2fe5ee2e6bd2ed70028f6aefae3f215cf47027c69c59d1441e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_multisample_coverage.txt",
+      "source_sha256": "b34f63a90e4f4085f1f8808390e498f48251cf91d152901d870bdb04012a7a63",
+      "line": 13,
+      "candidate_sha256": "502f73fd57094ccbaffde5301d33f191344879843eca243a3f8297a40118a692",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_path_rendering.txt",
+      "source_sha256": "1d0ccff2d0fd002c59b0bd3cb0488c5f6542e223da30900c7bf7342f5f4e4ce8",
+      "line": 77,
+      "candidate_sha256": "defbbbac41c19683d5b48de0230b0b62e57ac1a91696d1b5f15f57ca9cf44451",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_register_combiners.txt",
+      "source_sha256": "43e38d722a6ec93c4a66b9c622d95ca6789d4e5980698574391dc9a9349b50be",
+      "line": 67,
+      "candidate_sha256": "778dac5436c0b6200d9d12e8b06cd0dd1ba3e38537382b1d747bf4277033b16a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_register_combiners.txt",
+      "source_sha256": "43e38d722a6ec93c4a66b9c622d95ca6789d4e5980698574391dc9a9349b50be",
+      "line": 89,
+      "candidate_sha256": "693a8371c0dd5791c646482ee9bb47fee6fac14d0083b79c4969917e1a4fa85e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_shader_buffer_store.txt",
+      "source_sha256": "525d3ec5cb278d2b63ff1a445e98c4f1a9727c95148688953bbd6b823906cf28",
+      "line": 450,
+      "name": "atomicIncWrap",
+      "return_type": "uint",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "NV/NV_shader_buffer_store.txt",
+      "source_sha256": "525d3ec5cb278d2b63ff1a445e98c4f1a9727c95148688953bbd6b823906cf28",
+      "line": 451,
+      "name": "atomicDecWrap",
+      "return_type": "uint",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "NV/NV_shader_buffer_store.txt",
+      "source_sha256": "525d3ec5cb278d2b63ff1a445e98c4f1a9727c95148688953bbd6b823906cf28",
+      "line": 467,
+      "name": "atomicAdd",
+      "return_type": "uint64_t",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "NV/NV_shader_buffer_store.txt",
+      "source_sha256": "525d3ec5cb278d2b63ff1a445e98c4f1a9727c95148688953bbd6b823906cf28",
+      "line": 468,
+      "name": "atomicExchange",
+      "return_type": "uint64_t",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "NV/NV_shader_buffer_store.txt",
+      "source_sha256": "525d3ec5cb278d2b63ff1a445e98c4f1a9727c95148688953bbd6b823906cf28",
+      "line": 469,
+      "name": "atomicCompSwap",
+      "return_type": "uint64_t",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "NV/NV_shader_thread_group.txt",
+      "source_sha256": "f5989f4b9dec9e8058ae9c4ce80f3f5d7cce3181a3519f7658651a54249e0c3f",
+      "line": 745,
+      "candidate_sha256": "3df89dc5a206b8ea99d4e3c8f46ee92777a1c7234550a24d74e575221f8674c1",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_stereo_view_rendering.txt",
+      "source_sha256": "8511cc2e2cebcfeaa2d214715a3e77f44ba21a5c90179dc2dc7974bd1833f01f",
+      "line": 48,
+      "candidate_sha256": "94ff7dd301ef6cf8bbf9de5a1c7226c807f695d16b88f566564bbb4c2e4f51fe",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_texture_shader.txt",
+      "source_sha256": "a3a390ffe285cb24b611862081d3f2c8ecb79eb511c36a11c57ceeb9993aed70",
+      "line": 106,
+      "candidate_sha256": "b686db4dfe506cbdd3e92c8473d18c2ad4dfd93e74bc846978ca03ed33474c37",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_texture_shader.txt",
+      "source_sha256": "a3a390ffe285cb24b611862081d3f2c8ecb79eb511c36a11c57ceeb9993aed70",
+      "line": 210,
+      "candidate_sha256": "5a2fa8c28b79c80742ab3c497296d07b96d8a1c4a7a40baa405d0c87aca0110e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_transform_feedback.txt",
+      "source_sha256": "090e34c7b24be6eb4b2c29abd7e64972372ba3a266be548f5f29f17f77b434ec",
+      "line": 16,
+      "candidate_sha256": "3b008645be3ab2bf30061e4cc695cf368479dcbaa09c625b26f982973e39f133",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_transform_feedback.txt",
+      "source_sha256": "090e34c7b24be6eb4b2c29abd7e64972372ba3a266be548f5f29f17f77b434ec",
+      "line": 17,
+      "candidate_sha256": "012fad32751e2fb635289ae8fd06710c6f1aa81affda905f33d44f0004ae6048",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_transform_feedback.txt",
+      "source_sha256": "090e34c7b24be6eb4b2c29abd7e64972372ba3a266be548f5f29f17f77b434ec",
+      "line": 18,
+      "candidate_sha256": "565e3c0d80ac3e61b32bbd849a9ba3ac59c44e0bf62b4dad306b75a8154e37d8",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_uniform_buffer_std430_layout.txt",
+      "source_sha256": "04bb03adc13b6fe6f515f60581668cadd313813d302ee38709b63072144f53f5",
+      "line": 49,
+      "candidate_sha256": "eda178a6971cbc51c4da5cca716b0569438289d8669f76841357b175abd83710",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_vertex_program4.txt",
+      "source_sha256": "ae0bc3a3c65f374b5101b61c4c5673369f866bddde26496bd088669fb834ae33",
+      "line": 54,
+      "candidate_sha256": "107694484169be0934377a3bee18253290ad3029c38a9f01f9798517bc022516",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/NV_viewport_array.txt",
+      "source_sha256": "7cad38ff382c3cc78b87fc38bc3901dd968388612bd7302ee41fd55055c6616f",
+      "line": 25,
+      "candidate_sha256": "755427a1365f2c581a23cd26af691115bc378fca178531784f92c41ce81409f0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "NV/WGL_NV_gpu_affinity.txt",
+      "source_sha256": "51fc9f1ef092d3312fe88f7a71858d51c76e4fd690716d29588c7a6efa90d89c",
+      "line": 110,
+      "candidate_sha256": "5a815c6a7684f154d892f002266a50c312cb03a4e92aae1088e0c6391cc73ae6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "NV/WGL_NV_gpu_affinity.txt",
+      "source_sha256": "51fc9f1ef092d3312fe88f7a71858d51c76e4fd690716d29588c7a6efa90d89c",
+      "line": 113,
+      "candidate_sha256": "1741a36052431604922f5ec47dfddae84c35febceb750930242c11358e085314",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "NV/WGL_NV_gpu_affinity.txt",
+      "source_sha256": "51fc9f1ef092d3312fe88f7a71858d51c76e4fd690716d29588c7a6efa90d89c",
+      "line": 117,
+      "candidate_sha256": "d752d84a6c71285f8d94f3463763a210646b9482d2d25945d3e7290c969ddc8f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "NV/WGL_NV_gpu_affinity.txt",
+      "source_sha256": "51fc9f1ef092d3312fe88f7a71858d51c76e4fd690716d29588c7a6efa90d89c",
+      "line": 119,
+      "candidate_sha256": "c5b0e17c84e0c35c35f49a233d815480bf967b0ef01913682a4097cfb6c9285a",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "NV/WGL_NV_gpu_affinity.txt",
+      "source_sha256": "51fc9f1ef092d3312fe88f7a71858d51c76e4fd690716d29588c7a6efa90d89c",
+      "line": 123,
+      "candidate_sha256": "b1a9c6646dd59f06476c1db1fd144c13831649b6788374b09a6a12e5654373fb",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "NV/WGL_NV_multigpu_context.txt",
+      "source_sha256": "7005ba1d7248eacffd9ee921d5f713107f32f9d422e13bc02bc61eae6b6776d4",
+      "line": 11,
+      "candidate_sha256": "3e96c008757a78c429ddf98ec2b0b4e401fc3f338b3d03c0cfa1973d78131ed3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/EGL_KHR_fence_sync.txt",
+      "source_sha256": "47f14b612623fec33554d00009aae3da00f4fe87d0a1473b44a285e3c4e7b7bd",
+      "line": 23,
+      "candidate_sha256": "78171b2ca05609fe9fd322f7e2d9a511bfd5b2b9892b966976e53522dcc5c288",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_compressed_ETC1_RGB8_texture.txt",
+      "source_sha256": "113eabf43f24c99ab2dd821113f04b25ea77ee2159bbc3776c93728348458284",
+      "line": 11,
+      "candidate_sha256": "36714d0408dc02b26adead283290089b3cad404215d7318c353bb56ecff1d665",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_depth24.txt",
+      "source_sha256": "f4e29dc7bcb495256a03313afa46ac6069cfd308bd089352015157c226022808",
+      "line": 11,
+      "candidate_sha256": "0764fc2c51d746970bc1b2ad2fd32e091b32f23a3bf9dd4dfba0b7c178fbd5f3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_depth32.txt",
+      "source_sha256": "df74ae040eee776606a9a417d0d1add13e075f9ed15147c87a56e111250b7893",
+      "line": 11,
+      "candidate_sha256": "4bf8ea30a7a8e50c390a013ddb5700c66d48c22f2dccb371dd199b9421e1daac",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_depth_texture.txt",
+      "source_sha256": "30cb16e89fea52181de6b4fe760dd7e4367176c3d174b2406a07a76b23ab517a",
+      "line": 11,
+      "candidate_sha256": "49092be74327c5bd7359cc723e3018b2c32dc166951a9f871cb0b3a32be8ee06",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_depth_texture_cube_map.txt",
+      "source_sha256": "6599133eb2f50387972816f965d547151f49505098cd553cdad64031d5e9da63",
+      "line": 11,
+      "candidate_sha256": "6f05853071d31866ed557ef702b0a54eb4961ea003726aefb7f3ad66b78039b3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_draw_buffers_indexed.txt",
+      "source_sha256": "318c79a8a5f60736c3e9c176c31d565e16c258b93397d424728c0bad7f3ad086",
+      "line": 59,
+      "candidate_sha256": "32330c5d43677aecfc5432b6806ffe65bfd5257441f6afca1d26989d3eeeb8b2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_draw_elements_base_vertex.txt",
+      "source_sha256": "d5842191bb5f740eff113633cc06e4da85f38d4580be7ebf4b0f3a07d170d2ce",
+      "line": 34,
+      "candidate_sha256": "54be2ac6dbc8a0ce4ed0c9934d4787c103f05364f8769392a36d0ddadc283bfd",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_draw_texture.txt",
+      "source_sha256": "068dcee063ab87d678d844d604571ed581862b1bca65dcb3ceebfff2e4e7e776",
+      "line": 11,
+      "candidate_sha256": "41de8f49495e5b446a07c2b1cf9a739b86d45aed33055c4f2f8d3b01e6747f07",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_element_index_uint.txt",
+      "source_sha256": "bcdba5abe296877fdbb20bbc292c6cfe98aa77dad87fd0d788188b6ede89779d",
+      "line": 11,
+      "candidate_sha256": "8e84b30eac67b5b9b19f9d7642fffa83dbb5bdac4ab98fbd57846b383ece6d2d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_extended_matrix_palette.txt",
+      "source_sha256": "b5538296a0b97ff4109285d614edc327b211f08fec556d23feadd8cb290b3b67",
+      "line": 11,
+      "candidate_sha256": "68bc8358499e7b5793a850e3d62e09c5d93c99030689bc7bb5dd64965b0ca69e",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_fbo_render_mipmap.txt",
+      "source_sha256": "9750c0d7c40436f92ca9817f6118f43a53deeed96d6c2182e236e9cf2a8d9e06",
+      "line": 11,
+      "candidate_sha256": "12280e4636a89505863a4f2c02af9268e814fbfcf292150034eafbb77bd01cb3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_fixed_point.txt",
+      "source_sha256": "a1af26ec71f52f1c696c4aaa4676446d1d5da7de906e55a48d736edfa6c3d025",
+      "line": 11,
+      "candidate_sha256": "4950852d34f60c2b02aff9c890be0726be3b95d02cb9fd0c4c325d809a2ae68d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_fragment_precision_high.txt",
+      "source_sha256": "e339d5db1983babe9bc6eccec693dc374ea18b9468c26cfc37a31bec3c022fef",
+      "line": 11,
+      "candidate_sha256": "c8192c5c18787b40f742511a690c8c874f54703c87ac203f5333312fddf317f3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_framebuffer_object.txt",
+      "source_sha256": "a3d36b23ddf2bad7e6ef088a9f1647a61e22324dc538135eb40d6131c5ab71fd",
+      "line": 11,
+      "candidate_sha256": "79717ce7235c7187099a530e6a77425f877aec3a85b361dda863d8f1313bc1c8",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_framebuffer_object.txt",
+      "source_sha256": "a3d36b23ddf2bad7e6ef088a9f1647a61e22324dc538135eb40d6131c5ab71fd",
+      "line": 76,
+      "candidate_sha256": "39f50c2745a8433c2215ec1c4087ad3710f9bf15d9542b6e88f69892af547e8b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_framebuffer_object.txt",
+      "source_sha256": "a3d36b23ddf2bad7e6ef088a9f1647a61e22324dc538135eb40d6131c5ab71fd",
+      "line": 125,
+      "candidate_sha256": "b88de4c7bc5eaba8deb3c906437642c6c60c15b18b3877e2b1bd09c9682d178b",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_geometry_shader.txt",
+      "source_sha256": "09734f05424426490d730d5f646f191c52385dfae90f5a0faac7ae9b68a87d52",
+      "line": 12,
+      "candidate_sha256": "b660b2bebcfa85409645a50ef318333e15b117ab8915b6dd8ce052b5113afb76",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_geometry_shader.txt",
+      "source_sha256": "09734f05424426490d730d5f646f191c52385dfae90f5a0faac7ae9b68a87d52",
+      "line": 44,
+      "candidate_sha256": "4fc20b7edaa57c7fa45b6c819f7b1d306903d7411fbac122949638504f625416",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_geometry_shader.txt",
+      "source_sha256": "09734f05424426490d730d5f646f191c52385dfae90f5a0faac7ae9b68a87d52",
+      "line": 101,
+      "candidate_sha256": "eb57e87cc906bb99fd76263e7fcb4b06ef76dde4b7caf350fa62819813dcb7c9",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_gpu_shader5.txt",
+      "source_sha256": "17f06d8d76c5a3eab7ee9649348df7b86c288d1008c88249af1181b564e40827",
+      "line": 11,
+      "candidate_sha256": "ef831abbf5054805c7d8f3a1bad3c17e9b6bb13f4a2dfdb685a849f562e91c22",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_gpu_shader5.txt",
+      "source_sha256": "17f06d8d76c5a3eab7ee9649348df7b86c288d1008c88249af1181b564e40827",
+      "line": 43,
+      "candidate_sha256": "c4d31cf502dbc3aef77c3fa36c31d596d5ae87ee5132a98b0103332baad39117",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_gpu_shader5.txt",
+      "source_sha256": "17f06d8d76c5a3eab7ee9649348df7b86c288d1008c88249af1181b564e40827",
+      "line": 93,
+      "candidate_sha256": "38b3a9419f95a29502fe30bd0c8d166e7509708da16509e3eb85f8c9ea6d20c1",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_gpu_shader5.txt",
+      "source_sha256": "17f06d8d76c5a3eab7ee9649348df7b86c288d1008c88249af1181b564e40827",
+      "line": 166,
+      "candidate_sha256": "49abde957dd3f4fad3cb340ee9c6368b4a1c19dda30bd0504b17f021b2fd02f5",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_mapbuffer.txt",
+      "source_sha256": "77c59b75b8bc682722d3284c77e36eed06a5614909ee66f76dd8e620481db7dd",
+      "line": 11,
+      "candidate_sha256": "bcbc62ce704a61006c3af7a438eefebea8fa8bea31348e9437217e46be6e6355",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_matrix_get.txt",
+      "source_sha256": "d121942c20bea0e16cdd74567ef7a9e4f27be15adb93ba8c002d6883ceced11e",
+      "line": 11,
+      "candidate_sha256": "efead867d94463aa51f8d25ce28e01a425ecfa1cf937bc3b993e003651951b80",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_matrix_palette.txt",
+      "source_sha256": "3c37c114ebe9356818415dce93e7229d45df16082a90cec599c44ec0e17eaf90",
+      "line": 11,
+      "candidate_sha256": "b03bc55640842c0eb0afffcd1f31731c9cbed2b2a3ff1868554033c3e6579edc",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_point_size_array.txt",
+      "source_sha256": "246472432c4c8768d6fd3eca9e200c84880b00372f11fcced35bd8428e38856c",
+      "line": 11,
+      "candidate_sha256": "a990d6cd5d458ea2356521bb105018e904e931d86bac54c047dedccec423ad95",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_point_sprite.txt",
+      "source_sha256": "42bd21a2b44bff36599b3a8051eaf50545abb072d1c45b467a2a83f4c64167b9",
+      "line": 11,
+      "candidate_sha256": "ff3ad3950cc7ca02468a6a3ef63ece69871235973f2337d6362b0a58e28aa9c9",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_primitive_bounding_box.txt",
+      "source_sha256": "b417f3a5db1718806f44b8bece15d42beb32fbb7c012bd59518370cb21da7368",
+      "line": 11,
+      "candidate_sha256": "f275161a94db50a35f381f0192713af5c54361354758e48b72451741efaca961",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_primitive_bounding_box.txt",
+      "source_sha256": "b417f3a5db1718806f44b8bece15d42beb32fbb7c012bd59518370cb21da7368",
+      "line": 79,
+      "candidate_sha256": "6bae613c738ab192d76ad2e8c7cafc2b1f2eef9d7a9d6a0c785456f7f1b5d349",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_read_format.txt",
+      "source_sha256": "09074de2093ef3c5e97acfd66e2581e0199c9dc6d200237ed1ff66e732e0b538",
+      "line": 11,
+      "candidate_sha256": "4eeb7815bd3802b59542991d38fb67d5d04c422c125a28cb960751028c15731c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_rgb8_rgba8.txt",
+      "source_sha256": "2272ee6ecf1832545ec537c7f26d0f6fa566b1bc8c3cb41d91cb22b8a5c95dd7",
+      "line": 11,
+      "candidate_sha256": "09bb0f7c9571288557c1172576e117683172af3e4712a175eb1b0ff5cc029746",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_sample_variables.txt",
+      "source_sha256": "efe81fe72023b5308157d34f83b5608bd608fbe17774e98342ebd2a3605a799e",
+      "line": 81,
+      "candidate_sha256": "80cb1f424642c131dd714365775ef36a9995e6c9d67933e19f9a5de8ceab2556",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_sample_variables.txt",
+      "source_sha256": "efe81fe72023b5308157d34f83b5608bd608fbe17774e98342ebd2a3605a799e",
+      "line": 251,
+      "candidate_sha256": "1e65d5ded69b100ea23e538f99438cf987e96089aebb6439fa5c9cc517314877",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_shader_io_blocks.txt",
+      "source_sha256": "11ae8a5b10ca2e67a039e6fd9ee08fddc17faf5819e1efc6a6ad3bac87d03e78",
+      "line": 11,
+      "candidate_sha256": "7cc039b69606cfe50ff061603eee09444777acd80569dc45936b9decf87472a6",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_shader_io_blocks.txt",
+      "source_sha256": "11ae8a5b10ca2e67a039e6fd9ee08fddc17faf5819e1efc6a6ad3bac87d03e78",
+      "line": 38,
+      "candidate_sha256": "d32a003039346bff43ba17908793a2a2bc79b9f8872984df06c342f166646379",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_shader_io_blocks.txt",
+      "source_sha256": "11ae8a5b10ca2e67a039e6fd9ee08fddc17faf5819e1efc6a6ad3bac87d03e78",
+      "line": 451,
+      "candidate_sha256": "80484c4e6de15ebf5ab08c8a07c0825a720eae498a99253a92a8d7c61e853c20",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_single_precision.txt",
+      "source_sha256": "0e47f6e63937834f2f7bce11f2480b528b6a0de4839d2f0eb8b5fa39cf2696dc",
+      "line": 11,
+      "candidate_sha256": "412137b3d2bfdb42e71ec945364417cb6418e3b69dac7359e2ae15cc25fa8ec0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_standard_derivatives.txt",
+      "source_sha256": "326ff7c7d4eb0d3e6fd0121126b2b87b133de0aad522b609a996a4e811e88b51",
+      "line": 16,
+      "candidate_sha256": "d19f09120e7818aa91409d98f37d95399c3a5b1908bf6358a7c08488c8839005",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_stencil1.txt",
+      "source_sha256": "ae4058afbb2af561bf98df5fed9b66b51a205734eaf043f1db5237d579526846",
+      "line": 11,
+      "candidate_sha256": "174c5811bbaf663af7e0711dc30a0da0f149b5efcec3975b61999ac970550a6f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_stencil4.txt",
+      "source_sha256": "33010d3b96e1190953843e32d0400e0dc9179813e6d390def580166b6ace35c3",
+      "line": 11,
+      "candidate_sha256": "9efcf82517b254879d3aa1e046a3be107ae06c821127121f2394b90481f6c6fc",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_stencil8.txt",
+      "source_sha256": "43650d280d3ccafc72fdad1b919d180bd808731fc9bf69a87414384d57e8234a",
+      "line": 11,
+      "candidate_sha256": "5a2cdd7b221683e45b618bc4ba8a700e9718cce6a4b5f6d20b32d2330ecb9594",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_tessellation_shader.txt",
+      "source_sha256": "b6c12aee821f8cf26cb641c5da0f3c0681c84af9da5ac5e6981d98cb78cd3f22",
+      "line": 12,
+      "candidate_sha256": "794c0c451e4f333e1468204036955eea36b14dfa538c8d8784cd18dec1570092",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_tessellation_shader.txt",
+      "source_sha256": "b6c12aee821f8cf26cb641c5da0f3c0681c84af9da5ac5e6981d98cb78cd3f22",
+      "line": 47,
+      "candidate_sha256": "1f9f42aab0c5cf10a30ea3c96b9d0ff6b36c6b8c3457f715dbda1687c0f9f1c4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_3D.txt",
+      "source_sha256": "5bab156ef48b81a020ab9638e3bcca3632a6108abe6f1211d7db429e0f5d94c2",
+      "line": 16,
+      "candidate_sha256": "d0b32400a4382378db26bf7dc6da5a32e089c76c794db95fc3e7486f758ee858",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_buffer.txt",
+      "source_sha256": "9bae70bb59823f5f6ce55aa8fe5f6fda7372a926ef252080ccc6016df6bf4b69",
+      "line": 11,
+      "candidate_sha256": "12cdaaf7e5b6b431e33002b9e27770e25577c687851c156d2654ed38a01008d3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_buffer.txt",
+      "source_sha256": "9bae70bb59823f5f6ce55aa8fe5f6fda7372a926ef252080ccc6016df6bf4b69",
+      "line": 41,
+      "candidate_sha256": "578d07f1a8a83765f9f78d874b623a332daf055b4b02d52a9d2e11439bacfb19",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_compression_astc.txt",
+      "source_sha256": "6327fd9e9f994015236fc93e354ae16f06b1f7d7cd5aba7496131c0a3cbca176",
+      "line": 13,
+      "candidate_sha256": "df1c2862f5caa526a37963ca52d9fee3ce4992fa45fbdb2547ff41c95acc4364",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_cube_map.txt",
+      "source_sha256": "a3d4daec22bb418898d16c07c1c3dcebb297a307fdc509eea8071d65b33c0b45",
+      "line": 11,
+      "candidate_sha256": "90a4915cab6ce107edf19dcb0b7fe0d9db5fc093150b218ea6f317691a015807",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_cube_map_array.txt",
+      "source_sha256": "669bff148eb76cb2381418a0e40e1ecfc183664e594cb1423d88bb753d622372",
+      "line": 11,
+      "candidate_sha256": "509f3bde6e426b407d064762cd70cee12b7b2d194db1cb34cf226e28fc215612",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_cube_map_array.txt",
+      "source_sha256": "669bff148eb76cb2381418a0e40e1ecfc183664e594cb1423d88bb753d622372",
+      "line": 38,
+      "candidate_sha256": "b14631398884cbfe97176d5c2f7eb1080d616aadb298530df52171cb9b914576",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_npot.txt",
+      "source_sha256": "fccadc79f174c45315390f0766d2a874236a11d6ffed59499a675f250fe1831a",
+      "line": 11,
+      "candidate_sha256": "c5c038c85848d70110d057746cb2e49996a7b6cb1b0632812b51a8ca21535872",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_storage_multisample_2d_array.txt",
+      "source_sha256": "7be3a5587a3b8540756499d521303d184cff4c8b76b0ac47e0a9038bda4d498e",
+      "line": 17,
+      "candidate_sha256": "e788ac687fa57d458553abf3b77fb0abed4f2d506445b0dd70d21a43e3ba8011",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_storage_multisample_2d_array.txt",
+      "source_sha256": "7be3a5587a3b8540756499d521303d184cff4c8b76b0ac47e0a9038bda4d498e",
+      "line": 18,
+      "candidate_sha256": "4152219564ce40491c902acdb23125d828469cd90b3ed46961e1be79d20ffba7",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_storage_multisample_2d_array.txt",
+      "source_sha256": "7be3a5587a3b8540756499d521303d184cff4c8b76b0ac47e0a9038bda4d498e",
+      "line": 19,
+      "candidate_sha256": "fea4a1c3af01f235d5ad8e4c1761c554924b07cb048e796fea0ba80e147da95c",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_storage_multisample_2d_array.txt",
+      "source_sha256": "7be3a5587a3b8540756499d521303d184cff4c8b76b0ac47e0a9038bda4d498e",
+      "line": 20,
+      "candidate_sha256": "5c234ee2fbaf6f793cbc0cb41551ff0060a8852d256223a160e7da01d24ee0a1",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_view.txt",
+      "source_sha256": "ef4e06499dcecf92c8ff37c07829049f64b13a3b7d23bb2c7bf97ce083bc36e6",
+      "line": 11,
+      "candidate_sha256": "df19fad80e6e19f467a748e088d769e65143090f7e77f9eb9af44d839c528ea4",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_texture_view.txt",
+      "source_sha256": "ef4e06499dcecf92c8ff37c07829049f64b13a3b7d23bb2c7bf97ce083bc36e6",
+      "line": 36,
+      "candidate_sha256": "7550102a8cc0d35bae70595623ea0fad14b429d78e30ee50215ef4b79daecc90",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_vertex_half_float.txt",
+      "source_sha256": "1e1ea56b05d536f308d0af467694d1e83abb2237ff8e155460cab4f806b2080b",
+      "line": 11,
+      "candidate_sha256": "06856d48d3b73c19d6ac12d7b84a1986f4afddbe25c1fb4decae3e0871e6c450",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OES/OES_vertex_type_10_10_10_2.txt",
+      "source_sha256": "ffb09ca13cb2a9336149d5704a9143a59919c8e19b07b6554c962d9d5ef044d2",
+      "line": 21,
+      "candidate_sha256": "43651b1698013dfabae806ee5cbe4dcf5063c4c0fa8de3d0a0502cb9adf25392",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "OVR/OVR_multiview_multisampled_render_to_texture.txt",
+      "source_sha256": "7e08eca1ace86856d5071327eba5d20587715e061aa81e740de69cf39158dc27",
+      "line": 11,
+      "candidate_sha256": "4f9ec374909709554f830438db0d18ff0a03c524aebf3633effd8ad1dbe64709",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_YUV_texture_gather.txt",
+      "source_sha256": "c4315736319b2da99403c71bc06db3ea97d0140cb862d1a0bd9aecf9e0ea53b0",
+      "line": 10,
+      "candidate_sha256": "f677679946321dcd423b1f54e59b529ac419e1a88a5eeb5aa8e87398d0612fb5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_YUV_texture_gather.txt",
+      "source_sha256": "c4315736319b2da99403c71bc06db3ea97d0140cb862d1a0bd9aecf9e0ea53b0",
+      "line": 75,
+      "name": "textureGather",
+      "return_type": "vec4",
+      "original_status": "unclassified_outside_function_section",
+      "disposition": "builtin_declaration"
+    },
+    {
+      "source": "QCOM/QCOM_alpha_test.txt",
+      "source_sha256": "fcbc35ae0e3032f655a748573098fc7693f79d08de1e9fa35a0e4e6585528872",
+      "line": 11,
+      "candidate_sha256": "7d50d50f904a1141bb5991aefb43b60c70b2f09219db6f8101b399fdb35452b8",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_binning_control.txt",
+      "source_sha256": "803ddb041f28de2cd30004900e4b2dcebf8bf3e4e5ddb845ccde0df81eb559ac",
+      "line": 15,
+      "candidate_sha256": "54cb3d28b680e626a98862ac3cf547bb44bd7df9fd044c357c245a04fc2ed073",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_driver_control.txt",
+      "source_sha256": "a64688470ff4ff3928066382c50bd83e90e688c875bdee2c6d7d176dce810a6b",
+      "line": 16,
+      "candidate_sha256": "719e9534d5b7b09bb419a6616f3282731edf4447eee0e1cae665ac58060b2a3f",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_extended_get.txt",
+      "source_sha256": "a32ce1fc22b1a2f117ccd079eb19771deea0bf5ad3cc7a93d10a6ed00f1deefd",
+      "line": 16,
+      "candidate_sha256": "a1408ec6175ddfc9499b6240cef2f95e3ab8fb2df2eb5d9aec2b54cdbbbecc48",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_extended_get2.txt",
+      "source_sha256": "bc525264d229731ee4ce7915e0755da04b6a68257024af2e611b7508b5dbef4b",
+      "line": 16,
+      "candidate_sha256": "42276700a6b76affbe9afc240c208b05f0e31cf18db9186e1c8ffacd12c81f94",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_shader_framebuffer_fetch_rate.txt",
+      "source_sha256": "2b89206645d2399aec0789280a5b52d66a365aafdb5204cbe6d69ee38d6144a0",
+      "line": 10,
+      "candidate_sha256": "7153d15dfc503d7e2652ac2f2e54e28f78a675bda6e2029c34412ae9d8b3e0e5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_texture_lod_bias.txt",
+      "source_sha256": "2448f03bd55689a9cf5e9460e26457d02c42a9ddb6e3b3afd680dfc422efcf77",
+      "line": 11,
+      "candidate_sha256": "cff14e5528485ded97a641014bf87c2042598a7f40c9096467720ac96ab47ba3",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_tiled_rendering.txt",
+      "source_sha256": "219c5517dac8e4d86413ad7519dceea4ce4a6e24a1e3cf223189515cab2bc6d7",
+      "line": 103,
+      "candidate_sha256": "59806dadd854561a4139a367efd0e1ed73e5178ed8cf035129386f220c3faa6d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_writeonly_rendering.txt",
+      "source_sha256": "0363ceebe2b1b10c2c5392ee0faedf919913566b57bb2367268337e96670fa0e",
+      "line": 11,
+      "candidate_sha256": "e210e171c0b51c8726a76679ce802a54188b695bf254cbdee22a4e080fd051bf",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "QCOM/QCOM_writeonly_rendering.txt",
+      "source_sha256": "0363ceebe2b1b10c2c5392ee0faedf919913566b57bb2367268337e96670fa0e",
+      "line": 16,
+      "candidate_sha256": "19bd425918b78bd91341c3caa8428e601615153b7aaaf49a978a2ce371e3e1f5",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "REND/REND_screen_coordinates.txt",
+      "source_sha256": "921d9238c2257bb2051821ee7d900d75db2799257baab8d4f186e698a8a4c79e",
+      "line": 33,
+      "candidate_sha256": "d15aea666ee76d2c14654f6370cedcd039d77f9f1dc5cc2a43f51fe1ea4c1195",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGI/SGI_texture_color_table.txt",
+      "source_sha256": "16f3292c6872048d0a1f9c8b313964e3388ccd8eeff9f7c00592554eeff41190",
+      "line": 12,
+      "candidate_sha256": "3a7030ded17f715e8be376fd88906390d94a97970efb53023988f0610ecb9810",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGI/akeley_future_extensions.txt",
+      "source_sha256": "75bcb78499ad78ab9cac77b4cb84406ae1698e2d4cd49831cd4c66223ba105a6",
+      "line": 39,
+      "candidate_sha256": "6876e7157d92fdc3e98438eae26921a25cff193bb6ab02c50338f569456ae1a0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGI/akeley_future_extensions.txt",
+      "source_sha256": "75bcb78499ad78ab9cac77b4cb84406ae1698e2d4cd49831cd4c66223ba105a6",
+      "line": 57,
+      "candidate_sha256": "791db654dbfdd2c1fd3383626238e66ad3bd3465d3a77ee6e681a4e1a108120d",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIS/GLX_SGIS_blended_overlay.txt",
+      "source_sha256": "9b151622bab0b9c688bba4e2ba6fa14969416c3a344eb9800ff75338187250f5",
+      "line": 82,
+      "candidate_sha256": "b6efc3ca67ca0f65d7502ed230f4731eea940dda0c85d863d1ee497019e00d51",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/GLX_SGIX_fbconfig.txt",
+      "source_sha256": "9f8dea56ba01a6ea701b4c3e86193d983d5740e7d08bfd58b24fb659b2a4987d",
+      "line": 28,
+      "candidate_sha256": "0a7dc2c69a1a219acd246d3ac244f099eaebd6a3f01c21d93bbb59a158f5ba25",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_async_pixel.txt",
+      "source_sha256": "b79a474af6ba8ca83d43440f6c8a4b9d2ceffc883a52377ef89a0114be92f8da",
+      "line": 31,
+      "candidate_sha256": "e81b0dd5fba4a0a4beda862f6ec2682a1cd653f0976cbccfa89e2b74682c7b57",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_color_table_index_mode.txt",
+      "source_sha256": "15ca9647bc5d856f6c6760712360c6191132160505b164b5ae3e60f1b06767b2",
+      "line": 24,
+      "candidate_sha256": "9c140792fc6b01e101265740b49a548515e822289af9bb3c871924c6e06c58b0",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_complex_polar.txt",
+      "source_sha256": "e1db7d9b22eed57bf421271b13d20cf24a3c86371b37b06a2eb78bd1386dceb3",
+      "line": 26,
+      "candidate_sha256": "32ee107afc0f33c5a3ac3707046d8ff43e1315cfabcb4d9b24a4bc3bba2eb906",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_cube_map.txt",
+      "source_sha256": "252e5dc206f7a46ad68ff9c911808153b192544495d6270d1f9199d315a12cdc",
+      "line": 1,
+      "candidate_sha256": "3e03f0e5ff2cb171b277ba9204489c8647282eada761b50f9b68287ed75c0afe",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_nonlinear_lighting_pervertex.txt",
+      "source_sha256": "58311114aeb66ecdd0e0befb3ff54ef7f34edd51349495c67fab416fabb6f2df",
+      "line": 65,
+      "candidate_sha256": "abc61048922cb5f914e90b3abc0d7c6bba0187c51584236281400af61573cd43",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_ycrcb_subsample.txt",
+      "source_sha256": "008d6b1e4d8d3d16821bf1b745e845a1650d016a898a1d743cfba48f416d1bf7",
+      "line": 118,
+      "candidate_sha256": "6b3e3e246d82aa7193fd75edc79cfbaee39769e1d51dd662fb24de862b500648",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "SGIX/SGIX_ycrcb_subsample.txt",
+      "source_sha256": "008d6b1e4d8d3d16821bf1b745e845a1650d016a898a1d743cfba48f416d1bf7",
+      "line": 143,
+      "candidate_sha256": "9fe7e849e7f6a2289d1ec17c9aa5f6d2359a0d46c9a0f928c29fc0a90cf355f2",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "prose_or_metadata_non_signature"
+    },
+    {
+      "source": "WIN/WIN_scene_markerXXX.txt",
+      "source_sha256": "8c84740fefb8e724b22b4ac81bb40227bfba0db70bb3b461df6cc014eb623e33",
+      "line": 44,
+      "candidate_sha256": "c367afdd8d6345b8854930c140878fea726f98f5ca9dfbe6f5346b0b9b3837ee",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    },
+    {
+      "source": "WIN/WIN_scene_markerXXX.txt",
+      "source_sha256": "8c84740fefb8e724b22b4ac81bb40227bfba0db70bb3b461df6cc014eb623e33",
+      "line": 45,
+      "candidate_sha256": "3eac4d26fda7d04b04bc04777ce9fab5e6d24024f7a4c7fc35855786f51d6673",
+      "original_status": "unclassified_no_modifications_section",
+      "disposition": "host_api"
+    }
+  ]
+}

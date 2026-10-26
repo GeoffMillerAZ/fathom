@@ -90,6 +90,7 @@ const (
 	FamilyTyped     = "typed"
 	FamilyFileEdges = "file_edges"
 	FamilyRefs      = "refs"
+	FamilyRanges    = "ranges"
 )
 
 // BareName is a qualified name's last segment (§1.4: qualified names are

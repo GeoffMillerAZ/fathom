@@ -1,0 +1,19 @@
+# X-R1: independent holdout pin, never canonical corpus input.
+id: core-t1-css-browser-holdout
+holdout:
+  - name: tachyons-css/tachyons
+    url: https://github.com/tachyons-css/tachyons
+    ref: v4.9.1
+    sha: ecb7ef08684fc96a4945d360102385c110d50de9
+    licence: MIT
+    subpath: src
+    idioms:
+      - 'real modular CSS utility stylesheet source and import graph'
+      - 'responsive selector groups and custom-media conditions'
+    notes: >
+      Pin and criteria precede the first source or oracle read. Read every discovered CSS
+      file under src without -only or source substitutions. Freeze the browser adapter
+      before one untuned holdout reading. Preserve unparsed/unattested source and disclose
+      coverage by kind. Success is excellent at L1-L3 under existing harness thresholds,
+      zero faults and three-run median throughput at least 1 MB per CPU second. If native
+      coverage or extraction prevents it, record the measured ceiling without tuning.

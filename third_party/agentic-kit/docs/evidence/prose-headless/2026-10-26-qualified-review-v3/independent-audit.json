@@ -1,0 +1,59 @@
+{
+  "counts": {
+    "accepted_66_usage_tokens": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "input_tokens": 124470,
+      "output_tokens": 12125
+    },
+    "accepted_statuses": {
+      "inconclusive": 1,
+      "supported": 25,
+      "unsupported": 40
+    },
+    "all_67_usage_tokens": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "input_tokens": 125431,
+      "output_tokens": 12297
+    },
+    "content_type_patterns": {
+      "('text',)": 64,
+      "('thinking', 'text')": 3
+    },
+    "cumulative_charged_micro_usd": 1152522,
+    "frozen_file_hash_mismatches": 0,
+    "frozen_file_hashes_checked": 61,
+    "http_200": 67,
+    "http_attempts": 67,
+    "invalid_case_id": "oq-c05-case-2",
+    "invalid_position": 67,
+    "journal_outcomes": 67,
+    "journal_reservations": 67,
+    "pending": 0,
+    "planned": 85,
+    "prior_charged_micro_usd": 778690,
+    "provider_response_ids_unique": true,
+    "reference_matches": 66,
+    "reservations_settled": 67,
+    "trial_charged_micro_usd": 373832,
+    "uninvoked": 18,
+    "unknown": 0
+  },
+  "detail_failures": {},
+  "errors": [],
+  "invalid_reason": "Ordinary answer status unsupported cites f-01 procedure, says f-02 contains exact claim but was uncited, and gives empty premise_fact_ids and counter_fact_ids. Native contract requires at least one source basis.",
+  "limits": [
+    "Local retained journal/response evidence; provider billing and transport counts were not independently reconciled.",
+    "Synthetic source and identity remain unauthenticated; publication authority and UI entry remain false."
+  ],
+  "pins": {
+    "binary_hash_and_vcs_match": true,
+    "frozen_reference_matches_trial_scope_preparations": true,
+    "native_request_digests_match": true,
+    "selected_model_identity_matched": true,
+    "source_clean": true,
+    "source_commit_matches_main": true
+  },
+  "verdict": "original protocol 3 failed; trial not qualified"
+}

@@ -1,0 +1,20 @@
+{
+  "candidate": "nginx 1.31.6 native configuration lexer token observer",
+  "prerequisite": "native L2 full population diagnostic on tools/nginx-l2-r1 remains frozen",
+  "source": {
+    "archive": "native-protocol-r3.json build_inputs[0]",
+    "path": "src/core/ngx_conf_file.c",
+    "sha256": "06ebe816c356b4538f427d5581a958a31173eb3f7bc841dc7a90f53d1c9ceca7"
+  },
+  "population": "Every token returned by native ngx_conf_read_token on all 47 original disclosed inputs; preserve the unchanged 71 scored definitions and disclose all 12 ingest exclusions. No L3.",
+  "rules": [
+    "Read native first-word start_line when the first argument is pushed; observe the native return kind, full argument vector, source filename and native end-line counter. Record close-block and file-end events too. No independent parser chooses token or definition population.",
+    "Wrap ngx_conf_read_token, preserving original control flow, arguments and return values. The only inserted native-body statement copies its evaluated start_line for observation; removal of that statement plus wrapper rename must exactly restore the original source. Retain the prior upstream observer.",
+    "Build a tree from the entire native token stream. File-local definition families and naming follow the existing file/server/location/upstream/upstream-server contract using native arguments. Data-block children are classified but never mislabeled as directives. Retain unused and repeated entities. Unknown events, mismatched source/stack/arguments or failed native contexts refuse the entire family.",
+    "Attest start and end ranges, including multiline headers, comments, quoted/escaped and non-ASCII arguments, empty and inline blocks, nested/custom data blocks, included sources, final newlines and unused declarations on authored controls. Definition end lines may reveal existing extractor misses; never weaken goldens or trim truth.",
+    "Bound native tokens to 10000, arguments per token to 64, each argument/source path to 512 bytes, and total native stderr to 8 MiB. Cap plus one refuses the whole profile; no truncated output may become A truth.",
+    "Do not query a scanner-selected denominator. Compare only after native enumeration, prove actual-output independence and input sensitivity, and mutate native pairing/scope logic to FAIL then restore GREEN.",
+    "Freeze all original tracked inputs with the exact normative before/after recipe; publish per-subject counts, exclusions and caps alongside pooled values. Keep raw native events and filenames private; commit counts/hashes only under X-R3/X-R5.",
+    "Require free disk at least 20 GiB, load at most 6, one nice10 heavy run and private Go caches. No Docker, server startup, backend workload, global install or L3 regrade. Prune completed builds, downloads and measured subjects promptly. Shared-engine repairs remain held by T-R2."
+  ]
+}

@@ -11,6 +11,11 @@ Release impact: minor
 
 ### Added
 
+- Experimental `prose-lab review-qualified-prepare|review-qualified-capture|review-qualified-report` binds the reviewed 85-case floor to a new source-support protocol, explicit prior-accounting receipt and private native journal. Replay retains tri-valued outcomes, pre-dispatch failures, every unexecuted position and uncertainty about account-wide spend; actual model qualification remains separate.
+- Experimental qualified-review trial /2 selects response protocol /4, separating examined sources from supporting premises and counterevidence. Citation-gap responses can retain provenance with no invented premise/counter. Old /1 trials, protocol /3 wires and failed native replay remain unchanged; model qualification is separate.
+
+- Experimental `prose-lab review-floor-report` checks complete historical-to-prospective dispositions, raw source pins, declared independent reviews and seven required contrasts. The reviewed 85-case criterion /2 corpus separates a determinate inconclusive source result from an unresolved reviewer. Metadata-only output never grants provider qualification, authenticated identity, publication or new-study admission.
+
 - `reliability-stats` adds seeded Webb six-point `WildClusterBootstrapCI` for the equally weighted mean of task means, using optional `Observation.Cluster` for independent multiplier groups (defaulting to `Task`), reporting both task and cluster counts, refusing fewer than two clusters, distinguishing inconsistent task membership with `ErrInconsistentCluster`, and using overflow-safe percentile interpolation.
 - `reliability-stats` adds paired Student-t `EquivalenceTOST`, returning the `1 - 2*alpha` interval, an equivalent/harm/inconclusive `Verdict`, a fixed one-sided 95% upper bound, and `UnexpectedEffect` when `Low > margin`. Equivalence takes precedence, with the compatibility boolean retained and matching CUE contracts.
 - `reliability-stats` adds exact paired-binary `McNemarExact` and explicit `HolmAdjust` family correction, with matching CUE contracts. McNemar probabilities that underflow are clamped to the smallest positive float64.
