@@ -201,7 +201,8 @@ def compare_file(binary, file, work):
                                                                    'context': {'includeDeclaration': False}})
                     reference_match = any(target == uri and contains(rng, site['position']) for target, rng in locations(refs))
                 results.append(dict(site, definition_agrees=local_match, references_agree=reference_match,
-                                    returned_locations=len(resolved), external_locations=sum(target != uri for target, _ in resolved)))
+                                    returned_locations=len(resolved), external_locations=sum(target != uri for target, _ in resolved),
+                                    definition_targets=[{'scope': 'same-file' if target == uri else 'external', 'range': rng} for target, rng in resolved]))
         finally:
             rpc.close()
     return {'version': version, 'server_info': initialized.get('serverInfo'), 'sites': results}
