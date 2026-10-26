@@ -505,7 +505,7 @@ Missing directories mean no evidence. This command reads files without a daemon,
 network access or running tests.
 
 
-### `tests ingest` / `tests status` — test-kit evidence (vision 33 / ADR-043 stage 0)
+### `tests ingest` / `tests status` — test kit evidence (vision 33 / ADR-043 stage 0)
 
 Moved to [usage/tests-ingest-status.md](usage/tests-ingest-status.md).
 

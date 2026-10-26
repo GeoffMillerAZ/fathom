@@ -94,7 +94,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
      while doctor's `obligations_served` PASSes.
   2. app-kit: doctor's summary says "4 capabilities operating" while the
      capabilities verb says 3 of 9.
-  3. platform-engineering: capabilities shows guards ✗ while doctor's
+  3. a platform monorepo: capabilities shows guards ✗ while doctor's
      `guard_file` finds 7 rules.
   4. hooks_firing may PASS against sextant's own call log for ANY repo —
      a false-positive direction worth auditing.
@@ -378,7 +378,7 @@ hypothesis has not been tested, and that line stays uncitable until it is.
 ### O17 — `module compile` and its own warning disagree about where a module's layer pack lives; `--root` is undocumented and rejected
 
 - **Symptom (found 2026-07-30 building the first REAL platform module, from
-  platform-engineering's 39 ADRs):** the compile wrapper warns that it
+  a platform monorepo's 39 ADRs):** the compile wrapper warns that it
   "expects a project-local layer pack named X (a `<module-dir>/.fathom/
   layers/X/` directory, LC-3)" — but after moving the pack exactly there,
   compile fails `error: resolve layer "X": semantic: unknown layer` while

@@ -56,7 +56,7 @@ directly still sees `declared: "prior"`.
 
 Every finding also carries `file`/`line` (both `omitempty`) — the
 repo-relative location of the finding's SUBJECT, at HEAD when it still
-exists there, else at BASE — for a Review Kit citation that needs a real
+exists there, else at BASE — for a review kit citation that needs a real
 source anchor rather than the human-readable `base`/`head` strings above.
 Empty when no plane could place the subject at a location cheaply (a
 `governance` claim's own scope glob names no single file, for instance);

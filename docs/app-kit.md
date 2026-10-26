@@ -1006,7 +1006,7 @@ inside mirror `d9dd789`:
 - **Origin / task:** console wave G renders the use-case guides, the glossary and the laws
   with `docs.RenderToCRail`, `docs.RenderToCPanel` and `prose.css` (`doc-prose`, the
   `doc-link--unresolved` treatment for a link with no page).
-- **Observed:** `docs` shipped with one consumer (platform-engineering's portal) under a
+- **Observed:** `docs` shipped with one consumer (a sibling platform's portal) under a
   named D17 exception; Fathom is the second. Heading ids stay the caller's (goldmark's
   auto ids, or `{#law-N}`/`{#term-N}` given explicitly), as the package requires.
 - **Disposition:** `evidence` for the kit's D17 two-consumer bar. Next action: app-kit

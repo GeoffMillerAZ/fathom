@@ -185,7 +185,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `default_profile` | behaviour | chooses a profile by name |
 | `findings.outbox` | repo-path | a repo-relative file the session hook imports (findings_outbox.go) |
 | `findings.producers` | behaviour | an allow-list of producer ids |
-| `findings.subject` | behaviour | the review-kit subject this repository maps to |
+| `findings.subject` | behaviour | the review kit subject this repository maps to |
 | `gate.accept_receipts` | behaviour | the repository opts in to exact-tree gate evidence; default off |
 | `gate.allow_receipt_acceptance` | user-only | permits a project to opt in to receipt acceptance; default off |
 | `gate.host_label` | user-only | an operator-named machine label, never a hostname read |
@@ -1045,12 +1045,12 @@ without a network hop or a daemon round trip:
 ```toml
 # .fathom/config.toml
 [findings]
-subject   = "org/repo/component"                 # the provisioned review-kit subject this repo maps to
+subject   = "org/repo/component"                 # the provisioned review kit subject this repo maps to
 outbox    = ".reviewkit/outbox/projection.json"   # repo-relative; optional
 producers = ["reviewkit.system-review"]           # producer ids this repo trusts
 ```
 
-- `subject` binds this repository to one review-kit subject
+- `subject` binds this repository to one review kit subject
   (`org/repo/component`). `fathom findings import` refuses any event whose
   own subject does not match exactly — no mapping, no import, and never a
   best-effort guess.
@@ -1085,7 +1085,7 @@ for the loop from a reviewer's own seat.
 
 ## Test evidence: `[tests]`
 
-Vision 33 / ADR-043 stage 0's test-kit evidence ingest
+Vision 33 / ADR-043 stage 0's test kit evidence ingest
 (`docs/vision/33-test-certifications.md`): `fathom tests ingest
 --results <file|dir>` always works explicitly; `[tests] results_dir` makes
 a PLAIN `fathom ingest` also pick up attested `#TestResult` envelopes from
