@@ -23,6 +23,8 @@
 // {"name": "too few flake runs", "fixture": "subject", "path": "bench.flake_runs", "value": 2},
 // {"name": "missing reading", "fixture": "subject", "path": "bench.l0_reading", "remove": true},
 // {"name": "unknown split", "fixture": "subject", "path": "bench.split", "value": "training"},
+// {"name": "held-out prior read", "fixture": "subject", "path": "bench", "value": {"toolchain": {"versions": {"go": "1.26.2"}, "lockfile_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}, "setup": [], "test": ["go test ./..."], "suite_seconds": 12.5, "flake_runs": 3, "l0_reading": "pending", "split": "held-out", "task_sources": [{"dataset": "git", "revision": "v1", "licence": "MIT"}], "contamination": {"age": 365, "popularity_band": "low", "prior_reads": ["docs/bench/scenario-runs.md"]}}},
+// {"name": "empty prior read entry", "fixture": "subject", "path": "bench.contamination.prior_reads", "value": [""]},
 // {"name": "empty sources", "fixture": "subject", "path": "bench.task_sources", "value": []},
 // {"name": "missing source revision", "fixture": "subject", "path": "bench.task_sources.0.revision", "remove": true},
 // {"name": "missing source licence", "fixture": "subject", "path": "bench.task_sources.0.licence", "remove": true},

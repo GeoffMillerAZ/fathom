@@ -89,6 +89,11 @@ tasks:
           found=1; d=$(dirname "$schema"); echo "cue vet: $d"
           (cd "$d" && cue vet ./...) || exit 1
         done
+        # BX-1: every benchmark candidate manifest conforms to #Subject.
+        for manifest in calibration/bench.d/*.yaml; do
+          [ -e "$manifest" ] || continue
+          cue vet -d '#Subject' ./schema/bench/schema.cue "$manifest" || { echo "cue vet FAILED: $manifest"; exit 1; }
+        done
         # RP-2 (docs/plans/reach-parity.md): every shipped skill's SKILL.md
         # frontmatter vets against the vendored Agent Skills schema — the
         # standard is a schema under this gate, never a hand-written check.

@@ -42,14 +42,24 @@ import (
 		suite_seconds!: number & >0
 		flake_runs!:    int & >=3
 		l0_reading!:    #Text
-		split!:         "dev" | "held-out"
+		// The controller assigns held-out at vetting (BX-44), after Q2.
+		split?: "dev" | "held-out"
 		task_sources!: [#TaskSource, ...#TaskSource]
 		contamination!: {
 			// Age in days at vetting; the band records popularity separately.
-			age!:             number & >=0
+			age!: number & >=0
+			// GitHub stars at vetting: low < 1,000; medium 1,000–10,000;
+			// high > 10,000 (D23). The observed count belongs in the reading.
 			popularity_band!: "low" | "medium" | "high"
+			// Committed fathom files that already read this subject (D25).
+			prior_reads?: [...#Text]
 			// Q2's pinned model sets this cutoff; omit it until then.
 			fresh_after?: #Date
+		}
+		if contamination.prior_reads != _|_ {
+			if len(contamination.prior_reads) > 0 {
+				split: "dev"
+			}
 		}
 	}
 }

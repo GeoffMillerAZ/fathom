@@ -1,174 +1,46 @@
-# Draft subject; schema/bench is not implemented at this revision.
-name: "textualize-rich"
-url: "https://github.com/Textualize/rich"
-ref: "main"
-sha: "9d8f9a372cc5916fd4781fec207ced7ddac2f08f"
-licence: "MIT"
-subpath: "."
-bench:
-  toolchain:
-    container_image: "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
-    platform: "linux/arm64"
-    cpu_limit: 4
-    lockfile_sha256:
-      poetry.lock: "b7ef18e9e25d31bcc21853b3774cbec13f0874d517bc023156a526dd5ada1908"
-    dependency_manifest_sha256:
-      pyproject.toml: "3762cb9e96442f57b8ff080f5ecd4d06ebdb8616e33d3a1eb2ba1974e58b7b65"
-    python: "3.12.15"
-    pip: "25.0.1"
-    resolved_dependencies:
-      - "attrs==21.4.0"
-      - "coverage==7.17.0"
-      - "iniconfig==2.3.1"
-      - "markdown-it-py==3.0.0"
-      - "mdurl==0.1.2"
-      - "packaging==26.3"
-      - "pluggy==1.7.0"
-      - "Pygments==2.19.2"
-      - "pytest==7.4.4"
-      - "pytest-cov==3.0.0"
-    resolved_dependencies_sha256: "7532e4a931f6425a9977892be51036945ee1c21faa2cadee8da9ff3beec297e8"
-  setup:
-    - "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest==7.4.4 pytest-cov==3.0.0 attrs==21.4.0 pygments==2.19.2 markdown-it-py==3.0.0 && ${venv}/bin/pip freeze > ${resolved_requirements}"
-  test: "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache} --basetemp=${pytest_temp}"
-  suite_seconds:
-    - 8.077
-    - 8.073
-    - 7.887
-  flake_runs: 3
-  l0_reading: null
-  split: "unassigned"
-  task_sources: []
-  contamination:
-    created_at: "2019-11-10T15:28:09Z"
-    age_days: 2541
-    stars_observed: 57641
-    popularity_band: "over 10k"
-    fresh_after: null
-    metadata_source: "https://api.github.com/repos/Textualize/rich"
-    observed_on: "2026-10-25"
-  draft: true
-  evidence:
-    measured_on: "2026-10-25"
-    primary_language: "Python"
-    licence_file: "LICENSE"
-    licence_sha256: "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
-    primary_language_lines:
-      extensions:
-        ".py":
-          files: 213
-          lines: 51866
-      total: 51866
-      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
-    size_band: "25k-75k"
-    suite:
-      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
-      timing: "host monotonic wall time, including container startup; one suite at a time"
-      warmup:
-        seconds: 9.757
-        exit_code: 0
-      runs:
-        -
-          seconds: 8.077
-          exit_code: 0
-          log_sha256: "4ac1c351265f7472182b532e076157b560e3bfa923525ce9ab43f3b76a591855"
-        -
-          seconds: 8.073
-          exit_code: 0
-          log_sha256: "4ac1c351265f7472182b532e076157b560e3bfa923525ce9ab43f3b76a591855"
-        -
-          seconds: 7.887
-          exit_code: 0
-          log_sha256: "97eb8a35015bb0c92f6419888a55cf2c7d0bd1dd656771aaa75c1f84f7d9aca1"
-      environment:
-        PIP_NO_INDEX: "1"
-      process_local_git_safe_directory: true
-    fix_yield_estimate:
-      since: "2024-10-25T00:00:00Z"
-      until: "2026-10-26T00:00:00Z"
-      test_and_non_test_commits: 31
-      fix_message_subset: 12
-      primary_language_source_commits: 31
-      primary_language_source_fix_message_subset: 12
-      replayed: 0
-    issue_link_examples:
-      -
-        sha: "95fe8ff59249d9ac0534a82af7c746826a5999f4"
-        closing_references:
-          - "3881"
-        references:
-          - "3881"
-        test_paths:
-          - "tests/test_prompt.py"
-        source_paths:
-          - "rich/prompt.py"
-      -
-        sha: "30e5ed61a6064220fe2ff40f4713463488ee6d07"
-        closing_references:
-          - "3569"
-        references:
-          - "3569"
-        test_paths:
-          - "tests/test_panel.py"
-        source_paths:
-          - "rich/panel.py"
-    fan_in:
-      method: "Python ast import and re-export resolution; direct calls only"
-      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
-      qualifying_symbols:
-        -
-          symbol: "rich.console.Console"
-          call_sites: 362
-          caller_modules: 75
-          module_examples:
-            - "benchmarks.benchmarks"
-            - "examples.columns"
-            - "examples.exception"
-          site_examples:
-            - "benchmarks/benchmarks.py:106:19"
-            - "benchmarks/benchmarks.py:131:24"
-            - "benchmarks/benchmarks.py:150:24"
-            - "benchmarks/benchmarks.py:16:24"
-            - "benchmarks/benchmarks.py:171:24"
-            - "benchmarks/benchmarks.py:188:24"
-        -
-          symbol: "rich.text.Text"
-          call_sites: 302
-          caller_modules: 42
-          module_examples:
-            - "benchmarks.benchmarks"
-            - "examples.layout"
-            - "examples.listdir"
-          site_examples:
-            - "benchmarks/benchmarks.py:26:9"
-            - "benchmarks/benchmarks.py:29:9"
-            - "benchmarks/benchmarks.py:35:9"
-            - "benchmarks/benchmarks.py:38:9"
-            - "benchmarks/benchmarks.py:44:9"
-            - "benchmarks/benchmarks.py:47:9"
-        -
-          symbol: "rich.segment.Segment"
-          call_sites: 299
-          caller_modules: 23
-          module_examples:
-            - "benchmarks.benchmarks"
-            - "rich.__main__"
-            - "rich.align"
-          site_examples:
-            - "benchmarks/benchmarks.py:210:13"
-            - "benchmarks/benchmarks.py:211:13"
-            - "benchmarks/benchmarks.py:212:13"
-            - "benchmarks/benchmarks.py:213:13"
-            - "benchmarks/benchmarks.py:214:13"
-            - "rich/__main__.py:30:23"
-    independence:
-      not_fathom: true
-      organization: "textualize"
-      subjects_from_organization: 1
-      fleet_index_exclusion: "unverified"
-    reading: "docs/bench/readings/bench-prep/candidates.md"
-    limitations:
-      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
-      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
-      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
-      - "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+# Preparation draft; locked environment remeasured.
+{
+  "name": "textualize-rich",
+  "url": "https://github.com/Textualize/rich",
+  "ref": "main",
+  "sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+  "licence": "MIT",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "python": "3.12.15",
+        "pip": "25.0.1"
+      },
+      "lockfile_sha256": "623a2f8b54791115ccd1d748ce5541fe2ff3ec8e58693a4a6c00f767c6a3e991"
+    },
+    "setup": [
+      "python -m venv /work/venv && /work/venv/bin/pip install --require-hashes -r /work/requirements.txt && /work/venv/bin/pip install --no-deps -e ."
+    ],
+    "test": [
+      "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp"
+    ],
+    "suite_seconds": 5.306,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 2541,
+      "popularity_band": "high",
+      "prior_reads": [
+        "testdata/scenariobench/lca/lca-bugloc.json",
+        "docs/bench/scenario-runs.md",
+        "docs/bench/scenarios-ledger.jsonl",
+        "docs/bench/readings/repository-facts/roles-r1.md"
+      ]
+    },
+    "split": "dev"
+  },
+  "notes": "Frozen-lock C3 preparation reading: docs/bench/readings/bench-prep/python-r2.md. C4 unmeasured; no subject admission claimed."
+}

@@ -1,179 +1,44 @@
-# Draft subject; schema/bench is not implemented at this revision.
-name: "marshmallow-code-marshmallow"
-url: "https://github.com/marshmallow-code/marshmallow"
-ref: "dev"
-sha: "b762ea2d59ca52fe5df76b90de14bed7e5ec5607"
-licence: "MIT"
-subpath: "."
-bench:
-  toolchain:
-    container_image: "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"
-    platform: "linux/arm64"
-    cpu_limit: 4
-    lockfile_sha256:
-      uv.lock: "e4ce0fdc1b34b3919f912890ddebccf42c74c0a4be6b68539e346de4fef514da"
-    dependency_manifest_sha256:
-      pyproject.toml: "0e673116633ab2b3725886651d87d5543bd71f41143821c599ec89a0db49f8fa"
-    python: "3.12.15"
-    pip: "25.0.1"
-    resolved_dependencies:
-      - "iniconfig==2.3.1"
-      - "packaging==26.3"
-      - "pluggy==1.7.0"
-      - "Pygments==2.21.0"
-      - "pytest==9.1.1"
-      - "simplejson==4.2.0"
-    resolved_dependencies_sha256: "2d9057a3ed643c2ac6d9357fab9aca5817fe0b6b640b36f5336a3f1acdc211e9"
-  setup:
-    - "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest simplejson && ${venv}/bin/pip freeze > ${resolved_requirements}"
-  test: "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache}"
-  suite_seconds:
-    - 4.554
-    - 4.518
-    - 4.54
-  flake_runs: 3
-  l0_reading: null
-  split: "unassigned"
-  task_sources: []
-  contamination:
-    created_at: "2013-11-10T21:32:24Z"
-    age_days: 4732
-    stars_observed: 7246
-    popularity_band: "1k-10k"
-    fresh_after: null
-    metadata_source: "https://api.github.com/repos/marshmallow-code/marshmallow"
-    observed_on: "2026-10-25"
-  draft: true
-  evidence:
-    measured_on: "2026-10-25"
-    primary_language: "Python"
-    licence_file: "LICENSE"
-    licence_sha256: "906b5d9051e426144cb173ad911667b8ebd05a9c584c2c26c135b32a3ed12001"
-    primary_language_lines:
-      extensions:
-        ".py":
-          files: 38
-          lines: 15722
-      total: 15722
-      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
-    size_band: "5k-25k"
-    suite:
-      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
-      timing: "host monotonic wall time, including container startup; one suite at a time"
-      warmup:
-        seconds: 5.156
-        exit_code: 0
-      runs:
-        -
-          seconds: 4.554
-          exit_code: 0
-          log_sha256: "c1d7c688498b2391cf3033fca6f5fe5d1d4a2445948d92f825db19660d207260"
-        -
-          seconds: 4.518
-          exit_code: 0
-          log_sha256: "c1d7c688498b2391cf3033fca6f5fe5d1d4a2445948d92f825db19660d207260"
-        -
-          seconds: 4.54
-          exit_code: 0
-          log_sha256: "fcc3793bfc78504e1d4499872b84387e56028e91ce6d90c7de149c594b4e20fe"
-      environment:
-        PIP_NO_INDEX: "1"
-      process_local_git_safe_directory: true
-    fix_yield_estimate:
-      since: "2024-10-25T00:00:00Z"
-      until: "2026-10-26T00:00:00Z"
-      test_and_non_test_commits: 68
-      fix_message_subset: 17
-      primary_language_source_commits: 65
-      primary_language_source_fix_message_subset: 17
-      replayed: 0
-    issue_link_examples:
-      -
-        sha: "902f99c4151d1f0c4c3b8e8dfbafc7b6a76aeaa6"
-        closing_references: []
-        references:
-          - "3016"
-        test_paths:
-          - "tests/test_validate.py"
-        source_paths:
-          - "src/marshmallow/validate.py"
-      -
-        sha: "f07eadc87dfac25ed505d5cd9d186920f2682733"
-        closing_references: []
-        references:
-          - "2937"
-        test_paths:
-          - "tests/test_validate.py"
-        source_paths:
-          - "src/marshmallow/validate.py"
-      -
-        sha: "3bc191ab3c8cac8356839bcde0918cb6aed4d3a1"
-        closing_references: []
-        references:
-          - "1636"
-          - "2907"
-        test_paths:
-          - "tests/test_deserialization.py"
-        source_paths:
-          - "src/marshmallow/fields.py"
-          - "src/marshmallow/types.py"
-    fan_in:
-      method: "Python ast import and re-export resolution; direct calls only"
-      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
-      qualifying_symbols:
-        -
-          symbol: "marshmallow.exceptions.ValidationError"
-          call_sites: 104
-          caller_modules: 15
-          module_examples:
-            - "examples.flask_example"
-            - "examples.package_json_example"
-            - "marshmallow.fields"
-          site_examples:
-            - "examples/flask_example.py:64:15"
-            - "examples/package_json_example.py:24:19"
-            - "performance/benchmark.py:19:15"
-            - "src/marshmallow/fields.py:1728:19"
-            - "src/marshmallow/fields.py:303:16"
-            - "src/marshmallow/fields.py:645:19"
-        -
-          symbol: "marshmallow.fields.String"
-          call_sites: 211
-          caller_modules: 13
-          module_examples:
-            - "examples.flask_example"
-            - "examples.inflection_example"
-            - "examples.package_json_example"
-          site_examples:
-            - "examples/flask_example.py:53:13"
-            - "examples/flask_example.py:54:12"
-            - "examples/flask_example.py:70:15"
-            - "examples/inflection_example.py:28:18"
-            - "examples/inflection_example.py:29:17"
-            - "examples/package_json_example.py:31:12"
-        -
-          symbol: "marshmallow.fields.Integer"
-          call_sites: 158
-          caller_modules: 13
-          module_examples:
-            - "examples.flask_example"
-            - "performance.benchmark"
-            - "tests.base"
-          site_examples:
-            - "examples/flask_example.py:52:10"
-            - "examples/flask_example.py:68:10"
-            - "performance/benchmark.py:23:10"
-            - "performance/benchmark.py:36:10"
-            - "tests/base.py:210:20"
-            - "tests/base.py:246:11"
-    independence:
-      not_fathom: true
-      organization: "marshmallow-code"
-      subjects_from_organization: 1
-      fleet_index_exclusion: "unverified"
-    reading: "docs/bench/readings/bench-prep/candidates.md"
-    limitations:
-      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
-      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
-      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
-      - "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+# Preparation draft; locked environment remeasured.
+{
+  "name": "marshmallow-code-marshmallow",
+  "url": "https://github.com/marshmallow-code/marshmallow",
+  "ref": "dev",
+  "sha": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+  "licence": "MIT",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "python": "3.12.15",
+        "pip": "25.0.1",
+        "uv": "0.13.5"
+      },
+      "lockfile_sha256": "e4ce0fdc1b34b3919f912890ddebccf42c74c0a4be6b68539e346de4fef514da"
+    },
+    "setup": [
+      "python -m venv /work/tools && /work/tools/bin/pip install uv==0.13.5 && /work/tools/bin/uv --version && /work/tools/bin/uv sync --frozen --no-default-groups --group tests"
+    ],
+    "test": [
+      "/work/venv/bin/python -m pytest -q -o cache_dir=/work/pytest-cache --basetemp=/work/pytest-temp"
+    ],
+    "suite_seconds": 5.259,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 4732,
+      "popularity_band": "medium",
+      "prior_reads": [
+        "docs/bench/readings/repository-facts/roles-r1.md"
+      ]
+    },
+    "split": "dev"
+  },
+  "notes": "Frozen-lock C3 preparation reading: docs/bench/readings/bench-prep/python-r2.md. C4 unmeasured; no subject admission claimed."
+}

@@ -61,6 +61,36 @@ func TestBenchSchemaValid(t *testing.T) {
 	}
 }
 
+func TestBenchSubjectSplitAndPriorReads(t *testing.T) {
+	for _, mode := range []string{"unassigned", "prior-read", "empty-prior-reads"} {
+		t.Run(mode, func(t *testing.T) {
+			def, data := fixture(t, "subject")
+			bench := data["bench"].(map[string]any)
+			delete(bench, "split")
+			contamination := bench["contamination"].(map[string]any)
+			if mode == "prior-read" {
+				contamination["prior_reads"] = []string{"docs/bench/scenario-runs.md"}
+			} else if mode == "empty-prior-reads" {
+				contamination["prior_reads"] = []string{}
+			}
+			b, err := json.Marshal(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			value := def.Unify(def.Context().CompileBytes(b))
+			if err := value.Validate(cue.Concrete(true)); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "prior-read" {
+				split, err := value.LookupPath(cue.ParsePath("bench.split")).String()
+				if err != nil || split != "dev" {
+					t.Fatalf("prior read must force dev: %q, %v", split, err)
+				}
+			}
+		})
+	}
+}
+
 func TestBenchSchemaNegatives(t *testing.T) {
 	casesFile, err := os.ReadFile("testdata/invalid.cue")
 	if err != nil {

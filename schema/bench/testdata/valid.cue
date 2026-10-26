@@ -24,6 +24,29 @@ subject: #Subject & {
 	}
 }
 
+// No split until controller vetting (D25).
+unassigned: #Subject & {
+	name:    "sample/subject"
+	url:     "https://example.org/sample/subject"
+	ref:     "v1.2.3"
+	sha:     "0123456789abcdef0123456789abcdef01234567"
+	licence: "MIT"
+	subpath: "lib"
+	bench: {
+		toolchain: {
+			versions: {go: "1.26.2"}
+			lockfile_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+		}
+		setup: ["go mod download"]
+		test: ["go test ./..."]
+		suite_seconds: 12.5
+		flake_runs:    3
+		l0_reading:    "workspace/bench/l0/subject.json"
+		task_sources: [{dataset: "synthetic-fixes", revision: "v1", licence: "CC0-1.0"}]
+		contamination: {age: 365, popularity_band: "low", fresh_after: "2026-01-01"}
+	}
+}
+
 // A win and a predicted null, fixed before data. Each primary fixes its n.
 prereg: #Prereg & {
 	id: "localization-v1"

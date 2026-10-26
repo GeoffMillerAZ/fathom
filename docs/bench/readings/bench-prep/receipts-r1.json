@@ -1,0 +1,2228 @@
+{
+  "scope": "Round 1 receipts moved from draft manifests without remeasurement; historical environments and unknowns are preserved. These are not #Subject inputs.",
+  "subjects": {
+    "calibration/bench.d/encode-starlette.yaml": {
+      "name": "encode-starlette",
+      "url": "https://github.com/encode/starlette",
+      "ref": "main",
+      "sha": "8aa828ceaff764a2e57932fb42fdf105a47c4c83",
+      "licence": "BSD-3-Clause",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "uv.lock": "796d45e1e449f7e70e9290fbc1bfd9394d9182fdaf66e5059f42f8b1df7196ed"
+          },
+          "dependency_manifest_sha256": {
+            "pyproject.toml": "6bfda59d023e472bc91a064860c6b4ee20099d3056a5eab38fbb52e678fec324"
+          },
+          "python": "3.12.15",
+          "pip": "25.0.1",
+          "resolved_dependencies": [
+            "anyio==4.15.1",
+            "attrs==26.1.0",
+            "backports.zstd==1.8.0",
+            "blockbuster==1.5.29",
+            "certifi==2026.10.23",
+            "forbiddenfruit==0.1.4",
+            "h11==0.16.0",
+            "httpcore==1.0.9",
+            "httpcore2==2.16.0",
+            "httpx==0.28.1",
+            "httpx2==2.16.0",
+            "idna==3.20",
+            "importlib_metadata==10.1.0",
+            "iniconfig==2.3.1",
+            "itsdangerous==2.2.0",
+            "Jinja2==3.1.6",
+            "markdown-it-py==4.2.0",
+            "MarkupSafe==3.0.4",
+            "mdurl==0.1.2",
+            "opentelemetry-api==1.45.1",
+            "opentelemetry-sdk==1.45.1",
+            "opentelemetry-semantic-conventions==0.66b1",
+            "outcome==1.3.0.post0",
+            "packaging==26.3",
+            "pluggy==1.7.0",
+            "Pygments==2.21.0",
+            "pytest==9.1.1",
+            "pytest-codspeed==5.0.3",
+            "python-multipart==0.0.32",
+            "PyYAML==6.0.3",
+            "rich==15.0.0",
+            "sniffio==1.3.1",
+            "sortedcontainers==2.4.0",
+            "trio==0.34.0",
+            "truststore==0.10.5",
+            "typing_extensions==4.16.0",
+            "zipp==4.1.2"
+          ],
+          "resolved_dependencies_sha256": "7438c7397a51568f79902a056df3d8c02ab74a73fbfc04d08b2473a18e84700f"
+        },
+        "setup": [
+          "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest pytest-codspeed anyio[trio] httpx httpx2[zstd] blockbuster opentelemetry-sdk importlib-metadata python-multipart jinja2 itsdangerous pyyaml typing_extensions && ${venv}/bin/pip freeze > ${resolved_requirements}"
+        ],
+        "test": "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache} --basetemp=${pytest_temp}",
+        "suite_seconds": [
+          15.016,
+          14.93,
+          15.263
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2018-06-25T13:16:21Z",
+          "age_days": 3044,
+          "stars_observed": 12684,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/encode/starlette",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Python",
+          "licence_file": "LICENSE.md",
+          "licence_sha256": "dcb95677a02240243187e964f941847d19b17821cf99e5afae684fab328c19bf",
+          "primary_language_lines": {
+            "extensions": {
+              ".py": {
+                "files": 84,
+                "lines": 22681
+              }
+            },
+            "total": 22681,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "5k-25k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 18.004,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 15.016,
+                "exit_code": 0,
+                "log_sha256": "cd6875def3a3a30688d2f128cd86dbfde033e95fdc0e1ebed63dbcf2712e145d"
+              },
+              {
+                "seconds": 14.93,
+                "exit_code": 0,
+                "log_sha256": "89f33732e000a01b332615e62aeec5aad79d9a561a8b1b3835bb5e1f4c046fde"
+              },
+              {
+                "seconds": 15.263,
+                "exit_code": 0,
+                "log_sha256": "b9ffd2408f39223519ec8a4730c4dd9064e1f1427c86d68c336de7990c120c21"
+              }
+            ],
+            "environment": {
+              "PIP_NO_INDEX": "1"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 135,
+            "fix_message_subset": 10,
+            "primary_language_source_commits": 130,
+            "primary_language_source_fix_message_subset": 9,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "9eea41ad3c26ad21b9bdfe4578c1cdad6c9b9ac2",
+              "closing_references": [],
+              "references": [
+                "3130"
+              ],
+              "test_paths": [
+                "tests/test_testclient.py"
+              ],
+              "source_paths": [
+                "starlette/testclient.py"
+              ]
+            },
+            {
+              "sha": "37309255b4c1b9c381a2d24a1eaf83100984a16a",
+              "closing_references": [],
+              "references": [
+                "3193"
+              ],
+              "test_paths": [
+                "tests/test_staticfiles.py"
+              ],
+              "source_paths": [
+                "starlette/staticfiles.py"
+              ]
+            },
+            {
+              "sha": "1a2f97293966f3e6549e4da3d00d526915b03b3b",
+              "closing_references": [],
+              "references": [
+                "3317"
+              ],
+              "test_paths": [
+                "tests/test_datastructures.py"
+              ],
+              "source_paths": [
+                "starlette/datastructures.py"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "Python ast import and re-export resolution; direct calls only",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "starlette.responses.PlainTextResponse",
+                "call_sites": 103,
+                "caller_modules": 23,
+                "module_examples": [
+                  "benchmarks.routing_benchmark",
+                  "starlette.endpoints",
+                  "starlette.middleware.authentication"
+                ],
+                "site_examples": [
+                  "benchmarks/routing_benchmark.py:13:12",
+                  "starlette/endpoints.py:56:16",
+                  "starlette/middleware/authentication.py:52:16",
+                  "starlette/middleware/body_limit.py:119:28",
+                  "starlette/middleware/body_limit.py:93:24",
+                  "starlette/middleware/cors.py:143:20"
+                ]
+              },
+              {
+                "symbol": "starlette.routing.Route",
+                "call_sites": 258,
+                "caller_modules": 22,
+                "module_examples": [
+                  "benchmarks.response_benchmark",
+                  "benchmarks.routing_benchmark",
+                  "starlette.routing"
+                ],
+                "site_examples": [
+                  "benchmarks/response_benchmark.py:44:28",
+                  "benchmarks/response_benchmark.py:45:50",
+                  "benchmarks/routing_benchmark.py:21:17",
+                  "benchmarks/routing_benchmark.py:22:17",
+                  "benchmarks/routing_benchmark.py:23:17",
+                  "benchmarks/routing_benchmark.py:24:17"
+                ]
+              },
+              {
+                "symbol": "starlette.applications.Starlette",
+                "call_sites": 184,
+                "caller_modules": 19,
+                "module_examples": [
+                  "benchmarks.response_benchmark",
+                  "tests.middleware.test_base",
+                  "tests.middleware.test_body_limit"
+                ],
+                "site_examples": [
+                  "benchmarks/response_benchmark.py:45:32",
+                  "tests/middleware/test_base.py:1049:20",
+                  "tests/middleware/test_base.py:1096:11",
+                  "tests/middleware/test_base.py:1273:11",
+                  "tests/middleware/test_base.py:1326:11",
+                  "tests/middleware/test_base.py:1374:11"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "encode",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/pallets-click.yaml": {
+      "name": "pallets-click",
+      "url": "https://github.com/pallets/click",
+      "ref": "main",
+      "sha": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+      "licence": "BSD-3-Clause",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "uv.lock": "742507a6bbb80c093d2ebefc073357e3ef0cb504e9299def5348377f0d585d54"
+          },
+          "dependency_manifest_sha256": {
+            "pyproject.toml": "327b296ab1fc9280c106c71efea961f71dffa5d8f69d85a88eba758e0f440636"
+          },
+          "python": "3.12.15",
+          "pip": "25.0.1",
+          "resolved_dependencies": [
+            "iniconfig==2.3.1",
+            "packaging==26.3",
+            "pluggy==1.7.0",
+            "Pygments==2.21.0",
+            "pytest==9.1.1"
+          ],
+          "system_packages": [
+            {
+              "archive": "less_590-2.1~deb12u2_arm64.deb",
+              "sha256": "eb430d92921f98b163031ee3ac81a96110d1f20bd84f67faab06dad50c75d744"
+            }
+          ],
+          "resolved_dependencies_sha256": "9710ed3b0e27adb43c70e91608735cf6c90fc1ee3e757b3cde22ef8a9f18a999"
+        },
+        "setup": [
+          "apt-get update && (cd ${work} && apt-get download less) && mkdir -p ${work}/os-tools && dpkg-deb --fsys-tarfile ${work}/less_*.deb | tar --no-same-owner -x -C ${work}/os-tools && ${work}/os-tools/usr/bin/less --version && python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest && ${venv}/bin/pip freeze > ${resolved_requirements}"
+        ],
+        "test": "PATH=${work}/os-tools/usr/bin:$PATH ${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache} --basetemp=${pytest_temp}",
+        "suite_seconds": [
+          11.442,
+          11.386,
+          11.375
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2014-04-24T09:52:19Z",
+          "age_days": 4567,
+          "stars_observed": 17801,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/pallets/click",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Python",
+          "licence_file": "LICENSE.txt",
+          "licence_sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d",
+          "primary_language_lines": {
+            "extensions": {
+              ".py": {
+                "files": 91,
+                "lines": 30378
+              }
+            },
+            "total": 30378,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "25k-75k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 12.354,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 11.442,
+                "exit_code": 0,
+                "log_sha256": "73a32d9736df3fe2fd3413fd3d67ac1a1d70af29e07efc96b5b74853c7594ba9"
+              },
+              {
+                "seconds": 11.386,
+                "exit_code": 0,
+                "log_sha256": "82f4807ac51d69740a98c13dc73a23088e6e3f379f6dd8e485566165f54366b4"
+              },
+              {
+                "seconds": 11.375,
+                "exit_code": 0,
+                "log_sha256": "3f90cdf820a5e1b958bcdf9e4e864fea431ca2ccfb7f9121ac8f7ff745b65c86"
+              }
+            ],
+            "environment": {
+              "PIP_NO_INDEX": "1"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 135,
+            "fix_message_subset": 36,
+            "primary_language_source_commits": 132,
+            "primary_language_source_fix_message_subset": 36,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "fc518e41218b447e875fe27244ae692c269bcb77",
+              "closing_references": [
+                "3802"
+              ],
+              "references": [
+                "3802"
+              ],
+              "test_paths": [
+                "tests/test_abort_interrupt.py"
+              ],
+              "source_paths": [
+                "src/click/core.py"
+              ]
+            },
+            {
+              "sha": "bec59289d8cf9b9b4010642b2fee483e5f8eeefc",
+              "closing_references": [],
+              "references": [
+                "1884",
+                "2331",
+                "3125"
+              ],
+              "test_paths": [
+                "tests/test_basic.py"
+              ],
+              "source_paths": [
+                "src/click/decorators.py"
+              ]
+            },
+            {
+              "sha": "7eb57cff7cd292fbd526eaf861c8f945ddeb07a3",
+              "closing_references": [],
+              "references": [
+                "2899",
+                "3470"
+              ],
+              "test_paths": [
+                "tests/test_stream_lifecycle.py",
+                "tests/test_utils.py"
+              ],
+              "source_paths": [
+                "src/click/_compat.py"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "Python ast import and re-export resolution; direct calls only",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "click.decorators.command",
+                "call_sites": 348,
+                "caller_modules": 33,
+                "module_examples": [
+                  "click.decorators",
+                  "examples.aliases.aliases",
+                  "examples.colors.colors"
+                ],
+                "site_examples": [
+                  "examples/aliases/aliases.py:89:2",
+                  "examples/colors/colors.py:24:2",
+                  "examples/complex/complex/cli.py:48:2",
+                  "examples/complex/complex/commands/cmd_init.py:6:2",
+                  "examples/complex/complex/commands/cmd_status.py:6:2",
+                  "examples/inout/inout.py:4:2"
+                ]
+              },
+              {
+                "symbol": "click.decorators.option",
+                "call_sites": 280,
+                "caller_modules": 25,
+                "module_examples": [
+                  "click.decorators",
+                  "examples.aliases.aliases",
+                  "examples.completion.completion"
+                ],
+                "site_examples": [
+                  "examples/aliases/aliases.py:136:2",
+                  "examples/aliases/aliases.py:90:2",
+                  "examples/completion/completion.py:13:2",
+                  "examples/complex/complex/cli.py:49:2",
+                  "examples/complex/complex/cli.py:54:2",
+                  "examples/imagepipe/imagepipe.py:102:2"
+                ]
+              },
+              {
+                "symbol": "click.decorators.argument",
+                "call_sites": 145,
+                "caller_modules": 21,
+                "module_examples": [
+                  "examples.aliases.aliases",
+                  "examples.completion.completion",
+                  "examples.complex.complex.commands.cmd_init"
+                ],
+                "site_examples": [
+                  "examples/aliases/aliases.py:134:2",
+                  "examples/aliases/aliases.py:135:2",
+                  "examples/completion/completion.py:25:2",
+                  "examples/completion/completion.py:51:2",
+                  "examples/complex/complex/commands/cmd_init.py:7:2",
+                  "examples/inout/inout.py:5:2"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "pallets",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/typestack-class-transformer.yaml": {
+      "name": "typestack-class-transformer",
+      "url": "https://github.com/typestack/class-transformer",
+      "ref": "develop",
+      "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "package-lock.json": "ec5e36d2d39f273a946c5736b54fd14d4f7973f235b4ec426ebeed0ed049a551"
+          },
+          "dependency_manifest_sha256": {
+            "package.json": "debe8fa83a484487b45950df8da7d568a3f1ed8541b15d45685d698464e1a654"
+          },
+          "node": "22.23.4",
+          "npm": "10.9.9"
+        },
+        "setup": [
+          "node --version && npm --version && npm ci --legacy-peer-deps --ignore-scripts"
+        ],
+        "test": "npm run test:ci -- --coverageDirectory=${coverage_dir}",
+        "suite_seconds": [
+          11.4,
+          11.449,
+          11.542
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2016-02-09T13:26:52Z",
+          "age_days": 3911,
+          "stars_observed": 7339,
+          "popularity_band": "1k-10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/typestack/class-transformer",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "TypeScript",
+          "licence_file": "LICENSE",
+          "licence_sha256": "40fb2182a242493ce32f6211c3400f2dcf6787c9c68cd261bfb61461d69780ef",
+          "primary_language_lines": {
+            "extensions": {
+              ".ts": {
+                "files": 69,
+                "lines": 8125
+              },
+              ".tsx": {
+                "files": 0,
+                "lines": 0
+              },
+              ".mts": {
+                "files": 0,
+                "lines": 0
+              },
+              ".cts": {
+                "files": 0,
+                "lines": 0
+              }
+            },
+            "total": 8125,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "5k-25k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 13.291,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 11.4,
+                "exit_code": 0,
+                "log_sha256": "25302cf2cedef883765caeee3a4e2fb943b8f6acb3006d93b2bf2c19bd4bf4f8"
+              },
+              {
+                "seconds": 11.449,
+                "exit_code": 0,
+                "log_sha256": "cdd8ea59156bc3d487427088a97bd2ae5de1f3230ee9ce9bb1a49c150006bd5f"
+              },
+              {
+                "seconds": 11.542,
+                "exit_code": 0,
+                "log_sha256": "4826a3201ec1ed3f2eba039a6ed865beeb7aae1ab612d0263fd05b5f0b308207"
+              }
+            ],
+            "environment": {
+              "npm_config_offline": "true"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 0,
+            "fix_message_subset": 0,
+            "primary_language_source_commits": 0,
+            "primary_language_source_fix_message_subset": 0,
+            "replayed": 0
+          },
+          "issue_link_examples": [],
+          "fan_in": {
+            "method": "TypeScript 5.9.3 getResolvedSignature; interfaces and call signatures excluded",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "src/decorators/type.decorator.ts#Type",
+                "call_sites": 79,
+                "caller_modules": 17,
+                "module_examples": [
+                  "sample/sample1-simple-usage/Album.ts",
+                  "sample/sample1-simple-usage/Photo.ts",
+                  "sample/sample1-simple-usage/User.ts"
+                ],
+                "site_examples": [
+                  "sample/sample1-simple-usage/Album.ts:10:4",
+                  "sample/sample1-simple-usage/Photo.ts:14:4",
+                  "sample/sample1-simple-usage/Photo.ts:17:4",
+                  "sample/sample1-simple-usage/User.ts:11:4",
+                  "sample/sample1-simple-usage/User.ts:4:4",
+                  "sample/sample2-iheritance/Album.ts:11:4"
+                ]
+              },
+              {
+                "symbol": "src/index.ts#plainToInstance",
+                "call_sites": 93,
+                "caller_modules": 12,
+                "module_examples": [
+                  "test/functional/basic-functionality.spec.ts",
+                  "test/functional/circular-reference-problem.spec.ts",
+                  "test/functional/custom-transform.spec.ts"
+                ],
+                "site_examples": [
+                  "test/functional/basic-functionality.spec.ts:1085:30",
+                  "test/functional/basic-functionality.spec.ts:111:29",
+                  "test/functional/basic-functionality.spec.ts:1159:30",
+                  "test/functional/basic-functionality.spec.ts:116:41",
+                  "test/functional/basic-functionality.spec.ts:1190:30",
+                  "test/functional/basic-functionality.spec.ts:1230:30"
+                ]
+              },
+              {
+                "symbol": "src/decorators/exclude.decorator.ts#Exclude",
+                "call_sites": 53,
+                "caller_modules": 12,
+                "module_examples": [
+                  "sample/sample1-simple-usage/Album.ts",
+                  "sample/sample2-iheritance/Album.ts",
+                  "sample/sample2-iheritance/Authorable.ts"
+                ],
+                "site_examples": [
+                  "sample/sample1-simple-usage/Album.ts:7:4",
+                  "sample/sample2-iheritance/Album.ts:8:4",
+                  "sample/sample2-iheritance/Authorable.ts:7:4",
+                  "sample/sample2-iheritance/Photo.ts:12:4",
+                  "sample/sample4-generics/SuperCollection.ts:4:4",
+                  "sample/sample4-generics/User.ts:10:4"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "typestack",
+            "subjects_from_organization": 2,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Two-year primary-source/test co-change count is below 30; older history or a different candidate may be needed for C5."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/stretchr-testify.yaml": {
+      "name": "stretchr-testify",
+      "url": "https://github.com/stretchr/testify",
+      "ref": "master",
+      "sha": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "go.sum": "e54560a8bfa3f8b7b319a2d41ead9f2b0663a9fa567b33bccc16c20e5ed5e1f0"
+          },
+          "dependency_manifest_sha256": {
+            "go.mod": "a6aa921ea6dedc1cbb384d3c1b79c58b6e5d6ce26d13b786ec60a99809ae1daa"
+          },
+          "go": "go1.27.3"
+        },
+        "setup": [
+          "go version && go mod download"
+        ],
+        "test": "go test -count=1 -timeout=14m ./...",
+        "suite_seconds": [
+          10.73,
+          11.392,
+          10.568
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2012-10-16T16:43:17Z",
+          "age_days": 5122,
+          "stars_observed": 26233,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/stretchr/testify",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Go",
+          "licence_file": "LICENSE",
+          "licence_sha256": "f8e536c1c7b695810427095dc85f5f80d44ff7c10535e8a9486cf393e2599189",
+          "primary_language_lines": {
+            "extensions": {
+              ".go": {
+                "files": 62,
+                "lines": 29801
+              }
+            },
+            "total": 29801,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "25k-75k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 35.504,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 10.73,
+                "exit_code": 0,
+                "log_sha256": "55cf7d9559a022f478c9e5bf66d5b3f35e6c2a4b413e527501bd95a6da168c26"
+              },
+              {
+                "seconds": 11.392,
+                "exit_code": 0,
+                "log_sha256": "6fc74e5d213dc0fd2c3926dce136356aa8a081216eb5e8ceea02dcca5877c2ca"
+              },
+              {
+                "seconds": 10.568,
+                "exit_code": 0,
+                "log_sha256": "0b6df26710abc11a8394e3a6e96288ee62096b527ce8a3e1317dfd10b7d4f827"
+              }
+            ],
+            "environment": {
+              "GOPROXY": "off",
+              "GOFLAGS": "-mod=mod",
+              "GOTOOLCHAIN": "local",
+              "GOMAXPROCS": "4"
+            },
+            "process_local_git_safe_directory": false
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 30,
+            "fix_message_subset": 6,
+            "primary_language_source_commits": 29,
+            "primary_language_source_fix_message_subset": 6,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "15f6826fe4614cc225c16903d2e9a1c966fb2332",
+              "closing_references": [
+                "1800"
+              ],
+              "references": [
+                "1800"
+              ],
+              "test_paths": [
+                "assert/assertions_test.go"
+              ],
+              "source_paths": [
+                "assert/assertions.go"
+              ]
+            },
+            {
+              "sha": "0bf6b946d985309f37a4364b0b1f01a92698730e",
+              "closing_references": [],
+              "references": [
+                "1212"
+              ],
+              "test_paths": [
+                "mock/mock_test.go"
+              ],
+              "source_paths": [
+                "mock/mock.go"
+              ]
+            },
+            {
+              "sha": "4f554a8833afff3cffb491138ba9c796ca4106b4",
+              "closing_references": [
+                "1399"
+              ],
+              "references": [
+                "1399"
+              ],
+              "test_paths": [
+                "assert/assertions_test.go"
+              ],
+              "source_paths": [
+                "assert/assertions.go"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "go/types through x/tools/go/packages v0.52.0 (Tests=true, ./...)",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "github.com/stretchr/testify/assert.Equal",
+                "call_sites": 281,
+                "caller_modules": 5,
+                "module_examples": [
+                  "github.com/stretchr/testify",
+                  "github.com/stretchr/testify/assert",
+                  "github.com/stretchr/testify/mock"
+                ],
+                "site_examples": [
+                  "assert/assertion_compare_test.go:474:3",
+                  "assert/assertion_format.go:84:9",
+                  "assert/assertion_forward.go:146:9",
+                  "assert/assertions.go:1881:9",
+                  "assert/assertions.go:1916:9",
+                  "assert/assertions.go:702:9"
+                ]
+              },
+              {
+                "symbol": "github.com/stretchr/testify/assert.False",
+                "call_sites": 209,
+                "caller_modules": 5,
+                "module_examples": [
+                  "github.com/stretchr/testify/assert",
+                  "github.com/stretchr/testify/assert/internal/unsafetests_test",
+                  "github.com/stretchr/testify/mock"
+                ],
+                "site_examples": [
+                  "assert/assertion_compare_test.go:171:3",
+                  "assert/assertion_compare_test.go:217:3",
+                  "assert/assertion_compare_test.go:263:3",
+                  "assert/assertion_compare_test.go:309:3",
+                  "assert/assertion_compare_test.go:350:3",
+                  "assert/assertion_compare_test.go:391:3"
+                ]
+              },
+              {
+                "symbol": "github.com/stretchr/testify/assert.True",
+                "call_sites": 209,
+                "caller_modules": 5,
+                "module_examples": [
+                  "github.com/stretchr/testify/assert",
+                  "github.com/stretchr/testify/assert/internal/unsafetests_test",
+                  "github.com/stretchr/testify/mock"
+                ],
+                "site_examples": [
+                  "assert/assertion_compare_test.go:456:3",
+                  "assert/assertion_format.go:829:9",
+                  "assert/assertion_forward.go:1640:9",
+                  "assert/assertions_test.go:1299:2",
+                  "assert/assertions_test.go:1300:2",
+                  "assert/assertions_test.go:1303:2"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "stretchr",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Two-year primary-source/test co-change count is below 30; older history or a different candidate may be needed for C5."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/python-attrs-attrs.yaml": {
+      "name": "python-attrs-attrs",
+      "url": "https://github.com/python-attrs/attrs",
+      "ref": "main",
+      "sha": "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "uv.lock": "617977f3b91f711e94b46bd6a61c879109631c8dab54150b2fb1af376dbe292d"
+          },
+          "dependency_manifest_sha256": {
+            "pyproject.toml": "85fc28e1975ed5172862679343f0cbffde913c98386bdc2897f089e2e2b7a266"
+          },
+          "python": "3.12.15",
+          "pip": "25.0.1",
+          "resolved_dependencies": [
+            "cloudpickle==3.1.2",
+            "execnet==2.1.2",
+            "hypothesis==6.170.11",
+            "iniconfig==2.3.1",
+            "packaging==26.3",
+            "pluggy==1.7.0",
+            "Pygments==2.21.0",
+            "Pympler==1.1",
+            "pytest==9.1.1",
+            "pytest-xdist==3.8.0",
+            "sortedcontainers==2.4.0"
+          ],
+          "resolved_dependencies_sha256": "651cb9eb4036d12a01912d9ef26174899eb8e17809398c11fc23f2e2bab7fe13"
+        },
+        "setup": [
+          "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest hypothesis pympler cloudpickle pytest-xdist && ${venv}/bin/pip freeze > ${resolved_requirements}"
+        ],
+        "test": "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache}",
+        "suite_seconds": [
+          9.023,
+          9.021,
+          8.85
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2015-01-27T15:01:01Z",
+          "age_days": 4289,
+          "stars_observed": 5861,
+          "popularity_band": "1k-10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/python-attrs/attrs",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Python",
+          "licence_file": "LICENSE",
+          "licence_sha256": "882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f",
+          "primary_language_lines": {
+            "extensions": {
+              ".py": {
+                "files": 56,
+                "lines": 21026
+              }
+            },
+            "total": 21026,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "5k-25k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 10.617,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 9.023,
+                "exit_code": 0,
+                "log_sha256": "d23184af3286dd3dced4bd07f188cb525fa04cc402a70834c50ea1131333684a"
+              },
+              {
+                "seconds": 9.021,
+                "exit_code": 0,
+                "log_sha256": "3245a1ba970b59cb51028933bdb1b82a18ec341cfcf63bd7d7f158a9dab2336c"
+              },
+              {
+                "seconds": 8.85,
+                "exit_code": 0,
+                "log_sha256": "a69b12cbca9b9742afbd52eb54445bbdfdc494613eee10a2d0a8e3682d412c55"
+              }
+            ],
+            "environment": {
+              "PIP_NO_INDEX": "1"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 48,
+            "fix_message_subset": 9,
+            "primary_language_source_commits": 36,
+            "primary_language_source_fix_message_subset": 5,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "97f8d175656bc03c373a1c9038048a4d312c307c",
+              "closing_references": [],
+              "references": [
+                "1593"
+              ],
+              "test_paths": [
+                "tests/test_annotations.py"
+              ],
+              "source_paths": [
+                "src/attr/_make.py"
+              ]
+            },
+            {
+              "sha": "af9c510912ce604a94896cc35c27368d5baf6ae6",
+              "closing_references": [],
+              "references": [
+                "1513"
+              ],
+              "test_paths": [
+                "tests/test_validators.py"
+              ],
+              "source_paths": [
+                "src/attr/validators.py"
+              ]
+            },
+            {
+              "sha": "ce89f5d11feb0805da9ed10bb165238cc959f1bb",
+              "closing_references": [
+                "1514"
+              ],
+              "references": [
+                "1514"
+              ],
+              "test_paths": [
+                "tests/test_functional.py"
+              ],
+              "source_paths": [
+                "src/attr/exceptions.py"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "Python ast import and re-export resolution; direct calls only",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "attr._make.attrib",
+                "call_sites": 522,
+                "caller_modules": 17,
+                "module_examples": [
+                  "attr._make",
+                  "attr._next_gen",
+                  "attr._version_info"
+                ],
+                "site_examples": [
+                  "src/attr/_make.py:3314:24",
+                  "src/attr/_make.py:3374:19",
+                  "src/attr/_make.py:419:21",
+                  "src/attr/_next_gen.py:609:12",
+                  "src/attr/_version_info.py:33:12",
+                  "src/attr/_version_info.py:34:13"
+                ]
+              },
+              {
+                "symbol": "attr._make.fields",
+                "call_sites": 137,
+                "caller_modules": 17,
+                "module_examples": [
+                  "attr._funcs",
+                  "attr._make",
+                  "tests.test_annotations"
+                ],
+                "site_examples": [
+                  "src/attr/_funcs.py:272:13",
+                  "src/attr/_funcs.py:415:13",
+                  "src/attr/_funcs.py:486:22",
+                  "src/attr/_funcs.py:78:13",
+                  "src/attr/_make.py:1956:16",
+                  "src/attr/_make.py:2016:14"
+                ]
+              },
+              {
+                "symbol": "attr._make.attrs",
+                "call_sites": 244,
+                "caller_modules": 14,
+                "module_examples": [
+                  "attr._make",
+                  "attr._next_gen",
+                  "attr._version_info"
+                ],
+                "site_examples": [
+                  "src/attr/_make.py:3356:11",
+                  "src/attr/_make.py:3368:2",
+                  "src/attr/_next_gen.py:363:16",
+                  "src/attr/_version_info.py:11:2",
+                  "src/attr/validators.py:131:2",
+                  "src/attr/validators.py:201:2"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "python-attrs",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/urfave-cli.yaml": {
+      "name": "urfave-cli",
+      "url": "https://github.com/urfave/cli",
+      "ref": "main",
+      "sha": "89ad11673146784b702fb14ce1e29f2b864e51c2",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "go.sum": "d4583181c1c7ec5ab4db5c02abf3f94aa4d4e20caf1f5b7793789f94cf1cbee3"
+          },
+          "dependency_manifest_sha256": {
+            "go.mod": "80e2b4a68a8bb72ab7bb6c4cf0293597bf8264ad21296678ebfba2653318307f"
+          },
+          "go": "go1.27.3"
+        },
+        "setup": [
+          "go version && go mod download"
+        ],
+        "test": "go test -count=1 -timeout=14m ./...",
+        "suite_seconds": [
+          4.869,
+          3.722,
+          3.598
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2013-07-13T19:32:06Z",
+          "age_days": 4852,
+          "stars_observed": 24306,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/urfave/cli",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Go",
+          "licence_file": "LICENSE",
+          "licence_sha256": "85695dfe027cabaf97c7fea77c45a01a36c0815e52df9219894b1ba031ee72f0",
+          "primary_language_lines": {
+            "extensions": {
+              ".go": {
+                "files": 79,
+                "lines": 30858
+              }
+            },
+            "total": 30858,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "25k-75k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 9.734,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 4.869,
+                "exit_code": 0,
+                "log_sha256": "c253c810009aa0ba461e325ecf65626919c679fac565eee5b1e3a36a4d1a7006"
+              },
+              {
+                "seconds": 3.722,
+                "exit_code": 0,
+                "log_sha256": "6372c456de424faf376d41630c9f85c3e96d456922a88dd3da6b4354a2e18add"
+              },
+              {
+                "seconds": 3.598,
+                "exit_code": 0,
+                "log_sha256": "59d05ade4a9af7aab9d5ca21a19d721a4519415951b13b40347770c080a530dc"
+              }
+            ],
+            "environment": {
+              "GOPROXY": "off",
+              "GOFLAGS": "-mod=mod",
+              "GOTOOLCHAIN": "local",
+              "GOMAXPROCS": "4"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 204,
+            "fix_message_subset": 135,
+            "primary_language_source_commits": 196,
+            "primary_language_source_fix_message_subset": 128,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "89fb848895a5a2687f70d1c40f0634f9daff3db1",
+              "closing_references": [],
+              "references": [
+                "1540"
+              ],
+              "test_paths": [
+                "flag_ext_test.go",
+                "flag_int_test.go",
+                "flag_uint_test.go"
+              ],
+              "source_paths": [
+                "command_setup.go",
+                "flag_ext.go"
+              ]
+            },
+            {
+              "sha": "bd73abc74526e2f10eac2c64743f8dad85915e46",
+              "closing_references": [],
+              "references": [
+                "1540"
+              ],
+              "test_paths": [
+                "flag_ext_test.go",
+                "flag_schema_type_test.go"
+              ],
+              "source_paths": [
+                "flag_ext.go"
+              ]
+            },
+            {
+              "sha": "73419bcf83b461cc21e38d70f284c8b32087ddb8",
+              "closing_references": [],
+              "references": [
+                "2475"
+              ],
+              "test_paths": [
+                "fish_test.go"
+              ],
+              "source_paths": [
+                "fish.go"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "go/types through x/tools/go/packages v0.52.0 (Tests=true, ./...)",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "github.com/urfave/cli/v3.*Command.Run",
+                "call_sites": 486,
+                "caller_modules": 4,
+                "module_examples": [
+                  "github.com/urfave/cli/v3",
+                  "github.com/urfave/cli/v3/examples/example-cli",
+                  "github.com/urfave/cli/v3/scripts"
+                ],
+                "site_examples": [
+                  "args_test.go:108:9",
+                  "args_test.go:121:10",
+                  "args_test.go:136:9",
+                  "args_test.go:144:10",
+                  "args_test.go:159:9",
+                  "args_test.go:169:10"
+                ]
+              },
+              {
+                "symbol": "github.com/urfave/cli/v3.*Command.String",
+                "call_sites": 58,
+                "caller_modules": 3,
+                "module_examples": [
+                  "github.com/urfave/cli/v3",
+                  "github.com/urfave/cli/v3/scripts",
+                  "github.com/urfave/cli/v3_test"
+                ],
+                "site_examples": [
+                  "command_test.go:1136:21",
+                  "command_test.go:1223:23",
+                  "command_test.go:1327:12",
+                  "command_test.go:1399:14",
+                  "command_test.go:1639:10",
+                  "command_test.go:1697:13"
+                ]
+              },
+              {
+                "symbol": "github.com/urfave/cli/v3.*Command.Bool",
+                "call_sites": 50,
+                "caller_modules": 3,
+                "module_examples": [
+                  "github.com/urfave/cli/v3",
+                  "github.com/urfave/cli/v3/scripts",
+                  "github.com/urfave/cli/v3_test"
+                ],
+                "site_examples": [
+                  "command_test.go:1397:13",
+                  "command_test.go:1398:12",
+                  "command_test.go:1637:9",
+                  "command_test.go:1638:9",
+                  "command_test.go:1664:19",
+                  "command_test.go:1665:19"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "urfave",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/go-chi-chi.yaml": {
+      "name": "go-chi-chi",
+      "url": "https://github.com/go-chi/chi",
+      "ref": "master",
+      "sha": "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {},
+          "dependency_manifest_sha256": {
+            "go.mod": "7eb620f0fce870d93eaba87bf6f8c36284db786108030ca229a5016461797090"
+          },
+          "go": "go1.27.3"
+        },
+        "setup": [
+          "go version && go mod download"
+        ],
+        "test": "go test -count=1 -timeout=14m ./...",
+        "suite_seconds": [
+          28.652,
+          28.98,
+          29.098
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2015-10-15T20:46:29Z",
+          "age_days": 4028,
+          "stars_observed": 22997,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/go-chi/chi",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Go",
+          "licence_file": "LICENSE",
+          "licence_sha256": "a2d51b7515acfaff2f7a88688650f2fc4fd99561383e72bba2305e3db59a1647",
+          "primary_language_lines": {
+            "extensions": {
+              ".go": {
+                "files": 89,
+                "lines": 13152
+              }
+            },
+            "total": 13152,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "5k-25k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 40.844,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 28.652,
+                "exit_code": 0,
+                "log_sha256": "0b050eeae1933bb07bff68e68347286a1e0f453b2641896e3ec5ea19d180a7ca"
+              },
+              {
+                "seconds": 28.98,
+                "exit_code": 0,
+                "log_sha256": "a06623cbbbdd6d715485b61da45f1956da5560cf94dfba1fe1543e85bee99979"
+              },
+              {
+                "seconds": 29.098,
+                "exit_code": 0,
+                "log_sha256": "89dafd6fd4af13c5356d4fbbdf79536179a31ea2c2861cfcbc49ff2dea981a08"
+              }
+            ],
+            "environment": {
+              "GOPROXY": "off",
+              "GOFLAGS": "-mod=mod",
+              "GOTOOLCHAIN": "local",
+              "GOMAXPROCS": "4"
+            },
+            "process_local_git_safe_directory": false
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 42,
+            "fix_message_subset": 8,
+            "primary_language_source_commits": 41,
+            "primary_language_source_fix_message_subset": 8,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "aba86186a27484f3cadc55b8d6448d2049af71bf",
+              "closing_references": [
+                "843"
+              ],
+              "references": [
+                "1159",
+                "843"
+              ],
+              "test_paths": [
+                "mux_test.go"
+              ],
+              "source_paths": [
+                "mux.go"
+              ]
+            },
+            {
+              "sha": "38939062c5df4d3e8814aad1a488983112627ced",
+              "closing_references": [],
+              "references": [
+                "1156"
+              ],
+              "test_paths": [
+                "middleware/compress_test.go"
+              ],
+              "source_paths": [
+                "middleware/compress.go"
+              ]
+            },
+            {
+              "sha": "29164f023bf9319e74d5961a21a712653bb98c83",
+              "closing_references": [
+                "830"
+              ],
+              "references": [
+                "1148",
+                "750",
+                "830"
+              ],
+              "test_paths": [
+                "tree_test.go"
+              ],
+              "source_paths": [
+                "tree.go"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "go/types through x/tools/go/packages v0.52.0 (Tests=true, ./...)",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "github.com/go-chi/chi/v5.NewRouter",
+                "call_sites": 114,
+                "caller_modules": 3,
+                "module_examples": [
+                  "github.com/go-chi/chi/v5",
+                  "github.com/go-chi/chi/v5/middleware",
+                  "github.com/go-chi/chi/v5/middleware_test"
+                ],
+                "site_examples": [
+                  "middleware/basic_auth_test.go:17:7",
+                  "middleware/clean_path_test.go:12:7",
+                  "middleware/client_ip_example_test.go:41:7",
+                  "middleware/client_ip_example_test.go:92:7",
+                  "middleware/client_ip_test.go:395:7",
+                  "middleware/client_ip_test.go:427:8"
+                ]
+              },
+              {
+                "symbol": "github.com/go-chi/chi/v5.*Mux.Get",
+                "call_sites": 106,
+                "caller_modules": 3,
+                "module_examples": [
+                  "github.com/go-chi/chi/v5",
+                  "github.com/go-chi/chi/v5/middleware",
+                  "github.com/go-chi/chi/v5/middleware_test"
+                ],
+                "site_examples": [
+                  "middleware/basic_auth_test.go:19:2",
+                  "middleware/clean_path_test.go:14:2",
+                  "middleware/client_ip_example_test.go:74:2",
+                  "middleware/client_ip_example_test.go:94:2",
+                  "middleware/client_ip_test.go:397:2",
+                  "middleware/client_ip_test.go:429:3"
+                ]
+              },
+              {
+                "symbol": "github.com/go-chi/chi/v5.*Mux.Use",
+                "call_sites": 58,
+                "caller_modules": 3,
+                "module_examples": [
+                  "github.com/go-chi/chi/v5",
+                  "github.com/go-chi/chi/v5/middleware",
+                  "github.com/go-chi/chi/v5/middleware_test"
+                ],
+                "site_examples": [
+                  "middleware/basic_auth_test.go:18:2",
+                  "middleware/clean_path_test.go:13:2",
+                  "middleware/client_ip_example_test.go:50:2",
+                  "middleware/client_ip_example_test.go:93:2",
+                  "middleware/client_ip_test.go:396:2",
+                  "middleware/client_ip_test.go:428:3"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "go-chi",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/marshmallow-code-marshmallow.yaml": {
+      "name": "marshmallow-code-marshmallow",
+      "url": "https://github.com/marshmallow-code/marshmallow",
+      "ref": "dev",
+      "sha": "b762ea2d59ca52fe5df76b90de14bed7e5ec5607",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "uv.lock": "e4ce0fdc1b34b3919f912890ddebccf42c74c0a4be6b68539e346de4fef514da"
+          },
+          "dependency_manifest_sha256": {
+            "pyproject.toml": "0e673116633ab2b3725886651d87d5543bd71f41143821c599ec89a0db49f8fa"
+          },
+          "python": "3.12.15",
+          "pip": "25.0.1",
+          "resolved_dependencies": [
+            "iniconfig==2.3.1",
+            "packaging==26.3",
+            "pluggy==1.7.0",
+            "Pygments==2.21.0",
+            "pytest==9.1.1",
+            "simplejson==4.2.0"
+          ],
+          "resolved_dependencies_sha256": "2d9057a3ed643c2ac6d9357fab9aca5817fe0b6b640b36f5336a3f1acdc211e9"
+        },
+        "setup": [
+          "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest simplejson && ${venv}/bin/pip freeze > ${resolved_requirements}"
+        ],
+        "test": "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache}",
+        "suite_seconds": [
+          4.554,
+          4.518,
+          4.54
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2013-11-10T21:32:24Z",
+          "age_days": 4732,
+          "stars_observed": 7246,
+          "popularity_band": "1k-10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/marshmallow-code/marshmallow",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Python",
+          "licence_file": "LICENSE",
+          "licence_sha256": "906b5d9051e426144cb173ad911667b8ebd05a9c584c2c26c135b32a3ed12001",
+          "primary_language_lines": {
+            "extensions": {
+              ".py": {
+                "files": 38,
+                "lines": 15722
+              }
+            },
+            "total": 15722,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "5k-25k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 5.156,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 4.554,
+                "exit_code": 0,
+                "log_sha256": "c1d7c688498b2391cf3033fca6f5fe5d1d4a2445948d92f825db19660d207260"
+              },
+              {
+                "seconds": 4.518,
+                "exit_code": 0,
+                "log_sha256": "c1d7c688498b2391cf3033fca6f5fe5d1d4a2445948d92f825db19660d207260"
+              },
+              {
+                "seconds": 4.54,
+                "exit_code": 0,
+                "log_sha256": "fcc3793bfc78504e1d4499872b84387e56028e91ce6d90c7de149c594b4e20fe"
+              }
+            ],
+            "environment": {
+              "PIP_NO_INDEX": "1"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 68,
+            "fix_message_subset": 17,
+            "primary_language_source_commits": 65,
+            "primary_language_source_fix_message_subset": 17,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "902f99c4151d1f0c4c3b8e8dfbafc7b6a76aeaa6",
+              "closing_references": [],
+              "references": [
+                "3016"
+              ],
+              "test_paths": [
+                "tests/test_validate.py"
+              ],
+              "source_paths": [
+                "src/marshmallow/validate.py"
+              ]
+            },
+            {
+              "sha": "f07eadc87dfac25ed505d5cd9d186920f2682733",
+              "closing_references": [],
+              "references": [
+                "2937"
+              ],
+              "test_paths": [
+                "tests/test_validate.py"
+              ],
+              "source_paths": [
+                "src/marshmallow/validate.py"
+              ]
+            },
+            {
+              "sha": "3bc191ab3c8cac8356839bcde0918cb6aed4d3a1",
+              "closing_references": [],
+              "references": [
+                "1636",
+                "2907"
+              ],
+              "test_paths": [
+                "tests/test_deserialization.py"
+              ],
+              "source_paths": [
+                "src/marshmallow/fields.py",
+                "src/marshmallow/types.py"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "Python ast import and re-export resolution; direct calls only",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "marshmallow.exceptions.ValidationError",
+                "call_sites": 104,
+                "caller_modules": 15,
+                "module_examples": [
+                  "examples.flask_example",
+                  "examples.package_json_example",
+                  "marshmallow.fields"
+                ],
+                "site_examples": [
+                  "examples/flask_example.py:64:15",
+                  "examples/package_json_example.py:24:19",
+                  "performance/benchmark.py:19:15",
+                  "src/marshmallow/fields.py:1728:19",
+                  "src/marshmallow/fields.py:303:16",
+                  "src/marshmallow/fields.py:645:19"
+                ]
+              },
+              {
+                "symbol": "marshmallow.fields.String",
+                "call_sites": 211,
+                "caller_modules": 13,
+                "module_examples": [
+                  "examples.flask_example",
+                  "examples.inflection_example",
+                  "examples.package_json_example"
+                ],
+                "site_examples": [
+                  "examples/flask_example.py:53:13",
+                  "examples/flask_example.py:54:12",
+                  "examples/flask_example.py:70:15",
+                  "examples/inflection_example.py:28:18",
+                  "examples/inflection_example.py:29:17",
+                  "examples/package_json_example.py:31:12"
+                ]
+              },
+              {
+                "symbol": "marshmallow.fields.Integer",
+                "call_sites": 158,
+                "caller_modules": 13,
+                "module_examples": [
+                  "examples.flask_example",
+                  "performance.benchmark",
+                  "tests.base"
+                ],
+                "site_examples": [
+                  "examples/flask_example.py:52:10",
+                  "examples/flask_example.py:68:10",
+                  "performance/benchmark.py:23:10",
+                  "performance/benchmark.py:36:10",
+                  "tests/base.py:210:20",
+                  "tests/base.py:246:11"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "marshmallow-code",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/textualize-rich.yaml": {
+      "name": "textualize-rich",
+      "url": "https://github.com/Textualize/rich",
+      "ref": "main",
+      "sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "python@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "poetry.lock": "b7ef18e9e25d31bcc21853b3774cbec13f0874d517bc023156a526dd5ada1908"
+          },
+          "dependency_manifest_sha256": {
+            "pyproject.toml": "3762cb9e96442f57b8ff080f5ecd4d06ebdb8616e33d3a1eb2ba1974e58b7b65"
+          },
+          "python": "3.12.15",
+          "pip": "25.0.1",
+          "resolved_dependencies": [
+            "attrs==21.4.0",
+            "coverage==7.17.0",
+            "iniconfig==2.3.1",
+            "markdown-it-py==3.0.0",
+            "mdurl==0.1.2",
+            "packaging==26.3",
+            "pluggy==1.7.0",
+            "Pygments==2.19.2",
+            "pytest==7.4.4",
+            "pytest-cov==3.0.0"
+          ],
+          "resolved_dependencies_sha256": "7532e4a931f6425a9977892be51036945ee1c21faa2cadee8da9ff3beec297e8"
+        },
+        "setup": [
+          "python --version && python -m venv ${venv} && ${venv}/bin/pip install -e . pytest==7.4.4 pytest-cov==3.0.0 attrs==21.4.0 pygments==2.19.2 markdown-it-py==3.0.0 && ${venv}/bin/pip freeze > ${resolved_requirements}"
+        ],
+        "test": "${venv}/bin/python -m pytest -q -o cache_dir=${pytest_cache} --basetemp=${pytest_temp}",
+        "suite_seconds": [
+          8.077,
+          8.073,
+          7.887
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2019-11-10T15:28:09Z",
+          "age_days": 2541,
+          "stars_observed": 57641,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/Textualize/rich",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "Python",
+          "licence_file": "LICENSE",
+          "licence_sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15",
+          "primary_language_lines": {
+            "extensions": {
+              ".py": {
+                "files": 213,
+                "lines": 51866
+              }
+            },
+            "total": 51866,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "25k-75k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 9.757,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 8.077,
+                "exit_code": 0,
+                "log_sha256": "4ac1c351265f7472182b532e076157b560e3bfa923525ce9ab43f3b76a591855"
+              },
+              {
+                "seconds": 8.073,
+                "exit_code": 0,
+                "log_sha256": "4ac1c351265f7472182b532e076157b560e3bfa923525ce9ab43f3b76a591855"
+              },
+              {
+                "seconds": 7.887,
+                "exit_code": 0,
+                "log_sha256": "97eb8a35015bb0c92f6419888a55cf2c7d0bd1dd656771aaa75c1f84f7d9aca1"
+              }
+            ],
+            "environment": {
+              "PIP_NO_INDEX": "1"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 31,
+            "fix_message_subset": 12,
+            "primary_language_source_commits": 31,
+            "primary_language_source_fix_message_subset": 12,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "95fe8ff59249d9ac0534a82af7c746826a5999f4",
+              "closing_references": [
+                "3881"
+              ],
+              "references": [
+                "3881"
+              ],
+              "test_paths": [
+                "tests/test_prompt.py"
+              ],
+              "source_paths": [
+                "rich/prompt.py"
+              ]
+            },
+            {
+              "sha": "30e5ed61a6064220fe2ff40f4713463488ee6d07",
+              "closing_references": [
+                "3569"
+              ],
+              "references": [
+                "3569"
+              ],
+              "test_paths": [
+                "tests/test_panel.py"
+              ],
+              "source_paths": [
+                "rich/panel.py"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "Python ast import and re-export resolution; direct calls only",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "rich.console.Console",
+                "call_sites": 362,
+                "caller_modules": 75,
+                "module_examples": [
+                  "benchmarks.benchmarks",
+                  "examples.columns",
+                  "examples.exception"
+                ],
+                "site_examples": [
+                  "benchmarks/benchmarks.py:106:19",
+                  "benchmarks/benchmarks.py:131:24",
+                  "benchmarks/benchmarks.py:150:24",
+                  "benchmarks/benchmarks.py:16:24",
+                  "benchmarks/benchmarks.py:171:24",
+                  "benchmarks/benchmarks.py:188:24"
+                ]
+              },
+              {
+                "symbol": "rich.text.Text",
+                "call_sites": 302,
+                "caller_modules": 42,
+                "module_examples": [
+                  "benchmarks.benchmarks",
+                  "examples.layout",
+                  "examples.listdir"
+                ],
+                "site_examples": [
+                  "benchmarks/benchmarks.py:26:9",
+                  "benchmarks/benchmarks.py:29:9",
+                  "benchmarks/benchmarks.py:35:9",
+                  "benchmarks/benchmarks.py:38:9",
+                  "benchmarks/benchmarks.py:44:9",
+                  "benchmarks/benchmarks.py:47:9"
+                ]
+              },
+              {
+                "symbol": "rich.segment.Segment",
+                "call_sites": 299,
+                "caller_modules": 23,
+                "module_examples": [
+                  "benchmarks.benchmarks",
+                  "rich.__main__",
+                  "rich.align"
+                ],
+                "site_examples": [
+                  "benchmarks/benchmarks.py:210:13",
+                  "benchmarks/benchmarks.py:211:13",
+                  "benchmarks/benchmarks.py:212:13",
+                  "benchmarks/benchmarks.py:213:13",
+                  "benchmarks/benchmarks.py:214:13",
+                  "rich/__main__.py:30:23"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "textualize",
+            "subjects_from_organization": 1,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Recorded lock hashes identify the upstream files; setup uses the listed resolved venv dependencies, not a full lockfile sync."
+          ]
+        }
+      }
+    },
+    "calibration/bench.d/typestack-class-validator.yaml": {
+      "name": "typestack-class-validator",
+      "url": "https://github.com/typestack/class-validator",
+      "ref": "develop",
+      "sha": "2e1a5c27dbd65b80e27fe96b49bd6e6641fa3603",
+      "licence": "MIT",
+      "subpath": ".",
+      "bench": {
+        "toolchain": {
+          "container_image": "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+          "platform": "linux/arm64",
+          "cpu_limit": 4,
+          "lockfile_sha256": {
+            "package-lock.json": "90f2e49844770dfd5fbd9358385dd0cf723d047482a2bfe391abb75871de61d5"
+          },
+          "dependency_manifest_sha256": {
+            "package.json": "3550d159ba8aa6b22c4a7892855e7960f0829f24e048bdb00fb30c7dfca85a5e"
+          },
+          "node": "22.23.4",
+          "npm": "10.9.9"
+        },
+        "setup": [
+          "node --version && npm --version && npm ci"
+        ],
+        "test": "npm run test:ci -- --coverageDirectory=${coverage_dir}",
+        "suite_seconds": [
+          13.223,
+          13.158,
+          13.044
+        ],
+        "flake_runs": 3,
+        "l0_reading": null,
+        "split": "unassigned",
+        "task_sources": [],
+        "contamination": {
+          "created_at": "2015-10-03T13:27:09Z",
+          "age_days": 4040,
+          "stars_observed": 11850,
+          "popularity_band": "over 10k",
+          "fresh_after": null,
+          "metadata_source": "https://api.github.com/repos/typestack/class-validator",
+          "observed_on": "2026-10-25"
+        },
+        "draft": true,
+        "evidence": {
+          "measured_on": "2026-10-25",
+          "primary_language": "TypeScript",
+          "licence_file": "LICENSE",
+          "licence_sha256": "ef7c4bc854ad6f0ee0ea4bdae8dee790ed65edd22713d2806d423b8e0727328a",
+          "primary_language_lines": {
+            "extensions": {
+              ".ts": {
+                "files": 176,
+                "lines": 14455
+              },
+              ".tsx": {
+                "files": 0,
+                "lines": 0
+              },
+              ".mts": {
+                "files": 0,
+                "lines": 0
+              },
+              ".cts": {
+                "files": 0,
+                "lines": 0
+              }
+            },
+            "total": 14455,
+            "method": "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
+          },
+          "size_band": "5k-25k",
+          "suite": {
+            "network": "Docker --network=none; no external route; direct HTTPS probe exits 7",
+            "timing": "host monotonic wall time, including container startup; one suite at a time",
+            "warmup": {
+              "seconds": 15.393,
+              "exit_code": 0
+            },
+            "runs": [
+              {
+                "seconds": 13.223,
+                "exit_code": 0,
+                "log_sha256": "e891f5540e6bd4d38ae36c1ec1463044a0408b0c6a4d358bb5c7126a53df657e"
+              },
+              {
+                "seconds": 13.158,
+                "exit_code": 0,
+                "log_sha256": "45319904cedc9a094d459e4d81f8f4fc26998fd6aab3b93698599f0c1302ea91"
+              },
+              {
+                "seconds": 13.044,
+                "exit_code": 0,
+                "log_sha256": "e2e1d1a79dd2b43b7f010e6fd9f9229f5ac7279e07099d71b795e0266c11bc5b"
+              }
+            ],
+            "environment": {
+              "npm_config_offline": "true"
+            },
+            "process_local_git_safe_directory": true
+          },
+          "fix_yield_estimate": {
+            "since": "2024-10-25T00:00:00Z",
+            "until": "2026-10-26T00:00:00Z",
+            "test_and_non_test_commits": 6,
+            "fix_message_subset": 1,
+            "primary_language_source_commits": 6,
+            "primary_language_source_fix_message_subset": 1,
+            "replayed": 0
+          },
+          "issue_link_examples": [
+            {
+              "sha": "0c87bebe8b290a2527b8390c4a4877d7412bc2d9",
+              "closing_references": [],
+              "references": [
+                "2549"
+              ],
+              "test_paths": [
+                "test/functional/validation-functions-and-decorators.spec.ts"
+              ],
+              "source_paths": [
+                "src/decorator/string/IsBase64.ts"
+              ]
+            }
+          ],
+          "fan_in": {
+            "method": "TypeScript 5.9.3 getResolvedSignature; interfaces and call signatures excluded",
+            "units": "distinct static call sites and caller packages/modules, including tests; not distinct caller functions",
+            "qualifying_symbols": [
+              {
+                "symbol": "src/decorator/common/ValidateBy.ts#buildMessage",
+                "call_sites": 107,
+                "caller_modules": 107,
+                "module_examples": [
+                  "src/decorator/array/ArrayContains.ts",
+                  "src/decorator/array/ArrayMaxSize.ts",
+                  "src/decorator/array/ArrayMinSize.ts"
+                ],
+                "site_examples": [
+                  "src/decorator/array/ArrayContains.ts:27:25",
+                  "src/decorator/array/ArrayMaxSize.ts:25:25",
+                  "src/decorator/array/ArrayMinSize.ts:25:25",
+                  "src/decorator/array/ArrayNotContains.ts:27:25",
+                  "src/decorator/array/ArrayNotEmpty.ts:24:25",
+                  "src/decorator/array/ArrayUnique.ts:38:25"
+                ]
+              },
+              {
+                "symbol": "src/decorator/common/ValidateBy.ts#ValidateBy",
+                "call_sites": 106,
+                "caller_modules": 106,
+                "module_examples": [
+                  "src/decorator/array/ArrayContains.ts",
+                  "src/decorator/array/ArrayMaxSize.ts",
+                  "src/decorator/array/ArrayMinSize.ts"
+                ],
+                "site_examples": [
+                  "src/decorator/array/ArrayContains.ts:21:10",
+                  "src/decorator/array/ArrayMaxSize.ts:19:10",
+                  "src/decorator/array/ArrayMinSize.ts:19:10",
+                  "src/decorator/array/ArrayNotContains.ts:21:10",
+                  "src/decorator/array/ArrayNotEmpty.ts:19:10",
+                  "src/decorator/array/ArrayUnique.ts:33:10"
+                ]
+              },
+              {
+                "symbol": "src/validation/Validator.ts#validate",
+                "call_sites": 143,
+                "caller_modules": 17,
+                "module_examples": [
+                  "sample/sample2-using-groups/app.ts",
+                  "sample/sample3-nested-objects/app.ts",
+                  "sample/sample4-custom-validator/app.ts"
+                ],
+                "site_examples": [
+                  "sample/sample2-using-groups/app.ts:14:1",
+                  "sample/sample2-using-groups/app.ts:18:1",
+                  "sample/sample2-using-groups/app.ts:30:1",
+                  "sample/sample2-using-groups/app.ts:34:1",
+                  "sample/sample2-using-groups/app.ts:38:1",
+                  "sample/sample2-using-groups/app.ts:42:1"
+                ]
+              }
+            ]
+          },
+          "independence": {
+            "not_fathom": true,
+            "organization": "typestack",
+            "subjects_from_organization": 2,
+            "fleet_index_exclusion": "unverified"
+          },
+          "reading": "docs/bench/readings/bench-prep/candidates.md",
+          "limitations": [
+            "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned.",
+            "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured.",
+            "C7 fleet-index exclusion unverified because the service registry is unavailable.",
+            "Two-year primary-source/test co-change count is below 30; older history or a different candidate may be needed for C5."
+          ]
+        }
+      }
+    }
+  },
+  "manifest_conversion": {
+    "suite_seconds": "maximum of the three historical trials; individual times remain in these receipts",
+    "l0_reading": "explicit unmeasured marker, not an L0 result or an existing reading",
+    "task_sources": "candidate upstream git history, not an admitted bank; revision and licence identify that source",
+    "split": "omitted until controller vetting except prior-read forced dev",
+    "go-chi-chi": "no upstream go.sum: hash is go.mod, which declares no dependencies"
+  }
+}

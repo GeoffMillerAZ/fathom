@@ -1,151 +1,39 @@
-# Draft subject; schema/bench is not implemented at this revision.
-name: "typestack-class-transformer"
-url: "https://github.com/typestack/class-transformer"
-ref: "develop"
-sha: "a2734a5d154c9b0beb9a10555a04416bc371de06"
-licence: "MIT"
-subpath: "."
-bench:
-  toolchain:
-    container_image: "node@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384"
-    platform: "linux/arm64"
-    cpu_limit: 4
-    lockfile_sha256:
-      package-lock.json: "ec5e36d2d39f273a946c5736b54fd14d4f7973f235b4ec426ebeed0ed049a551"
-    dependency_manifest_sha256:
-      package.json: "debe8fa83a484487b45950df8da7d568a3f1ed8541b15d45685d698464e1a654"
-    node: "22.23.4"
-    npm: "10.9.9"
-  setup:
-    - "node --version && npm --version && npm ci --legacy-peer-deps --ignore-scripts"
-  test: "npm run test:ci -- --coverageDirectory=${coverage_dir}"
-  suite_seconds:
-    - 11.4
-    - 11.449
-    - 11.542
-  flake_runs: 3
-  l0_reading: null
-  split: "unassigned"
-  task_sources: []
-  contamination:
-    created_at: "2016-02-09T13:26:52Z"
-    age_days: 3911
-    stars_observed: 7339
-    popularity_band: "1k-10k"
-    fresh_after: null
-    metadata_source: "https://api.github.com/repos/typestack/class-transformer"
-    observed_on: "2026-10-25"
-  draft: true
-  evidence:
-    measured_on: "2026-10-25"
-    primary_language: "TypeScript"
-    licence_file: "LICENSE"
-    licence_sha256: "40fb2182a242493ce32f6211c3400f2dcf6787c9c68cd261bfb61461d69780ef"
-    primary_language_lines:
-      extensions:
-        ".ts":
-          files: 69
-          lines: 8125
-        ".tsx":
-          files: 0
-          lines: 0
-        ".mts":
-          files: 0
-          lines: 0
-        ".cts":
-          files: 0
-          lines: 0
-      total: 8125
-      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
-    size_band: "5k-25k"
-    suite:
-      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
-      timing: "host monotonic wall time, including container startup; one suite at a time"
-      warmup:
-        seconds: 13.291
-        exit_code: 0
-      runs:
-        -
-          seconds: 11.4
-          exit_code: 0
-          log_sha256: "25302cf2cedef883765caeee3a4e2fb943b8f6acb3006d93b2bf2c19bd4bf4f8"
-        -
-          seconds: 11.449
-          exit_code: 0
-          log_sha256: "cdd8ea59156bc3d487427088a97bd2ae5de1f3230ee9ce9bb1a49c150006bd5f"
-        -
-          seconds: 11.542
-          exit_code: 0
-          log_sha256: "4826a3201ec1ed3f2eba039a6ed865beeb7aae1ab612d0263fd05b5f0b308207"
-      environment:
-        npm_config_offline: "true"
-      process_local_git_safe_directory: true
-    fix_yield_estimate:
-      since: "2024-10-25T00:00:00Z"
-      until: "2026-10-26T00:00:00Z"
-      test_and_non_test_commits: 0
-      fix_message_subset: 0
-      primary_language_source_commits: 0
-      primary_language_source_fix_message_subset: 0
-      replayed: 0
-    issue_link_examples: []
-    fan_in:
-      method: "TypeScript 5.9.3 getResolvedSignature; interfaces and call signatures excluded"
-      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
-      qualifying_symbols:
-        -
-          symbol: "src/decorators/type.decorator.ts#Type"
-          call_sites: 79
-          caller_modules: 17
-          module_examples:
-            - "sample/sample1-simple-usage/Album.ts"
-            - "sample/sample1-simple-usage/Photo.ts"
-            - "sample/sample1-simple-usage/User.ts"
-          site_examples:
-            - "sample/sample1-simple-usage/Album.ts:10:4"
-            - "sample/sample1-simple-usage/Photo.ts:14:4"
-            - "sample/sample1-simple-usage/Photo.ts:17:4"
-            - "sample/sample1-simple-usage/User.ts:11:4"
-            - "sample/sample1-simple-usage/User.ts:4:4"
-            - "sample/sample2-iheritance/Album.ts:11:4"
-        -
-          symbol: "src/index.ts#plainToInstance"
-          call_sites: 93
-          caller_modules: 12
-          module_examples:
-            - "test/functional/basic-functionality.spec.ts"
-            - "test/functional/circular-reference-problem.spec.ts"
-            - "test/functional/custom-transform.spec.ts"
-          site_examples:
-            - "test/functional/basic-functionality.spec.ts:1085:30"
-            - "test/functional/basic-functionality.spec.ts:111:29"
-            - "test/functional/basic-functionality.spec.ts:1159:30"
-            - "test/functional/basic-functionality.spec.ts:116:41"
-            - "test/functional/basic-functionality.spec.ts:1190:30"
-            - "test/functional/basic-functionality.spec.ts:1230:30"
-        -
-          symbol: "src/decorators/exclude.decorator.ts#Exclude"
-          call_sites: 53
-          caller_modules: 12
-          module_examples:
-            - "sample/sample1-simple-usage/Album.ts"
-            - "sample/sample2-iheritance/Album.ts"
-            - "sample/sample2-iheritance/Authorable.ts"
-          site_examples:
-            - "sample/sample1-simple-usage/Album.ts:7:4"
-            - "sample/sample2-iheritance/Album.ts:8:4"
-            - "sample/sample2-iheritance/Authorable.ts:7:4"
-            - "sample/sample2-iheritance/Photo.ts:12:4"
-            - "sample/sample4-generics/SuperCollection.ts:4:4"
-            - "sample/sample4-generics/User.ts:10:4"
-    independence:
-      not_fathom: true
-      organization: "typestack"
-      subjects_from_organization: 2
-      fleet_index_exclusion: "unverified"
-    reading: "docs/bench/readings/bench-prep/candidates.md"
-    limitations:
-      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
-      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
-      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
-      - "Two-year primary-source/test co-change count is below 30; older history or a different candidate may be needed for C5."
+# Preparation draft; C4 unmeasured.
+{
+  "name": "typestack-class-transformer",
+  "url": "https://github.com/typestack/class-transformer",
+  "ref": "develop",
+  "sha": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+  "licence": "MIT",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "node": "22.23.4",
+        "npm": "10.9.9"
+      },
+      "lockfile_sha256": "ec5e36d2d39f273a946c5736b54fd14d4f7973f235b4ec426ebeed0ed049a551"
+    },
+    "setup": [
+      "corepack enable && node --version && corepack prepare npm@10.9.9 --activate && corepack npm --version && corepack npm ci --cache /work/npm-cache --legacy-peer-deps --ignore-scripts"
+    ],
+    "test": [
+      "corepack npm run test:ci -- --coverageDirectory=/work/coverage"
+    ],
+    "suite_seconds": 25.188,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "a2734a5d154c9b0beb9a10555a04416bc371de06",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 3911,
+      "popularity_band": "medium"
+    }
+  },
+  "notes": "BX-M0-only preparation candidate; BX-44 refused on C5. See docs/bench/readings/bench-prep/typescript-r2.md."
+}

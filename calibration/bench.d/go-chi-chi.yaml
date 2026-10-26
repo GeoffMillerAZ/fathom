@@ -1,174 +1,38 @@
-# Draft subject; schema/bench is not implemented at this revision.
-name: "go-chi-chi"
-url: "https://github.com/go-chi/chi"
-ref: "master"
-sha: "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf"
-licence: "MIT"
-subpath: "."
-bench:
-  toolchain:
-    container_image: "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5"
-    platform: "linux/arm64"
-    cpu_limit: 4
-    lockfile_sha256: {}
-    dependency_manifest_sha256:
-      go.mod: "7eb620f0fce870d93eaba87bf6f8c36284db786108030ca229a5016461797090"
-    go: "go1.27.3"
-  setup:
-    - "go version && go mod download"
-  test: "go test -count=1 -timeout=14m ./..."
-  suite_seconds:
-    - 28.652
-    - 28.98
-    - 29.098
-  flake_runs: 3
-  l0_reading: null
-  split: "unassigned"
-  task_sources: []
-  contamination:
-    created_at: "2015-10-15T20:46:29Z"
-    age_days: 4028
-    stars_observed: 22997
-    popularity_band: "over 10k"
-    fresh_after: null
-    metadata_source: "https://api.github.com/repos/go-chi/chi"
-    observed_on: "2026-10-25"
-  draft: true
-  evidence:
-    measured_on: "2026-10-25"
-    primary_language: "Go"
-    licence_file: "LICENSE"
-    licence_sha256: "a2d51b7515acfaff2f7a88688650f2fc4fd99561383e72bba2305e3db59a1647"
-    primary_language_lines:
-      extensions:
-        ".go":
-          files: 89
-          lines: 13152
-      total: 13152
-      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
-    size_band: "5k-25k"
-    suite:
-      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
-      timing: "host monotonic wall time, including container startup; one suite at a time"
-      warmup:
-        seconds: 40.844
-        exit_code: 0
-      runs:
-        -
-          seconds: 28.652
-          exit_code: 0
-          log_sha256: "0b050eeae1933bb07bff68e68347286a1e0f453b2641896e3ec5ea19d180a7ca"
-        -
-          seconds: 28.98
-          exit_code: 0
-          log_sha256: "a06623cbbbdd6d715485b61da45f1956da5560cf94dfba1fe1543e85bee99979"
-        -
-          seconds: 29.098
-          exit_code: 0
-          log_sha256: "89dafd6fd4af13c5356d4fbbdf79536179a31ea2c2861cfcbc49ff2dea981a08"
-      environment:
-        GOPROXY: "off"
-        GOFLAGS: "-mod=mod"
-        GOTOOLCHAIN: "local"
-        GOMAXPROCS: "4"
-      process_local_git_safe_directory: false
-    fix_yield_estimate:
-      since: "2024-10-25T00:00:00Z"
-      until: "2026-10-26T00:00:00Z"
-      test_and_non_test_commits: 42
-      fix_message_subset: 8
-      primary_language_source_commits: 41
-      primary_language_source_fix_message_subset: 8
-      replayed: 0
-    issue_link_examples:
-      -
-        sha: "aba86186a27484f3cadc55b8d6448d2049af71bf"
-        closing_references:
-          - "843"
-        references:
-          - "1159"
-          - "843"
-        test_paths:
-          - "mux_test.go"
-        source_paths:
-          - "mux.go"
-      -
-        sha: "38939062c5df4d3e8814aad1a488983112627ced"
-        closing_references: []
-        references:
-          - "1156"
-        test_paths:
-          - "middleware/compress_test.go"
-        source_paths:
-          - "middleware/compress.go"
-      -
-        sha: "29164f023bf9319e74d5961a21a712653bb98c83"
-        closing_references:
-          - "830"
-        references:
-          - "1148"
-          - "750"
-          - "830"
-        test_paths:
-          - "tree_test.go"
-        source_paths:
-          - "tree.go"
-    fan_in:
-      method: "go/types through x/tools/go/packages v0.52.0 (Tests=true, ./...)"
-      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
-      qualifying_symbols:
-        -
-          symbol: "github.com/go-chi/chi/v5.NewRouter"
-          call_sites: 114
-          caller_modules: 3
-          module_examples:
-            - "github.com/go-chi/chi/v5"
-            - "github.com/go-chi/chi/v5/middleware"
-            - "github.com/go-chi/chi/v5/middleware_test"
-          site_examples:
-            - "middleware/basic_auth_test.go:17:7"
-            - "middleware/clean_path_test.go:12:7"
-            - "middleware/client_ip_example_test.go:41:7"
-            - "middleware/client_ip_example_test.go:92:7"
-            - "middleware/client_ip_test.go:395:7"
-            - "middleware/client_ip_test.go:427:8"
-        -
-          symbol: "github.com/go-chi/chi/v5.*Mux.Get"
-          call_sites: 106
-          caller_modules: 3
-          module_examples:
-            - "github.com/go-chi/chi/v5"
-            - "github.com/go-chi/chi/v5/middleware"
-            - "github.com/go-chi/chi/v5/middleware_test"
-          site_examples:
-            - "middleware/basic_auth_test.go:19:2"
-            - "middleware/clean_path_test.go:14:2"
-            - "middleware/client_ip_example_test.go:74:2"
-            - "middleware/client_ip_example_test.go:94:2"
-            - "middleware/client_ip_test.go:397:2"
-            - "middleware/client_ip_test.go:429:3"
-        -
-          symbol: "github.com/go-chi/chi/v5.*Mux.Use"
-          call_sites: 58
-          caller_modules: 3
-          module_examples:
-            - "github.com/go-chi/chi/v5"
-            - "github.com/go-chi/chi/v5/middleware"
-            - "github.com/go-chi/chi/v5/middleware_test"
-          site_examples:
-            - "middleware/basic_auth_test.go:18:2"
-            - "middleware/clean_path_test.go:13:2"
-            - "middleware/client_ip_example_test.go:50:2"
-            - "middleware/client_ip_example_test.go:93:2"
-            - "middleware/client_ip_test.go:396:2"
-            - "middleware/client_ip_test.go:428:3"
-    independence:
-      not_fathom: true
-      organization: "go-chi"
-      subjects_from_organization: 1
-      fleet_index_exclusion: "unverified"
-    reading: "docs/bench/readings/bench-prep/candidates.md"
-    limitations:
-      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
-      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
-      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
+# Historical subject draft; not admitted.
+{
+  "name": "go-chi-chi",
+  "url": "https://github.com/go-chi/chi",
+  "ref": "master",
+  "sha": "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf",
+  "licence": "MIT",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "go": "1.27.3"
+      },
+      "lockfile_sha256": "7eb620f0fce870d93eaba87bf6f8c36284db786108030ca229a5016461797090"
+    },
+    "setup": [
+      "go version && go mod download"
+    ],
+    "test": [
+      "go test -count=1 -timeout=14m ./..."
+    ],
+    "suite_seconds": 29.098,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "9f8adb1aabaa8a91180a821111d3f8e668d1c0bf",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 4028,
+      "popularity_band": "high"
+    }
+  },
+  "notes": "Refused on C6 under D24: fewer than three qualifying symbols; retained only as a historical preparation manifest. See docs/bench/readings/bench-prep/c6-r2.md."
+}

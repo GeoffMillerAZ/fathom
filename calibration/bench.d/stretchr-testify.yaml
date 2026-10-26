@@ -1,173 +1,37 @@
-# Draft subject; schema/bench is not implemented at this revision.
-name: "stretchr-testify"
-url: "https://github.com/stretchr/testify"
-ref: "master"
-sha: "87a7b9d57689f6579db2da795ab8deeab29cb724"
-licence: "MIT"
-subpath: "."
-bench:
-  toolchain:
-    container_image: "golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5"
-    platform: "linux/arm64"
-    cpu_limit: 4
-    lockfile_sha256:
-      go.sum: "e54560a8bfa3f8b7b319a2d41ead9f2b0663a9fa567b33bccc16c20e5ed5e1f0"
-    dependency_manifest_sha256:
-      go.mod: "a6aa921ea6dedc1cbb384d3c1b79c58b6e5d6ce26d13b786ec60a99809ae1daa"
-    go: "go1.27.3"
-  setup:
-    - "go version && go mod download"
-  test: "go test -count=1 -timeout=14m ./..."
-  suite_seconds:
-    - 10.73
-    - 11.392
-    - 10.568
-  flake_runs: 3
-  l0_reading: null
-  split: "unassigned"
-  task_sources: []
-  contamination:
-    created_at: "2012-10-16T16:43:17Z"
-    age_days: 5122
-    stars_observed: 26233
-    popularity_band: "over 10k"
-    fresh_after: null
-    metadata_source: "https://api.github.com/repos/stretchr/testify"
-    observed_on: "2026-10-25"
-  draft: true
-  evidence:
-    measured_on: "2026-10-25"
-    primary_language: "Go"
-    licence_file: "LICENSE"
-    licence_sha256: "f8e536c1c7b695810427095dc85f5f80d44ff7c10535e8a9486cf393e2599189"
-    primary_language_lines:
-      extensions:
-        ".go":
-          files: 62
-          lines: 29801
-      total: 29801
-      method: "tracked files at sha, including tests, fixtures and generated files; LF count plus unterminated final line"
-    size_band: "25k-75k"
-    suite:
-      network: "Docker --network=none; no external route; direct HTTPS probe exits 7"
-      timing: "host monotonic wall time, including container startup; one suite at a time"
-      warmup:
-        seconds: 35.504
-        exit_code: 0
-      runs:
-        -
-          seconds: 10.73
-          exit_code: 0
-          log_sha256: "55cf7d9559a022f478c9e5bf66d5b3f35e6c2a4b413e527501bd95a6da168c26"
-        -
-          seconds: 11.392
-          exit_code: 0
-          log_sha256: "6fc74e5d213dc0fd2c3926dce136356aa8a081216eb5e8ceea02dcca5877c2ca"
-        -
-          seconds: 10.568
-          exit_code: 0
-          log_sha256: "0b6df26710abc11a8394e3a6e96288ee62096b527ce8a3e1317dfd10b7d4f827"
-      environment:
-        GOPROXY: "off"
-        GOFLAGS: "-mod=mod"
-        GOTOOLCHAIN: "local"
-        GOMAXPROCS: "4"
-      process_local_git_safe_directory: false
-    fix_yield_estimate:
-      since: "2024-10-25T00:00:00Z"
-      until: "2026-10-26T00:00:00Z"
-      test_and_non_test_commits: 30
-      fix_message_subset: 6
-      primary_language_source_commits: 29
-      primary_language_source_fix_message_subset: 6
-      replayed: 0
-    issue_link_examples:
-      -
-        sha: "15f6826fe4614cc225c16903d2e9a1c966fb2332"
-        closing_references:
-          - "1800"
-        references:
-          - "1800"
-        test_paths:
-          - "assert/assertions_test.go"
-        source_paths:
-          - "assert/assertions.go"
-      -
-        sha: "0bf6b946d985309f37a4364b0b1f01a92698730e"
-        closing_references: []
-        references:
-          - "1212"
-        test_paths:
-          - "mock/mock_test.go"
-        source_paths:
-          - "mock/mock.go"
-      -
-        sha: "4f554a8833afff3cffb491138ba9c796ca4106b4"
-        closing_references:
-          - "1399"
-        references:
-          - "1399"
-        test_paths:
-          - "assert/assertions_test.go"
-        source_paths:
-          - "assert/assertions.go"
-    fan_in:
-      method: "go/types through x/tools/go/packages v0.52.0 (Tests=true, ./...)"
-      units: "distinct static call sites and caller packages/modules, including tests; not distinct caller functions"
-      qualifying_symbols:
-        -
-          symbol: "github.com/stretchr/testify/assert.Equal"
-          call_sites: 281
-          caller_modules: 5
-          module_examples:
-            - "github.com/stretchr/testify"
-            - "github.com/stretchr/testify/assert"
-            - "github.com/stretchr/testify/mock"
-          site_examples:
-            - "assert/assertion_compare_test.go:474:3"
-            - "assert/assertion_format.go:84:9"
-            - "assert/assertion_forward.go:146:9"
-            - "assert/assertions.go:1881:9"
-            - "assert/assertions.go:1916:9"
-            - "assert/assertions.go:702:9"
-        -
-          symbol: "github.com/stretchr/testify/assert.False"
-          call_sites: 209
-          caller_modules: 5
-          module_examples:
-            - "github.com/stretchr/testify/assert"
-            - "github.com/stretchr/testify/assert/internal/unsafetests_test"
-            - "github.com/stretchr/testify/mock"
-          site_examples:
-            - "assert/assertion_compare_test.go:171:3"
-            - "assert/assertion_compare_test.go:217:3"
-            - "assert/assertion_compare_test.go:263:3"
-            - "assert/assertion_compare_test.go:309:3"
-            - "assert/assertion_compare_test.go:350:3"
-            - "assert/assertion_compare_test.go:391:3"
-        -
-          symbol: "github.com/stretchr/testify/assert.True"
-          call_sites: 209
-          caller_modules: 5
-          module_examples:
-            - "github.com/stretchr/testify/assert"
-            - "github.com/stretchr/testify/assert/internal/unsafetests_test"
-            - "github.com/stretchr/testify/mock"
-          site_examples:
-            - "assert/assertion_compare_test.go:456:3"
-            - "assert/assertion_format.go:829:9"
-            - "assert/assertion_forward.go:1640:9"
-            - "assert/assertions_test.go:1299:2"
-            - "assert/assertions_test.go:1300:2"
-            - "assert/assertions_test.go:1303:2"
-    independence:
-      not_fathom: true
-      organization: "stretchr"
-      subjects_from_organization: 1
-      fleet_index_exclusion: "unverified"
-    reading: "docs/bench/readings/bench-prep/candidates.md"
-    limitations:
-      - "Draft candidate only: C4 unmeasured; C5 fix replay and post-cutoff yield pending; split not assigned."
-      - "C3 measured on Linux arm64 with four CPUs; native macOS and 12-core runs unmeasured."
-      - "C7 fleet-index exclusion unverified because the service registry is unavailable."
-      - "Two-year primary-source/test co-change count is below 30; older history or a different candidate may be needed for C5."
+# Draft subject; receipts: docs/bench/readings/bench-prep/receipts-r1.json
+{
+  "name": "stretchr-testify",
+  "url": "https://github.com/stretchr/testify",
+  "ref": "master",
+  "sha": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+  "licence": "MIT",
+  "subpath": ".",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "go": "1.27.3"
+      },
+      "lockfile_sha256": "e54560a8bfa3f8b7b319a2d41ead9f2b0663a9fa567b33bccc16c20e5ed5e1f0"
+    },
+    "setup": [
+      "go version && go mod download"
+    ],
+    "test": [
+      "go test -count=1 -timeout=14m ./..."
+    ],
+    "suite_seconds": 11.392,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "revision": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 5122,
+      "popularity_band": "high"
+    }
+  }
+}
