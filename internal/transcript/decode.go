@@ -7,9 +7,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -66,11 +67,14 @@ type ToolResult struct {
 func DecodeLine(raw []byte) (Line, []Block, error) {
 	var l Line
 	raw = bytes.TrimSpace(raw)
-	if len(raw) == 0 || raw[0] != '{' {
+	if len(raw) == 0 {
+		return l, nil, nil
+	}
+	if raw[0] != '{' {
 		return l, nil, errors.New("expected Claude transcript object")
 	}
 	if err := json.Unmarshal(raw, &l); err != nil {
-		return l, nil, err
+		return Line{}, nil, err
 	}
 	if l.Message == nil {
 		return l, nil, nil
@@ -164,18 +168,52 @@ type Result struct {
 // The visitor sees every decoded occurrence: readouts retain their own window
 // and result-pairing dedupe semantics, while events deduplicate before returning.
 func WalkFile(path string, visit func(int, *Line, []Block)) Result {
-	var result Result
-	issue := func(line int, kind string) {
-		result.Issues = append(result.Issues, Issue{File: filepath.Base(path), Line: line, Kind: kind})
+	return walkFile(path, 0, visit)
+}
+
+// fileLabel identifies only the transcript class and its caller-assigned walk index.
+func fileLabel(path string, index int) string {
+	class := "session"
+	if isSubagent(path) {
+		class = "subagent"
 	}
+	return fmt.Sprintf("%s:%d", class, index)
+}
+
+func walkFile(path string, index int, visit func(int, *Line, []Block)) Result {
+	label := fileLabel(path, index)
 	f, err := os.Open(path)
 	if err != nil {
-		result.UnreadableFiles++
-		issue(0, "unreadable_file")
-		return result
+		return Result{UnreadableFiles: 1, Issues: []Issue{{File: label, Kind: "unreadable_file"}}}
 	}
 	defer f.Close()
-	br := bufio.NewReaderSize(f, 1<<20)
+	var malformed []Issue
+	result := WalkLines(f, func(number int, raw []byte) {
+		l, blocks, err := DecodeLine(raw)
+		if err != nil {
+			malformed = append(malformed, Issue{Line: number, Kind: "malformed_line"})
+		} else if visit != nil {
+			visit(number, &l, blocks)
+		}
+	})
+	result.MalformedLines = len(malformed)
+	result.Issues = append(result.Issues, malformed...)
+	for i := range result.Issues {
+		result.Issues[i].File = label
+	}
+	sort.SliceStable(result.Issues, func(i, j int) bool { return result.Issues[i].Line < result.Issues[j].Line })
+	return result
+}
+
+// WalkLines visits nonblank, bounded physical lines, including a partial line
+// returned with a read error. The caller owns the reader and file identity.
+// Replay uses this raw view to preserve its own historical parse accounting.
+func WalkLines(r io.Reader, visit func(int, []byte)) Result {
+	var result Result
+	issue := func(line int, kind string) {
+		result.Issues = append(result.Issues, Issue{Line: line, Kind: kind})
+	}
+	br := bufio.NewReaderSize(r, 1<<20)
 	var buf []byte
 	over, number := false, 0
 	for {
@@ -190,18 +228,11 @@ func WalkFile(path string, visit func(int, *Line, []Block)) Result {
 		}
 		if len(buf) > 0 || over {
 			number++
-			switch {
-			case over:
+			if over {
 				result.OversizeLines++
 				issue(number, "oversize_line")
-			default:
-				l, blocks, err := DecodeLine(buf)
-				if err != nil {
-					result.MalformedLines++
-					issue(number, "malformed_line")
-				} else if visit != nil {
-					visit(number, &l, blocks)
-				}
+			} else if len(bytes.TrimSpace(buf)) > 0 && visit != nil {
+				visit(number, buf)
 			}
 		}
 		buf, over = buf[:0], false

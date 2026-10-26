@@ -1,15 +1,20 @@
 package transcript
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
 
 // Event contains only the features labs may retain. A line event preserves
-// metadata even for a prompt-only line. Other kinds follow their source block
-// order. Shape describes JSON types, including nested objects and arrays, with
+// metadata even for a prompt-only line. Cwd and GitBranch are caller-salted
+// HMAC-SHA256 identifiers truncated to 16 hex characters, never raw text.
+// Other kinds follow their source block order. Shape describes JSON types, including nested objects and arrays, with
 // object members sorted by shape; no argument keys or values survive.
 type Event struct {
 	Kind      string
@@ -29,7 +34,9 @@ type Event struct {
 // block order. Uses and results deduplicate separately by tool-use id (a result
 // must not suppress its use). Empty ids do not alias. All failures are counted
 // and named; no prompt, tool input, output or file content leaves this function.
-func DecodeTranscriptEvents(path string) Result {
+// salt must be the salt supplied by bundle.LoadOrCreateSalt, shared with the
+// session hash. fileIndex is the file's ordinal in the caller's deterministic walk.
+func DecodeTranscriptEvents(path, salt string, fileIndex int) Result {
 	var events []Event
 	seenUses, seenResults := map[string]bool{}, map[string]bool{}
 	agents := map[string]bool{}
@@ -37,8 +44,14 @@ func DecodeTranscriptEvents(path string) Result {
 	subagent := isSubagent(path)
 	var last Event
 	started := false
-	r := WalkFile(path, func(number int, l *Line, blocks []Block) {
-		base := Event{Line: number, Cwd: l.Cwd, GitBranch: l.GitBranch, Timestamp: l.Timestamp}
+	var inputIssues []Issue
+	malformed := map[int]bool{}
+	issue := func(number int, kind string) {
+		inputIssues = append(inputIssues, Issue{File: fileLabel(path, fileIndex), Line: number, Kind: kind})
+		malformed[number] = true
+	}
+	r := walkFile(path, fileIndex, func(number int, l *Line, blocks []Block) {
+		base := Event{Line: number, Cwd: metadataHash(salt, l.Cwd), GitBranch: metadataHash(salt, l.GitBranch), Timestamp: l.Timestamp}
 		add := func(kind string, e Event) { e.Kind = kind; events = append(events, e) }
 		if subagent && !started {
 			add("subagent_start", base)
@@ -84,15 +97,26 @@ func DecodeTranscriptEvents(path string) Result {
 				}
 				e.ToolUseID, e.Name = b.ID, b.Name
 				var input any
-				_ = json.Unmarshal(b.Input, &input)
-				e.Shape = inputShape(input)
+				inputErr := json.Unmarshal(b.Input, &input)
+				if inputErr != nil {
+					issue(number, "invalid_tool_input")
+					e.Shape = "invalid"
+				} else {
+					e.Shape = inputShape(input)
+				}
 				add("tool_use", e)
 				if b.Name == "Skill" {
 					var skill struct {
 						Skill string `json:"skill"`
 					}
-					_ = json.Unmarshal(b.Input, &skill)
-					e.Name = skill.Skill
+					e.Name = "skill"
+					if inputErr == nil {
+						if err := json.Unmarshal(b.Input, &skill); err != nil {
+							issue(number, "invalid_skill_input")
+						} else if skillName.MatchString(skill.Skill) {
+							e.Name = skill.Skill
+						}
+					}
 					add("skill", e)
 				}
 				if b.Name == "Task" || b.Name == "Agent" {
@@ -131,6 +155,9 @@ func DecodeTranscriptEvents(path string) Result {
 		last.Kind = "subagent_stop"
 		events = append(events, last)
 	}
+	r.Issues = append(r.Issues, inputIssues...)
+	sort.SliceStable(r.Issues, func(i, j int) bool { return r.Issues[i].Line < r.Issues[j].Line })
+	r.MalformedLines += len(malformed)
 	r.Events, r.Duplicates = events, duplicates
 	return r
 }
@@ -170,4 +197,15 @@ func inputShape(v any) string {
 		return "object{" + strings.Join(parts, ",") + "}"
 	}
 	return "unknown"
+}
+
+var skillName = regexp.MustCompile(`^[a-z0-9][a-z0-9:_-]{0,63}$`)
+
+func metadataHash(salt, value string) string {
+	if value == "" {
+		return ""
+	}
+	h := hmac.New(sha256.New, []byte(salt))
+	_, _ = h.Write([]byte(value))
+	return hex.EncodeToString(h.Sum(nil)[:8])
 }

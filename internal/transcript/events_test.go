@@ -12,7 +12,7 @@ import (
 
 func fixture(t *testing.T, name string) Result {
 	t.Helper()
-	r := DecodeTranscriptEvents(filepath.Join("testdata", name))
+	r := DecodeTranscriptEvents(filepath.Join("testdata", name), "fixture-salt", 0)
 	if len(r.Issues) != 0 {
 		t.Fatalf("fixture issues: %+v", r.Issues)
 	}
@@ -58,7 +58,7 @@ func TestTranscriptEventsAndOrder(t *testing.T) {
 		}
 	}
 	for _, e := range r.Events {
-		if e.Cwd != "fixture-repo" || e.GitBranch != "fixture-branch" || e.Timestamp != "2026-10-01T12:00:00Z" || e.Line < 1 {
+		if e.Cwd != metadataHash("fixture-salt", "fixture-repo") || e.GitBranch != metadataHash("fixture-salt", "fixture-branch") || e.Timestamp != "2026-10-01T12:00:00Z" || e.Line < 1 {
 			t.Fatalf("line metadata lost: %+v", e)
 		}
 	}
@@ -90,12 +90,12 @@ func TestTranscriptInputShapeKeepsNoKeysOrValues(t *testing.T) {
 }
 
 func TestTranscriptMalformedLineCountedAndNamed(t *testing.T) {
-	r := DecodeTranscriptEvents(filepath.Join("testdata", "malformed.jsonl"))
+	r := DecodeTranscriptEvents(filepath.Join("testdata", "malformed.jsonl"), "fixture-salt", 0)
 	if r.MalformedLines != 3 || len(r.Issues) != 3 || len(ofKind(r, "tool_use")) != 1 {
 		t.Fatalf("malformed reading: %+v", r)
 	}
 	for i, issue := range r.Issues {
-		if issue.File != "malformed.jsonl" || issue.Line != i+1 || issue.Kind != "malformed_line" {
+		if issue.File != "session:0" || issue.Line != i+1 || issue.Kind != "malformed_line" {
 			t.Fatalf("unnamed bad line: %+v", issue)
 		}
 	}
@@ -103,8 +103,8 @@ func TestTranscriptMalformedLineCountedAndNamed(t *testing.T) {
 
 func TestTranscriptUnreadableFileCountedAndNamed(t *testing.T) {
 	// A directory opens but cannot be read as a file, even when tests run as root.
-	r := DecodeTranscriptEvents("testdata")
-	if r.UnreadableFiles != 1 || len(r.Issues) != 1 || len(r.Events) != 0 || r.Issues[0].File != "testdata" || r.Issues[0].Kind != "unreadable_file" {
+	r := DecodeTranscriptEvents("testdata", "fixture-salt", 0)
+	if r.UnreadableFiles != 1 || len(r.Issues) != 1 || len(r.Events) != 0 || r.Issues[0].File != "session:0" || r.Issues[0].Kind != "unreadable_file" {
 		t.Fatalf("unreadable reading: %+v", r)
 	}
 }
@@ -148,12 +148,12 @@ func TestTranscriptHookAttachments(t *testing.T) {
 }
 
 func TestTranscriptSubagentFileBoundaries(t *testing.T) {
-	r := DecodeTranscriptEvents(filepath.Join("testdata", "subagents", "agent-fixture.jsonl"))
+	r := DecodeTranscriptEvents(filepath.Join("testdata", "subagents", "agent-fixture.jsonl"), "fixture-salt", 0)
 	if len(r.Events) != 3 || r.Events[0].Kind != "subagent_start" || r.Events[1].Kind != "line" || r.Events[2].Kind != "subagent_stop" {
 		t.Fatalf("subagent boundaries: %+v", r)
 	}
 	for _, e := range r.Events {
-		if e.Cwd != "fixture-repo" || e.Timestamp != "2026-10-01T12:00:00Z" {
+		if e.Cwd != metadataHash("fixture-salt", "fixture-repo") || e.Timestamp != "2026-10-01T12:00:00Z" {
 			t.Fatalf("subagent metadata: %+v", e)
 		}
 	}
@@ -164,7 +164,7 @@ func TestTranscriptOversizeLineCountedAndContinues(t *testing.T) {
 	if err := os.WriteFile(p, []byte(strings.Repeat("x", LineMax+1)+"\n{\"type\":\"user\"}"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	r := DecodeTranscriptEvents(p)
+	r := DecodeTranscriptEvents(p, "fixture-salt", 0)
 	if r.OversizeLines != 1 || len(r.Issues) != 1 || r.Issues[0].Line != 1 || r.Issues[0].Kind != "oversize_line" || len(r.Events) != 1 || r.Events[0].Line != 2 {
 		t.Fatalf("oversize reading: %+v", r)
 	}
