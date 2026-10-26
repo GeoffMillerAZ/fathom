@@ -5,12 +5,12 @@
     "score.py": "adc6f2cee28cc16fdc7ba3d1ccb57a53797e2e3d02d1dcee9de39be437f2745d",
     "trace_decode.py": "d556e7e5812413dc23c05b61e5018d303d3bb6628e07abf94f1b659faf6a9e1c"
   },
-  "benchmark_product_revision": "b1a86f85ea0c69ce17066e97f4f89ad2d17cafb0",
+  "benchmark_product_revision": "3906e462b71c17a122cfc110d5e504d7958f76dd",
   "binder": {
-    "benchmark_product_revision": "b1a86f85ea0c69ce17066e97f4f89ad2d17cafb0",
+    "benchmark_product_revision": "879323ba47b58191535fffa38a659915e6b87c02",
     "canonical_reading_changed": false,
     "oracle_code_sha256": {
-      "ResolveCalls.ps1": "2132186192c0deb9bb78cd855887457ae47f251a095ef573d3c872abdff76eb3",
+      "ResolveCalls.ps1": "0cdf5f26a7e5b93d7a9829181b4c85098d824afbbc6832309d7e7f7412b274a6",
       "measure_binder.py": "cfe9024edb4a0ce7b74e019f03fee8aab5cc3e2a4c8fcddf821086a2ebceb86c",
       "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
     },
@@ -36,9 +36,25 @@
               "name": "p"
             },
             {
+              "code_sha256": "cb0143cdf82ecd3708905b872d6607b5bdf6f2575bee3af0e570e664938f7a80",
+              "name": "PTestHelpers"
+            },
+            {
               "block_sha256": "8284284e798369c050b9c16f8cf7937a369532e7f009adf0314e6bf6141cc07e",
               "code_sha256": "01c03ed9d465230e1804529ecd0ac9911355495c05bb83a09e5e8c9b9701db26",
               "name": "TestHelpers"
+            },
+            {
+              "code_sha256": "cc943cb22c64a323037f14cc1369d674cf27c6b3b65093e23f5e0d8e2753c34b",
+              "name": "Pester.Runtime.Wrapper"
+            },
+            {
+              "code_sha256": "147e48bd86e53e727223a4463b858332e610309b93747716295b0b8f4f35a0ac",
+              "name": "Pester.Utility preamble"
+            },
+            {
+              "code_sha256": "400f6510e295153940b705695c1daca33af7971e0f300752b688bbfc4eb2733a",
+              "name": "Pester.Runtime source"
             }
           ],
           "explicit_runtime_modules": [
@@ -51,6 +67,8 @@
           ],
           "files": 272,
           "global_context_sites": 15181,
+          "initial_runtime_intrinsic_functions": 10,
+          "initial_runtime_intrinsic_functions_sha256": "8c9a435f520e5674559d89fa6c8ec69b1bd295bce0ce42631c33d88c944e3d26",
           "literal_sites": 18842,
           "load_after": [
             {
@@ -99,6 +117,16 @@
               "version": "6.2.0"
             },
             {
+              "code_sha256": "cc943cb22c64a323037f14cc1369d674cf27c6b3b65093e23f5e0d8e2753c34b",
+              "name": "Pester.Runtime.Wrapper",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "cb0143cdf82ecd3708905b872d6607b5bdf6f2575bee3af0e570e664938f7a80",
+              "name": "PTestHelpers",
+              "version": "0.0"
+            },
+            {
               "code_sha256": "01c03ed9d465230e1804529ecd0ac9911355495c05bb83a09e5e8c9b9701db26",
               "name": "TestHelpers",
               "version": "0.0"
@@ -142,46 +170,48 @@
           "module_loading_policy": "autoload disabled before preamble; explicit six-module pinned-runtime baseline asserted; matching subject manifest and original declared test harness only; profile disabled",
           "native_module_source_files": 106,
           "parse_error_files": 0,
-          "resolved_definition_file_contents": 113,
+          "resolved_definition_file_contents": 116,
           "resolved_definition_scope_sites": {
-            "original-subject": 12513,
-            "pinned-runtime": 888
+            "original-subject": 13226,
+            "pinned-runtime": 2450
           },
-          "resolved_definition_sources_sha256": "e14a8a97d7192771ccf05cf456a5bcfb2a0d3ef2bdc6618cd2e9d4c97d31a1c5",
-          "resolved_harness_sites": 3958,
+          "resolved_definition_sources_sha256": "a3c5194f6c5bd1294f90ada5b50028261abb412f8ac56504c75f6b5aa94097b4",
+          "resolved_harness_sites": 5022,
+          "resolved_intrinsic_definition_contents": 0,
           "subject_module": "Pester",
           "subject_module_version": "6.2.0",
           "unresolvable_policy": "all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context",
           "unresolved_by_class": {
             "external_application": 16,
+            "found_not_admitted": 0,
             "harness": 0,
             "member": 2175,
-            "missing": 2106,
-            "private_module_scope": 750,
-            "same_file_or_BeforeAll": 394
+            "missing": 115,
+            "private_module_scope": 471,
+            "same_file_or_BeforeAll": 389
           },
-          "unresolved_sites": 5441
+          "unresolved_sites": 3166
         },
-        "native_oracle_sha256": "8da80f4aab9ad7d53540fe28f5dd21cfbf5a35ca5d7977bfeff39200d7b4bb4c",
-        "native_pairs": 2262,
+        "native_oracle_sha256": "12e972ff918fd6d36acc0d89c5fc48a56995acd5773c742238d646f199bba8a8",
+        "native_pairs": 2728,
         "new_generated_paths": 0,
         "original_binary_classified_files": 0,
         "original_scope": "frozen original Git-tracked eligible source; generated non-inline wrapper is load-state only, outside measurement membership",
         "population": "all original tracked PowerShell source including UTF-16; no original file discarded",
-        "population_sha256": "d6659051f9bfd8f2aa0cb281bbe6e1a92c009354e1817792f835d8c93331d998",
+        "population_sha256": "5bedb6b97d42f6dfcc70ce355e3a90e34831ab979dd131ce89544341bed58683",
         "preexisting_untracked_or_ignored_paths": 21,
         "product_discovered_bytes": 2713762,
         "product_discovered_files": 272,
         "resolved_pair_diagnostic_counts": {
-          "call_fathom": 4204,
-          "call_fathom_in_truth": 2241,
-          "call_truth": 2262,
-          "call_truth_found": 2241
+          "call_fathom": 4217,
+          "call_fathom_in_truth": 2701,
+          "call_truth": 2728,
+          "call_truth_found": 2701
         },
-        "resolved_pair_diagnostic_precision": 0.5331,
-        "resolved_pair_diagnostic_recall": 0.9907,
-        "resolved_site_fraction": 0.7112302303364824,
-        "resolved_sites": 13401,
+        "resolved_pair_diagnostic_precision": 0.6405,
+        "resolved_pair_diagnostic_recall": 0.9901,
+        "resolved_site_fraction": 0.8319711283303258,
+        "resolved_sites": 15676,
         "revision": "98e56d65da1642a7158992b50ded240c42a3ac18",
         "subpath": ".",
         "tracked_after": {
@@ -201,8 +231,8 @@
           "symlinks": 0
         },
         "unique_written_pairs": 4218,
-        "unresolved_sites": 5441,
-        "written_name_pairs_without_equal_native_target": 1971
+        "unresolved_sites": 3166,
+        "written_name_pairs_without_equal_native_target": 1511
       },
       "psa": {
         "files": 241,
@@ -218,6 +248,10 @@
             {
               "code_sha256": "49e9e839447703f7b6a6a320a3c65a6dd5a17f4e33372fe02c7d32ad26a2d3ca",
               "name": "Pester"
+            },
+            {
+              "code_sha256": "0b3b3b0d38b098f41531618f1d6ffa02de069c8e764e0c2c9a64fe4d96778dfb",
+              "name": "PSScriptAnalyzerTestHelper"
             }
           ],
           "explicit_runtime_modules": [
@@ -230,6 +264,8 @@
           ],
           "files": 241,
           "global_context_sites": 5551,
+          "initial_runtime_intrinsic_functions": 10,
+          "initial_runtime_intrinsic_functions_sha256": "8c9a435f520e5674559d89fa6c8ec69b1bd295bce0ce42631c33d88c944e3d26",
           "literal_sites": 5838,
           "load_after": [
             {
@@ -271,6 +307,11 @@
               "code_sha256": "b69773fc9080cfb958dc13c95e42a625553e9bca5dcbedc27231e5c183a4e869",
               "name": "PSScriptAnalyzer",
               "version": "1.25.0"
+            },
+            {
+              "code_sha256": "0b3b3b0d38b098f41531618f1d6ffa02de069c8e764e0c2c9a64fe4d96778dfb",
+              "name": "PSScriptAnalyzerTestHelper",
+              "version": "0.0"
             }
           ],
           "load_before": [
@@ -311,46 +352,49 @@
           "module_loading_policy": "autoload disabled before preamble; explicit six-module pinned-runtime baseline asserted; matching subject manifest and original declared test harness only; profile disabled",
           "native_module_source_files": 0,
           "parse_error_files": 4,
-          "resolved_definition_file_contents": 3,
+          "resolved_definition_file_contents": 7,
           "resolved_definition_scope_sites": {
             "declared-subject-module": 4112,
-            "pinned-runtime": 474
+            "original-subject": 74,
+            "pinned-runtime": 1060
           },
-          "resolved_definition_sources_sha256": "9ccdb488e6982db5961a4a7ba57f3f8dae8c3d651b854c46ecb0835194ede1d0",
-          "resolved_harness_sites": 3215,
+          "resolved_definition_sources_sha256": "6a7bbdef128b555f70002c6623727475e256ff5156da5cf885781fd4f56120f2",
+          "resolved_harness_sites": 3289,
+          "resolved_intrinsic_definition_contents": 1,
           "subject_module": "PSScriptAnalyzer",
           "subject_module_version": "1.25.0",
           "unresolvable_policy": "all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context",
           "unresolved_by_class": {
             "external_application": 5,
+            "found_not_admitted": 0,
             "harness": 0,
             "member": 287,
-            "missing": 761,
+            "missing": 104,
             "private_module_scope": 0,
-            "same_file_or_BeforeAll": 199
+            "same_file_or_BeforeAll": 196
           },
-          "unresolved_sites": 1252
+          "unresolved_sites": 592
         },
-        "native_oracle_sha256": "2a36996c8407bc94e81a91a35285f1855f3b2cbc381e8214af5eb087088c04a6",
-        "native_pairs": 810,
+        "native_oracle_sha256": "051eb58ad8b78b406dd0c6631a071b76f8fb400b89b060dcdebdc079373764a6",
+        "native_pairs": 1162,
         "new_generated_paths": 0,
         "original_binary_classified_files": 17,
         "original_scope": "frozen original Git-tracked eligible source; generated non-inline wrapper is load-state only, outside measurement membership",
         "population": "all original tracked PowerShell source including UTF-16; no original file discarded",
-        "population_sha256": "54e8892d81dc97c411a008a2d5ae0de06b99689890b52786e498e2db2ff84ca4",
+        "population_sha256": "cb30b6107c4db305610f8bc9fc3ddf02346883c7f0e0a31aa248bb6f58a7c168",
         "preexisting_untracked_or_ignored_paths": 0,
         "product_discovered_bytes": 775189,
         "product_discovered_files": 224,
         "resolved_pair_diagnostic_counts": {
-          "call_fathom": 1331,
-          "call_fathom_in_truth": 798,
-          "call_truth": 810,
-          "call_truth_found": 798
+          "call_fathom": 1435,
+          "call_fathom_in_truth": 1127,
+          "call_truth": 1162,
+          "call_truth_found": 1127
         },
-        "resolved_pair_diagnostic_precision": 0.5995,
-        "resolved_pair_diagnostic_recall": 0.9852,
-        "resolved_site_fraction": 0.7855429941760877,
-        "resolved_sites": 4586,
+        "resolved_pair_diagnostic_precision": 0.7854,
+        "resolved_pair_diagnostic_recall": 0.9699,
+        "resolved_site_fraction": 0.8985954093867763,
+        "resolved_sites": 5246,
         "revision": "f05704df81b2aca17dc027ee39b3fce106d418fc",
         "subpath": "Tests",
         "tracked_after": {
@@ -370,8 +414,8 @@
           "symlinks": 0
         },
         "unique_written_pairs": 1489,
-        "unresolved_sites": 1252,
-        "written_name_pairs_without_equal_native_target": 691
+        "unresolved_sites": 592,
+        "written_name_pairs_without_equal_native_target": 359
       }
     }
   },

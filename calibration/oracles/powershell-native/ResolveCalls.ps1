@@ -12,6 +12,17 @@ if ($PSVersionTable.PSVersion.ToString() -ne '7.6.9') { throw 'Pinned PowerShell
 $runtimeModules = @('Microsoft.PowerShell.Archive','Microsoft.PowerShell.Host','Microsoft.PowerShell.Management','Microsoft.PowerShell.Security','Microsoft.PowerShell.ThreadJob','Microsoft.PowerShell.Utility')
 foreach ($name in $runtimeModules) { Import-Module -Name ([IO.Path]::Combine($PSHOME, 'Modules', $name, "$name.psd1")) -ErrorAction Stop }
 if ([string]::Join(',', @(Get-Module | Sort-Object Name | ForEach-Object Name)) -ne [string]::Join(',', $runtimeModules)) { throw 'whole-unit refusal: unexpected runtime baseline' }
+# Capture source-less SDK functions before defining collector helpers or loading
+# any subject code. Their actual script-block identity must remain unchanged.
+$oracleInitialRuntimeFunctions = @{}
+foreach ($entry in @(Get-ChildItem Function:)) {
+    if ($entry.ScriptBlock -and -not $entry.ScriptBlock.File) {
+        $oracleInitialRuntimeFunctions[$entry.Name] = @{
+            id = $entry.ScriptBlock.Id
+            sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($entry.Definition))).ToLowerInvariant()
+        }
+    }
+}
 $root = [IO.Path]::GetFullPath($Subject).TrimEnd('/')
 $manifestPath = [IO.Path]::GetFullPath($Manifest)
 $moduleRoot = [IO.Path]::GetDirectoryName($manifestPath)
@@ -59,7 +70,7 @@ if ($module.Count -gt 1) { throw 'whole-unit refusal: ambiguous root module' }
 $harnessInputs = [Collections.Generic.List[object]]::new()
 $harnessSourceFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 if ($Harness -eq 'pester') {
-    foreach ($relative in @('tst/axiom/Axiom.psm1','tst/p.psm1')) {
+    foreach ($relative in @('tst/axiom/Axiom.psm1','tst/p.psm1','tst/PTestHelpers.psm1')) {
         $path = Join-Path $root $relative
         Import-Module -Name $path -DisableNameChecking -ErrorAction Stop
         $harnessInputs.Add([ordered]@{ name = [IO.Path]::GetFileNameWithoutExtension($path); code_sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() })
@@ -75,14 +86,32 @@ if ($Harness -eq 'pester') {
     $dynamicModules = @(New-Module -Name TestHelpers -ScriptBlock $body[0].ScriptBlock.GetScriptBlock())
     $dynamicModuleHashes['TestHelpers'] = (Get-FileHash -LiteralPath $driver -Algorithm SHA256).Hash.ToLowerInvariant()
     $harnessInputs.Add([ordered]@{ name = 'TestHelpers'; code_sha256 = (Get-FileHash -LiteralPath $driver -Algorithm SHA256).Hash.ToLowerInvariant(); block_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($body[0].Extent.Text))).ToLowerInvariant() })
+    # The pinned test driver declares this wrapper and its utility preamble.
+    # Compile only that original module body, never the surrounding tests.
+    $utility = Join-Path $root 'src/Pester.Utility.ps1'
+    . $utility
+    $wrapperDriver = Join-Path $root 'tst/Pester.Runtime.ts.ps1'
+    $wrapperAst = [Management.Automation.Language.Parser]::ParseFile($wrapperDriver, [ref]$null, [ref]$null)
+    $wrapper = @($wrapperAst.FindAll({ param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'New-Module' -and $n.Extent.Text -match '-Name Pester.Runtime.Wrapper ' }, $true))
+    if ($wrapper.Count -ne 1) { throw 'whole-unit refusal: declared runtime wrapper changed' }
+    $wrapperBody = @($wrapper[0].CommandElements | Where-Object { $_ -is [Management.Automation.Language.ScriptBlockExpressionAst] })
+    if ($wrapperBody.Count -ne 1) { throw 'whole-unit refusal: ambiguous runtime wrapper body' }
+    New-Module -Name Pester.Runtime.Wrapper -ScriptBlock $wrapperBody[0].ScriptBlock.GetScriptBlock() | Import-Module -DisableNameChecking
+    $dynamicModuleHashes['Pester.Runtime.Wrapper'] = (Get-FileHash -LiteralPath $wrapperDriver -Algorithm SHA256).Hash.ToLowerInvariant()
+    foreach ($item in @(@('Pester.Runtime.Wrapper',$wrapperDriver),@('Pester.Utility preamble',$utility),@('Pester.Runtime source',(Join-Path $root 'src/Pester.Runtime.ps1')))) {
+        $harnessInputs.Add([ordered]@{ name = $item[0]; code_sha256 = (Get-FileHash -LiteralPath $item[1] -Algorithm SHA256).Hash.ToLowerInvariant() })
+    }
 } elseif ($Harness -eq 'psa') {
     if (-not $TestDependencyManifest) { throw 'whole-unit refusal: missing declared Pester dependency' }
     $dependency = Import-Module -Name $TestDependencyManifest -PassThru -ErrorAction Stop
     if ($dependency.Name -ne 'Pester' -or $dependency.Version.ToString() -ne '5.7.1') { throw 'whole-unit refusal: wrong declared test dependency' }
     $harnessInputs.Add([ordered]@{ name = 'Pester'; code_sha256 = (Get-FileHash -LiteralPath $dependency.Path -Algorithm SHA256).Hash.ToLowerInvariant() })
+    $helperPath = Join-Path $root 'PSScriptAnalyzerTestHelper.psm1'
+    Import-Module -Name $helperPath -DisableNameChecking -ErrorAction Stop
+    $harnessInputs.Add([ordered]@{ name = 'PSScriptAnalyzerTestHelper'; code_sha256 = (Get-FileHash -LiteralPath $helperPath -Algorithm SHA256).Hash.ToLowerInvariant() })
 }
 $harnessNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-foreach ($provider in @((@(Get-Module) + $dynamicModules) | Where-Object { $_.Name -in @('Axiom','p','TestHelpers') -or ($Harness -eq 'psa' -and $_.Name -eq 'Pester') })) {
+foreach ($provider in @((@(Get-Module) + $dynamicModules) | Where-Object { $_.Name -in @('Axiom','p','PTestHelpers','TestHelpers','Pester.Runtime.Wrapper','PSScriptAnalyzerTestHelper') -or ($Harness -eq 'psa' -and $_.Name -eq 'Pester') })) {
     foreach ($function in @($provider.ExportedFunctions.Values)) {
         $null = $harnessNames.Add($function.Name)
         if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
@@ -103,6 +132,7 @@ $lookupCache = @{}
 $definitionCache = @{}
 $fileHashCache = @{}
 $targetFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$targetIntrinsics = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $definitionScopes = @{}
 $sites = [Collections.Generic.List[object]]::new()
 $pairs = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -111,7 +141,7 @@ $parseErrors = 0
 $unknown = 0
 $commandSites = 0
 $memberSites = 0
-$unresolvedClasses = @{ member = 0; harness = 0; same_file_or_BeforeAll = 0; private_module_scope = 0; external_application = 0; missing = 0 }
+$unresolvedClasses = @{ member = 0; harness = 0; same_file_or_BeforeAll = 0; private_module_scope = 0; external_application = 0; found_not_admitted = 0; missing = 0 }
 $resolvedHarness = 0
 $lookupClasses = @{}
 foreach ($relative in $files) {
@@ -138,21 +168,26 @@ foreach ($relative in $files) {
                 $found = if ($scope -eq 'module') { @($module.Invoke($lookup, @($written))) } else { @(& $lookup $written) }
                 $command = if ($found.Count -eq 1) { $found[0] } else { $null }
                 if ($command -is [Management.Automation.AliasInfo]) { $command = $command.ResolvedCommand }
-                $lookupClasses[$cacheKey] = if ($command -is [Management.Automation.ApplicationInfo]) { 'external_application' } else { 'missing' }
+                $lookupClasses[$cacheKey] = if ($command -is [Management.Automation.ApplicationInfo]) { 'external_application' } elseif ($found.Count) { 'found_not_admitted' } else { 'missing' }
                 $allowed = $false
+                $isRuntimeIntrinsic = $false
                 if ($command -is [Management.Automation.CmdletInfo]) {
                     $allowed = $command.ModuleName -eq 'Microsoft.PowerShell.Core' -or
-                        ($command.Module -and $command.Module.ModuleBase.StartsWith($PSHOME + '/', [StringComparison]::Ordinal)) -or
+                        ($command.Module -and ($command.Module.ModuleBase -eq $PSHOME -or $command.Module.ModuleBase.StartsWith($PSHOME + '/', [StringComparison]::Ordinal))) -or
                         ($command.Module -and $command.Module.ModuleBase.StartsWith($moduleRoot, [StringComparison]::Ordinal))
                 } elseif ($command -is [Management.Automation.FunctionInfo] -or $command -is [Management.Automation.FilterInfo]) {
                     $source = $command.ScriptBlock.File
-                    $allowed = $source -and ($source.StartsWith($moduleRoot + '/', [StringComparison]::Ordinal) -or
+                    $isRuntimeIntrinsic = $oracleInitialRuntimeFunctions.ContainsKey($command.Name) -and
+                        $command.ScriptBlock.Id -eq $oracleInitialRuntimeFunctions[$command.Name].id
+                    $allowed = $isRuntimeIntrinsic -or ($source -and ($source.StartsWith($moduleRoot + '/', [StringComparison]::Ordinal) -or
                         $source.StartsWith($PSHOME + '/', [StringComparison]::Ordinal) -or
-                        $source.StartsWith($root + '/', [StringComparison]::Ordinal) -or $harnessSourceFiles.Contains($source))
+                        $source.StartsWith($root + '/', [StringComparison]::Ordinal) -or $harnessSourceFiles.Contains($source)))
                 }
                 $lookupCache[$cacheKey] = if ($allowed) { Get-OracleBare $command.Name } else { $null }
                 $definitionCache[$cacheKey] = $null
-                if ($allowed) {
+                if ($isRuntimeIntrinsic) {
+                    $definitionCache[$cacheKey] = @('pinned-runtime', $oracleInitialRuntimeFunctions[$command.Name].sha256, 'runtime-intrinsic')
+                } elseif ($allowed) {
                     $definitionPath = if ($command -is [Management.Automation.FunctionInfo]) { $command.ScriptBlock.File } elseif ($command.Module -and $command.Module.Path) { $command.Module.Path } else { $command.ImplementingType.Assembly.Location }
                     if ($definitionPath -and [IO.File]::Exists($definitionPath)) {
                         if (-not $fileHashCache.ContainsKey($definitionPath)) { $fileHashCache[$definitionPath] = (Get-FileHash -LiteralPath $definitionPath -Algorithm SHA256).Hash.ToLowerInvariant() }
@@ -166,7 +201,7 @@ foreach ($relative in $files) {
         $unresolvedClass = $null
         if (-not $answer) {
             $unknown++
-            $unresolvedClass = if (-not $isCommand) { 'member' } elseif ($harnessNames.Contains($written)) { 'harness' } elseif ($lookupClasses[$cacheKey] -eq 'external_application') { 'external_application' } else { 'missing' }
+            $unresolvedClass = if (-not $isCommand) { 'member' } elseif ($lookupClasses[$cacheKey] -eq 'found_not_admitted') { 'found_not_admitted' } elseif ($harnessNames.Contains($written)) { 'harness' } elseif ($lookupClasses[$cacheKey] -eq 'external_application') { 'external_application' } else { 'missing' }
             if ($isCommand -and $unresolvedClass -eq 'missing') {
                 if ($localFunctions.Contains((Get-OracleBare $written))) { $unresolvedClass = 'same_file_or_BeforeAll' }
                 for ($parent = $node.Parent; $null -ne $parent; $parent = $parent.Parent) {
@@ -177,7 +212,8 @@ foreach ($relative in $files) {
         } elseif ($harnessNames.Contains($written)) { $resolvedHarness++ }
         $definition = if ($isCommand -and $answer) { $definitionCache[$cacheKey] } else { $null }
         if ($definition) {
-            $null = $targetFiles.Add($definition[0] + ':' + $definition[1])
+            if ($definition.Count -eq 3 -and $definition[2] -eq 'runtime-intrinsic') { $null = $targetIntrinsics.Add($definition[1]) }
+            else { $null = $targetFiles.Add($definition[0] + ':' + $definition[1]) }
             $definitionScopes[$definition[0]]++
         }
         $sites.Add([ordered]@{ path = $relative; line = $node.Extent.StartLineNumber; column = $node.Extent.StartColumnNumber;
@@ -195,6 +231,9 @@ $receipt = [ordered]@{
     receipt = [ordered]@{ files = $files.Count; bytes = $bytes; literal_sites = $sites.Count; command_sites = $commandSites;
         member_sites = $memberSites; native_module_source_files = $moduleSources.Count; module_context_sites = $moduleContextSites; global_context_sites = $globalContextSites; unresolved_sites = $unknown; parse_error_files = $parseErrors;
         resolved_definition_file_contents = $targetFiles.Count; resolved_definition_scope_sites = $definitionScopes;
+        resolved_intrinsic_definition_contents = $targetIntrinsics.Count;
+        initial_runtime_intrinsic_functions = $oracleInitialRuntimeFunctions.Count;
+        initial_runtime_intrinsic_functions_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes([string]::Join("`n", @($oracleInitialRuntimeFunctions.Keys | Sort-Object | ForEach-Object { $_ + ':' + $oracleInitialRuntimeFunctions[$_].sha256 }))))).ToLowerInvariant();
         resolved_definition_sources_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes([string]::Join("`n", @($targetFiles | Sort-Object -CaseSensitive))))).ToLowerInvariant();
         subject_module = $module.Name; subject_module_version = $module.Version.ToString();
         manifest_sha256 = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant();

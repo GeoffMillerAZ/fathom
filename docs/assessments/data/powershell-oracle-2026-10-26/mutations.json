@@ -50,6 +50,24 @@
   {
     "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
     "file": "ResolveCalls.ps1",
+    "mutant": "reject-initial-runtime-intrinsic",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "hide-found-rejected-command",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "reject-baseline-root-cmdlets",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
     "mutant": "autoload",
     "restored": "GREEN"
   },

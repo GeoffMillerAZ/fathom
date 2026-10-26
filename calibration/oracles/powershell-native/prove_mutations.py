@@ -27,6 +27,9 @@ def main():
     ]
     owners=[
         ('ResolveCalls.ps1',"tier = 'A'","tier = 'C'",'tier'),
+        ('ResolveCalls.ps1',"$allowed = $isRuntimeIntrinsic -or ($source -and", "$allowed = $false -or ($source -and",'reject-initial-runtime-intrinsic'),
+        ('ResolveCalls.ps1',"elseif ($found.Count) { 'found_not_admitted' }", "elseif ($found.Count) { 'missing' }",'hide-found-rejected-command'),
+        ('ResolveCalls.ps1',"($command.Module.ModuleBase -eq $PSHOME -or $command.Module.ModuleBase.StartsWith($PSHOME + '/', [StringComparison]::Ordinal))", "$command.Module.ModuleBase.StartsWith($PSHOME + '/', [StringComparison]::Ordinal)",'reject-baseline-root-cmdlets'),
         ('ResolveCalls.ps1',"$PSModuleAutoLoadingPreference = 'None'\n$before = @(Get-OracleModules)","$PSModuleAutoLoadingPreference = 'All'\n$before = @(Get-OracleModules)",'autoload'),
         ('ResolveCalls.ps1',"@('Microsoft.PowerShell.Archive','Microsoft.PowerShell.Host','Microsoft.PowerShell.Management','Microsoft.PowerShell.Security','Microsoft.PowerShell.ThreadJob','Microsoft.PowerShell.Utility')", "@('Microsoft.PowerShell.Archive','Microsoft.PowerShell.Host','Microsoft.PowerShell.Management','Microsoft.PowerShell.ThreadJob','Microsoft.PowerShell.Utility')",'explicit-runtime-baseline'),
         ('ResolveCalls.ps1',"$scope = if ($moduleSources.Contains([IO.Path]::GetFullPath((Join-Path $root $relative)))) { 'module' } else { 'global' }","$scope = 'module'",'privacy'),

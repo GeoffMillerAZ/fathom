@@ -1,7 +1,7 @@
 {
-  "binder_after_extractor_perturbation_sha256": "13f4acdf7590595b953b83cd55d951845c8d37efd58019c70ff29805cf5ab1c8",
-  "binder_after_native_input_change_sha256": "5e358be6cdf215cd0f8e2404af1383b2881969182773e8918d76fd894b5872e1",
-  "binder_before_sha256": "13f4acdf7590595b953b83cd55d951845c8d37efd58019c70ff29805cf5ab1c8",
+  "binder_after_extractor_perturbation_sha256": "1b6b86a02058f166327341c95828af8069f0f3833ccec45b6af4bdac2eedea1e",
+  "binder_after_native_input_change_sha256": "c2df5578dd0e8c720be05075685f2f727803b87c29badb880a1c400106e4fbc4",
+  "binder_before_sha256": "1b6b86a02058f166327341c95828af8069f0f3833ccec45b6af4bdac2eedea1e",
   "caps": [
     {
       "cap": "PWSH_ORACLE_FILE_CAP",
@@ -11,14 +11,14 @@
     },
     {
       "cap": "PWSH_ORACLE_BYTE_CAP",
-      "input_count": 797,
-      "limit": 796,
+      "input_count": 875,
+      "limit": 874,
       "whole_unit_refused": true
     },
     {
       "cap": "PWSH_ORACLE_SITE_CAP",
-      "input_count": 15,
-      "limit": 14,
+      "input_count": 19,
+      "limit": 18,
       "whole_unit_refused": true
     },
     {
@@ -29,13 +29,13 @@
     }
   ],
   "declared_scope": "private target resolves only inside native module-owned source; ordinary source does not inherit module privacy; external/unknown/member sites remain misses",
-  "fixture_literal_sites": 15,
+  "fixture_literal_sites": 19,
   "known_input_change": "native alias NativeOne to NativeTwo changes exactly two caller/target pairs in each route",
   "module_load_state": "asserted explicit Archive/Host/Management/Security/ThreadJob/Utility runtime baseline plus Probe; undeclared autoload disabled",
   "oracle_code_sha256": {
     "ProbeContracts.ps1": "58ea13f384af5d2de0cd26c074129c133095bab61dcb0c5e36618155fc718778",
-    "README.md": "bff05ce10a5161cb2d419d62542ed224b282bf9c4e82e2910a57bad17abdc524",
-    "ResolveCalls.ps1": "2132186192c0deb9bb78cd855887457ae47f251a095ef573d3c872abdff76eb3",
+    "README.md": "1bbe5aad9659b7b2aefbcd22c4c3bbc1df025de4ddc309b3e886ba31fd8bf000",
+    "ResolveCalls.ps1": "0cdf5f26a7e5b93d7a9829181b4c85098d824afbbc6832309d7e7f7412b274a6",
     "TraceFunctions.ps1": "8991946f9742e2eb2f8b6905663fc1393c278079a94206c729f5ed3d21122df9",
     "analyze_misses.py": "f75103563429ebca948a1570f2172c00fc55f4d480b685ec8d0c5c954a6f88cd",
     "clean_score_scope.py": "84e276aa861c4ce490a5951f7b34193182e1694737e3e7cdc37b0dfac6084cc5",
@@ -45,9 +45,9 @@
     "fetch.py": "dda66042cd2767512ad66633aadb8b0bf741bb0d23c9a2123cd30e561476bedb",
     "measure_binder.py": "cfe9024edb4a0ce7b74e019f03fee8aab5cc3e2a4c8fcddf821086a2ebceb86c",
     "prepare_runtime.py": "2786161e274398aadf15544990f3d655e45cb001b1c250190f5c85330ce05da5",
-    "prove_harness.py": "40aa10f032a96c510c9134fff8f2f28a8d0722087c99204f2cd9a32c83ccbd8e",
-    "prove_mutations.py": "da8ab4a57b3ca683a856413b45d15c73604da17fcf9ae2adf1c53c191414f45f",
-    "prove_native.py": "39767445ff9b3572fe6f35a9c63bb0211fe3946d7c2e6645f1d82ea1c4bb9a68",
+    "prove_harness.py": "c0486fb8cd120f691e37fe673fb139289acb01bc275e117106b99955a62dfe98",
+    "prove_mutations.py": "06843d8cb7b84db1f6782935c98be2d1161f12f00b4a1dd3b47f4d528abc7bfa",
+    "prove_native.py": "e6a4e9e85a2e581c512e589b0b2531a734c45ff589e1cbbdd8f784628c53ad7b",
     "run_traces.py": "6a714e020d754fca646dfd6b9d6c4722342a0dd65dd96b83c8c916e7f81751cf",
     "score.py": "adc6f2cee28cc16fdc7ba3d1ccb57a53797e2e3d02d1dcee9de39be437f2745d",
     "test_analyze_misses.py": "20dcbfdfb9ba4ac208e5d0192d196d112bf401d6cd502bb88f5d6a5f2663c9e4",

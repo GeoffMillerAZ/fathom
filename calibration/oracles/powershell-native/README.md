@@ -64,17 +64,31 @@ names and aliases come from `$ExecutionContext.InvokeCommand.GetCommand`, never
 from Fathom output. Autoload is disabled before the preamble. Six explicit
 pinned-runtime modules are imported and asserted: Archive, Host, Management,
 Security, ThreadJob and Utility. The matching subject manifest and its original
-declared test harness are loaded. Pester uses Axiom, p and the exact TestHelpers
+declared test harness are loaded. Pester uses Axiom, p, PTestHelpers and the exact TestHelpers
 body compiled from its original driver AST; PSScriptAnalyzer uses declared
-Pester 5.7.1. Dynamic TestHelpers metadata is captured directly from New-Module,
+Pester 5.7.1 plus its original PSScriptAnalyzerTestHelper module. Pester also
+loads the original Pester.Runtime.Wrapper body compiled from its declared test
+driver AST, with that driver's utility preamble; the surrounding test body is
+not executed. Dynamic TestHelpers metadata is captured directly from New-Module,
 which exports the functions without registering in Get-Module. No test body is
 dot-sourced or executed merely to satisfy a query. Native loader-owned source files
 use that module's session; ordinary test files use the global session, so private
 module functions cannot answer unrelated test-file queries. The receipt records
 module names/versions/code hashes, definition-origin counts/content hashes and
 all unresolved sites partitioned into member, harness, same-file/BeforeAll,
-private-module, external-application and missing classes. These classes diagnose
-source context without inventing targets. External applications, undeclared state, unbound functions
+private-module, external-application, found-but-not-admitted and missing classes. These classes diagnose
+source context without inventing targets. A found but rejected command is never
+labelled missing. Cmdlet admission includes a ModuleBase exactly equal to the
+pinned PSHOME as well as its descendants: the runtime's nested command DLLs live
+at that root. The real fixture requires Management Join-Path and Utility
+Write-Output to resolve with pinned-runtime definition provenance, and requires
+an instrumentation-only function to remain found-but-not-admitted.
+Source-less runtime functions are snapshotted before collector helpers or subject
+code load. Admission requires the same native ScriptBlock identity; an alias to
+Clear-Host therefore resolves to the actual initial-runtime function, while a
+later function with the same name cannot qualify. Their definition-code hashes
+and counts are recorded separately from file-origin hashes.
+External applications, undeclared state, unbound functions
 and literal member invocations remain unresolvable, never dropped or counted
 as hits. No fixture is dot-sourced to manufacture a successful binding.
 
@@ -158,9 +172,11 @@ fabricated pairs; native truth digests must stay equal. Changing the native alia
 from NativeOne to NativeTwo changes exactly two known caller/target pairs in each
 route. No extractor pairs enter native truth.
 
-Fourteen mutants cover caller/alias pairing, callbacks, caps, both declared phases,
+Seventeen mutants cover caller/alias pairing, callbacks, caps, both declared phases,
 native tier, private scope, autoload, script-qualified breakpoints, omitted
-declared harness, explicit runtime baseline, stopped-phase status and mock attribution. Each must
+declared harness, explicit runtime baseline, stopped-phase status, mock attribution, rejected baseline-root cmdlets and
+misclassification of found-but-rejected commands and rejection of an unchanged
+initial-runtime function. Each must
 reach `FAIL:` and restore GREEN. Pure regressions cover exact-column ambiguity,
 unexecuted member retention, malformed JSON, wrong runtime, raw refusal and each
 cap at reduced-limit cap+1. Hard limits: 2,048 original files, 64 MiB source,

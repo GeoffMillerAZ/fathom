@@ -43,6 +43,19 @@ class OwnerToolTests(unittest.TestCase):
         native=truth(population)
         pairs={(p['path'],p['from'],p['to']) for p in native['calls']}
         self.assertEqual(native['tier'],'A')
+        for target in ['Join-Path','Write-Output']:
+            self.assertIn(('native.ps1','<module>',target),pairs)
+            answers=[site for site in population['sites'] if site['resolved']==target]
+            self.assertTrue(answers)
+            self.assertTrue(all(site['resolved_definition'][0]=='pinned-runtime' for site in answers))
+        rejected=[site for site in population['sites'] if site['written']=='Get-OracleBare']
+        self.assertEqual(len(rejected),1)
+        self.assertIsNone(rejected[0]['resolved'])
+        self.assertEqual(rejected[0]['unresolved_class'],'found_not_admitted')
+        intrinsics=[site for site in population['sites'] if site['written']=='Clear-Host']
+        self.assertEqual(len(intrinsics),1)
+        self.assertEqual(intrinsics[0]['resolved'],'Clear-Host')
+        self.assertEqual(intrinsics[0]['resolved_definition'][::2],['pinned-runtime','runtime-intrinsic'])
         self.assertIn(('module/Probe.psm1','PublicEntry','PrivateTarget'),pairs)
         self.assertNotIn(('native.ps1','DeclaredButUnloaded','PrivateTarget'),pairs)
         self.assertNotIn(('native.ps1','DeclaredButUnloaded','git'),pairs)

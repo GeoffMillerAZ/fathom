@@ -11,7 +11,7 @@ import unittest
 class DeclaredHarnessTests(unittest.TestCase):
     def test_declared_dependencies_and_complete_breakdown(self):
         summary=json.loads((self.out/'summary.json').read_text())
-        for name,required in [('pester',{'Pester','Axiom','p','TestHelpers'}),('psa',{'Pester','PSScriptAnalyzer'})]:
+        for name,required in [('pester',{'Pester','Axiom','p','PTestHelpers','TestHelpers','Pester.Runtime.Wrapper'}),('psa',{'Pester','PSScriptAnalyzer','PSScriptAnalyzerTestHelper'})]:
             row=summary['subjects'][name]
             native=row['native']
             self.assertTrue(required.issubset({m['name'] for m in native['load_after']}))
@@ -19,6 +19,7 @@ class DeclaredHarnessTests(unittest.TestCase):
             self.assertEqual(sum(native['unresolved_by_class'].values()),row['unresolved_sites'])
             self.assertTrue(all(m['code_sha256'] for m in native['declared_harness_inputs']))
             self.assertGreater(native['resolved_harness_sites'],0)
+            self.assertIn('found_not_admitted',native['unresolved_by_class'])
             if name=='psa':
                 self.assertIn('5.7.1',{m['version'] for m in native['load_after'] if m['name']=='Pester'})
 
