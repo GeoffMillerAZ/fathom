@@ -58,6 +58,9 @@ mkdir -p workspace/tmp/conftest-native
 python3 calibration/oracles/conftest/conftest_oracle.py -subject workspace/calibration/conftest/conftest -native workspace/tools/conftest-config-oracle -work workspace/tmp/conftest-native -out workspace/tmp/conftest-native/oracle.json
 ```
 
+The exposed native-probe subject stays in `conftest-holdout-native.yaml`,
+separate from any future canonical corpus (X-R1).
+
 Install tomli 2.2.1 only in a scratch environment and run these commands using
 that environment's Python, with isolated Go caches. The source pin is checked
 by the builder; the upstream checkout is clean before and after compilation.

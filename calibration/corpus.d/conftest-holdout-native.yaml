@@ -1,5 +1,6 @@
-id: conftest
+id: conftest-holdout-native
 language: Conftest configuration
+# This subject was exposed in the draft provisional holdout; never canonical.
 repos:
   - name: open-policy-agent/conftest
     url: https://github.com/open-policy-agent/conftest.git
