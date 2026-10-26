@@ -696,9 +696,11 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 		if opts.ClangCUDA {
 			// round 4 C4-R1: the compiler's definitions, never fathom's, stand in,
-			// in the documents the compiler covered and the index holds
+			// in the documents the compiler covered and the index holds, and
+			// only those the reading measures (round 5 C5-R1: a header the
+			// dialect does not own adds pairs fathom can never find)
 			standIns, externC := opts.ClangLinkage.clangStandIns(defsByDoc, func(doc string) bool {
-				return sites.covers(doc) && occLines[doc] != nil
+				return sites.covers(doc) && occLines[doc] != nil && (opts.ClangScope == nil || opts.ClangScope[doc])
 			})
 			for _, def := range standIns {
 				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)

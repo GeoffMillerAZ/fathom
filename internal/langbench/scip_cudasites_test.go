@@ -99,3 +99,57 @@ func TestScoreSCIPCUDAStandInsFromCompiler(t *testing.T) {
 		}
 	}
 }
+
+// TestScoreSCIPCUDAStandInsInScope (round 5 C5-R1): a stand-in stands in only
+// in the documents the reading measures. With ClangScope = {k.cu}, a compiler
+// function f in h.h (a header the CUDA dialect does not own) would add the
+// truth pair {h.h f g}, which fathom can never find; it is left out, and the
+// stand-in in k.cu stays.
+func TestScoreSCIPCUDAStandInsInScope(t *testing.T) {
+	srcs := map[string]string{
+		"k.cu": "extern \"C\" void launch(int n) {\n" + // 1
+			"  g(n);\n" + // 2
+			"}\n", // 3
+		"h.h": "extern \"C\" int f(int n) {\n" + // 1
+			"  return g(n);\n" + // 2
+			"}\n", // 3
+	}
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "h.h", Occurrences: []*scippb.Occurrence{
+				scipCallsiteRef("cxx . . $ g(1111111111111111).", 1, 9, 10),
+			}},
+			{RelativePath: "k.cu", Occurrences: []*scippb.Occurrence{
+				scipCallsiteRef("cxx . . $ g(1111111111111111).", 1, 2, 3),
+			}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Name: "launch", Kind: "CudaFunc", FilePath: "k.cu", Line: 1, EndLine: 3, Calls: []string{"g"}},
+	}
+	opts := SCIPOptionsFor("cuda", func(p string) []byte { return []byte(srcs[p]) })
+	opts.ClangCUDA = true
+	opts.ClangScope = map[string]bool{"k.cu": true}
+	opts.ClangLinkage.Function("k.cu", "launch", 1, 3, true)
+	opts.ClangLinkage.Function("h.h", "f", 1, 3, true)
+	opts.ClangSites = map[string][]ClangSite{
+		"k.cu": {{Line: 2, Col: 3, Name: "g", Class: ClangResolved}},
+		"h.h":  {{Line: 2, Col: 10, Name: "g", Class: ClangResolved}},
+	}
+	res, err := ScoreSCIPWith(raw, "s", nodes, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.CallTruth[CallPair{"h.h", "f", "g"}] {
+		t.Errorf("call truth holds {h.h f g}: a stand-in outside ClangScope; truth = %v", res.CallTruth)
+	}
+	if !res.CallTruth[CallPair{"k.cu", "launch", "g"}] || len(res.CallTruth) != 1 {
+		t.Errorf("call truth = %v, want only launch -> g", res.CallTruth)
+	}
+	if res.Counts[CntClangStandInDefs] != 1 || res.Counts[CntClangStandInExternC] != 1 {
+		t.Errorf("clang_stand_in_defs %d, clang_stand_in_extern_c %d; want 1, 1", res.Counts[CntClangStandInDefs], res.Counts[CntClangStandInExternC])
+	}
+}
