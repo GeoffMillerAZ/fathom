@@ -1,0 +1,1 @@
+Indented Sass remains unsupported after the latest licensed grammar failed the complete-source parse gate (123/219 files, 56.16%). The queue now records the measured refusal and a new-grammar retry trigger.
