@@ -8,7 +8,7 @@ X-R4; it does not assert that other Perl tooling has been exhausted.
   [perldebguts](https://perldoc.perl.org/5.34.2/perldebguts).
   `PERL5DB` with `-d -c` reads it at CHECK. Ordinary program bodies do not run,
   but BEGIN, UNITCHECK, CHECK and `use` can run. Both subjects are pinned public
-  calibration code, compiled without editing or installing their dependencies.
+  calibration code, compiled unchanged. The initial no-install trial precedes the isolated declared-dependency follow-up below.
 - Name identity: Universal Ctags 6.2.1 supplies source-written subroutine names.
   A native record joins only one tag in the same file within two lines whose
   name is exactly the compiler key or its final package component. The match
@@ -20,11 +20,10 @@ X-R4; it does not assert that other Perl tooling has been exhausted.
   `7b99f4adce82a45fd0965ef4dd56550b4f5ee89b` (Artistic-2.0) and Perl-Critic
   v1.154 at `382d701fd1129822c98fdcdb08403a733a24dc08`
   (Artistic-1.0-Perl OR GPL-1.0-or-later), as in `corpus.d/perl.yaml`.
-  No `-only`, source rewrite, dependency install, daemon, or corpus-shard edit.
+  No `-only`, source rewrite, daemon, or corpus-shard edit. Dependency setup is isolated and limited to the subject declaration as specified below.
 - Freeze adapter and synthetic controls before each full run. The compiler
   range companion sits beside the unchanged PPI 1.270 primary call oracle.
-  Ctags remains L1 truth; PPI remains tier-C L2 truth. This tier-B companion
-  contributes range counts only. Record all file counts, compilation failures,
+  Ctags remains L1 truth; PPI remains tier-C L2 truth. Under C-R9 the compiler companion is tier A only for the actual compiled population and contributes range counts only. Record all file counts, compilation failures,
   native/tag/join counts and range coverage. Unobserved definitions do not
   become successes. Packages, anonymous subs, forwards and unavailable compile
   dependencies remain disclosed limits.
@@ -77,8 +76,7 @@ whole install to 600 seconds, nice10 after load<=9, TERM/KILL on timeout. Never
 install globally, edit the subject, or apply dependency patches. Fingerprint the
 local library before/after compiler runs and publish archive names/checksums.
 
-If installation succeeds, rerun both full canonical compiler companions under
-that explicit PERL5LIB, leaving the PPI 1.270 primary call oracle unchanged.
+If installation succeeds, rerun each full canonical compiler companion with only that subject's own declared dependencies. Perl-Critic uses its isolated cpanfile-backed prefix; Mojo cannot borrow that prefix. Leave the PPI 1.270 primary call oracle unchanged.
 Record all remaining failures and coverage. If installation fails, record the
 concrete failure and retain the partial no-install reading separately. No
 canonical adoption from a conditional 1.0 range score. The Dancer2 holdout remains
@@ -89,3 +87,35 @@ Installer command erratum before any dependency-backed compiler run: cpanminus
 `--with-test` flag. The initial setup attempt rejected that flag and its LWP
 transport produced no index. Use the explicit cURL transport above. No compiler
 run, acceptance rule, source pin, install cap, or holdout decision changed.
+
+## C-R9 environment freeze before compliant measurements
+
+C-R9 assigns `%DB::sub` and B::Xref tier A only for the population the pinned
+interpreter actually compiles. Earlier range trials lacked verified network
+denial and remain diagnostic. Rerun both complete canonical subjects after
+freezing the controls below. Dancer2 remains unspent and outside the shard.
+
+Every compile runs under macOS sandbox-exec with network operations denied.
+A loopback TCP negative control must fail EPERM. Clear ambient Perl injection
+variables, reset @INC to Config core roots, subject lib and the sole locked
+local prefix, and reject loaded modules outside those roots. The per-compile
+filesystem read allowlist also blocks explicit external `do` or `require`
+that would escape %INC accounting. Subject-local setup such as t/lib remains
+allowed. Record every failed compile as unresolved against the full source
+population, including failures due to the restrictions.
+
+Local dependencies require a prepared lock matching the subject, its tracked
+declaration hash, and the independently measured library fingerprint. The
+installation recipe is caller-attested as cpanminus --installdeps over the
+unchanged declaration, not inferred by the runner. Hash the actual library
+before and after, reject all library symlinks and any mismatch, retain saved
+archive hashes, and disclose the setup. Only Perl-Critic's own cpanfile was
+installed; Mojo uses core and its own source. No install occurs during compile.
+
+The B::Xref census uses the same source and dependency restrictions, includes
+all source units and failed files, and retains private raw dumps. Its stock
+1.07 synthetic control exposes a limit: direct sub calls have target names,
+but modern named-method operations may appear as receiver/unknown records
+without a method target. Count these gaps; never relabel them as attested
+calls or promote the existing tier-C call reading from a partial census.
+The primary PPI call oracle and acceptance thresholds remain unchanged.
