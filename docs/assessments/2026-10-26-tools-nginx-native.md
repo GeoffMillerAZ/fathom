@@ -30,3 +30,13 @@ hashes and timings. Full scope inventories and native messages stay in scratch.
 Three warm timings are 10.15, 7.75 and 9.91 MB/CPU-s (median9.91); this small
 population supports no general throughput claim. No product, epoch, generated
 tracker or checkbox changes. No model decision applies.
+
+The native-population decoder and profile-capture adapter now have authored
+controls for forward references, HTTP/stream identities, unknown records,
+outside-profile paths, failed contexts and duplicate successful contexts.
+Capture restores original repository-relative paths before scratch deletion
+and accepts no scanner pair list. These are adapter controls, not a native
+measurement: the observer binary remains unbuilt, and native controls,
+owner classification, target-only ablations and full-population replay remain
+required. The driver refuses source builds and subject fetches below 20 GiB;
+the experiment is stopped by the controller's current disk/load limits.
