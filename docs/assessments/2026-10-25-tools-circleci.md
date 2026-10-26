@@ -29,7 +29,7 @@ vendor language server. Candidate routes checked:
 |---|---|---|
 | CircleCI CLI `config process` | 1.7.0 | Run on every registered case; attests workflow/job and requires pairs, but output inlines declared commands and executors, losing those source references. |
 | CircleCI CLI `config validate` | 1.7.0 | Its help exposes config validation, not source command/executor identity pairs; acceptance alone cannot locate the referenced declaration. |
-| CircleCI YAML language server | 0.54.0, 9c9c4cedb448caa2444bc89672233e4dae66eeea, Apache-2.0 | Verified native Darwin ARM64 release; official definition/reference methods address commands and executors. Whole canonical/holdout comparison is preregistered in lsp-protocol-r2.json; results and W4 tier ruling pending. |
+| CircleCI YAML language server | 0.54.0, 9c9c4cedb448caa2444bc89672233e4dae66eeea, Apache-2.0 | Verified native Darwin ARM64 release; official definition/reference methods address commands and executors. Run over all eight configs: 34/34 local uses reported by references, 33/34 by definition; two orb uses resolve externally. Full results in lsp-comparison-r2.json; W4 tier ruling pending. |
 | CircleCI native compiler ablation | 1.7.0 | A secondary unimplemented route; no longer claimed necessary before checking the maintained vendor server. |
 | Independent `yaml.v3` AST walk | v3.0.1 | Run for declared commands/executors; independent parser evidence is C, not native evaluation. |
 
@@ -42,3 +42,34 @@ shared engine, epoch, generated board or plan checkbox changed.
 
 Decision models: none. Matrix identity, input union and evidence tiers are
 computed facts; no model is invoked.
+
+## Vendor LSP 0.54.0 measured result
+
+The committed comparison protocol at 3a7d13e34 preceded every native subject
+query; source-position tests were RED then GREEN. Five canonical and three
+holdout configurations were read whole, with the original compiler inputs and
+matrix unchanged. The independent query-position inventory exactly matches
+the existing yaml.v3 local-reference pairs on every subject.
+
+Native `textDocument/references` attests all 34 local uses/pairs: 27 command
+and seven executor uses. `textDocument/definition` agrees on 33/34. The one
+counterexample is cypress's job and command both named `pack-workflows`: its
+step at zero-based line 158 resolves by definition to the job at line 148,
+instead of the command at line 74; references queried on that command still
+return the correct use. The follow-up preserved actual sanitized target ranges,
+not an inferred explanation. All 34 pairs remain in the report.
+
+The two qualified orb uses both resolve to external locations; they are
+reported separately and never added to the local-reference denominator.
+No pipeline or command body executed. Server/home/cache are isolated, no token
+is supplied, no Docker is used. The vendor tool is Apache-2.0; its Darwin ARM64
+archive and native executable match the published SHA256 identities in the
+protocol. It advertises and implements the exact reference family the earlier
+candidate audit missed; the ablation-only ceiling is withdrawn.
+
+Q6 asks whether W4 admits the vendor language server's reported reference
+bindings at tier A (recommended: its own semantic resolution, measured here),
+or C (editor static-walk authority). No reading or tier changes until that
+ruling. `summarize_lsp.py` reproduces all counts from native responses and checks
+subject/binary identities. The measured JSON's handwritten notes were removed;
+timing and adapter disclosures remain in this assessment and T-R3.md.

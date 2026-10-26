@@ -1,0 +1,941 @@
+{
+  "tool": "CircleCI-Public/circleci-yaml-language-server",
+  "version": "0.54.0",
+  "protocol_commit": "3a7d13e34",
+  "diagnostic_commit": "b4e4ba91d",
+  "tier": "pending controller W4 ruling",
+  "totals": {
+    "local_sites": 34,
+    "local_pairs": 34,
+    "definition_agrees": 33,
+    "references_agree": 34,
+    "command_sites": 27,
+    "executor_sites": 7,
+    "orb_sites": 2,
+    "orb_external_resolutions": 2
+  },
+  "subjects": [
+    {
+      "name": "CircleCI-Public/circleci-cli",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "local_sites": 16,
+        "local_pairs": 16,
+        "definition_agrees": 16,
+        "references_agree": 16,
+        "command_sites": 11,
+        "executor_sites": 5,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "2053bcbdd62e744f05b76b1e263c54febea34804",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [
+              {
+                "owner": "check",
+                "target": "linux",
+                "family": "executor",
+                "position": {
+                  "line": 86,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 64,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "check",
+                "target": "setup",
+                "family": "command",
+                "position": {
+                  "line": 88,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "check",
+                "target": "store_results",
+                "family": "command",
+                "position": {
+                  "line": 90,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 58,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "test",
+                "target": "setup",
+                "family": "command",
+                "position": {
+                  "line": 98,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "test",
+                "target": "store_results",
+                "family": "command",
+                "position": {
+                  "line": 100,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 58,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "deploy",
+                "target": "linux",
+                "family": "executor",
+                "position": {
+                  "line": 103,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 64,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "deploy",
+                "target": "setup",
+                "family": "command",
+                "position": {
+                  "line": 115,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "deploy",
+                "target": "setup-docker",
+                "family": "command",
+                "position": {
+                  "line": 117,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 32,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "release-pr",
+                "target": "linux",
+                "family": "executor",
+                "position": {
+                  "line": 167,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 64,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "release-pr",
+                "target": "setup",
+                "family": "command",
+                "position": {
+                  "line": 169,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "docs",
+                "target": "linux",
+                "family": "executor",
+                "position": {
+                  "line": 173,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 64,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "docs",
+                "target": "setup",
+                "family": "command",
+                "position": {
+                  "line": 175,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "docs-publish",
+                "target": "linux",
+                "family": "executor",
+                "position": {
+                  "line": 190,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 64,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "docs-publish",
+                "target": "setup",
+                "family": "command",
+                "position": {
+                  "line": 192,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "setup",
+                "target": "install-go",
+                "family": "command",
+                "position": {
+                  "line": 9,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 13,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "setup",
+                "target": "install-task",
+                "family": "command",
+                "position": {
+                  "line": 10,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 22,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              }
+            ],
+            "yaml_v3_pairs": 16,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCI-Public/cimg-base",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "local_sites": 2,
+        "local_pairs": 2,
+        "definition_agrees": 2,
+        "references_agree": 2,
+        "command_sites": 2,
+        "executor_sites": 0,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "0ff85f18597d595f9440eca8387789a26a39fc30",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [
+              {
+                "owner": "publish-edge",
+                "target": "setup-buildx-deps",
+                "family": "command",
+                "position": {
+                  "line": 94,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 79,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "publish-monthly",
+                "target": "setup-buildx-deps",
+                "family": "command",
+                "position": {
+                  "line": 131,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 79,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              }
+            ],
+            "yaml_v3_pairs": 2,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hasura/graphql-engine",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "local_sites": 0,
+        "local_pairs": 0,
+        "definition_agrees": 0,
+        "references_agree": 0,
+        "command_sites": 0,
+        "executor_sites": 0,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "037916c890f776dc71375f0adf61a51e0d4b57b1",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [],
+            "yaml_v3_pairs": 0,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cypress-io/cypress",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "local_sites": 10,
+        "local_pairs": 10,
+        "definition_agrees": 9,
+        "references_agree": 10,
+        "command_sites": 10,
+        "executor_sites": 0,
+        "orb_sites": 2,
+        "orb_external_resolutions": 2
+      },
+      "native_report": {
+        "subject_sha": "30a4d03221676dc8ede0aa55e63560f38fa78a93",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [
+              {
+                "owner": "pack-workflows",
+                "target": "cancel-draft-prs",
+                "family": "command",
+                "position": {
+                  "line": 153,
+                  "character": 10
+                },
+                "declaration": {
+                  "line": 113,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "pack-workflows",
+                "target": "restore-src-checksum-cache",
+                "family": "command",
+                "position": {
+                  "line": 156,
+                  "character": 10
+                },
+                "declaration": {
+                  "line": 97,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "pack-workflows",
+                "target": "persist-to-workspace-and-exit-early",
+                "family": "command",
+                "position": {
+                  "line": 157,
+                  "character": 10
+                },
+                "declaration": {
+                  "line": 50,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "pack-workflows",
+                "target": "pack-workflows",
+                "family": "command",
+                "position": {
+                  "line": 158,
+                  "character": 10
+                },
+                "declaration": {
+                  "line": 74,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": false,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "pack-workflows",
+                "target": "save-src-checksum-cache",
+                "family": "command",
+                "position": {
+                  "line": 159,
+                  "character": 10
+                },
+                "declaration": {
+                  "line": 105,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "pack-workflows",
+                "target": "persist",
+                "family": "command",
+                "position": {
+                  "line": 160,
+                  "character": 10
+                },
+                "declaration": {
+                  "line": 44,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "launch-primary-workflow",
+                "target": "cancel-draft-prs",
+                "family": "command",
+                "position": {
+                  "line": 167,
+                  "character": 12
+                },
+                "declaration": {
+                  "line": 113,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "launch-primary-workflow",
+                "target": "continuation/continue",
+                "family": "command",
+                "position": {
+                  "line": 191,
+                  "character": 12
+                },
+                "declaration": null,
+                "scope": "orb",
+                "definition_agrees": false,
+                "references_agree": false,
+                "returned_locations": 1,
+                "external_locations": 1
+              },
+              {
+                "owner": "persist-to-workspace-and-exit-early",
+                "target": "persist",
+                "family": "command",
+                "position": {
+                  "line": 64,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 44,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "pack-workflows",
+                "target": "circleci-cli/install",
+                "family": "command",
+                "position": {
+                  "line": 76,
+                  "character": 8
+                },
+                "declaration": null,
+                "scope": "orb",
+                "definition_agrees": false,
+                "references_agree": false,
+                "returned_locations": 1,
+                "external_locations": 1
+              },
+              {
+                "owner": "restore-src-checksum-cache",
+                "target": "calc-src-checksum",
+                "family": "command",
+                "position": {
+                  "line": 99,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 84,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "save-src-checksum-cache",
+                "target": "calc-src-checksum",
+                "family": "command",
+                "position": {
+                  "line": 107,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 84,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              }
+            ],
+            "yaml_v3_pairs": 10,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OpenAPITools/openapi-generator",
+      "source_shard": "circleci.yaml",
+      "counts": {
+        "local_sites": 4,
+        "local_pairs": 4,
+        "definition_agrees": 4,
+        "references_agree": 4,
+        "command_sites": 4,
+        "executor_sites": 0,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "c5e769be1e428f794ff51237bae5a50de47bc1ce",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [
+              {
+                "owner": "node0",
+                "target": "command_build_and_test",
+                "family": "command",
+                "position": {
+                  "line": 170,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 2,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "node1",
+                "target": "command_build_and_test",
+                "family": "command",
+                "position": {
+                  "line": 183,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 2,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "node2",
+                "target": "command_build_and_test",
+                "family": "command",
+                "position": {
+                  "line": 196,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 2,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "node3",
+                "target": "command_build_and_test",
+                "family": "command",
+                "position": {
+                  "line": 209,
+                  "character": 8
+                },
+                "declaration": {
+                  "line": 2,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              }
+            ],
+            "yaml_v3_pairs": 4,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCI-Public/cimg-python",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "counts": {
+        "local_sites": 0,
+        "local_pairs": 0,
+        "definition_agrees": 0,
+        "references_agree": 0,
+        "command_sites": 0,
+        "executor_sites": 0,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "a7418d2562d6bd288e953e4a7dbbda478cdf8525",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [],
+            "yaml_v3_pairs": 0,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCI-Public/cimg-node",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "counts": {
+        "local_sites": 0,
+        "local_pairs": 0,
+        "definition_agrees": 0,
+        "references_agree": 0,
+        "command_sites": 0,
+        "executor_sites": 0,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "bb5c7c6dc5e1b5e61172e0ac9dc1825cccdd3c5f",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [],
+            "yaml_v3_pairs": 0,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    },
+    {
+      "name": "scikit-learn/scikit-learn",
+      "source_shard": "circleci-holdout-t-r3.yaml",
+      "counts": {
+        "local_sites": 2,
+        "local_pairs": 2,
+        "definition_agrees": 2,
+        "references_agree": 2,
+        "command_sites": 0,
+        "executor_sites": 2,
+        "orb_sites": 0,
+        "orb_external_resolutions": 0
+      },
+      "native_report": {
+        "subject_sha": "bb9cefde592afccd276c5b2d75957dfde91d5b3e",
+        "binary_sha256": "edd2e5ab79bc302fddf19f59919997f8ee81dcfa167d7df01b3867e5d353601f",
+        "files": [
+          {
+            "version": "0.54.0",
+            "server_info": {
+              "name": "circleci-language-server",
+              "version": "0.54.0"
+            },
+            "sites": [
+              {
+                "owner": "doc-min-dependencies",
+                "target": "doc-linux",
+                "family": "executor",
+                "position": {
+                  "line": 49,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              },
+              {
+                "owner": "doc",
+                "target": "doc-linux",
+                "family": "executor",
+                "position": {
+                  "line": 97,
+                  "character": 14
+                },
+                "declaration": {
+                  "line": 6,
+                  "character": 2
+                },
+                "scope": "local",
+                "definition_agrees": true,
+                "references_agree": true,
+                "returned_locations": 1,
+                "external_locations": 0
+              }
+            ],
+            "yaml_v3_pairs": 2,
+            "path": ".circleci/config.yml"
+          }
+        ]
+      }
+    }
+  ],
+  "definition_disagreement_diagnostic": [
+    {
+      "owner": "pack-workflows",
+      "target": "pack-workflows",
+      "family": "command",
+      "position": {
+        "line": 158,
+        "character": 10
+      },
+      "declaration": {
+        "line": 74,
+        "character": 2
+      },
+      "scope": "local",
+      "definition_agrees": false,
+      "references_agree": true,
+      "returned_locations": 1,
+      "external_locations": 0,
+      "definition_targets": [
+        {
+          "scope": "same-file",
+          "range": {
+            "start": {
+              "line": 148,
+              "character": 2
+            },
+            "end": {
+              "line": 160,
+              "character": 17
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

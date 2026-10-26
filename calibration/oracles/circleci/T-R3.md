@@ -86,5 +86,31 @@ The handwritten timing/adapter notes have been removed from the measured JSON;
 the disclosures stay here and in the assessment. Original instrument output is
 preserved. The native-LSP comparison protocol is `lsp-protocol-r2.json`, committed
 before querying the eight subject configurations. Vendor 0.54.0 resolves source
-command/executor names; its full-cohort comparison and W4 ruling are pending.
+command/executor names; the full-cohort comparison attests 34/34 local uses by references and
+33/34 by definition (one same-name job/command misresolution). Two orb uses
+resolve externally and remain unscored; W4 ruling Q6 is pending.
 The former native-ablation-only ceiling is reopened. No tier has changed.
+
+
+To reproduce the comparison after building the existing adapter and installing
+verified `circleci-yaml-lsp` 0.54.0 at `workspace/tools/circleci-yaml-lsp`, use
+the eight registered names/pins/checkout paths in `lsp-protocol-r2.json`:
+
+```sh
+mkdir -p workspace/tmp/circleci-lsp
+# For each registered subject, produce the old adapter's -refs JSON using the
+# original default input or T-R3 matrix (exact commands above), then:
+python3 calibration/oracles/circleci/lsp_compare.py -lsp workspace/tools/circleci-yaml-lsp \
+  -subject workspace/calibration/circleci-canonical/circleci-cli \
+  -work workspace/tmp/circleci-lsp/circleci-cli -yaml-refs workspace/tmp/circleci-lsp/circleci-cli-yaml-refs.json \
+  -out workspace/tmp/circleci-lsp/circleci-cli-lsp.json
+# Repeat for every protocol subject, and re-run cypress with the diagnostic
+# output name cypress-diagnostic.json; no request position or input is changed.
+python3 calibration/oracles/circleci/summarize_lsp.py -results workspace/tmp/circleci-lsp -out workspace/tmp/circleci-lsp/summary.json
+python3 -m unittest discover -s calibration/oracles/circleci -p test_lsp_compare.py
+```
+
+Python requires scratch-installed PyYAML 6.0.3. The client fails on a local
+pair-inventory discrepancy, dirty subject, missing native symbols or protocol
+failure; it never substitutes the YAML walk for a native answer. All native
+misses remain visible. No grade is emitted by this diagnostic instrument.
