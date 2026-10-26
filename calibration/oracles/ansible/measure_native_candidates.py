@@ -51,6 +51,7 @@ def measure(subject, work):
     from ansiblelint.runner import Runner
     from ansiblelint.utils import is_playbook, parse_yaml_linenumbers, task_in_list
     from ansible.plugins.loader import init_plugin_loader
+    from ansible._internal._datatag._tags import Origin
     init_plugin_loader()
     options = Options(project_dir=str(work), cwd=work, offline=True)
     app = App(options)
@@ -83,7 +84,10 @@ def measure(subject, work):
                 continue
             data = parse_yaml_linenumbers(file)
             for task in task_in_list(data, file, file.kind):
-                item = dict(line=task.line, unnamed=not bool(task.name))
+                origin = Origin.get_tag(task.raw_task)
+                native_line = origin.line_num if origin else 0
+                item = dict(line=native_line or 0, lint_line=task.line, unnamed=not bool(task.name),
+                            native_action_evaluated=not any(key in task.raw_task for key in ('block', 'rescue', 'always')))
                 try:
                     item['module'] = task.action
                     item['normalization_error'] = bool(task.error)
@@ -138,6 +142,9 @@ def main():
                        yaml_candidates=len(lint), lint_files=sum(not f.get('not_task_family', False) for f in lint),
                        native_kind_counts=dict(sorted(Counter(f.get('kind', 'load-error') for f in lint).items())), tasks=len(tasks), positioned_tasks=sum(t['line'] > 0 for t in tasks),
                        unnamed_tasks=sum(t['unnamed'] for t in tasks),
+                       core_position_disagreements=sum(t['line'] != t['lint_line'] for t in tasks),
+                       core_evaluated_actions=sum(t['native_action_evaluated'] for t in tasks),
+                       synthetic_block_actions=sum(not t['native_action_evaluated'] for t in tasks),
                        normalization_errors=sum(bool(t.get('normalization_error')) for t in tasks),
                        children=len(children), existing_children=sum(c['exists'] for c in children),
                        lint_file_errors=sum(bool(f['errors']) for f in lint), evidence_sha256=digest(report))
