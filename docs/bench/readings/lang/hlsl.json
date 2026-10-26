@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "not-attempted"
   },
-  "measured_at": "2026-10-25",
-  "fathom_commit": "79590328",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "6c5d2d56",
   "extractor": "dialect",
   "subjects": [
     {
@@ -58,15 +58,15 @@
         "variable"
       ],
       "excluded_by_kind": {
-        "fathom:HlslMacro": 344
+        "fathom:HlslMacro": 348
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 10,
-        "extract_ms": 1537.9540000000004,
-        "extract_cpu_ms": 1544.4870000000005,
-        "max_file_ms": 62,
+        "extract_ms": 1478.7659999999996,
+        "extract_cpu_ms": 1496.6749999999981,
+        "max_file_ms": 49,
         "peak_module_pages": 512,
         "compiled_bytes": 0
       }
@@ -121,9 +121,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 186.29200000000003,
-        "extract_cpu_ms": 182.55,
-        "max_file_ms": 28,
+        "extract_ms": 287.7699999999999,
+        "extract_cpu_ms": 291.34999999999997,
+        "max_file_ms": 51,
         "peak_module_pages": 509,
         "compiled_bytes": 0
       }
@@ -173,15 +173,15 @@
         "variable"
       ],
       "excluded_by_kind": {
-        "fathom:HlslMacro": 340
+        "fathom:HlslMacro": 342
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 8,
-        "extract_ms": 835.6360000000002,
-        "extract_cpu_ms": 838.5809999999998,
-        "max_file_ms": 47,
+        "extract_ms": 965.8390000000003,
+        "extract_cpu_ms": 954.7430000000004,
+        "max_file_ms": 39,
         "peak_module_pages": 509,
         "compiled_bytes": 0
       }
@@ -268,17 +268,18 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 18,
-    "throughput_mb_s": 0.73,
+    "throughput_mb_s": 0.69,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 0.74,
-    "max_file_ms": 62,
+    "wall_throughput_mb_s": 0.69,
+    "max_file_ms": 51,
     "peak_module_pages": 512,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:HlslMacro": 728
+    "fathom:HlslMacro": 734
   },
   "notes": [
+    "L3 per subject (H6-R4; written by reading.sh from the counts of this run; the pooled metrics are the convention): directx-graphics-samples file_edge_precision 177/198 = 0.8939, file_edge_recall 177/418 = 0.4234, import_resolution 384/384 = 1; directxtk12 file_edge_precision 35/35 = 1, file_edge_recall 35/70 = 0.5, import_resolution 50/50 = 1; kajiya file_edge_precision 326/364 = 0.8956, file_edge_recall 326/734 = 0.4441, import_resolution 564/564 = 1",
     "directx-graphics-samples: 121 of 446 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 111 of them clean, and files_with_error counts the 10 it cannot mend, the files the extractor reads with an error",
     "directx-graphics-samples: 19 of the 418 file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution",
     "directx-graphics-samples: dxc-ast (dxc -T lib_6_3 -HV 2021 -ast-dump, run-chosen flags, no build database): 362 of 446 measured files in scope (their own unit, or a header of one, parses without error under a setting below); 93 units with an error under that setting, 91 of them not read under any",
@@ -289,6 +290,7 @@
     "directx-graphics-samples: dxc-ast excluded units by first error: 71 \"'_' file not found\" (e.g. Libraries/D3D12RaytracingFallback/src/CalculateMortonCodesBindings.h:12: 'RaytracingHlslCompat.h' file not found; Libraries/D3D12RaytracingFallback/src/CalculateSceneAABBBindings.h:17: 'RaytracingHlslCompat.h' file not found)",
     "directx-graphics-samples: dxc-ast excluded units by first error: 9 \"use of undeclared identifier '_'\" (e.g. Libraries/D3D12RaytracingFallback/src/CalculateMortonCodes.hlsli:86: use of undeclared identifier 'BIT'; Libraries/D3D12RaytracingFallback/src/ComputeAABBs.hlsli:14: use of undeclared identifier 'SizeOfBVHOffsets')",
     "directx-graphics-samples: dxc-ast grades definitions and calls on its scope, 362 of 446 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
+    "directx-graphics-samples: dxc-ast reference pairs: 161 (file, declaring file) pairs, 156 address-resolved (some DeclRefExpr or MemberExpr resolved through the dump to its declaration) and 5 name-resolved only (a type a declaration or cast writes, its sugared spelling, resolved by the unit's one record, typedef or enum declaration of that name); 0 type names ambiguous in their unit (two or more such declarations) and the 0 type references naming one skipped, counted per reading unit",
     "directx-graphics-samples: dxc-ast scope bias: of the 91 units excluded, 71 stop at an #include this run's -I roots do not resolve (a build passes its own) and 11 use a name no file they include declares (a header written to be compiled inside an includer, or a name a build define supplies), so the scope leans to self-contained units and away from code built with its own include roots and defines",
     "directx-graphics-samples: dxc-ast: 0 definitions and 80 calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)",
     "directx-graphics-samples: dxc-ast: of the 93 units with an error, -T lib_6_3 -HV 2018 admits 0 and -T lib_6_9 -HV 2021 admits 2, each tried on every one; a unit is read under the first that parses it (-T lib_6_3 -HV 2018, then -T lib_6_9 -HV 2021), chosen per unit: 2 admitted: Samples/Desktop/D3D12HelloWorld/src/HelloWorkGraphs/D3D12HelloWorkGraphs.hlsl (-T lib_6_9 -HV 2021), Samples/Desktop/D3D12Raytracing/src/D3D12RaytracingHelloShaderExecutionReordering/Raytracing.hlsl (-T lib_6_9 -HV 2021)",
@@ -301,6 +303,7 @@
     "directxtk12: dxc-ast excluded units by first error: 1 \"use of undeclared identifier '_'; did you mean '_'?\" (e.g. Src/Shaders/Lighting.fxh:26: use of undeclared identifier 'LightDirection'; did you mean 'lightDirections'?)",
     "directxtk12: dxc-ast excluded units by first error: 2 \"unknown type name '_'\" (e.g. Src/Shaders/PBRCommon.fxh:18: unknown type name 'VSOutputPixelLightingTx'; Src/Shaders/Skinning.fxh:8: unknown type name 'VSInputNmTxWeights')",
     "directxtk12: dxc-ast grades definitions and calls on its scope, 21 of 21 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
+    "directxtk12: dxc-ast reference pairs: 55 (file, declaring file) pairs, 54 address-resolved (some DeclRefExpr or MemberExpr resolved through the dump to its declaration) and 1 name-resolved only (a type a declaration or cast writes, its sugared spelling, resolved by the unit's one record, typedef or enum declaration of that name); 0 type names ambiguous in their unit (two or more such declarations) and the 0 type references naming one skipped, counted per reading unit",
     "directxtk12: dxc-ast scope bias: of the 4 units excluded, 0 stop at an #include this run's -I roots do not resolve (a build passes its own) and 4 use a name no file they include declares (a header written to be compiled inside an includer, or a name a build define supplies), so the scope leans to self-contained units and away from code built with its own include roots and defines",
     "directxtk12: dxc-ast: 0 definitions and 0 calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)",
     "directxtk12: dxc-ast: of the 4 units with an error, -T lib_6_3 -HV 2018 admits 0 and -T lib_6_9 -HV 2021 admits 0, each tried on every one; a unit is read under the first that parses it (-T lib_6_3 -HV 2018, then -T lib_6_9 -HV 2021), chosen per unit: 0 admitted",
@@ -317,6 +320,7 @@
     "kajiya: dxc-ast excluded units by first error: 22 \"use of undeclared identifier '_'\" (e.g. assets/shaders/inc/color/bezold_brucke.hlsl:95: use of undeclared identifier 'M_PI'; assets/shaders/inc/color/helmholtz_kohlrausch.hlsl:28: use of undeclared identifier 'white_D65_xy')",
     "kajiya: dxc-ast excluded units by first error: 4 \"unknown type name '_'\" (e.g. assets/shaders/inc/brdf_lut.hlsl:15: unknown type name 'SpecularBrdf'; assets/shaders/inc/layered_brdf.hlsl:24: unknown type name 'SpecularBrdf')",
     "kajiya: dxc-ast grades definitions and calls on its scope, 160 of 177 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
+    "kajiya: dxc-ast reference pairs: 453 (file, declaring file) pairs, 445 address-resolved (some DeclRefExpr or MemberExpr resolved through the dump to its declaration) and 8 name-resolved only (a type a declaration or cast writes, its sugared spelling, resolved by the unit's one record, typedef or enum declaration of that name); 0 type names ambiguous in their unit (two or more such declarations) and the 0 type references naming one skipped, counted per reading unit",
     "kajiya: dxc-ast scope bias: of the 43 units excluded, 15 stop at an #include this run's -I roots do not resolve (a build passes its own) and 28 use a name no file they include declares (a header written to be compiled inside an includer, or a name a build define supplies), so the scope leans to self-contained units and away from code built with its own include roots and defines",
     "kajiya: dxc-ast: 75 definitions and 42 calls spelled on a #define line (a macro body) not written, macro-generated (counted per reading unit)",
     "kajiya: dxc-ast: of the 43 units with an error, -T lib_6_3 -HV 2018 admits 0 and -T lib_6_9 -HV 2021 admits 0, each tried on every one; a unit is read under the first that parses it (-T lib_6_3 -HV 2018, then -T lib_6_9 -HV 2021), chosen per unit: 0 admitted",
@@ -324,8 +328,8 @@
     "kajiya: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
     "parse errors by dxc-ast scope (reading.sh, a run with -only the scope): 9 of the 543 files DXC reads hold a parse error (1.7%) and 9 of the 101 it excludes (8.9%); the files DXC excludes are the more error-prone part of the corpus, so L1 and L2 are measured on the easier part of the corpus",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "tenancy over every measured file (no -only; written by calibration/oracles/dxc-ast/reading.sh from this run): files_with_error directx-graphics-samples 10 of 446, directxtk12 0 of 21, kajiya 8 of 177, pooled 18 of 644 (2.8%); throughput 0.73 MB/s CPU (0.74 wall)",
-    "throughput (design 1.9 T1, T2; reading.sh): three runs over every measured file read 0.71, 0.73, 0.81 MB/s CPU; the reading is the median run, 0.73 MB/s"
+    "tenancy over every measured file (no -only; written by calibration/oracles/dxc-ast/reading.sh from this run): files_with_error directx-graphics-samples 10 of 446, directxtk12 0 of 21, kajiya 8 of 177, pooled 18 of 644 (2.8%); throughput 0.69 MB/s CPU (0.69 wall)",
+    "throughput (design 1.9 T1, T2; reading.sh): three runs over every measured file read 0.75, 0.69, 0.65 MB/s CPU; the reading is the median run, 0.69 MB/s"
   ],
   "disposition": null
 }

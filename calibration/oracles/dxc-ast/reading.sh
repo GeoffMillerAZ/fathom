@@ -35,8 +35,8 @@ mkdir -p "$tmp" "$tools"
     > "$tmp/hlsl-$s-includes.json" 2> "$tmp/hlsl-$s-includes.err"
   # L3's truth (H5-R7): file_edge_* against the include statements plus dxc-ast's
   # same_package reference pairs, import_resolution against the statements alone
-  jq -s '.[0] + {imports: (.[0].imports + .[1].imports), disclose: [
-      "file-edge truth: clang-includes'"'"' include statements plus \(.[1].imports | length) dxc-ast reference pairs (a DeclRefExpr, MemberExpr or named type in a unit DXC reads, resolved through the dump to a declaration another measured file holds; written as same_package, so they grade file_edge_* and never import_resolution)"] + .[1].disclose}' \
+  jq -s '.[0] + {imports: (.[0].imports + .[1].imports), disclose: ([
+      "file-edge truth: clang-includes'"'"' include statements plus \(.[1].imports | length) dxc-ast reference pairs (a DeclRefExpr, MemberExpr or named type in a unit DXC reads, resolved through the dump to a declaration another measured file holds; written as same_package, so they grade file_edge_* and never import_resolution)"] + .[1].disclose)}' \
     "$tmp/hlsl-$s-includes.json" "$tmp/hlsl-$s-refs.json" > "$tmp/hlsl-$s-imports.json"
   echo "$s: $(tail -1 "$tmp/hlsl-$s-dxc.err") | $(tail -1 "$tmp/hlsl-$s-includes.err")"
 done
@@ -62,11 +62,16 @@ runs=$(for i in 1 2 3; do jq .tenancy.throughput_mb_s "$tmp/hlsl-run$i.json"; do
 
 jq --arg runs "$runs" --slurpfile scoped "$tmp/hlsl-scoped.json" '
   def pct(a; b): ((a * 1000 / b) | round / 10 | tostring) + "%";
+  def ratio(a; b): if b == 0 then "\(a)/0 = n/a" else "\(a)/\(b) = \((a * 10000 / b) | round / 10000)" end;
   (.subjects | map(.tenancy.files_with_error) | add) as $err
   | (.subjects | map(.files) | add) as $files
   | ($scoped[0].subjects | map(.tenancy.files_with_error) | add) as $serr
   | ($scoped[0].subjects | map(.files) | add) as $sfiles
   | .notes += [
+      ("L3 per subject (H6-R4; written by reading.sh from the counts of this run; the pooled metrics are the convention): "
+        + (.subjects | map("\(.name) file_edge_precision " + ratio(.counts.file_edges_agree // 0; .counts.file_edges_fathom // 0)
+          + ", file_edge_recall " + ratio(.counts.file_edges_agree // 0; .counts.file_edges_truth // 0)
+          + ", import_resolution " + ratio(.counts.imports_resolved_agree // 0; .counts.imports_in_repo // 0)) | join("; "))),
       ("tenancy over every measured file (no -only; written by calibration/oracles/dxc-ast/reading.sh from this run): files_with_error "
         + (.subjects | map("\(.name) \(.tenancy.files_with_error) of \(.files)") | join(", "))
         + ", pooled \($err) of \($files) (" + pct($err; $files) + "); throughput \(.tenancy.throughput_mb_s) MB/s CPU (\(.tenancy.wall_throughput_mb_s) wall)"),

@@ -24,7 +24,7 @@ The reading is driven by `reading.sh` (from the repository root, after `task cal
 
 It builds this program and `../clang-includes`, runs both on each subject's measured files, runs `lang-oracle` three
 times over every file (no `-only`) and once with `-only` the scope, keeps the median-throughput run as the reading and
-appends notes generated from those runs' tenancy output: files with a parse error per subject and pooled, the three
+appends notes generated from those runs' tenancy output and counts: each subject's L3 ratios (file_edge_precision, file_edge_recall and import_resolution as agree/denominator, H6-R4; the pooled metrics stay the convention), files with a parse error per subject and pooled, the three
 throughput values, and how the parse errors split between the files DXC reads and those it excludes.
 
 `-refs <out>` writes L3's reference truth (H5-R7, the precedent `../clang-objc`'s): every `DeclRefExpr` and
