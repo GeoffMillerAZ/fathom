@@ -1,0 +1,11 @@
+{
+  "repository": "g-truc/ogl-samples",
+  "commit_sha": "38cada7a9458864265e25415ae61586d500ff5fc",
+  "pinned_at_utc": "2026-10-26T05:45:49+00:00",
+  "archive_api": "https://api.github.com/repos/g-truc/ogl-samples/tarball/38cada7a9458864265e25415ae61586d500ff5fc",
+  "archive_bytes": 37508521,
+  "archive_sha256": "cb8ee47813d93ff68ffd8efa579ef65d50ca2fc168fc70a7e6812b0f3b4a6d7a",
+  "original_record_sha256": "e94d8db894e0d61622d93a821ebeae467631e2e0491020c735832a6ef9f6842e",
+  "record_kind": "Historical selection receipt; original workspace bytes retained privately",
+  "timing_evidence": "The original workspace record predates catalog edits. This committed digest records that evidence after the fact; commit ancestry alone does not prove the selection time."
+}

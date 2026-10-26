@@ -1,0 +1,32 @@
+{
+  "native_binary_sha256": "2150c48239a57ad1f9dec40e3d89b485274fb821253bc65aed7e3aa21f43a08e",
+  "fathom_nodes_before": 5,
+  "fathom_nodes_after": 0,
+  "fathom_output_race_enabled": true,
+  "truth_before_sha256": "4aa8dbcc7347f7a13d721d3344238277bf248e902e6d415fa54e98ebfaf30047",
+  "truth_after_fathom_removal_sha256": "4aa8dbcc7347f7a13d721d3344238277bf248e902e6d415fa54e98ebfaf30047",
+  "truth_after_input_change_sha256": "69cc9c9f9f848ffc75b09b7b32a6d073ef9299b2546b136945c75df91f65c819",
+  "mutation": {
+    "mutant": "filter native definitions by independent scanner definitions",
+    "failure_line": "FAIL: test_native_definitions_and_owners_survive_independent_walk_omission (test_native_definition_integration.NativeDefinitionControl)",
+    "restored_green": true,
+    "native_definitions": true
+  },
+  "caps": {
+    "events": 10000,
+    "event_refusal_input": 10001,
+    "stderr_bytes": 8388608,
+    "stderr_refusal_input": 8388609,
+    "whole_profile_refused": true
+  },
+  "native_lexer_caps": {
+    "tokens": 10000,
+    "token_refusal_input": 10001,
+    "arguments": 64,
+    "argument_refusal_input": 65,
+    "word_bytes": 512,
+    "word_refusal_input": 513,
+    "path_refusal_input": 513,
+    "whole_profile_refused": true
+  }
+}

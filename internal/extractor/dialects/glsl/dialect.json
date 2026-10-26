@@ -1,0 +1,97 @@
+{
+  "id": "glsl",
+  "display": "GLSL shaders",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "glsl",
+  "match": {
+    "extensions": [
+      ".glsl",
+      ".vert",
+      ".frag",
+      ".comp",
+      ".geom",
+      ".tesc",
+      ".tese",
+      ".rgen",
+      ".rchit",
+      ".rmiss",
+      ".rahit",
+      ".rint",
+      ".rcall",
+      ".mesh",
+      ".task",
+      ".vsh",
+      ".fsh"
+    ],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [
+        ".fs"
+      ],
+      "pattern": "^\\s*(#version|precision|uniform|varying|vec[234]|void[\\t ]+main[\\t ]*\\([^)]*\\)[\\t ]*\\{)",
+      "priority": 20,
+      "scan_bytes": 16384
+    }
+  },
+  "grammar": {
+    "blob": "glsl",
+    "entry_point": "tree_sitter_glsl"
+  },
+  "variants": [],
+  "queries": {
+    "tags": "tags.scm"
+  },
+  "kinds": {
+    "function": {
+      "source_kind": "GlslFunc",
+      "canonical": "function",
+      "callable": true
+    },
+    "struct": {
+      "source_kind": "GlslStruct",
+      "canonical": "struct",
+      "container": true
+    },
+    "macro": {
+      "source_kind": "GlslMacro",
+      "canonical": "macro"
+    },
+    "variable": {
+      "source_kind": "GlslVariable",
+      "canonical": "variable"
+    },
+    "interface_block": {
+      "source_kind": "GlslInterfaceBlock",
+      "canonical": "interface",
+      "container": true
+    }
+  },
+  "required_kinds": [
+    "function",
+    "struct",
+    "macro"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "function": "function",
+      "struct": "struct",
+      "macro": "macro"
+    }
+  },
+  "qualify": {
+    "chain_containers": false,
+    "container_sep": ".",
+    "method_sep": "."
+  },
+  "package": {
+    "strategy": "dir"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L2",
+  "queue_id": "glsl"
+}

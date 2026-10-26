@@ -24,6 +24,42 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.22.0] — 2026-10-26
+
+Release impact: minor
+
+### Added
+
+- Benchmark subject and preregistration CUE contracts (`schema/bench`), checked by `task cue-vet`. A subject manifest keeps its corpus metadata and pins its toolchain (an exact prerelease is accepted) and source provenance; the model cutoff date and controller-assigned split may be omitted until vetting. A nonempty prior-read list forces the subject to dev. Popularity bands use GitHub star thresholds, and every `calibration/bench.d/*.yaml` file is vetted by the gate. A preregistration declares a baseline, predictions for every comparison arm and every stratum, fixed primary criteria, Holm correction, the three-outcome rule, and the predicted-null equivalence, harm, inconclusive and unexpected-effect rules.
+- `scenariobench run -harness oracle` supplies verified gold patches on F2 tasks and gold files on F1 tasks without spend. `-gold-patch-dir` reads offline `<sha256>.patch` inputs through the pinned, verified gold-patch fetcher and existing workspace cache.
+- `scenariobench run -harness wrong-patch` applies only the test patch on F2 tasks and answers deterministic non-gold files on F1 tasks. Killed mutants wait for BX-10 (`MineMutants`). Both controls retain zero-turn PASS/FAIL grading while instrument defects still void cells.
+- `scenariobench dryrun -corpus <path> -cells <dir> [-dataset <path.jsonl>] [-run-id <id>] [-arm <name>] [--json]` reads three stored trials of each null, oracle and wrong-patch control per task and arm. It prints sorted keep/drop verdicts with the discrimination or flakiness reason, refusing incomplete, duplicate or void evidence. Controls may share a run id; `-run-id` selects that shared run. `-corpus lca -dataset <path.jsonl>` loads the local LCA corpus. Run controls with their actual harness versions (`null-1`, `oracle-1`, `wrong-patch-1`); already-dropped tasks are skipped, and an empty selection is refused. Positive turns or cost void control cells. Oracle runs require exactly one source pin. Wrong-patch localization skips sparse-excluded files. Select the same unwired arm used for the controls; wired instrumentation checks still apply.
+- `scenariobench run -harness null` makes no edits and gives an empty answer without spend. The CLI and package corpus runner retain its intentional zero-turn sessions for grading; instrument defects still void the cell.
+- `fathom conserve --since BASE --concern-deltas FILE` writes experimental `fathom.concern-deltas/v1` Kubernetes fact deltas with workload addresses, before/after values, commit anchors, index basis and skipped files. Deltas are informational and never affect `--strict`. The schema remains experimental until PLT-M4 and is not yet part of the compatibility surface. With this flag, `--json`'s `fathom.conserve/v1` gains the additive `concern_deltas` field.
+- Grammar builds can apply ordered, checksum-pinned in-tree source patches after verifying upstream sources. Builds apply the staged patch bytes under isolated Git settings and refuse unsafe paths, file metadata or attribution edits, and patches with no source-byte change. Generated provenance identifies patched grammars and every patch digest.
+- `fathom observe --lab <lab>/<case>` records an optional lab case pointer. Malformed pointers are refused before filing; a link carries no proof.
+- Jinja2 extraction for `.j2`, `.jinja`, and `.jinja2` templates: macro/block definitions, qualified macro calls, literal template imports and file edges. Namespace imports retain their aliases. Template `.html` routing remains deferred.
+- Azure Pipelines configurations and literal stage/job templates expose named jobs, stages, deployments and explicit dependsOn references. Runtime evaluation and template-file resolution remain unproven.
+
+### Changed
+
+- Indented Sass remains unsupported after the latest licensed grammar failed the complete-source parse gate (123/219 files, 56.16%). LB-Q-sass-rest moves from deferred to refused (design section 14.2); the regenerated board shows Sass as refused. The queue records the measured failure and a new-grammar retry trigger.
+- SCSS calibration now measures Dart Sass definition end spans and keeps the complete discovered source corpus in tenancy. The calibration subjects read L1-L3 excellent; a fresh independent holdout reads L1-L2 excellent and L3 unmet on unattested import pairs.
+- `indexbench lang-parity` takes `-scip-tier` and, like `lang-oracle`, refuses a scip-clang index that names no tier; a reading lists the ranges companion (`clang-ast-defs`) and the link-unit companion as oracles of their own.
+- CUDA's call truth leaves out compiler stand-ins outside the files the reading measures, and takes a caller the index holds no occurrence in from the compiler's function ranges, never from fathom's definitions.
+- `calibration/oracles/scip-clang/cuda-samples.sh` configures both CMake build trees outside the subject and records the measured set's file count, bytes and the sha256 of its sorted path list in the reading.
+- CUDA calibration keeps its selected compilation database outside the subject, and a file-edge truth with no tier is refused naming its feed.
+- HLSL indexes a `#define` written inside a function body as the file's macro (the preprocessor has no scope), and its L3 reading grades type references as clang-objc does; HLSL reads L3 on the development class.
+- SQL inline foreign-key calls are now measured against native SQLite and PostgreSQL catalogs: all 17 pairs in the existing corpus, including three temporal pairs missing from the previous oracle, meet L2 excellent.
+- `fathom verify`: a symbol row whose symbol is declared only in Go files the index's build context excludes (a darwin-only file on a Linux index) reads Unknown with `platform: defined only in <file>, excluded on <os>/<arch>` and exits 2 when every unproven row is one, instead of failing the claim. A symbol missing everywhere, or declared in an included file, behaves as before.
+
+### Fixed
+
+- `indexbench lang-probe` reports ERROR and MISSING nodes for dialects without a pre-pass instead of describing malformed source as error-free.
+- Large call-index updates no longer abort an observation batch with a false SQLite "database or disk is full" error. SQLite's own unix VFS (`src/os_unix.c`, `seekAndWriteFd`) asserts that write lengths fit `0x1ffff`, then masks them. Its memjournal flush (`memjrnlCreateFile`) writes a spill-threshold-sized chunk in one `xWrite`, so thresholds of 131,072 bytes or more cause short writes and SQLITE_FULL on unix targets, including Linux. The 131,071-byte cap is a safe bound for every page size. This also affects cgo builds; Windows is unaffected. A driver upgrade does not remove the constraint.
+- Cost: LB-F208's former 4 MiB threshold kept a typical row's roughly 60-page (246 KB) journal in memory, avoiding a temporary file per row (3.5 s of a 17 s polyglot build). At 4 KiB pages, 131,071 bytes covers about 31 pages, so typical rows spill again. A noisy micro-benchmark in review measured system CPU at 3.4–5.0 s versus 1.6–2.3 s before; this is not a stable performance estimate. LB-F208-bulk defers replacing the per-row call-index trigger with one bulk statement per batch, measured before and after.
+- Bazel calibration now refuses failed native queries, partial keep-going output and missing tool versions instead of writing tier-A truth from them.
+
 ## [0.21.0] — 2026-10-26
 
 Release impact: minor

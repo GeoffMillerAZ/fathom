@@ -1,0 +1,14 @@
+{
+  "candidate": "PgBouncer 1.26.1 unmodified native cfparser",
+  "prior": "native-position-protocol-r1.json",
+  "population": "Every explicit callback in each unchanged canonical configuration, enumerated before scanner comparison",
+  "rules": [
+    "Append a terminal invalid section on a fresh line. The unchanged original profile must reach the native invalid-section diagnostic at that exact appended line, before listener/backend startup. Earlier parse/value errors refuse the whole family.",
+    "Only after the original profile passes that boundary, set an explicitly written verbose value to 2 while preserving its key, section and line count; CLI -vv sets the initial verbosity. This changes observation logging only. Invalid original values must never be rescued by the observation profile.",
+    "Native DEBUG callbacks enumerate every section and key, including unused/repeated declarations. An independent lexical walk locates mutation sites only; require exact ordered one-to-one correspondence to all native callbacks. Unknown or suppressed events refuse the family.",
+    "For every native callback insert ? immediately before its original section/key token. Require the native syntax-error diagnostic at exactly that source line. Do not use invalid-value lines: native whitespace handling can advance those lines.",
+    "Native single-physical-line key values end on the key line; section spans follow the existing first-header through last-native-entry contract, merging repeated sections and retaining the last duplicate key. Unsupported syntax/includes refuse whole input, never fallback C.",
+    "Use all six pinned canonical inputs, unchanged required kinds and normative before/after tracked manifests. Counts/hashes only in committed receipts. Source builds/subjects pruned after measurement. No L3, Docker, backend SQL or global install.",
+    "Bound native logs to 8 MiB and explicit callbacks to 10000; cap+1 refuses the whole input. Verify binary identity and authored controls before any A output."
+  ]
+}

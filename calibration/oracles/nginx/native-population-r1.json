@@ -1,0 +1,310 @@
+{
+  "dialect": "nginx",
+  "fathom_commit": "5077799ca",
+  "counts": {
+    "fathom_defs": 71,
+    "kind_equal": 71,
+    "matched": 71,
+    "oracle_defs": 71,
+    "ref_fathom": 1,
+    "ref_fathom_in_truth": 1,
+    "ref_truth": 1,
+    "ref_truth_found": 1
+  },
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 9.64,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 9.71,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "kind": "L1/L2 diagnostic only; canonical L3 reading untouched",
+  "native_subjects": [
+    {
+      "kind": "native whole-input parser population; same-file L2 only",
+      "subject_sha": "30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
+      "binary_sha256": "da171e53846380fec10e8f0f6d435715e0f591bf4e6701983896efe2fb9fded2",
+      "reference_tier": "A",
+      "configs": 1,
+      "definitions": 4,
+      "references": 0,
+      "native_events": 0,
+      "classification": {},
+      "negative_controls": 0,
+      "native_only_pairs": 0,
+      "scanner_only_pairs": 0,
+      "native_evidence_sha256": "74ae42ae3340d13a501cb866a76d7433424e9f176ac463397ab8679309aee739",
+      "scope_sha256": "2a374380c972397fa45d4fce801601b0b07db5510de50217b85630209524af7b",
+      "server_started": false,
+      "backend_requests": 0
+    },
+    {
+      "kind": "native whole-input parser population; same-file L2 only",
+      "subject_sha": "0a5db852e18d1c22c62a5ede1412ac3f416111a0",
+      "binary_sha256": "da171e53846380fec10e8f0f6d435715e0f591bf4e6701983896efe2fb9fded2",
+      "reference_tier": "A",
+      "configs": 2,
+      "definitions": 5,
+      "references": 0,
+      "native_events": 0,
+      "classification": {},
+      "negative_controls": 0,
+      "native_only_pairs": 0,
+      "scanner_only_pairs": 0,
+      "native_evidence_sha256": "c4b27215ac308bd1687920ffa797c095cc80837222e2c3befe6ff37b11e143b9",
+      "scope_sha256": "023622df77d6d4ef0d018421ceb60f86f3dfb6f96252392b021399ede6a9d136",
+      "server_started": false,
+      "backend_requests": 0
+    },
+    {
+      "kind": "native whole-input parser population; same-file L2 only",
+      "subject_sha": "611fa05748a4031841e5607cd3069288b0aa9973",
+      "binary_sha256": "da171e53846380fec10e8f0f6d435715e0f591bf4e6701983896efe2fb9fded2",
+      "reference_tier": "A",
+      "configs": 11,
+      "definitions": 30,
+      "references": 1,
+      "native_events": 2,
+      "classification": {
+        "declarations": 1,
+        "native_local_sites": 1
+      },
+      "negative_controls": 1,
+      "native_only_pairs": 0,
+      "scanner_only_pairs": 0,
+      "native_evidence_sha256": "587afd12e1ec55a7b8d8b963f257f6d7cfabaf3acd9d188b8ba86a44120dd854",
+      "scope_sha256": "ee2582e64492e334e8420b9205eeee8791ca3e3ce977cb4fa761010c607e4348",
+      "server_started": false,
+      "backend_requests": 0
+    },
+    {
+      "kind": "native whole-input parser population; same-file L2 only",
+      "subject_sha": "ae3d567f871ea4b28a28a7f269f38030fe8157ba",
+      "binary_sha256": "da171e53846380fec10e8f0f6d435715e0f591bf4e6701983896efe2fb9fded2",
+      "reference_tier": "A",
+      "configs": 33,
+      "definitions": 44,
+      "references": 0,
+      "native_events": 0,
+      "classification": {},
+      "negative_controls": 0,
+      "native_only_pairs": 0,
+      "scanner_only_pairs": 0,
+      "native_evidence_sha256": "7efbe657e9d9ab75fa21c9b6e3970ed8a943c535a41139ccd7218e68096c12aa",
+      "scope_sha256": "f1f6b4f60d36d2cc8a5e24de247bea5ec7609b8ce55bbac6cb71d9186e99b152",
+      "server_started": false,
+      "backend_requests": 0
+    }
+  ],
+  "reading_sha256": "ba58b3c095d71c059d0c220c6d78bc93becac1b6f7d22c4c6a7fe7b71d360ec1",
+  "tracked_set_receipts": [
+    {
+      "subject": "awesome-compose",
+      "subpath": ".",
+      "before": {
+        "bytes": 11630978,
+        "entries": 502,
+        "files": 502,
+        "gitlinks": 0,
+        "sha256": "6deadd5e8726a11e5500d411e9e640f9faad91545fa6a015dfb7a3dcacabea21",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "after": {
+        "bytes": 11630978,
+        "entries": 502,
+        "files": 502,
+        "gitlinks": 0,
+        "sha256": "6deadd5e8726a11e5500d411e9e640f9faad91545fa6a015dfb7a3dcacabea21",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      }
+    },
+    {
+      "subject": "nginx",
+      "subpath": "conf",
+      "before": {
+        "bytes": 20034,
+        "entries": 9,
+        "files": 9,
+        "gitlinks": 0,
+        "sha256": "7e7cc58e43bf4ae4e31b4c0ecb57f73cec39064f5e333817d757ed60d86ab32d",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "after": {
+        "bytes": 20034,
+        "entries": 9,
+        "files": 9,
+        "gitlinks": 0,
+        "sha256": "7e7cc58e43bf4ae4e31b4c0ecb57f73cec39064f5e333817d757ed60d86ab32d",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      }
+    },
+    {
+      "subject": "nginx-demos",
+      "subpath": ".",
+      "before": {
+        "bytes": 2965783,
+        "entries": 462,
+        "files": 462,
+        "gitlinks": 0,
+        "sha256": "e95b7a76b9065b2ce3970389241864a6321b40bb38ec8c745da4d44dd107b61f",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "after": {
+        "bytes": 2965783,
+        "entries": 462,
+        "files": 462,
+        "gitlinks": 0,
+        "sha256": "e95b7a76b9065b2ce3970389241864a6321b40bb38ec8c745da4d44dd107b61f",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      }
+    },
+    {
+      "subject": "server-configs-nginx",
+      "subpath": ".",
+      "before": {
+        "bytes": 111381,
+        "entries": 53,
+        "files": 53,
+        "gitlinks": 0,
+        "sha256": "6f57bf230de5d091c800af88b487dc50cd06c2fa65afb00467a2ac2159beb410",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      },
+      "after": {
+        "bytes": 111381,
+        "entries": 53,
+        "files": 53,
+        "gitlinks": 0,
+        "sha256": "6f57bf230de5d091c800af88b487dc50cd06c2fa65afb00467a2ac2159beb410",
+        "symlinks": 0,
+        "untracked_entries": 0,
+        "untracked_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normative_recipe_sha256": "de1f63135629703372f6a68361a49d8f85951d30422b8b8b9e048c6f9c9b315e"
+      }
+    }
+  ],
+  "per_subject": [
+    {
+      "name": "awesome-compose",
+      "sha": "30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
+      "files": 1,
+      "bytes": 258,
+      "counts": {
+        "fathom_defs": 4,
+        "kind_equal": 4,
+        "matched": 4,
+        "oracle_defs": 4
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "name": "nginx",
+      "sha": "0a5db852e18d1c22c62a5ede1412ac3f416111a0",
+      "files": 2,
+      "bytes": 3707,
+      "counts": {
+        "fathom_defs": 5,
+        "kind_equal": 5,
+        "matched": 5,
+        "oracle_defs": 5
+      },
+      "families": {
+        "l1": "C"
+      }
+    },
+    {
+      "name": "nginx-demos",
+      "sha": "611fa05748a4031841e5607cd3069288b0aa9973",
+      "files": 11,
+      "bytes": 3563,
+      "counts": {
+        "fathom_defs": 30,
+        "kind_equal": 30,
+        "matched": 30,
+        "oracle_defs": 30,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "A"
+      }
+    },
+    {
+      "name": "server-configs-nginx",
+      "sha": "ae3d567f871ea4b28a28a7f269f38030fe8157ba",
+      "files": 21,
+      "bytes": 26198,
+      "counts": {
+        "fathom_defs": 32,
+        "kind_equal": 32,
+        "matched": 32,
+        "oracle_defs": 32
+      },
+      "families": {
+        "l1": "C"
+      }
+    }
+  ],
+  "before_L2": "good",
+  "after_L2": "excellent",
+  "scope_reconciliation": {
+    "native_inputs": 47,
+    "harness_files": 35,
+    "raw_definition_entries": 83,
+    "scored_definitions": 71,
+    "native_references_all_inputs": 1,
+    "scored_reference_truth": 1,
+    "harness_exclusion_notes": [
+      "server-configs-nginx: 12 files skipped by ingest's gates (ambiguous)",
+      "server-configs-nginx: 12 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (\u00a71.4)"
+    ]
+  }
+}
