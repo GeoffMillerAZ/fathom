@@ -55,3 +55,38 @@ Versions measured (2026-10-02): python 3.14.7; pyproject_hooks 1.3.3
 (5b8746b567a16a1fd506ce66ee28e89d46374526f52238aa1b96cc2c08245c63), setuptools 84.0.0
 (51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670), packaging 26.3
 (d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c); wheel sha256 in parentheses.
+
+## Setup.cfg and candidate audit (T-R2, X-R1)
+
+The landed `ini` decoder is Conan's line-oriented reader (`docdecode_ini.go`,
+LB-F125), not a general INI key/value parser. It retains each physical line as
+an independent `{text,key,value}` map in a section sequence. It does not fold
+continuation values or retain option/entry-point group ownership. `decode_files`
+can select it by basename, but cannot create those missing semantics. Merely
+adding setup.cfg to the basename registry would not implement this format.
+The small authored file in `testdata/setupcfg-continuation.cfg` demonstrates
+both a continued option and an inline entry-point declaration; it is a contract
+example, never calibration truth or a denominator fixture.
+
+| Candidate | Version / identity | Concrete result or limitation |
+|---|---|---|
+| Native PEP 517 backend metadata | flit_core 3.12.0, pdm-backend 2.5.0, setuptools 84.0.0 through pyproject_hooks 1.3.3 | Already run in the committed recipe; attests package/entry-point entities, not every unrelated tool namespace. |
+| PyPA dependency-groups | 1.3.2 | Already run; native include-group references are tier A. Does not evaluate tool namespaces or setup.cfg entry-point continuations. |
+| validate-pyproject | 0.27; wheel SHA256 6ad8a9a80480a5a833753f4e1c1b22cb01b8a5ad0015b1e9dbd4a5f8e898aba0 | Source inspected, not installed: schema declares `tool` merely as an object; `Validator.__call__` validates and returns the supplied mapping. Per-tool plugins add schemas for selected tools, not a native evaluator of arbitrary namespaces. |
+| PyPA pyproject-metadata | 0.12.1; wheel SHA256 f7162d580a96386a8eb096da06215f981f547d1490f03055ef99e323bc2da427 | Source inspected, not installed: `StandardMetadata.from_pyproject` reads `[project]` metadata, not unrelated tool-table entities or setup.cfg. |
+| pyproject-parser | 0.14.0; wheel SHA256 10adf69e48c2dcfb993f94b4981acfd7d0a201846bce17a67c9736f42505e790 | Source inspected, not installed: `PyProject.tool` is a generic dictionary. Walking it remains independent library evidence C, not native evaluation of each tool's configuration. |
+| Python ConfigParser | Python 3.9.6 standard library | Run on the authored example; folds the continued option as one value. It can locate syntax for a future native setuptools oracle but does not fix product decoding. |
+| Product Conan INI reader | fathom 5b84aa5b4, LB-F125 | Source inspected: one item per physical line, indentation trimmed. Missing continuation/option semantics require a shared decoder capability and affected-item regrades, held by T-R2. |
+
+Reproduce the syntax requirement without executing package code:
+
+```sh
+python3 -c 'import configparser; p=configparser.ConfigParser(); p.read("calibration/oracles/python-packaging/testdata/setupcfg-continuation.cfg"); assert p["options.entry_points"]["console_scripts"].strip()=="demo = package.cli:main"; assert p["options.entry_points"]["app.plugins"]=="plugin = package.plugins:Plugin"'
+```
+
+The published candidate versions and wheel digests were checked on 2026-10-25;
+source-interface findings above are not runtime failure claims. No claim is
+made that a tool is unavailable: native backend metadata already works. The
+mixed definitions tier and the setup.cfg decoder capability remain separate
+ceilings. Requirements files still need line/requirement grammar support; the
+Conan reader drops lines before a section, so it is not that decoder either.
