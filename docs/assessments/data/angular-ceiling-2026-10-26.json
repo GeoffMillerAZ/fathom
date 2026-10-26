@@ -1,0 +1,127 @@
+{
+  "attempt": {
+    "branch": "refused/angular-r1",
+    "product_source_commit": "e8e877b40d33f0a56cb224e5e7df9016940ee9d4",
+    "publication": "retained locally, never push",
+    "source_commit": "d4c576788db1409d0d22b072bbe042e2cbb734d2"
+  },
+  "canonical": {
+    "baseline_error_files": 13,
+    "bytes": 92694,
+    "experimental_error_files": 2,
+    "experimental_grade": {
+      "L1": "excellent",
+      "L2": "excellent",
+      "L3": "excellent",
+      "L4": "not-attempted"
+    },
+    "faults": 0,
+    "new_error_files": 0,
+    "reading_sha256": "5a86d4f8f4c2181dba23182fa67d0bf475e8269797e3fe836314cc590bbc0234",
+    "templates": 72
+  },
+  "controller_disposition": "R-R4 spent; Angular remains refused. Publish documentation only. Another repair cycle requires a new ruling.",
+  "date": "2026-10-26",
+  "experimental_module_sha256": "a525288bd96d88cc663f3bebdd57c58d99a0808f1ea604fd1bc3130168278450",
+  "grammar_candidate_pins": [
+    {
+      "commit": "1446e647e50df96f6d4b1039f121b10b5c2b2976",
+      "repo": "dlvandenberg/tree-sitter-angular",
+      "version": "v0.9.2"
+    },
+    {
+      "commit": "38a8014ed5452cd6b7cf1399c00177a1f5374256",
+      "repo": "dlvandenberg/tree-sitter-angular",
+      "version": "later highlights-only head"
+    },
+    {
+      "commit": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "repo": "tree-sitter/tree-sitter-html",
+      "version": "v0.23.2"
+    }
+  ],
+  "kind": "ceiling-only assessment of an unpublished experiment",
+  "landing_base": "6db920e72898abb20bf86c22652b401902e34598",
+  "ordinary_ingest_control": {
+    "angular_deferred": 55,
+    "context_refusals": 1,
+    "discovered": 297,
+    "exit_code": 0,
+    "extracted": 242,
+    "raw_json_sha256": "47ed9cbb5dec3b8fbc05ba64382355f19a3befd0d3fbc348ecf53e96c5eac658",
+    "read_failures": 0
+  },
+  "r4_subjects": [
+    {
+      "angular": "22.1.4",
+      "bytes": 415,
+      "license": "MIT",
+      "observation": "partial product reading only; L1 and L3 not attempted",
+      "partial_reading_sha256": "d9f49687f18aab54c80bb4e4f9ddeb011c3c75ea4b638ff007f2fda39bb04794",
+      "pin": "dcd546c8cf71da85e3d5869e351158207a677cc9",
+      "repo": "belnadris/angular-electron",
+      "syntax_error_files": 0,
+      "templates": 4,
+      "typescript": "6.0.3"
+    },
+    {
+      "angular": "22.2.0",
+      "bytes": 183994,
+      "compiler_probe_sha256": "6f921b0ed14cfa7267feec67c1e6250783d49942120991fbb52bc66c271c054b",
+      "converter_sha256": "51ebb89888e63791012cf885ed382a2aec6eed21278747e7bb2c9c6e4ba341d8",
+      "harness_refusal_sha256": "a42c4e82e3ffe8d2d4f6831eff011f0e6fb9a7a81dd92303127ecef77bce0026",
+      "license": "MIT",
+      "pin": "58a5297f827fb15267ca9627059410d08363a714",
+      "product_deferred_templates": 55,
+      "repo": "ng-alain/ng-alain",
+      "syntax_error_files": 2,
+      "template_set_sha256": "ca65c29d1d6b1d0824b68c6e259adb7d923e24b1d095333c83be77324a82cd2f",
+      "templates": 55,
+      "terminal_scan_sha256": "b66c8335a8d58fa2b27799b59c63ed607abe7377403236cbfda574281d43eb69",
+      "typescript": "6.0.3"
+    }
+  ],
+  "scope": "Frozen external templateUrl-owned HTML only. No holdout entered the canonical corpus. No post-result repair or regrade.",
+  "spent_ng_matero": {
+    "independent_error_files": 6,
+    "pin": "9e9d3af2ae8a03dff55bc671914afe9f0a0b6329",
+    "post_tuning_error_files": 0,
+    "ruling": "R-R4 makes this tuning data; it is no longer independent evidence",
+    "templates": 77
+  },
+  "terminal_result": {
+    "all_frozen_bars_passed": false,
+    "class_provenance": "manual terminal review of private scanner spans; aggregate counts only",
+    "context_failure_classes": [
+      {
+        "affected_templates": 55,
+        "class": "colon-qualified SVG element selector with an attribute qualifier interpreted as a CSS pseudo-class",
+        "classes": 1
+      }
+    ],
+    "grammar_class_overlap_files": 0,
+    "grammar_failure_classes": [
+      {
+        "class": "chained string concatenation before a pipe in interpolation",
+        "error_spans": 1,
+        "files": 1,
+        "missing_spans": 0
+      },
+      {
+        "class": "unary negative numeric literal in an if condition",
+        "error_spans": 1,
+        "files": 1,
+        "missing_spans": 0
+      }
+    ],
+    "pooled_accuracy": "unavailable",
+    "pooled_grade": false,
+    "pooled_median_three_throughput": "unavailable",
+    "syntax_only_bytes": 184409,
+    "syntax_only_error_files": 2,
+    "syntax_only_faults": 0,
+    "syntax_only_files": 59,
+    "syntax_only_missing_files": 0,
+    "syntax_only_under_five_percent": true
+  }
+}
