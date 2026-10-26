@@ -314,7 +314,7 @@ def self_test():
 
     malformed = (
         b"\x80" * 11,                         # varint over ten bytes
-        b"\xff" * 9 + b"\x02",               # tenth byte overflows uint64
+        wire(2, wire(1, b"a.kt") + b"\x30" + b"\xff" * 9 + b"\x02"),  # field-6 value overflows uint64
         b"\x80",                              # truncated varint
         b"\x12\x05x",                         # truncated length-delimited field
         b"\x09x",                             # truncated fixed64

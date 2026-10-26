@@ -11,8 +11,8 @@ refuses Exposed's Kotlin 2.3.20, and under 2.2.0 (with four `Uuid.generateV4/V7`
 indexed only what Gradle compiled (Exposed's three main modules, 166 of 794 files).
 Fathom's reader returned 58,698 empty legacy ranges with no symbol kind. Source-read
 correction (2026-10-26): scip-java writes typed-only ranges absent from Fathom's
-bundled reader. Missing producer ranges were not established; okhttp's Kotlin Multiplatform build needs an
-Android SDK. What it does write speaks the JVM's vocabulary (a Kotlin property is a field plus
+bundled reader. Missing producer ranges were not established.
+square/okhttp's Kotlin Multiplatform build needs an Android SDK. What scip-java writes speaks the JVM's vocabulary (a Kotlin property is a field plus
 `getX()`/`setX()`, a constructor is `<init>`), so even with ranges it would be the L3/L4 oracle,
 not the L1 one.
 KotlinPsiDump parses every file with the Kotlin compiler's own parser (PSI, from
