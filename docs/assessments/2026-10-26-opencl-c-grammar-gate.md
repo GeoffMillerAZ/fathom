@@ -33,7 +33,7 @@ The original patch passed **137** corpus cases; the semicolonless candidate pass
 Passing that corpus does not override the complete-project gate. The
 original [screen.json](data/opencl-c-grammar-gate-2026-10-26/screen.json) and
 [builds.json](data/opencl-c-grammar-gate-2026-10-26/builds.json) preserve the historical
-five-build descriptor and four original candidate metadata. The added row above brings
+five-build descriptor and five original candidate metadata records. The added row above brings
 the named grammar candidates to six. New receipts: [primary screen](data/opencl-c-grammar-gate-2026-10-26/semicolonless-screen.json),
 [145-case build](data/opencl-c-grammar-gate-2026-10-26/semicolonless-build.json), and
 [fresh original-patch rebuild](data/opencl-c-grammar-gate-2026-10-26/baseline-review-build.json).

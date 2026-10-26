@@ -208,6 +208,7 @@
     "patch_engine_race": {
       "command": "bash scripts/fathom-go.sh test -race -count=1 -run \"Test(Patch|ApplyPatches|BuildPatch|InTreePatch|VerifyGrammarPatch|PatchedProvenance)\" ./internal/extractor/tsengine",
       "result": "pass",
+      "scope": "Historical original candidate verification before this follow-up; no engine Go code changed.",
       "seconds": 6.639
     },
     "python": {
@@ -221,7 +222,7 @@
         "note": "Interpreter was supplied from the existing external workspace environment so creating it did not pre-create workspace in the fresh test checkout.",
         "passed": 83
       },
-      "historical_scope": "Original 83-pass result required preexisting workspace; binding m1 reproduced 16 tests/1 FileNotFoundError in a fresh no-hardlinks checkout. One-line parent-directory fix then passed all original83 from a clone that began without workspace. New route tests and fresh 91-test verification are separate and not yet recorded as run in this receipt.",
+      "historical_scope": "Original 83-pass result required preexisting workspace; binding m1 reproduced 16 tests/1 FileNotFoundError in a fresh no-hardlinks checkout. The parent-directory fix then passed the original seven files (83 tests) from a clone that began without workspace. The present eight-file suite passed 91 tests separately.",
       "passed": 91
     },
     "release_notes": {
