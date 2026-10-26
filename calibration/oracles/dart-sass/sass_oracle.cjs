@@ -59,7 +59,7 @@ const preamble = preambleFile ? fs.readFileSync(preambleFile, 'utf8') : '';
 
 const out = { tool: 'dart-sass', version: '', tier: 'A', definitions: [], imports: [] };
 const stats = { files: files.length, parse_failures: [], compiled_ok: 0, compile_failed: 0, statements: 0, paired: 0,
-  compile_fallback_attempted: 0, compile_fallback_succeeded: 0, compile_fallback_failed: 0,
+  compile_fallback_attempted: 0, compile_fallback_succeeded: 0, compile_fallback_attested: [], compile_fallback_failed: 0,
   setup: { load_paths: loadPaths.length, preamble: Boolean(preambleFile) },
   unattested_file: 0, no_loaded_target: 0, ambiguous: 0, builtin: 0, plain_css: 0, definitions: {} };
 const statements = []; // {path, line, url, kind}
@@ -239,6 +239,7 @@ for (const rel of files) {
         compiled = sass.compileString(preamble + fs.readFileSync(filename, 'utf8'),
           { ...options, url: pathToFileURL(filename) });
         stats.compile_fallback_succeeded++;
+        stats.compile_fallback_attested.push(rel);
       } catch (fallbackError) {
         stats.compile_fallback_failed++;
       }

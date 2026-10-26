@@ -101,6 +101,8 @@ test('configured load paths and preamble attest only successful subject loads', 
       '-preamble', path.join(fixture, 'preamble.scss')]);
     assert.equal(configured.stats.compile_fallback_attempted, 2);
     assert.equal(configured.stats.compile_fallback_succeeded, 1);
+    assert.deepEqual(configured.stats.compile_fallback_attested, ['works.scss']);
+    assert.deepEqual(plain.stats.compile_fallback_attested, []);
     assert.equal(configured.stats.compile_fallback_failed, 1);
     assert.deepEqual(configured.stats.setup, { load_paths: 2, preamble: true });
     assert.match(configured.stats.version, /^sass .*sass-parser /);

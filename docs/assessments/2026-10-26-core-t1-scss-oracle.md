@@ -5,9 +5,11 @@ The old L1 range ceiling was an adapter bug. Pinned sass-parser 0.4.57 exposes D
 now check inclusive ends, multiline declarations and selectors, loop-variable token spans,
 comments, Unicode/escaped identifiers and CRLF. A generic, explicit preamble/load-path fallback
 lets Sass evaluate test files using their own runner setup. Only successful reference compiles
-supply import truth. External support files never become subject files.
+supply import truth. Stderr diagnostics list each path attested by the fallback so later
+readings can audit its runner scope. External support files never become subject files.
 
-The complete discovered calibration corpus, with no `-only` filter, reads L1-L3 excellent:
+Measured: the [canonical reading](../bench/readings/lang/scss.json) holds computed grades
+and counts for the complete discovered corpus without a `-only` filter.
 
 | Instrument | Before | After |
 |---|---|---|
@@ -21,14 +23,16 @@ The complete discovered calibration corpus, with no `-only` filter, reads L1-L3 
 The source pins are unchanged: bootstrap v5.3.8 and primer/css v22.3.2. The eight files the
 reference parser rejects remain extracted and counted against symbol precision. Six Bootstrap
 test files compile with the exact preamble from its committed test runner and sass-true 9.0.0.
-The generated source excluded by ordinary discovery is disclosed in the reading. Three timing
+Ordinary production discovery excludes the vendored Bootstrap `scss/vendor/_rfs.scss`
+and Foundation `scss/vendor/normalize.scss` through its `vendor/` directory rule.
+The files are not generated and were not removed by a lane-only filter. Three timing
 runs on Apple silicon, under nice and an initial load below 9, read 2.20, 2.34 and 2.37 MB per
 CPU-second, median 2.34. Exploratory sandbox timing was discarded when nice reported a priority
 error; the committed timing was rerun with the required priority.
 
 A fresh independent holdout was pinned with unchanged success criteria in ffa03ef61 before its
 first oracle run: foundation-sites v6.9.0, commit f5c7d29db04e459d94a998df9d8fd4a4447e767b.
-No rule was changed after that reading. Its full corpus reads L2, L1/L2 excellent and L3 unmet:
+No rule was changed after that reading. Its computed grades are in the [independent reading](../bench/readings/lang/holdout/scss-foundation.json). Measured evidence:
 range agreement 1 (2,972/2,972), symbol recall .9927 and precision .9987, call recall .9985 and
 precision .9559, import resolution 1, file-edge recall 1 and precision .8239 (117/142). Twenty-five
 counted file pairs lack successful compile attestation. Median throughput is 2.74 MB per
