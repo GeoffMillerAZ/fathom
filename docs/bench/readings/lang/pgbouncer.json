@@ -111,7 +111,8 @@
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pgbouncer/pgbouncer: 1 files skipped by ingest's gates (ambiguous)",
-    "pgbouncer/pgbouncer: pgbouncer loaded 6 of 6 files on a scratch instance (0 read by the line scanner alone); 0 entries the scanner read and pgbouncer did not report were left out"
+    "pgbouncer/pgbouncer: pgbouncer loaded 6 of 6 files on a scratch instance (0 read by the line scanner alone); 0 entries the scanner read and pgbouncer did not report were left out",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 470726f)"
   ],
   "disposition": null
 }

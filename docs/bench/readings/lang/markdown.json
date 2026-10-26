@@ -166,6 +166,7 @@
   "notes": [
     "facebook/docusaurus: lychee 0.24.2 --offline: 498 local links it resolved, 344 distinct (section, file) pairs to another Markdown file of the subject, 8 (section, heading) references within a file (left out: 6 not markdown, 113 within its own file, not a reference); 72 links it could not resolve are not truth",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at bc26a8dc)",
     "rust-lang/book: lychee 0.24.2 --offline: 414 local links it resolved, 376 distinct (section, file) pairs to another Markdown file of the subject, 10 (section, heading) references within a file (left out: 28 not markdown); 573 links it could not resolve are not truth"
   ],
   "disposition": null

@@ -566,7 +566,8 @@
     "nestjs/nest: 517 members of an anonymous type literal scip-typescript defines (a `{ x?: T }` written as a type argument's, a parameter's, a variable's or a member's type, named under a counter-numbered `typeLiteral<n>:` descriptor: structural, no named declaration) are out of def_mapping's denominator (owner ruling S3, K19, LB-F511: scip_defs_type_literal, D2's object-literal principle on the type side), 2 of them a definition the dialect names as well (scip_defs_type_literal_named: a method signature), out of the numerator alike; a type alias's own members stay, and typed_recall's references to them stay",
     "nestjs/nest: 6722 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `<name><n>:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
     "nestjs/nest: 715 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at ab182509)"
   ],
   "disposition": null
 }

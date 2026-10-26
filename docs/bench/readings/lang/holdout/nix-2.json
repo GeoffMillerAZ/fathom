@@ -2,12 +2,13 @@
   "dialect": "nix",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L3",
+  "level_met": "L2",
   "grade": {
     "L1": "good",
     "L2": "good",
-    "L3": "good",
-    "L4": "not-applicable"
+    "L3": "unmet",
+    "L4": "not-applicable",
+    "L3_reason": "evidence: 5 references, under 20"
   },
   "measured_at": "2026-10-20",
   "fathom_commit": "83881dd53",
@@ -181,6 +182,7 @@
     "nix-community/nixvim: nix flake show --json --offline: ran; top-level outputs apps, checks, ci, devShells, flakeModule, flakeModules, formatter, homeManagerModules, homeModules, legacyPackages, lib, modules, nixDarwinModules, nixosModules, nixvimConfigurations, nixvimModules, overlays, packages, templates",
     "nix-community/nixvim: nix-parse: accepted=1363 cross_references=3 files=1364 rejected_by_parser=1",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 83881dd53)",
     "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
   ],
   "disposition": null

@@ -104,7 +104,8 @@
   "excluded_by_kind": {},
   "notes": [
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 470726f)"
   ],
   "disposition": null
 }

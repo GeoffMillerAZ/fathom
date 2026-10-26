@@ -239,7 +239,8 @@
     "react-bootstrap/react-bootstrap: 49 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "react-bootstrap/react-bootstrap: 622 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "react-bootstrap/react-bootstrap: 869 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `<name><n>:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
-    "react-bootstrap/react-bootstrap: restricted to src/**, test/**, tests/** (-only; the files outside are a disclosed gap, not measured)"
+    "react-bootstrap/react-bootstrap: restricted to src/**, test/**, tests/** (-only; the files outside are a disclosed gap, not measured)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 61967bd3)"
   ],
   "disposition": null
 }

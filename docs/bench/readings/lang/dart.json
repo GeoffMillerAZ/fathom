@@ -6,7 +6,7 @@
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "excellent",
+    "L3": "good",
     "L4": "excellent"
   },
   "measured_at": "2026-10-10",
@@ -689,7 +689,8 @@
     "import_resolution: 6 of 6 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.0145 (6 of 415) and recall 1 (6 of 6); 409 of 772 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "integration review 2026-09-29 (kept): the tags engine's @end capture is used by dialects/dart/tags.scm alone and only ever extends a definition; the scip-dart rules are keyed on scip-dart's symbols and SCIPOptionsFor(\"dart\"); the wave's dart commits (a4e653b6, e9efdbc2, 3ecb38d7) changed no other dialect's goldens, and TestDialectGoldens passes for every dialect",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "re-read 2026-10-10 (wave lf5 item cfam, K29: K25 ruling 3, f274aa29, landed after this reading's fathom cd4c1e9e; fathom f2b852ab, the eight packages at bloc-v9.2.1 60892540 and http-v1.5.0 b661894a, `dart pub get` and scip_dart 1.7.0 per package under Homebrew dart 3.13.4, indexes rebuilt): every metric and count reads as at cd4c1e9e; ruling 3 draws no file-edge truth pair to a second defining document in any package (no scip_file_edges_every_definer), so no grade moved: level_met L4, every level excellent"
+    "re-read 2026-10-10 (wave lf5 item cfam, K29: K25 ruling 3, f274aa29, landed after this reading's fathom cd4c1e9e; fathom f2b852ab, the eight packages at bloc-v9.2.1 60892540 and http-v1.5.0 b661894a, `dart pub get` and scip_dart 1.7.0 per package under Homebrew dart 3.13.4, indexes rebuilt): every metric and count reads as at cd4c1e9e; ruling 3 draws no file-edge truth pair to a second defining document in any package (no scip_file_edges_every_definer), so no grade moved: level_met L4, every level excellent",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at f2b852ab)"
   ],
   "disposition": null
 }

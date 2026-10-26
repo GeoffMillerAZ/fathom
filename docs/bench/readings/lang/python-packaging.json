@@ -143,6 +143,7 @@
   "notes": [
     "oracle tiers (wave ox, 2026-10-02, calibration/oracles/python-packaging): references are tier A, PyPA's dependency-groups 1.3.2 (the PEP 735 reference implementation pip's --group runs) returning each include-group of a group it looks up and resolves; definitions stay tier C: each package and route is the file's own build backend's evaluation (METADATA Name and entry_points.txt from prepare_metadata_for_build_wheel through pyproject_hooks 1.3.3: flit_core 3.12.0 for pip, pdm-backend 2.5.0 for fastapi, setuptools 84.0.0 for pip's chattymodule fixture) and each dependency group the reference implementation's, but a [tool.*] table has no evaluator, so tomllib (TOML's parser, not pyproject's) names the 19 sections, and one file carries one tier; lines come from the oracle's own line scanner",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 06051adc)",
     "requirements*.txt and setup.cfg are unclassified (no ini/lines doc-engine decode format exists, design Sec4); only pyproject.toml is measured here"
   ],
   "disposition": "partial: pyproject.toml meets the L2 target (L2 excellent on tier-A references; L1 good, tier C for the [tool.*] tables); requirements*.txt and setup.cfg are unclassified (LB-Q-python-packaging-rest)"

@@ -179,9 +179,10 @@
     "gfx-rs/wgpu: wgsl-parse rejects or times out on tests/tests/wgpu-gpu/shader/shader_test.wgsl",
     "gfx-rs/wgpu: wgsl-parse rejects or times out on wgpu-core/src/timestamp_normalization/common.wgsl",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 2da47f677)",
+    "throughput: three runs at one commit on an Apple-silicon development machine read 9.16, 9.14 and 8.42 MB/s (CPU basis, tenancy throughput_mb_s); the committed reading is the median run, 9.14 MB/s CPU (9.59 MB/s wall)",
     "webgpu/webgpu-samples: wgsl-parse rejects or times out on 1 of 76 .wgsl files (no definitions read from them)",
-    "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl",
-    "throughput: three runs at one commit on an Apple-silicon development machine read 9.16, 9.14 and 8.42 MB/s (CPU basis, tenancy throughput_mb_s); the committed reading is the median run, 9.14 MB/s CPU (9.59 MB/s wall)"
+    "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl"
   ],
   "disposition": "Native WGSL L3 ceiling (assessment 2026-10-25, docs/assessments/2026-10-25-wgsl-native-l3-ceiling.md): standard WGSL has no source-file import relation and naga parses one source string into one module. Import resolution and file-edge metrics remain unmeasured, not perfect. Existing wesl 0.6.0 and naga_oil 0.23.0 resolvers target separate non-standard module formats, outside the unchanged standard WGSL corpus. Retry on an owner-ruled separate queue entry for WESL (.wesl, wesl-rs resolver) or naga_oil #import shaders, with its own pinned corpus holding at least 20 independent references in each graded L3 denominator (D19, MinL3Evidence 20, landing in issue #7); or a future standard WGSL import facility."
 }

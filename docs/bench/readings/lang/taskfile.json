@@ -2,12 +2,13 @@
   "dialect": "taskfile",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L3",
+  "level_met": "L2",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "excellent",
-    "L4": "not-applicable"
+    "L3": "unmet",
+    "L4": "not-applicable",
+    "L3_reason": "evidence: 14 references, under 20"
   },
   "measured_at": "2026-10-02",
   "fathom_commit": "72c29c13",
@@ -193,6 +194,7 @@
     "not claimed: an included Taskfile under another name (Taskfile.docker.yml, tasks/build.yml) is not one of go-task's eight basenames, so it is neither read nor an include target; a namespaced call (task: docs:build), a label and an alias are names that match no local task",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "references are tier A (wave ox, 2026-10-02) by ablation (calibration/oracles/taskfile -ablate, ablate.go, the kustomize rule): each deps entry, task: call and deferred call is cut from a scratch copy and go-task 3.52.0 `task --dry --force <task>` then names another set of tasks or refuses the run (90 of 91); the copy has every sh: and if: value set to true, so no subject shell runs (go-task/task's release task would otherwise run `go run ./cmd/release`), and every variable a task requires gets a placeholder (example.com, an enum's first value); the one reference not attested is runtime-radar's kube-manager test-docker calling test-docker-cleanup, a task the file never declares, which the dialect draws and the tool cannot run (ref_precision .989)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 72c29c13)",
     "subjects: the queue's two are thin, because the connector never reads testdata and go-task/task keeps 180 of its 183 Taskfiles there: fathom sees 3 of its Taskfiles and go-task/examples' 1 (43 definitions, 20 references and one include, a directory, between them). Runtime-Radar/runtime-radar v0.3.0 (Apache-2.0, sparse checkout of its Taskfiles) is added to the queue's two: a monorepo whose root Taskfile includes twelve per-service Taskfiles by file path (14 Taskfiles, 221 definitions, 71 references, 13 includes). All three: 18 Taskfiles, 264 definitions, 91 references, 14 include edges"
   ],
   "disposition": null

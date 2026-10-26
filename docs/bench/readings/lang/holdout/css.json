@@ -138,9 +138,10 @@
   },
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pure: the 3 misses are one selector each that tree-sitter-css v0.25.0 does not parse, an attribute selector with spaces around its operator (`.pure-g [class *= \"pure-u\"]`): the dialect names `.pure-g` while ctags writes the whole selector; the same shape leaves 7 of pure's 23 files with an ERROR node",
     "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
-    "the holdout for K19's CSS rule (LB-F423, O798): both subjects were pinned in calibration/corpus.d/css-holdout.yaml in the commit that adds the rule (2d0e330c), before it ran on either, and this is the one reading taken; nothing was tuned after it",
-    "pure: the 3 misses are one selector each that tree-sitter-css v0.25.0 does not parse, an attribute selector with spaces around its operator (`.pure-g [class *= \"pure-u\"]`): the dialect names `.pure-g` while ctags writes the whole selector; the same shape leaves 7 of pure's 23 files with an ERROR node"
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 2d0e330c)",
+    "the holdout for K19's CSS rule (LB-F423, O798): both subjects were pinned in calibration/corpus.d/css-holdout.yaml in the commit that adds the rule (2d0e330c), before it ran on either, and this is the one reading taken; nothing was tuned after it"
   ],
   "disposition": null
 }

@@ -179,12 +179,13 @@
     "ctags:vector": 218
   },
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "L1 oracle: universal-ctags 6.2.1 (tier B), function kind (f), anonymous definitions off; its variable kinds (globalVar, functionVar, vector, list, dataframe, nameattr) are no dialect kind and are left out by the kind intersection (5,826 on dplyr, 2,633 on testthat). Names are compared whole (manifest name_match identity): the harness's bare rule cuts a leading dot, so `.onLoad` and `.rlang_check_is_string` would never match the oracle's.",
     "27 dialect-only definitions are oracle misses, not definitions that do not exist. dplyr 20: universal-ctags tags nothing in R/grouped-df.R after compute_groups (lines 34-99, whose body holds `\".rows\" := new_rows`). testthat 7: three `<<-` function assignments in R/otel.R (inside local({ })), which the dialect reads and ctags and the upstream tags query do not, and four backslash lambdas (`f <- \\() message(\"!\")`) ctags does not read. 1 oracle-only definition: testthat's tests/testthat/reporters/backtraces.R `conditionMessage.foobar`, a name in an argument list (`rlang::local_bindings(conditionMessage.foobar = function(...) ...)`) that ctags tags and the dialect, reading assignments only, does not.",
+    "Embedded grammar: r.wasm.gz 573,742 bytes raw, 107,258 bytes gzip (internal/extractor/tsengine/grammars/grammars.lock.json).",
+    "L1 oracle: universal-ctags 6.2.1 (tier B), function kind (f), anonymous definitions off; its variable kinds (globalVar, functionVar, vector, list, dataframe, nameattr) are no dialect kind and are left out by the kind intersection (5,826 on dplyr, 2,633 on testthat). Names are compared whole (manifest name_match identity): the harness's bare rule cuts a leading dot, so `.onLoad` and `.rlang_check_is_string` would never match the oracle's.",
     "L2 oracle: the grammar's own upstream queries/tags.scm (r-lib/tree-sitter-r v1.3.0, MIT) run by py-tree-sitter 0.25.2 (tier C, calibration/oracles/ts-tags), 4,534 pairs on dplyr and 3,335 on testthat. The dialect's tags.scm descends from the same query, so the oracle is independent in runtime, not in query shape. The 11 dialect-only pairs are the calls inside the three R/otel.R `<<-` functions above (upstream reads `<-` and `=` only, so it pairs them with no function).",
     "Not extracted, on purpose: S4 and R6 classes (setClass, R6Class) and setMethod definitions, a function held in a list or environment slot (obj$method <- function), `->` assignments, library() and source() edges. L3 is not attempted. One calibration file parses with an error (testthat's tests/testthat/test-parallel/syntax-error/tests/testthat/test-error-1.R, a fixture of a syntax error).",
-    "Embedded grammar: r.wasm.gz 573,742 bytes raw, 107,258 bytes gzip (internal/extractor/tsengine/grammars/grammars.lock.json)."
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at d9c32d98)"
   ],
   "disposition": null
 }

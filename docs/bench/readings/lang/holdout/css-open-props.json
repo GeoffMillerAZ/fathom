@@ -155,7 +155,8 @@
     "import_resolution: 42 of 42 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 1 (42 of 42) and recall 1 (42 of 42); 0 of 42 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "open-props: 371 oracle and 372 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 107f6f11)"
   ],
   "disposition": null
 }

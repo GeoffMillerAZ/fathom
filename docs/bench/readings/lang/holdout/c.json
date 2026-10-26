@@ -236,6 +236,7 @@
     "libevent/libevent: include-path resolution read 1 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 1432 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 13 for no definer among the files read and 60 for definers the build does not compile",
     "libevent/libevent: range_agreement measured against clang-ast's AST (tier A, Apple clang version 21.0.0 (clang-2100.3.34.2): 61 translation units, 0 it could not dump): the first and last line of each function with a body, struct or union with a body, enum and typedef, 2008 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); a macro has no AST node and is not scored, and the index's L1 oracle (scip-clang, no end line) is unchanged",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 9b2e7439)",
     "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier A)"
   ],
   "disposition": null
