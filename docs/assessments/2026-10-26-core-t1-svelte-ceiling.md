@@ -12,3 +12,17 @@ Measured baseline: [svelte reading](../bench/readings/lang/svelte.json). No new 
 Ruling C-R1 (#20) retains the existing ceiling. The brief unmeasured label was wrong: the committed compiler reading already exists.
 
 Governing row: `LB-Q-svelte-rest`. No extractor, reading, corpus, holdout, epoch, or generated board changes.
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / parser | [svelte/compiler](https://svelte.dev/docs/svelte/svelte-compiler), registry **5.57.2** ([npm](https://registry.npmjs.org/svelte/latest)), is the same first-party compiler measured by the current reading. The C-R1 kind-policy limit remains. |
+| SCIP / LSIF | Shared catalogs and [GitHub `scip-svelte` search](https://github.com/search?q=scip-svelte&type=repositories) yielded no measured separate indexer. Negative search does not exhaust future tools. |
+| Language server | [Svelte language server](https://github.com/sveltejs/language-tools), registry **0.18.5** ([npm](https://registry.npmjs.org/svelte-language-server/latest)), has navigation services. **LIVE UNMEASURED** for source-aligned component references; it does not waive C-R1 canonical-kind policy. |
+| Registry AST | [Compiler AST API](https://svelte.dev/docs/svelte/svelte-compiler) is already in the first-party reading; no new 5.57.2 AST result is claimed. |
+| Runtime tracing | [Svelte $inspect.trace](https://svelte.dev/docs/svelte/$inspect) observes executed reactive code, not the complete declaration/call graph. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.
