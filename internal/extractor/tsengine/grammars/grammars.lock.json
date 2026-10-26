@@ -234,6 +234,35 @@
       "gz_bytes": 229991
     },
     {
+      "blob": "glsl",
+      "repo": "tree-sitter-grammars/tree-sitter-glsl",
+      "tag": "v0.2.0",
+      "commit": "e47b8b62b59d0e3529f1c31b03e025d6bd475044",
+      "tarball_sha256": "65d098362f9ffd47e9bf5916133ed24ccf934b01027debdaeeb46ff3ec41caf0",
+      "licence": "MIT",
+      "entry_points": [
+        "tree_sitter_glsl"
+      ],
+      "subdirs": [],
+      "scanner": false,
+      "generate": true,
+      "predicate_export": true,
+      "patches": [
+        {
+          "path": "patches/glsl/0001-glsl-syntax.patch",
+          "sha256": "8647feaff6f6217269902cab7c333715ac295c9c249d9a9da083537ce95d403f"
+        },
+        {
+          "path": "patches/glsl/0002-pin-inherited-c-grammar.patch",
+          "sha256": "9fe569b9e16912319522f2911d4ed0c92bf976ddfe3a9545e2dd83f80bdfe960"
+        }
+      ],
+      "abi": 15,
+      "blob_sha256": "678ef71680ed0224d732400e55685ca16eba32b126382449497d193e048fcba6",
+      "blob_bytes": 698675,
+      "gz_bytes": 160436
+    },
+    {
       "blob": "gotemplate",
       "repo": "ngalaiko/tree-sitter-go-template",
       "tag": "aa71f63de226c5592dfbfc1f29949522d7c95fac",

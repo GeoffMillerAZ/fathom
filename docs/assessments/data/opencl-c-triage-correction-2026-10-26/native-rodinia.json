@@ -1,0 +1,85 @@
+{
+  "checkout_unchanged": true,
+  "eligible": {
+    "bytes": 297447,
+    "files": 31
+  },
+  "expected_commit": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+  "grammars": [
+    {
+      "abi_version": 14,
+      "both_count": 0,
+      "clean_count": 28,
+      "clean_rate": 0.9032258064516129,
+      "error_only_count": 2,
+      "error_or_missing_count": 3,
+      "fault_count": 0,
+      "id": "opencl",
+      "library_sha256": "fd8ab192178f160a6cf2ed22c2aa378d69a1d6c93edf13a65bd8cbed07b8d51e",
+      "missing_only_count": 1,
+      "parsed_count": 31,
+      "population_count": 31
+    },
+    {
+      "abi_version": 15,
+      "both_count": 2,
+      "clean_count": 0,
+      "clean_rate": 0.0,
+      "error_only_count": 29,
+      "error_or_missing_count": 31,
+      "fault_count": 0,
+      "id": "c",
+      "library_sha256": "8ddc36a951aacd8b8ed99e70bdb07491507627b1726ea1020cf9ee6d675752b8",
+      "missing_only_count": 0,
+      "parsed_count": 31,
+      "population_count": 31
+    }
+  ],
+  "schema": "opencl-c-native-triage-v1",
+  "scope": "native grammar parse triage only",
+  "tracked": {
+    "after": {
+      "bytes": 102910671,
+      "entries": 1355,
+      "gitlinks": 0,
+      "manifest_sha256": "9128b06a4086cbe8dd9ddd4c1f1b2c8b7c5667189219c169591d14382ca619c1",
+      "regular_bytes": 102910671,
+      "regular_files": 1355,
+      "stage_bytes": 116586,
+      "stage_sha256": "8fbec3395fd29af8e0b45ab462ab1b5f1cc9463b534ed8e810f7ef0862f30219",
+      "symlink_target_bytes": 0,
+      "symlinks": 0
+    },
+    "before": {
+      "bytes": 102910671,
+      "entries": 1355,
+      "gitlinks": 0,
+      "manifest_sha256": "9128b06a4086cbe8dd9ddd4c1f1b2c8b7c5667189219c169591d14382ca619c1",
+      "regular_bytes": 102910671,
+      "regular_files": 1355,
+      "stage_bytes": 116586,
+      "stage_sha256": "8fbec3395fd29af8e0b45ab462ab1b5f1cc9463b534ed8e810f7ef0862f30219",
+      "symlink_target_bytes": 0,
+      "symlinks": 0
+    },
+    "unchanged": true
+  },
+  "tree_sitter": "0.25.2",
+  "untracked": {
+    "after": {
+      "files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unignored_files": 0
+    },
+    "before": {
+      "files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unignored_files": 0
+    },
+    "unchanged": true
+  }
+}

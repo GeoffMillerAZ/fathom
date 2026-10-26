@@ -165,6 +165,7 @@
     "import_resolution: 117 of 117 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.8239 (117 of 142) and recall 1 (117 of 117); 25 of 154 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 1 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at ffa03ef61)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at ffa03ef61)",
     "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 2.76 MB/CPU-s; run 2: 2.73 MB/CPU-s; run 3: 2.74 MB/CPU-s; median run 3: 2.74 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit ffa03ef61"
   ],
   "disposition": null

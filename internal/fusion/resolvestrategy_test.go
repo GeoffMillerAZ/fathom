@@ -330,7 +330,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	if g := fileResolveLangFor("a.scss"); g != "scss" {
 		t.Errorf("fileResolveLangFor(a.scss) = %q, want scss", g)
 	}
-	for path, lang := range map[string]string{"a.j2": "jinja2", "a.jinja": "jinja2", "a.jinja2": "jinja2", "a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart", "a.swift": "swift", "a.proto": "protobuf", "build.gradle": "gradle", "build.gradle.kts": "kotlin", "a.rego": "rego"} {
+	for path, lang := range map[string]string{"a.j2": "jinja2", "a.jinja": "jinja2", "a.jinja2": "jinja2", "a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart", "a.swift": "swift", "a.proto": "protobuf", "build.gradle": "gradle", "build.gradle.kts": "kotlin", "a.rego": "rego", "shader.glsl": "", "shader.vert": "", "shader.comp": ""} {
 		if g := fileResolveLangFor(path); g != lang {
 			t.Errorf("fileResolveLangFor(%s) = %q, want %q", path, g, lang)
 		}

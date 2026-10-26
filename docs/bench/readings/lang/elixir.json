@@ -234,6 +234,7 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "phoenixframework/phoenix: elixir-ast (tier B): 524 alias, import, require and use statements naming a literal module in 177 files (0 the parser rejected); 305 edges to the file(s) whose defmodule defines the module (nested defmodules expanded; a self-reference is no edge), 199 statements name a module no subject file defines (Logger, a dependency), 9 name no static module (`alias __MODULE__.Foo`, `use unquote(m)`), counted and never listed",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 6c9c8ff6)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at 6c9c8ff6)",
     "universal-ctags 6.2.1, the row's named oracle, is not the L1 grade (design D2, observation O1327): it tags `def`/`defmodule` inside heredocs (119 def, 50 defmodule, 22 defp oracle-only on Phoenix) and ends modules at them. Against ctags the same dialect reads sym_recall .9302 and .9617, sym_precision .9985 and .9997, kind_agreement 1, signature_coverage 1 and range_agreement .5965 and .5857 on Phoenix and Ecto, which is level none at L1 on range alone. ExUnit `test` blocks (2,877 in the two subjects) are extracted (kind ElixirTest, canonical `test`) and outside the scored kinds: ctags writes their names with spaces, which the harness's last-segment name rule cannot compare."
   ],
   "disposition": null

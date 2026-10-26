@@ -1,0 +1,251 @@
+{
+  "dialect": "glsl",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "8eaab47019c68a214fe549f9692e9507b75621fd",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "KhronosGroup/SPIRV-Cross",
+      "sha": "f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7",
+      "files": 306,
+      "bytes": 176454,
+      "counts": {
+        "call_fathom": 138,
+        "call_fathom_in_truth": 122,
+        "call_pairs_excluded_fathom": 777,
+        "call_truth": 122,
+        "call_truth_found": 122,
+        "callables": 439,
+        "callables_signed": 439,
+        "fathom_defs": 536,
+        "kind_equal": 529,
+        "matched": 529,
+        "oracle_defs": 564,
+        "range_eligible": 529,
+        "range_ok": 529
+      },
+      "families": {
+        "calls": "B",
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "function",
+        "macro",
+        "struct"
+      ],
+      "excluded_by_kind": {
+        "fathom:GlslInterfaceBlock": 214,
+        "fathom:GlslVariable": 689
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 19,
+        "extract_ms": 126.896,
+        "extract_cpu_ms": 129.377,
+        "max_file_ms": 4,
+        "peak_module_pages": 322,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "KhronosGroup/Vulkan-Samples",
+      "sha": "69622af06f7652c7fc9b9a9180e7142046315cbc",
+      "files": 309,
+      "bytes": 565006,
+      "counts": {
+        "call_fathom": 147,
+        "call_fathom_in_truth": 109,
+        "call_pairs_excluded_fathom": 1099,
+        "call_truth": 109,
+        "call_truth_found": 109,
+        "callables": 400,
+        "callables_signed": 400,
+        "fathom_defs": 592,
+        "kind_equal": 592,
+        "matched": 592,
+        "oracle_defs": 672,
+        "range_eligible": 592,
+        "range_ok": 592
+      },
+      "families": {
+        "calls": "B",
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "function",
+        "macro",
+        "struct"
+      ],
+      "excluded_by_kind": {
+        "fathom:GlslInterfaceBlock": 337,
+        "fathom:GlslVariable": 1141
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 20,
+        "extract_ms": 193.4939999999999,
+        "extract_cpu_ms": 196.4169999999999,
+        "max_file_ms": 6,
+        "peak_module_pages": 322,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "SaschaWillems/Vulkan",
+      "sha": "1cbc8d87b731b438f47dea00a2e083ba7d59051d",
+      "files": 353,
+      "bytes": 293383,
+      "counts": {
+        "call_fathom": 105,
+        "call_fathom_in_truth": 101,
+        "call_pairs_excluded_fathom": 1364,
+        "call_truth": 101,
+        "call_truth_found": 101,
+        "callables": 449,
+        "callables_signed": 449,
+        "fathom_defs": 529,
+        "kind_equal": 529,
+        "matched": 529,
+        "oracle_defs": 580,
+        "range_eligible": 529,
+        "range_ok": 529
+      },
+      "families": {
+        "calls": "B",
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "function",
+        "macro",
+        "struct"
+      ],
+      "excluded_by_kind": {
+        "fathom:GlslInterfaceBlock": 298,
+        "fathom:GlslVariable": 1619
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 162.29299999999992,
+        "extract_cpu_ms": 165.65000000000003,
+        "max_file_ms": 2,
+        "peak_module_pages": 322,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "glslangValidator -i",
+      "version": "16.6.0"
+    },
+    {
+      "tier": "C",
+      "tool": "universal-ctags (C parser over GLSL)",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.8513,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9958,
+    "sym_recall": 0.9086,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "kind_agreement": "C",
+    "range_agreement": "C",
+    "signature_coverage": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "function",
+    "macro",
+    "struct"
+  ],
+  "kind_intersection": [
+    "function",
+    "macro",
+    "struct"
+  ],
+  "counts": {
+    "call_fathom": 390,
+    "call_fathom_in_truth": 332,
+    "call_pairs_excluded_fathom": 3240,
+    "call_truth": 332,
+    "call_truth_found": 332,
+    "callables": 1288,
+    "callables_signed": 1288,
+    "fathom_defs": 1657,
+    "kind_equal": 1650,
+    "matched": 1650,
+    "oracle_defs": 1816,
+    "range_eligible": 1650,
+    "range_ok": 1650
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 39,
+    "throughput_mb_s": 2.11,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.14,
+    "max_file_ms": 6,
+    "peak_module_pages": 322,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:GlslInterfaceBlock": 849,
+    "fathom:GlslVariable": 3449
+  },
+  "notes": [
+    "GLSL CPU throughput: three full-corpus runs 2.11, 2.09, 2.12 MB/s; median run 1 (2.11 MB/s)",
+    "GLSL exclusion catalog: full-registry SHA-256 bc10197e4a50b121c13e56bee2f5536714515c3d94296cb260bc6922a658d6e5; 821 functions, 351 type identifiers",
+    "GLSL oracle coverage: vulkan 341/353 parsed, 101 call pairs, rejects {'parse_failed': 3, 'compile_failed': 3, 'fragment_or_unknown_stage': 6}; spirv-cross 306/306 parsed, 122 call pairs, rejects {}; vulkan-samples 295/309 parsed, 109 call pairs, rejects {'fragment_or_unknown_stage': 2, 'no_pinned_cmake_declaration': 12}; every file remains in the reading (no -only)",
+    "GLSL oracle receipts: vulkan subject 1cbc8d87b731b438f47dea00a2e083ba7d59051d, oracle SHA-256 5ec2568b7cc8920a3ac0b67fbf6913e8dd5d83f1c07f51309c0003a312f422aa, receipt SHA-256 7143f6e6698d3034ee56632bc7b8d27ae8543e1a31264989671821299ac8b048; spirv-cross subject f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7, oracle SHA-256 3aff29f931d04e914a55ec012520d6e2cb68eefeb11d66da9efb9282f783804b, receipt SHA-256 b3c096cbb7fdbfbc00804835a12bdd277e8ca39564d8682e03e15e3796a1c39d; vulkan-samples subject 69622af06f7652c7fc9b9a9180e7142046315cbc, oracle SHA-256 88e22324cc651b17ddf87415f4acc611a2dcdc8970086aa5c98d6f7113891e9d, receipt SHA-256 f381de86635f393213e5c4c164a42c740bc07e483a08267f7354f6aca618ae4c",
+    "GLSL source commit: 8eaab47019c68a214fe549f9692e9507b75621fd",
+    "GLSL tenancy parse errors: KhronosGroup/SPIRV-Cross 19/306; KhronosGroup/Vulkan-Samples 20/309; SaschaWillems/Vulkan 0/353; pooled 39/968 (4.0%)",
+    "KhronosGroup/SPIRV-Cross: GLSL exclusion catalog fingerprint sha256=bc10197e4a50b121c13e56bee2f5536714515c3d94296cb260bc6922a658d6e5",
+    "KhronosGroup/SPIRV-Cross: L1 oracle is universal-ctags 6.2.1's C parser run over 306 GLSL files (--map-C for each GLSL extension): ctags has no GLSL parser, so it is a foreign parser, tier C, and L1 caps at good (owner ruling G1); kinds outside function, struct and macro (member 107, variable 464) are not graded",
+    "KhronosGroup/SPIRV-Cross: R5 M2 canonical replay at clean review-fix source; nice10, initial load1<=9, GOMAXPROCS=2, GOFLAGS=-p=2, GOWORK=off; median of three runs on shared Apple Silicon host",
+    "KhronosGroup/SPIRV-Cross: glslangValidator -i grades calls on its scope, 306 of 306 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
+    "KhronosGroup/SPIRV-Cross: glslangValidator 16.6.0 -i parsed 306/306 GLSL files; see per-file invocation and diagnostics receipt",
+    "KhronosGroup/Vulkan-Samples: GLSL exclusion catalog fingerprint sha256=bc10197e4a50b121c13e56bee2f5536714515c3d94296cb260bc6922a658d6e5",
+    "KhronosGroup/Vulkan-Samples: L1 oracle is universal-ctags 6.2.1's C parser run over 309 GLSL files (--map-C for each GLSL extension): ctags has no GLSL parser, so it is a foreign parser, tier C, and L1 caps at good (owner ruling G1); kinds outside function, struct and macro (member 131, variable 656) are not graded",
+    "KhronosGroup/Vulkan-Samples: R5 M2 canonical replay at clean review-fix source; nice10, initial load1<=9, GOMAXPROCS=2, GOFLAGS=-p=2, GOWORK=off; median of three runs on shared Apple Silicon host",
+    "KhronosGroup/Vulkan-Samples: Vulkan-Samples glslc/per-target inputs are translated to glslang; tier B",
+    "KhronosGroup/Vulkan-Samples: glslangValidator -i grades calls on its scope, 295 of 309 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
+    "KhronosGroup/Vulkan-Samples: glslangValidator 16.6.0 -i parsed 295/309 GLSL files; see per-file invocation and diagnostics receipt",
+    "SaschaWillems/Vulkan: GLSL exclusion catalog fingerprint sha256=bc10197e4a50b121c13e56bee2f5536714515c3d94296cb260bc6922a658d6e5",
+    "SaschaWillems/Vulkan: L1 oracle is universal-ctags 6.2.1's C parser run over 353 GLSL files (--map-C for each GLSL extension): ctags has no GLSL parser, so it is a foreign parser, tier C, and L1 caps at good (owner ruling G1); kinds outside function, struct and macro (member 130, variable 678) are not graded",
+    "SaschaWillems/Vulkan: R5 M2 canonical replay at clean review-fix source; nice10, initial load1<=9, GOMAXPROCS=2, GOFLAGS=-p=2, GOWORK=off; median of three runs on shared Apple Silicon host",
+    "SaschaWillems/Vulkan: glslangValidator -i grades calls on its scope, 341 of 353 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
+    "SaschaWillems/Vulkan: glslangValidator 16.6.0 -i parsed 341/353 GLSL files; see per-file invocation and diagnostics receipt",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at 8eaab47019c68a214fe549f9692e9507b75621fd)"
+  ],
+  "disposition": null
+}

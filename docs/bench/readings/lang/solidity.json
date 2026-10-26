@@ -245,6 +245,7 @@
     "foundry-rs/forge-std: 632 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 1cd3b320c)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at 1cd3b320c)",
     "transmissions11/solmate: restricted to auth/Auth.sol, auth/authorities/RolesAuthority.sol, test/utils/DSInvariantTest.sol, test/utils/Hevm.sol, test/utils/mocks/MockAuthChild.sol, test/utils/mocks/MockAuthority.sol, test/utils/mocks/MockERC1155.sol, test/utils/mocks/MockERC20.sol, test/utils/mocks/MockERC721.sol, test/utils/users/ERC1155User.sol, test/utils/users/ERC20User.sol, test/utils/users/ERC721User.sol, test/utils/users/GenericUser.sol, tokens/ERC1155.sol, tokens/ERC20.sol, tokens/ERC721.sol, tokens/WETH.sol, utils/Bytes32AddressLib.sol, utils/CREATE3.sol, utils/FixedPointMathLib.sol, utils/ReentrancyGuard.sol, utils/SafeCastLib.sol, utils/SafeTransferLib.sol, utils/SSTORE2.sol (-only; the files outside are a disclosed gap, not measured)"
   ],
   "disposition": null

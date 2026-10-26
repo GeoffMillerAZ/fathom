@@ -162,6 +162,7 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at a143e02c)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at a143e02c)",
     "the holdout for W5 (LB-Q-scss-rest, O851): angular/components 21.0.2 was pinned in calibration/corpus.d/scss-holdout.yaml in the commit that adds the rule (6394b547), before the rule ran on any subject; this is the reading taken. One scratch run of an incomplete dialect (before the repeated-field and for-loop queries) preceded it (its aggregate counts were seen with the calibration subjects, no pair of it was read and nothing was tuned to it), and no query, harness rule or threshold changed after this reading; a later rule change needs a new holdout"
   ],
   "disposition": null

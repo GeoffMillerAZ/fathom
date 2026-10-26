@@ -1,0 +1,5 @@
+{
+  "superseded_by": "native-positions-summary-r4.json",
+  "previous_receipt_sha256": "e3c53c537b332ed01c7c71b3adbf113ee26efebafe4f853ae97d2e97f9678ac4",
+  "authority_note": "The original line-ablation proof was vacuous. Its L1 A label was not accepted; use the r4 before/after native callback brackets and new full-population receipt."
+}

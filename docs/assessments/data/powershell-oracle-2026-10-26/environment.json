@@ -1,0 +1,51 @@
+{
+  "canonical_reading_changed": false,
+  "declared_test_dependency": "PSScriptAnalyzer tools/installPSResources.ps1 pins Pester 5.7.1; Pester subject remains its own 6.2.0 release",
+  "fetch": {
+    "modules": {
+      "PSScriptAnalyzer 1.25.0": {
+        "package_sha256": "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60",
+        "source": "matching released PowerShell Gallery module package",
+        "version": "1.25.0"
+      },
+      "Pester 5.7.1": {
+        "package_sha256": "4a27904c6814a5fbe4758f8e49861f6a1994aee77b71165a5c43c0371ba6c580",
+        "source": "matching released PowerShell Gallery module package",
+        "version": "5.7.1"
+      },
+      "Pester 6.2.0": {
+        "package_sha256": "e6ac7418d4f12500269aaca58ae56cf1caafbbf1afa2cec334e289d1cf50a239",
+        "source": "matching released PowerShell Gallery module package",
+        "version": "6.2.0"
+      }
+    },
+    "pwsh": {
+      "archive_sha256": "a1c7e98ac403da4be5ba75c1c5855af272de7787a91d478c4267466fe58fc1af",
+      "version": "7.6.9"
+    },
+    "subjects": {
+      "pester": {
+        "checkout": "complete Git tree",
+        "revision": "98e56d65da1642a7158992b50ded240c42a3ac18",
+        "subpath": "."
+      },
+      "psa": {
+        "checkout": "complete original Tests subtree; no other repository content is claimed",
+        "revision": "f05704df81b2aca17dc027ee39b3fce106d418fc",
+        "subpath": "Tests"
+      }
+    }
+  },
+  "psa-runtime-inputs": {
+    "graded_scope": "Tests unchanged",
+    "revision": "f05704df81b2aca17dc027ee39b3fce106d418fc",
+    "runtime_inputs": "complete original pinned repository: rule documentation, compatibility profiles, build metadata and all own test data",
+    "source_edits": false
+  },
+  "runtime-preparation": {
+    "generated_module_sha256": "76088dbc949f5b4fa9dd16203dff1981200e952a4010f960fe05a2d94f668fc9",
+    "original_tracked_source_changed": false,
+    "recipe": "original build.ps1 -Inline:$false, existing bin seeded with matching released Pester 6.2.0 DLLs/format data; no C# build or source edits",
+    "released_dll_sha256": "665e421670b0167e62a4c29c2464e30eced69e01f7a3993ec5e1e77ed5b75efd"
+  }
+}

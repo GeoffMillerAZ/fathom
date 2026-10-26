@@ -28,7 +28,7 @@ func TestCmdLangOracleScipClangRangesFromCompanion(t *testing.T) {
 	}
 	// use (main.c:3-5) agrees; helper (util.h:4-6) is given a last line three
 	// lines off, and a definition in a file this run does not measure is dropped.
-	ranges := `{"tool":"clang-ast","tier":"A","version":"clang 21","units":2,"errored":0,"ranges":[
+	ranges := `{"tool":"clang-ast","tier":"C","version":"clang 21","units":2,"errored":0,"ranges":[
 	 {"path":"main.c","name":"use","kind":"function","line":3,"end":5},
 	 {"path":"util.h","name":"helper","kind":"function","line":4,"end":9},
 	 {"path":"other.c","name":"gone","kind":"function","line":1,"end":2}]}`
@@ -55,6 +55,12 @@ func TestCmdLangOracleScipClangRangesFromCompanion(t *testing.T) {
 	}
 	if len(r.NotMeasured) != 0 {
 		t.Errorf("not_measured = %v, want none once a companion measures the range", r.NotMeasured)
+	}
+	if got := r.MetricTiers[langbench.MRangeAgreement]; got != "C" {
+		t.Errorf("companion range tier = %q, want C", got)
+	}
+	if got := r.MetricTiers[langbench.MSymRecall]; got != "A" {
+		t.Errorf("companion changed L1 sym_recall tier to %q, want A", got)
 	}
 	if !bytes.Contains(raw, []byte("range_agreement measured against clang-ast's AST")) {
 		t.Errorf("the companion is not disclosed:\n%s", raw)

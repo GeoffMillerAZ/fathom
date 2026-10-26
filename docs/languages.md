@@ -71,6 +71,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Lua | tags dialect `lua` | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); a literal `require "a.b"` or `pcall(require, "a.b")` is a file edge to `a/b.lua` or `a/b/init.lua` under the repository root, `lua/`, `lib/` or `src/` (file-symbol strategy, LB-Q-lua at L3 good) from the file's `<module>` symbol; no SCIP producer exists for Lua | a computed `require` name and a rock or C module have no file; a function in a computed slot has no name |
 | Luau | tags dialect `luau` | yes (tree-sitter-luau 1.2.0) | luau-lang/luau, Fusion | **syntax** — call names by syntax only (a name, a field or a method callee); no SCIP producer exists for Luau | the `require` graph (an instance path such as `script.Parent.Foo` or an alias string is no strategy of the closed set); an alias of a generic function type (`export type X = <A>(...) -> ...`) is not parsed by the grammar; a function in a computed slot has no name |
 | WGSL | tags dialect `wgsl` | yes (include-yy/tree-sitter-wgsl b58422ee) | gfx-rs/wgpu, webgpu-samples | **syntax** — call names by syntax only (a function, a builtin or a type constructor, named by the callee without its template arguments; a global's initializer calls belong to the global); no SCIP producer exists for WGSL | imports (WGSL has none); templates are resolved by parser conflicts, so a comparison such as `a < b` can parse as a template list (13 of 343 files read with a syntax error); `diagnostic`, `enable` and `requires` directives are not definitions; a template nested thousands deep (wgpu's `deep-template.wgsl` negative fixture) takes 6 to 8 s to parse, so it is outside the measured subjects |
+| GLSL shaders | tags dialect `glsl`; `.fs` by shader-content sniff | yes (tree-sitter-glsl v0.2.0 with verified in-tree patches) | SaschaWillems/Vulkan, KhronosGroup/SPIRV-Cross, KhronosGroup/Vulkan-Samples | **syntax** — written callee names, with function, struct and macro definitions | builtin and constructor spellings remain syntax references; qualifiers, aggregate constructions, macros and disabled branches can also appear as calls; includes and cross-file resolution are unmeasured |
 | R | tags dialect `r` | yes (tree-sitter-r v1.3.0) | dplyr, testthat | **syntax** — call names by syntax only (a plain or namespaced callee); no SCIP producer is wired for R | the `library()`/`source()` graph (L3); S4 and R6 classes (`setClass`, `R6Class`) and `setMethod` definitions; a function held in a list or environment slot (`obj$method <- function`); a `->` assignment |
 | Perl | `.pm` tags dialect `perl`; `.pl` `.t` tags dialect `perl` (by content sniff) | yes (tree-sitter-perl 2.0.0) | Mojolicious, Perl::Critic | **syntax** — call names by syntax only (a function with parentheses or a term after it, a method after an arrow; a function named like a Perl builtin is no call); no SCIP producer exists for Perl | L1 range agreement (ctags writes no end line for Perl, so L1 stays good); the `use`/`require` graph (L3); a sub is named as written, so one in a `package NAME;` statement is not prefixed by it; anonymous subs, typeglob assignments and `use constant` are not definitions |
 | Jupyter notebooks | Go walker `NotebookExtractor` | yes (the python dialect's grammar, per code cell) | jakevdp/PythonDataScienceHandbook, microsoft/ML-For-Beginners | **syntax** — call names by syntax only, as Python's; no import or file edge | format 3 notebooks (`worksheets`), a notebook whose kernel is not Python, markdown and raw cells and every output; cells are read in document order and parsed one at a time, so a cell that does not parse costs only its own symbols |
@@ -130,15 +131,15 @@ item's target; the last column also needs every level up to the target graded ex
 | T1 | language | 41 | 0 | 4 | 13 | 10 | 1 | 5 | 0 | 8 | 24 | 10 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 32 | 0 | 11 | 12 | 0 | 1 | 0 | 0 | 8 | 17 | 12 |
-| T3 | tool format | 18 | 0 | 6 | 11 | 0 | 0 | 0 | 0 | 1 | 15 | 4 |
-| T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
+| T3 | tool format | 18 | 0 | 6 | 11 | 0 | 0 | 0 | 0 | 1 | 15 | 5 |
+| T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 4 | 2 | 0 | 0 | 0 | 0 | 1 | 6 | 5 |
-| T5 | tool format | 8 | 0 | 5 | 3 | 0 | 0 | 0 | 0 | 0 | 5 | 2 |
+| T5 | tool format | 8 | 0 | 5 | 3 | 0 | 0 | 0 | 0 | 0 | 5 | 3 |
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 2 |
-| **Total** | language | 45 | 0 | 4 | 15 | 10 | 1 | 6 | 0 | 9 | 25 | 10 |
-| **Total** | tool format | 74 | 0 | 31 | 32 | 0 | 1 | 0 | 0 | 10 | 51 | 27 |
+| **Total** | language | 45 | 0 | 4 | 15 | 10 | 1 | 5 | 0 | 10 | 25 | 10 |
+| **Total** | tool format | 74 | 0 | 31 | 32 | 0 | 1 | 0 | 0 | 10 | 51 | 29 |
 
 ### T1
 
@@ -228,7 +229,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: xref_recall 0.6086 < 0.8 |
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Kubernetes manifests (incl. CRDs) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | Kustomize (kustomization.yaml) | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 13 references, under 20) | L3 not met: evidence: 13 references, under 20 |
@@ -255,7 +256,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | L2 | L3 (L1 excellent, L2 excellent, L3 good) | excellent at target |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Conftest configuration (conftest.toml; policies ride Rego) | tool format | L1 | unsupported | no dialect (LB-Q-conftest) |
-| Cedar policies and schemas (.cedar .cedarschema) | language | L3 | refused | re-plan (LB-Q-cedar-rest refused) |
+| Cedar policies and schemas (.cedar .cedarschema) | language | L3 | unsupported | no dialect (LB-Q-cedar) |
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
 | Cloud Custodian policies (policies YAML) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
@@ -272,7 +273,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Envoy proxy configuration (bootstrap, xDS resource files) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: xref_precision 0.9398 < 0.95 |
 | Kong declarative configuration (decK, DB-less) | tool format | L3 | L2 (L1 excellent, L2 good; L3 unmet, evidence: 12 references, under 20) | L3 not met: evidence: 12 references, under 20 |
 | Traefik static and file-provider configuration | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
+| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | ProxySQL configuration (proxysql.cnf) | tool format | L2 | L2 (L1 good, L2 excellent) | L1 good: sym_precision 0.9571 < 0.98 |
 
 ### T6
@@ -305,8 +306,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 41, L1 excellent 30, L2 36, L3 28, L4 10; tool formats at target 59)
-Milestone M2 progress: languages at L1 41/45, at L1 excellent 30/35, at L2 36/25, at L3 28/14, at L4 10/10; tool formats at target 59/30
+Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 10; tool formats at target 59)
+Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 10/10; tool formats at target 59/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -326,7 +327,7 @@ Milestone M2 progress: languages at L1 41/45, at L1 excellent 30/35, at L2 36/25
 | Python packaging (pyproject.toml) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 excellent) | A dependency-groups (PEP 735 reference implementation: DependencyGroupResolver.lookup) pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7; C pyproject build backend (prepare_metadata_for_build_wheel via pyproject_hooks) + dependency-groups (PEP 735 reference implementation) + tomllib for [tool.*] tables pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7 | syntax | 2026-10-02 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A roslyn-semantic Microsoft.CodeAnalysis.CSharp 5.9.0 (MSBuildWorkspace); B roslyn-syntax Microsoft.CodeAnalysis.CSharp 5.9.0; A scip-dotnet 0.1.0-SNAPSHOT | — | 2026-10-09 | at target (LB-Q-csharp) |
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-11 | at target (LB-Q-c) |
-| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-10 | at target (LB-Q-terraform) |
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-26 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-10 | at target (LB-Q-cpp) |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-26 | LB-Q-go |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1; A kubernetes-oracle selectors (labels.ValidatedSelectorFromSet, Selector.Matches; apimachinery decode) k8s.io/apimachinery v0.37.0 | — | 2026-10-15 | at target (LB-Q-kubernetes) |
@@ -345,7 +346,7 @@ Milestone M2 progress: languages at L1 41/45, at L1 excellent 30/35, at L2 36/25
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | refused; measured L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | — | 2026-09-29 | re-plan (LB-Q-swift-rest refused) |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
-| SCSS (.scss) | language | tags | P233/tree-sitter-scss (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-26 | at target (LB-Q-scss) |
+| SCSS (.scss) | language | tags | P233/tree-sitter-scss (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dart-sass sass 1.105.1, sass-parser 0.5.1; A dart-sass+native-resolver sass 1.105.1, sass-parser 0.5.1; sass_api 18.1.0 (sass 1.106.1) import resolver | file | 2026-10-26 | at target (LB-Q-scss) |
 | Sass (indented syntax) (.sass) | language | tags | bajrangCoder/tree-sitter-sass (candidate not pinned: 56.16% of files in error at fb280c41) (MIT (LICENSE read at fb280c41b070657e4ff4d4e5e6eea6cb19efd9b8)) | L3 | refused | — | — | — | re-plan (LB-Q-sass-rest refused) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | L2 (L1 good, L2 excellent; L3 unmet, evidence: 19 references, under 20) | A tailwindcss 4.3.2 | — | 2026-10-20 | at target (LB-Q-tailwind) |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | refused | — | — | — | re-plan (LB-Q-less-rest refused) |
@@ -424,7 +425,7 @@ Milestone M2 progress: languages at L1 41/45, at L1 excellent 30/35, at L2 36/25
 | templ components (.templ) | tool format | tags | vrischmann/tree-sitter-templ (MIT (verify at pin)) | L2 | tolerated | — | syntax | — | LB-Q-templ |
 | VHDL (.vhd .vhdl) | language | tags | jpt13653903/tree-sitter-vhdl (simplified by design) (verify at pin) | L1 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-vhdl) |
 | Dotenv files (.env, .env.example, *.env) | tool format | doc | pure-go:line parser (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-dotenv |
-| GLSL shaders (.glsl .vert .frag .comp, .fs by sniff) | language | tags | tree-sitter-grammars/tree-sitter-glsl (MIT) | L2 | refused | — | — | — | re-plan (LB-Q-glsl-rest refused) |
+| GLSL shaders (.glsl .vert .frag .comp, .fs by sniff) | language | tags | tree-sitter-grammars/tree-sitter-glsl (MIT) | L2 | L2 (L1 good, L2 good) | B glslangValidator -i 16.6.0; C universal-ctags (C parser over GLSL) 6.2.1 | syntax | 2026-10-26 | at target (LB-Q-glsl) |
 | nginx configuration (nginx.conf, .conf by sniff, sites-enabled/* by glob) | tool format | native | native:pure-go (n/a) | L3 | L2 (L1 excellent, L2 good; L3 unmet, evidence: 13 references, under 20) | B crossplane 0.5.8 | syntax | 2026-10-02 | LB-Q-nginx |
 | HAProxy configuration (haproxy.cfg, .cfg by sniff) | tool format | native | native:pure-go (n/a) | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 19 references, under 20) | A haproxy 3.4.6-56332c5; A haproxy+docker-compose 3.4.6-56332c5 | syntax | 2026-10-02 | LB-Q-haproxy |
 | Caddyfile (Caddyfile, Caddyfile.* by glob, .caddyfile) | tool format | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A caddy v2.11.6; A caddy+docker-compose v2.11.6 | syntax | 2026-10-02 | at target (LB-Q-caddyfile) |
@@ -478,13 +479,13 @@ Milestone M2 progress: languages at L1 41/45, at L1 excellent 30/35, at L2 36/25
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | L3 (L1 excellent, L2 excellent, L3 good) | A Kyverno's own loaders (github.com/kyverno/kyverno v1.18.1 cmd/cli/kubectl-kyverno policy.Load and test.LoadTest) + gopkg.in/yaml.v3 for lines kyverno v1.18.1; C kyverno-oracle policy walk (independent gopkg.in/yaml.v3) over the loader-attested policies gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kyverno) |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A Gatekeeper's own match (github.com/open-policy-agent/gatekeeper/v3 v3.23.1 pkg/target K8sValidationTarget.ToMatcher + Match) over the dialect's object set, the dialect's nearest-first join gatekeeper/v3 v3.23.1; A gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) + gopkg.in/yaml.v3 for names and lines gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62 | — | 2026-10-02 | at target (LB-Q-gatekeeper) |
 | Conftest configuration (conftest.toml; policies ride Rego) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
-| Cedar policies and schemas (.cedar .cedarschema) | language | tags | chrnorm/tree-sitter-cedar 5092204d or cedar-go v1.8.0, both refused at pin (LB-Q-cedar-rest) (MIT (tree-sitter-cedar LICENCE); Apache-2.0 (cedar-go)) | L3 | refused | — | — | — | re-plan (LB-Q-cedar-rest refused) |
+| Cedar policies and schemas (.cedar .cedarschema) | language | tags | SwornSystems/tree-sitter-cedar v0.12.0 112e886c (cedar + cedarschema grammars) (MIT OR Apache-2.0 (LICENSE-MIT, LICENSE-APACHE)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cedar |
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A aws-cdk-lib aws_iam PolicyDocument.fromJson and PolicyStatement.fromJson (AWS) + jsonc-parser for lines aws-cdk-lib 2.272.0, jsonc-parser 3.3.1 | — | 2026-10-02 | at target (LB-Q-aws-iam-policy) |
 | Azure Policy definitions and initiatives (policyRule JSON) | tool format | doc | encoding/json (n/a) | L2 | L2 (L1 good, L2 good) | C azure-policy JSON walk (the definition schema's structure, an independent JSON reader) 1 | — | 2026-10-02 | at target (LB-Q-azure-policy) |
 | Cloud Custodian policies (policies YAML) | tool format | doc | yaml.v3 (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A c7n (custodian validate's loader) 0.9.53 | — | 2026-10-02 | at target (LB-Q-cloud-custodian) |
 | Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A checkov (--external-checks-dir loaders) 3.2.500 | — | 2026-10-24 | at target (LB-Q-checkov-policies) |
 | HashiCorp Sentinel policies (.sentinel) | language | tags | github.com/glennsarti/sentinel-parser@3a328c0dcfb9 (open Go parser; engine admission pending) (Apache-2.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
-| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | L2 (L1 good, L2 good) | C pgbouncer PgBouncer 1.26.1 + line scanner | — | 2026-10-24 | at target (LB-Q-pgbouncer) |
+| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A PgBouncer native SHOW DATABASES population and exhaustive auth_dbname startup enumeration PgBouncer 1.26.1; A pgbouncer-native-positions PgBouncer 1.26.1 native cfparser | — | 2026-10-26 | at target (LB-Q-pgbouncer) |
 | ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | L2 (L1 good, L2 excellent) | A proxysql ProxySQL version 4.0.9-0-g7ddb3dc_DEBUG, codename Truls + line scanner | — | 2026-10-26 | at target (LB-Q-proxysql) |
 | fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C python tomllib (TOML decode) + a line scanner of its own python 3.14.7 tomllib | — | 2026-10-03 | at target (LB-Q-fathom-config) |
 | fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A cue export + cue lsp (concerns) v0.16.1 | — | 2026-10-24 | at target (LB-Q-fathom-concerns) |

@@ -185,7 +185,8 @@
     "L2 oracle: the grammar's own upstream queries/tags.scm (r-lib/tree-sitter-r v1.3.0, MIT) run by py-tree-sitter 0.25.2 (tier C, calibration/oracles/ts-tags), 4,534 pairs on dplyr and 3,335 on testthat. The dialect's tags.scm descends from the same query, so the oracle is independent in runtime, not in query shape. The 11 dialect-only pairs are the calls inside the three R/otel.R `<<-` functions above (upstream reads `<-` and `=` only, so it pairs them with no function).",
     "Not extracted, on purpose: S4 and R6 classes (setClass, R6Class) and setMethod definitions, a function held in a list or environment slot (obj$method <- function), `->` assignments, library() and source() edges. L3 is not attempted. One calibration file parses with an error (testthat's tests/testthat/test-parallel/syntax-error/tests/testthat/test-error-1.R, a fixture of a syntax error).",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at d9c32d98)"
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at d9c32d98)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at d9c32d98)"
   ],
   "disposition": null
 }

@@ -570,6 +570,7 @@
     "phyohtetarkar/tiptap-block-editor: the compiler (tailwindcss 4.3.2) could not load 2 @import and 1 @plugin or @config offline and read each as empty; oracle counts: apply_candidates_core 5, core_import_prepended 1, files 2, files_compiled 2, imports_stubbed 2, modules_stubbed 1, var_not_theme 38",
     "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 0289c50ea)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at 0289c50ea)",
     "shadcn-ui/ui: 11 of 12 measured files hold an ERROR or MISSING node as written; the dialect's pre-parse step reads 11 of them clean, and files_with_error counts the 0 it cannot mend, the files the extractor reads with an error",
     "shadcn-ui/ui: 179 oracle and 305 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
     "shadcn-ui/ui: 5 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",

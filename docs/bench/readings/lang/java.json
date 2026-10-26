@@ -269,6 +269,7 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "re-read 2026-10-10 (wave lf5 item cfam, K29: K25 ruling 3, f274aa29, landed after this reading's fathom a291c100; fathom d6b18b93, the same scip-java 0.12.3 indexes and JavaParser 3.28.2 definition dumps of 2026-10-02, guava c5b5a383 and retrofit 3ab0f1a2): every metric and count reads as at a291c100 but the file-edge truth: ruling 3 draws 2 pairs to a second defining document on retrofit (scip_file_edges_every_definer), truth 4,976 -> 4,978, file_edge_recall .829 -> .8286; level_met L4, every level excellent",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at d6b18b93)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at d6b18b93)",
     "square/retrofit: 2 file-edge truth pairs are drawn to a second or later document defining one SCIP symbol (K25 ruling 3, LB-F387: a symbol defined in more than one document resolves to every one, never the first alone; scip_file_edges_every_definer)",
     "square/retrofit: 2 files skipped by ingest's gates (generated)",
     "square/retrofit: 31 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",

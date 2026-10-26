@@ -283,6 +283,7 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "qclaogui/codelab-monitoring: 62 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at b5755bbc)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at b5755bbc)",
     "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates (the environment's list form and OTEL_RESOURCE_ATTRIBUTES service.name read as TelemetryIdentity, an interpolated identity refused at extraction). No subject writes a list-form, OTEL_RESOURCE_ATTRIBUTES or interpolated identity, so extraction is byte-identical to 6280cfd4; the 5 TelemetryIdentity nodes (qclaogui/codelab-monitoring, canonical key, TL-5) are outside the kind intersection"
   ],
   "disposition": null

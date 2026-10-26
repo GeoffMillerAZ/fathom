@@ -180,6 +180,7 @@
     "gfx-rs/wgpu: wgsl-parse rejects or times out on wgpu-core/src/timestamp_normalization/common.wgsl",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 2da47f677)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at 2da47f677)",
     "throughput: three runs at one commit on an Apple-silicon development machine read 9.16, 9.14 and 8.42 MB/s (CPU basis, tenancy throughput_mb_s); the committed reading is the median run, 9.14 MB/s CPU (9.59 MB/s wall)",
     "webgpu/webgpu-samples: wgsl-parse rejects or times out on 1 of 76 .wgsl files (no definitions read from them)",
     "webgpu/webgpu-samples: wgsl-parse rejects or times out on sample/cornell/tonemapper.wgsl"

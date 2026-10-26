@@ -231,6 +231,7 @@
     "import_resolution: 2395 of 2395 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.5409 (2563 of 4738) and recall 0.9183 (2563 of 2791); 27 of 4468 imports resolved where the oracle names no file of the subject; 47 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at aa04028e)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at aa04028e)",
     "square/kotlinpoet: 570 of the 795 file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution"
   ],
   "disposition": null

@@ -126,6 +126,7 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pre-commit is tier C: pre-commit validate-config is absent on the measuring machine (w6 triage 2026-09-29, no installs), so .pre-commit-config.yaml and .pre-commit-hooks.yaml are read by a Ruby Psych reference parse (Psych 3.1.0, libyaml, ruby 2.6.10: calibration/oracles/lefthook-dump/precommit_psych.rb), which caps that subject, and so the reading's L1, at good; the lefthook subject alone reads L1 excellent (27 of 27 at tier A)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 9ea6da5f)",
+    "regraded at e3a5ff36 from the recorded subject counts (harness rules only; extraction as measured at 9ea6da5f)",
     "subjects: evilmartians/lefthook v1.13.6 (sparse checkout of its lefthook configs; the connector never reads testdata/ and tests/, where most of the repository's configs are), so fathom sees 5 configs (.lefthook.yml and the four under examples/, 27 definitions); pre-commit/pre-commit-hooks v6.0.0: its .pre-commit-config.yaml (14 hooks) and its .pre-commit-hooks.yaml manifest (34 hook definitions)"
   ],
   "disposition": null

@@ -1,0 +1,14 @@
+{
+  "jekyll": {
+    "eligible_generated_ruby_inputs": 0,
+    "generated_bytes": 1248105,
+    "generated_untracked_or_ignored_paths": 112,
+    "inspection": "dependency locks, coverage and test-output data; no eligible Ruby source input; ignored artifacts removed before static remeasurement"
+  },
+  "sinatra": {
+    "eligible_generated_ruby_inputs": 0,
+    "generated_bytes": 10888,
+    "generated_untracked_or_ignored_paths": 4,
+    "inspection": "dependency locks, coverage and test-output data; no eligible Ruby source input; ignored artifacts removed before static remeasurement"
+  }
+}
