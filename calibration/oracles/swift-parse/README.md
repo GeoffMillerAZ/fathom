@@ -45,3 +45,24 @@ What the script does that the dump does not:
 
 Subjects (calibration/corpus.d/swift.yaml): Alamofire/Alamofire 5.9.1 (92 files, 3,716 definitions, 7,993 call pairs) and apple/swift-nio 2.99.0
 (550 files, 18,281 definitions, 38,823 call pairs), the `dev/`, `Tests/`, `IntegrationTests/` and `Snippets/` trees included, as cloned.
+
+## Product-grammar ERROR/MISSING screen
+
+This separate screen uses the committed Swift WASM blob, not the compiler
+oracle above. It reports no support grade. From the repository root, with
+both clean subjects at the pins in `calibration/corpus.d/swift.yaml`:
+
+```sh
+go run ./calibration/oracles/swift-parse/grammar-screen
+```
+
+Optional `-alamofire`, `-swift-nio` and `-out` flags override the default
+`workspace/calibration/` roots and `workspace/artifacts/swift-error-measures.json`.
+Every `.swift` file is read, including tests and snippets; `.git` is skipped.
+The deterministic JSON contains file/byte totals, files with an ERROR node,
+files with ERROR or MISSING, their MISSING-only difference, and parse faults.
+A file with both ERROR and MISSING is counted in ERROR and the union, never
+in MISSING-only. The two queries are `(ERROR) @error` and
+`[(ERROR) (MISSING)] @error`. This is a reproducible version of the screen
+behind `docs/assessments/2026-10-25-refused-swift.md`; it changes no grammar,
+calibration shard or accuracy metric.

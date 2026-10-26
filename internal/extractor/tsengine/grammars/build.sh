@@ -37,8 +37,8 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 command -v jq >/dev/null || { echo "build.sh: jq is required" >&2; exit 2; }
-ROW="$(jq -e --arg b "$BLOB" '.grammars[] | select(.blob == $b)' "$LOCK")" ||
-  { echo "build.sh: no grammars.lock.json row for blob '$BLOB'" >&2; exit 2; }
+ROW="$(jq -ec --arg b "$BLOB" '[.grammars[] | select(.blob == $b)] | if length == 1 then .[0] else error("expected exactly one grammar row") end' "$LOCK")" ||
+  { echo "build.sh: expected exactly one grammars.lock.json row for blob '$BLOB'" >&2; exit 2; }
 field() { jq -r "$1" <<<"$ROW"; }
 
 # The ADR-048 licence allowlist (design §8.2), as SPDX ids.
@@ -113,6 +113,10 @@ check_licence "$WORK/core" "$(jq -r .core.licence "$LOCK")"
 REPO="$(field .repo)"; TAG="$(field .tag)"
 echo "fetching $REPO $TAG..."
 fetch "$REPO" "$TAG" "$(field .tarball_sha256)" "$(field .commit)" "$WORK/grammar"
+# Apply only lock-declared, hash-verified source changes after upstream
+# archive/commit/licence checks and before optional parser generation.
+check_licence "$WORK/grammar" "$(field .licence)"
+bash "$HERE/apply-patches.sh" "$LOCK" "$ROW" "$WORK/grammar"
 check_licence "$WORK/grammar" "$(field .licence)"
 
 SUBDIRS=()

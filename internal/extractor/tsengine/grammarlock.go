@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path"
 	"sort"
 	"strings"
 )
@@ -64,13 +65,41 @@ type GrammarLockRow struct {
 	// PredicateExport adds ts_query_predicates_for_pattern to the blob's
 	// exports (build.sh). The engine never requires it (predicates.go reads
 	// predicates from the query source); the five original blobs predate it.
-	PredicateExport bool `json:"predicate_export,omitempty"`
-	ABI             int  `json:"abi"`
+	PredicateExport bool        `json:"predicate_export,omitempty"`
+	Patches         []LockPatch `json:"patches,omitempty"`
+	ABI             int         `json:"abi"`
 	// BlobSHA256 and BlobBytes describe the uncompressed module; GzBytes the
 	// committed <blob>.wasm.gz.
 	BlobSHA256 string `json:"blob_sha256"`
 	BlobBytes  int64  `json:"blob_bytes"`
 	GzBytes    int64  `json:"gz_bytes"`
+}
+
+// LockPatch is an ordered, build-time source change relative to grammars/.
+// Patch bytes are never embedded in the runtime binary.
+type LockPatch struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}
+
+func validPatchPath(p string) bool {
+	if !strings.HasPrefix(p, "patches/") || !strings.HasSuffix(p, ".patch") || strings.Contains(p, "\\") || path.Clean(p) != p {
+		return false
+	}
+	if path.Base(p) == ".patch" {
+		return false
+	}
+	for _, part := range strings.Split(p, "/") {
+		if part == "" || part == "." || part == ".." {
+			return false
+		}
+		for _, c := range part {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // allowedLicences is the ADR-048 allowlist (design §8.2) as SPDX ids.
@@ -198,6 +227,22 @@ func VerifyGrammarLock(lock GrammarLock, dir fs.FS) error {
 		if !LicenceAllowed(r.Licence) {
 			add("%s: licence %q is not on the allowlist (design §8.2)", id, r.Licence)
 		}
+		if len(r.Patches) > 0 && r.Licence == "MPL-2.0" {
+			add("%s: MPL-2.0 sources must be unmodified", id)
+		}
+		patches := map[string]bool{}
+		for _, p := range r.Patches {
+			if !validPatchPath(p.Path) {
+				add("%s: invalid patch path %q", id, p.Path)
+			}
+			if !isHex(p.SHA256, 64) {
+				add("%s: patch %q sha256 %q is not 64 lowercase hex", id, p.Path, p.SHA256)
+			}
+			if patches[p.Path] {
+				add("%s: duplicate patch %q", id, p.Path)
+			}
+			patches[p.Path] = true
+		}
 		if len(r.EntryPoints) == 0 {
 			add("%s: entry_points is empty", id)
 		}
@@ -264,6 +309,72 @@ func VerifyGrammarLock(lock GrammarLock, dir fs.FS) error {
 		}
 	}
 
+	if len(probs) == 0 {
+		return nil
+	}
+	sort.Strings(probs)
+	errs := make([]error, len(probs))
+	for i, p := range probs {
+		errs[i] = errors.New(p)
+	}
+	return errors.Join(errs...)
+}
+
+// VerifyGrammarPatchFiles checks the declared files in a local grammars tree.
+// Keep this separate from VerifyGrammarLock: runtime grammarFS embeds the lock
+// and blobs, deliberately not the build-time patch sources.
+func VerifyGrammarPatchFiles(lock GrammarLock, dir fs.FS) error {
+	var probs []string
+	for _, row := range lock.Grammars {
+		for _, p := range row.Patches {
+			if !validPatchPath(p.Path) || !isHex(p.SHA256, 64) {
+				probs = append(probs, fmt.Sprintf("%s: invalid patch metadata %q", row.Blob, p.Path))
+				continue
+			}
+			parts := strings.Split(p.Path, "/")
+			parent := "."
+			unsafe := false
+			for _, part := range parts {
+				entries, err := fs.ReadDir(dir, parent)
+				if err != nil {
+					probs = append(probs, fmt.Sprintf("%s: patch %q: %v", row.Blob, p.Path, err))
+					unsafe = true
+					break
+				}
+				found := false
+				for _, e := range entries {
+					if e.Name() == part {
+						found = true
+						if e.Type()&fs.ModeSymlink != 0 {
+							probs = append(probs, fmt.Sprintf("%s: patch %q is a symlink", row.Blob, p.Path))
+							unsafe = true
+						}
+						break
+					}
+				}
+				if !found {
+					probs = append(probs, fmt.Sprintf("%s: patch %q missing", row.Blob, p.Path))
+					unsafe = true
+					break
+				}
+				parent = path.Join(parent, part)
+				if unsafe {
+					break
+				}
+			}
+			if unsafe {
+				continue
+			}
+			b, err := fs.ReadFile(dir, p.Path)
+			if err != nil {
+				probs = append(probs, fmt.Sprintf("%s: patch %q: %v", row.Blob, p.Path, err))
+				continue
+			}
+			if got := sha256Hex(b); got != p.SHA256 {
+				probs = append(probs, fmt.Sprintf("%s: patch %q sha256 %s, lock %s", row.Blob, p.Path, got, p.SHA256))
+			}
+		}
+	}
 	if len(probs) == 0 {
 		return nil
 	}
