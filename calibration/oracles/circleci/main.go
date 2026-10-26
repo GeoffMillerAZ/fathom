@@ -183,9 +183,30 @@ type cwjob struct {
 }
 
 func runTool(ctx context.Context, cli, dir, rel, home string) (*compiled, error) {
+	return runToolWithParameters(ctx, cli, dir, rel, home, nil)
+}
+
+func runToolWithParameters(ctx context.Context, cli, dir, rel, home string, parameters map[string]any) (*compiled, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, cli, "config", "process", rel)
+	args := []string{"config", "process", rel}
+	if len(parameters) > 0 {
+		f, err := os.CreateTemp(home, "parameters-*.json")
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(f.Name())
+		err = json.NewEncoder(f).Encode(parameters)
+		closeErr := f.Close()
+		if err != nil {
+			return nil, err
+		}
+		if closeErr != nil {
+			return nil, closeErr
+		}
+		args = append(args, "--pipeline-parameters", f.Name())
+	}
+	cmd := exec.CommandContext(ctx, cli, args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	var so, se bytes.Buffer
@@ -336,6 +357,8 @@ func main() {
 	subject := flag.String("subject", "", "subject checkout")
 	cli := flag.String("cli", "circleci", "the circleci binary")
 	scratch := flag.String("scratch", "", "a directory used as HOME for the tool (outside the subject)")
+	matrix := flag.String("matrix", "", "preregistered parameter protocol JSON; any failed case fails the subject")
+	subjectName := flag.String("subject-name", "", "subject identity in the parameter protocol")
 	refs := flag.Bool("refs", false, "tier C: command and executor references from a walk of the source")
 	filesOut := flag.String("files-out", "", "write the accepted configs (subject-relative) here, one per line")
 	flag.Parse()
@@ -344,6 +367,19 @@ func main() {
 		os.Exit(2)
 	}
 	ctx := context.Background()
+	var registered map[string][]map[string]any
+	if *matrix != "" {
+		sha, err := exec.Command("git", "-C", *subject, "rev-parse", "HEAD").Output()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "matrix checkout identity:", err)
+			os.Exit(2)
+		}
+		registered, err = readParameterProtocol(*matrix, *subjectName, strings.TrimSpace(string(sha)))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "matrix:", err)
+			os.Exit(2)
+		}
+	}
 	var cfgs []string
 	_ = filepath.WalkDir(*subject, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -363,6 +399,18 @@ func main() {
 		return nil
 	})
 	sort.Strings(cfgs)
+	if registered != nil {
+		found := map[string]bool{}
+		for _, c := range cfgs {
+			found[c] = true
+		}
+		for c := range registered {
+			if !found[c] {
+				fmt.Fprintln(os.Stderr, "registered configuration missing:", c)
+				os.Exit(2)
+			}
+		}
+	}
 	res := out{Tool: "circleci config process", Version: toolVersion(ctx, *cli, *scratch), Tier: "A", Definitions: []def{}, References: []ref{}}
 	if *refs {
 		res.Tool, res.Tier = "circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only)", "C"
@@ -376,7 +424,29 @@ func main() {
 			rejected++
 			continue
 		}
-		c, terr := runTool(ctx, *cli, *subject, rel, *scratch)
+		cases := []map[string]any{{}}
+		if registered != nil {
+			var ok bool
+			cases, ok = registered[rel]
+			if !ok {
+				fmt.Fprintln(os.Stderr, "unregistered configuration:", rel)
+				os.Exit(2)
+			}
+		}
+		c := &compiled{jobs: map[string]bool{}, workflows: map[string][]cwjob{}}
+		var terr error
+		for i, parameters := range cases {
+			var one *compiled
+			one, terr = runToolWithParameters(ctx, *cli, *subject, rel, *scratch, parameters)
+			if terr != nil {
+				if registered != nil {
+					fmt.Fprintf(os.Stderr, "matrix %s case %d failed: %v\n", rel, i, terr)
+					os.Exit(1)
+				}
+				break
+			}
+			mergeCompiled(c, one)
+		}
 		if terr != nil {
 			fmt.Fprintf(os.Stderr, "rejected %s: %v\n", rel, terr)
 			rejected++

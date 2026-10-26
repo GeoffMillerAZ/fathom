@@ -55,3 +55,25 @@ repos:
     sparse: [".circleci/**"]
     idioms:
       - "generated node jobs on machine executors and one workflow listing them"
+# Fresh, preregistered T-R3 holdouts; earlier subjects above are retained.
+  - name: CircleCI-Public/cimg-python
+    url: https://github.com/CircleCI-Public/cimg-python.git
+    ref: main
+    sha: a7418d2562d6bd288e953e4a7dbbda478cdf8525
+    licence: MIT
+    sparse: [".circleci/**", "LICENSE"]
+    idioms: ["cron false and true select complementary workflows; a literal renamed job; public orbs"]
+  - name: CircleCI-Public/cimg-node
+    url: https://github.com/CircleCI-Public/cimg-node.git
+    ref: main
+    sha: bb5c7c6dc5e1b5e61172e0ac9dc1825cccdd3c5f
+    licence: MIT
+    sparse: [".circleci/**", "LICENSE"]
+    idioms: ["cron-gated workflows; native orb jobs and a local alias-tag job"]
+  - name: scikit-learn/scikit-learn
+    url: https://github.com/scikit-learn/scikit-learn.git
+    ref: main
+    sha: bb9cefde592afccd276c5b2d75957dfde91d5b3e
+    licence: BSD-3-Clause
+    sparse: [".circleci/**", "COPYING"]
+    idioms: ["local machine executor; multiple documentation jobs; anchors; no pipeline parameters"]

@@ -1,0 +1,184 @@
+{
+  "dialect": "circleci",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "f6e47f021",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "CircleCI-Public/cimg-node",
+      "sha": "bb5c7c6dc5e1b5e61172e0ac9dc1825cccdd3c5f",
+      "files": 1,
+      "bytes": 2684,
+      "counts": {
+        "fathom_defs": 3,
+        "kind_equal": 3,
+        "matched": 3,
+        "oracle_defs": 3,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.211,
+        "extract_cpu_ms": 0.211,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "CircleCI-Public/cimg-python",
+      "sha": "a7418d2562d6bd288e953e4a7dbbda478cdf8525",
+      "files": 1,
+      "bytes": 3920,
+      "counts": {
+        "fathom_defs": 3,
+        "kind_equal": 3,
+        "matched": 3,
+        "oracle_defs": 3,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.214,
+        "extract_cpu_ms": 0.215,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "scikit-learn/scikit-learn",
+      "sha": "bb9cefde592afccd276c5b2d75957dfde91d5b3e",
+      "files": 1,
+      "bytes": 6145,
+      "counts": {
+        "fathom_defs": 5,
+        "kind_equal": 5,
+        "matched": 5,
+        "oracle_defs": 5,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:CircleCIExecutor": 1
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.36,
+        "extract_cpu_ms": 0.36,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "circleci config process",
+      "version": "circleci 1.7.0 (1df22bb0b7b6)"
+    },
+    {
+      "tier": "C",
+      "tool": "circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only)",
+      "version": "circleci 1.7.0 (1df22bb0b7b6)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "job",
+    "target"
+  ],
+  "kind_intersection": [
+    "job",
+    "target"
+  ],
+  "counts": {
+    "fathom_defs": 11,
+    "kind_equal": 11,
+    "matched": 11,
+    "oracle_defs": 11,
+    "ref_fathom": 8,
+    "ref_fathom_in_truth": 8,
+    "ref_truth": 8,
+    "ref_truth_found": 8
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 16.22,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 16.24,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CircleCIExecutor": 1
+  },
+  "notes": [
+    "CircleCI-Public/cimg-node: T-R3 fresh-subject holdout: preregistered input union in parameters-t-r3.json, committed at f6e47f021 before any oracle execution; earlier canonical corpus remains unchanged.",
+    "CircleCI-Public/cimg-python: T-R3 fresh-subject holdout: preregistered input union in parameters-t-r3.json, committed at f6e47f021 before any oracle execution; earlier canonical corpus remains unchanged.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "scikit-learn/scikit-learn: T-R3 fresh-subject holdout: preregistered input union in parameters-t-r3.json, committed at f6e47f021 before any oracle execution; earlier canonical corpus remains unchanged.",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 6.65 MB/CPU-s; run 2: 16.22 MB/CPU-s; run 3: 17.00 MB/CPU-s; median run 2: 16.22 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit f6e47f021"
+  ],
+  "disposition": null
+}
