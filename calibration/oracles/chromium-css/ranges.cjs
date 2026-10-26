@@ -191,10 +191,10 @@ async function rangeCompanion(binary, pin, subject, primary, scratch, dirs = [],
     const unattested = Object.fromEntries(Object.keys(totals).map(kind => [kind, totals[kind] - stats.attested[kind]]));
     result = {
       companion: {
-        tool: 'Chromium DevTools Protocol CSS.setStyleTexts', tier: 'A', version: pin.version,
+        tool: 'Chromium DevTools Protocol CSS.setStyleTexts', tier: 'C', version: pin.version,
         units: files.length, errored: 0,
         kinds: { selector: 'selector', custom_property: 'variable' },
-        scope: 'Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured',
+        scope: 'Tier C: authored proposals over Lightning CSS population, not browser-enumerated. Native-validated CSSStyle body ranges for eligible selectors and CSSProperty ranges for custom properties; nested-parent selectors and keyframes without a native range are unmeasured',
         ranges,
       },
       diagnostics: { ...stats, unattested },

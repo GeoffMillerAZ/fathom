@@ -1,9 +1,12 @@
 # C-R7 CSS browser range audit
 
 Preregistered before the first corpus/browser measurement. C-R7 classifies a pinned
-headless browser engine's own stylesheet ranges as tier A under P-T1. I54 still
+headless browser engine as a possible tier-A oracle under P-T1. C2-F1 corrects
+this audit's proposal-selected population to tier C; native enumeration is required
+for a tier-A grade. I54 still
 requires a committed harness reading before any grade claim. No extractor, epoch,
-matching rule, denominator or shared harness change is planned.
+matching rule or denominator change was planned. The later C2-F1 harness
+correction persists the range-specific tier instead of inheriting the primary L1 tier.
 
 ## Pins and controls
 
@@ -143,3 +146,23 @@ this parse census is not a language grade or adoption: a grammar change still
 needs ENGINE/K29 impact analysis, the actual Fathom reading and all affected
 readings before integration. Failure is a named candidate result, not proof that
 no further grammar or lossless pre-pass can work.
+
+## C2-F1 classification correction after review
+
+The original tier-A interpretation omitted P-T1's enumerated-population and
+third-party clauses. The browser verifies proposals but does not enumerate this
+audit's population. Reclassify its range grade as C, capped at good, without
+changing accepted ranges or any counts. Retain original freeze hashes and record
+new classification-copy hashes. Correct the shared harness so a range companion
+can weaken, never silently strengthen, the primary L1 tier for range agreement
+alone. Legacy readings without an explicit range family keep their old tier.
+Other L1 metrics and call/import families are unchanged. This is an ENGINE
+harness correction, to land after GoMembers. No extractor epoch changes.
+
+A future first-party route must enumerate the same stylesheet's own CSSOM
+`cssRules` recursively, including nesting, keyframes, @property and custom-property
+declarations, and account for every enumerated rule. It is a named unmeasured
+candidate, not evidence supplied by the current audit. The W2/P-T1 primary-tier
+tension and any coverage floor require owner disposition before adoption. O849's
+nesting walk must still precede pinning or reading a new holdout. Tachyons and
+open-props remain spent. The current replay only corrects their classification.

@@ -1,6 +1,7 @@
 # Chromium CSS range companion (C-R7)
 
-The pinned browser's own declaration/property ranges are tier A under
+The pinned browser validates declaration/property ends, but this authored-proposal
+population grades at tier C under C2-F1. Tier A requires browser enumeration under
 [C-R7/P-T1, recorded in design §1.3](../../../docs/design/language-breadth.md#13-oracle-tiers-and-what-they-can-prove).
 The primary oracle remains Lightning CSS 1.33.0. This companion changes only range
 counts through the existing indexbench sidecar format, not definition/call/import
@@ -124,7 +125,8 @@ node calibration/oracles/chromium-css/ranges.cjs "$CSS_BROWSER" calibration/orac
 ```
 
 The measured candidate and holdout snapshots live outside canonical lang/css.json
-under docs/bench/readings/css-browser*.json. Their excellent metric buckets do not
+under docs/bench/readings/css-browser*.json. Their range grade is tier C, so L1 is good; L2/L3 retain their measured
+primary-family grades. These candidate readings do not
 override the canonical parser's 120/212 ERROR/MISSING count. See the dated CSS
 assessment and native grammar census before claiming support or full excellence.
 
@@ -157,3 +159,35 @@ loads, throughput values and hashes. This reuses frozen truth to time extraction
 it does not rerun or tune a holdout oracle. The earlier `lang-retime -runs 3` audit
 did not persist per-run loads, so its timing is not a controlled performance
 comparison with the historical canonical reading.
+
+## C2-F1 classification replay
+
+Do not rerun the browser or edit the frozen primary. Make scratch classification
+copies of the frozen primary, its .source.json sidecar and companion, changing
+only companion tier A to C. Rerun the lang-oracle commands above through the
+corrected harness. Preserve every range entry and all non-range counts/metrics,
+then recompute grades from persisted subject families. Keep original artifact
+hashes and append the classification-copy and reading hashes to the receipt.
+This is a retrospective correction of a spent holdout, never a new validation.
+
+The live first-party enumeration route is `Runtime.evaluate` over the same CDP
+session, recursively walking `document.styleSheets[i].cssRules`. It can enumerate
+CSSStyleRule (including nesting), CSSKeyframesRule.name, @property and custom
+properties without DOM selector matching. No such enumeration was measured here.
+
+Runnable classification-copy command (the original bundle stays unchanged):
+
+```sh
+python3 calibration/oracles/chromium-css/retier.py --self-test
+python3 calibration/oracles/chromium-css/retier.py \
+  --primary "$CSS_FROZEN/normalize.json" --out-dir "$CSS_CLASSIFIED"
+```
+
+Repeat for pico, gitea and the spent Tachyons bundle, then use CSS_CLASSIFIED
+as CSS_OUT for the grading commands. The helper emits only counts and hashes.
+The replay corrects the existing candidate files in place at
+`docs/bench/readings/css-browser-2026-10-26.json` and
+`docs/bench/readings/css-browser-holdout-2026-10-26.json`. The receipt records
+the original reading hashes, timing and Fathom commit identities, classification
+harness commit, frozen artifact hashes and command templates; Git history retains
+the original reading bytes.

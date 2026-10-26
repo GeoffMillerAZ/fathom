@@ -103,18 +103,29 @@ counts as in-repo when the same lookup from the driver's load path names a subje
 ones an extractor of import statements can see. It counts a computed `require` it ran, and
 never writes one.
 
-**Dated amendment 2026-10-26, owner ruling C-R7 (P-T1).** P-T1 applies
-Tier A to a format's reference implementation. A pinned headless browser engine's
-own stylesheet ranges count as Tier A for the source/ranges it actually attests.
-Pin and checksum the browser under the assigned cache root. This includes native
-CSS declaration-body and property ranges returned for unchanged original bytes;
-it does not promote scanner proposals, unaccepted ends, keyframe whole-rule ends,
-or nested-parent ends the API cannot attest. Lightning CSS enumerates this audit's
-definition population; Chromium attests a conditional subset and does not enumerate
-it. No range-coverage floor was set by C-R7. Before adopting that candidate into the
-canonical reading, the owner must rule on a coverage floor as a shared harness
-ENGINE change. The audit's excellent metric buckets alone do not prove full
-coverage or override the parser gate. Record: [CSS assessment](../assessments/2026-10-26-core-t1-css-ceiling.md).
+**Dated amendment 2026-10-26, C-R7 and review correction C2-F1 (P-T1).**
+[P-T1](https://github.com/GeoffMillerAZ/fathom/issues/22#issuecomment-6408090828)
+assigns tier A to evaluation by the format owner (official tools, compilers,
+runtimes and vendor-maintained servers), or a maintained SCIP indexer.
+"Independent third-party analyzers are tier C." Its
+[population precedent](https://github.com/GeoffMillerAZ/fathom/issues/22#issuecomment-6409554475)
+is restated by C2-F1 as "a tier-A grade needs a population the oracle itself
+enumerates". Accepting pairs selected by a tier-C scanner does not satisfy it.
+
+C-R7 authorizes a pinned, checksummed headless browser as a format-owner CSS
+oracle candidate. The present audit proposes ranges using an authored scanner
+and Lightning CSS definitions. Chromium validates exact declaration/property
+ends for unchanged bytes but does not enumerate this population. Therefore
+this audit's **range grade is tier C**, capped at good, even at 1.0 agreement.
+It cannot acquire tier A by adopting a coverage floor alone. Unaccepted ends,
+whole keyframes and nested-parent ends remain unattested. A live next route is
+the pinned browser's own recursive CSSOM `cssRules` enumeration; it is unmeasured.
+
+The older W2 assigns Lightning CSS's primary families tier A. Those historical
+labels are retained for comparison, not reclassified by this range-only audit;
+the tension with P-T1's third-party clause needs an owner disposition before
+future canonical adoption. No coverage floor or exemption was granted by C-R7.
+The parser gate still applies. [CSS assessment](../assessments/2026-10-26-core-t1-css-ceiling.md).
 
 ### 1.4 Matching rules
 
