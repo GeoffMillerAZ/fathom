@@ -30,3 +30,13 @@ shard-relative path followed by NUL. The committed receipt contains no subject
 file list or content. Detailed sets never leave temporary `workspace/`.
 Inherited cache/temp environment variables are preserved; otherwise local
 `workspace/` defaults are used. Apply the lane's load/nice/one-heavy-job limits.
+
+
+## Recorded review-fix receipts
+
+`proof/parse-gate.json` and `proof/stress.json` are fresh outputs at source
+`85b73ee11`. `proof/full-oracle-run{1,2,3}.json` are the three unchanged
+full-oracle harness outputs from the assessment's two subject commands.
+Run 1 is the median by pooled CPU throughput, and is byte-identical to
+`docs/bench/readings/lang/jinja2.json`. No subject file list or content is
+committed. Explanatory disclosures are in the assessment, not appended notes.

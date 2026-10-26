@@ -11,7 +11,7 @@ at commit `4f832fe6feeae8c9e5963d835bec0272a8331b47` (MIT).
   `internal/extractor/tsengine/grammars/patches/jinja2/optional-else.patch`
   (SHA-256 `ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86`).
   The patch allows a conditional without an else and preserves loop-filter precedence.
-  The shared patch mechanism is P-R1 (`50675f456`). The unmodified production
+  The shared patch mechanism is [P-R1 PR #36](https://github.com/GeoffMillerAZ/fathom/pull/36) (`gpu-sci/grammar-patches-r1`). The unmodified production
   `build.sh` repeatedly built the same patched source with matching raw WASM SHA-256
   `71680f5fead32c2881a5e486e8dc79a71656e3be60fff7b714667673b5f30e25`
   (212061 bytes raw, 71302 bytes compressed).
@@ -27,24 +27,34 @@ at commit `4f832fe6feeae8c9e5963d835bec0272a8331b47` (MIT).
 The old `cathaysia/tree-sitter-jinja` v0.5.0 (Apache-2.0) needed a pre-parse
 repair and left 21 of 520 files with errors. It measured 0.93 MB/CPU-s in the
 2026-10-25 timing retake (historically 0.34). The new grammar parses files as
-written; no `jinja-templates` preprocessing is used. Native screening moved
-from 27 errors unpatched to 3 patched, repairing 24 files with no new failures.
-All 108 upstream corpus cases (105 existing, 3 added) and eight independent
-Jinja 3.1.6 legal/invalid controls pass.
+written; the obsolete preprocessor is removed. The committed production-build
+comparison (`calibration/oracles/jinja2-meta/proof/parse-gate.json`) reproduces
+27/520 -> 3/520 WASM ERROR-or-MISSING files, 24 repaired, none newly failing,
+zero faults, with identical full pinned shards. The committed `prove_patch.py`
+entrypoint rebuilds both variants using unmodified production `build.sh`.
 
-Three full-oracle receipts are in `workspace/artifacts/jinja-final-run{1,2,3}.json`:
-520 files, 734576 bytes, 1124 definitions, 687 qualified calls, 189 resolved imports/file
-edges, L1–L3 excellent, 3 files with ERROR or MISSING (0.58%), zero faults, and
-4.77/4.93/5.08 MB/CPU-s. The median is 4.93. These receipts measure full
-extraction accuracy and throughput; the native error count alone measures only
-parse coverage. Three remaining parse errors involve splatted arguments, extra
-filter arguments, and a numeric dotted attribute.
+`syntax-controls.json` contains 22 authored Jinja 3.1.6 verdicts. The shipped
+WASM agrees on 21, with one explicit pre-existing loop over-acceptance. Go
+controls pin that divergence and the legal loop-filter AST. A Jinja-only
+regenerator checks the independent verdicts. The three authored upstream corpus
+additions are beside the patch; the prepared upstream PR separately reports
+108 passing upstream-suite cases (105 existing plus those three).
 
-A separate bounded stress probe (`workspace/artifacts/jinja-stress.json`) aborted
-one 57344-byte malformed repeated `{% if (` input at the 10-second budget; that
-input counted one fault. The next 55-byte macro with optional else recovered in
-6.383 ms with two symbols and zero faults. Thus the zero-fault claim applies to
-the 520-file calibration, not to arbitrary malformed input.
+Three raw full-oracle receipts are committed under
+`calibration/oracles/jinja2-meta/proof/full-oracle-run{1,2,3}.json`:
+520 files, 734576 bytes, 1124 definitions, 687 qualified calls, 189 resolved
+imports/file edges, L1-L3 excellent, 3 ERROR-or-MISSING files (0.58%), zero
+faults and 5.17/4.92/5.18 MB/CPU-s. Run 1 is the median; the canonical reading
+is that exact harness output with no appended notes. Source and harness are
+`85b73ee11`. Remaining syntax classes are splatted arguments, extra filter
+arguments and a numeric dotted attribute.
+
+The committed stress entrypoint and `proof/stress.json` record one
+57344-byte malformed repeated `{% if (` input aborted at the 10-second budget
+(10000.640 ms, one fault), followed by successful 55-byte macro recovery in
+7.214 ms (two symbols, zero faults). Zero calibration faults does not mean
+arbitrary malformed inputs never fault. Reproduction commands and hash formats
+are in `calibration/oracles/jinja2-meta/PATCH-PROOF.md`.
 
 ## Coverage ceiling
 
