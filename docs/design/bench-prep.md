@@ -181,6 +181,14 @@ packages) with at least 10 product packages or directories in the primary langua
 when its product fan-in is shown at screening. Revisit when: application candidates fail C3 or C5 at a higher rate
 than libraries did, or the kept pool reaches six per language from libraries alone.
 
+**D27 revisit observed (2026-10-26, apps-r1).** The Go application slice has four
+C3 preparation refusals out of five, versus two of six Go library candidates
+in the earlier reading. This fires the C3 revisit condition in the measured
+Linux isolation setup; root permissions, fixture warming and a short cache TTL
+confound an intrinsic application-versus-library comparison. The application-first
+policy is unchanged pending review. The [application reading](../bench/readings/bench-prep/apps-r1.md)
+records the refusals and the retained preparation candidate; C4 remains unrun.
+
 **Preparation mount contract.** Containers mount the detached subject clone at
 `/subject:ro`, a fresh job-owned `workspace/` build directory at `/work:rw`,
 and `calibration/bench.d` at `/bench-inputs:ro`. `/work/tmp` is a writable,
