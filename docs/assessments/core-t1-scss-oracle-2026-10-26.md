@@ -43,3 +43,25 @@ Use the subject runner's exact setup for Bootstrap, run `indexbench lang-oracle`
 subject SHAs, counts, exclusions, timing basis and setup disclosure. No extractor, epoch,
 generated board or plan checkbox changed. The controller must regenerate the language board
 and apply its integration gate.
+
+## Candidate inventory (X-R1)
+
+| Candidate or route | Version | Evidence and remaining limit |
+|---|---|---|
+| Dart Sass first-party syntax tree, `sass-parser` | 0.4.57 | Its lazy `source.end` exists. The repaired adapter now attests ranges. On Foundation it rejects one source file, which remains counted. |
+| Dart Sass individual-file compile and `loadedUrls` | 1.105.1 | Foundation: 59 successful compiles, 77 failures, 36 import statements without compile truth. This leaves 25 extracted file pairs unattested, not proven false. |
+| Subject-runner preamble and external load paths | adapter at this branch; sass-true 9.0.0 | This route fixed Bootstrap using its exact committed runner setup before the holdout. Foundation was frozen without setup and received no tuning after its first reading. A new setup is a new experiment, not retrospective truth for this result. |
+| Universal Ctags SCSS parser | 6.2.1 | Existing O851 records number-as-class tags, missed sibling classes and loop variables, and absent ends. It cannot replace first-party span truth. |
+| Third-party SCSS grammar | P233/tree-sitter-scss v1.0.1, ee500b9c | Extraction grammar, not an independent oracle. Reusing its query to attest itself would prove nothing. |
+
+X-R1 moves the frozen Foundation pin and criteria to
+`docs/bench/scss-spans-holdout.yaml`. It is never an input to the canonical corpus loader.
+The original first-reading identity and counts remain unchanged.
+
+Runnable checks from committed files (with the README's pinned packages installed):
+
+```sh
+node --test calibration/oracles/dart-sass/sass_oracle.test.cjs
+go test -race ./internal/langbench -run 'GrammarPrefillDataMatchesQueue|Reading|Corpus'
+ruby -r yaml -e 'ARGV.each { |p| YAML.safe_load(File.read(p)) }' calibration/corpus.d/scss.yaml docs/bench/scss-spans-holdout.yaml
+```
