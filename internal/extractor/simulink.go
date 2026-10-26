@@ -296,9 +296,18 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 	} else {
 		err = m.readMDL(src)
 	}
+	if err == nil {
+		err = m.resolveSignals()
+	}
 	if err != nil {
 		return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}}, err
 	}
+	return m, nil
+}
+
+// resolveSignals resolves the lines read into Signals, each pair once, keyed on block
+// indexes so no path is hashed per endpoint, under the signal and emitted-call caps.
+func (m *SimulinkModel) resolveSignals() error {
 	// canon[i] is the first block whose path is block i's, each path hashed once.
 	first := make(map[string]int, len(m.Blocks))
 	canon := make([]int, len(m.Blocks))
@@ -342,12 +351,10 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 			if p := (simulinkPair{int32(src), int32(dst)}); dst >= 0 && !seen[p] {
 				seen[p] = true
 				if left -= len(m.Blocks[src].Path) + len(m.Blocks[dst].Path); left < 0 {
-					return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
-						fmt.Errorf("%w: signals hold past %d bytes of endpoint paths", ErrSimulinkCap, SimulinkMaxPathBytes)
+					return fmt.Errorf("%w: signals hold past %d bytes of endpoint paths", ErrSimulinkCap, SimulinkMaxPathBytes)
 				}
 				if len(m.pairs) == SimulinkMaxSignals {
-					return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
-						fmt.Errorf("%w: past %d signals", ErrSimulinkCap, SimulinkMaxSignals)
+					return fmt.Errorf("%w: past %d signals", ErrSimulinkCap, SimulinkMaxSignals)
 				}
 				m.pairs = append(m.pairs, p)
 			}
@@ -363,8 +370,7 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 	calls := 0
 	for i := range m.Blocks {
 		if calls += out[canon[i]]; calls > SimulinkMaxCalls {
-			return SimulinkModel{Name: m.Name, SIDPath: map[string]string{}},
-				fmt.Errorf("%w: past %d emitted calls", ErrSimulinkCap, SimulinkMaxCalls)
+			return fmt.Errorf("%w: past %d emitted calls", ErrSimulinkCap, SimulinkMaxCalls)
 		}
 	}
 	m.Signals = make([]SimulinkSignal, len(m.pairs))
@@ -372,7 +378,7 @@ func ReadSimulinkModel(relPath string, src []byte) (SimulinkModel, error) {
 		m.Signals[i] = SimulinkSignal{Src: m.Blocks[p.src].Path, Dst: m.Blocks[p.dst].Path}
 	}
 	m.ends, m.owners, m.canon = nil, nil, canon
-	return m, nil
+	return nil
 }
 
 // simulinkName is a block name as a symbol holds it: each line break one space.
