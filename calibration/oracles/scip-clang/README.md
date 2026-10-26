@@ -150,7 +150,11 @@ the target's CMake architectures that compiles (`-Xclang -target-sdk-version=12.
 reads no toolkit version and wants the pre-9.2 launch API). `preproc.units.json` maps each CMake executable to its
 sources from the build's own link lines (the link-unit companion of preproc.json). The driver writes its measurement
 record and the median-of-runs throughput into `<work-dir>/reading.json` (no hand edit), and passes the clone's commit
-as `-subject-sha` (the scratch copy has no .git).
+as `-subject-sha` (the scratch copy has no .git). Round 5 (C5-R2): both CMake build trees are configured under
+`<work-dir>`, never in the subject copy (a build tree there adds CMake's two CompilerIdCUDA sources to the measured
+set), and the measured set, the subject's `.cu` and `.cuh` files, is listed at `<work-dir>/measured-files.txt`; every
+run's file count and bytes must agree with it, and its count, bytes and the sha256 of the sorted list are a note of
+the reading, so a re-timed clone can be proven to measure the same files.
 
 Two samples that define the same global name (`iDivUp`, `main`, a kernel) are one SCIP symbol, since scip-clang
 names a global by no file or translation unit, so the index's file-edge truth over the whole set draws an edge to

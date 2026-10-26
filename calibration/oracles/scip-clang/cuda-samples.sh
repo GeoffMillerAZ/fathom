@@ -10,7 +10,9 @@
 # Steps:
 #   1. copy the subject to <work-dir>/subject; give the sources the sparse clone leaves out (data, .c, .ll) an empty
 #      file and each static library the toolkit lacks an empty archive, so CMake configures (nothing is built);
-#   2. cmake with nvcc: <work-dir>/nvcc_compile_commands.json, the build's own database;
+#   2. cmake with nvcc: <work-dir>/nvcc_compile_commands.json, the build's own database. Both CMake build trees
+#      (nvcc's and clang's) are configured under <work-dir>, never the subject copy (round 5 C5-R2: a build tree in
+#      the subject adds CMake's CompilerIdCUDA sources to the measured set);
 #   3. the build's own preprocessor, both passes (tier A, ruling C-R6 E1): nvcc -E is the device pass at the lowest
 #      architecture the build names; the host pass is the gcc -E line nvcc --dryrun prints for the entry (no
 #      __CUDA_ARCH__); the two runs' active lines and includes are unioned into preproc.json;
@@ -18,7 +20,10 @@
 #      and -D) at <work-dir>/subject/build/compile_commands.json: scip-clang 0.4.0 does not read nvcc entries, so the
 #      index, clang-calls and clang-ast-defs read it, and the last two are written at -tier B;
 #   5. indexbench lang-oracle over the one subject, <runs> times (default 3) at one commit, readings kept apart
-#      (ruling C-R5: the median throughput is the one committed).
+#      (ruling C-R5: the median throughput is the one committed); the measured set (the subject's .cu and .cuh files,
+#      the dialect's extensions) is listed at <work-dir>/measured-files.txt, must agree with each reading's file count
+#      and bytes, and its count, bytes and the sha256 of the sorted list are a note of the reading (round 5 C5-R2), so
+#      a re-timed clone can be proven to measure the same files.
 set -euo pipefail
 clone=$(cd "$1" && pwd) cuda=$(cd "$2" && pwd) tools=$(cd "$3" && pwd) work=$4 runs=${5:-3}
 repo=$(cd "$(dirname "$0")/../../.." && pwd)
@@ -38,7 +43,7 @@ done
 for n in $(grep -rhoE 'CUDA::[A-Za-z_]+_static' "$subj/Samples" --include=CMakeLists.txt | sort -u | sed 's/CUDA:://'); do
   [ -e "$lib/lib$n.a" ] || ar rc "$lib/lib$n.a"
 done
-cmake_args=(-S "$subj" -B "$subj/build-nvcc" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake_args=(-S "$subj" -B "$work/build-nvcc" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   -DCMAKE_CUDA_COMPILER="$cuda/bin/nvcc" -DCUDAToolkit_ROOT="$cuda" -DNVJITLINK_LIB="$lib/libcudart.so")
 for _ in 1 2 3 4 5 6; do
   if cmake "${cmake_args[@]}" > "$work/cmake.log" 2>&1; then break; fi
@@ -52,11 +57,11 @@ for f in re.findall(r'file COPY cannot find\s*"([^"]+)"', log):
     os.makedirs(os.path.dirname(f), exist_ok=True); open(f, "a").close()
 EOF
 done
-cp "$subj/build-nvcc/compile_commands.json" "$work/nvcc_compile_commands.json"
+cp "$work/build-nvcc/compile_commands.json" "$work/nvcc_compile_commands.json"
 # 2a (round 3 B): each CMake executable's sources, from the build's own link lines (an object the linker reads is the
 # compile database entry that writes it; a library the build links, its own objects), at preproc.units.json, the
 # link-unit companion of the preprocessor oracle the reading reads.
-python3 - "$subj" "$subj/build-nvcc" "$work/preproc.units.json" <<'EOF'
+python3 - "$subj" "$work/build-nvcc" "$work/preproc.units.json" <<'EOF'
 import json, os, re, sys
 subj, build, out = sys.argv[1:4]
 src_of = {}
@@ -92,11 +97,11 @@ EOF
 # C4-R5: that count, never the clang configure's own) compile as written, that database is the index's (tier A);
 # otherwise the translation below is, at tier B. The counts are in clang-native.json. -DCMAKE_CUDA_ARCHITECTURES=52
 # has no effect: the samples' CMakeLists set CMAKE_CUDA_ARCHITECTURES themselves (clang-native.json counts them).
-clang_args=(-S "$subj" -B "$subj/build-clang" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CUDA_COMPILER=clang++
+clang_args=(-S "$subj" -B "$work/build-clang" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CUDA_COMPILER=clang++
   -DCMAKE_CUDA_ARCHITECTURES=52 -DCUDAToolkit_ROOT="$cuda" -DCMAKE_CUDA_FLAGS="--cuda-path=$cuda -Wno-unknown-cuda-version"
   -DNVJITLINK_LIB="$lib/libcudart.so")
 PATH="$cuda/bin:$PATH" cmake "${clang_args[@]}" > "$work/cmake-clang.log" 2>&1 || true
-PATH="$cuda/bin:$PATH" python3 - "$subj/build-clang/compile_commands.json" "$work/clang-native.json" "$work/nvcc_compile_commands.json" "$subj" <<'EOF2'
+PATH="$cuda/bin:$PATH" python3 - "$work/build-clang/compile_commands.json" "$work/clang-native.json" "$work/nvcc_compile_commands.json" "$subj" <<'EOF2'
 import collections, json, os, re, shlex, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 db = [e for e in json.load(open(sys.argv[1])) if e["file"].endswith(".cu")] if os.path.exists(sys.argv[1]) else []
@@ -199,7 +204,7 @@ print(len(nv), "cu entries;", len(host), "host passes;", len(kept), "clang compi
 EOF
 
 if [ "$scip_tier" = A ]; then # the samples' own clang build compiles: its database, untranslated, is the index's
-  cp "$subj/build-clang/compile_commands.json" "$subj/build/compile_commands.json"
+  cp "$work/build-clang/compile_commands.json" "$subj/build/compile_commands.json"
 fi
 export PATH="$cuda/bin:$PATH"
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-device.json" -tier A > "$work/preproc-device.json" )
@@ -275,6 +280,8 @@ print("measured as ONE subject from the samples' own CMake build with nvcc (owne
          "; a tier-B oracle caps L2 and above at good (tierCeiling)" if tier != "A" else ""))
 EOF
 )
+# The measured set (round 5 C5-R2): the files the CUDA dialect owns in the subject copy, sorted, one per line.
+( cd "$subj" && find . -type f \( -name '*.cu' -o -name '*.cuh' \) | sed 's|^\./||' | LC_ALL=C sort ) > "$work/measured-files.txt"
 cd "$repo"
 for i in $(seq 1 "$runs"); do
   go run ./cmd/indexbench lang-oracle -dialect cuda -subject "$subj" -subject-name NVIDIA/cuda-samples -subject-sha "$sha" -scip-tier "$scip_tier" \
@@ -290,8 +297,20 @@ cpu = [r["tenancy"]["throughput_mb_s"] for r in rs]
 wall = [r["tenancy"].get("wall_throughput_mb_s", 0) for r in rs]
 med = sorted(range(n), key=lambda i: cpu[i])[n // 2]
 r = rs[med]
+# round 5 C5-R2: the measured set, proven against every run's own count and bytes
+import hashlib
+listing = open(os.path.join(w, "measured-files.txt"), "rb").read()
+paths = listing.decode().splitlines()
+size = sum(os.path.getsize(os.path.join(w, "subject", p)) for p in paths)
+for i, x in enumerate(rs):
+    s = x["subjects"][0]
+    if (s["files"], s["bytes"]) != (len(paths), size):
+        sys.exit("run %d measured %d files, %d bytes; measured-files.txt lists %d, %d bytes" % (i + 1, s["files"], s["bytes"], len(paths), size))
+digest = hashlib.sha256(listing).hexdigest()
 f = lambda xs: (", ".join("%.2f" % x for x in xs[:-1]) + " and " if len(xs) > 1 else "") + "%.2f" % xs[-1]
-r["notes"] = sorted(r["notes"] + ["%s: throughput read %d times at fathom %s in one VM, one subject (owner ruling C-R5): %s MB/s per core (wall %s); the median run, %.2f, is this reading"
+r["notes"] = sorted(r["notes"] + ["%s: the measured set is the subject's %d .cu and .cuh files, %d bytes; the sha256 of their sorted path list (one per line, LF-terminated) is %s (round 5 C5-R2: both CMake build trees are configured outside the subject)"
+                                  % (r["subjects"][0]["name"], len(paths), size, digest),
+                                  "%s: throughput read %d times at fathom %s in one VM, one subject (owner ruling C-R5): %s MB/s per core (wall %s); the median run, %.2f, is this reading"
                                   % (r["subjects"][0]["name"], n, r["fathom_commit"], f(cpu), f(wall), cpu[med])])
 with open(os.path.join(w, "reading.json"), "w") as fh: # byte for byte what langbench.MarshalReading writes
     fh.write(json.dumps(r, indent=2, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026") + "\n")
