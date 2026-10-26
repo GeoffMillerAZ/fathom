@@ -1,6 +1,6 @@
 {
   "control_script_sha256": "d4b5463d0ff7889e54046c98dcfe85992d3d5fb5ab8731543a91054def6bcc8f",
-  "grade_source_sha256": "3e05b22c5d55dfb6977a7658bf1c205cd2ec244d1f6b78cd52767da4c850b9a6",
+  "grade_source_sha256": "7eeddd97eb3b867d3593c300ad76a61a3ad3baf1431bf63dedcd66349e9cb0a0",
   "python_test_sources": [
     {
       "path": "test_native_projection.py",
@@ -8,7 +8,7 @@
     },
     {
       "path": "test_native_population.py",
-      "sha256": "7736c48e7dd2a7024a1ae46513f57f0ea24a7fd4570673e5f03146ffc4bad0e8"
+      "sha256": "be1855d9ddd4e4b4c67f988be4156f67d46fd555a0bab720b99f84f58df1e787"
     },
     {
       "path": "test_native_scope.py",
@@ -32,7 +32,7 @@
       "restored_green": true
     }
   ],
-  "tests": 9,
+  "tests": 10,
   "skips": 0,
   "mutant": "filter native definition multiset by independent locator candidates",
   "failure_line": "FAIL: test_locator_omission_extra_and_tier_change_refuse_whole_input (test_native_projection.NativeProjectionTest)",

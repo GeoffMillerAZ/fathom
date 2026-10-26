@@ -67,7 +67,7 @@ The build uses `-trimpath -buildvcs=false` and a private probe module with a
 stable `./native-source` replacement; trimpath alone retains absolute local
 replacement names in Go build metadata. It compares two independent
 scratch roots with the same Go compiler/target. Fresh native controls bind to
-the binary, the race-test source and the generator hashes. Nine Python tests
+the binary, the race-test source and the generator hashes. Ten Python tests
 and three FAIL-to-GREEN mutants protect locator independence, denial of
 subset-based grades, and site-versus-pair accounting. Fourteen native race
 tests, two native omission mutants and three network-denied official decK
@@ -88,3 +88,8 @@ gaps; no absence ceiling is asserted. Timing remains a separate T-R10 gate:
 load at most six for a sampled median of three, otherwise unmeasured. No valid
 throughput result can grant a support grade from the product-selected subset.
 No model decision applies.
+
+Optional throughput refusal leaves the complete correctness receipt intact and
+reports throughput as unmeasured. The YAML-only shadow copies have no independent
+Git identity, so lang-retime refuses them; no synthetic Git identity or performance
+gate bypass is introduced. A regression test covers refusal and excess load.

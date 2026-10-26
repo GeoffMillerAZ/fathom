@@ -7,6 +7,18 @@ import grade_native_l2 as grade
 
 
 class NativePopulationTest(unittest.TestCase):
+    def test_optional_timing_refusal_or_high_load_grants_no_throughput(self):
+        # The real scratch-copy retime refused at load <6. Correctness evidence
+        # must survive, without treating failed/overloaded runs as a median.
+        for code, load in ((1, 4), (0, 7)):
+            result=grade.finish_timing(dict(attempted_runs=3,max_observed_load_1m=load),code)
+            self.assertEqual('unmeasured',result['status'])
+            self.assertEqual(0,result['runs'])
+            self.assertEqual(code,result['retime_exit_code'])
+        valid=grade.finish_timing(dict(attempted_runs=3,max_observed_load_1m=4),0)
+        self.assertEqual('measured_median_of_3',valid['status'])
+        self.assertEqual(3,valid['runs'])
+
     def test_site_and_pair_counts_keep_unowned_fields_and_empty_host_family(self):
         route=dict(from_kind='route',field='service',to_kind='service',outcome='owner_registry_resolved',**{'from':'route','to':'app'})
         plugin=dict(from_kind='plugin',field='route',to_kind='route',outcome='owner_registry_resolved',**{'from':'cors','to':'route'})

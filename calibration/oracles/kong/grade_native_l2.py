@@ -163,6 +163,15 @@ def public_subset_evidence(measured):
                 per_cohort=[{key: row[key] for key in ('sha', 'files', 'bytes', 'counts')} for row in measured['subjects']])
 
 
+def finish_timing(timing, exit_code):
+    # Optional throughput refusal cannot erase a completed correctness replay.
+    # Failed attempts and load-invalid medians establish no performance fact.
+    timed = (timing['attempted_runs'] == 3 and exit_code == 0 and
+             timing.get('max_observed_load_1m', float('inf')) <= 6)
+    return dict(timing, retime_exit_code=exit_code, runs=3 if timed else 0,
+                status='measured_median_of_3' if timed else 'unmeasured')
+
+
 def validate_control_identity(identity, control):
     if control.get('native_test_source_sha256') != sha((HERE / 'native/main_test.go').read_bytes()):
         raise ValueError('native race test source identity mismatch')
@@ -197,7 +206,7 @@ def measure(args):
             control['native_binary_sha256'] != identity['binary_sha256'] or control['race_tests'] != 14 or
             len(control['mutations']) != 2 or not all(row['restored_green'] for row in control['mutations']) or
             len(control['cli_cross_checks']) != 3 or control['native_http_requests'] or
-            not control['official_cli_network_denied'] or projection_control.get('tests') != 9 or
+            not control['official_cli_network_denied'] or projection_control.get('tests') != 10 or
             not projection_control.get('restored_green') or projection_control.get('skips') != 0):
         raise ValueError('fresh native identity and complete authored controls required')
     args.out.mkdir(parents=True, exist_ok=False)
@@ -325,6 +334,7 @@ def measure(args):
                       serial_lane_job=True, shared_host_other_activity='uncontrolled')
         timed = timing['start_load_1m'] <= 6
         timing['attempted_runs'] = 3 if timed else 0
+        code = None
         if timed:
             if shutil.disk_usage(Path.home()).free < 20 * 1024**3:
                 raise ValueError('disk below floor before timing')
@@ -337,14 +347,11 @@ def measure(args):
                     break
                 except subprocess.TimeoutExpired:
                     continue
-            if code:
-                raise subprocess.CalledProcessError(code, child.args)
             timing['end_load_1m'] = os.getloadavg()[0]
             timing['max_observed_load_1m'] = max(timing['max_observed_load_1m'], timing['end_load_1m'])
             timing['load_sample_interval_seconds'] = 1
-            timed = timing['max_observed_load_1m'] <= 6
-        timing['runs'] = 3 if timed else 0
-        timing['status'] = 'measured_median_of_3' if timed else 'unmeasured'
+        timing = finish_timing(timing, code)
+        timed = timing['status'] == 'measured_median_of_3'
         # Initial correctness-run timings cannot establish a performance grade.
         # Keep their raw reading private, and omit them from public evidence.
 

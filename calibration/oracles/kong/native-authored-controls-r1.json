@@ -1,6 +1,8 @@
 {
   "kind": "authored prototype controls only; no calibration or metric/tier claim",
-  "native_binary_sha256": "785276cbd3a0f2609bfd8d0d3fbe3f42e810f65769c62abae44f1ff27ec09316",
+  "native_binary_sha256": "eab75801aeac775a43f8fec5ea648d2b72828f1352eb9c25fc9fbd218305be35",
+  "native_test_source_sha256": "ee4acc2de3bea38ac197afafe802a88aa18e990e3769cc018c431e6a603a02b0",
+  "control_script_sha256": "f87fa62ab576eeac28e1a7c34f33d0aeffe4f305d937f6d52c1480d973347b5a",
   "official_deck_binary_sha256": "fa560e40045a63987968d18807af38ffe26476aa38b1fd8a6d7d1e1e479e8cc2",
   "race_tests": 14,
   "skips": 0,
@@ -8,7 +10,7 @@
     {
       "mutant": "drop raw native Host observation",
       "file": "instrument_native.py",
-      "failure_line": "--- FAIL: TestURLDerivedHostDoesNotBecomeWrittenHost (0.03s)",
+      "failure_line": "--- FAIL: TestURLDerivedHostDoesNotBecomeWrittenHost (0.04s)",
       "restored_green": true
     },
     {

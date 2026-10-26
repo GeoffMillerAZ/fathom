@@ -64,7 +64,7 @@ clean private environment/HOME and OS network denial, never Docker or a backend.
 Fourteen native race tests, two native omission mutants, three official decK
 cross-checks, output-removal tripwire and changed-input sensitivity precede
 replay. The tripwire alone proves no independence claim. Fresh controls bind
-to the native binary, `native/main_test.go` and generator hashes. Nine Python
+to the native binary, `native/main_test.go` and generator hashes. Ten Python
 tests and three FAIL-to-GREEN mutants protect locator independence, denial of
 subset-based grades, and the distinction between sites and pairs.
 
@@ -127,3 +127,8 @@ No absence ceiling is asserted.
 | Language servers | YAML Language Server 2.0.0, MIT | Schema/symbol services are C; no Kong foreign-key evaluation, not installed. Dedicated query had no hit, not a global absence proof. |
 | Registry/parser sources | kongfig 1.5.3, MIT; GDR 1.42.4; yaml.v3 3.0.1, Apache-2.0/MIT | kongfig uses legacy APIs/live Admin API and optional JS, untried; yaml.v3 supplies C positions only. |
 | Runtime parse/tracing | Kong 3.9.1, Apache-2.0 | `kong config parse` calls declarative parse_file; available untried DB-less route. Import is mutating and separate. No runtime build/install/Docker; 3.14.0 source attempts returned 404. |
+
+Optional throughput refusal leaves the complete correctness receipt intact and
+reports throughput as unmeasured. The YAML-only shadow copies have no independent
+Git identity, so lang-retime refuses them; no synthetic Git identity or performance
+gate bypass is introduced. A regression test covers refusal and excess load.
