@@ -1,0 +1,200 @@
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
+)
+
+// Replay repository-owned dialect fixtures. This is a cross-dialect regression
+// instrument, not full-subject discovery or native calibration.
+func TestTerraformDocFixtureImpactReplay(t *testing.T) {
+	t.Chdir("../..")
+	type route struct {
+		Dialect  string `json:"dialect"`
+		UsesDoc  bool   `json:"uses_doc_xref"`
+		Eligible bool   `json:"eligible_reading"`
+	}
+	var inventory []route
+	unknownRoutes := 0
+	err := filepath.WalkDir("docs/bench/readings/lang", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || filepath.Ext(p) != ".json" {
+			return nil
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		var reading struct {
+			Dialect string `json:"dialect"`
+		}
+		if err := json.Unmarshal(b, &reading); err != nil {
+			return err
+		}
+		r := route{Dialect: reading.Dialect, Eligible: !strings.Contains(p, "/baseline/") && !strings.Contains(p, "/parity/")}
+		spec, source, err := resolveBenchSpec(reading.Dialect, "")
+		if err != nil {
+			unknownRoutes++
+			inventory = append(inventory, r)
+			return nil
+		}
+		if spec.Manifest.Engine == "doc" || spec.Manifest.Engine == "tags+doc" || spec.Manifest.Engine == "native" {
+			x, close, err := langOracleExtractor(spec.Manifest, source)
+			if err != nil {
+				return err
+			}
+			_, r.UsesDoc = x.(extractor.DocResulter)
+			close()
+		}
+		inventory = append(inventory, r)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allDoc, eligibleDoc, eligibleReadings := 0, 0, 0
+	for _, r := range inventory {
+		if r.Eligible {
+			eligibleReadings++
+		}
+		if r.UsesDoc {
+			allDoc++
+			if r.Eligible {
+				eligibleDoc++
+			}
+		}
+	}
+	seen := map[string]bool{}
+	var ids []string
+	for _, r := range inventory {
+		if r.UsesDoc && !seen[r.Dialect] {
+			ids = append(ids, r.Dialect)
+			seen[r.Dialect] = true
+		}
+	}
+	slices.Sort(ids)
+	type result struct {
+		Dialect         string         `json:"dialect"`
+		Files           int            `json:"files"`
+		Bytes           int            `json:"bytes"`
+		InputHash       string         `json:"input_sha256"`
+		ExtractionHash  string         `json:"extraction_sha256"`
+		ResolvedHash    string         `json:"resolved_sha256"`
+		ResolvedCount   int            `json:"resolved_edges"`
+		Strategies      map[string]int `json:"strategies"`
+		Errors          int            `json:"errors"`
+		MissingFixtures bool           `json:"missing_fixtures"`
+	}
+	var results []result
+	var mixed []fusion.DocFile
+	for _, id := range ids {
+		r := result{Dialect: id, Strategies: map[string]int{}}
+		spec, source, err := resolveBenchSpec(id, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		x, close, err := langOracleExtractor(spec.Manifest, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, ok := x.(extractor.DocResulter)
+		if !ok {
+			t.Fatalf("route changed for %s", id)
+		}
+		base := filepath.Join("internal/extractor/dialects", id, "testdata")
+		var files []fusion.DocFile
+		inputHash := sha256.New()
+		err = filepath.WalkDir(base, func(p string, d fs.DirEntry, err error) error {
+			if os.IsNotExist(err) {
+				r.MissingFixtures = true
+				return fs.SkipDir
+			}
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || strings.HasSuffix(p, ".golden.json") || d.Type()&os.ModeSymlink != 0 {
+				return nil
+			}
+			content, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(base, p)
+			if err != nil {
+				return err
+			}
+			path := id + "/" + filepath.ToSlash(rel)
+			fmt.Fprintf(inputHash, "%s\x00%x\n", path, sha256.Sum256(content))
+			got, err := doc.ExtractDoc("replay", path, content)
+			if err != nil {
+				r.Errors++
+				return nil
+			}
+			r.Files++
+			r.Bytes += len(content)
+			for _, ref := range got.CrossFile {
+				r.Strategies[ref.Strategy]++
+			}
+			files = append(files, fusion.DocFile{Path: path, Result: got})
+			return nil
+		})
+		close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := json.Marshal(files)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.InputHash = fmt.Sprintf("%x", inputHash.Sum(nil))
+		r.ExtractionHash = fmt.Sprintf("%x", sha256.Sum256(b))
+		edges := fusion.ResolveDocXrefs(files)
+		b, err = json.Marshal(edges)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.ResolvedHash = fmt.Sprintf("%x", sha256.Sum256(b))
+		r.ResolvedCount = len(edges)
+		mixed = append(mixed, files...)
+		results = append(results, r)
+	}
+	mixedEdges := fusion.ResolveDocXrefs(mixed)
+	b, err := json.Marshal(mixedEdges)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := struct {
+		ReadingFiles            int      `json:"reading_files"`
+		EligibleReadingFiles    int      `json:"eligible_reading_files"`
+		DocReadingFiles         int      `json:"doc_reading_files"`
+		EligibleDocReadingFiles int      `json:"eligible_doc_reading_files"`
+		UnavailableRoutes       int      `json:"unavailable_routes"`
+		Dialects                []result `json:"dialects"`
+		MixedEdges              int      `json:"mixed_edges"`
+		MixedHash               string   `json:"mixed_sha256"`
+	}{len(inventory), eligibleReadings, allDoc, eligibleDoc, unknownRoutes, results, len(mixedEdges), fmt.Sprintf("%x", sha256.Sum256(b))}
+	b, err = json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := os.Getenv("IAC_FIXTURE_REPLAY_OUT")
+	if output == "" {
+		t.Fatal("IAC_FIXTURE_REPLAY_OUT required")
+	}
+	if err := os.WriteFile(output, append(b, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("dialects=%d files=%d mixed edges=%d", len(results), len(mixed), len(mixedEdges))
+}
