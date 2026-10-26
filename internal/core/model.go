@@ -17,7 +17,6 @@ type SourceKind string
 const (
 	KindGoFunc            SourceKind = "GoFunc"
 	KindGoMethod          SourceKind = "GoMethod"
-	KindGoField           SourceKind = "GoField"
 	KindGoType            SourceKind = "GoType"
 	KindGoVar             SourceKind = "GoVar"
 	KindGoConst           SourceKind = "GoConst"

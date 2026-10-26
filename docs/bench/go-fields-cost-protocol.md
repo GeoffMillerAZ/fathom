@@ -42,3 +42,9 @@ If it exceeds a cost gate, retain the receipt, revert the runtime change, and st
 written ceiling unless the owner rules otherwise. Do not add interface methods or reference
 edges to rescue this experiment. The controller owns generated boards, plan checkboxes,
 extractor-epoch numbering and the integration gate.
+
+C-R5 outcome: the completed equivalent-work sequence measured +26.7% wall and +6.3% store.
+One baseline launch was9.01 after hashing; this deviation is retained, and the stricter repeat
+was interrupted by machine load above190. No passing cost claim is made. The owner directs
+closing this lever and reverting the runtime. Portable commands are in
+calibration/oracles/go-fields-cost/README.md. Gin remains unspent and outside canonical corpus.
