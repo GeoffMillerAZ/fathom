@@ -79,7 +79,7 @@ Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://s
 | Own toolchain / compiler | [Dart Sass](https://sass-lang.com/documentation/js-api/) is measured at 1.105.1 for successful `loadedUrls`; [registry 1.106.1](https://registry.npmjs.org/sass/latest) is newer but does not automatically attest failed Foundation compiles. |
 | SCIP / LSIF | Shared catalogs and [GitHub `scip-scss` search](https://github.com/search?q=scip-scss&type=repositories) yielded no measured SCSS indexer. |
 | Language server | [VS Code CSS/SCSS language service](https://github.com/microsoft/vscode-css-languageservice) has navigation services. [`some-sass-language-server` 2.3.8](https://www.npmjs.com/package/some-sass-language-server) supports SCSS and indented Sass with `@use`/`@forward`; it is third-party tier C and **LIVE UNMEASURED** against Foundation's 25 unattested file pairs. |
-| Registry AST / resolver | [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/latest) postdates measured 0.4.57. [`sass_api` 18.1.0](https://pub.dev/packages/sass_api/versions/18.1.0) exposes AST spans, [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) returns declared URLs, and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves a URL using Dart Sass's own resolver. Combined, `findDependencies` plus `ImportCache.canonicalize` can attest resolved (importer, imported) pairs without evaluating the stylesheet, including files that fail evaluation. This owner-resolution route is now **MEASURED**, tier A under P-T1; it attests all 25 previously missing pairs in the post-hoc Foundation comparison. It needs the same load paths and importers as a compile, so missing-load-path failures remain unresolved. |
+| Registry AST / resolver | [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/0.5.1) postdates canonical 0.4.57 and is now measured in the separate canonical-only comparison below. [`sass_api` 18.1.0](https://pub.dev/packages/sass_api/versions/18.1.0) exposes AST spans, [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) returns declared URLs, and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves a URL using Dart Sass's own resolver. Combined, `findDependencies` plus `ImportCache.canonicalize` can attest resolved (importer, imported) pairs without evaluating the stylesheet, including files that fail evaluation. This owner-resolution route is now **MEASURED**, tier A under P-T1; it attests all 25 previously missing pairs in the post-hoc Foundation comparison. It needs the same load paths and importers as a compile, so missing-load-path failures remain unresolved. |
 | Runtime/load tracing | [Dart Sass compile API](https://sass-lang.com/documentation/js-api/) reports loads for successful compiles only. A custom JS importer hook can observe explicit `load` callbacks, but does not establish coverage of built-in loads. The `sass_api` resolver measurement below retains every parse and resolution gap. |
 
 The original frozen Foundation result remains historical. The controller authorizes the format-owner resolver as tier A under P-T1; its measured result below supersedes the missing-resolver premise without treating a spent subject as fresh validation.
@@ -127,8 +127,34 @@ retains the failure, source inventory and frozen tool/build identities.
 Spectre is spent and remains outside the canonical corpus. No source, oracle,
 filter or rule was changed after its read. The canonical measurements and
 Foundation post-hoc repair remain valid, but do not establish fresh independent
-validation of the composite. A named next candidate is first-party sass-parser
-0.5.1, already identified by the registry audit: it is live and unmeasured,
-not evidence of a repair. A follow-up must measure it on the canonical corpus,
-freeze the new instrument, and preregister a different untouched holdout.
+validation of the composite. The next candidate was first-party sass-parser 0.5.1, already identified by
+the registry audit. Its subsequent canonical-only comparison below does not
+reuse Spectre or establish a repair on that spent subject. The new instrument
+and a different untouched holdout must be frozen before independent validation.
 No exhausted parser/oracle ceiling is claimed.
+
+## First-party parser 0.5.1: canonical-only comparison
+
+The [separate candidate reading](../bench/readings/scss-native-primary051-2026-10-26.json)
+uses sass-parser 0.5.1, its nested Sass 1.106.1 and top-level compile Sass
+1.105.1, with the unchanged native sass_api 18.1.0/Sass 1.106.1 resolver.
+All pooled counts and numeric metrics exactly equal the prior canonical
+reading: L1-L3 remain excellent. The parser still rejects three of 122
+Bootstrap files and five of 113 Primer files. Native parsing succeeds for
+all inputs; its one missing Bootstrap content-block statement retains the
+primary's successful compile attestation. One and sixteen native unresolved
+URLs remain counted. No source, query, filter or adapter rule changed.
+
+Median-of-three throughput is 2.31 MB/CPU-s (2.27, 2.31, 2.36), zero faults.
+The [count/hash receipt](data/2026-10-26-core-t1-scss-primary051.json) records
+all eight phase launch loads, timing, exact source before/after inventories,
+package identities and original/derived hashes. Digest strings use an
+explicit `sha256:` representation without changing the underlying hashes.
+The [pinned setup](../../calibration/oracles/dart-sass-resolver/PRIMARY.md)
+uses a committed package manifest with exact parser/compiler versions.
+
+Foundation and Spectre remain spent and were not reread for this comparison.
+The new [Bourbon preregistration](../bench/scss-resolver-primary051-holdout.yaml)
+is outside the canonical corpus; only its tag and license metadata have been
+read. Freeze this complete candidate and its toolchain before fetching the
+source, then run once without tuning. No fresh-validation success is claimed.
