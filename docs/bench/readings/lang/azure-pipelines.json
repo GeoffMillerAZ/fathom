@@ -1,0 +1,138 @@
+{
+  "dialect": "azure-pipelines",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-26",
+  "fathom_commit": "a1a8eb096",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "dotnet/runtime",
+      "sha": "3734b6da84340b26e07301263c173a3ffe32442a",
+      "files": 76,
+      "bytes": 403350,
+      "counts": {
+        "fathom_defs": 161,
+        "kind_equal": 161,
+        "matched": 161,
+        "oracle_defs": 162
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "package",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 49.46799999999999,
+        "extract_cpu_ms": 55.09300000000002,
+        "max_file_ms": 11,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "microsoft/azure-pipelines-yaml",
+      "sha": "5d433fcad43a32789a968179469c1e6271cb2fc7",
+      "files": 15,
+      "bytes": 37759,
+      "counts": {
+        "fathom_defs": 66,
+        "kind_equal": 66,
+        "matched": 66,
+        "oracle_defs": 66,
+        "ref_fathom": 16,
+        "ref_fathom_in_truth": 16,
+        "ref_truth": 16,
+        "ref_truth_found": 16
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "package",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 7.073000000000001,
+        "extract_cpu_ms": 8.257,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "azure-pipelines independent PyYAML walk",
+      "version": "6.0.3"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9956,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "job",
+    "package"
+  ],
+  "kind_intersection": [
+    "job",
+    "package",
+    "section"
+  ],
+  "counts": {
+    "fathom_defs": 227,
+    "kind_equal": 227,
+    "matched": 227,
+    "oracle_defs": 228,
+    "ref_fathom": 16,
+    "ref_fathom_in_truth": 16,
+    "ref_truth": 16,
+    "ref_truth_found": 16
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 6.96,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 7.8,
+    "max_file_ms": 11,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "dotnet/runtime: T-R4 L1/L2 syntax only, independent PyYAML 6.0.3 oracle tier C; whole sparse scope, no -only; no Azure execution or L3 measurement.",
+    "microsoft/azure-pipelines-yaml: T-R4 L1/L2 syntax only, independent PyYAML 6.0.3 oracle tier C; whole sparse scope, no -only; no Azure execution or L3 measurement.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 6.87 MB/CPU-s; run 2: 6.96 MB/CPU-s; run 3: 7.13 MB/CPU-s; median run 2: 6.96 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit a1a8eb096"
+  ],
+  "disposition": null
+}
