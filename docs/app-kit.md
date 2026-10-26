@@ -1,5 +1,11 @@
 # App-kit adoption: evidence workspace
 
+CLI contribution review (LAB-16): no candidate. Observation-to-case pointers and
+filing validation are fathom's domain policy. The `CLI flags validation errors`
+capability search returned no items at catalog revision `3ee2c1f`; existing flag
+help and plain diagnostics remain in use. Reader regressions cover linked entries,
+malformed pointers and refusals before writes. No kit runtime or pin changes.
+
 CLI contribution review (lang-retime): no candidate. Extraction identity, pooled CPU
 throughput and median-run selection are fathom's measurement semantics. Catalog
 `3ee2c1f`, query `cli output`, profile `cli`, returned `cli.output`; its status-table

@@ -241,7 +241,7 @@ func TestObserveSkipsATakenID(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "O1.md"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	id, _, err := mintObservationEntry(root, "x", "", "", "", "")
+	id, _, err := mintObservationEntry(root, "x", "", "", "", "", "")
 	if err != nil || id != 2 {
 		t.Fatalf("id = %d, err = %v; want 2", id, err)
 	}
