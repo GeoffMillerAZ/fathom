@@ -1,0 +1,72 @@
+{
+  "kind": "source interface audit only; no workflow execution or oracle grade",
+  "npm": [
+    {
+      "name": "@actions/languageservice",
+      "version": "0.3.61",
+      "sha256": "0c05556530e0bad449203ea984212baff961d309829b255865105e175f882d35"
+    },
+    {
+      "name": "@actions/languageserver",
+      "version": "0.3.61",
+      "sha256": "d152725064c64f862da5158cd630d4c67973edfb58bdabaa44054ffef03b9d03"
+    }
+  ],
+  "checks": {
+    "local_dot_reference_rejected_by_action_parser": true,
+    "native_self_repository_validation_uses_dollar_slash": true,
+    "definition_provider_advertised": false,
+    "reference_provider_advertised": false
+  },
+  "runner": {
+    "repo": "actions/runner",
+    "version": "2.332.0",
+    "sources": [
+      {
+        "path": "src/Runner.Worker/ActionManager.cs",
+        "url": "https://raw.githubusercontent.com/actions/runner/a153d802ff96c51ac1b8d72dd8a38ebe830398fc/src/Runner.Worker/ActionManager.cs",
+        "sha256": "6695af143d1eb5892313d075eb3023d7e9d06e36f5ca286cbc5468a5cb4e5b7b"
+      },
+      {
+        "path": "src/Runner.Worker/ActionManifestManager.cs",
+        "url": "https://raw.githubusercontent.com/actions/runner/a153d802ff96c51ac1b8d72dd8a38ebe830398fc/src/Runner.Worker/ActionManifestManager.cs",
+        "sha256": "c256c358c495517e7b8816be458f3060b5b221f710068b7ed0f9874f06eb7c82"
+      }
+    ]
+  },
+  "act": {
+    "repo": "nektos/act",
+    "version": "0.2.89",
+    "license": "MIT",
+    "tier": "C under P-T1, independent reimplementation",
+    "sources": [
+      {
+        "path": "LICENSE",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/LICENSE",
+        "sha256": "da3ece2d2daf5c812c8606d2922094f51818258d4ce0e041b4ee8409ba3b381f"
+      },
+      {
+        "path": "cmd/root.go",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/cmd/root.go",
+        "sha256": "879fe381091b4646188b4da9f8dcb47807aa56462488d2f26be9339ba096cd89"
+      },
+      {
+        "path": "pkg/runner/action.go",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/pkg/runner/action.go",
+        "sha256": "ae9e3f0b2fe06ecf86f4357a8534dd3b41d4b99c7215f59dc8d2d85cad4252cd"
+      },
+      {
+        "path": "pkg/runner/step_action_local.go",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/pkg/runner/step_action_local.go",
+        "sha256": "97534972bba227611b8a9a34704370c371deeecae28fd60106dbad53f6c5e569"
+      }
+    ],
+    "checks": {
+      "list_returns_plan_before_runner": true,
+      "dryrun_returns_before_local_action_load": true,
+      "metadata_order_yml_before_yaml": true
+    },
+    "runtime_executed": false
+  },
+  "next_native_route": "runner ActionManager.LoadAction and ActionManifestManager.Load; full-population harness unmeasured, held for D19"
+}

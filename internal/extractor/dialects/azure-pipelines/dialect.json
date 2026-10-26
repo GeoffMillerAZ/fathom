@@ -1,0 +1,60 @@
+{
+  "id": "azure-pipelines",
+  "display": "Azure Pipelines",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "azure-pipelines",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "azure-pipelines.yml",
+      "azure-pipelines.yaml"
+    ],
+    "globs": [
+      "**/azure-pipelines*.yml",
+      "**/azure-pipelines*.yaml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "pipeline": {
+      "source_kind": "AzurePipelineFile",
+      "canonical": "package"
+    },
+    "stage": {
+      "source_kind": "AzurePipelineStage",
+      "canonical": "section"
+    },
+    "job": {
+      "source_kind": "AzurePipelineJob",
+      "canonical": "job"
+    },
+    "deployment": {
+      "source_kind": "AzurePipelineDeployment",
+      "canonical": "job"
+    }
+  },
+  "required_kinds": [
+    "pipeline",
+    "job"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "pipeline": "package",
+      "stage": "section",
+      "job": "job",
+      "deployment": "job"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "none"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "azure-pipelines"
+}

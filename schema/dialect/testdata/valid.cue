@@ -55,7 +55,7 @@ gitlabCI: #Dialect & {
 	}
 	required_kinds: ["job"]
 	oracle_kinds: {tool: {job: "job"}}
-	name_match: "identity"
+	name_match:   "identity"
 	target_level: "L3"
 	queue_id:     "gitlab-ci"
 }
@@ -92,10 +92,10 @@ objcSelector: #Dialect & {
 	grammar: {blob: "objective-c", entry_point: "tree_sitter_objc"}
 	kinds: {method: {source_kind: "ObjCMethod", canonical: "method", callable: true}}
 	required_kinds: ["method"]
-	name_match:     "selector"
-	preprocess:     "objc-macros"
-	target_level:   "L3"
-	queue_id:       "objective-c"
+	name_match:   "selector"
+	preprocess:   "objc-macros"
+	target_level: "L3"
+	queue_id:     "objective-c"
 }
 
 goNative: #Dialect & {
@@ -196,7 +196,7 @@ openapiDoc: #Doc & {
 	entities: [{select: "$.paths.*.*", where: {is_map: true, key_in: ["get", "post"]}, kind: "route", source_kind: "OpenAPIOperation", name: "fmt:{$key @upper} {$parent}"},
 		{select: "$.components.schemas.*", include_null: true, kind: "type_alias", source_kind: "OpenAPISchema", name: "$key"}]
 	references: [
-		{from: "OpenAPIOperation|OpenAPISchema", select: "$..$ref", value: "$", edge: "ref", declared_only: true,
+		{from: "OpenAPIOperation|OpenAPISchema", select: "$..$ref", value: "$", edge: "ref", declared_only: true
 			pointer: [{prefix: "#/components/schemas/", to_kind: "OpenAPISchema"}]},
 	]
 	cross_file: [{select: "$..$ref", value: "$ @file", resolve: "repo-path", edge: "ref"}]
@@ -219,8 +219,9 @@ armDoc: #Doc & {
 	]
 	cross_file: [
 		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[uri\\(deployment\\(\\)\\.properties\\.templateLink\\.uri,\\s*'([^']+)'\\)\\]$", resolve: "repo-path", edge: "linked_template"},
-		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[variables\\('([^']+)'\\)\\]$",
-			via: {kind: "ARMVariable", pattern: "\\buri\\([^,]*,\\s*'([^']+\\.json)'\\)"}, resolve: "repo-path", edge: "linked_template"},
+		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[variables\\('([^']+)'\\)\\]$"
+			via: {kind: "ARMVariable", pattern: "\\buri\\([^,]*,\\s*'([^']+\\.json)'\\)"}, resolve: "repo-path", edge: "linked_template"
+		},
 	]
 }
 
@@ -274,8 +275,8 @@ pythonModule: #Dialect & {
 	required_kinds: ["function"]
 	oracle_kinds: {ctags: {function: "function"}}
 	module_symbol: "module"
-	target_level: "L4"
-	queue_id:     "python"
+	target_level:  "L4"
+	queue_id:      "python"
 }
 
 // K20's additions to #Doc (wave c2): the key-absent selector, an anchored RE2
@@ -288,8 +289,9 @@ predicatesDoc: #Doc & {
 	entities: [
 		{select: "$.jobs.*.steps[*]", where: {is_map: true, has_key: ["run"], not_has_key: ["id"]}, kind: "step", source_kind: "RunStep", name: "fmt:{$path}#{$index}"},
 		{select: "$.jobs.*.steps[*]", where: {is_map: true, matches: {".uses": "[^./@$:][^/@$:]*/[^@$]*@[0-9a-f]{40}"}}, kind: "resource", source_kind: "PinSHA", name: "fmt:pin:{.uses}", signature: ".uses cut:@", unique: true},
-		{select: "$.services.*.environment[*]", where: {is_scalar: true, matches: {"$": "OTEL_RESOURCE_ATTRIBUTES=.*"}}, kind: "key", source_kind: "TelemetryIdentity",
-			name: "$ kv:service.name | $ kv:OTEL_RESOURCE_ATTRIBUTES kv:service.name", refuse_templates: true, unique: true},
+		{select: "$.services.*.environment[*]", where: {is_scalar: true, matches: {"$": "OTEL_RESOURCE_ATTRIBUTES=.*"}}, kind: "key", source_kind: "TelemetryIdentity"
+			name: "$ kv:service.name | $ kv:OTEL_RESOURCE_ATTRIBUTES kv:service.name", refuse_templates: true, unique: true
+		},
 	]
 }
 
@@ -456,4 +458,13 @@ globalName: #Dialect & {
 	imports: {strategy: "global-name", scope: "service", defines: ["type"]}
 	target_level: "L3"
 	queue_id:     "gqlfixture"
+}
+
+// Namespace imports use include-path lookup without wildcard scope.
+namespaceImports: #Dialect & {
+	id: "example", display: "Example", kind: "language", engine: "native", lang_tag: "example"
+	match: {extensions: [".example"]}
+	kinds: {function: {source_kind: "ExampleFunction", canonical: "function", callable: true}}
+	required_kinds: ["function"], target_level: "L3", queue_id: "example"
+	imports: {strategy: "include-path", whole_bindings: "namespace"}
 }
