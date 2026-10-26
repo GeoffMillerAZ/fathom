@@ -259,7 +259,7 @@ func measureReact(ctx context.Context, m langbench.Manifest, root, name string, 
 	sort.Slice(owned, func(i, j int) bool { return owned[i].Path < owned[j].Path })
 	var notes []string
 	if len(globs) > 0 {
-		notes = append(notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(globs, ", ")))
+		notes = append(notes, onlyScopeNote(name, globs))
 	}
 	// Warm-up: one untimed extraction per extension compiles each grammar
 	// variant (js, ts, tsx) and its queries, so per-file times measure

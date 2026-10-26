@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "Pick",
+      "kind": "HlslFunc",
+      "package": "split",
+      "line": 4,
+      "end_line": 15,
+      "signature": "float4 Pick(float4 c, float t)",
+      "calls": [
+        "dot",
+        "saturate"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sum",
+      "kind": "HlslFunc",
+      "package": "split",
+      "line": 17,
+      "end_line": 29,
+      "signature": "float Sum(uint n)",
+      "calls": [
+        "Weight"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

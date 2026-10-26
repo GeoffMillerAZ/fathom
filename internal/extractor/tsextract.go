@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -126,6 +127,7 @@ var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"jinja-templates":     jinjaTexts,     // tsextract_jinja.go (LB-Q-jinja2)
 	"cpp-macros":          cppMacroTexts,  // tsextract_cppmacros.go (O455)
 	"cuda-macros":         cudaMacroTexts, // tsextract_cudamacros.go (LB-Q-cuda)
+	"hlsl-macros":         hlslMacroTexts, // tsextract_hlslmacros.go (LB-Q-hlsl)
 	"objc-macros":         objcMacroTexts, // tsextract_objcmacros.go (LB-Q-objective-c)
 	"tailwind-at-rules":   tailwindTexts,  // tsextract_tailwind.go (LB-Q-tailwind)
 }
@@ -763,28 +765,49 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 // with none replaces tree, its text src. A file that parses as written is
 // read as written. Every tree not returned is closed.
 func tsPreprocessed(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre func([]byte) [][]byte, lenient bool) (*tsengine.Tree, []byte, error) {
+	res, err := tsPreprocessedAt(p, tree, src, pre, lenient)
+	return res.Tree, res.Text, err
+}
+
+// ProbeParseResult is which text the extractor reads a file as: the tree and
+// text, Candidate (0 for the file as written, k for the pre-parse step's k-th
+// text) of Candidates texts the step gave, and the errors as written.
+type ProbeParseResult struct {
+	Tree                  *tsengine.Tree
+	Text                  []byte
+	Candidate, Candidates int
+	WrittenErrors         int
+}
+
+// tsPreprocessedAt is tsPreprocessed, saying which text it chose.
+func tsPreprocessedAt(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre func([]byte) [][]byte, lenient bool) (ProbeParseResult, error) {
+	res := ProbeParseResult{Tree: tree, Text: src}
 	raw, err := tsErrorCount(p, tree)
+	res.WrittenErrors = raw
 	if err != nil || raw == 0 {
-		return tree, src, err
+		return res, err
 	}
-	for _, text := range pre(src) {
+	texts := pre(src)
+	res.Candidates = len(texts)
+	for k, text := range texts {
 		t2, err := p.Parse(text)
 		if err != nil {
-			return tree, src, err
+			return res, err
 		}
 		n, err := tsErrorCount(p, t2)
 		if err != nil {
 			t2.Close()
-			return tree, src, err
+			return res, err
 		}
 		if n > 0 && !(lenient && n < raw) {
 			t2.Close()
 			continue
 		}
 		tree.Close()
-		return t2, text, nil
+		res.Tree, res.Text, res.Candidate = t2, text, k+1
+		return res, nil
 	}
-	return tree, src, nil
+	return res, nil
 }
 
 // tsErrorCount is the number of ERROR and MISSING nodes in tree.
@@ -1145,7 +1168,21 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 	var calls []tsCallSite
 	var attaches []tsCallAttach
 	typeRefs := 0
+	type span struct{ start, end uint32 }
+	var notCalls map[span]bool
+	var locals []span
 	for _, m := range matches {
+		if n, ok := tsCaptureOf(m, "local.scope"); ok {
+			locals = append(locals, span{n.StartByte, n.EndByte})
+			continue
+		}
+		if n, ok := tsCaptureOf(m, "call.none"); ok {
+			if notCalls == nil {
+				notCalls = map[span]bool{}
+			}
+			notCalls[span{n.StartByte, n.EndByte}] = true
+			continue
+		}
 		if callee, site, ok := tsCalleeName(m, src); ok {
 			if qualify {
 				callee = qualifiedCallee(m, src, callee, site)
@@ -1267,8 +1304,44 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			attaches = append(attaches, tsCallAttach{toStart: d.start, toEnd: d.end, fromStart: fromNode.StartByte, fromEnd: fromNode.EndByte})
 		}
 	}
+	if locals != nil {
+		kept := defs[:0]
+		for _, d := range defs {
+			if !slices.ContainsFunc(locals, func(l span) bool { return d.start >= l.start && d.end <= l.end }) {
+				kept = append(kept, d)
+			}
+		}
+		defs = kept
+	}
+	if notCalls != nil {
+		kept := calls[:0]
+		for _, c := range calls {
+			if !notCalls[span{c.start, c.end}] {
+				kept = append(kept, c)
+			}
+		}
+		calls = kept
+	}
 	defs, calls = dropShorterParts(defs, calls)
 	return defs, calls, attaches, typeRefs
+}
+
+// tsCaptureOf reads a match capturing the named marker, one of two:
+//   - @call.none, a call-shaped node the language does not call (an HLSL
+//     attribute, [numthreads(8, 8, 1)], or a register(b0) clause, which the
+//     grammar parses as a call_expression): a @reference.call over that same
+//     node is dropped, so a query excludes such a call by where it is written,
+//     never by a list of its names;
+//   - @local.scope, a range that holds locals (a function's body): a
+//     definition inside it is dropped, so a query may name a declaration under
+//     a preprocessor conditional at any depth and still keep only the file's.
+func tsCaptureOf(m tsengine.Match, name string) (tsengine.Node, bool) {
+	for i := range m.Captures {
+		if m.Captures[i].Name == name {
+			return m.Captures[i].Node, true
+		}
+	}
+	return tsengine.Node{}, false
 }
 
 // oneDefPerNode keeps one kind per node and name (LB-F382): when two patterns

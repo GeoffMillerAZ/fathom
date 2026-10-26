@@ -56,8 +56,9 @@ const oracleTimeout = 20 * time.Minute
 // through its own reader's and the cue-module strategy (LB-F583).
 // Jinja2 joins C on include-path (LB-Q-jinja2): a template name is looked up in
 // the includer's directory, then each ancestor. Kotlin joins them on namespace-dir (O474): its file edges are read from the
-// PSI dump's imports, tier B.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue", "jinja2": "jinja2"}
+// PSI dump's imports, tier B. HLSL joins C on include-path (LB-Q-hlsl): its
+// file edges are read from clang-includes' imports, tier B.
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss", "cue": "cue", "jinja2": "jinja2", "hlsl": "hlsl"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -163,44 +164,12 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	// was silently measured as that incumbent instead of the new
 	// DocExtractor — dialectExtractor in langparity.go already branches on
 	// engine "doc" via NewDocDialectExtractor; this mirrors it here.
-	var with extractor.Extractor
-	if source == "dialect" {
-		switch spec.Manifest.Engine {
-		case "tags+doc":
-			// One manifest, two engines (LB-Q-helm): documents go to the doc
-			// engine, every other file the manifest owns to the tags engine.
-			td, tderr := extractor.NewTagsDocExtractor(*dialect)
-			if tderr != nil {
-				fmt.Fprintln(stderr, "lang-oracle:", tderr)
-				return 1
-			}
-			defer td.Close()
-			with = td
-		case "tags":
-			ts, tserr := extractor.NewTSExtractor(spec.Manifest.HostID())
-			if tserr != nil {
-				fmt.Fprintln(stderr, "lang-oracle:", tserr)
-				return 1
-			}
-			defer ts.Close()
-			with = ts
-		case "doc":
-			doc, docerr := extractor.NewDocDialectExtractor(*dialect)
-			if docerr != nil {
-				fmt.Fprintln(stderr, "lang-oracle:", docerr)
-				return 1
-			}
-			with = doc
-		case "native":
-			// A native dialect with a stand-alone extractor (go-mod, LB-Q-go-mod;
-			// terraform's HCLExtractor, LB-F84) is measured through it, so its
-			// DocResult reaches the cross-file scoring; any other native dialect
-			// is measured through fusion's dispatch, as before.
-			if nat, ok := extractor.NativeDialectExtractor(*dialect); ok {
-				with = nat
-			}
-		}
+	with, closeExtractor, err := langOracleExtractor(spec.Manifest, source)
+	if err != nil {
+		fmt.Fprintln(stderr, "lang-oracle:", err)
+		return 1
 	}
+	defer closeExtractor()
 
 	if *scipDefs && *scipPath == "" {
 		fmt.Fprintln(stderr, "lang-oracle: -scip-defs needs -scip")
@@ -280,6 +249,30 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// langOracleExtractor selects the same extractor for an oracle run and a re-time.
+func langOracleExtractor(m langbench.Manifest, source string) (extractor.Extractor, func(), error) {
+	closeExtractor := func() {}
+	if source != "dialect" {
+		return nil, closeExtractor, nil
+	}
+	var with extractor.Extractor
+	var err error
+	switch m.Engine {
+	case "tags+doc":
+		with, err = extractor.NewTagsDocExtractor(m.ID)
+	case "tags":
+		with, err = extractor.NewTSExtractor(m.HostID())
+	case "doc":
+		with, err = extractor.NewDocDialectExtractor(m.ID)
+	case "native":
+		with, _ = extractor.NativeDialectExtractor(m.ID)
+	}
+	if c, ok := with.(interface{ Close() }); ok {
+		closeExtractor = c.Close
+	}
+	return with, closeExtractor, err
+}
+
 // resolveBenchSpec finds what to measure a dialect with: an explicit
 // manifest, the dialect's own directory, or the embedded incumbent spec.
 func resolveBenchSpec(id, manifestPath string) (langbench.BenchSpec, string, error) {
@@ -352,10 +345,13 @@ type subjectMeasurement struct {
 
 // oracleOpts are one subject's oracles and scope.
 type oracleOpts struct {
-	ctags    string // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
-	scip     string // SCIP index
-	scipTier string // the index's tier (-scip-tier; "" is A, refused for a scip-clang index)
-	scipDefs bool   // the SCIP index's definitions are the L1 oracle (D2)
+	retimeImports bool     // the reading measured the imports family
+	retimeKinds   []string // recorded L1 kind intersection, without consulting an oracle
+	noOracles     bool     // return the extraction identity before reading or discovering any oracle
+	ctags         string   // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
+	scip          string   // SCIP index
+	scipTier      string   // the index's tier (-scip-tier; "" is A, refused for a scip-clang index)
+	scipDefs      bool     // the SCIP index's definitions are the L1 oracle (D2)
 	// callsFromTool: the -tool-oracle files' calls grade L2 beside -scip
 	// (LB-F204, O264); the index's call truth, its call counts and its call
 	// notes are not part of the reading.
@@ -744,7 +740,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// (design §9 charges that to the module pool, LB-F15).
 	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only, contentDialectOf(pipe, refs))
 	if len(opts.only) > 0 {
-		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
+		res.notes = append(res.notes, onlyScopeNote(name, opts.only))
 	}
 	for _, ref := range ownedRefs {
 		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
@@ -798,7 +794,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		srcFiles = append(srcFiles, core.SourceFile{Path: ref.Path, Content: content})
 	}
-	if len(files) == 0 {
+	if len(files) == 0 && !opts.noOracles {
 		return res, fmt.Errorf("subject %s has no %s files fathom would extract", root, spec.Manifest.ID)
 	}
 	sub.Tenancy.PeakModulePages = int(tsengine.PeakModulePages())
@@ -833,6 +829,47 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	}
 	for _, k := range sortedKeys(skipped) {
 		res.notes = append(res.notes, fmt.Sprintf("%s: %d files skipped by ingest's gates (%s)", name, skipped[k], k))
+	}
+
+	if opts.noOracles {
+		// Fathom-only count measures: type_refs (above), fathom_defs,
+		// callables, callables_signed, and excluded_by_kind's fathom:* keys.
+		// L1 uses the recorded kind intersection, never an oracle file.
+		// If imports were measured: imports, imports_external, and
+		// import_edges_fathom. Other counts need oracle scope, truth, or
+		// matching (xref_fathom also needs the oracle's file/entity grain).
+		// File/byte totals and parser faults/errors are in Subject/Tenancy above.
+		for _, n := range nodes {
+			canonical, callable, ok := spec.Manifest.CanonicalForSource(string(n.Kind))
+			if !ok || !slices.Contains(opts.retimeKinds, canonical) {
+				sub.ExcludedByKind["fathom:"+string(n.Kind)]++
+				continue
+			}
+			sub.Counts[langbench.CntFathomDefs]++
+			if callable {
+				sub.Counts[langbench.CntCallables]++
+				if strings.TrimSpace(n.Signature) != "" {
+					sub.Counts[langbench.CntCallablesSigned]++
+				}
+			}
+		}
+		if opts.retimeImports {
+			inScope := map[string]bool{}
+			for _, f := range files {
+				inScope[f] = true
+			}
+			imps := subjectImports{ctx: ctx, dialect: spec.Manifest.HostID(), root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope}
+			if !imps.resolve() {
+				return res, fmt.Errorf("%s", strings.Join(imps.notes, "; "))
+			}
+			counts := map[string]int{}
+			langbench.ScoreImports(nil, imps.sites, inScope, counts)
+			for _, key := range []string{langbench.CntImports, langbench.CntImportsExternal, langbench.CntImportEdgesFathom} {
+				sub.Counts[key] = counts[key]
+			}
+		}
+		res.subject = sub
+		return res, nil
 	}
 
 	var l1res *langbench.L1Result // the subject's one L1 scoring, for D3
@@ -1152,6 +1189,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			var tf toolOracleFile
 			if json.Unmarshal(b, &tf) == nil {
 				res.notes = append(res.notes, toolOracleDisclosures(spec.Manifest, name, tf)...) // wave lf5: the oracle's own counts
+				if len(tf.Scope) > 0 {
+					in, _ := toolOracleScope(tf.Scope, inScope, nil)
+					res.notes = append(res.notes, fmt.Sprintf(noteToolOracleScope, name, tf.Tool, len(in), len(inScope)))
+				}
 			}
 		}
 		if l1 != nil {
@@ -1316,6 +1357,12 @@ type toolOracleFile struct {
 	// (calibration/oracles/clang-calls), read beside a scip-clang index
 	// (clangSitesOf).
 	CallSites []clangCallSite `json:"call_sites,omitempty"`
+	// Scope (LB-Q-hlsl, H5-R4) is the measured files the oracle reads, when
+	// it reads only part of them (a compiler front end that refuses some
+	// units): its definitions, calls and references are graded on those
+	// files alone, so a file outside is neither a recall nor a precision
+	// miss, while the run (tenancy, file edges) still covers every file.
+	Scope []string `json:"scope,omitempty"`
 	// QueryClauses (LB-F287) count the LINQ query clauses the C# compiler binds
 	// (calibration/oracles/roslyn calls mode), disclosed beside its call sites.
 	QueryClauses int `json:"query_clauses,omitempty"`
@@ -1385,6 +1432,9 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 	if tf.Tool == "" || !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
 		return fail(fmt.Errorf("%s: tool and a tier A-D are required", path))
 	}
+	if len(tf.Scope) > 0 {
+		inScope, nodes = toolOracleScope(tf.Scope, inScope, nodes)
+	}
 	dropped := 0
 	var defs []langbench.OracleDef
 	for _, d := range tf.Definitions {
@@ -1445,6 +1495,27 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 	}
 	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version, Source: tf.Source, Revision: tf.Revision, Licence: tf.Licence}, dropped, l1res, calls, nil
 }
+
+// toolOracleScope narrows the files a tool oracle grades to its own scope:
+// the measured files it names, and fathom's symbols on them.
+func toolOracleScope(scope []string, inScope map[string]bool, nodes []core.SymbolNode) (map[string]bool, []core.SymbolNode) {
+	in := make(map[string]bool, len(scope))
+	for _, f := range scope {
+		if inScope[f] {
+			in[f] = true
+		}
+	}
+	kept := make([]core.SymbolNode, 0, len(nodes))
+	for _, n := range nodes {
+		if in[n.FilePath] {
+			kept = append(kept, n)
+		}
+	}
+	return in, kept
+}
+
+// noteToolOracleScope discloses a tool oracle's scope (H5-R4).
+const noteToolOracleScope = "%s: %s grades definitions and calls on its scope, %d of %d measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file"
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
 

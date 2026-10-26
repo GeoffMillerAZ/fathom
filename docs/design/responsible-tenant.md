@@ -198,6 +198,12 @@ are unchanged, and their refuse minutes still count on RT-M1's host-starved bar.
 hold flag: a level that pauses work is shed and is counted as shed. RT-M13 reads from
 `fathom resources --days` (RT-189).
 
+Amended 2026-10-26, after RT-M1's second FAIL on the floor (`docs/bench/readings/tenancy/rt-m1-2026-10-26.md`), as
+the plan pre-registered: the swap-volume floor refuses only while host pressure is at or above `[tenancy.host]
+floor_on_pressure` (default `warn`; `normal` restores the rule above, `critical` narrows it further). Its minutes
+still count on RT-M1's host-starved bar, and pressure `critical` is unchanged. Of the window's 39 floor entries, 9
+were at normal pressure, which is RT-M13's failing criterion; the other 30 were at `warn` and still refuse.
+
 **The producer governor.** The ladder publishes its level in one atomic. Every byte
 producer reads it before each unit of work — `LocalConnector.Fetch` and `Sources` before
 each file, `corpus` reads and scans before each file, store row decoding every 1,000 rows,

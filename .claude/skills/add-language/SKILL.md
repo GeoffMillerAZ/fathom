@@ -33,6 +33,7 @@ Oracle tiers: A is the language's own tools (SCIP indexer, type checker, the too
 1. Grammar (tags-engine items): `go run ./cmd/indexbench lang-pin -id <id>` drafts the lock row; check the licence at the pinned commit; build with `internal/extractor/tsengine/grammars/build.sh`.
 2. Dialect: manifest, 3-6 fixtures under 200 lines each, `tags.scm` (and `imports.scm` for L3). Iterate with `go run ./cmd/indexbench lang-probe -dialect <id> <fixture>` until every required kind is captured. Write the failing test first.
 3. Measure: `task lang:loop -- <id>` runs probe, oracle, regrade and tracker for the item and prints one bounded summary: level met with grade, the delta against the committed reading, and the top mismatch classes. It never writes the committed reading unless you pass `WRITE=1`, and it exits non-zero when any level regressed. It never installs or fetches an oracle: when one is missing it says which.
+   If cloud throughput falls below 1 MB/CPU-s, run `indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write]` on Apple silicon before citing a throughput refusal (design §1.9 T2).
 4. Iterate on the top mismatch class, re-running the loop, until the reading meets the target or a written ceiling explains why it cannot.
 5. Commit the reading with `WRITE=1 task lang:loop -- <id>`, then regenerate the tracker: `go run ./cmd/indexbench lang-tracker > docs/languages.md`. Never hand-edit the generated sections of `docs/languages.md`; `TestLanguagesTrackerIsGenerated` fails when you do.
 

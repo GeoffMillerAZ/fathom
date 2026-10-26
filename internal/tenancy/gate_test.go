@@ -379,7 +379,7 @@ func waitFor(t *testing.T, cond func() bool) {
 // budget; an RSS-mark cause keeps the budget wording.
 func TestRefusalNamesSwapVolumeFloor(t *testing.T) {
 	r := newRig(t)
-	r.h.swapVolFree = 4 * GiB
+	r.h.pressure, r.h.swapVolFree = PressureWarn, 4*GiB
 	var tr Transition
 	for range 2 {
 		tr = r.step(0)
