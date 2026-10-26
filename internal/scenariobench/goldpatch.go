@@ -1,12 +1,15 @@
 package scenariobench
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -17,7 +20,8 @@ import (
 type GoldPatchFetcher func(ctx context.Context, source SourcePin, taskID string) ([]byte, error)
 
 // FetchGoldPatch returns verified patch bytes and caches them only in cacheDir,
-// which the operator places under workspace/. source is the task's dataset pin
+// which the operator places under workspace/ outside any git work tree. source
+// is the task's dataset pin
 // (the existing corpus SourcePin until per-task provenance is available). It is
 // mandatory even on a cache hit. The key includes the complete source pin, task
 // ID and Gold.PatchSHA; neither dataset strings nor task IDs become path names.
@@ -40,6 +44,9 @@ func FetchGoldPatch(ctx context.Context, task Task, source SourcePin, cacheDir s
 	}
 	if strings.TrimSpace(cacheDir) == "" || strings.TrimSpace(task.ID) == "" {
 		return nil, fmt.Errorf("gold patch: cache directory and task ID are required")
+	}
+	if err := goldCacheOutsideWorktree(ctx, cacheDir); err != nil {
+		return nil, err
 	}
 	keyBytes, err := json.Marshal(struct {
 		Source SourcePin
@@ -99,4 +106,50 @@ func FetchGoldPatch(ctx context.Context, task Task, source SourcePin, cacheDir s
 		return nil, err
 	}
 	return patch, nil
+}
+
+// Inspect the nearest existing ancestor so validation precedes cache creation,
+// fetching and cache hits. Git resolves directory symlinks for this check.
+func goldCacheOutsideWorktree(ctx context.Context, cacheDir string) error {
+	dir, err := filepath.Abs(cacheDir)
+	if err != nil {
+		return err
+	}
+	for {
+		info, err := os.Stat(dir)
+		if err == nil {
+			if !info.IsDir() {
+				return fmt.Errorf("gold patch cache ancestor is not a directory")
+			}
+			break
+		}
+		if !os.IsNotExist(err) {
+			return err
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return err
+		}
+		dir = parent
+	}
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--is-inside-work-tree")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() == 128 && strings.Contains(stderr.String(), "not a git repository") {
+			return nil
+		}
+		return fmt.Errorf("checking gold patch cache location: %w: %s", err, stderr.String())
+	}
+	if strings.TrimSpace(string(out)) == "true" {
+		return fmt.Errorf("gold patch cache must be outside a git work tree")
+	}
+	return nil
 }

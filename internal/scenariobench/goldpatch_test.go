@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -179,6 +180,45 @@ func TestFetchGoldPatchRefusesInvalidInputsAndFetcherErrors(t *testing.T) {
 			}
 			if _, err := FetchGoldPatch(t.Context(), task, source, cache, fetch); err == nil {
 				t.Fatalf("accepted %s", mode)
+			}
+		})
+	}
+}
+
+func TestFetchGoldPatchRefusesWorktreeCaches(t *testing.T) {
+	for _, mode := range []string{"missing", "existing", "symlink", "cache-hit"} {
+		t.Run(mode, func(t *testing.T) {
+			task, source, cache, patch := goldPatchFixture(t)
+			fetch := func(context.Context, SourcePin, string) ([]byte, error) { return patch, nil }
+			if mode == "cache-hit" {
+				if _, err := FetchGoldPatch(t.Context(), task, source, cache, fetch); err != nil {
+					t.Fatal(err)
+				}
+			}
+			root := filepath.Dir(filepath.Dir(cache))
+			cmd := exec.CommandContext(t.Context(), "git", "init", "-q", root)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v: %s", err, out)
+			}
+			if mode == "existing" || mode == "symlink" {
+				if err := os.MkdirAll(cache, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "symlink" {
+				link := filepath.Join(t.TempDir(), "cache-link")
+				if err := os.Symlink(cache, link); err != nil {
+					t.Fatal(err)
+				}
+				cache = filepath.Join(link, "nested")
+			}
+			called := false
+			got, err := FetchGoldPatch(t.Context(), task, source, cache, func(context.Context, SourcePin, string) ([]byte, error) { called = true; return patch, nil })
+			if err == nil || !strings.Contains(err.Error(), "git work tree") || got != nil || called {
+				t.Fatalf("worktree cache accepted: %q, %v, fetched=%v", got, err, called)
+			}
+			if mode != "cache-hit" && len(goldCacheFiles(t, cache)) != 0 {
+				t.Fatal("rejected cache wrote files")
 			}
 		})
 	}
