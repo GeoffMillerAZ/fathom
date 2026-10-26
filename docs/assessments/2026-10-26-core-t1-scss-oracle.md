@@ -206,3 +206,25 @@ independent read. The receipts retain the frozen first-read SHA-256 values and
 add separate annotated-reading digests for these disclosure-only note changes.
 Controller verification of the adopted reading and plan
 remains pending; the SCSS follow-up box stays open.
+
+## R2-F9 full runner-population measurement (post hoc)
+
+The spent Bourbon rerun now exercises the native resolver over all 85 imports
+with the subject runner load paths. It resolves 85/85, adding 40 pairs beyond
+the 45 inherited primary attestations, with no unresolved native URL. Repeating
+the primary with those paths still inherits 45; the native route contributes
+the other 40 in both diagnostic arms. Source fingerprints match across arms
+and the unchanged pinned checkout.
+
+The [post-hoc reading](../bench/readings/scss-bourbon-runner-posthoc-2026-10-26.json)
+measures Fathom resolving 45/85 imports (.5294), file precision 45/45 (1),
+and file recall 45/85 (.5294). L1 and L2 remain excellent, while L3 is unmet.
+Median3 throughput is 2.40 MB/CPU-s (2.43, 2.40, 2.40), with no faults.
+This replaces the earlier inference with a measured failure. It is neither
+fresh validation nor a canonical corpus input, and Bourbon remains spent.
+The canonical 0.5.1 adoption rests on its identical-count comparison.
+
+The [count/hash receipt](data/2026-10-26-core-t1-scss-bourbon-runner-posthoc.json)
+comes from the committed `publish_posthoc.py`, which checks the pinned source,
+cross-arm fingerprints, exact six phases, load limits and three timing labels.
+The instrument revision is `9029a10d7`; no extractor or acceptance rule changed.

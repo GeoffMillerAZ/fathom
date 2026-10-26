@@ -102,3 +102,18 @@ remain errors. The controls write only under `workspace/tmp`:
 ```
 
 Pinned Dart SDK archive: `https://storage.googleapis.com/dart-archive/channels/stable/release/3.13.7/sdk/dartsdk-macos-arm64-release.zip`, SHA-256 `9f972ee1e1139cb4f845f35c7c77bef269dd2ec727b239fb17a2ebcb66d0fb2f` (225,890,953 bytes). SDK license BSD-3-Clause; Sass and sass_api MIT. The committed pubspec.lock pins package archives. Subject measurements use collect.py so clean source inventory, native attestations and primary preservation are checked.
+
+### Publishing the spent Bourbon runner-path result
+
+Run on the completed post-hoc artifacts, not a fresh subject:
+
+```sh
+python3 calibration/oracles/dart-sass-resolver/publish_posthoc.py --self-test
+python3 calibration/oracles/dart-sass-resolver/publish_posthoc.py \
+  --scratch "$SCSS_POSTHOC_RESULTS" --subject "$BOURBON_ROOT" \
+  --receipt workspace/tmp/scss-posthoc-receipt.json \
+  --reading workspace/tmp/scss-posthoc-reading.json
+```
+
+Both outputs must be new paths. This projects explicit numeric fields and
+hashes only. All raw source manifests, dependencies and diagnostics stay private.
