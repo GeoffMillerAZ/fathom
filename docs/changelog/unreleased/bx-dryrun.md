@@ -1,0 +1,5 @@
+### Added
+
+- `scenariobench run -harness oracle` supplies verified gold patches on F2 tasks and gold files on F1 tasks without spend. `-gold-patch-dir` reads offline `<sha256>.patch` inputs through the pinned, verified gold-patch fetcher and existing workspace cache.
+- `scenariobench run -harness wrong-patch` applies only the test patch on F2 tasks and answers deterministic non-gold files on F1 tasks. Killed mutants wait for BX-10 (`MineMutants`). Both controls retain zero-turn PASS/FAIL grading while instrument defects still void cells.
+- `scenariobench dryrun -corpus <path> -cells <dir> [-run-id <id>] [-arm <name>] [--json]` reads three stored trials of each null, oracle and wrong-patch control per task and arm. It prints sorted keep/drop verdicts with the discrimination or flakiness reason, refusing incomplete, duplicate or void evidence. Run controls with their actual harness versions (`null-1`, `oracle-1`, `wrong-patch-1`); already-dropped tasks are skipped. Select the same unwired arm used for the controls; wired instrumentation checks still apply.
