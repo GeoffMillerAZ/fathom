@@ -20,32 +20,60 @@
       "stage": "buildSrc:compileKotlin",
       "gradle_reported_seconds": 57,
       "error": "NoClassDefFoundError: org.jetbrains.kotlin.extensions.ExtensionPointDescriptor",
-      "log_sha256": "6b79974cd48470896a77e9821bd84f73ac4995e7c70caae5a08423b9ac28316a"
+      "log_sha256": "6b79974cd48470896a77e9821bd84f73ac4995e7c70caae5a08423b9ac28316a",
+      "exit_code": 1,
+      "command_template": "scip-java index --output <scratch>/index.scip -- --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=\"-Xmx640m -XX:ActiveProcessorCount=2\" -Pkotlin.compiler.execution.strategy=in-process :exposed-core:compileKotlin :exposed-dao:compileKotlin :exposed-jdbc:compileKotlin",
+      "sanitized_log_excerpt": [
+        "> Task :buildSrc:compileKotlin FAILED",
+        "java.lang.NoClassDefFoundError: org/jetbrains/kotlin/extensions/ExtensionPointDescriptor",
+        "at org.scip_code.scip_java.kotlinc.AnalyzerRegistrar.registerExtensions(AnalyzerRegistrar.kt:19)",
+        "Caused by: java.lang.ClassNotFoundException: org.jetbrains.kotlin.extensions.ExtensionPointDescriptor"
+      ]
     },
     {
       "name": "pristine buildSrc warmup, then official producer with only second buildSrc compile skipped",
       "warmup": {
         "result": "passed",
-        "wall_seconds": 81.745
+        "wall_seconds": 81.745,
+        "exit_code": 0,
+        "command_template": "./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=\"-Xmx640m -XX:ActiveProcessorCount=2\" -Pkotlin.compiler.execution.strategy=in-process help"
       },
       "result": "failed",
       "wall_seconds": 13.842,
       "stage": "exposed-core:compileKotlin",
       "error": "NoClassDefFoundError: org.jetbrains.kotlin.extensions.ExtensionPointDescriptor",
-      "log_sha256": "a31b4be9cc8ff76183324f1700eb02626887b04990c8b117d7a14cb7dcf4f22f"
+      "log_sha256": "a31b4be9cc8ff76183324f1700eb02626887b04990c8b117d7a14cb7dcf4f22f",
+      "exit_code": 1,
+      "command_template": "scip-java index --output <scratch>/index.scip -- --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=\"-Xmx640m -XX:ActiveProcessorCount=2\" -Pkotlin.compiler.execution.strategy=in-process --init-script <repo>/calibration/oracles/scip-wire-census/skip-prebuilt-buildsrc.gradle :exposed-core:compileKotlin :exposed-dao:compileKotlin :exposed-jdbc:compileKotlin",
+      "sanitized_log_excerpt": [
+        "> Task :exposed-core:compileKotlin FAILED",
+        "java.lang.NoClassDefFoundError: org/jetbrains/kotlin/extensions/ExtensionPointDescriptor",
+        "at org.scip_code.scip_java.kotlinc.AnalyzerRegistrar.registerExtensions(AnalyzerRegistrar.kt:19)",
+        "Caused by: java.lang.ClassNotFoundException: org.jetbrains.kotlin.extensions.ExtensionPointDescriptor"
+      ]
     }
   ],
   "source_unchanged_and_checkout_clean_after_bounded_route": true,
   "scip_index_emitted": false,
   "range_wire_census": "not run: no index",
-  "reader_typed_range_hypothesis": "unproven",
   "reading_or_grade_changed": false,
-  "next_trigger": "compatible producer artifact for pinned Exposed, or separately scoped compiler-plugin compatibility work; do not downgrade subject source or compiler to force a reading",
+  "next_trigger": "Reader ENGINE wave updates to SCIP 0.9 typed fields with typed precedence and regrades every affected SCIP reading; release containing scip-java #963 or test matrix including Kotlin 2.3.x exits 0 on unchanged Exposed 1.3.0 three modules; separately evaluate official Kotlin LSP L3 bindings.",
   "toolchain": {
     "jdk": "Temurin 17.0.21+9",
     "gradle": "8.14.4",
     "subject_kotlin": "2.3.20",
     "buildlogic_embedded_kotlin": "2.0.21",
     "producer_kotlin_plugin": "2.4.21"
-  }
+  },
+  "source_manifest_recipe": "SHA256 over byte-sorted tracked .kt/.kts relative path bytes + NUL + raw 32-byte SHA256(file bytes), concatenated",
+  "applied_caps": {
+    "combined_timeout_seconds": 1200,
+    "nice": 10,
+    "load_ceiling": 9,
+    "indexer_java_opts": "-Xmx256m -XX:ActiveProcessorCount=2",
+    "gradle_jvmargs": "-Xmx640m -XX:ActiveProcessorCount=2",
+    "gradle_workers": 2
+  },
+  "reproduction_runner": "calibration/oracles/scip-wire-census/run-producer.py (added after measurements; historical commands and caps preserved)",
+  "reader_compatibility_source_read": "scip-java 0.13.1 and 0.13.2 Kotlin producers write typed-only occurrence and enclosing ranges; bundled Fathom proto and readers lack fields 8-11. Source-read established, real-index wire census not run."
 }
