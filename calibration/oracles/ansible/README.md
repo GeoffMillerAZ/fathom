@@ -50,3 +50,24 @@ inventory semantics. Neither primitive is a new oracle authority. The current
 play-as-task / unnamed-task coverage limitations remain disclosed; no new
 coverage is claimed. A complete native instrument could reopen L1/L2 now,
 without waiting for D19; L3 re-evaluation still waits for its controller gate.
+
+## X-R4 source search, 2026-10-25
+
+| Required source | Search / concrete result |
+|---|---|
+| Own toolchain / introspection | ansible-core 2.21.4 CLI and native DataLoader/Playbook APIs above inspected. Partial list-tasks acceptance is measured, not called a complete oracle failure. [ansible-inventory](https://docs.ansible.com/ansible/latest/cli/ansible-inventory.html) exposes list/graph/export, but the original claimed scope contains no YAML inventory and INI inventory is outside its decoder. |
+| SCIP and LSIF lists plus GitHub | Read [Sourcegraph supported indexers](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP list](https://github.com/sourcegraph/scip#tools-using-scip), and Sourcegraph-maintained [LSIF.dev](https://lsif.dev/). No Ansible YAML producer listed. GitHub repository query `scip-ansible in:name` returned five substring hits for SciPy/ordinary script repositories, no Ansible semantic indexer. Python SCIP indexes implementation modules rather than play/task/handler YAML bindings. |
+| Language servers | Official MIT `@ansible/ansible-language-server` 26.6.0 source/checksum audit above, plus official vscode-ansible module navigation docs. It supplies module-code definition, with no advertised symbol/reference provider. |
+| Registry parsers / type checkers / AST dumpers | PyPI metadata queried for ansible-runner, ansible-compat and ansible-lint, and npm metadata for the pinned server. Runner is an execution/event interface; compat provisions runtime dependencies; lint validates Ansible conventions. None of those published interfaces claims a complete positioned task/handler-binding dump. Exact newly searched metadata versions are recorded below. No candidate was installed or described as a failed runtime experiment. |
+| Runtime call / require tracing | Read [official callback plugin documentation](https://docs.ansible.com/ansible/latest/plugins/callback.html) and [runner event interface](https://ansible.readthedocs.io/projects/runner/en/stable/intro/). Native task callbacks/event data are a real candidate, requiring execution context and roles/collections; they report paths actually visited, not automatically the full disabled/static population. Subject tasks were not executed. A bounded native loader/event harness remains a reopening route, not an absent capability. |
+
+The L1/L2 instrument limit is provisional on a full-population native loader or
+bounded event experiment with required dependencies. L3 stays behind D19; this
+source audit changes no reading. The independent parser is not promoted by the
+existence of a native API or linter.
+
+Registry identities queried: ansible-runner 2.4.3 (Apache-2.0), ansible-compat
+26.10.0 (MIT), ansible-lint 26.10.1 (GPL-3.0-or-later); only metadata/interfaces
+were inspected. The lint package's license also excludes it as the requested
+permissively licensed oracle. Runner remains a concrete native-event route,
+not a rejected parser merely because it requires an experiment.
