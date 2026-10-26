@@ -169,3 +169,14 @@ func TestTranscriptOversizeLineCountedAndContinues(t *testing.T) {
 		t.Fatalf("oversize reading: %+v", r)
 	}
 }
+
+// TestMetadataHashNeedsASalt: an unsalted HMAC of a path or branch is a
+// dictionary-guessable digest, so an empty salt yields no hash at all.
+func TestMetadataHashNeedsASalt(t *testing.T) {
+	if got := metadataHash("", "/home/example/work"); got != "" {
+		t.Errorf("metadataHash with an empty salt = %q, want no hash", got)
+	}
+	if got := metadataHash("salt", "/home/example/work"); len(got) != 16 {
+		t.Errorf("metadataHash with a salt = %q, want 16 hex characters", got)
+	}
+}

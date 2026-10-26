@@ -164,6 +164,9 @@ type Result struct {
 }
 
 // WalkFile streams the existing readout consumers through the shared decoder.
+// It walks one file, so its issues are labelled with file index 0; a caller
+// that walks several files and needs to tell their issues apart uses
+// DecodeTranscriptEvents, which numbers the files.
 // No transient Line or Block is retained in the returned coverage receipt.
 // The visitor sees every decoded occurrence: readouts retain their own window
 // and result-pairing dedupe semantics, while events deduplicate before returning.

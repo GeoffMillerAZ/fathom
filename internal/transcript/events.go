@@ -202,7 +202,9 @@ func inputShape(v any) string {
 var skillName = regexp.MustCompile(`^[a-z0-9][a-z0-9:_-]{0,63}$`)
 
 func metadataHash(salt, value string) string {
-	if value == "" {
+	// No salt, no hash: an unkeyed digest of a path or branch name can be
+	// reversed by guessing (I61).
+	if value == "" || salt == "" {
 		return ""
 	}
 	h := hmac.New(sha256.New, []byte(salt))
