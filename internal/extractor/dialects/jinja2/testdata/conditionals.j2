@@ -1,0 +1,6 @@
+{% macro choose(value) %}{{ value }}{% endmacro %}
+{% set label = "ok" if enabled %}
+{% set nested = "yes" if (enabled if known else fallback) %}
+{% for item in items if item.active %}
+{{ choose(item.name if item.enabled) }}
+{% endfor %}

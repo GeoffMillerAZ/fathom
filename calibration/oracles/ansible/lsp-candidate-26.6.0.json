@@ -1,0 +1,15 @@
+{
+  "candidate": "@ansible/ansible-language-server",
+  "version": "26.6.0",
+  "licence": "MIT",
+  "archive_url": "https://registry.npmjs.org/@ansible/ansible-language-server/-/ansible-language-server-26.6.0.tgz",
+  "archive_sha512": "0cf4e6724ae73427fc29d792bbda44fe68e7a2f48bdbc2279d08434b696cb83acb23ca1b6a9331014d0a2c36270bef9a4e308af1b6618644791c587794375dab",
+  "server_sha256": "8f200c6fa615f80f2e1fd5b9b8ee912bfa8ae6d9c75d406412af9145975952f6",
+  "definition_provider_sha256": "695c734f17c1496dfc9b0e15378fbf1278ede1b041bd5d26f5b7143fd85f07f3",
+  "capability_field_occurrences": {
+    "definitionProvider": 1,
+    "referencesProvider": 0,
+    "documentSymbolProvider": 0
+  },
+  "result": "Source inspected, not installed or run: module-key definitions target module implementation source; no symbol/reference provider. Does not attest the measured play/task/variable declarations or handler-reference population."
+}
