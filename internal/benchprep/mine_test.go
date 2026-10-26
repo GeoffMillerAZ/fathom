@@ -107,7 +107,7 @@ func TestMineFixCommitsFakeRunner(t *testing.T) {
 		t.Fatalf("MineFixCommits = %+v, %v", got, err)
 	}
 	r := got[0]
-	if r.Commit != fix || r.Parent != parent || r.CreatedAt != "2026-01-02T03:04:05Z" || r.Shape != "revert-and-redo" || r.BaseCommit != fix {
+	if r.Commit != fix || r.Parent != parent || r.CreatedAt != "2026-01-02T03:04:05Z" || r.Shape != "revert-and-redo" || r.BaseCommit != parent {
 		t.Fatalf("wrong provenance/task shape: %+v", r)
 	}
 	if !reflect.DeepEqual(r.FailToPass, []string{"example.invalid/fixture.TestAnswer"}) || !reflect.DeepEqual(r.PassToPass, []string{"example.invalid/fixture.TestStable"}) {
@@ -123,7 +123,7 @@ func TestMineFixCommitsFakeRunner(t *testing.T) {
 }
 
 func TestMineFixCommitsRefusesUnprovenTests(t *testing.T) {
-	for _, mode := range []string{"no-parent-failure", "missing-at-commit", "skipped-at-commit", "suite-failure", "runner-error"} {
+	for _, mode := range []string{"proven", "no-parent-failure", "missing-at-commit", "skipped-at-commit", "suite-failure", "runner-error"} {
 		t.Run(mode, func(t *testing.T) {
 			dir, parent, fix, head := mineFixture(t)
 			mineWrite(t, dir, "keep.txt", "keep")
@@ -136,24 +136,29 @@ func TestMineFixCommitsRefusesUnprovenTests(t *testing.T) {
 					if mode == "no-parent-failure" {
 						status = "pass"
 					}
-					return map[string]string{"pkg.TestAnswer": status}, nil
+					return map[string]string{"example.invalid/fixture.TestAnswer": status, "example.invalid/fixture.TestStable": "pass"}, nil
 				}
 				if commit == fix {
 					switch mode {
 					case "missing-at-commit":
-						return map[string]string{"pkg.TestStable": "pass"}, nil
+						return map[string]string{"example.invalid/fixture.TestStable": "pass"}, nil
 					case "skipped-at-commit":
-						return map[string]string{"pkg.TestAnswer": "skip"}, nil
+						return map[string]string{"example.invalid/fixture.TestAnswer": "skip"}, nil
 					case "suite-failure":
-						return map[string]string{"pkg.TestAnswer": "pass", "pkg.TestStable": "fail"}, nil
+						return map[string]string{"example.invalid/fixture.TestAnswer": "pass", "example.invalid/fixture.TestStable": "fail"}, nil
 					}
+					return map[string]string{"example.invalid/fixture.TestAnswer": "pass", "example.invalid/fixture.TestStable": "pass"}, nil
 				}
-				return map[string]string{"pkg.TestOther": "pass"}, nil
+				return map[string]string{"example.invalid/fixture.TestOther": "pass"}, nil
 			}
 			got, err := MineFixCommits(t.Context(), dir, runner)
 			if mode == "runner-error" {
 				if err == nil || !strings.Contains(err.Error(), "runner unavailable") {
 					t.Fatalf("missing error: %v", err)
+				}
+			} else if mode == "proven" {
+				if err != nil || len(got) != 1 || got[0].Commit != fix {
+					t.Fatalf("rejected proven control: %+v, %v", got, err)
 				}
 			} else if err != nil || len(got) != 0 {
 				t.Fatalf("kept unproven fix: %+v, %v", got, err)
@@ -170,16 +175,22 @@ func TestMineFixCommitsAcceptance(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].Commit != fix {
 		t.Fatalf("real go test miner = %+v, %v; want exactly %s", got, err, fix)
 	}
-	// Applying the reverse patch at the fix preserves the tests, which must
-	// fail, and applying the gold patch again makes the whole suite green.
+	// Parent plus the test overlay is the fix-removed tree, without the fix
+	// in HEAD or its ancestors. The gold patch makes the suite green.
 	checkout := filepath.Join(t.TempDir(), "redo")
-	mineGit(t, dir, "worktree", "add", "--detach", checkout, fix)
+	mineGit(t, dir, "worktree", "add", "--detach", checkout, got[0].BaseCommit)
+	if base := mineGit(t, checkout, "rev-parse", "HEAD"); base != got[0].Parent {
+		t.Fatalf("base leaks fix history: %s", base)
+	}
+	if history := mineGit(t, checkout, "log", "--format=%H"); strings.Contains(history, fix) {
+		t.Fatal("fix remains in task history")
+	}
 	defer func() {
 		if _, err := os.Stat(checkout); err == nil {
 			mineGit(t, dir, "worktree", "remove", "--force", checkout)
 		}
 	}()
-	for i, patch := range []string{got[0].RevertPatch, got[0].GoldPatch} {
+	for i, patch := range []string{got[0].TestPatch, got[0].GoldPatch} {
 		cmd := exec.CommandContext(t.Context(), "git", "apply", "-")
 		cmd.Dir, cmd.Stdin = checkout, strings.NewReader(patch)
 		if out, err := cmd.CombinedOutput(); err != nil {

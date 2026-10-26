@@ -1,4 +1,3 @@
-// Package benchprep prepares benchmark evidence without agent or model calls.
 package benchprep
 
 import (
@@ -29,8 +28,8 @@ import (
 type TestRunner func(ctx context.Context, checkout, commit string, selection []string) (map[string]string, error)
 
 // FixCommit is a mined receipt, not a second scenario schema. BaseCommit is the
-// accepted commit: applying RevertPatch removes only its code fix, preserving
-// regression tests; GoldPatch redoes it. TestPatch is used to prove the parent.
+// pre-fix parent: applying TestPatch supplies the regression tests without the
+// fix in its history. GoldPatch redoes the fix. RevertPatch is its inverse.
 type FixCommit struct {
 	Commit      string   `json:"commit"`
 	Parent      string   `json:"parent"`
@@ -46,7 +45,8 @@ type FixCommit struct {
 
 // MineFixCommits walks all non-merge commits in an operator-prepared full clone
 // under workspace/scenariobench/subjects. It never checks out or edits the clone:
-// each candidate and its parent run in disposable detached worktrees beside it.
+// each candidate and its parent run in detached worktrees under sibling mine-tmp/.
+// Build-only parent failures are refused: they prove no named test failed.
 // The default runner supports Go; injected runners share its outcome contract.
 // Results and test IDs are sorted. No network or model client is used here.
 func MineFixCommits(ctx context.Context, clone string, runner TestRunner) ([]FixCommit, error) {
@@ -60,6 +60,9 @@ func MineFixCommits(ctx context.Context, clone string, runner TestRunner) ([]Fix
 	}
 	if strings.TrimSpace(shallow) != "false" {
 		return nil, fmt.Errorf("mining requires a full clone, not a shallow repository")
+	}
+	if _, err := mineGitOutput(ctx, clone, "worktree", "prune", "--expire=now"); err != nil {
+		return nil, err
 	}
 	history, err := mineGitOutput(ctx, clone, "rev-list", "--all", "--no-merges", "--parents")
 	if err != nil {
@@ -95,15 +98,15 @@ func mineCandidate(ctx context.Context, clone, commit, parent string, runner Tes
 	if err != nil || len(selection) == 0 {
 		return nil, err
 	}
-	tests, err := mineGitOutput(ctx, clone, "diff", "--binary", parent, commit, "--", "*_test.go")
+	tests, err := mineGitOutput(ctx, clone, "diff", "--binary", parent, commit, "--", "*_test.go", "testdata/**", "**/testdata/**")
 	if err != nil {
 		return nil, err
 	}
-	code, err := mineGitOutput(ctx, clone, "diff", "--binary", parent, commit, "--", ".", ":(exclude)*_test.go")
+	code, err := mineGitOutput(ctx, clone, "diff", "--binary", parent, commit, "--", ".", ":(exclude)*_test.go", ":(exclude)testdata/**", ":(exclude)**/testdata/**")
 	if err != nil || code == "" {
 		return nil, err
 	}
-	reverse, err := mineGitOutput(ctx, clone, "diff", "--binary", commit, parent, "--", ".", ":(exclude)*_test.go")
+	reverse, err := mineGitOutput(ctx, clone, "diff", "--binary", commit, parent, "--", ".", ":(exclude)*_test.go", ":(exclude)testdata/**", ":(exclude)**/testdata/**")
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +114,11 @@ func mineCandidate(ctx context.Context, clone, commit, parent string, runner Tes
 	if err != nil {
 		return nil, err
 	}
-	tmp, err := os.MkdirTemp(filepath.Dir(clone), ".mine-")
+	tmpRoot := filepath.Join(filepath.Dir(filepath.Dir(clone)), "mine-tmp")
+	if err := os.MkdirAll(tmpRoot, 0o700); err != nil {
+		return nil, err
+	}
+	tmp, err := os.MkdirTemp(tmpRoot, ".mine-")
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +192,7 @@ func mineCandidate(ctx context.Context, clone, commit, parent string, runner Tes
 	}
 	sort.Strings(passToPass)
 	return &FixCommit{Commit: commit, Parent: parent, CreatedAt: strings.TrimSpace(created), Shape: "revert-and-redo",
-		BaseCommit: commit, GoldPatch: code, RevertPatch: reverse, TestPatch: tests,
+		BaseCommit: parent, GoldPatch: code, RevertPatch: reverse, TestPatch: tests,
 		FailToPass: failToPass, PassToPass: passToPass}, nil
 }
 
@@ -199,14 +206,6 @@ func selectedTest(id string, selection []string) bool {
 }
 
 func touchedGoTests(ctx context.Context, clone, parent, commit, paths string) ([]string, error) {
-	module, err := mineGitOutput(ctx, clone, "show", commit+":go.mod")
-	if err != nil {
-		return nil, err
-	}
-	modulePath := modfile.ModulePath([]byte(module))
-	if modulePath == "" {
-		return nil, fmt.Errorf("Go mining requires a module path at %s", commit)
-	}
 	names := map[string]bool{}
 	for _, file := range strings.Split(strings.TrimSuffix(paths, "\x00"), "\x00") {
 		after, err := mineGitOutput(ctx, clone, "show", commit+":"+file)
@@ -222,9 +221,31 @@ func touchedGoTests(ctx context.Context, clone, parent, commit, paths string) ([
 		if err != nil {
 			return nil, err
 		}
+		// Each test belongs to its nearest module, including repositories with
+		// no root module. Package IDs must agree with go test's JSON events.
+		dir := path.Dir(file)
+		var modulePath, moduleDir string
+		for {
+			module, err := mineGitOutput(ctx, clone, "show", commit+":"+path.Join(dir, "go.mod"))
+			if err == nil {
+				modulePath, moduleDir = modfile.ModulePath([]byte(module)), dir
+				break
+			}
+			if dir == "." {
+				break
+			}
+			dir = path.Dir(dir)
+		}
+		if modulePath == "" {
+			return nil, fmt.Errorf("Go mining requires a module path for %s", file)
+		}
+		rel, err := filepath.Rel(moduleDir, path.Dir(file))
+		if err != nil {
+			return nil, err
+		}
 		for name, body := range newFuncs {
 			if oldFuncs[name] != body {
-				names[path.Join(modulePath, path.Dir(file))+"."+name] = true
+				names[path.Join(modulePath, filepath.ToSlash(rel))+"."+name] = true
 			}
 		}
 	}
@@ -273,15 +294,124 @@ func mineGitOutput(ctx context.Context, dir string, args ...string) (string, err
 // a failing TestMain cannot look like a green suite. commit is receipt metadata;
 // the caller owns preparing checkout (including its regression test overlay).
 func GoTestRunner(ctx context.Context, checkout, commit string, selection []string) (map[string]string, error) {
-	args := []string{"test", "-json", "-count=1"}
-	if len(selection) > 0 {
-		patterns := make([]string, len(selection))
-		for i, name := range selection {
-			patterns[i] = regexp.QuoteMeta(name)
-		}
-		args = append(args, "-run", "^("+strings.Join(patterns, "|")+")$")
+	modules, err := goModules(checkout)
+	if err != nil {
+		return nil, err
 	}
-	args = append(args, "./...")
+	results := map[string]string{}
+	groups := map[string][]string{}
+	for _, id := range selection {
+		// The delimiter precedes the test name, not the package's dots.
+		match := regexp.MustCompile(`^(.+)\.((?:Test|Example|Fuzz)[^/]*)(/.*)?$`).FindStringSubmatch(id)
+		if match == nil {
+			return nil, fmt.Errorf("invalid Go test ID %q", id)
+		}
+		groups[match[1]] = append(groups[match[1]], match[2]+match[3])
+	}
+	var packages []string
+	for pkg := range groups {
+		packages = append(packages, pkg)
+	}
+	sort.Strings(packages)
+	run := func(dir, pkg string, names []string) error {
+		args := []string{"test", "-json", "-count=1"}
+		if len(names) != 0 {
+			patterns := make([]string, len(names))
+			for i, name := range names {
+				segments := strings.Split(name, "/")
+				for j, segment := range segments {
+					segments[j] = "^" + regexp.QuoteMeta(segment) + "$"
+				}
+				patterns[i] = strings.Join(segments, "/")
+			}
+			args = append(args, "-run", strings.Join(patterns, "|"))
+		}
+		args = append(args, pkg)
+		outcomes, err := runGoTests(ctx, dir, commit, args, len(names) == 0)
+		if err != nil {
+			return err
+		}
+		for id, outcome := range outcomes {
+			results[id] = outcome
+		}
+		return nil
+	}
+	if len(selection) == 0 {
+		for _, module := range modules {
+			if err := run(module.dir, "./...", nil); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		for _, pkg := range packages {
+			var dir, owner string
+			for _, module := range modules {
+				if (pkg == module.path || strings.HasPrefix(pkg, module.path+"/")) && len(module.path) > len(owner) {
+					dir, owner = module.dir, module.path
+				}
+			}
+			if dir == "" {
+				return nil, fmt.Errorf("no module owns selected package %q", pkg)
+			}
+			names := groups[pkg]
+			sort.Strings(names)
+			// Go splits -run on slashes before parsing its regex. Subtest
+			// selections run separately to avoid cross products of segments.
+			var top []string
+			for _, name := range names {
+				if strings.Contains(name, "/") {
+					if err := run(dir, pkg, []string{name}); err != nil {
+						return nil, err
+					}
+				} else {
+					top = append(top, name)
+				}
+			}
+			if len(top) > 0 {
+				if err := run(dir, pkg, top); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	return results, nil
+}
+
+type goModule struct{ dir, path string }
+
+func goModules(checkout string) ([]goModule, error) {
+	var modules []goModule
+	err := filepath.WalkDir(checkout, func(file string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			if file != checkout && (strings.HasPrefix(entry.Name(), ".") || strings.HasPrefix(entry.Name(), "_") || entry.Name() == "vendor" || entry.Name() == "testdata") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if entry.Name() != "go.mod" {
+			return nil
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		modulePath := modfile.ModulePath(data)
+		if modulePath == "" {
+			return fmt.Errorf("Go mining requires a module path in %s", file)
+		}
+		modules = append(modules, goModule{filepath.Dir(file), modulePath})
+		return nil
+	})
+	if err == nil && len(modules) == 0 {
+		err = fmt.Errorf("Go mining requires at least one module")
+	}
+	return modules, err
+}
+
+func runGoTests(ctx context.Context, checkout, commit string, args []string, allowEmpty bool) (map[string]string, error) {
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = checkout
 	cmd.Env = append(os.Environ(), "GOPROXY=off", "GOSUMDB=off", "GOTOOLCHAIN=local", "GOWORK=off", "GOFLAGS=-mod=readonly")
@@ -311,7 +441,7 @@ func GoTestRunner(ctx context.Context, checkout, commit string, selection []stri
 		}
 		failed = failed || event.Action == "fail"
 	}
-	if runErr != nil && !failed {
+	if runErr != nil && !failed && !(allowEmpty && strings.Contains(stderr.String(), "no packages to test")) {
 		return nil, fmt.Errorf("go test at %s: %w: %s", commit, runErr, stderr.String())
 	}
 	return results, nil
