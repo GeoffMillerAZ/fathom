@@ -1,0 +1,59 @@
+{
+  "compiler_version": "Apple clang 21.0.0 (clang-2100.3.34.2)",
+  "clt_package_version": "27.0.0.0.1788430756",
+  "compiler_binary_sha256": "1590ac950a3d627817d09ade5cb60b2115f17a72182a3141e010b4bcc482a0c9",
+  "resource_header_sha256": {
+    "opencl-c.h": "aedaac009c73aa9ce4fad770ebdddbf11bbce42effc4c40cb54330f31af49c50",
+    "opencl-c-base.h": "e0b5b97e38951211312bfe946c956927a78da52a9e31bc66ec426e17fa5c23c5"
+  },
+  "oracle_tier": "B",
+  "mode": "CL3.0 SPIR64 reconstructed syntax-only JSON AST, no subject context flags",
+  "authored_probe": {
+    "exit_code": 0,
+    "source_sha256": "b62ed7c9dafe2018914562cc0f70b437a1a0b8406b7d031c98221070181cce23",
+    "ast_sha256": "7058f563e5a80494d1675e11f6688582f938d94c4fce4ecde14d9abb98463f08",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "function_definitions": 2,
+    "kernel_definitions": 1,
+    "call_sites": 2,
+    "source_function_call_sites": 1,
+    "external_call_sites": 1,
+    "unresolved_call_sites": 0,
+    "definition_end_ranges": 2,
+    "vector_literal_nodes": 1
+  },
+  "sdk": {
+    "commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
+    "files": 10,
+    "tracked": {
+      "manifest_sha256": "bb6100e97616400fb4272507876ac4adf6fd15de5b0b115128867f0a785e46c7",
+      "stage_sha256": "8eb841f156ff866332c1722095ba01e42b507f1e72adce8377b86b9161ca3b28",
+      "entries": 216,
+      "bytes": 2263956,
+      "stage_bytes": 17652,
+      "regular_files": 213,
+      "regular_bytes": 2263956,
+      "symlinks": 0,
+      "symlink_target_bytes": 0,
+      "gitlinks": 3
+    },
+    "untracked": {
+      "files": 0,
+      "unignored_files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "checkout_unchanged": true,
+    "input_snapshot": "Verified captured kernel bytes in a private read-only tree, preserving relative paths",
+    "compiled": 10,
+    "failed": 0,
+    "function_definitions": 23,
+    "kernel_definitions": 19,
+    "source_function_call_sites": 6,
+    "external_call_sites": 149,
+    "unresolved_call_sites": 0
+  },
+  "grade": null,
+  "notes": "Capability probe only. Failed files stay in the denominator. No source-truth adapter, independent mutation probe or quality grade is asserted. External calls are not yet classified as builtins; header/source origin mapping remains future adapter work."
+}

@@ -1,0 +1,47 @@
+{
+  "adapter_sha256": "b7bfbfe9d7c66802c5c6c8140823291da82b2e38bcca148265afdee40dcf3c22",
+  "closure_method_records": 0,
+  "closure_source_calls": 1,
+  "closure_unresolved": 1,
+  "constant_source_call_records": 0,
+  "constant_source_calls": 1,
+  "constant_unresolved": 1,
+  "direct_lines": [
+    19,
+    20
+  ],
+  "expected_direct_lines": [
+    19,
+    20
+  ],
+  "expected_named_method_lines": [
+    22,
+    23
+  ],
+  "expected_unknown_lines": [
+    25
+  ],
+  "named_method_lines": [
+    22,
+    23
+  ],
+  "network_control": {
+    "denial": "EPERM",
+    "destination": "127.0.0.1:1/tcp",
+    "profile": "(version 1) (allow default) (deny network*)"
+  },
+  "perl_binary_sha256": "85e5621137742a37be052f58800372b2005f91f609ad55019832214b5d9e61bc",
+  "perl_version": "v5.34.1",
+  "scope": "Synthetic control only; unresolved closure and optimized constant calls are population gaps, not oracle-known edges",
+  "source": "named_methods.pl",
+  "source_sha256": "3d2407805069fc0839ec92f165a6d91f1354c0af60f8de896ea6862beebcabc7",
+  "stock_backend": {
+    "core_root": "core[0]",
+    "relative_path": "darwin-thread-multi-2level/B/Xref.pm",
+    "sha256": "adbb5535cb333dc3d78025f95618d218e92015d880bee559ceb6277cd0042539"
+  },
+  "tool": "Fathom named-method derivative of stock B::Xref 1.07",
+  "unknown_lines": [
+    25
+  ]
+}

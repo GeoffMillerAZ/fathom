@@ -1,0 +1,43 @@
+{
+  "failure": {
+    "class": "native dependency lacks a positioned primary statement",
+    "observed_refusal_count": 1,
+    "stage": "native composite assembly",
+    "stderr_sha256": "890a77976faa231f4bd02b01bb5b3910a543cf14cff8d22877b5b186ddca403b"
+  },
+  "freeze_commit": "678269006119029000aa81d54d42dd3890727a00",
+  "hashes": {
+    "collector": "66f03ca72dcb8ca1d4614f4bc1c06f7cd7c1ff9f82e91ea520e306a3c7caa7a7",
+    "indexbench": "0b822f93cb1676e2b4afdab8cb4d04273b58e679fcaa1b71e166bc8b5bb8f3a8",
+    "native_adapter": "196e71a86d584e80de09a60c7ea5690aebfd6988ccd5738b06f80edd48c59d73",
+    "primary": "58ddbc7c9d538a2e96caafbf009edfb6f2108b422e78baf22a3a8225c68fc372",
+    "source_preregistration": "427f2352a2c10d50e9d25b41b7102a3da65670575d976440973d7edba5886ecf"
+  },
+  "holdout_spent": true,
+  "oracle_or_source_tuned": false,
+  "outcome": "refused; no composite oracle JSON or Fathom grade produced",
+  "outside_canonical_corpus": true,
+  "primary": {
+    "attested_statements": 76,
+    "failed_compiles": 57,
+    "import_statements": 80,
+    "parser_rejections": 5,
+    "successful_compiles": 19,
+    "tracked_files": 76
+  },
+  "source_inventory": {
+    "bytes": 130140,
+    "file_count": 76,
+    "filelist_sha256": "10c7c60043cd8eda4b40a7d8d956f221b3dc7cefece5f90fffaa7158b8f32860",
+    "manifest_sha256": "0bd0cc7272fd241363950471503afb8658c3002d61211886486dd5c0d1b83662"
+  },
+  "subject_commit": "8847251d71b4dac27e8407cbdb71ae89ce156a43",
+  "versions": {
+    "dart_sass_resolver": "1.106.1",
+    "dart_sdk": "3.13.7",
+    "node": "v26.12.0",
+    "sass": "1.105.1",
+    "sass_api": "18.1.0",
+    "sass_parser": "0.4.57"
+  }
+}
