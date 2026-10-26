@@ -1,5 +1,227 @@
 {
-  "collector_sha256": "da2abc62e5e7445936b429e0ce0dd2e49e0ed19ab8b69ffdce975cad6ecfefb7",
+  "collector_sha256": "70cf7e293be68440017e19dc697e5fe71692b711bee35bb24d208a5aa18cdabe",
+  "dependency_archives": [
+    {
+      "bytes": 14319,
+      "name": "B-Keywords-1.29.tar.gz",
+      "sha256": "e0aa19d3390409f0ece7342ab041c5b432c31d7cf1abf182c134b6aab78784b0"
+    },
+    {
+      "bytes": 6462,
+      "name": "Class-Data-Inheritable-0.10.tar.gz",
+      "sha256": "aa1ae68a611357b7bfd9a2f64907cc196ddd6d047cae64ef9d0ad099d98ae54a"
+    },
+    {
+      "bytes": 27412,
+      "name": "Class-Inspector-1.36.tar.gz",
+      "sha256": "cc295d23a472687c24489d58226ead23b9fdc2588e522f0b5f0747741700694e"
+    },
+    {
+      "bytes": 24657,
+      "name": "Class-Tiny-1.008.tar.gz",
+      "sha256": "ee058a63912fa1fcb9a72498f56ca421a2056dc7f9f4b67837446d6421815615"
+    },
+    {
+      "bytes": 194584,
+      "name": "Clone-0.51.tar.gz",
+      "sha256": "f17f66fec97dacca67ac9585701d2d079cfc80539fe6e8160c201c4e55f67507"
+    },
+    {
+      "bytes": 26973,
+      "name": "Config-Tiny-2.30.tgz",
+      "sha256": "b2f7345619b3b8e636dd39ea010731c9dc2bfb8f022bcbd86ae6ad17866e110d"
+    },
+    {
+      "bytes": 7276,
+      "name": "Devel-Cycle-1.12.tar.gz",
+      "sha256": "fd3365c4d898b2b2bddbb78a46d507a18cca8490a290199547dab7f1e7390bc2"
+    },
+    {
+      "bytes": 6788,
+      "name": "Devel-EnforceEncapsulation-0.51.tar.gz",
+      "sha256": "ffacf98fbe3c6289125068f7b7d7b54a956d049279a4bb3ddb0860095409a0b0"
+    },
+    {
+      "bytes": 41366,
+      "name": "Devel-StackTrace-2.05.tar.gz",
+      "sha256": "63cb6196e986a7e578c4d28b3c780e7194835bfc78b68eeb8f00599d4444888c"
+    },
+    {
+      "bytes": 18439,
+      "name": "Devel-Symdump-2.18.tar.gz",
+      "sha256": "826f81a107f5592a2516766ed43beb47e10cc83edc9ea48090b02a36040776c0"
+    },
+    {
+      "bytes": 52395,
+      "name": "Exception-Class-1.46.tar.gz",
+      "sha256": "e2f8c0708ff8de8b1bb7be1faa3cdb240fdd9774bc741627350577ea7e0e76a1"
+    },
+    {
+      "bytes": 13456,
+      "name": "ExtUtils-Config-0.010.tar.gz",
+      "sha256": "82e7e4e90cbe380e152f5de6e3e403746982d502dd30197a123652e46610c66d"
+    },
+    {
+      "bytes": 16620,
+      "name": "ExtUtils-Helpers-0.028.tar.gz",
+      "sha256": "c8574875cce073e7dc5345a7b06d502e52044d68894f9160203fcaab379514fe"
+    },
+    {
+      "bytes": 19252,
+      "name": "ExtUtils-InstallPaths-0.015.tar.gz",
+      "sha256": "7d64eb2dfa87ead010cdf55c8a1bdfde50b7b5852d7cb8cf2304f55bea2eb007"
+    },
+    {
+      "bytes": 29631,
+      "name": "File-ShareDir-1.118.tar.gz",
+      "sha256": "3bb2a20ba35df958dc0a4f2306fc05d903d8b8c4de3c8beefce17739d281c958"
+    },
+    {
+      "bytes": 31637,
+      "name": "File-ShareDir-Install-0.14.tar.gz",
+      "sha256": "8f9533b198f2d4a9a5288cbc7d224f7679ad05a7a8573745599789428bc5aea0"
+    },
+    {
+      "bytes": 25146,
+      "name": "File-Which-1.27.tar.gz",
+      "sha256": "3201f1a60e3f16484082e6045c896842261fc345de9fb2e620fd2a2c7af3a93a"
+    },
+    {
+      "bytes": 59715,
+      "name": "Lingua-EN-Inflect-1.905.tar.gz",
+      "sha256": "05c29ec3482e572313a60da2181b0b30c5db7cf01f8ae7616ad67e1b66263296"
+    },
+    {
+      "bytes": 69166,
+      "name": "List-SomeUtils-0.59.tar.gz",
+      "sha256": "fab30372e4c67bf5a46062da38d1d0c8756279feada866eb439fa29571a2dc7b"
+    },
+    {
+      "bytes": 169762,
+      "name": "List-SomeUtils-XS-0.59.tar.gz",
+      "sha256": "1da2d21762f40b58cbc8f3ba5239e849e5c73c4dbe0a5f3c4510118e65a2eae4"
+    },
+    {
+      "bytes": 311666,
+      "name": "Module-Build-0.4234.tar.gz",
+      "sha256": "66aeac6127418be5e471ead3744648c766bd01482825c5b66652675f2bc86a8f"
+    },
+    {
+      "bytes": 23043,
+      "name": "Module-Build-Tiny-0.053.tar.gz",
+      "sha256": "3726d622da6f655e88fdf89e4fd597709c44970b47de65082003e8d86b5e193a"
+    },
+    {
+      "bytes": 18553,
+      "name": "Module-Implementation-0.09.tar.gz",
+      "sha256": "c15f1a12f0c2130c9efff3c2e1afe5887b08ccd033bd132186d1e7d5087fd66d"
+    },
+    {
+      "bytes": 34875,
+      "name": "Module-Pluggable-6.4.tar.gz",
+      "sha256": "970fd13accd3d538e637db080ebbd9898020c8b5591837c8493a39edd737922d"
+    },
+    {
+      "bytes": 27428,
+      "name": "Module-Runtime-0.018.tar.gz",
+      "sha256": "0bf77ef68e53721914ff554eada20973596310b4e2cf1401fc958601807de577"
+    },
+    {
+      "bytes": 269282,
+      "name": "PPI-1.291.tar.gz",
+      "sha256": "74ac10bf66443ea813fb37d2ff5219c4d8e685379272d6699c812a39d91f3c1d"
+    },
+    {
+      "bytes": 76489,
+      "name": "PPIx-QuoteLike-0.024.tar.gz",
+      "sha256": "b71da7748be3a0ab7c19fe8a3ddf7fec480180342c8e76654d28582281152e07"
+    },
+    {
+      "bytes": 257108,
+      "name": "PPIx-Regexp-0.092.tar.gz",
+      "sha256": "e9c669c01d7c951f9bfee899c147fc8c8ddd98d3f32329f94000c7b02f53366b"
+    },
+    {
+      "bytes": 34740,
+      "name": "PPIx-Utils-0.004.tar.gz",
+      "sha256": "336918d56ac9482d248d2ca6e79ed7f2cc67403fbdecdd73a9c414a034adb3cf"
+    },
+    {
+      "bytes": 16342,
+      "name": "PadWalker-2.5.tar.gz",
+      "sha256": "07b26abb841146af32072a8d68cb90176ffb176fd9268e6f2f7d106f817a0cd0"
+    },
+    {
+      "bytes": 194986,
+      "name": "Params-Util-1.102.tar.gz",
+      "sha256": "499bb1b482db24fda277a51525596ad092c2bd51dd508fa8fec2e9f849097402"
+    },
+    {
+      "bytes": 1263303,
+      "name": "Perl-Tidy-20260826.tar.gz",
+      "sha256": "104e3e5ee5c84524d5e50324d664c7859b1ac422ab97a3e7a248985a4b4f7f64"
+    },
+    {
+      "bytes": 13211,
+      "name": "Pod-Coverage-0.23.tar.gz",
+      "sha256": "30b7a0b0c942f44a7552c0d34e9b1f2e0ba0b67955c61e3b1589ec369074b107"
+    },
+    {
+      "bytes": 80961,
+      "name": "Pod-Parser-1.67.tar.gz",
+      "sha256": "5deccbf55d750ce65588cd211c1a03fa1ef3aaa15d1ac2b8d85383a42c1427ea"
+    },
+    {
+      "bytes": 35971,
+      "name": "Pod-Spell-1.27.tar.gz",
+      "sha256": "7ef56c9229f3efbc71a0462ce44490c0dd49fbf3b21fe85bb08b1eeac6f7b063"
+    },
+    {
+      "bytes": 28877,
+      "name": "Readonly-2.05.tar.gz",
+      "sha256": "4b23542491af010d44a5c7c861244738acc74ababae6b8838d354dfb19462b5e"
+    },
+    {
+      "bytes": 6546,
+      "name": "Safe-Isa-1.000010.tar.gz",
+      "sha256": "87f4148aa0ff1d5e652723322eab7dafa3801c967d6f91ac9147a3c467b8a66a"
+    },
+    {
+      "bytes": 13676,
+      "name": "String-Format-1.18.tar.gz",
+      "sha256": "9e417a8f8d9ea623beea2d13a47c0d5a696fc8602c0509b826cd45f97b76e778"
+    },
+    {
+      "bytes": 28404,
+      "name": "Task-Weaken-1.06.tar.gz",
+      "sha256": "2383fedb9dbaef646468ea824afbf7c801076720cfba0df2a7a074726dcd66be"
+    },
+    {
+      "bytes": 8928,
+      "name": "Test-Memory-Cycle-1.06.tar.gz",
+      "sha256": "9d53ddfdc964cd8454cb0da4c695b6a3ae47b45839291c34cb9d8d1cfaab3202"
+    },
+    {
+      "bytes": 11841,
+      "name": "Test-Pod-1.52.tar.gz",
+      "sha256": "60a8dbcc60168bf1daa5cc2350236df9343e9878f4ab9830970a5dde6fe8e5fc"
+    },
+    {
+      "bytes": 8083,
+      "name": "Test-Pod-Coverage-1.10.tar.gz",
+      "sha256": "48c9cca9f7d99eee741176445b431adf09c029e1aa57c4703c9f46f7601d40d4"
+    },
+    {
+      "bytes": 36291,
+      "name": "Try-Tiny-0.32.tar.gz",
+      "sha256": "ef2d6cab0bad18e3ab1c4e6125cc5f695c7e459899f512451c8fa3ef83fa7fc0"
+    },
+    {
+      "bytes": 311078,
+      "name": "YAML-PP-v0.43.0.tar.gz",
+      "sha256": "f4a2a6d22b32a31e418debcbd04b843ba0997f9dea0fcc1f96b08b2f2ebcb2e7"
+    }
+  ],
   "grade": {
     "L1": "excellent",
     "L2": "good",
@@ -12,6 +234,7 @@
     "Perl-Critic.ranges.meta.json": "5a1330c811fa6960aa2dc29ffdcb65ea72b9ed2e71b8b43c5a27dfb09905e42b",
     "Perl-Critic.xref.json": "2371cbf631af6afd6396336ae5090ada22e9a1b24f0524fdc2a927d2a6b63aad",
     "baseline.json": "e601a551bb985c56079a7b21c26aec3b7018b9b67ee54871f996ffdbd9006135",
+    "dependency-archives.json": "32121338e70e3f465c884fe4a181523a21ee795ec0f8aec94d0f60b10377d871",
     "grade-phases.json": "6ea66f8ab619c6e835a43263177ed40fdfab310aeb212bc79ecd95c287f89215",
     "grade.meta.json": "d1221ad713b52d11d9d1563b202eeda0d14586b4cdcfffff871cbc4a0a9cd6bf",
     "mojo.ranges.json": "17b349fa8afda6f9e0659b26ba437777f06b2d72e41d2334910fb0c70ff5761e",
@@ -39,18 +262,24 @@
     {
       "ctags_binary_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
       "ctags_raw_version_sha256": "9110c02ee4c1ff1dc1c1b18b0742b290d226bdf084acb66dd0c42448bb50ee54",
+      "ctags_unknown_files": 0,
       "ctags_version": "Universal Ctags 6.2.1",
       "dependency_lock_sha256": "dacd08e7b986b5e4933b16b051c41b49098e75faed4241d5710f199047195102",
+      "failure_reason_counts": {
+        "compile_error": 6
+      },
       "local_library_sha256": "813d85859267129be8cd18b274d9f54f220892831b5ca53460cc8153ed1afa04",
       "native_ranges": 1825,
       "network_denial": "EPERM",
       "paired": 1584,
+      "paired_outside_reading": 0,
       "paired_tag_coverage": 0.981413,
       "perl_binary_sha256": "85e5621137742a37be052f58800372b2005f91f609ad55019832214b5d9e61bc",
       "range_compiled": 257,
       "range_compiled_coverage": 0.977186,
       "range_unresolved": 6,
       "reading_range_agreement": 1.0,
+      "reading_range_disagree": 0,
       "reading_range_eligible": 1584,
       "reading_range_ok": 1584,
       "source_commit": "382d701fd1129822c98fdcdb08403a733a24dc08",
@@ -68,18 +297,24 @@
     {
       "ctags_binary_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
       "ctags_raw_version_sha256": "9110c02ee4c1ff1dc1c1b18b0742b290d226bdf084acb66dd0c42448bb50ee54",
+      "ctags_unknown_files": 0,
       "ctags_version": "Universal Ctags 6.2.1",
       "dependency_lock_sha256": null,
+      "failure_reason_counts": {
+        "compile_error": 10
+      },
       "local_library_sha256": null,
       "native_ranges": 1615,
       "network_denial": "EPERM",
       "paired": 1286,
+      "paired_outside_reading": 0,
       "paired_tag_coverage": 0.98318,
       "perl_binary_sha256": "85e5621137742a37be052f58800372b2005f91f609ad55019832214b5d9e61bc",
       "range_compiled": 270,
       "range_compiled_coverage": 0.964286,
       "range_unresolved": 10,
       "reading_range_agreement": 1.0,
+      "reading_range_disagree": 0,
       "reading_range_eligible": 1286,
       "reading_range_ok": 1286,
       "source_commit": "7b99f4adce82a45fd0965ef4dd56550b4f5ee89b",

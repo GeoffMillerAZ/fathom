@@ -129,13 +129,17 @@ The C-R9 repeat at instrument commit
 `2fefe5d42420761f5d36509129e6f08592adbb8b` compiles 270/280 Mojo units and
 257/263 Perl-Critic units for ranges. All sixteen unresolved units remain in
 coverage. Reciprocal unique joins yield 1,286/1,308 and 1,584/1,614 named
-subroutine ends, respectively: 2,870 exact matches, 98.22% of named tags and
+subroutine ends, respectively: 2,870 within-one-line matches, 98.22% of named tags and
 85.77% of all 3,346 matched definitions. The actual harness reading is L1
 excellent and L2 good, with range agreement 1 and every non-range metric and
 count unchanged. Its range metric stays tier B under the primary Ctags tier
 cap; the native source is tier A only for the actual compiled population.
 The PPI 1.270 call oracle remains tier C. Median-of-three throughput is
-2.41 MB/CPU-s (2.41, 2.40, 2.45). No canonical reading or corpus shard is
+2.43 MB/CPU-s (2.45, 2.43, 2.42) in the final harness-only repeat. Its four
+grade/build phases launched at one-minute loads 5.60, 5.63, 5.74 and 5.74.
+The earlier 2.41 triple was preliminary. The historical canonical 3.14
+MB/CPU-s used a different harness and is not a controlled throughput comparison.
+No canonical reading or corpus shard is
 changed by this audit.
 
 Stock B::Xref 1.07 is diagnostic: 270/280 and 255/263 units compile, producing
@@ -159,7 +163,7 @@ python3 calibration/oracles/perl-db-ranges/method_probe.py --self-test
 python3 calibration/oracles/perl-db-ranges/method_probe.py --perl "$PERL_BINARY" --output-dir workspace/tmp/perl-method-control
 python3 calibration/oracles/perl-db-ranges/receipt.py --self-test
 python3 calibration/oracles/perl-db-ranges/grade.py --input-dir "$PERL_NATIVE_RESULTS" --out-dir "$PERL_GRADE_RESULTS" --subject "mojo=$MOJO_ROOT" --subject "Perl-Critic=$PERL_CRITIC_ROOT" --ctags "$CTAGS_BINARY" --native-instrument-commit 2fefe5d42420761f5d36509129e6f08592adbb8b
-python3 calibration/oracles/perl-db-ranges/receipt.py --input-dir "$PERL_NATIVE_RESULTS" --grade-dir "$PERL_GRADE_RESULTS" --reading "$PERL_GRADE_RESULTS/reading.json" --baseline docs/bench/readings/lang/perl.json --instrument-commit 2fefe5d42420761f5d36509129e6f08592adbb8b --harness-commit "$PERL_HARNESS_COMMIT" --output workspace/tmp/perl-native-receipt.json
+python3 calibration/oracles/perl-db-ranges/receipt.py --input-dir "$PERL_NATIVE_RESULTS" --grade-dir "$PERL_GRADE_RESULTS" --reading "$PERL_GRADE_RESULTS/reading.json" --baseline docs/bench/readings/lang/perl.json --instrument-commit 2fefe5d42420761f5d36509129e6f08592adbb8b --harness-commit "$PERL_HARNESS_COMMIT" --archive-metadata "$PERL_DEPENDENCY_ARCHIVES_PRIVATE" --output workspace/tmp/perl-native-receipt.json
 ```
 
 `PERL_NATIVE_RESULTS` is the directory containing the two runners' private
@@ -170,7 +174,34 @@ counts/metrics. It publishes explicit counts and hashes only, never raw
 manifest entries, native names, subject diagnostics or copyright metadata.
 The method control imposes a 32 MiB live file limit on each output stream;
 its self-test attempts the limit plus one byte. Both commands refuse existing
-output paths. Dancer2 remains unspent until the final instrument freeze.
+output paths. Dancer2 was spent once at frozen instrument `500a867de528dfe651b3ec5b61d1779625c6e595`.
+That run is diagnostic only: 279/343 units compiled, 624/676 named ends paired,
+623 eligible ends agreed within one line, and median throughput was 2.29
+MB/CPU-s. The native source manifest contains 343 Perl units while the actual
+harness discovery contains 332 files, a count gap of 11. This is a population
+difference, not eleven proven missing range records; the collector reports both
+counts and refuses a complete-population gate for a future holdout with such a
+gap. No compiler-coverage or named-pairing floor was committed before
+the first source read, so this result cannot authorize canonical adoption or
+be reused as a fresh holdout.
+
+The committed holdout collector reads the private one-shot artifacts without
+rerunning an oracle. It checks the source manifest, spend and phase sequence,
+EPERM control, dependency lock and saved archive hashes, paired versus eligible
+counts, binary hashes and three retimings. Its frozen-instrument file hashes
+come from Git object `500a867...`, not the later working-tree files. Dancer2's
+legacy phases lack per-phase instrument/source/binary identity, which the
+receipt discloses; a future holdout must bind those identities on each phase.
+Coverage failures still produce count/hash receipts:
+
+```sh
+python3 calibration/oracles/perl-db-ranges/holdout_receipt.py --self-test
+python3 calibration/oracles/perl-db-ranges/holdout_receipt.py --scratch "$PERL_HOLDOUT_RESULTS" --instrument-repo . --instrument-commit 500a867de528dfe651b3ec5b61d1779625c6e595 --output workspace/tmp/perl-dancer2-diagnostic-receipt.json
+```
+
+For a future fresh subject, the same collector requires its full source pin,
+subject name and `--coverage-floor .95`; the floor is checked against all
+tracked Perl units and all independent named tags before a passing receipt.
 
 The harness-only repeat requires a clean full-commit checkout and configured
 `TMPDIR`, `GOTMPDIR` and `GOCACHE` directories outside it. Set

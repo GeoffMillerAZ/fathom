@@ -2,6 +2,7 @@
 """Project private C-R9 measurements into a count/hash-only public receipt."""
 
 import argparse
+from collections import Counter
 import copy
 import hashlib
 import json
@@ -50,7 +51,8 @@ def safe_projection(value):
         require(value is None or isinstance(value, (str, int, float, bool)),
                 "non-scalar public value")
         if isinstance(value, str):
-            require(value in SAFE_TEXT or HEX.fullmatch(value) or SHA.fullmatch(value),
+            require(value in SAFE_TEXT or HEX.fullmatch(value) or SHA.fullmatch(value) or
+                    re.fullmatch(r"[A-Za-z0-9._+-]+\.(?:tar\.gz|tgz|zip)", value),
                     "unsafe public text")
 
 
@@ -103,22 +105,32 @@ def subject_receipt(name, meta, ranges, xref, reading_subject):
     require(meta["ctags"]["version"].startswith(CTAGS + ",") and
             SHA.fullmatch(meta["ctags"]["binary_sha256"]), "Ctags identity mismatch")
     paired, tags = joining["paired"], joining["tag_total"]
-    require(paired == len(ranges["ranges"]) == reading_subject["counts"]["range_eligible"] ==
-            reading_subject["counts"]["range_ok"] and paired <= tags,
+    eligible = reading_subject["counts"]["range_eligible"]
+    ok = reading_subject["counts"]["range_ok"]
+    require(paired == len(ranges["ranges"]) and 0 <= ok <= eligible <= paired <= tags,
             "paired/read range count mismatch")
     require(joining["tag_unpaired"] + paired == tags, "tag accounting mismatch")
     require(xref["method_target_emitted_records"] == 0, "stock Xref method target unexpected")
+    reasons = Counter(reason for row in meta["failures"] for reason in row["reasons"])
+    allowed_reasons = {"ctags_error_or_timeout", "compile_error", "file_timeout",
+                       "total_timeout_waiting_for_load", "total_timeout_unattempted",
+                       "missing_observer_output", "invalid_observer_output", "output_limit"}
+    require(set(reasons) <= allowed_reasons, "unexpected failure reason")
     return {
         "subject": name, "source_commit": commit, "source_manifest_sha256": manifest_hash,
         "units": units, "range_compiled": meta["compiled_files"],
         "range_unresolved": meta["unresolved_files"],
+        "failure_reason_counts": dict(sorted(reasons.items())),
+        "ctags_unknown_files": joining["ctags_unknown_files"],
         "range_compiled_coverage": ratio(meta["compiled_files"], units),
         "xref_compiled": xref["compiled"],
         "xref_unresolved": xref["compile_failures_or_timeouts"],
         "native_ranges": len(joining["native"]), "tags": tags, "paired": paired,
         "paired_tag_coverage": ratio(paired, tags),
+        "paired_outside_reading": paired - eligible,
         "reading_range_eligible": reading_subject["counts"]["range_eligible"],
         "reading_range_ok": reading_subject["counts"]["range_ok"],
+        "reading_range_disagree": eligible - ok,
         "reading_range_agreement": ratio(reading_subject["counts"]["range_ok"],
                                          reading_subject["counts"]["range_eligible"]),
         "xref_direct_call_records": xref["direct_call_records"],
@@ -196,7 +208,20 @@ def timing(grade_dir, phases, grade_phases, native_commit, harness_commit):
             "harness_binary_sha256": grade_phases[0]["binary_sha256"]}
 
 
-def collect(input_dir, grade_dir, reading_path, baseline_path, instrument_commit, harness_commit):
+def safe_archives(metadata):
+    rows = metadata["saved_distributions"]
+    require(all(isinstance(row["basename"], str) and
+                re.fullmatch(r"[A-Za-z0-9._+-]+\.(?:tar\.gz|tgz|zip)", row["basename"]) and
+                SHA.fullmatch(row["sha256"]) and row["bytes"] >= 0 for row in rows),
+            "unsafe distribution metadata")
+    names = [row["basename"] for row in rows]
+    require(len(names) == len(set(names)), "duplicate distribution basename")
+    return [{"name": row["basename"], "sha256": row["sha256"], "bytes": row["bytes"]}
+            for row in sorted(rows, key=lambda row: row["basename"])]
+
+
+def collect(input_dir, grade_dir, reading_path, baseline_path, instrument_commit, harness_commit,
+            archive_metadata=None):
     require(HEX.fullmatch(instrument_commit), "instrument commit must be full hex")
     require(HEX.fullmatch(harness_commit), "harness commit must be full hex")
     reading, baseline = load(reading_path), load(baseline_path)
@@ -210,6 +235,17 @@ def collect(input_dir, grade_dir, reading_path, baseline_path, instrument_commit
                                         load(files[".ranges.json"]), load(files[".xref.json"]),
                                         by_name[name]))
         hashes.update({name + suffix: digest(path) for suffix, path in files.items()})
+    archives = []
+    if any(row["local_library_sha256"] for row in subjects):
+        require(archive_metadata is not None, "dependency-backed run requires archived distribution metadata")
+        archive_state = load(archive_metadata)
+        dependency_subjects = [row for row in subjects if row["local_library_sha256"]]
+        require(len(dependency_subjects) == 1 and
+                archive_state["local_lib_perl5"]["sha256"] ==
+                dependency_subjects[0]["local_library_sha256"],
+                "archive metadata library fingerprint mismatch")
+        archives = safe_archives(archive_state)
+        hashes["dependency-archives.json"] = digest(archive_metadata)
     phase_files = {"phases.json": input_dir / "phases.json",
                    "grade-phases.json": grade_dir / "grade-phases.json",
                    "retime.log": grade_dir / "retime.log",
@@ -240,6 +276,7 @@ def collect(input_dir, grade_dir, reading_path, baseline_path, instrument_commit
     hashes.update({key: digest(value) for key, value in phase_files.items()})
     receipt = {"tool": "C-R9 Perl native count/hash receipt", "instrument_commit": instrument_commit,
             "harness_commit": harness_commit,
+            "dependency_archives": archives,
             "collector_sha256": digest(__file__), "inputs_sha256": dict(sorted(hashes.items())),
             "subjects": subjects, "grade": {key: reading["grade"][key] for key in ("L1", "L2", "L3", "L4")},
             "level_met": reading["level_met"],
@@ -263,7 +300,8 @@ def self_test():
                "compiled_files": 1, "unresolved_files": 0, "failures": [],
                "joining": {"files": [{"compiler_status": "ok", "path": "Author Person/private.pm"}],
                            "native": [{"path": "Author Person/private.pm", "name": "Author Person"}],
-                           "paired": 1, "tag_total": 1, "tag_unpaired": 0},
+                           "paired": 1, "tag_total": 1, "tag_unpaired": 0,
+                           "ctags_unknown_files": 0},
                "network_policy": {"control": {"denial": "EPERM", "destination": "127.0.0.1:1/tcp",
                                               "profile": "(version 1) (allow default) (deny network*)"}},
                "dependency_context": {"local_lib_perl5_fingerprint_before": None,
@@ -352,12 +390,14 @@ def main():
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--instrument-commit")
     parser.add_argument("--harness-commit")
+    parser.add_argument("--archive-metadata", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         require(not any((args.input_dir, args.grade_dir, args.reading, args.baseline,
-                         args.instrument_commit, args.harness_commit, args.output)),
+                         args.instrument_commit, args.harness_commit, args.archive_metadata,
+                         args.output)),
                 "self-test takes no inputs")
         print(json.dumps(self_test(), sort_keys=True))
         return
@@ -366,7 +406,8 @@ def main():
     require(not args.output.exists(), "output must be new")
     receipt = collect(args.input_dir, args.grade_dir or args.input_dir, args.reading,
                       args.baseline, args.instrument_commit,
-                      args.harness_commit or args.instrument_commit)
+                      args.harness_commit or args.instrument_commit,
+                      args.archive_metadata)
     args.output.write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
     print(json.dumps({"receipt_sha256": digest(args.output), "subjects": len(receipt["subjects"])},
                      sort_keys=True))

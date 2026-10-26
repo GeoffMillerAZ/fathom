@@ -1,0 +1,500 @@
+{
+  "call_truth": 1954,
+  "call_truth_found": 1949,
+  "collector_sha256": "c22b7477341f9c2b388c4fde2fbd0fd06bac1a8881699d1ae3189b25a5b20cb8",
+  "compiled": 279,
+  "compiled_coverage": 0.813411,
+  "coverage_floor": null,
+  "criteria": {
+    "all_preregistered_excellence_gates": true,
+    "compiled_coverage_floor_passed": false,
+    "coverage_and_existing_gates_pass": false,
+    "coverage_floors_preregistered": false,
+    "ctags_population_complete": true,
+    "fault_rate_at_most_0_1_percent": true,
+    "harness_population_complete": false,
+    "l1_excellent": true,
+    "max_file_at_most_2_seconds": true,
+    "named_pairing_floor_passed": false,
+    "range_agreement_at_least_0_90": true,
+    "throughput_median_at_least_1_mb_cpu_s": true
+  },
+  "ctags_binary_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+  "ctags_unknown_files": 0,
+  "dependency_archives": [
+    {
+      "bytes": 16063,
+      "name": "Apache-LogFormat-Compiler-0.36.tar.gz",
+      "sha256": "94509503ee74ea820183d070c11630ee5bc0fd8c12cb74fae953ed62e4a1ac17"
+    },
+    {
+      "bytes": 56739,
+      "name": "AppConfig-1.71.tar.gz",
+      "sha256": "1177027025ecb09ee64d9f9f255615c04db5e14f7536c344af632032eb887b0f"
+    },
+    {
+      "bytes": 24384,
+      "name": "CLI-Osprey-0.09.tar.gz",
+      "sha256": "8549a09fdc97981298bd8f3aa2755294acaa7939ca279d3840bebc259a46844e"
+    },
+    {
+      "bytes": 35640,
+      "name": "Capture-Tiny-0.50.tar.gz",
+      "sha256": "ca6e8d7ce7471c2be54e1009f64c367d7ee233a2894cacf52ebe6f53b04e81e5"
+    },
+    {
+      "bytes": 27412,
+      "name": "Class-Inspector-1.36.tar.gz",
+      "sha256": "cc295d23a472687c24489d58226ead23b9fdc2588e522f0b5f0747741700694e"
+    },
+    {
+      "bytes": 41167,
+      "name": "Class-Method-Modifiers-2.15.tar.gz",
+      "sha256": "65cd85bfe475d066e9186f7a8cc636070985b30b0ebb1cde8681cf062c2e15fc"
+    },
+    {
+      "bytes": 194584,
+      "name": "Clone-0.51.tar.gz",
+      "sha256": "f17f66fec97dacca67ac9585701d2d079cfc80539fe6e8160c201c4e55f67507"
+    },
+    {
+      "bytes": 26662,
+      "name": "Config-Any-0.33.tar.gz",
+      "sha256": "c0668eb5f2cd355bf20557f04dc18a25474b7a0bcfa79562e3165d9a3c789333"
+    },
+    {
+      "bytes": 12845,
+      "name": "Cookie-Baker-0.12.tar.gz",
+      "sha256": "9b04df5d47dcd45ac4299626a10ec990fb40c94ee5a6300c3a88bdfb3575ec29"
+    },
+    {
+      "bytes": 24023,
+      "name": "Crypt-URandom-0.55.tar.gz",
+      "sha256": "ef9f44141073c13573e85b148ff9a9089c45825b7d6608d832e4263899d3a2d4"
+    },
+    {
+      "bytes": 6494,
+      "name": "Data-Censor-0.04.tar.gz",
+      "sha256": "b713694b004362ba799baca9ee96a5d1c45a5e297711e3312f741ef511e2cc83"
+    },
+    {
+      "bytes": 21045,
+      "name": "Data-OptList-0.115.tar.gz",
+      "sha256": "fa0e7cdc10925db925a82f8eb9608a701f1c2bf5e88d512d9acd46977e174056"
+    },
+    {
+      "bytes": 41366,
+      "name": "Devel-StackTrace-2.05.tar.gz",
+      "sha256": "63cb6196e986a7e578c4d28b3c780e7194835bfc78b68eeb8f00599d4444888c"
+    },
+    {
+      "bytes": 17053,
+      "name": "Devel-StackTrace-AsHTML-0.15.tar.gz",
+      "sha256": "6283dbe2197e2f20009cc4b449997742169cdd951bfc44cbc6e62c2a962d3147"
+    },
+    {
+      "bytes": 8355,
+      "name": "Encode-Locale-1.05.tar.gz",
+      "sha256": "176fa02771f542a4efb1dbc2a4c928e8f4391bf4078473bd6040d8f11adb0ec1"
+    },
+    {
+      "bytes": 92909,
+      "name": "Exporter-Tiny-1.006003.tar.gz",
+      "sha256": "6499f09a6432cf87b133fb9580a8a9a9a6c566821346b1fdee95f7b64c0317b1"
+    },
+    {
+      "bytes": 13456,
+      "name": "ExtUtils-Config-0.010.tar.gz",
+      "sha256": "82e7e4e90cbe380e152f5de6e3e403746982d502dd30197a123652e46610c66d"
+    },
+    {
+      "bytes": 16620,
+      "name": "ExtUtils-Helpers-0.028.tar.gz",
+      "sha256": "c8574875cce073e7dc5345a7b06d502e52044d68894f9160203fcaab379514fe"
+    },
+    {
+      "bytes": 19252,
+      "name": "ExtUtils-InstallPaths-0.015.tar.gz",
+      "sha256": "7d64eb2dfa87ead010cdf55c8a1bdfde50b7b5852d7cb8cf2304f55bea2eb007"
+    },
+    {
+      "bytes": 14130,
+      "name": "File-Share-0.27.tar.gz",
+      "sha256": "d6e8f4b55ebd38e0bb45e44392e3fa27dc1fde16abc5d1ff53e157e19a5755be"
+    },
+    {
+      "bytes": 29631,
+      "name": "File-ShareDir-1.118.tar.gz",
+      "sha256": "3bb2a20ba35df958dc0a4f2306fc05d903d8b8c4de3c8beefce17739d281c958"
+    },
+    {
+      "bytes": 31637,
+      "name": "File-ShareDir-Install-0.14.tar.gz",
+      "sha256": "8f9533b198f2d4a9a5288cbc7d224f7679ad05a7a8573745599789428bc5aea0"
+    },
+    {
+      "bytes": 25146,
+      "name": "File-Which-1.27.tar.gz",
+      "sha256": "3201f1a60e3f16484082e6045c896842261fc345de9fb2e620fd2a2c7af3a93a"
+    },
+    {
+      "bytes": 13429,
+      "name": "Filesys-Notify-Simple-0.14.tar.gz",
+      "sha256": "1fda712d4ba5e1868159ed35f6f8efbfae9d435d6376f5606d533bcb080555a4"
+    },
+    {
+      "bytes": 45642,
+      "name": "Getopt-Long-2.58.tar.gz",
+      "sha256": "1305ed46ea21f794304e97aa3dcd3a38519059785e9db7415daf2c218506c569"
+    },
+    {
+      "bytes": 39040,
+      "name": "Getopt-Long-Descriptive-0.117.tar.gz",
+      "sha256": "18cba2392a0b7550bbc3d7c98c6fc5d81f6699d308e4a17e1a143ba4521005a3"
+    },
+    {
+      "bytes": 152999,
+      "name": "HTML-Parser-3.86.tar.gz",
+      "sha256": "5305e1d5faa70ee0aa282d85a5c9aa93911e8c7afa590ad1ced5703a544e20f6"
+    },
+    {
+      "bytes": 8120,
+      "name": "HTML-Tagset-3.24.tar.gz",
+      "sha256": "eb89e145a608ed1f8f141a57472ee5f69e67592a432dcd2e8b1dbb445f2b230b"
+    },
+    {
+      "bytes": 49359,
+      "name": "HTTP-Cookies-6.12.tar.gz",
+      "sha256": "4e460c4bae76285bfc726f641349402fc9038fcd9ca0f33346bec036d73876b8"
+    },
+    {
+      "bytes": 35415,
+      "name": "HTTP-Date-6.08.tar.gz",
+      "sha256": "b57d80ca6d821c6949ca48b27467d45aba7a9c77346562306facca781a003e44"
+    },
+    {
+      "bytes": 24307,
+      "name": "HTTP-Entity-Parser-0.25.tar.gz",
+      "sha256": "3a8cd0d8cba3d17cd8c04ee82d7341dfaa247dbdd94a49eb94b53f69e483ec3a"
+    },
+    {
+      "bytes": 19730,
+      "name": "HTTP-Headers-Fast-0.22.tar.gz",
+      "sha256": "cc431db68496dd884db4bc0c0b7112c1f4a4f1dc68c4f5a3caa757a1e7481b48"
+    },
+    {
+      "bytes": 96779,
+      "name": "HTTP-Message-7.04.tar.gz",
+      "sha256": "699f3350dbb7bd8fdc9f3b013b0c91b7c059783708443e39bc395fa33352f006"
+    },
+    {
+      "bytes": 30258,
+      "name": "HTTP-MultiPartParser-0.02.tar.gz",
+      "sha256": "5eddda159f54d16f868e032440ac2b024e55aac48931871b62627f1a16d00b12"
+    },
+    {
+      "bytes": 17507,
+      "name": "Hash-Merge-Simple-0.052.tar.gz",
+      "sha256": "c27f20895814a96e0c5bd0ca3315bf901d79706e3bab4ab0d946debc2c429c0b"
+    },
+    {
+      "bytes": 19841,
+      "name": "Hash-MultiValue-0.16.tar.gz",
+      "sha256": "66181df7aa68e2786faf6895c88b18b95c800a8e4e6fb4c07fd176410a3c73f4"
+    },
+    {
+      "bytes": 20927,
+      "name": "IO-HTML-1.004.tar.gz",
+      "sha256": "c87b2df59463bbf2c39596773dfb5c03bde0f7e1051af339f963f58c1cbd8bf5"
+    },
+    {
+      "bytes": 7748,
+      "name": "Import-Into-1.002005.tar.gz",
+      "sha256": "bd9e77a3fb662b40b43b18d3280cd352edf9fad8d94283e518181cc1ce9f0567"
+    },
+    {
+      "bytes": 24049,
+      "name": "JSON-MaybeXS-1.004008.tar.gz",
+      "sha256": "cd3937afa78831f80a2ad5abab6c51b9e82fca4c31e5856ea208d598db5dc867"
+    },
+    {
+      "bytes": 40111,
+      "name": "LWP-MediaTypes-6.05.tar.gz",
+      "sha256": "abb2dcfbf069317fe65b098e3b2ad58c5eb33e9a839b9190cce6d371f8966cc1"
+    },
+    {
+      "bytes": 14121,
+      "name": "MIME-Base32-1.303.tar.gz",
+      "sha256": "ab21fa99130e33a0aff6cdb596f647e5e565d207d634ba2ef06bdbef50424e99"
+    },
+    {
+      "bytes": 311666,
+      "name": "Module-Build-0.4234.tar.gz",
+      "sha256": "66aeac6127418be5e471ead3744648c766bd01482825c5b66652675f2bc86a8f"
+    },
+    {
+      "bytes": 23043,
+      "name": "Module-Build-Tiny-0.053.tar.gz",
+      "sha256": "3726d622da6f655e88fdf89e4fd597709c44970b47de65082003e8d86b5e193a"
+    },
+    {
+      "bytes": 18553,
+      "name": "Module-Implementation-0.09.tar.gz",
+      "sha256": "c15f1a12f0c2130c9efff3c2e1afe5887b08ccd033bd132186d1e7d5087fd66d"
+    },
+    {
+      "bytes": 34875,
+      "name": "Module-Pluggable-6.4.tar.gz",
+      "sha256": "970fd13accd3d538e637db080ebbd9898020c8b5591837c8493a39edd737922d"
+    },
+    {
+      "bytes": 27428,
+      "name": "Module-Runtime-0.018.tar.gz",
+      "sha256": "0bf77ef68e53721914ff554eada20973596310b4e2cf1401fc958601807de577"
+    },
+    {
+      "bytes": 108583,
+      "name": "Moo-2.005005.tar.gz",
+      "sha256": "fb5a2952649faed07373f220b78004a9c6aba387739133740c1770e9b1f4b108"
+    },
+    {
+      "bytes": 17189,
+      "name": "POSIX-strftime-Compiler-0.46.tar.gz",
+      "sha256": "bf88873248ef88cc5e68ed074493496be684ec334e11273d4654306dd9dae485"
+    },
+    {
+      "bytes": 40609,
+      "name": "Params-SomeUtil-1.12.tar.gz",
+      "sha256": "ca61027a5c7f9ce2e31285c67a0bdc4f052c62051adfb7406d79ea0f23e5c1f0"
+    },
+    {
+      "bytes": 213438,
+      "name": "Params-Validate-1.31.tar.gz",
+      "sha256": "1bf2518ef2c4869f91590e219f545c8ef12ed53cf313e0eb5704adf7f1b2961e"
+    },
+    {
+      "bytes": 105901,
+      "name": "Path-Tiny-0.150.tar.gz",
+      "sha256": "ff20713d1a14d257af9c78209001f40dc177e4b9d1496115cbd8726d577946c7"
+    },
+    {
+      "bytes": 203316,
+      "name": "Plack-1.0057.tar.gz",
+      "sha256": "01cfe036276703f62cf6c1cec7c7e630420677498dfa7bc333ad88eca9d7a765"
+    },
+    {
+      "bytes": 11361,
+      "name": "Plack-Middleware-FixMissingBodyInRedirect-0.12.tar.gz",
+      "sha256": "6c22d069f5a57ac206d4659b28b8869bb9270640bb955efddd451dcc58cdb391"
+    },
+    {
+      "bytes": 10708,
+      "name": "Plack-Middleware-RemoveRedundantBody-0.09.tar.gz",
+      "sha256": "80d45f93d6b7290b0bd8b3cedd84a37fc501456cc3dec02ec7aad81c0018087e"
+    },
+    {
+      "bytes": 28877,
+      "name": "Readonly-2.05.tar.gz",
+      "sha256": "4b23542491af010d44a5c7c861244738acc74ababae6b8838d354dfb19462b5e"
+    },
+    {
+      "bytes": 27509,
+      "name": "Ref-Util-0.204.tar.gz",
+      "sha256": "415fa73dbacf44f3d5d79c14888cc994562720ab468e6f71f91cd1f769f105e1"
+    },
+    {
+      "bytes": 36401,
+      "name": "Role-Tiny-2.002005.tar.gz",
+      "sha256": "4618ec524618c104dc28a8cc86af129a00cad282aea7f4c75060ba05d4c8f4d7"
+    },
+    {
+      "bytes": 6546,
+      "name": "Safe-Isa-1.000010.tar.gz",
+      "sha256": "87f4148aa0ff1d5e652723322eab7dafa3801c967d6f91ac9147a3c467b8a66a"
+    },
+    {
+      "bytes": 10348,
+      "name": "Stream-Buffered-0.03.tar.gz",
+      "sha256": "9b2d4390b5de6b0cf4558e4ad04317a73c5e13dd19af29149c4e47c37fb2423b"
+    },
+    {
+      "bytes": 58585,
+      "name": "Sub-Exporter-0.992.tar.gz",
+      "sha256": "31d1b7016390528f3ed2cda379f4026a4e7fbad2aa40c8c9a1808961bf642c67"
+    },
+    {
+      "bytes": 21122,
+      "name": "Sub-Install-0.929.tar.gz",
+      "sha256": "80b1e281d8cd3b2b31dac711f5c8a1657a87cd80bbe69af3924bcbeb4e5db077"
+    },
+    {
+      "bytes": 36379,
+      "name": "Sub-Quote-2.006009.tar.gz",
+      "sha256": "967282d54d2d51b198c67935594f93e4dea3e54d1e5bced158c94e29be868a4b"
+    },
+    {
+      "bytes": 28361,
+      "name": "Sub-Uplevel-0.2800.tar.gz",
+      "sha256": "b4f3f63b80f680a421332d8851ddbe5a8e72fcaa74d5d1d98f3c8cc4a3ece293"
+    },
+    {
+      "bytes": 32349,
+      "name": "Template-Tiny-1.16.tar.gz",
+      "sha256": "cea4735220af81c72943dea70465a83f61beb499a2a2ba67ea55762e1cd8060e"
+    },
+    {
+      "bytes": 549973,
+      "name": "Template-Toolkit-3.106.tar.gz",
+      "sha256": "c7474050be80201f1fb55f0a569b9c0ab6c1c3f0cebbd7e601bda9b4046eec85"
+    },
+    {
+      "bytes": 70624,
+      "name": "Test-Deep-1.205.tar.gz",
+      "sha256": "42781e9943a7a215e662c4973b9feafdc019fd16469bdb849a8537ee58956273"
+    },
+    {
+      "bytes": 32739,
+      "name": "Test-EOL-2.02.tar.gz",
+      "sha256": "283199d7fb27807fe2226af7b12571c6dc2508d8e5c0feb505d089d31720afc4"
+    },
+    {
+      "bytes": 15204,
+      "name": "Test-Exception-0.43.tar.gz",
+      "sha256": "156b13f07764f766d8b45a43728f2439af81a3512625438deab783b7883eb533"
+    },
+    {
+      "bytes": 23232,
+      "name": "Test-Fatal-0.019.tar.gz",
+      "sha256": "d8f6b6c87bb399a7d60c295a94a4b741a85b23889cfd6b72f1ff62f0c55cf70b"
+    },
+    {
+      "bytes": 15502,
+      "name": "Test-SharedFork-0.35.tar.gz",
+      "sha256": "2932e865610e80758f764c586757ef8e11db1284d958e25e4b7a85098414c59f"
+    },
+    {
+      "bytes": 26582,
+      "name": "Test-TCP-2.22.tar.gz",
+      "sha256": "3e53c3c06d6d0980a2bfeb915602b714e682ee211ae88c11748cf2cc714e7b57"
+    },
+    {
+      "bytes": 68810,
+      "name": "TimeDate-2.35.tar.gz",
+      "sha256": "baddd0306ae2e86e9ec28d3de5439e514643e80b3735e43bd0fbb426d73304de"
+    },
+    {
+      "bytes": 36291,
+      "name": "Try-Tiny-0.32.tar.gz",
+      "sha256": "ef2d6cab0bad18e3ab1c4e6125cc5f695c7e459899f512451c8fa3ef83fa7fc0"
+    },
+    {
+      "bytes": 511029,
+      "name": "Type-Tiny-2.010001.tar.gz",
+      "sha256": "cd583e4983039f35052d490f0c4439124ba667d4f09c4e3aec47de5200f9921a"
+    },
+    {
+      "bytes": 140582,
+      "name": "URI-5.40.tar.gz",
+      "sha256": "ef5d2ef099a1a24a6e83ffe543de73337805d3d39c00b84fa205d725ad1a1b63"
+    },
+    {
+      "bytes": 15399,
+      "name": "WWW-Form-UrlEncoded-0.26.tar.gz",
+      "sha256": "c0480b5f1f15b71163ec327b8e7842298f0cb3ace97e63d7034af1e94a2d90f4"
+    },
+    {
+      "bytes": 93619,
+      "name": "YAML-1.321.tar.gz",
+      "sha256": "d461167b8b4aa9244f736a7a740830141e61dddee301e456bf642e81d3cea193"
+    }
+  ],
+  "dependency_declaration": "cpanfile",
+  "dependency_installed": true,
+  "dependency_lock_sha256": "4bb18a50afd7f9761130302f5335c5248a1d41b7778e0b6c04c8999174900971",
+  "failure_reason_counts": {
+    "compile_error": 64
+  },
+  "frozen_instrument_file_sha256": {
+    "FathomPerlCompileGuard.pm": "03836c7217986ae591d59400298f5fafdefb508613c8b7b970a0f125f26b6b32",
+    "dependencies.py": "9d665fb3cf5c787ddd310a8309b864e450027c52473c8940bd0d7e7fad2d2645",
+    "runner.py": "9766948780ddd1c519cf3591d6916302ec017f44de23315233687a33bd45de08"
+  },
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "harness_files": 332,
+  "indexbench_binary_sha256": "0b822f93cb1676e2b4afdab8cb4d04273b58e679fcaa1b71e166bc8b5bb8f3a8",
+  "input_sha256": {
+    "dependency-archives.sha256": "31a07579c32b32ecefb9c72d213c8016ba1aaaf6f60ddcb2b5f4e1195a9ac3bc",
+    "dependency-lock.sha256": "4bb18a50afd7f9761130302f5335c5248a1d41b7778e0b6c04c8999174900971",
+    "indexbench.sha256": "0b822f93cb1676e2b4afdab8cb4d04273b58e679fcaa1b71e166bc8b5bb8f3a8",
+    "measured.sha256": "1c6a021036ee21bde3748de7fb3e69724ed8414378efa3cbdbdbb2661457b3c7",
+    "meta.sha256": "72edba7602f74bad7f31048383eb5179cb3c5d0e6a2de6d57ebdae1bb4ee30a7",
+    "phases.sha256": "1375479c301f1b3e73cc9cd8e03f9059a366ce8127277cc7fe5d6ede89fbabbb",
+    "primary.sha256": "0dbe0622aeddc932ae022e2ea4a9f4e2b7a3146ecc62e47992f9aaaf497664aa",
+    "ranges.sha256": "8538dbe509016bd435eefcc8f06f0dccac0807ee2c07771ee303b41098b0e916",
+    "reading.sha256": "56a16fc7124d4764d39fec5950134aec335423f5857ff404597e4510d6e84383",
+    "retime.sha256": "0057720594adb419b63d7bfb67d7c029b6651fe1f2e2c3a3ea652b54d7d05703",
+    "spent.sha256": "bc25c1a23f393927ff5877aff02f6945d32349720cf706b3b38497997ac2060a"
+  },
+  "instrument_commit": "500a867de528dfe651b3ec5b61d1779625c6e595",
+  "legacy_phase_provenance_incomplete": true,
+  "local_library_sha256": "b8b99e2e35d1bc4a2430bfeffe5d31488d18a1123363ceac2eaf5346fb4eae7a",
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "named_tags": 676,
+  "native_minus_harness_files": 11,
+  "network_denial": "EPERM",
+  "paired": 624,
+  "paired_outside_reading": 1,
+  "paired_tag_coverage": 0.923077,
+  "perl_binary_sha256": "85e5621137742a37be052f58800372b2005f91f609ad55019832214b5d9e61bc",
+  "phase_identity_bound": false,
+  "phase_launch_load": [
+    4.95556640625,
+    4.95556640625,
+    4.95556640625,
+    8.92919921875,
+    8.92919921875,
+    6.17138671875,
+    6.0771484375,
+    6.0771484375
+  ],
+  "phase_seconds": [
+    1.713,
+    0.083,
+    52.627,
+    2.076,
+    74.485,
+    3.638,
+    1.951,
+    3.263
+  ],
+  "range_agreement": 1,
+  "range_disagree": 0,
+  "range_eligible": 623,
+  "range_ok": 623,
+  "source_commit": "90b6e651c1f1a7c576072fdd039ef15afecb67a5",
+  "source_manifest_sha256": "ee9572b544f9eb905ff778f3e467db9a0d56e31123e537733c1e36619c92218c",
+  "spent_at_utc": "2026-10-26T13:12:21.637804+00:00",
+  "spent_before": "clone-once",
+  "throughput_median_mb_cpu_s": 2.29,
+  "throughput_three_runs_mb_cpu_s": [
+    2.29,
+    2.31,
+    2.27
+  ],
+  "tool": "Perl holdout count/hash receipt",
+  "units": 343,
+  "unresolved": 64
+}
