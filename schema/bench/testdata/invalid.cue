@@ -6,6 +6,9 @@
 // offending field. This avoids negatives drifting away from their tests.
 //
 // cases: [
+// {"name": "exclusions over two percent", "fixture": "exclusionSubject", "path": "bench.excluded", "value": [{"test": "TestService/offline", "reason": "missing host service", "log": "connection refused"}, {"test": "TestFetch/offline", "reason": "network", "log": "network unreachable"}]},
+// {"name": "empty exclusion reason", "fixture": "exclusionSubject", "path": "bench.excluded.0.reason", "value": ""},
+// {"name": "exclusions without count", "fixture": "exclusionSubject", "path": "bench.suite_tests", "remove": true},
 // {"name": "missing sha", "fixture": "subject", "path": "sha", "remove": true},
 // {"name": "short sha", "fixture": "subject", "path": "sha", "value": "abc"},
 // {"name": "missing ref", "fixture": "subject", "path": "ref", "remove": true},

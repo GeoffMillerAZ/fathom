@@ -1,0 +1,3 @@
+### Added
+
+- `fathom instrument --adoption` has a labs section, in the text report and as the `labs` key of `--json`: the cards under `calibration/labs.d` with their surface counts, the closure gap verbatim, the newest `docs/bench/labs-ledger.jsonl` row per lab, case counts by split, the fixed observations (fix proof `not measured (LAB-24 unbuilt)`), and the observations with no Lab link by open, fixed or other status. It reads files only. A card, ledger, case or observation read failure is printed, never shown as zero; the text lists the first 20 observation ids and how many more, and `--json` lists every id. The console's Operate page does not compute the section.

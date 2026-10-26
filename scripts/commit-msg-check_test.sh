@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # BE-2: fixture messages share the local hook and CI checker.
 set -euo pipefail
+# A git hook exports GIT_DIR to its children: scrub it so this test's scratch repositories
+# never write the pushing repository's index (O48, O1505).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/commit-msg-test.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
