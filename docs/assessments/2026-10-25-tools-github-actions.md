@@ -26,3 +26,20 @@ or full file inventories are copied. The old reading's absent-native-tool note
 is explicitly superseded, without editing an instrument-generated reading by
 hand. No product, epoch, generated surface or checkbox changes. No model
 judgment applies to these deterministic source-interface checks.
+
+Review correction: the native API availability trigger has fired. The plan
+records L3 good pending concrete measurement, gated by D19 on origin/main and
+controller announcement. After that gate the no-job-execution harness must
+query every native-parser-enumerated local action, retain negative controls
+and combine with native reusable-workflow loads across the original 245 edges.
+It must regenerate the obsolete canonical note through the instrument. A
+runtime trace alone attests visited steps, never recall. No L3 grade changes.
+
+The omitted candidate nektos/act 0.2.89 (MIT) is now source checksum-pinned.
+Its list path returns the workflow plan without local-action loading, and
+its dry-run local-step path returns before reading metadata. The real loader
+uses action.yml before action.yaml before Dockerfile. No act binary, job body
+or Docker ran. An isolated loader call could cross-check metadata rejected by
+actionlint, but act remains C under P-T1. The source-contract audit reproduces
+these results, and mutation controls strengthen the vendor parser dot-path
+rejection tripwire to the guarded return block.

@@ -32,5 +32,33 @@
         "sha256": "c256c358c495517e7b8816be458f3060b5b221f710068b7ed0f9874f06eb7c82"
       }
     ]
+  },
+  "act": {
+    "repo": "nektos/act",
+    "version": "0.2.89",
+    "license": "MIT",
+    "tier": "C under P-T1, independent reimplementation",
+    "sources": [
+      {
+        "path": "LICENSE",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/LICENSE",
+        "sha256": "da3ece2d2daf5c812c8606d2922094f51818258d4ce0e041b4ee8409ba3b381f"
+      },
+      {
+        "path": "cmd/root.go",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/cmd/root.go",
+        "sha256": "879fe381091b4646188b4da9f8dcb47807aa56462488d2f26be9339ba096cd89"
+      },
+      {
+        "path": "pkg/runner/action.go",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/pkg/runner/action.go",
+        "sha256": "ae9e3f0b2fe06ecf86f4357a8534dd3b41d4b99c7215f59dc8d2d85cad4252cd"
+      },
+      {
+        "path": "pkg/runner/step_action_local.go",
+        "url": "https://raw.githubusercontent.com/nektos/act/v0.2.89/pkg/runner/step_action_local.go",
+        "sha256": "97534972bba227611b8a9a34704370c371deeecae28fd60106dbad53f6c5e569"
+      }
+    ]
   }
 }
