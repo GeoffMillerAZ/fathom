@@ -20,9 +20,24 @@ const Version = "fathom " + buildinfo.Release
 // -buildvcs (default on). It needs no ldflags. This is the staleness signal:
 // compare it against `git rev-parse HEAD` to tell whether a long-running
 // serve-mcp process is serving code older than the repo.
-func BuildRevision() string {
-	rev, when, dirty := vcsInfo()
+func BuildRevision() string { return formatBuildRevision(versionStamp()) }
+
+// versionStamp reads the binary's build identity; a variable so tests can
+// supply a fake build info.
+var versionStamp = buildinfo.Read
+
+// formatBuildRevision renders a Stamp. With no VCS revision (a `go install
+// pkg@version` build) it falls back to the module version and go.sum hash,
+// so the text still names what was built.
+func formatBuildRevision(st buildinfo.Stamp) string {
+	rev, when, dirty := st.Revision, st.BuiltAt, st.Dirty
 	if rev == "" {
+		switch {
+		case st.ModuleVersion != "" && st.ModuleSum != "":
+			return fmt.Sprintf("%s (module %s, sum %s)", Version, st.ModuleVersion, st.ModuleSum)
+		case st.ModuleVersion != "":
+			return fmt.Sprintf("%s (module %s)", Version, st.ModuleVersion)
+		}
 		return Version + " (revision unknown)"
 	}
 	short := rev
@@ -93,10 +108,11 @@ func revisionDirty() bool {
 // ingest stores while the contract_keys table is frozen.
 func cmdVersion(args []string, stdout, _ io.Writer) int {
 	if hasFlag(args, "json") {
-		rev, when, dirty := vcsInfo()
+		st := versionStamp()
 		enc := json.NewEncoder(stdout)
 		_ = enc.Encode(map[string]any{
-			"version": Version, "revision": rev, "revision_time": when, "dirty": dirty,
+			"version": Version, "revision": st.Revision, "revision_time": st.BuiltAt, "dirty": st.Dirty,
+			"module_version": st.ModuleVersion, "module_sum": st.ModuleSum,
 			"tenancy_contract": tenancyContract,
 			"extractor_epoch":  fusion.ExtractorEpoch,
 			"typed_edge_epoch": fusion.TypedEdgeEpoch,
