@@ -1,6 +1,6 @@
 {
   "status": "complete",
-  "mode": "candidate-diagnostic",
+  "mode": "external-candidate-diagnostic",
   "baseline_revision": "0deba117abaadee0343a58a1645f9232a92b6167",
   "counts_complete": true,
   "files": 116,
@@ -27,11 +27,14 @@
   "unmatched_sha256": "d0c397ee1ecb2cfde89334b50ee1ce2fe2cb559d58d27ccb04f0100cf82647f2",
   "population_sha256": "0426708f1cb6398542e92ec2bbb377c4496202cdb48d97ffd5423eee6d1b1c8a",
   "source_sha256": "ceca3caaee6c7f2cc0c792a2e863eaf4f2a45b6c5f5c286a4db4e74c8727bd6c",
-  "product_revision": "b9d22930d0fb4c690d56976c78683f8d5e0aab28",
-  "product_binary_sha256": "fcd9ba0bf08a7f1dd8a0f5743d2ea8aee6e0d9cec3edb0d72613d9c31536f334",
+  "product_revision": "a3374ac40aeca2d527e4c79637809bbf419885fa",
+  "product_binary_sha256": "8bb02c4cefac08fe29b1b8fdfc58978d1649e611c5a202ae4ad0ab4b798a376d",
   "grammar_blob_sha256": "613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df",
   "grammar_entry_point": "tree_sitter_cpp",
-  "grammar_commit": "920e9810cc64a47fa05cfcf30c7caecb85b5f2c3",
+  "audit_grammar_version": "920e9810cc64a47fa05cfcf30c7caecb85b5f2c3",
+  "audit_runtime_version": "0.26.11",
+  "audit_grammar_archive_sha256": "285ad7c2969a03254ed7a77068e0effca26cb8f014bc5b9d300bd4415ec0b17b",
+  "audit_runtime_archive_sha256": "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971",
   "preprocess": true,
   "preprocess_selected": 30
 }
