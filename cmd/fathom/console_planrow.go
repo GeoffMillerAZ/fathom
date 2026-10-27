@@ -176,7 +176,7 @@ func rowReach(ctx context.Context, pc *consolePlans, service string, row console
 	query := row.Symbol
 	if pc.deps.c != nil {
 		if nodes, err := pc.deps.c.FindSymbol(ctx, service, row.Symbol); err == nil {
-			keys := map[string]bool{}
+			var code []core.SymbolNode
 			for _, n := range nodes {
 				if n.Kind == core.KindDocChunk {
 					continue
@@ -184,6 +184,11 @@ func rowReach(ctx context.Context, pc *consolePlans, service string, row console
 				if row.Package != "" && !strings.HasPrefix(n.FilePath, strings.TrimSuffix(row.Package, "/")+"/") {
 					continue
 				}
+				code = append(code, n)
+			}
+			// A same-named struct field never shadows the row's symbol.
+			keys := map[string]bool{}
+			for _, n := range core.WithoutShadowingFields(code, row.Symbol) {
 				keys[n.Key()] = true
 			}
 			if len(keys) == 1 {

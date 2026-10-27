@@ -183,7 +183,8 @@ func oneDefinition(ctx context.Context, c *client.Client, service, symbol string
 		return core.SymbolNode{}, err
 	}
 	byKey := map[string]core.SymbolNode{}
-	for _, n := range nodes {
+	// A same-named struct field never shadows the symbol asked for.
+	for _, n := range core.WithoutShadowingFields(nodes, symbol) {
 		if n.FilePath == "" {
 			continue
 		}

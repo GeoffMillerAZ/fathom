@@ -450,10 +450,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if match.Via == "exact" {
 			resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(nodes)), "matched_via": "exact"}
 			// SB-5: an exact hit on a single Go interface additionally
-			// carries its implementers (H1-T06's question in one call).
-			if len(nodes) == 1 && nodes[0].Kind == core.KindGoInterface {
+			// carries its implementers (H1-T06's question in one call). A
+			// same-named struct field never hides the one interface.
+			if one := core.WithoutShadowingFields(nodes, p.Name); len(one) == 1 && one[0].Kind == core.KindGoInterface {
 				if all, allErr := serviceSymbols(ctx, backend, p.Service); allErr == nil {
-					if impls := implementationsOf(ctx, backend, p.Service, nodes[0], all); len(impls) > 0 {
+					if impls := implementationsOf(ctx, backend, p.Service, one[0], all); len(impls) > 0 {
 						resp["implementations"] = impls
 					}
 				}

@@ -303,11 +303,16 @@ func (e *Evidence) TypedCallers(symbol, pkg string) (nonTest, test []verify.Gone
 	if e.cfg.FindSymbol != nil {
 		matches = e.cfg.FindSymbol(symbol)
 	}
-	keys := map[string]bool{}
+	var under []core.SymbolNode
 	for _, n := range matches {
 		if pkg == "" || path.Dir(n.FilePath) == pkg {
-			keys[n.Key()] = true
+			under = append(under, n)
 		}
+	}
+	// A same-named struct field never shadows the symbol the row names.
+	keys := map[string]bool{}
+	for _, n := range core.WithoutShadowingFields(under, symbol) {
+		keys[n.Key()] = true
 	}
 	if len(keys) != 1 || e.cfg.Graph == nil {
 		return []verify.GoneReferent{{File: symbol, Line: 0}}, nil

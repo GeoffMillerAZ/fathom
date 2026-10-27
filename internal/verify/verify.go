@@ -890,9 +890,11 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		if e.Package != "" {
 			matches = underDir(matches, e.Package)
 		}
+		matches = core.WithoutShadowingFields(matches, e.Symbol)
 		// A package filter that leaves one distinct key names the canonical
 		// target. So does a bare name that collided with a doc heading and
-		// narrowed to ONE code key once the doc chunks were dropped: handed
+		// narrowed to ONE code key once the doc chunks (or same-named struct
+		// fields, core.WithoutShadowingFields) were dropped: handed
 		// to the call graph as a bare name it would be ambiguous and every
 		// reachability check would answer "nothing" (INC-21: h1's `{symbol:
 		// Gate}` flipped between stores on exactly this). A bare name that
