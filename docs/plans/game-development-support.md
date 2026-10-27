@@ -21,7 +21,7 @@ For operational rows, a lexical marker in a future docs/evidence/game-developmen
 - [ ] Consumer O10: exact source windows require fresh HEAD and read identity; dirty, refresh-race and unknown identity return refusal or unknown {id: GDEV-05, symbol: ServiceFreshnessProbe, package: pkg/client, needs: "GDEV-01", weight: 5}
 - [ ] Consumer O1: doctor checks module wrappers and indirect hooks without false positives; uncertain execution is unknown or timeout {id: GDEV-06, symbol: cmdDoctor, package: cmd/fathom, needs: "GDEV-01", weight: 4}
 - [ ] Retain negative/replay receipts for O13/O21/O23/O10/O1, with full response envelopes, exact budget and corpus identities and independently inspected verdicts {id: GDEV-07, oracle: lexical, path: docs/evidence/game-development-support.md, pattern: "^GDEV-07 P0 control verdict:", needs: "GDEV-02,GDEV-03,GDEV-04,GDEV-05,GDEV-06", weight: 5}
-- [ ] Prove product MCP admission and cancellation wiring, including named refusals and no leaked governor slot {id: GDEV-08, symbol: runHandler, package: internal/mcp, needs: "GDEV-03,GDEV-04", weight: 3}
+- [ ] Prove product MCP admission and cancellation wiring, including named refusals and no leaked governor slot {id: GDEV-08, symbol: runAdmitted, package: internal/mcp, reachable_from: TestAdmittedSetupPanicReleasesItsSlot, needs: "GDEV-03,GDEV-04", weight: 3}
 - [ ] Record a same-closure baseline for all 35 families: current main and consumer source SHA, tool pins, targets, lower-level metrics, unknowns and historical-vs-current labels {id: GDEV-09, oracle: lexical, path: docs/evidence/game-development-support.md, pattern: "^GDEV-09 baseline matrix:", needs: "GDEV-07", weight: 3}
 
 ## Native language and web truth

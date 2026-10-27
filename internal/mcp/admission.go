@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -206,6 +207,50 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 	return result, rpcErr, partial, meta
 }
 
+// admittedCall is what runAdmitted hands back to dispatch: the settled
+// answer, and the collector and refresh notes the envelope renders.
+type admittedCall struct {
+	result    any
+	rpcErr    *rpcError
+	partial   map[string]any
+	meta      callMeta
+	collector *scope.Collector
+	refreshed *refreshNotes
+}
+
+// runAdmitted owns an admitted call from admission to settle (GDEV-08):
+// the setup dispatch runs under the ticket (the collector, the refresh
+// notes, the citation reads, which call the backend), the handler, and
+// settleCall. One deferred settle and one recover cover all of it, so a
+// panic anywhere in that window answers the named error runHandler gives
+// and the ticket's slot, in-flight entry and running count are released;
+// with no gate (a nil ticket, serve-mcp) the recover still keeps the
+// stdio loop alive. ctx is the ticket's (the requester's, detached for
+// ingest, when there is no gate): settle reads its end and its cause.
+func (s *Server) runAdmitted(ctx context.Context, te toolEntry, args json.RawMessage, tk *tenancy.Ticket) (a admittedCall) {
+	settleCtx := ctx
+	defer func() {
+		if v := recover(); v != nil {
+			a.result, a.rpcErr = nil, panicError(te.desc.Name, v)
+		}
+		a.result, a.rpcErr, a.partial, a.meta = s.settleCall(settleCtx, te.desc.Name, tk, a.result, a.rpcErr)
+	}()
+	ctx, a.collector = scope.WithCollector(ctx)
+	// RT-150: a read whose auto-refresh was deferred says so.
+	ctx, a.refreshed = withRefreshNotes(ctx)
+	if citationTool(te.desc.Name) {
+		ctx = context.WithValue(ctx, citationReadsKey{}, newCitationReads(ctx, s.backend, serviceOfArgs(args), s.RefreshQueue()))
+	}
+	a.result, a.rpcErr = runHandler(ctx, te, args)
+	return a
+}
+
+// panicError is the named error a panic in an admitted call answers.
+func panicError(tool string, v any) *rpcError {
+	return &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("internal error: %s panicked: %v", tool, v),
+		Data: map[string]any{"outcome": string(tenancy.OutcomeError), "panic": fmt.Sprint(v)}}
+}
+
 // runHandler runs one tool handler and turns a panic into a named error,
 // so the settle that follows always releases the admission ticket (its
 // slot, in-flight entry and running count). net/http's conn.serve would
@@ -214,8 +259,7 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 func runHandler(ctx context.Context, te toolEntry, args json.RawMessage) (result any, rpcErr *rpcError) {
 	defer func() {
 		if v := recover(); v != nil {
-			result, rpcErr = nil, &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("internal error: %s panicked: %v", te.desc.Name, v),
-				Data: map[string]any{"outcome": string(tenancy.OutcomeError), "panic": fmt.Sprint(v)}}
+			result, rpcErr = nil, panicError(te.desc.Name, v)
 		}
 	}()
 	// RT-122 (§13.4): the handler's goroutine — and every goroutine it
