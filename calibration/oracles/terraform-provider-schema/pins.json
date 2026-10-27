@@ -1,0 +1,46 @@
+{
+  "platform": "darwin_arm64",
+  "providers": {
+    "aws": {
+      "archive_sha256": "25afdd7ee3235adec8c96ee2b12b9abecc00b56a1b8505acc6f2889798240d04",
+      "binary_sha256": "dd371fb4f035197de2ceef49b390d6f233293d93499f137f55895856906228a4",
+      "official_archive_url": "https://releases.hashicorp.com/terraform-provider-aws/6.67.0/terraform-provider-aws_6.67.0_darwin_arm64.zip",
+      "official_sha256sums_url": "https://releases.hashicorp.com/terraform-provider-aws/6.67.0/terraform-provider-aws_6.67.0_SHA256SUMS",
+      "selection": "Existing committed Terraform oracle pin, unchanged",
+      "source_address": "registry.opentofu.org/hashicorp/aws",
+      "version": "6.67.0"
+    },
+    "azurerm": {
+      "archive_sha256": "b183835acbcf39047d195f933caebd1902065d2437df17e964ceb4a358441f41",
+      "binary_sha256": "5adc5fc75c2b4527d24382b516995154c417bd4d565beb7bb16a1dc57f652f1f",
+      "index_sha256": "08b0299e163e8a318b0eb3c5050ca27d796f7ffd068e4ef5c7e57eba5071c6dc",
+      "official_archive_url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.11.0/terraform-provider-azurerm_5.11.0_darwin_arm64.zip",
+      "official_index_url": "https://releases.hashicorp.com/terraform-provider-azurerm/",
+      "official_sha256sums_url": "https://releases.hashicorp.com/terraform-provider-azurerm/5.11.0/terraform-provider-azurerm_5.11.0_SHA256SUMS",
+      "sha256sums_sha256": "c4ef767f850f794229b797e066606e92d1013f2d7a62e059959d97ded1928c95",
+      "source_address": "registry.opentofu.org/hashicorp/azurerm",
+      "version": "5.11.0"
+    },
+    "google": {
+      "archive_sha256": "5b643a92495934a22c594aca095eace27c817d83ef896042e4360b87216285df",
+      "binary_sha256": "7bd7c0594d30ecd2e85315a6f6c87271ecd445221c6f17e57c7d0be3ee903b4b",
+      "index_sha256": "92a539ac5486b32a11a9436063adafc5b1969a1e372cebc106623978650a3cfc",
+      "official_archive_url": "https://releases.hashicorp.com/terraform-provider-google/8.8.1/terraform-provider-google_8.8.1_darwin_arm64.zip",
+      "official_index_url": "https://releases.hashicorp.com/terraform-provider-google/",
+      "official_sha256sums_url": "https://releases.hashicorp.com/terraform-provider-google/8.8.1/terraform-provider-google_8.8.1_SHA256SUMS",
+      "sha256sums_sha256": "f2e1b6d39f53e65ba44e3d146eb6fa3f2faec7d8bc1e61db03938375302e4714",
+      "source_address": "registry.opentofu.org/hashicorp/google",
+      "version": "8.8.1"
+    }
+  },
+  "selected_at_utc": "2026-10-26T23:22:16.363926+00:00",
+  "selection_rule": "highest stable numeric major.minor.patch in official HashiCorp release index at fetch; no prereleases",
+  "tool": {
+    "archive_sha256": "6e03dc4d12df57c0f7da38cb963f28e8d0418eb6f0762a2fc5eb3988da6b396d",
+    "name": "opentofu",
+    "official_archive_url": "https://github.com/opentofu/opentofu/releases/download/v1.13.0/tofu_1.13.0_darwin_arm64.zip",
+    "official_sha256sums_url": "https://github.com/opentofu/opentofu/releases/download/v1.13.0/tofu_1.13.0_SHA256SUMS",
+    "sha256": "632f95ef06da253a12bbaf4e1ae88718f1fb1882f407915435492b93461a6bc1",
+    "version": "1.13.0"
+  }
+}
