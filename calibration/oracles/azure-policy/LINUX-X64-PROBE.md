@@ -217,10 +217,11 @@ closed schema **v3** includes `write_diagnostics`:
 - `files`: at most 64 rows with allowlisted scratch-relative HOME/TMP names,
   successful write-family return-byte totals, final sizes/types and requested
   allocation or explicit-offset extents. Unsafe names have `relative_path: null`.
-  Noncanonical spellings (dot, dot-dot or empty components) keep distinct private
-  raw keys and publish null names; dot-dot always uses `other`, since a symlink
-  can change its target area. Other canonical targets, including payload paths
-  and memfd labels, collapse to fixed classes with no per-path identity. `dotnet_doublemapper` is a fixed kind enum.
+  Noncanonical HOME/TMP spellings (dot or empty components) keep distinct private
+  raw keys and publish null names. Dot-dot always uses `other`, since a symlink
+  can change its target area. Every `other` target, including noncanonical paths,
+  payload paths and memfd labels, collapses to fixed classes with no per-path
+  identity, preserving the row budget for HOME/TMP evidence. `dotnet_doublemapper` is a fixed kind enum.
   No path is hashed. No raw trace hash or raw trace byte count is published,
   because both can depend on absolute runner roots; `trace_within_cap` records
   the bound instead. Only the strace executable's content hash/version is public.
@@ -250,10 +251,10 @@ closed schema **v3** includes `write_diagnostics`:
   and `write_diagnostics: null`; it grants no trace-attested execution claim.
   A parsed trace missing the vendor exec or exit contradicts a worker execution
   claim: keep its parsed diagnostics and worker initialize/stderr/LSP fields,
-  but set `native_executed: false`, `native_returncode: null`,
+  but set `native_executed: null` (unknown), `native_returncode: null`,
   `status: probe_refused`, `failed_stage: tracing` and
   `diagnostic_status: contradicted`. The closed schema forbids retaining a native
-  execution claim in that outcome. A trace-attested exit supersedes the worker
+  execution claim or asserting non-execution in that outcome. A trace-attested exit supersedes the worker
   wrapper return code; a wrapper/native code difference alone is not contradiction.
 
 T-R13a permits only bounded relative HOME/TMP names: ASCII letters, digits, dot,

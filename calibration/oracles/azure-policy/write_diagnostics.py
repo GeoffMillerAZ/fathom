@@ -90,10 +90,10 @@ def diagnostics(trace, root, executable=None):
             if (len(relative)<=512 and all(part not in ('','.','..') and
                     re.fullmatch(r'[A-Za-z0-9_.-]{1,128}',part) for part in relative.split('/'))):
                 public_path = relative
-        # Noncanonical spellings keep distinct private raw keys, never public
-        # names. Dot-dot may cross a symlink, so its area remains other. Other
-        # canonical targets outside HOME/TMP collapse into fixed classes.
-        key = ('raw',path) if noncanonical else (area,relative if relative is not None else kind)
+        # Only noncanonical HOME/TMP spellings keep distinct private raw keys,
+        # never public names. Dot-dot may cross a symlink and stays other; all
+        # other targets collapse into fixed classes without spending per-path rows.
+        key = ('raw',path) if noncanonical and area in ('home','tmp') else (area,relative if relative is not None else kind)
         if key in rows:
             row=rows[key];row['unlinked'] |= deleted
             return row

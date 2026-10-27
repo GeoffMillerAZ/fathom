@@ -304,6 +304,6 @@ class ReviewProbeTest(unittest.TestCase):
         value=self.launched_worker(contradicted_trace=True)
         self.assertEqual('contradicted',value['diagnostic_status'])
         self.assertEqual('probe_refused',value['status']);self.assertEqual('tracing',value['failed_stage'])
-        self.assertFalse(value['native_executed']);self.assertIsNone(value['native_returncode'])
+        self.assertIsNone(value['native_executed']);self.assertIsNone(value['native_returncode'])
         self.assertEqual(-1,value['initialize']['error_code'])
         self.assertEqual(0,value['stderr_bytes']);self.assertEqual(0,value['lsp_bytes'])

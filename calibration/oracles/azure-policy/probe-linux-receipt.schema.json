@@ -847,7 +847,7 @@
       "then": {
         "properties": {
           "native_executed": {
-            "const": false
+            "const": null
           },
           "native_returncode": {
             "const": null

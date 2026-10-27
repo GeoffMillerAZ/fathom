@@ -118,3 +118,19 @@ class WriteDiagnosticsTest(unittest.TestCase):
             self.assertEqual('other',limit['area']);self.assertIsNone(limit['relative_path'])
             self.assertEqual(9000000,limit['requested_extent_bytes'])
             self.assertNotIn('home/b',json.dumps(result))
+
+    def test_noncanonical_outside_spellings_cannot_evict_home_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();home=root/'home';home.mkdir()
+            spellings=[f'/outside/./target{index}' for index in range(65)]
+            spellings += [f'/outside//target{index}' for index in range(65)]
+            spellings += [f'{home}/link/../target{index}' for index in range(65)]
+            trace=''.join(f'1 truncate("{path}", 1) = -1 EROFS (Read-only file system)\n' for path in spellings)
+            trace+=f'1 write(3<{home}/value>, ""..., 5) = 5\n'
+            result=wd.diagnostics(trace,root)
+            self.assertEqual(2,len(result['files']))
+            self.assertFalse(result['files_truncated']);self.assertEqual(0,result['omitted_file_events'])
+            home_row=next(row for row in result['files'] if row['area']=='home')
+            self.assertEqual('home/value',home_row['relative_path']);self.assertEqual(5,home_row['observed_write_bytes'])
+            other=next(row for row in result['files'] if row['area']=='other')
+            self.assertIsNone(other['relative_path'])

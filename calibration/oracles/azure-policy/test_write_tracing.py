@@ -151,12 +151,13 @@ class WriteTracingTest(unittest.TestCase):
                 value=receipt_base();value.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,native_returncode=0)
                 attach_diagnostics(value,trace,root,dict(sha256='0'*64,version=[5,16]))
                 self.assertEqual('contradicted',value['diagnostic_status'])
-                self.assertFalse(value['native_executed']);self.assertIsNone(value['native_returncode'])
+                self.assertIsNone(value['native_executed']);self.assertIsNone(value['native_returncode'])
                 self.assertEqual('probe_refused',value['status']);self.assertEqual('tracing',value['failed_stage'])
                 self.assertIsNotNone(value['write_diagnostics'])
                 write_receipt(root/'receipt.json',value,CONTRACT,public=True)
-                value['native_executed']=True
-                with self.assertRaises(ValueError):write_receipt(root/'invalid.json',value,CONTRACT,public=True)
+                for incorrect in [True,False]:
+                    value['native_executed']=incorrect
+                    with self.assertRaises(ValueError):write_receipt(root/'invalid.json',value,CONTRACT,public=True)
 
     def test_snapshot_entry_cap_plus_one_is_sorted_before_selection(self):
         from contextlib import contextmanager

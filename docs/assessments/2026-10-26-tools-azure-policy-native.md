@@ -241,14 +241,15 @@ runner work, not locally measured evidence.
 
 ### T-R14 receipt recheck n1, n2 and n3 (2026-10-27)
 
-Noncanonical decoded path components retain distinct private raw-key rows with
-null public names. Every dot-dot spelling uses `other`; the symlink-plus-dot-dot
+Noncanonical decoded HOME/TMP path components retain distinct private raw-key
+rows with null public names. Every dot-dot spelling uses `other`; the symlink-plus-dot-dot
 regression prevents lexical normalization from attributing an outside write to
 HOME. No raw key or path hash is serialized.
 
 Parser refusal continues to preserve validated worker evidence. A parsed trace
 missing the vendor exec or exit has the distinct `contradicted` outcome. It
-withdraws both `native_executed` and `native_returncode`, refuses the probe at
+sets both `native_executed` (unknown, not non-execution) and `native_returncode`
+to null, and refuses the probe at
 `tracing`, and retains parsed diagnostics plus initialize/stderr/LSP summaries.
 The closed schema rejects a contradiction carrying a native execution claim.
 A differing wrapper return code alone is not contradiction: traced native exit
@@ -266,3 +267,21 @@ maximum-shaped receipt remains 65,528 bytes under 131,072. No Go file or plan
 lexical input changed, so neither X-R10 conditional check is triggered. No
 reading, tier, frozen first receipt or frozen schema changed; the sole vendor
 rerun still requires controller review and the Linux runner.
+
+
+### Receipt recheck 2 n4 and n5 (2026-10-27)
+
+Raw row keys apply only to redacted HOME/TMP targets. Every `other` target,
+including dot-dot and all noncanonical outside spellings, collapses by fixed
+kind. An authored trace with 195 outside spellings (65 each with dot, empty or
+dot-dot components) followed by one HOME write retains exactly two rows, all
+five HOME bytes and no overflow. EFBIG distinctness still uses its separate
+private key; no identity is serialized.
+
+The corrected ruling defines withdrawal as unknown: contradicted diagnostics
+publish `native_executed: null`, `native_returncode: null`. The schema and direct
+and launcher tests enforce null and reject both true and false; the existing
+retained-claim mutant still turns the test red. Local validation is 93 tests,
+91 passing and two designated Linux skips, fourteen mutants restored GREEN,
+26 source pins and 32 checksums. Frozen first receipt/schema remain unchanged;
+no Linux vendor rerun or calibration claim is made.

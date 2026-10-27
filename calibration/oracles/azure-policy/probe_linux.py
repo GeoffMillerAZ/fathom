@@ -127,7 +127,7 @@ def attach_diagnostics(receipt, trace, scratch, trace_tool):
         if receipt.get('native_executed') is True:
             if not written['vendor_exec_observed'] or written['native_returncode'] is None:
                 receipt.update(write_diagnostics=written,diagnostic_status='contradicted',
-                               native_executed=False,native_returncode=None,
+                               native_executed=None,native_returncode=None,
                                status='probe_refused',failed_stage='tracing')
                 return receipt
             receipt['trace_writer_hidden_from_vendor']=True

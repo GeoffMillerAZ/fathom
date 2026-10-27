@@ -1,5 +1,5 @@
 {
-  "tests": 92,
+  "tests": 93,
   "skips": 2,
   "mutations": [
     {
@@ -71,7 +71,7 @@
     },
     {
       "path": "probe_linux.py",
-      "sha256": "5bb747ca2867e9bc8ab957e8a2a37ff01e6c247c3574801e5db04b8d510090ba"
+      "sha256": "33c505685e70f08571cc07184d3fb66b6101114b53911d59d821d5c087c41c1c"
     },
     {
       "path": "receipt_contract.py",
@@ -83,7 +83,7 @@
     },
     {
       "path": "test_review_probe.py",
-      "sha256": "2e490fcbae3435a7ec9ee14f5621c06004403d75774f511fc5d5844dd3670bc8"
+      "sha256": "789271560d11159b1d79a3420df23692a8e1a13c37cb56a5fbdcc74d79288d05"
     },
     {
       "path": "test_probe_linux.py",
@@ -95,7 +95,7 @@
     },
     {
       "path": "probe-linux-receipt.schema.json",
-      "sha256": "30d9b0cff6b836d50b98c376faa9523ab30291b36c0a1b9e30f6d4c41d2bbecb"
+      "sha256": "b03906cf18ee3979cbf5248c3383b8d38520952e4d893d76671d8ad119652903"
     },
     {
       "path": "probe-linux-x64.workflow.yml",
@@ -107,11 +107,11 @@
     },
     {
       "path": "native-protocol-r2.json",
-      "sha256": "95e13cdc22ef32e7fe29c07d11d454a79b6c88e38add0d752c06b15fcd3e8de3"
+      "sha256": "6a945e787ac430952f5ddacd0921c9c2efd6e557529d79f1418ca2c2862422ba"
     },
     {
       "path": "LINUX-X64-PROBE.md",
-      "sha256": "99b6b039055d3a3f648e79b3298d0741dfa7f8644af332b86e3f9efd41b32f07"
+      "sha256": "8f5dda6088e7dd88763d9a4b8069e7225ce57997219250cfe7fc913c728e77e7"
     },
     {
       "path": "kernel_filesystem_control.py",
@@ -131,7 +131,7 @@
     },
     {
       "path": "write_diagnostics.py",
-      "sha256": "4eb5afb598d52fcf585ddc6b8d32b5583537af9d15d503f05aaefcf687e789a7"
+      "sha256": "ad088cd43e93d61acfe94110e13e6f3d6c97dab6aba3e3327a6b3c9f39320770"
     },
     {
       "path": "write_tracing.py",
@@ -147,11 +147,11 @@
     },
     {
       "path": "test_write_diagnostics.py",
-      "sha256": "cf0089dc68be04f6bbe4674d93ac6c4751058a06c8f84d7891220a9adecec28f"
+      "sha256": "83f123c78783b6bb7cb495fc2a59da42033c78ed3b41acb22f5fa2cdc66bcf04"
     },
     {
       "path": "test_write_tracing.py",
-      "sha256": "119f3b6b22ae1d9ef231edaa890a53880c1e8103873ef7a97eed1b0edf6d59ae"
+      "sha256": "f1ec82345b72fa5afb53b5713296969bb63d40e1d28aa382af88516957d06dc1"
     },
     {
       "path": "test_write_kernel.py",
