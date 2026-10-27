@@ -1,0 +1,282 @@
+{
+  "id": "jenkins-native-model-r1",
+  "canonical": {
+    "core_version": "2.568.3",
+    "tool_declarations": 3,
+    "tools_installed": false,
+    "inputs": 23,
+    "parsed": 23,
+    "refused": 0,
+    "no_pipeline": 0,
+    "model_nodes": 753,
+    "positioned_nodes": 747,
+    "named_nodes": 200,
+    "model_classes": {
+      "ModelASTAgent": 27,
+      "ModelASTBranch": 53,
+      "ModelASTBuildCondition": 19,
+      "ModelASTBuildParameter": 3,
+      "ModelASTBuildParameters": 2,
+      "ModelASTClosureMap": 5,
+      "ModelASTEnvironment": 8,
+      "ModelASTInternalFunctionCall": 4,
+      "ModelASTKey": 167,
+      "ModelASTKeyValueOrMethodCallPair": 13,
+      "ModelASTMethodCall": 1,
+      "ModelASTNamedArgumentList": 88,
+      "ModelASTOption": 8,
+      "ModelASTOptions": 3,
+      "ModelASTParallel": 1,
+      "ModelASTPipelineDef": 23,
+      "ModelASTPostBuild": 5,
+      "ModelASTPostStage": 3,
+      "ModelASTScriptBlock": 3,
+      "ModelASTSingleArgument": 6,
+      "ModelASTStage": 35,
+      "ModelASTStages": 23,
+      "ModelASTStep": 79,
+      "ModelASTTools": 2,
+      "ModelASTTreeStep": 5,
+      "ModelASTTrigger": 1,
+      "ModelASTTriggers": 1,
+      "ModelASTValue$ConstantValue": 134,
+      "ModelASTValue$GStringValue": 16,
+      "ModelASTWhen": 7,
+      "ModelASTWhenCondition": 5,
+      "ModelASTWhenExpression": 3
+    },
+    "subjects": [
+      {
+        "subject": "examples",
+        "inputs": 22,
+        "parsed": 22,
+        "refused": 0,
+        "no_pipeline": 0,
+        "model_nodes": 727,
+        "positioned_nodes": 721,
+        "named_nodes": 193
+      },
+      {
+        "subject": "library",
+        "inputs": 1,
+        "parsed": 1,
+        "refused": 0,
+        "no_pipeline": 0,
+        "model_nodes": 26,
+        "positioned_nodes": 26,
+        "named_nodes": 7
+      }
+    ],
+    "input_sha256": "731caf1e55df03337709485fe74603e044aa59e0d23407ce28e83798e1141925",
+    "calibration_measured": false,
+    "tier_granted": false,
+    "pipeline_executed": false,
+    "instrument_sha256": "bd7170853e035cc629bc029215fa76e568a0e6b6a3b932438c9c9fbf85af20b3",
+    "core_sha256": "ccdbfdceade83489e34285a4d57c12134ffea0a09ca20062282e580cbfa5f09e",
+    "plugin_count": 50,
+    "bundle_sha256": "4b4d2d04927fa2bbd0fe216f97ddceb0cd39b7e26814d7cc463ee94e818ab47c"
+  },
+  "authored": {
+    "core_version": "2.568.3",
+    "tool_declarations": 0,
+    "tools_installed": false,
+    "inputs": 4,
+    "parsed": 2,
+    "refused": 1,
+    "no_pipeline": 1,
+    "model_nodes": 48,
+    "positioned_nodes": 46,
+    "named_nodes": 12,
+    "model_classes": {
+      "ModelASTAgent": 2,
+      "ModelASTBranch": 4,
+      "ModelASTBuildCondition": 2,
+      "ModelASTEnvironment": 2,
+      "ModelASTKey": 10,
+      "ModelASTNamedArgumentList": 6,
+      "ModelASTPipelineDef": 2,
+      "ModelASTPostBuild": 2,
+      "ModelASTScriptBlock": 2,
+      "ModelASTStage": 2,
+      "ModelASTStages": 2,
+      "ModelASTStep": 4,
+      "ModelASTValue$ConstantValue": 8
+    },
+    "subjects": [
+      {
+        "subject": "authored",
+        "inputs": 4,
+        "parsed": 2,
+        "refused": 1,
+        "no_pipeline": 1,
+        "model_nodes": 48,
+        "positioned_nodes": 46,
+        "named_nodes": 12
+      }
+    ],
+    "input_sha256": "bd8239115113f111d05654bad7efaec37561e5446c48525c3fb5b27a22d00210",
+    "calibration_measured": false,
+    "tier_granted": false,
+    "pipeline_executed": false,
+    "instrument_sha256": "bd7170853e035cc629bc029215fa76e568a0e6b6a3b932438c9c9fbf85af20b3",
+    "core_sha256": "ccdbfdceade83489e34285a4d57c12134ffea0a09ca20062282e580cbfa5f09e",
+    "plugin_count": 50,
+    "bundle_sha256": "4b4d2d04927fa2bbd0fe216f97ddceb0cd39b7e26814d7cc463ee94e818ab47c"
+  },
+  "authored_controls": {
+    "calibration_measured": false,
+    "extractor_input_used": false,
+    "inputs": 4,
+    "no_pipeline": 1,
+    "parsed": 2,
+    "refused": 1,
+    "stage_truth_changed": true,
+    "tier_granted": false,
+    "unrelated_truth_equal": true
+  },
+  "population": [
+    {
+      "subject": "examples",
+      "tracked_before": {
+        "bytes": 18490,
+        "entries": 25,
+        "files": 25,
+        "gitlinks": 0,
+        "sha256": "3b05c0cfea2b9c4b621968797109ce24f018c1bda86845eef4b90db8d41e44b5",
+        "symlinks": 0
+      },
+      "tracked_after": {
+        "bytes": 18490,
+        "entries": 25,
+        "files": 25,
+        "gitlinks": 0,
+        "sha256": "3b05c0cfea2b9c4b621968797109ce24f018c1bda86845eef4b90db8d41e44b5",
+        "symlinks": 0
+      },
+      "reading_files": 22,
+      "reading_bytes": 16994,
+      "discovery_excluded_metadata_files": 3,
+      "discovery_excluded_metadata_bytes": 1496,
+      "untracked_before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "untracked_after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "subject": "library",
+      "tracked_before": {
+        "bytes": 407,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "a5a1abc5653fb336d681d0b7022cd796e2eadedee5e9d21bc2b53f6236192f0d",
+        "symlinks": 0
+      },
+      "tracked_after": {
+        "bytes": 407,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "a5a1abc5653fb336d681d0b7022cd796e2eadedee5e9d21bc2b53f6236192f0d",
+        "symlinks": 0
+      },
+      "reading_files": 1,
+      "reading_bytes": 407,
+      "discovery_excluded_metadata_files": 0,
+      "discovery_excluded_metadata_bytes": 0,
+      "untracked_before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "untracked_after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "environment_trials": [
+    {
+      "inputs": 23,
+      "parsed": 16,
+      "refused": 7,
+      "configuration": "minimum model-plugin dependencies"
+    },
+    {
+      "inputs": 23,
+      "parsed": 21,
+      "refused": 2,
+      "configuration": "pinned docker-agent and timestamper parser descriptors"
+    },
+    {
+      "inputs": 23,
+      "parsed": 23,
+      "refused": 0,
+      "configuration": "same descriptors plus three owner-requested tool-name declarations; no tool installation"
+    }
+  ],
+  "tool_declarations_sha256": "5f1d7c5293ecb623f1741b5a6f2b8f53d47e8a6451ac8ed0b705887e93f35b61",
+  "throughput_measured": false,
+  "sources": [
+    {
+      "path": "native_model.groovy",
+      "sha256": "bd7170853e035cc629bc029215fa76e568a0e6b6a3b932438c9c9fbf85af20b3"
+    },
+    {
+      "path": "native_model_probe.py",
+      "sha256": "6ecb3a44ad3096a002beeecd6b05dd34a12865d8ef569431889534ec07db0cd2"
+    },
+    {
+      "path": "native-bundle-r1.json",
+      "sha256": "4b4d2d04927fa2bbd0fe216f97ddceb0cd39b7e26814d7cc463ee94e818ab47c"
+    },
+    {
+      "path": "native-protocol-r1.json",
+      "sha256": "e8d5c6c81bc2aced0fd4f794f2d57ed46562f993b5642d459c9dba997f975e7e"
+    },
+    {
+      "path": "prepare_native.py",
+      "sha256": "2d97afda736a83f09b9ed00a0337d3d116ffd34f96c4dd0f1cf645907ad8d5ed"
+    },
+    {
+      "path": "validate_native_controls.py",
+      "sha256": "5b5976556b51ac2e790017a0180783c41cec5196c935fd520c405b2fc97fbdc8"
+    },
+    {
+      "path": "test_native_model_probe.py",
+      "sha256": "0498b7027ed2c6ad305aa97e50c54489c2ae83b4ed45f2d9dc9e87da5cccd34a"
+    },
+    {
+      "path": "native_receipt_controls.py",
+      "sha256": "2f8ed785df27eec66101242501d7c6d2d7e3a00ca3d60d01bbcb3ca2e3c5e923"
+    },
+    {
+      "path": "native-fixtures/valid.jenkinsfile",
+      "sha256": "0d9423f1164e5c0e0a0ccac2b5f140eb93d23743daec1b3cf39fbb99c3e142db"
+    },
+    {
+      "path": "native-fixtures/changed.jenkinsfile",
+      "sha256": "4d7c15c664c5b044763b543cead4fc66672d678b9530e7e05525611cbc124ad5"
+    },
+    {
+      "path": "native-fixtures/invalid.jenkinsfile",
+      "sha256": "2522018b23d02e39e62aada185c1785b9c9fe3dd10c446c2fe38cea88f6bcd53"
+    },
+    {
+      "path": "native-fixtures/not-pipeline.groovy",
+      "sha256": "88dfb10c0658263184284d37087c28c58705df0893c3563d7a481a0b35cb4832"
+    },
+    {
+      "path": "check_native_receipt.py",
+      "sha256": "e360346f8c18787f928bbbe724452dfe34f2c6beb4c5664de603c1ce9e1e3a4e"
+    },
+    {
+      "path": "candidate-audit-r1.json",
+      "sha256": "d9789ddd7399c51640aad49c4116534199001544d9adc9e20c7aea66626b4138"
+    },
+    {
+      "path": "candidate-inventory-r1.json",
+      "sha256": "7dcd050b641119d51ccacd9e838a530c050f9203c15b84adb342969617e708d6"
+    }
+  ],
+  "canonical_raw_sha256": "610ffc9361f5e1bd018d434f102eb9789448199e20124065a58c0b7a64a7fe91",
+  "authored_raw_sha256": "a4d097355583687b910559546bbc8d11f8f82724487b0efc19682396598faa06",
+  "model_scope": {
+    "unpositioned_by_type": {
+      "ModelASTKey": 6
+    },
+    "opaque_script_blocks": 3,
+    "dialect_comparator_built": false
+  }
+}

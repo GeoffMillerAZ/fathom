@@ -1,0 +1,15 @@
+{
+  "id": "jenkins-native-model-r1",
+  "scope": "L1/L2 diagnostic only; no reading, grade, ENGINE, scripted-pipeline claim or L3 change",
+  "owner_api": "Converter.scriptToPipelineDef at CONVERSION; ModelASTElement source locations and every reachable model child",
+  "plugin": {"id": "pipeline-model-definition", "version": "2.2293.v6e7193cec599", "source": "6e7193cec599b402ee79ee9afc5b8a417eb43967", "license": "MIT"},
+  "population": [
+    {"subject": "examples", "repository": "jenkinsci/pipeline-examples", "sha": "fb9575a8182b51614f5f0df912b46b37d95fbb8d", "scope": "all declarative-examples/**/*.groovy; bytes copied unchanged to .jenkinsfile staging names as in the existing corpus contract", "expected_files": 22},
+    {"subject": "library", "repository": "jenkins-infra/pipeline-library", "sha": "96587b4815b03388e7f61a36ad96ac255c46f577", "scope": "Jenkinsfile only, the existing canonical L1/L2 claim", "expected_files": 1}
+  ],
+  "selection": "existing canonical L1/L2 population, chosen before native results; native enumeration takes no fathom output or filename ownership result",
+  "controls": ["valid model with positioned stage and script block", "invalid syntax refuses without a partial model", "non-pipeline Groovy reports no_pipeline without evaluating its authored file-write marker", "change an authored stage name and observe owner model identity change", "extractor changes cannot affect native truth: the instrument never reads extractor output"],
+  "caps": {"files": 128, "source_file_bytes": 1048576, "total_source_bytes": 8388608, "model_nodes_per_file": 100000, "raw_json_bytes": 33554432, "timeout_seconds": 180, "heap_mib": 768},
+  "execution": "private JDK, WAR, plugin set and controller HOME; HTTP/HTTPS disabled; parse only, never run a subject pipeline; nice 10, one heavy job, free disk at least 20 GiB, load at most 6",
+  "disclosure": "refusals and no_pipeline stay in the full input population. Native model positions and class counts are not dialect definitions or L2 pair recall. Script-block bodies can be opaque ModelAST values. No tier is granted by startup or partial coverage. Raw model names, source data and logs remain private; commit only counts/hashes/flags."
+}

@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-26",
+  "scope": "Jenkins canonical L1/L2 only. No L3 investigation or grade change. No absent-native-oracle ceiling is retained.",
+  "sources_searched": [
+    {
+      "group": "own toolchain",
+      "sources": [
+        "https://www.jenkins.io/doc/book/pipeline/development/",
+        "https://plugins.jenkins.io/pipeline-model-definition/",
+        "jenkinsci/pipeline-model-definition-plugin: Converter.groovy, ModelParser.groovy, ModelConverterAction.java and ModelASTElement.java (pin in candidate inventory)"
+      ],
+      "result": "owner conversion/model API exists and is measured; linter alone returns acceptance, direct model retains source locations"
+    },
+    {
+      "group": "SCIP and LSIF",
+      "sources": [
+        "https://github.com/scip-code/scip#tools-using-scip",
+        "https://sourcegraph.com/docs/code-navigation/writing-an-indexer",
+        "https://lsif.dev/",
+        "GitHub code search: scip-groovy",
+        "GitHub code search: scip-jenkins"
+      ],
+      "result": "current SCIP table and archived Sourcegraph-maintained LSIF list have no Groovy entry; scip-groovy finds gvy with real SCIP and LSIF writers; scip-jenkins returns zero results. The former board absence claim is not valid.",
+      "access_gaps": [
+        "sourcegraph/scip moved to scip-code/scip",
+        "old Sourcegraph references/indexers and references/lsif_indexers URLs were inaccessible; current indexer guide and lsif.dev were read instead"
+      ]
+    },
+    {
+      "group": "language servers",
+      "sources": [
+        "https://github.com/GroovyLanguageServer/groovy-language-server",
+        "gvy README, IndexExportService, UnifiedIndexer and ScipWriter (pin in candidate inventory)",
+        "Jenkins official development-tools page and VS Code Groovy/Groovy-Guru listings"
+      ],
+      "result": "generic Groovy LSP and Jenkins-aware completion/diagnostics exist; gvy index exporter visits classes and methods but does not traverse method bodies or emit Pipeline DSL declarations"
+    },
+    {
+      "group": "package registries",
+      "sources": [
+        "https://pypi.org/pypi/jenkinsfilelint/json",
+        "https://registry.npmjs.org/jenkinsfile-lint/latest",
+        "https://registry.npmjs.org/-/v1/search?text=jenkinsfile%20parser&size=10",
+        "https://repo.maven.apache.org/maven2/org/apache/groovy/groovy/4.0.33/groovy-4.0.33.pom"
+      ],
+      "result": "PyPI owner linter 1.5.3 and npm Docker wrapper 0.1.0 found; broad npm query returned ten unrelated parser packages, so no absence conclusion follows. Maven confirms the existing Apache Groovy compiler artifact."
+    },
+    {
+      "group": "runtime tracing",
+      "sources": [
+        "https://javadoc.jenkins.io/plugin/workflow-api/",
+        "https://github.com/jenkinsci/JenkinsPipelineUnit",
+        "https://www.groovy-lang.org/metaprogramming.html",
+        "jenkinsci/jenkinsfile-runner LintJenkinsfileCommand and PIPELINE_VERIFICATION.adoc (pin in candidate inventory)"
+      ],
+      "result": "native FlowGraphWalker enumerates executed FlowNodes; PipelineUnit and Groovy interception can record exercised calls. These are runtime routes, not a complete population of unexecuted source branches. No subject pipeline was executed."
+    }
+  ],
+  "candidate_inventory": "candidate-inventory-r1.json"
+}

@@ -84,6 +84,6 @@
       "raw_missing_semicolon": 1,
       "conditional_cpp_linkage": 1
     },
-    "convention_search": "Bounded five-project search found no second independent exact clBLAS host-string convention. Four GitHub code-search requests returned 401 and provide no absence proof. See template-convention-search.json."
+    "convention_search": "Authenticated exact-token searches found only clBLAS and three derived template trees. Four scoped searches returned zero hits; global queries returned 32/92/92 hits across the same four numeric repository IDs. No second independent convention found within this bounded search. See template-convention-search.json; no prepass authorized."
   }
 }

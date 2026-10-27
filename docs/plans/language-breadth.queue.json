@@ -2166,11 +2166,13 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "a reference validator's $ref resolution (tier A)"
+      "@apidevtools/json-schema-ref-parser 16.0.5 (independent third-party resolver, tier C under P-T1)"
     ],
     "calibration_subjects": [
       "SchemaStore/schemastore",
-      "json-schema-org/JSON-Schema-Test-Suite"
+      "json-schema-org/JSON-Schema-Test-Suite",
+      "radiantearth/stac-spec",
+      "oasis-open/cti-stix2-json-schemas"
     ],
     "depends_on": [
       "LB-F8",
@@ -2184,7 +2186,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-json-schema",
     "worker_model": "sonnet",
-    "notes": "new; $defs/definitions, properties; $ref edges local and cross-file"
+    "notes": "D19 replay 2026-10-27: four complete preregistered subject scopes; L1/L2 good at C under P-T1, L3 unmet with 3 scored pairs; 291 more Fathom pairs unattested and unscored (SchemaStore 107, STAC 14, STIX 170). New STAC/STIX physical targets resolve as URL reads and are not attested in the existing file-pair unit; no URL rewrites or population trimming. See docs/assessments/2026-10-27-tools-json-schema-d19.md. T-R18: precision 1 applies only to 3 scored pairs; its denominator is under 20 only because absent oracle families omit those 291 pairs. Neither true nor false without identifier-aware attestation; no empty family/instrument-rule change."
   },
   {
     "id": "scala",
@@ -2634,7 +2636,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067)",
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067); 2026-10-26 L1/L2 native audit: pinned owner Declarative Converter accepts all 23 canonical inputs (753 model nodes, 747 positioned); no absent-offline-evaluator ceiling. Full dialect definition/range/pair mapping remains unbuilt; existing 163 definitions and 133 pairs stay C, no new tier or L3 change. See calibration/oracles/jenkinsfile/NATIVE.md and the dated tools-jenkins-native assessment",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (@Library shared-library and load file edges); oracle gains the Jenkins declarative linter (tier A, ruling W4, a local controller in the measuring harness only)"
   },
   {

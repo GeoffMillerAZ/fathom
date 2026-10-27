@@ -38,6 +38,7 @@ func (fakeGoneEvidence) CorpusFiles(paths []string) []verify.CorpusFile {
 func (fakeGoneEvidence) TypedCallers(symbol, pkg string) (nonTest, test []verify.GoneReferent) {
 	return nil, nil
 }
+func (fakeGoneEvidence) CallersUnindexed(symbol, pkg string) string { return "" }
 
 // newRefactorFixtureRepo builds a throwaway two-package Go module: oldpkg
 // declares OldFunc, caller imports it and calls it once — a genuine
@@ -276,5 +277,71 @@ func TestCmdRefactorPlan_ImportTarget(t *testing.T) {
 		if label == "contract-invalid" {
 			t.Errorf("row %s: gone: %q is contract-invalid", tk.ID, tk.Gone)
 		}
+	}
+}
+
+// TestCmdRefactorPlan_GoFieldTarget: field references are not indexed, so
+// a field target has no typed callers to group. The plan says so and seeds
+// its per-package ratchets lexically from the member's selector (`.Legacy`)
+// instead of emitting the gone row alone.
+func TestCmdRefactorPlan_GoFieldTarget(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("go.mod", "module refactorfixture\n\ngo 1.21\n")
+	repo.writePlan("oldpkg/old.go", "package oldpkg\n\n// Opts carries the field under retirement.\ntype Opts struct{ Legacy bool }\n")
+	repo.writePlan("caller/user.go",
+		"package caller\n\nimport \"refactorfixture/oldpkg\"\n\n// Use reads the field.\nfunc Use(o oldpkg.Opts) bool {\n\treturn o.Legacy\n}\n")
+	repo.commitAll("initial: a field and one reader")
+
+	storePath := filepath.Join(t.TempDir(), "refactor.sqlite")
+	var ing bytes.Buffer
+	if code := run([]string{"ingest", "--service", "refactorfixture", "--path", repo.root, "--store", storePath}, &ing, &ing); code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+	code, out, errBuf := runInDir(t, repo.root, []string{"refactor", "plan", "Opts.Legacy", "--service", "refactorfixture", "--store", storePath})
+	if code != 0 {
+		t.Fatalf("refactor plan failed (%d)\nstdout=%s\nstderr=%s", code, out, errBuf)
+	}
+	doc := out
+	for _, want := range []string{
+		"field references are not indexed",
+		`gone: pattern "\.Legacy\b", paths: "caller/", max: 1`,
+		"gone: callers Opts.Legacy",
+	} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("plan lacks %q:\n%s", want, doc)
+		}
+	}
+	plan := verify.ParseMarkdownPlan("refactorfixture", []byte(doc))
+	if warnings := verify.LintPlan(plan); len(warnings) != 0 {
+		t.Errorf("LintPlan warnings on the generated plan: %v", warnings)
+	}
+	for _, tk := range plan.Tasks {
+		if tk.AnnotationSuspect != "" {
+			t.Errorf("row %s: suspect annotation %q", tk.ID, tk.AnnotationSuspect)
+		}
+		if _, label := verify.EvaluateGone(tk, fakeGoneEvidence{}); tk.Gone != "" && label == "contract-invalid" {
+			t.Errorf("row %s: gone: %q is contract-invalid", tk.ID, tk.Gone)
+		}
+	}
+}
+
+// TestCmdRefactorPlan_AmbiguousTargetIsRefused: a bare name two packages
+// define resolves to no one symbol. The plan is refused naming both
+// definitions, never rendered as an import plan for a path called Default
+// (pre-existing on main).
+func TestCmdRefactorPlan_AmbiguousTargetIsRefused(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("go.mod", "module refactorfixture\n\ngo 1.21\n")
+	repo.writePlan("a/a.go", "package a\n\n// Default is a's.\nfunc Default() int { return 1 }\n")
+	repo.writePlan("b/b.go", "package b\n\n// Default is b's.\nfunc Default() int { return 2 }\n")
+	repo.commitAll("two Defaults")
+	storePath := filepath.Join(t.TempDir(), "refactor.sqlite")
+	var ing bytes.Buffer
+	if code := run([]string{"ingest", "--service", "refactorfixture", "--path", repo.root, "--store", storePath}, &ing, &ing); code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+	code, out, errBuf := runInDir(t, repo.root, []string{"refactor", "plan", "Default", "--service", "refactorfixture", "--store", storePath})
+	if code == 0 || !strings.Contains(errBuf, "names 2 definitions") || strings.Contains(out, "gone: import") {
+		t.Fatalf("refactor plan Default: exit %d\nstdout=%s\nstderr=%s\nwant it refused, naming 2 definitions", code, out, errBuf)
 	}
 }

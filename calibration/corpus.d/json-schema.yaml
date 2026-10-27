@@ -1,7 +1,7 @@
 id: json-schema
 language: "JSON Schema documents"
-# Two read-only subjects, none vendored, each through section 13.3's licence gate (OSI
-# permissive: Apache-2.0, MIT). SchemaStore/schemastore's src/schemas/json is the largest
+# Four read-only canonical subjects, none vendored, through section 13.3's licence gate
+# (Apache-2.0, MIT, BSD-3-Clause). New scopes were fixed before native/Fathom results. SchemaStore/schemastore's src/schemas/json is the largest
 # public set of real-world schemas: 1,001 documents of drafts 04 through 2020-12 written by
 # hand and generated, most named for the tool they describe (not *.schema.json), nearly all
 # carrying a json-schema.org `$schema`, a few hundred `$ref`ing their own `definitions`/`$defs`
@@ -35,3 +35,21 @@ repos:
       - "remotes/baseUriChange*: a `$ref` resolved against a changed `$id`, so a relative file
         part that names a file the resolver does or does not read"
       - "subSchemas with `$defs` and a `$ref` to `#/$defs/<name>` from a root `properties`"
+  - name: radiantearth/stac-spec
+    url: https://github.com/radiantearth/stac-spec.git
+    ref: master
+    sha: 0fa147589ac5a6c92d8e8856bc81eb9c73779aff
+    licence: Apache-2.0
+    sparse: ["item-spec/json-schema/**", "catalog-spec/json-schema/**", "collection-spec/json-schema/**"]
+    idioms:
+      - "complete item, catalog and collection schema scopes, including zero-reference files"
+      - "relative references under absolute schema identifiers; physical existence does not attest native file resolution"
+  - name: oasis-open/cti-stix2-json-schemas
+    url: https://github.com/oasis-open/cti-stix2-json-schemas.git
+    ref: master
+    sha: 9af1db41b7b86c06324f899649ae83480134f66e
+    licence: BSD-3-Clause
+    sparse: ["schemas/**"]
+    idioms:
+      - "complete non-normative STIX schema tree; this grades JSON Schema file references, not STIX validity"
+      - "modular relative references and absolute identifiers retained without URL rewriting"

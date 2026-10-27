@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/stackframe"
 )
@@ -462,6 +463,7 @@ func fetchSymbolDef(hc *http.Client, baseURL, service, name string, marked bool)
 	}
 	var payload struct {
 		Symbols []struct {
+			Name     string `json:"name"`
 			FilePath string `json:"file_path"`
 			Kind     string `json:"kind"`
 			Line     int    `json:"line"`
@@ -484,11 +486,18 @@ func fetchSymbolDef(hc *http.Client, baseURL, service, name string, marked bool)
 	default:
 		return promptDefinition{}, false
 	}
-	if payload.Symbols[0].FilePath == "" {
+	// A struct field named like the func, method or type is not another
+	// definition of it (core.WithoutShadowingFields).
+	defs := make([]core.SymbolNode, len(payload.Symbols))
+	for i, s := range payload.Symbols {
+		defs[i] = core.SymbolNode{Name: s.Name, Kind: core.SourceKind(s.Kind), FilePath: s.FilePath, Line: s.Line}
+	}
+	defs = core.WithoutShadowingFields(defs, name)
+	if defs[0].FilePath == "" {
 		return promptDefinition{}, false
 	}
-	s0 := payload.Symbols[0]
-	return promptDefinition{Name: name, Kind: s0.Kind, File: s0.FilePath, Line: s0.Line, Count: len(payload.Symbols)}, true
+	s0 := defs[0]
+	return promptDefinition{Name: name, Kind: string(s0.Kind), File: s0.FilePath, Line: s0.Line, Count: len(defs)}, true
 }
 
 // combineWithRouteLine folds route (DP-10's rendered line, possibly "")

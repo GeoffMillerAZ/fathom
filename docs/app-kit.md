@@ -1,5 +1,11 @@
 # App-kit adoption: evidence workspace
 
+Contribution review (C-R14): no candidate. Go field ranking and symbol-page totals
+are application search policy. Capability `interaction.command-palette` (catalog
+`3ee2c1f`, query `search`, profile `go-web`) leaves grouping and ranking with the
+app. Existing palette, pagination, renderers and CSS remain in use. JSON/HTML
+handler tests traverse every advertised symbol page; no kit pin changes.
+
 CLI contribution review (BX-20, BX-21, BX-36): no candidate. Offline control
 identity and three-trial discrimination are benchmark domain policy. The
 `cli flags help` capability search (profile `cli`, catalog `3ee2c1f`)

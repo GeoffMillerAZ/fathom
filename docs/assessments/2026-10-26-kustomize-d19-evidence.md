@@ -255,9 +255,14 @@ no-op precision costs remain. The reading note and
 fields against both parents separately. Each leave-one-subject-out count is
 recorded; only removing microservices-demo drops either D19 denominator below 20.
 
-The earlier local untrimmed indexbench digest and historical raw-log digests
-are withdrawn from the public receipts because they can encode private paths.
-Source revision/clean-state provenance and execution commands/status remain.
+The R-D19 merge removed the local untrimmed indexbench digest and historical
+raw-log digests from the then-current receipts. These are non-portable local
+digests retained in public history, not private paths: a SHA-256 does not encode
+a path. Their removal was not privacy remediation. Under I-R6, the exact graded
+indexbench artifact digest is restored to the generated public receipt, together
+with the reading publisher's cross-check against the graded run summary. Raw-log
+digests stay omitted from the current controls receipt and remain in history;
+execution commands/status and clean-source identity are retained.
 The historical extraction receipt stays a pre-D19 snapshot; current reading
 bytes are exactly the new main-harness output. No extraction or native-truth measurement was
 rerun for this harness-only regrade; focused native tests were rerun. No cloud call was made.

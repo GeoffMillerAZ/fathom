@@ -129,7 +129,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 41 | 0 | 4 | 13 | 10 | 1 | 5 | 0 | 8 | 24 | 10 |
+| T1 | language | 41 | 0 | 4 | 12 | 11 | 1 | 5 | 0 | 8 | 25 | 10 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 32 | 0 | 11 | 12 | 0 | 1 | 0 | 0 | 8 | 17 | 12 |
 | T3 | tool format | 18 | 0 | 5 | 12 | 0 | 0 | 0 | 0 | 1 | 16 | 5 |
@@ -139,7 +139,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 2 |
-| **Total** | language | 45 | 0 | 4 | 15 | 10 | 1 | 5 | 0 | 10 | 25 | 10 |
+| **Total** | language | 45 | 0 | 4 | 14 | 11 | 1 | 5 | 0 | 10 | 26 | 10 |
 | **Total** | tool format | 74 | 0 | 30 | 33 | 0 | 1 | 0 | 0 | 10 | 52 | 29 |
 
 ### T1
@@ -159,7 +159,7 @@ item's target; the last column also needs every level up to the target graded ex
 | C# (.cs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | C (.c, .h by sniff) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | L3 good: file_edge_precision 0.9023 < 0.95 |
-| Go (.go) | language | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.5891 < 0.85 |
+| Go (.go) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 good) | L4 good: def_mapping 0.9345 < 0.95 |
 | PowerShell (.ps1 .psm1 .psd1) | language | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: oracle tier B caps at good |
 | PHP (.php) | language | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | L2 good: oracle tier B caps at good |
 | Rust (.rs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
@@ -208,7 +208,7 @@ item's target; the last column also needs every level up to the target graded ex
 | CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
 | Protocol Buffers (.proto) | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 11 references, under 20) | L3 not met: evidence: 11 references, under 20 |
 | GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| JSON Schema documents | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 3 references, under 20) | L3 not met: evidence: 3 references, under 20 |
+| JSON Schema documents | tool format | L3 | L2 (L1 good, L2 good; L3 unmet, evidence: 3 references, under 20) | L3 not met: evidence: 3 references, under 20 |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 14 references, under 20) | L3 not met: evidence: 14 references, under 20 |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | L2 (L1 good, L2 good) | L3 not met: xref_precision not measured |
@@ -307,8 +307,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 10; tool formats at target 60)
-Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 10/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 11; tool formats at target 60)
+Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 11/10; tool formats at target 60/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -330,7 +330,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-11 | at target (LB-Q-c) |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-26 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-10 | at target (LB-Q-cpp) |
-| Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-26 | LB-Q-go |
+| Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 good) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-27 | at target (LB-Q-go) |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1; A kubernetes-oracle selectors (labels.ValidatedSelectorFromSet, Selector.Matches; apimachinery decode) k8s.io/apimachinery v0.37.0 | — | 2026-10-15 | at target (LB-Q-kubernetes) |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser; A powershell-ast-imports PowerShell 7.5.4 System.Management.Automation.Language.Parser, StaticParameterBinder, Test-ModuleManifest | syntax | 2026-10-15 | at target (LB-Q-powershell) |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A docker compose config --format json 5.1.4 | — | 2026-10-09 | at target (LB-Q-docker-compose) |
@@ -372,7 +372,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | Prometheus rules, configuration and promtool tests | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A promtool 3.15.0 (5241a27f); A promtool+routes 3.15.0 (5241a27f) | — | 2026-10-10 | at target (LB-Q-prometheus) |
 | Alertmanager configuration (routes, receivers, inhibit rules, time intervals) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A amtool v0.34.1 (amtool, config and dispatch packages); A amtool+dispatch v0.34.1 (amtool, config and dispatch packages) | — | 2026-10-10 | at target (LB-Q-alertmanager) |
 | Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C grafana-model-walk 1 (prometheus/promql/parser v0.315.0 ExtractSelectors) | — | 2026-10-10 | at target (LB-Q-grafana-dashboard) |
-| JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 3 references, under 20) | A @apidevtools/json-schema-ref-parser 16.0.5; A @apidevtools/json-schema-ref-parser ($refs.paths) 16.0.5 | — | 2026-10-19 | LB-Q-json-schema |
+| JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | L2 (L1 good, L2 good; L3 unmet, evidence: 3 references, under 20) | C @apidevtools/json-schema-ref-parser 16.0.5; C @apidevtools/json-schema-ref-parser ($refs.paths) 16.0.5 | — | 2026-10-27 | LB-Q-json-schema |
 | Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | L2 (L1 good, L2 good) | B scalameta 4.17.4 | scip:scip-java | 2026-10-10 | LB-Q-scala |
 | Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | C nix-instantiate --parse + source locator nix-instantiate (Nix) 2.34.7+1 | file | 2026-10-20 | at target (LB-Q-nix) |
 | Objective-C (.m .mm, .h by sniff) | language | tags | tree-sitter-grammars/tree-sitter-objc (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | B clang-objc libclang (Command Line Tools) via libclang==18.1.1 bindings; Apple clang version 21.0.0 (clang-2100.3.34.2); B universal-ctags 6.2.1 | — | 2026-10-20 | at target (LB-Q-objective-c) |

@@ -229,12 +229,27 @@ workers; it does not waive disk limits or permit concurrent heavy jobs.
 
 The corrected native census is NVM 489 in-root identities / 457 eligible callers,
 450 found (.9847), and Bats 248 / 248, 225 found (.9073). The 32 NVM identities
-outside the original eligible caller-file set are disclosed, not silently dropped.
+are in 17 executed `#!/bin/sh` scripts whose dotted basenames fall outside the
+shared extension-first scope rule, which product discovery also applies. They
+are discovery misses, rather than non-Bash noise: any non-empty Go-style
+extension other than `.sh` or `.bash` prevents shebang dispatch. Across all
+489 in-root identities the recall bound is at most 450/489 (.9202), beside the
+450/457 (.9847) eligible-caller result. The assessment records the discovery gap
+as an observation draft; repairing the shared engine requires a separate lane.
+The 17 executed files and 30 dotted-name shebang files are operator-attested
+from the raw capture/source inventory at `0140aae`; the committed checker does
+not recompute those file counts. It checks 32 against the recorded native pair
+population. No subject filenames are committed.
 shfmt still attests only 496/9,147 and 254/1,423 written sites. Certified NVM
 site-unpaired rows are 24,926; rejected phase rows are 22,071, reported separately.
 
-After the same disk/cache/nice prerequisites above, offline replay needs only
-original sources, shfmt and indexbench; it needs no new GNU Bash/Rust build:
+After the same disk/cache/nice prerequisites above, offline replay requires the
+raw capture directories at their recorded absolute paths, plus original sources,
+shfmt and indexbench; it needs no new GNU Bash/Rust build. Captures must stay at
+their recorded absolute path: restoring digest-identical archives elsewhere and
+changing `--native` does not rebase their native frame filenames. Restore the
+capture directory to its original location before replay. A relocated capture
+refuses the whole unit with an explicit coverage/path diagnostic and no output:
 
 ```sh
 nice -n 10 python3 -B calibration/oracles/bash-trace/fetch.py --scope-only --out workspace/tools/bash-review
@@ -246,12 +261,39 @@ nice -n 10 python3 -B calibration/oracles/bash-trace/prove_mutations.py --unit-o
 python3 -B calibration/oracles/bash-trace/evidence.py --capture workspace/artifacts/lang-bash --tools workspace/tools/bash-review --historical-base db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c --runtime-folder runtime-review2 --mutations-folder mutations-review1 --nvm-folder redecoded-r1/nvm --bats-folder redecoded-r1/bats
 ```
 
-All 31 current unit mutants fail and restore GREEN, including independent native
+The first-review correction's 31 unit mutants failed and restored GREEN, including independent native
 pairs on ambiguous/dynamic lines and complete rejection of timed phase measures.
 The original 29-mutation/native execution proof is retained as historical evidence
 at the capture revision. It is not claimed as a new execution of modified code.
 
 The historical capture commit must be available in the branch history for the
 receipt checker and offline re-decoder. A shallow clone must fetch that ancestor
-first. Historical checks validate committed bytes at that revision; current
+and enough history to prove ancestry first. Historical checks validate committed bytes at that revision; current
 code hashes validate the modified decoder and receipt reader.
+
+The deferred-minor update retains the native/replay/31-mutant measurements at
+their recorded review revision. Only the relocation diagnostic, its authored
+regression, 56-test authored suite, scope disclosure and receipt checks are current; no new native
+execution or re-score is claimed. Main's inherited reading refresh changed only
+notes; the receipt retains its historical reading hash and asserts equality of
+every other JSON field before pinning the current reading bytes. This branch
+does not edit that reading. Refresh/check the metadata with:
+
+```sh
+python3 -B calibration/oracles/bash-trace/evidence.py --followup-base 0140aae9d0753df26b2f254d5e84b56cbbfea2a0
+python3 -B calibration/oracles/bash-trace/evidence.py --check docs/assessments/data/bash-oracle-2026-10-26/evidence.json
+```
+
+`canonical_reading_changed` means **edited by this lane**, not byte equality
+with the historical reading. Main's inherited notes-only refresh is checked
+field by field, excluding only `notes`, against reading hash `aa7aa8e1` at
+`0140aae`. The historical revision must be 40 lowercase hexadecimal digits,
+and its committed receipt must record the same historical reading hash.
+`followup` is required whenever the current hash differs from the historical
+reading or receipt. Every historical Git read runs from the repository root,
+including when the checker is launched from another working directory.
+Each historical revision must also be an ancestor of HEAD. A historical receipt
+that contains `followup` requires the current receipt to preserve that block's
+`historical_replay_revision`; a later receipt cannot erase or retarget the guard.
+The authored regressions refuse guard deletion and coordinated revision swaps,
+allow notes-only refreshes, and exercise a foreign Git working directory.

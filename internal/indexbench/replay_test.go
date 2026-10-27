@@ -33,6 +33,9 @@ const byteTolerance = 0.05
 // this golden moving is itself the signal a reviewer is meant to see.
 // BP-21 will need exactly that: changing obligations ranking changes these
 // bytes by design.
+// C-R14: blast-radius-ledger counts seven traversable symbols separately
+// from four changed fields; their explicit reference-coverage note costs
+// 95 additional payload bytes (1757 -> 1852), deliberately re-baselined.
 func TestPayloadReplay(t *testing.T) {
 	var entries []ReplayRow
 	if err := readGolden(l1ReplayPath, &entries); err != nil {

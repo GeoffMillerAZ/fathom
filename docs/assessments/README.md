@@ -83,7 +83,8 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [core-t1-css-ceiling](2026-10-26-core-t1-css-ceiling.md) | Browser-attested proposal ranges grade at tier C; parser errors and first-party population enumeration remain open. | LB-Q-css-rest |
 | 2026-10-26 | [crossplane-provider-crds](2026-10-26-crossplane-provider-crds.md) | Full 244-file tier-C grade matches 428/428 definitions, 86/86 references and 33/33 cross-file references; nine-subject native probe validates 21 provider bases, all from three network subjects selected after a zero-match first probe; L2/L3 native binding remains open | GAP1-34, LB-Q-crossplane-rest, P-T1 |
 | 2026-10-26 | [core-t1-cue-ceiling](2026-10-26-core-t1-cue-ceiling.md) | The package-key file target limits recall; LSP definitions support a future SCIP writer. | LB-Q-cue-rest |
-| 2026-10-26 | [core-t1-go-cost-ceiling](2026-10-26-core-t1-go-cost-ceiling.md) | Field-only member symbols fail the wall gate; runtime reverted and no new grade claimed | C-R2, C-R5 (#20), LB-Q-go-rest |
+| 2026-10-26 | [core-t1-go-cost-ceiling](2026-10-26-core-t1-go-cost-ceiling.md) | Field-only member symbols pass their measured cost gate; serialized ENGINE adoption carries new oracle proof | C-R2, C-R5 (#20), LB-Q-go-rest |
+| 2026-10-26 | [core-t1-go-members](2026-10-26-core-t1-go-members.md) | The optimized field-only pass passes the Wave B cost gate and independent SCIP regrades it at L4 good | C-R11, K17, K29, LB-Q-go-rest |
 | 2026-10-26 | [core-t1-javascript-ceiling](2026-10-26-core-t1-javascript-ceiling.md) | The public C-R3 ruling retains the denominator and cost rules. | LB-Q-javascript-rest |
 | 2026-10-26 | [core-t1-kotlin-ceiling](2026-10-26-core-t1-kotlin-ceiling.md) | Two pinned 0.13.2 producer routes fail before emitting an index; the typed-range reader cause remains unproved. | LB-Q-kotlin-rest |
 | 2026-10-26 | [core-t1-perl-ceiling](2026-10-26-core-t1-perl-ceiling.md) | C-R9 native ranges: 2,870 ends agreeing within one line, L1 excellent/L2 C good candidate; stock call census and literal-method control retain population gaps. | LB-Q-perl-rest |
@@ -112,6 +113,9 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [iac-provider-schema-feasibility](2026-10-26-iac-provider-schema-feasibility.md), [native data](data/2026-10-26-provider-schema-native-probe.json), [size data](data/2026-10-26-provider-schema-export-sizes.json) | Three offline native schema exports, 12 authored traversals and 12 attributable field refusals; dependency-plane policy, anchors and store costs remain open | IAC-2, IAC-7, IAC-12, IAC-16, SG-36, SG-37 |
 | 2026-10-26 | [terragrunt-triage](2026-10-26-terragrunt-triage.md), [data](data/terragrunt-triage-2026-10-26/receipt.json) | Owner stack/DAG/language-server candidates; content-based cache inventory, native attempts need owner approval | Feeds IAC-20/GAP1-37; does not satisfy them |
 | 2026-10-26 | [aws-cdk-triage](2026-10-26-aws-cdk-triage.md), [data](data/aws-cdk-triage-2026-10-26/receipt.json) | Owner synth/tree/trace and ordinary language candidates; content-based path-free cache inventory | Feeds IAC-20/GAP1-37; does not satisfy them |
+| 2026-10-27 | [tools-json-schema-d19](2026-10-27-tools-json-schema-d19.md), [data](data/json-schema-d19-2026-10-27/receipt.json) | Four complete scopes retain L3 unmet at 3/3; P-T1 corrects L1/L2 to C good; 254 URI-scoped sites remain explicitly unscored | LB-Q-json-schema-rest, D19, P-T1 |
+
+| 2026-10-26 | [tools Jenkins native audit](2026-10-26-tools-jenkins-native.md) | Owner Declarative ModelAST accepts all 23 inputs; a complete unit comparator remains unmeasured and the absent-evaluator premise is withdrawn | LB-Q-jenkinsfile-rest, ADR-048/054/067, P-T1 |
 
 ## Companion pages
 

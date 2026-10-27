@@ -7,7 +7,8 @@
 // <npm prefix> is the directory `npm --prefix` installed @apidevtools/json-schema-ref-parser
 // and yaml into (nothing is installed globally or into the subject).
 //
-// Tier A: @apidevtools/json-schema-ref-parser (MIT), the reference $ref resolver that
+// P-T1: this independent third-party resolver is tier C, not the format owner.
+// Tier C: @apidevtools/json-schema-ref-parser (MIT), the reference $ref resolver that
 // swagger-parser, openapi tooling and many validators bundle. For each .json of the subject:
 //   - `$RefParser.parse(file)` reads the document (its own JSON reader); a file it cannot
 //     read is counted with its error and left out. A document is a JSON Schema when its root
@@ -18,7 +19,7 @@
 //     `$refs.paths()` the files it read. A reference the tool cannot resolve (a missing file,
 //     a pointer to nothing, a URL, which http:false leaves unfetched) is in no truth.
 //
-// Emitted (definitions and references, tier A):
+// Emitted (definitions and references, tier C):
 //   - definitions: a `package` per schema (named by the file, at its root mapping's line); a
 //     `type_alias` per entry of the root `$defs` and `definitions`, whatever it holds (a
 //     boolean schema is one); a `field` per entry of the root `properties`. A definition sits
@@ -28,7 +29,7 @@
 //     naming an entry the document declares, the first segment after the section unescaped
 //     (~1, ~0, percent-decoding). A `$ref` outside every entity (a root allOf, a root `$ref`)
 //     has no source and is not in the truth (counted in the summary).
-// Tier A (-xref-out, written only when there is one): file granularity, {path, from, to_path},
+// Tier C (-xref-out, written only when there is one): file granularity, {path, from, to_path},
 // `from` the document's root entity (its file name): every `$ref` anywhere in a document whose
 // value has a file part (the text before `#`, a relative path from the document's directory, a
 // leading / from the subject's root) that the tool read (`$refs.paths()`) and that is a file
@@ -233,9 +234,9 @@ async function main() {
   }
 
   const sortDefs = defs.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line || (a.name < b.name ? -1 : 1)));
-  fs.writeFileSync(outFile, JSON.stringify({ tool: "@apidevtools/json-schema-ref-parser", version, tier: "A", definitions: sortDefs, references: refs }, null, 1) + "\n");
+  fs.writeFileSync(outFile, JSON.stringify({ tool: "@apidevtools/json-schema-ref-parser", version, tier: "C", definitions: sortDefs, references: refs }, null, 1) + "\n");
   if (xrefOut && xrefs.length) {
-    fs.writeFileSync(xrefOut, JSON.stringify({ tool: "@apidevtools/json-schema-ref-parser ($refs.paths)", version, tier: "A", cross_references: xrefs }, null, 1) + "\n");
+    fs.writeFileSync(xrefOut, JSON.stringify({ tool: "@apidevtools/json-schema-ref-parser ($refs.paths)", version, tier: "C", cross_references: xrefs }, null, 1) + "\n");
   }
   if (filesOut) fs.writeFileSync(filesOut, docs.sort().map((d) => d + "\n").join(""));
   stats.cross_references = xrefs.length;

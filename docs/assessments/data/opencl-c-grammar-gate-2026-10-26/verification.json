@@ -26,7 +26,7 @@
     "subject_people_or_emails_retained": 0
   },
   "route": {
-    "convention": "template-convention-search.json: bounded five-project search found no second independent exact match; code search 401 is no absence proof",
+    "convention": "Authenticated m5 follow-up: four scoped queries zero hits; three global queries 32/92/92 hits across four repository IDs, clBLAS and three derived template trees. No second independent convention within this bounded search; no global absence proof.",
     "gate": "G-R6 intermediate non-clBLAS <=19 fired; whole-pool <=19 native gate failed; runtime prepass and owner ruling remain pending",
     "holdout": "semicolonless-holdout.json: 2/53, reused diagnostic after tuning, not independent validation",
     "original_baseline": "screen.json, builds.json, holdout.json remain historical original candidate receipts; original five-build descriptor and five candidate metadata predate the sixth row",
@@ -228,6 +228,69 @@
     "release_notes": {
       "command": "bash scripts/fathom-go.sh run ./third_party/agentic-kit/cmd/release-notes -check",
       "result": "pass"
+    }
+  },
+  "m5_followup": {
+    "base_main": "440a94365",
+    "date": "2026-10-27",
+    "scoped_zero_hit_queries": 4,
+    "global_hits": [
+      32,
+      92,
+      92
+    ],
+    "matching_repository_ids": 4,
+    "independent_conventions_beyond_clblas": 0,
+    "non_subject_identity_policy": "X-R9 numeric IDs only",
+    "receipt_sha256": "bbdb303f63d9627513304d4023998cc977a70275824c9fb5a68db122d09e3952",
+    "language_or_grammar_measurements": 0,
+    "checks": {
+      "json": "pass: three changed JSON files",
+      "release_notes": "pass",
+      "merge_debris": "pass: full and staged",
+      "org_agnostic": "pass: TestNoOrgSpecificNames, 2.353s",
+      "privacy": "pass: added lines have no @, Author, email, host-path or raw-person fields; non-subject records contain numeric IDs only",
+      "scanner": "zero findings without baseline",
+      "admission_state": "53/386 refusal unchanged; no grammar, pool, reading or prepass implementation change"
+    },
+    "x_r10": {
+      "go_files_changed": 0,
+      "tenancy_lint": "not applicable: no Go changes",
+      "plan_lexical_path_declarations_inspected": 1061,
+      "affected_plan_paths": [],
+      "scratch_strict_verify": "not applicable: no changed file is read by a plan lexical path contract"
+    },
+    "authenticated_exact_token_queries": 7,
+    "exact_token_http_200": 7,
+    "complete_exact_token_single_page_results": 7
+  },
+  "m5_review_fixes": {
+    "parent": "b67ecf356",
+    "F1": "Per-row lineage distinguishes the pinned reference, two 25/25 indexed-hit copies, and one 22/25 derived tree with three differing blobs.",
+    "F2": "Renamed hit counts explicitly; pinned reference has 40 .cl template blobs. No full derived-directory count is asserted.",
+    "F3": {
+      "positive_control_counts": [
+        3,
+        21,
+        37,
+        28
+      ],
+      "positive_controls": 4,
+      "scope": "Some indexed results, not a complete-index guarantee.",
+      "authenticated_queries_total": 11,
+      "exact_token_queries": 7,
+      "positive_control_queries": 4,
+      "positive_control_http_200": 4
+    },
+    "F4": "Original pinned samples are acknowledged as already public at main 440a94365; current receipt retains numeric IDs under X-R9 and exact historical row pointers/findings. Owner question restored without granting prepass permission.",
+    "checks": {
+      "json": "pass: two changed JSON files",
+      "release_notes": "pass",
+      "merge_debris": "pass: full and staged",
+      "org_agnostic": "pass: TestNoOrgSpecificNames, 2.377s",
+      "privacy": "pass: no added @, Author, email, host-path or raw-person-key matches; non-subjects retain numeric IDs",
+      "scanner": "zero findings without baseline",
+      "x_r10": "No Go changes and no affected lexical plan readers among 1,061 path declarations; tenancy lint and scratch plan verification not applicable."
     }
   }
 }

@@ -45,6 +45,9 @@ func TestRetimeLoadLogPathRefusesUnsafeDestinations(t *testing.T) {
 
 func TestRetimeWorkspaceRootUsesCheckoutAndIgnoreRule(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
+	if err := os.MkdirAll("workspace/tmp", 0700); err != nil {
+		t.Fatal(err)
+	}
 	root, err := os.MkdirTemp("workspace/tmp", "retime-root-")
 	if err != nil {
 		t.Fatal(err)
@@ -75,6 +78,9 @@ func TestRetimeWorkspaceRootUsesCheckoutAndIgnoreRule(t *testing.T) {
 
 func TestRetimeBoundedReadingCap(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
+	if err := os.MkdirAll("workspace", 0700); err != nil {
+		t.Fatal(err)
+	}
 	dir, err := os.MkdirTemp("workspace", "retime-reading-")
 	if err != nil {
 		t.Fatal(err)
@@ -131,6 +137,9 @@ func TestCmdLangRetimeLoadLogBindsReadingAndProduct(t *testing.T) {
 	fileClocks.cpu = func() time.Duration {
 		steps = append(steps, "clock")
 		return clock()
+	}
+	if err := os.MkdirAll("workspace", 0700); err != nil {
+		t.Fatal(err)
 	}
 	dir, err := os.MkdirTemp("workspace", "retime-load-")
 	if err != nil {
@@ -204,6 +213,9 @@ func TestCmdLangRetimeLoadLogBindsReadingAndProduct(t *testing.T) {
 
 func TestRetimeBoundedBinarySHARejectsOversize(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
+	if err := os.MkdirAll("workspace", 0700); err != nil {
+		t.Fatal(err)
+	}
 	dir, err := os.MkdirTemp("workspace", "retime-binary-")
 	if err != nil {
 		t.Fatal(err)

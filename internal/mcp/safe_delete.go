@@ -176,7 +176,8 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 	_, indexCommit, metaFound, _ := backend.ServiceMeta(ctx, service)
 
 	// referent_count: 0 alongside an empty referents array IS the
-	// proven-zero receipt — checked_edges names what was actually
+	// proven-zero receipt for targets with indexed reference coverage. Module
+	// symbols and Go fields qualify that result below. checked_edges names what was actually
 	// checked to reach it, and index_commit (when the backend can
 	// name one) anchors it to a commit a stranger can re-derive
 	// against. Always the same three fields either way, never a
@@ -209,6 +210,23 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 			resp["file"] = moduleFile
 		}
 		return withSummary(moduleSymbolDeleteSummary(symbol, moduleFile, referents), resp), nil
+	}
+	// Resolve kinds through the same tiers as find_symbol, without its
+	// display cap: an elided field is still missing reference coverage.
+	targets, err := resolveSymbolMatches(ctx, backend, service, symbol, func() ([]core.SymbolNode, error) {
+		return navs.Nodes, nil
+	}, true)
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	for _, target := range targets.Nodes {
+		if target.Kind == core.KindGoField {
+			// Keep every referent already found, including non-field
+			// candidates when a bare name names both a field and a method.
+			resp["field_references_indexed"] = false
+			summary := fmt.Sprintf("field references are not indexed; %d recorded referent%s for %s", len(referents), pluralS(len(referents)), symbol)
+			return withSummary(capSummary(summary), resp), nil
+		}
 	}
 	return withSummary(safeDeleteSummary(symbol, referents, checkedEdges), resp), nil
 }

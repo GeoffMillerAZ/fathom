@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-27",
+  "inventory": "candidate-inventory-d19-r1.json",
+  "scope": "No generic absence ceiling; P-T1 caps the actual third-party resolver at C. Alternatives below have explicit measured/untried/out-of-scope dispositions.",
+  "sources_searched": [
+    {
+      "group": "own toolchain",
+      "sources": [
+        "https://json-schema.org/tools",
+        "https://github.com/json-schema-org/JSON-Schema-Test-Suite/blob/main/README.md",
+        "GitHub repository search org:json-schema-org compiler"
+      ],
+      "result": "Owner catalogue lists independent validators/bundlers and says listing is not endorsement. Owner suite specifies validation expectations, not a full symbol/binding dump. No owner compiler result from scoped search; not global absence proof."
+    },
+    {
+      "group": "SCIP/LSIF",
+      "sources": [
+        "https://github.com/scip-code/scip#tools-using-scip",
+        "https://lsif.dev/",
+        "GitHub repository search scip-json-schema",
+        "GitHub repository search scip-json"
+      ],
+      "result": "Current producer list and archived LSIF table have no JSON Schema producer. Exact schema search zero; JSON search five broad results. The actual scip-json README says it prints existing SCIP as JSON, so it is a consumer/converter, not an oracle for these inputs. Four other broad-name hits not treated as schema producers."
+    },
+    {
+      "group": "language servers",
+      "sources": [
+        "GitHub repository search org:json-schema-org language-server",
+        "https://github.com/microsoft/vscode-json-languageservice/blob/main/package.json"
+      ],
+      "result": "Owner-scoped search zero. Microsoft JSON language service is real independent third-party MIT tooling, currently 6.0.0-next.4; untried for this population and not P-T1 tier A."
+    },
+    {
+      "group": "registry/parser/compiler",
+      "sources": [
+        "https://registry.npmjs.org/@apidevtools/json-schema-ref-parser/16.0.5",
+        "https://registry.npmjs.org/yaml/2.8.2",
+        "https://github.com/sourcemeta/jsonschema/releases/tag/v17.3.0",
+        "https://github.com/bowtie-json-schema/bowtie/releases/tag/v2026.10.2"
+      ],
+      "result": "Pinned existing resolver MIT and positioning parser ISC confirmed. Sourcemeta CLI exists, but AGPL-3.0 excludes execution under the permissive-license gate; source reference only. Bowtie coordinates other validators and their validation outputs, not the cross-file pair population needed here; no native pair claim and not run."
+    },
+    {
+      "group": "runtime tracing/introspection",
+      "sources": [
+        "https://apidevtools.com/json-schema-ref-parser/docs/refs.html",
+        "https://github.com/sourcemeta/jsonschema/blob/v17.3.0/README.markdown",
+        "https://github.com/bowtie-json-schema/bowtie/blob/main/README.rst"
+      ],
+      "result": "Existing resolver exposes paths/exists from its evaluation; that is the actual independent C route. Generic Node filesystem tracing would observe reads, not JSON Schema binding truth. Bowtie forwards validator results; native JSON Schema CLI tracing is a real source-inspected alternative but AGPL blocks a run here."
+    }
+  ],
+  "corpus_screen": [
+    {
+      "candidate": "open-rpc/meta-schema",
+      "result": "Apache-2.0, deprecated successor documented; tree has one schema document, so not a modular cross-file expansion. No clone/oracle run."
+    },
+    {
+      "candidate": "KhronosGroup/glTF schema",
+      "result": "Real modular schemas, but scoped license is CC-BY-4.0 in COPYING and conflicting proprietary marking in reuse metadata; not permissive under this work order. No clone/oracle run."
+    },
+    {
+      "candidate": "radiantearth/stac-spec",
+      "result": "Apache-2.0 checked from pinned LICENSE; complete three schema scopes selected before any new oracle/accuracy result. No result yet."
+    },
+    {
+      "candidate": "oasis-open/cti-stix2-json-schemas",
+      "result": "BSD-3-Clause from owner repository metadata; complete schemas tree selected before any new native/Fathom result. README calls these non-normative STIX schemas; this measures JSON Schema file references, not STIX validity. No oracle run yet."
+    }
+  ]
+}

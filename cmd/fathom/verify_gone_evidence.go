@@ -63,6 +63,11 @@ func (e *cliEvidence) TypedCallers(symbol, pkg string) (nonTest, test []verify.G
 	return e.goneEvidence().TypedCallers(symbol, pkg)
 }
 
+// CallersUnindexed implements verify.GoneEvidence.
+func (e *cliEvidence) CallersUnindexed(symbol, pkg string) string {
+	return e.goneEvidence().CallersUnindexed(symbol, pkg)
+}
+
 // GoneReadFailures implements verify.GoneReadEvidence: a corpus file the
 // CLI could not read is named, never scored as one without the target.
 func (e *cliEvidence) GoneReadFailures() []string { return e.goneEvidence().GoneReadFailures() }

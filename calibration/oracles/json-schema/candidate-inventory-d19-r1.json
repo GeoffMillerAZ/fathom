@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-27",
+  "candidates": [
+    {
+      "name": "JSON Schema owner test suite",
+      "version": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+      "license": "MIT",
+      "source": "https://github.com/json-schema-org/JSON-Schema-Test-Suite",
+      "disposition": "validation-case data, not binding-population instrument; existing remotes remain canonical inputs"
+    },
+    {
+      "name": "@apidevtools/json-schema-ref-parser",
+      "version": "16.0.5",
+      "license": "MIT",
+      "source": "https://github.com/APIDevTools/json-schema-ref-parser",
+      "disposition": "actual existing full-input reference evaluator, C under P-T1; pinned runtime rerun pending"
+    },
+    {
+      "name": "yaml",
+      "version": "2.8.2",
+      "license": "ISC",
+      "source": "https://www.npmjs.com/package/yaml/v/2.8.2",
+      "disposition": "independent positions, not native binding authority"
+    },
+    {
+      "name": "scip-json",
+      "version": "83f6b8cee075574c3755521b7afe71823c9fe544",
+      "license": "not declared in checked root/API metadata; not executed",
+      "source": "https://github.com/keynmol/scip-json",
+      "disposition": "out of scope: converts existing index.scip to JSON; does not index JSON or JSON Schema"
+    },
+    {
+      "name": "vscode-json-languageservice",
+      "version": "6.0.0-next.4 / bf6a8b2c6053a8542c7c053cd518768830fe5e35",
+      "license": "MIT",
+      "source": "https://github.com/microsoft/vscode-json-languageservice",
+      "disposition": "real independent language service; untried full-population alternative, C if used; no absence claim"
+    },
+    {
+      "name": "Sourcemeta JSON Schema CLI",
+      "version": "17.3.0",
+      "license": "AGPL-3.0",
+      "source": "https://github.com/sourcemeta/jsonschema/releases/tag/v17.3.0",
+      "disposition": "source-inspected validation/bundle/trace route; not run due permissive-license gate"
+    },
+    {
+      "name": "Bowtie",
+      "version": "2026.10.2",
+      "license": "not resolved by checked repository license metadata; not executed",
+      "source": "https://github.com/bowtie-json-schema/bowtie",
+      "disposition": "meta-validator coordinates validation results; no cross-file pair enumeration established; untried and no native pair authority claimed"
+    }
+  ]
+}

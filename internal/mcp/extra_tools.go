@@ -322,7 +322,24 @@ func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterf
 		result["not_indexed"] = stringsToAny(notIndexed)
 		summary += "; not indexed: " + strings.Join(notIndexed, ", ")
 	}
+	if len(res.ChangedFields) > 0 {
+		result["changed_fields"] = res.ChangedFields
+		result["changed_field_count"] = len(res.ChangedFields)
+		summary = appendChangedFieldDisclosure(summary, len(res.ChangedFields))
+	}
 	return withSummary(summary, result), nil
+}
+
+// Keep the field-reference limitation visible even when the ordinary
+// caller summary or not-indexed list would otherwise fill its 200 chars.
+func appendChangedFieldDisclosure(summary string, count int) string {
+	suffix := fmt.Sprintf("; %d changed field%s (field references not indexed)", count, pluralS(count))
+	budget := summaryMaxChars - len([]rune(suffix))
+	runes := []rune(summary)
+	if len(runes) > budget {
+		summary = strings.TrimRight(string(runes[:budget-1]), " ") + "…"
+	}
+	return summary + suffix
 }
 
 // blastNotIndexed returns the changed files the service's index does not
