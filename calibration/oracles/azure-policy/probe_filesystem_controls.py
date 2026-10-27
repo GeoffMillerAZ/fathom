@@ -58,9 +58,15 @@ def run(out):
         value=attach(receipt,*args,**kwargs)
         if value.get('diagnostic_status')=='refused':value['native_executed']=None
         return value
+    def retain_contradicted_claim(receipt,*args,**kwargs):
+        value=attach(receipt,*args,**kwargs)
+        if value.get('diagnostic_status')=='contradicted':value['native_executed']=True
+        return value
     namespace=vendor.namespace_command
     for module,function,mutant,test in [
         (writes,'diagnostics',absolute_path_hash,'test_write_diagnostics.WriteDiagnosticsTest.test_outside_scratch_rows_have_no_path_identity'),
+        (writes,'MAX_SNAPSHOT_ENTRIES',4097,'test_write_tracing.WriteTracingTest.test_snapshot_entry_cap_plus_one_flags_partial_snapshot'),
+        (probe,'attach_diagnostics',retain_contradicted_claim,'test_write_tracing.WriteTracingTest.test_contradicted_trace_withdraws_native_claim_and_is_publishable'),
         (writes,'MAX_FILES',256,'test_write_tracing.WriteTracingTest.test_worst_admissible_diagnostic_and_complete_receipt_fit_together'),
         (probe,'attach_diagnostics',discard_worker,'test_review_probe.ReviewProbeTest.test_invalid_diagnostic_preserves_validated_native_outcome'),
         (writes,'diagnostics',no_limit,'test_write_diagnostics.WriteDiagnosticsTest.test_private_path_bytes_and_exact_limit_file_are_relative'),

@@ -217,8 +217,10 @@ closed schema **v3** includes `write_diagnostics`:
 - `files`: at most 64 rows with allowlisted scratch-relative HOME/TMP names,
   successful write-family return-byte totals, final sizes/types and requested
   allocation or explicit-offset extents. Unsafe names have `relative_path: null`.
-  All other targets, including payload paths and memfd labels, collapse to fixed
-  classes with no per-path identity. `dotnet_doublemapper` is a fixed kind enum.
+  Noncanonical spellings (dot, dot-dot or empty components) keep distinct private
+  raw keys and publish null names; dot-dot always uses `other`, since a symlink
+  can change its target area. Other canonical targets, including payload paths
+  and memfd labels, collapse to fixed classes with no per-path identity. `dotnet_doublemapper` is a fixed kind enum.
   No path is hashed. No raw trace hash or raw trace byte count is published,
   because both can depend on absolute runner roots; `trace_within_cap` records
   the bound instead. Only the strace executable's content hash/version is public.
@@ -235,13 +237,24 @@ closed schema **v3** includes `write_diagnostics`:
   signal alone yield null. The native return code comes from exec/exit evidence.
 - `files_truncated`, `omitted_file_events`, `snapshot_truncated`: explicit partial
   coverage. Omitted events count row lookups beyond capacity, not distinct files.
-  Snapshot traversal admits 256 directories and 4,096 entries. It does not follow
-  symlinks. It still records the largest inspected file independently of row capacity.
-- `diagnostic_status`: complete, partial or refused. Parser-integrity failures
+  Snapshot traversal admits 256 directories and inspects at most 4,096 entries.
+  Before applying that cap it selects names in lexical order, independently of
+  readdir order, retaining at most 4,097 directory entries in memory. Selection
+  scans directory names to EOF under the workflow's ten-minute job timeout; unselected entries
+  are not statted. It never follows symlinks, and retains the largest inspected
+  file independently of row capacity.
+- `diagnostic_status`: complete, partial, refused or contradicted. Parser-integrity failures
   (including unmatched resumed calls, undecoded descriptor kinds or trace overflow)
   cannot turn an already validated worker initialize/return-code/stderr/LSP result
   into an empty launcher receipt. Diagnostic refusal has a fixed exception class
   and `write_diagnostics: null`; it grants no trace-attested execution claim.
+  A parsed trace missing the vendor exec or exit contradicts a worker execution
+  claim: keep its parsed diagnostics and worker initialize/stderr/LSP fields,
+  but set `native_executed: false`, `native_returncode: null`,
+  `status: probe_refused`, `failed_stage: tracing` and
+  `diagnostic_status: contradicted`. The closed schema forbids retaining a native
+  execution claim in that outcome. A trace-attested exit supersedes the worker
+  wrapper return code; a wrapper/native code difference alone is not contradiction.
 
 T-R13a permits only bounded relative HOME/TMP names: ASCII letters, digits, dot,
 underscore and hyphen; no dot/dot-dot components; at most 128 bytes per component

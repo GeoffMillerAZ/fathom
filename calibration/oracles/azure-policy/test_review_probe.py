@@ -129,7 +129,7 @@ class ReviewProbeTest(unittest.TestCase):
                 with patch.object(probe,'enable_loopback'), patch.object(probe,'isolate_filesystem'), patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]), patch('sys.argv',['preflight',str(probe.HERE),str(out/'worker'),str(root/'cache'),str(root)]):
                     exec(compile(code,'authored-preflight','exec'),{})
 
-    def launched_worker(self, *, poison=False, timeout=False, invalid_trace=False):
+    def launched_worker(self, *, poison=False, timeout=False, invalid_trace=False, contradicted_trace=False):
         from unittest.mock import MagicMock
         from receipt_contract import validate
         with tempfile.TemporaryDirectory() as d, ExitStack() as stack:
@@ -151,7 +151,7 @@ class ReviewProbeTest(unittest.TestCase):
             copied=stack.enter_context(patch.object(probe,'copy_payload'))
             if timeout: stack.enter_context(patch.object(probe,'TIMEOUT',0.001))
             if invalid_trace: stack.enter_context(patch.object(probe,'diagnostics',side_effect=ValueError('authored incomplete trace')))
-            else: stack.enter_context(patch.object(probe,'diagnostics',return_value=dict(files=[],largest_private_file=None,files_over_previous_limit=0,sigxfsz_observed=False,limit_file=None,correlated_limit_files=0,vendor_exec_observed=True,native_returncode=0,files_truncated=False,omitted_file_events=0,snapshot_truncated=False)))
+            else: stack.enter_context(patch.object(probe,'diagnostics',return_value=dict(files=[],largest_private_file=None,files_over_previous_limit=0,sigxfsz_observed=False,limit_file=None,correlated_limit_files=0,vendor_exec_observed=not contradicted_trace,native_returncode=None if contradicted_trace else 0,files_truncated=False,omitted_file_events=0,snapshot_truncated=False)))
             process=MagicMock(pid=12345)
             def finish(*args,**kwargs):
                 if timeout and kwargs.get('timeout'):
@@ -299,3 +299,11 @@ class ReviewProbeTest(unittest.TestCase):
             self.assertEqual(2,probe.main());prepare.assert_not_called()
             receipt=json.loads((out/'receipt.json').read_text())
             self.assertEqual('tracing',receipt['failed_stage']);self.assertFalse(receipt['native_executed'])
+
+    def test_contradicted_trace_publishes_refusal_without_native_claim(self):
+        value=self.launched_worker(contradicted_trace=True)
+        self.assertEqual('contradicted',value['diagnostic_status'])
+        self.assertEqual('probe_refused',value['status']);self.assertEqual('tracing',value['failed_stage'])
+        self.assertFalse(value['native_executed']);self.assertIsNone(value['native_returncode'])
+        self.assertEqual(-1,value['initialize']['error_code'])
+        self.assertEqual(0,value['stderr_bytes']);self.assertEqual(0,value['lsp_bytes'])

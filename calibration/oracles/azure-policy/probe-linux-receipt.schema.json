@@ -393,7 +393,8 @@
       "enum": [
         "complete",
         "partial",
-        "refused"
+        "refused",
+        "contradicted"
       ]
     },
     "diagnostic_failure_class": {
@@ -829,6 +830,37 @@
           "vendor_capabilities_dropped",
           "filesystem_write_probes",
           "filesystem_dotdot_writes_refused"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "diagnostic_status"
+        ],
+        "properties": {
+          "diagnostic_status": {
+            "const": "contradicted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "native_executed": {
+            "const": false
+          },
+          "native_returncode": {
+            "const": null
+          },
+          "status": {
+            "const": "probe_refused"
+          },
+          "failed_stage": {
+            "const": "tracing"
+          }
+        },
+        "required": [
+          "native_returncode"
         ]
       }
     }

@@ -140,3 +140,68 @@ class WriteTracingTest(unittest.TestCase):
             output=Path(directory)/'receipt.json'
             write_receipt(output,value,CONTRACT,public=True)
             self.assertLessEqual(output.stat().st_size,MAX_RECEIPT)
+
+    def test_contradicted_trace_withdraws_native_claim_and_is_publishable(self):
+        from probe_linux import receipt_base, attach_diagnostics, CONTRACT
+        from receipt_contract import write_receipt
+        for trace_kind in ['missing_exec','missing_exit']:
+            with self.subTest(trace_kind=trace_kind), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory).resolve();(root/'home').mkdir()
+                trace='' if trace_kind=='missing_exec' else f'1 execve("{root}/payload/PolicyLanguageServer", [], 0x1) = 0\n'
+                value=receipt_base();value.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,native_returncode=0)
+                attach_diagnostics(value,trace,root,dict(sha256='0'*64,version=[5,16]))
+                self.assertEqual('contradicted',value['diagnostic_status'])
+                self.assertFalse(value['native_executed']);self.assertIsNone(value['native_returncode'])
+                self.assertEqual('probe_refused',value['status']);self.assertEqual('tracing',value['failed_stage'])
+                self.assertIsNotNone(value['write_diagnostics'])
+                write_receipt(root/'receipt.json',value,CONTRACT,public=True)
+                value['native_executed']=True
+                with self.assertRaises(ValueError):write_receipt(root/'invalid.json',value,CONTRACT,public=True)
+
+    def test_snapshot_entry_cap_plus_one_is_sorted_before_selection(self):
+        from contextlib import contextmanager
+        from unittest.mock import patch
+        import write_diagnostics as writes
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();home=root/'home';home.mkdir()
+            for index in range(4098):(home/f'f{index:04}').touch()
+            original=os.scandir
+            results=[]
+            for reverse in [False,True]:
+                @contextmanager
+                def reordered(path):
+                    with original(path) as entries:ordered=sorted(entries,key=lambda entry:entry.name,reverse=reverse)
+                    yield iter(ordered)
+                with patch.object(writes.os,'scandir',reordered):results.append(writes.diagnostics('',root))
+            self.assertTrue(results[0]['snapshot_truncated'])
+            self.assertEqual(64,len(results[0]['files']))
+            self.assertEqual(4032,results[0]['omitted_file_events'])
+            self.assertEqual([f'home/f{index:04}' for index in range(64)],[row['relative_path'] for row in results[0]['files']])
+            self.assertEqual(results[0],results[1])
+
+    def test_snapshot_entry_cap_plus_one_flags_partial_snapshot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();home=root/'home';home.mkdir()
+            for index in range(4096):(home/f'f{index:04}').touch()
+            self.assertFalse(diagnostics('',root)['snapshot_truncated'])
+            (home/'f4096').touch()
+            value=diagnostics('',root)
+            self.assertTrue(value['snapshot_truncated'])
+            self.assertEqual(4032,value['omitted_file_events'])
+
+    def test_trace_target_cap_plus_one_preserves_partial_native_result(self):
+        from probe_linux import receipt_base, attach_diagnostics, CONTRACT
+        from receipt_contract import write_receipt
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();(root/'home').mkdir()
+            trace=f'1 execve("{root}/payload/PolicyLanguageServer", [], 0x1) = 0\n'
+            trace+=''.join(f'1 write(3<{root}/home/target{index:03}>, ""..., 1) = 1\n' for index in range(65))
+            trace+='1 +++ exited with 0 +++\n'
+            value=receipt_base();value.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,native_returncode=0,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15)
+            attach_diagnostics(value,trace,root,dict(sha256='0'*64,version=[5,16]))
+            diagnostic=value['write_diagnostics']
+            self.assertEqual('partial',value['diagnostic_status']);self.assertTrue(value['native_executed'])
+            self.assertTrue(diagnostic['files_truncated']);self.assertFalse(diagnostic['snapshot_truncated'])
+            self.assertEqual(64,len(diagnostic['files']));self.assertEqual(1,diagnostic['omitted_file_events'])
+            self.assertEqual(64,sum(row['observed_write_bytes'] for row in diagnostic['files']))
+            write_receipt(root/'receipt.json',value,CONTRACT,public=True)

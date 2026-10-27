@@ -1,5 +1,5 @@
 {
-  "tests": 85,
+  "tests": 92,
   "skips": 2,
   "mutations": [
     {
@@ -24,6 +24,14 @@
     },
     {
       "mutant": "write_diagnostics.diagnostics",
+      "restored_green": true
+    },
+    {
+      "mutant": "write_diagnostics.MAX_SNAPSHOT_ENTRIES",
+      "restored_green": true
+    },
+    {
+      "mutant": "probe_linux.attach_diagnostics",
       "restored_green": true
     },
     {
@@ -63,7 +71,7 @@
     },
     {
       "path": "probe_linux.py",
-      "sha256": "8a17d60c8c7821a050f108e73207062450a47da25e5a808b4e402b056587220c"
+      "sha256": "5bb747ca2867e9bc8ab957e8a2a37ff01e6c247c3574801e5db04b8d510090ba"
     },
     {
       "path": "receipt_contract.py",
@@ -75,7 +83,7 @@
     },
     {
       "path": "test_review_probe.py",
-      "sha256": "ccaace86d32b791cdf400a535ab1834d74c138ce307a97dea808d4e1e75b8815"
+      "sha256": "2e490fcbae3435a7ec9ee14f5621c06004403d75774f511fc5d5844dd3670bc8"
     },
     {
       "path": "test_probe_linux.py",
@@ -83,11 +91,11 @@
     },
     {
       "path": "probe_filesystem_controls.py",
-      "sha256": "4dee6a4b3063d9870eec9b059a469c2c56a76919c0cf12ef61c6ace746d62973"
+      "sha256": "22143a188df2f93223fb17764a23b3b3c3c582e27bba97d1aa8a11311d65d787"
     },
     {
       "path": "probe-linux-receipt.schema.json",
-      "sha256": "8e43f198a8342d73300b1084bd17cf90a3d6c7075894389bcab1328463abe2be"
+      "sha256": "30d9b0cff6b836d50b98c376faa9523ab30291b36c0a1b9e30f6d4c41d2bbecb"
     },
     {
       "path": "probe-linux-x64.workflow.yml",
@@ -99,11 +107,11 @@
     },
     {
       "path": "native-protocol-r2.json",
-      "sha256": "e4cb95beedc975c00417b8fc9aa1858f04ec4e235117f893d8b211b93f609e9b"
+      "sha256": "95e13cdc22ef32e7fe29c07d11d454a79b6c88e38add0d752c06b15fcd3e8de3"
     },
     {
       "path": "LINUX-X64-PROBE.md",
-      "sha256": "391ef4daff1e7751ffec0258c9769d6681ea47bcc8fec58c07f8d17d519bc2f4"
+      "sha256": "99b6b039055d3a3f648e79b3298d0741dfa7f8644af332b86e3f9efd41b32f07"
     },
     {
       "path": "kernel_filesystem_control.py",
@@ -123,7 +131,7 @@
     },
     {
       "path": "write_diagnostics.py",
-      "sha256": "d61cd356c5c92bb42deba8eafb4e61e1291931fc891a470f2afe22a478595164"
+      "sha256": "4eb5afb598d52fcf585ddc6b8d32b5583537af9d15d503f05aaefcf687e789a7"
     },
     {
       "path": "write_tracing.py",
@@ -139,11 +147,11 @@
     },
     {
       "path": "test_write_diagnostics.py",
-      "sha256": "c8675c9237c0db6b10a0e197771649bfa4214ccf146b83fec9a285e2dc373954"
+      "sha256": "cf0089dc68be04f6bbe4674d93ac6c4751058a06c8f84d7891220a9adecec28f"
     },
     {
       "path": "test_write_tracing.py",
-      "sha256": "9ef1e9cba38c11fae02be6db380db95ac2a544f916bd02d565d932b3aee876a6"
+      "sha256": "119f3b6b22ae1d9ef231edaa890a53880c1e8103873ef7a97eed1b0edf6d59ae"
     },
     {
       "path": "test_write_kernel.py",

@@ -8,7 +8,7 @@ import os
 import re
 import stat
 import signal
-from itertools import islice
+from heapq import nsmallest
 from pathlib import Path
 
 MAX_FILES = 64
@@ -72,24 +72,28 @@ def diagnostics(trace, root, executable=None):
         path = path_text(path)
         deleted = path.endswith(' (deleted)')
         if deleted: path = path[:-10]
+        components = path.split('/')[1:] if path.startswith('/') else path.split('/')
+        noncanonical = any(part in ('','.','..') for part in components)
+        dotdot = '..' in components
         canonical = Path(os.path.normpath(path))
         area, relative, public_path, kind = 'other', None, None, 'generic'
         if path == '/memfd:doublemapper': kind = 'dotnet_doublemapper'
         if path.startswith('/memfd:'): deleted = True
-        for candidate,base in [('tmp',root/'home'/'tmp'),('home',root/'home')]:
+        for candidate,base in ([] if dotdot else [('tmp',root/'home'/'tmp'),('home',root/'home')]):
             try:
                 canonical.relative_to(base)
                 area = candidate
                 relative = canonical.relative_to(root).as_posix()
                 break
             except ValueError: pass
-        if relative is not None:
+        if relative is not None and not noncanonical:
             if (len(relative)<=512 and all(part not in ('','.','..') and
                     re.fullmatch(r'[A-Za-z0-9_.-]{1,128}',part) for part in relative.split('/'))):
                 public_path = relative
-        # Only HOME/TMP have per-path rows. Every other target collapses into a
-        # fixed class. No path hash, salt, PID, absolute root or memfd label leaves.
-        key = (area,relative if relative is not None else kind)
+        # Noncanonical spellings keep distinct private raw keys, never public
+        # names. Dot-dot may cross a symlink, so its area remains other. Other
+        # canonical targets outside HOME/TMP collapse into fixed classes.
+        key = ('raw',path) if noncanonical else (area,relative if relative is not None else kind)
         if key in rows:
             row=rows[key];row['unlinked'] |= deleted
             return row
@@ -192,7 +196,10 @@ def diagnostics(trace, root, executable=None):
         if visited > MAX_DIRECTORIES:
             snapshot_truncated=True;break
         with os.scandir(directory) as entries:
-            bounded_entries=sorted(islice(entries,max(0,MAX_SNAPSHOT_ENTRIES-snapshot_entries)+1),key=lambda item:item.name)
+            # Select the lexically first names before the stat/row cap, independent
+            # of readdir order. Scan names to EOF with at most cap+1 retained
+            # entries; the workflow's ten-minute job timeout bounds traversal.
+            bounded_entries=nsmallest(max(0,MAX_SNAPSHOT_ENTRIES-snapshot_entries)+1,entries,key=lambda item:item.name)
             for entry in bounded_entries:
                 snapshot_entries += 1
                 if snapshot_entries > MAX_SNAPSHOT_ENTRIES:

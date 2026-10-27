@@ -120,13 +120,16 @@ def receipt_base():
 
 
 def attach_diagnostics(receipt, trace, scratch, trace_tool):
-    """Outer-only evidence; refusal never erases a worker-validated result."""
+    """Parse refusal preserves worker evidence; a parsed contradiction withdraws it."""
     receipt.update(trace_tool=trace_tool,trace_within_cap=len(trace.encode('utf-8','surrogateescape'))<=MAX_TRACE)
     try:
         written=diagnostics(trace,scratch)
         if receipt.get('native_executed') is True:
             if not written['vendor_exec_observed'] or written['native_returncode'] is None:
-                raise ValueError('trace did not attest vendor exec and exit')
+                receipt.update(write_diagnostics=written,diagnostic_status='contradicted',
+                               native_executed=False,native_returncode=None,
+                               status='probe_refused',failed_stage='tracing')
+                return receipt
             receipt['trace_writer_hidden_from_vendor']=True
             receipt['native_returncode']=written['native_returncode']
         receipt.update(write_diagnostics=written,diagnostic_status='partial' if written['files_truncated'] or written['snapshot_truncated'] else 'complete')

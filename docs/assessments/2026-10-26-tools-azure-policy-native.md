@@ -237,3 +237,32 @@ validated native outcome, including initialize stage and return code. No inferen
 about the earlier SIGXFSZ file is made. The first real receipt and its frozen schema
 remain byte-identical. Linux controls and the vendor rerun remain the controller's
 runner work, not locally measured evidence.
+
+
+### T-R14 receipt recheck n1, n2 and n3 (2026-10-27)
+
+Noncanonical decoded path components retain distinct private raw-key rows with
+null public names. Every dot-dot spelling uses `other`; the symlink-plus-dot-dot
+regression prevents lexical normalization from attributing an outside write to
+HOME. No raw key or path hash is serialized.
+
+Parser refusal continues to preserve validated worker evidence. A parsed trace
+missing the vendor exec or exit has the distinct `contradicted` outcome. It
+withdraws both `native_executed` and `native_returncode`, refuses the probe at
+`tracing`, and retains parsed diagnostics plus initialize/stderr/LSP summaries.
+The closed schema rejects a contradiction carrying a native execution claim.
+A differing wrapper return code alone is not contradiction: traced native exit
+remains authoritative. Direct publication and the mocked launcher path cover
+this distinction, and the retained-claim mutant fails before restoring GREEN.
+
+Snapshot selection takes lexical names before the 4,096 inspected-entry cap,
+independent of readdir order. It retains at most 4,097 entries in memory while
+scanning names to EOF under the workflow's ten-minute job timeout, without statting
+unselected entries. Exact 4,096, cap+1, reverse-order 4,098 and trace-target 64+1
+regressions cover truncation; the snapshot-cap mutant fails then restores GREEN.
+Local suite: 92 tests, 90 pass and two designated Linux kernel skips; fourteen
+mutants restore GREEN. The 26 source pins and 32 checksums are refreshed. The
+maximum-shaped receipt remains 65,528 bytes under 131,072. No Go file or plan
+lexical input changed, so neither X-R10 conditional check is triggered. No
+reading, tier, frozen first receipt or frozen schema changed; the sole vendor
+rerun still requires controller review and the Linux runner.

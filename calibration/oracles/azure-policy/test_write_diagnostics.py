@@ -89,7 +89,7 @@ class WriteDiagnosticsTest(unittest.TestCase):
             result=wd.diagnostics(trace,root)
             self.assertTrue(any(r['relative_path'] is None for r in result['files']))
             self.assertFalse(any('path_sha256' in r for r in result['files']))
-            self.assertIn('home/ordinary',[r['relative_path'] for r in result['files']])
+            self.assertTrue(all(r['relative_path'] is None for r in result['files']))
 
     def test_outside_scratch_rows_have_no_path_identity(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -97,3 +97,24 @@ class WriteDiagnosticsTest(unittest.TestCase):
         self.assertEqual(1,len(result['files']))
         self.assertIsNone(result['files'][0]['relative_path'])
         self.assertNotIn('path_sha256',str(result))
+
+    def test_noncanonical_components_keep_distinct_redacted_raw_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();home=root/'home';home.mkdir()
+            paths=[f'{home}/./value',f'{home}//value',f'{home}/value/']
+            trace=''.join(f'1 truncate("{path}", {index}) = 0\n' for index,path in enumerate(paths,1))
+            rows=wd.diagnostics(trace,root)['files']
+            self.assertEqual(3,len(rows))
+            self.assertTrue(all(row['area']=='home' and row['relative_path'] is None for row in rows))
+            self.assertEqual([1,2,3],sorted(row['largest_requested_extent_bytes'] for row in rows))
+
+    def test_symlink_plus_dotdot_never_attributes_outside_write_to_home(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();home=root/'home';home.mkdir()
+            outside=root/'outside';outside.mkdir();(home/'link').symlink_to(outside)
+            path=f'{home}/link/../b'
+            trace=f'1 truncate("{path}", 9000000) = -1 EFBIG (File too large)\n1 --- SIGXFSZ {{}} ---\n'
+            result=wd.diagnostics(trace,root);limit=result['limit_file']
+            self.assertEqual('other',limit['area']);self.assertIsNone(limit['relative_path'])
+            self.assertEqual(9000000,limit['requested_extent_bytes'])
+            self.assertNotIn('home/b',json.dumps(result))
