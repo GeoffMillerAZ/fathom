@@ -134,7 +134,8 @@ device pass is `nvcc -E` at the lowest architecture the entry's target names (so
 not excluded) and the host pass is the `gcc -E` line `nvcc --dryrun` prints for the entry; their active lines and
 includes are unioned (tier A). scip-clang 0.4.0 reads no nvcc entry, so each `.cu` entry is translated to a clang CUDA
 host-only compile over the entry's own `-I`, `-isystem` and `-D` (`cuda-compdb.py`'s flags) at
-`<work-dir>/compile_commands.json`; the index reads it, and `clang-calls` and `clang-ast-defs` over it are run at
+`<work-dir>/compile_commands.json`, copied to `<work-dir>/subject/build` where fathom's include-path resolver reads it
+(round 5 R5-1); the index reads it, and `clang-calls` and `clang-ast-defs` over it are run at
 `-tier B`, so the calls family is judged at tier B (the harness takes a family's tier from the weakest oracle that
 feeds it). `cuda-compdb.py` writes the same translation from a directory walk, for a subject with no CMake build.
 
@@ -157,14 +158,14 @@ run's file count and bytes must agree with it, and its count, bytes and the sha2
 the reading, so a re-timed clone can be proven to measure the same files.
 
 C-4: the selected clang database and all build output stay under `<work-dir>`; scip-clang, clang-calls and
-clang-ast-defs read `<work-dir>/compile_commands.json`. The subject contains no build directory. Fathom's include-path
-resolver discovers only databases within the subject, so after this move it reads none. The wave-3 re-measure (the
-driver end to end with `AST_DEFS_JOBS=1`, fathom 5d95ac2f) shows it: the compile-database disclosure reads 0 (round 5:
-1), import_resolution 1 -> .9722 (35 of 36) and file_edge_recall .8809 -> .3047 (318 -> 110 of 361),
-file_edge_precision 1 either way; the same lang-oracle run with that database copied to `<work-dir>/subject/build`
-reads 1 database, import_resolution 1 and file_edge_recall .8809. The measured `.cu`/`.cuh` inventory is identical
-(225 files, 2,518,750 bytes, the same sha256). That run's toolchain, every download's URL and sha256, is
-`cuda-toolchain-provenance.txt`.
+clang-ast-defs read the selected database. Both CMake build trees stay outside the subject. Fathom's include-path
+resolver discovers only databases within the subject (an adopter's CMake build writes `compile_commands.json` in its
+build directory), so the wave-3 re-measure without one there (fathom 5d95ac2f) read 0 databases, import_resolution .9722
+and file_edge_recall .3047. Round 5 R5-1: the driver copies the selected database to
+`<work-dir>/subject/build/compile_commands.json`, scip-clang reads it there, and the resolver reads 1 database again.
+That re-measure (`AST_DEFS_JOBS=1`, fathom d4d92f872) reads import_resolution 1 (36 of 36) and file_edge_recall .8809
+(318 of 361), with file_edge_precision 1. The measured `.cu`/`.cuh` inventory is identical (225 files, 2,518,750
+bytes, the same sha256). Both runs' toolchain, every download's URL and sha256, is `cuda-toolchain-provenance.txt`.
 
 Driver note corrections without an oracle run use this documented notes-only path:
 
