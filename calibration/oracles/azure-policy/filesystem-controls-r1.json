@@ -1,5 +1,5 @@
 {
-  "tests": 93,
+  "tests": 97,
   "skips": 2,
   "mutations": [
     {
@@ -20,6 +20,10 @@
     },
     {
       "mutant": "parse_mountinfo",
+      "restored_green": true
+    },
+    {
+      "mutant": "vendor_exec.child",
       "restored_green": true
     },
     {
@@ -71,7 +75,7 @@
     },
     {
       "path": "probe_linux.py",
-      "sha256": "33c505685e70f08571cc07184d3fb66b6101114b53911d59d821d5c087c41c1c"
+      "sha256": "82edc77e044fe2f31e3fba946ee13dda441c730e31bd0790c2b2fc4379f9db64"
     },
     {
       "path": "receipt_contract.py",
@@ -83,7 +87,7 @@
     },
     {
       "path": "test_review_probe.py",
-      "sha256": "789271560d11159b1d79a3420df23692a8e1a13c37cb56a5fbdcc74d79288d05"
+      "sha256": "f02af01814e8ba24daf85b7534c143eaa7c965fa06f5934da465b8499c7ad3d2"
     },
     {
       "path": "test_probe_linux.py",
@@ -91,11 +95,11 @@
     },
     {
       "path": "probe_filesystem_controls.py",
-      "sha256": "22143a188df2f93223fb17764a23b3b3c3c582e27bba97d1aa8a11311d65d787"
+      "sha256": "925956b5fac18a86603bc417de473d09d3afdf9c73179657ec2fbd20bb6e932f"
     },
     {
       "path": "probe-linux-receipt.schema.json",
-      "sha256": "b03906cf18ee3979cbf5248c3383b8d38520952e4d893d76671d8ad119652903"
+      "sha256": "d3d575bd57ae03ef49b5585d79582d440890dda173d21d2c5801f77261389739"
     },
     {
       "path": "probe-linux-x64.workflow.yml",
@@ -107,11 +111,11 @@
     },
     {
       "path": "native-protocol-r2.json",
-      "sha256": "6a945e787ac430952f5ddacd0921c9c2efd6e557529d79f1418ca2c2862422ba"
+      "sha256": "242a01233e11adf0d806ff99237ee27b008ef3607a536b309685cd4029ae2d6e"
     },
     {
       "path": "LINUX-X64-PROBE.md",
-      "sha256": "8f5dda6088e7dd88763d9a4b8069e7225ce57997219250cfe7fc913c728e77e7"
+      "sha256": "06d18d5b56f23bb19bde7fdbcb4bdb05b8f3deba3f54358de43f771219d5998c"
     },
     {
       "path": "kernel_filesystem_control.py",
@@ -139,11 +143,11 @@
     },
     {
       "path": "vendor_exec.py",
-      "sha256": "83f706b0f8f91b739978ac2c805dff342499cb27262f3fa39a6a95424c6f98fb"
+      "sha256": "5806abc1f2da37b687b742139605d24b3f46e1dbd6906160de8c965519a97cb2"
     },
     {
       "path": "kernel_write_control.py",
-      "sha256": "ef6c0a40638f6f3adec1f1559459c8e574c05946076b9b87e1516268a46affb8"
+      "sha256": "756111d6c011c81fa9c9e657e47b52409ed0ca6346f5a2527e8de0092b57d48c"
     },
     {
       "path": "test_write_diagnostics.py",
@@ -151,11 +155,11 @@
     },
     {
       "path": "test_write_tracing.py",
-      "sha256": "f1ec82345b72fa5afb53b5713296969bb63d40e1d28aa382af88516957d06dc1"
+      "sha256": "3a4038fd3cf8b9049bb9e21af49a88244b2d49512e51e47ace3c9415d477ea1d"
     },
     {
       "path": "test_write_kernel.py",
-      "sha256": "0c815c0e1a7d61453fa4746df00078d65a662f3674996794867ae559f7224526"
+      "sha256": "c2f698aaa51a25985ee2ca72d2c3def4a1e85533f87c70a3888328f676f4b126"
     },
     {
       "path": "test_probe_run_receipt.py",
@@ -168,6 +172,10 @@
     {
       "path": "probe-receipt-run40407284519.schema.json",
       "sha256": "49356b12641d6116378154f172d22bc33c952b49c6dc2de632493492b743412c"
+    },
+    {
+      "path": "probe-receipt-run40487438655.json",
+      "sha256": "eae6d1f1d6d338620acc083c2ac1c5dfe687b059a8e221db82fcceaff9937644"
     }
   ]
 }

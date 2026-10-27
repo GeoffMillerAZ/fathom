@@ -263,7 +263,7 @@ and 512 per path. Other names are redacted per row. Relative truncate targets wi
 unknown cwd use an anonymous fixed class rather than a guessed file. A regression
 publishes byte-identical receipts under differently sized scratch and HOME roots.
 The maximum-shaped closed receipt, including 64 maximal rows, largest/limit records
-and all optional worker fields, encodes to 65,528 bytes under the 128 KiB cap. Allocation extent, bytes
+and all optional worker fields, encodes to 65,585 bytes under the 128 KiB cap. Allocation extent, bytes
 written, mmap stores and final logical size remain distinct quantities.
 
 The runner suite now requires **two** Linux kernel tests with zero skips. The
@@ -275,3 +275,47 @@ written bytes and the exact EFBIG/SIGXFSZ target. It executes no vendor code.
 Off Linux exactly these two tests skip; missing strace or a namespace/control
 failure on Linux blocks preparation/vendor execution. Local mocked controls
 are not a successful Linux run. Canonical readings and tiers remain unchanged.
+
+
+## T-R15/T-R16 authored-control refusal and diagnostic gate
+
+Run 40487438655 refused at `filesystem_controls`, with `native_executed: false`.
+The vendor never ran; T-R15 leaves the single T-R13a rerun unspent. Its original
+counts/flags receipt is `probe-receipt-run40487438655.json`. Diagnostic run
+40494795380 then identified the authored Linux write control: 93 tests, one
+error (`exact file-size control trace failed`), followed by the generic
+boundary-suite refusal.
+
+The setup bug precedes path classification: `mount_readonly(home.parent)` changes
+cwd to the scratch root. The nested launcher inherited it, so the authored
+relative `tmp/limit-control` open addressed a nonexistent scratch-root TMP
+rather than private HOME/TMP. A local regression reproduces ENOENT (encoded
+exit66) for both authored and vendor launch modes before the fix. The child now
+starts with explicit `cwd=home`; the same actual relative-open regression exits0
+and writes five bytes under HOME/TMP. The mount, capability, PID, descriptor and
+file-size controls are retained. A separate absolute-fd trace control confirms
+that `ftruncate` on a `-yy` decoded target still attests `area: tmp`, relative
+`home/tmp/limit-control`, native returncode -25 and the 32 KiB failed extent.
+This authored trace is not a captured Linux trace; runner confirmation remains
+mandatory.
+
+On assertion failure, the authored control's test error describes the compared
+native and outer returncodes, execution/signal/overflow flags, limit-file
+area/relative path/extent, and expected file's final size/write bytes. These
+bounded authored fields appear only in test diagnostics, never receipt.json;
+raw trace, stderr and absolute paths are not included. The production receipt
+instead permits only fixed enum `failure_detail: required_authored_controls_failed`
+at this launcher gate, never an exception message. Its complete maximum-shaped
+receipt is 65,585 bytes, below 131,072.
+
+Local validation is insufficient for READY: the controller must run both commands
+below on a GitHub-hosted ubuntu-22.04 x64 candidate, without the vendor. All 97
+tests must run with zero errors/skips, and all 15 mutants must fail then restore
+green. Off Linux exactly two designated kernel tests skip. Do not relax either
+kernel test or the suite gate to proceed. Any new refusal requires another fix
+and diagnostic run before READY, then the admitted vendor probe.
+
+```sh
+python3 -B -m unittest discover -s calibration/oracles/azure-policy -p 'test_*.py' -v
+python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out "$RUNNER_TEMP/controls"
+```

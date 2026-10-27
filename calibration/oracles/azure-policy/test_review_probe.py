@@ -56,7 +56,10 @@ class ReviewProbeTest(unittest.TestCase):
         self.assertNotIn('Operation not permitted',json.dumps(receipt))
 
     def test_required_kernel_control_failure_refuses_before_prepare(self):
-        self.launch_refusal(controls_failed=True)
+        receipt=self.launch_refusal(controls_failed=True)
+        self.assertEqual('ValueError',receipt['failure_class'])
+        self.assertFalse(receipt['native_executed'])
+        self.assertEqual('required_authored_controls_failed',receipt.get('failure_detail'))
 
     def test_preflight_timeout_never_publishes_argv_or_path(self):
         error = subprocess.TimeoutExpired(['/private/identity/probe', '/private/identity/input'], 10)
@@ -74,6 +77,7 @@ class ReviewProbeTest(unittest.TestCase):
         good['status'] = 'probe_refused'
         validate(good, probe.CONTRACT)
         for key, value in [('reason', '/private/person'), ('failure_class', 'person'),
+                           ('failure_detail', '/private/person/control'),
                            ('capability_keys', ['../../person']), ('worker_returncode', True),
                            ('initialize', {'unknown': '/private/person'})]:
             with self.subTest(key=key), self.assertRaises(ValueError):

@@ -508,6 +508,8 @@ def main():
                 raise ValueError('namespace import, filesystem or loopback preflight refused')
         stage = 'filesystem_controls'
         if args.controls_failed:
+            # Fixed authored enum, never an exception message or private path.
+            receipt['failure_detail']='required_authored_controls_failed'
             raise ValueError('required authored kernel controls failed')
         stage = 'tracing'
         if not Path('/usr/bin/strace').is_file():

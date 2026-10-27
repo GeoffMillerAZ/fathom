@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import io
+import inspect
 import json
 import sys
 import unittest
@@ -63,7 +64,13 @@ def run(out):
         if value.get('diagnostic_status')=='contradicted':value['native_executed']=True
         return value
     namespace=vendor.namespace_command
+    source=inspect.getsource(vendor.child)
+    old_cwd=source.replace(',cwd=home','')
+    if old_cwd==source:raise ValueError('child cwd mutation anchor absent')
+    mutated={}
+    exec(compile(old_cwd,'<authored-child-cwd-mutant>','exec'),vendor.__dict__,mutated)
     for module,function,mutant,test in [
+        (vendor,'child',mutated['child'],'test_write_kernel.WriteKernelSetupTest.test_child_relative_tmp_write_survives_mount_setup_cwd_change'),
         (writes,'diagnostics',absolute_path_hash,'test_write_diagnostics.WriteDiagnosticsTest.test_outside_scratch_rows_have_no_path_identity'),
         (writes,'MAX_SNAPSHOT_ENTRIES',4097,'test_write_tracing.WriteTracingTest.test_snapshot_entry_cap_plus_one_flags_partial_snapshot'),
         (probe,'attach_diagnostics',retain_contradicted_claim,'test_write_tracing.WriteTracingTest.test_contradicted_trace_withdraws_native_claim_and_is_publishable'),
@@ -86,7 +93,8 @@ def run(out):
            'runner-mountinfo-ubuntu-22.04.txt','runner-userns-ubuntu-24.04.stderr.txt',
            'write_diagnostics.py','write_tracing.py','vendor_exec.py','kernel_write_control.py',
            'test_write_diagnostics.py','test_write_tracing.py','test_write_kernel.py','test_probe_run_receipt.py',
-           'probe-receipt-run40407284519.json','probe-receipt-run40407284519.schema.json']
+           'probe-receipt-run40407284519.json','probe-receipt-run40407284519.schema.json',
+           'probe-receipt-run40487438655.json']
     summary=dict(tests=result.testsRun,skips=len(result.skipped),mutations=mutations,linux_namespace_executed=linux,
                  linux_control_required_on_runner=True,
                  native_executed=False,calibration_measured=False,tier_granted=False,

@@ -39,7 +39,9 @@ def child(home,payload,authored=False):
     # Keep an authored init: vendor PID1 would have special signal semantics.
     # PID1 has no trace descriptor; vendor PID2 receives ordinary SIGXFSZ.
     close_extra_fds()
-    process=subprocess.Popen(restricted_command(command))
+    # mount_readonly changes cwd to the scratch root. Both the authored
+    # control and vendor must instead start in their private HOME.
+    process=subprocess.Popen(restricted_command(command),cwd=home)
     try:
         code=process.wait(timeout=170)
     finally:

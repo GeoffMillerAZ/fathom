@@ -206,3 +206,13 @@ class WriteTracingTest(unittest.TestCase):
             self.assertEqual(64,len(diagnostic['files']));self.assertEqual(1,diagnostic['omitted_file_events'])
             self.assertEqual(64,sum(row['observed_write_bytes'] for row in diagnostic['files']))
             write_receipt(root/'receipt.json',value,CONTRACT,public=True)
+
+
+    def test_real_pre_vendor_refusal_preserves_unspent_rerun_evidence(self):
+        from probe_linux import CONTRACT
+        value=read_receipt(Path(__file__).with_name('probe-receipt-run40487438655.json'),CONTRACT)
+        self.assertEqual('filesystem_controls',value['failed_stage'])
+        self.assertEqual('probe_refused',value['status'])
+        self.assertEqual('ValueError',value['failure_class'])
+        self.assertIs(value['native_executed'],False)
+        self.assertFalse(value['calibration_measured']);self.assertFalse(value['tier_granted'])

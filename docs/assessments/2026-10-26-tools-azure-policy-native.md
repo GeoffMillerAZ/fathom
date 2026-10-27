@@ -285,3 +285,33 @@ retained-claim mutant still turns the test red. Local validation is 93 tests,
 91 passing and two designated Linux skips, fourteen mutants restored GREEN,
 26 source pins and 32 checksums. Frozen first receipt/schema remain unchanged;
 no Linux vendor rerun or calibration claim is made.
+
+
+### T-R15/T-R16 authored Linux control setup (2026-10-27)
+
+The vendor did not execute in run40487438655: its committed counts/flags-only
+receipt reports filesystem_controls/ValueError/native_executed false. T-R15
+leaves the admitted native rerun unspent. Controller diagnostic run40494795380
+located one error among 93 authored tests, in the real Linux file-size control;
+the boundary suite then refused as designed. No native measurement or tier is
+claimed by either refusal.
+
+A source-level setup defect is reproduced before the fix: mount_readonly changes
+cwd to scratch root, while the nested child launch did not restore private HOME.
+The actual relative open tmp/limit-control therefore raises ENOENT, before its
+write/ftruncate/signal. A regression encodes that error as exit66 for both launch
+modes; explicit child cwd=home yields exit0 and the expected five-byte file.
+The relative target is retained, and absolute-fd decoding independently keeps
+the expected tmp area and home/tmp/limit-control attribution. No parser contract,
+redaction rule, namespace or resource guard is loosened.
+
+Control assertion errors now carry only compared relative-path/count/flag fields
+(native/outer returncodes, exec/signal/overflow flags, limit-file identity/extent,
+expected file write/final byte counts) in test diagnostics, never in a receipt.
+The launcher receipt adds only a fixed authored-control failure-detail enum;
+free text and paths are rejected. The full maximum-shaped receipt is 65,585 bytes.
+Local 97-test validation has 95 passes and the two mandatory Linux skips; 15
+mutants, including omission of child cwd, must fail then restore green. The
+candidate is **awaiting the controller's same two Linux diagnostic commands**,
+not READY. No vendor rerun is permitted before both pass on its sha. See the
+[runner contract](../../calibration/oracles/azure-policy/LINUX-X64-PROBE.md#t-r15t-r16-authored-control-refusal-and-diagnostic-gate).

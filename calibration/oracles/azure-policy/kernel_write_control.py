@@ -1,6 +1,7 @@
 """Linux proof of the production private-scratch child and exact SIGXFSZ trace.
 
-Only authored Python executes. All logs/trace remain private on the runner.
+Only authored Python executes. Raw logs/trace remain on the runner; bounded
+compared diagnostic fields appear in test failures, never the public receipt.
 """
 import argparse
 import hashlib
@@ -15,6 +16,28 @@ from vendor_exec import VENDOR_LIMIT, vendor_command
 from filesystem_isolation import mount_readonly
 from write_tracing import BoundedCapture, trace_command
 from write_diagnostics import diagnostics, MAX_TRACE
+
+
+def validate_result(result,outer_returncode):
+    expected='home/tmp/limit-control'
+    limit=result['limit_file']
+    row=next((row for row in result['files'] if row['relative_path']==expected),None)
+    # T-R16: only authored controls reach this checker. Publish no raw trace,
+    # exception text, absolute path or extra snapshot rows in a test failure.
+    compared={key:result[key] for key in ['vendor_exec_observed','native_returncode',
+        'sigxfsz_observed','correlated_limit_files','files_truncated','snapshot_truncated']}
+    compared.update(outer_returncode=outer_returncode,
+        limit_file=None if limit is None else {key:limit[key] for key in
+            ['area','relative_path','kind','operation','requested_extent_bytes']},
+        expected_file=None if row is None else {key:row[key] for key in
+            ['area','relative_path','observed_write_bytes','final_size_bytes']})
+    detail=json.dumps(compared,sort_keys=True)
+    if (not result['vendor_exec_observed'] or result['native_returncode']!=-25 or
+            not result['sigxfsz_observed'] or not limit or limit['area']!='tmp' or
+            limit['relative_path']!=expected or limit['requested_extent_bytes']!=32768):
+        raise ValueError('exact file-size control trace failed: '+detail)
+    if row is None or row['observed_write_bytes']!=5 or row['final_size_bytes']!=5:
+        raise ValueError('per-path written-byte control failed: '+detail)
 
 
 def run(out):
@@ -65,15 +88,7 @@ raise RuntimeError('file-size limit failed to stop extension')
                 process.wait()
         capture.check();errors.check()
     result=diagnostics((out/'trace.log').read_text(),root,target)
-    expected='home/tmp/limit-control'
-    limit=result['limit_file']
-    if (not result['vendor_exec_observed'] or result['native_returncode']!=-25 or
-            not result['sigxfsz_observed'] or not limit or limit['area']!='tmp' or
-            limit['relative_path']!=expected or limit['requested_extent_bytes']!=32768):
-        raise ValueError('exact file-size control trace failed')
-    row=next(row for row in result['files'] if row['relative_path']==expected)
-    if row['observed_write_bytes']!=5 or row['final_size_bytes']!=5:
-        raise ValueError('per-path written-byte control failed')
+    validate_result(result,process.returncode)
     return dict(linux_write_control_executed=True,private_scratch_boundary=True,trace_writer_hidden=True,
                 sigxfsz_observed=True,exact_limit_file_identified=True,
                 native_executed=False,vendor_limit_bytes=VENDOR_LIMIT)
