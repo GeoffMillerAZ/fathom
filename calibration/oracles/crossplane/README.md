@@ -230,8 +230,8 @@ into the regrade receipt.
 `LB-IAC-crossplane-pt1` reads the canonical Crossplane reading. It requires the
 recorded L1/L2/L3 good grades, level L3, all six accuracy metrics at 1, all six
 oracle tiers C, the pooled definition/reference counts, the three subject pins
-and file counts (238 + 3 + 3), and required/measured kinds. It remains unchecked
-in the production plan. `qualification_contract.py` copies that exact row into
+and file counts (238 + 3 + 3), and required/measured kinds. The driver accepts
+an open or checked production row and refuses a skipped row. `qualification_contract.py` copies that exact row into
 an isolated scratch Git tree, claims only the scratch copy, and uses the real
 strict verifier against a copied reading. The store supplies the CLI's symbol
 bootstrap, not the lexical evidence. Scratch verify ledgers stay inside that
@@ -243,7 +243,11 @@ element kind. Another control sets all subjects' found cross-file references to
 zero and runs the actual main `lang-regrade`, which lowers L3 to unmet. Each
 mutant must fail the claimed scratch gate with exit 1. The original and restored
 reading must pass with exit 0. Neither the production reading nor its checkbox
-is written. The receipt contains public reading/row hashes and verdicts only.
+is written. The receipt hashes the row with its checkbox normalized to `[ ]`, so checking
+the row does not change its contract identity. `authored_state` records the
+actual `[ ]` or `[x]` separately; it replaces the former `production_claimed`
+field. The receipt contains public reading/normalized-row hashes, authored
+state and verdicts only.
 
 From the repository root, prepare clean main tools and an ignored scratch
 store. Use the existing Go/cache environment from the probe setup above. Every
@@ -277,3 +281,15 @@ python3 calibration/oracles/crossplane/qualification_contract.py \
 The driver refuses tools that are not clean builds of the named main revision.
 It reproduces the committed contract receipt without a native oracle, extraction
 measurement, provider fetch or cloud call.
+
+The checked-row regression runs the complete driver on a checked copy in an
+isolated tree. It compares every receipt field to the committed receipt, with
+only `authored_state` expected to become `[x]`; the fourteen verdicts, reading
+hash and normalized contract hash must reproduce unchanged. The production
+plan and reading remain untouched:
+
+```sh
+python3 calibration/oracles/crossplane/qualification_contract_test.py \
+  --fathom "$QUAL_TOOLS/fathom" --indexbench "$QUAL_TOOLS/indexbench" \
+  --store "$QUAL_STORE" --main-commit 3118be853
+```

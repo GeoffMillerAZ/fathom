@@ -234,3 +234,11 @@ Public references to the archive-pin corrections, fresh-tree scratch setup,
 queue oracle and withdrawn tier-A claim now name their substance or P-T1 and
 `LB-F157`/`LB-IAC-crossplane-pt1`. Historical commands and measurements are
 retained. G18's typed layer remains deferred and NP-Q5 remains the owner's call.
+
+The driver also accepts a checked qualification row and keeps refusing skipped
+rows. It normalizes the checkbox to `[ ]` before hashing the contract and records
+its actual value as `authored_state`. The checked-row regression runs all controls
+on a separate checked copy and reproduces every committed receipt field except
+that explicit state field. IAC-19 now binds the existing "Open L2/L3 question"
+heading above, keeping the native-oracle question open rather than asserting a
+ceiling. Neither production checkbox is changed by these controls.

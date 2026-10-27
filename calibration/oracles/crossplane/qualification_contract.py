@@ -33,12 +33,17 @@ def sha256(raw):
 def row_from(raw):
     rows = [line for line in raw.decode("utf-8").splitlines(keepends=True)
             if re.search(r"\bid:\s*" + re.escape(ROW_ID) + r"(?=[,}])", line)]
-    if len(rows) != 1 or not re.match(r"^- \[ \] ", rows[0]):
-        raise RuntimeError("qualification row must occur once and remain open")
+    if len(rows) != 1 or not re.match(r"^- \[[ x]\] ", rows[0]):
+        raise RuntimeError("qualification row must occur once and be open or checked")
     row = rows[0]
     if "oracle: lexical" not in row or "path: " + str(READING) not in row:
         raise RuntimeError("qualification row must bind the canonical reading")
     return row
+
+
+def normalized_row(row):
+    """Checkbox state is metadata, not part of the evidence contract."""
+    return re.sub(r"^- \[[ x]\] ", "- [ ] ", row, count=1)
 
 
 def launch(command, cwd, label, env=None):
@@ -138,7 +143,7 @@ def run(args):
         scratch_reading = scratch / READING
         scratch_plan.parent.mkdir(parents=True)
         scratch_reading.parent.mkdir(parents=True)
-        scratch_plan.write_text(row.replace("- [ ] ", "- [x] ", 1),
+        scratch_plan.write_text(normalized_row(row).replace("- [ ] ", "- [x] ", 1),
                                 encoding="utf-8")
         scratch_reading.write_bytes(reading_raw)
         initialized = launch(["git", "init", "-q"], scratch, "scratch Git init")
@@ -225,9 +230,9 @@ def run(args):
         "tools_clean": True,
         "method": "real strict CLI verification of one claimed row and live reading in an isolated scratch Git tree; the supplied store bootstraps symbol access only",
         "canonical_reading_sha256": sha256(reading_raw),
-        "row_contract_sha256": sha256(row.encode("utf-8")),
+        "row_contract_sha256": sha256(normalized_row(row).encode("utf-8")),
         "scratch_claimed": True,
-        "production_claimed": False,
+        "authored_state": row[2:5],
         "production_plan_unchanged": production_plan_unchanged,
         "production_reading_unchanged": production_reading_unchanged,
         "cases": cases,

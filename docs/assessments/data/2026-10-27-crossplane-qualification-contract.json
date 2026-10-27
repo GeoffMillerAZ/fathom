@@ -1,4 +1,5 @@
 {
+  "authored_state": "[ ]",
   "canonical_reading_sha256": "7084784fae38d4d14108cb17761e18d8477d6754af927d97372d5c519a3e6005",
   "cases": [
     {
@@ -126,7 +127,6 @@
   ],
   "main_commit": "3118be853",
   "method": "real strict CLI verification of one claimed row and live reading in an isolated scratch Git tree; the supplied store bootstraps symbol access only",
-  "production_claimed": false,
   "production_plan_unchanged": true,
   "production_reading_unchanged": true,
   "row_contract_sha256": "f70374260281df457ad0f733b83639c5d2db38617a9b2a37b8d1ead0c211b228",
