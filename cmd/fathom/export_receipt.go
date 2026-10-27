@@ -237,17 +237,33 @@ func serviceExporter(ctx context.Context, c *client.Client, st store.Store, serv
 	return exp, nodes, err
 }
 
+// oracleEdges keeps the typed edges whose kind is one of kinds: the ones
+// receipt verify's go/types oracle also counts. An interface dispatch edge
+// names one possible implementer, which go/types never resolves a call
+// to, so an exporter that followed it would claim what verify refutes;
+// leaving an edge out can only under-claim.
+func oracleEdges(edges []core.Edge, kinds ...core.EdgeKind) []core.Edge {
+	var out []core.Edge
+	for _, e := range edges {
+		if slices.Contains(kinds, e.Kind) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // exportReferencesInput is the references receipt for def: the declaring
-// file and the file of every typed edge into def, each a reference fact
-// anchored at the whole file. Receipt verify re-derives the file set with
-// go/types, which can count a mention the typed edges do not.
+// file and the file of every direct call or value use of def, each a
+// reference fact anchored at the whole file. Receipt verify re-derives the
+// file set from go/types identifier uses, which can count a mention the
+// typed edges do not.
 func exportReferencesInput(ctx context.Context, c *client.Client, exp *receipt.Exporter, service string, def core.SymbolNode, r core.Receipt) (receipt.ExportInput, error) {
 	edges, err := c.TypedEdges(ctx, service)
 	if err != nil {
 		return receipt.ExportInput{}, err
 	}
 	paths := map[string]bool{def.FilePath: true}
-	for _, e := range edges {
+	for _, e := range oracleEdges(edges, core.EdgeDirect, core.EdgeFuncValue) {
 		if e.ToSymbol == def.Key() && e.FromFile != "" {
 			paths[e.FromFile] = true
 		}
@@ -275,8 +291,8 @@ func exportReferencesInput(ctx context.Context, c *client.Client, exp *receipt.E
 // certifications-layer claim test and target select (an empty flag
 // matches any). The claim's scope is the test's file plus the target's
 // files, so Reached is every symbol in a target file the test reaches over
-// the call graph, typed edges included; each carries a definition fact, as
-// the test does. The test's own helpers are not what it certifies, and a
+// direct calls alone, the edges receipt verify re-derives reach from; each
+// carries a definition fact, as the test does. The test's own helpers are not what it certifies, and a
 // target that names no symbol (an invariant or incident, whose scope
 // beyond the test file is a doc file) leaves the reach vacuous: no receipt
 // can re-derive it, so the export refuses.
@@ -316,9 +332,11 @@ func exportCertificationInput(ctx context.Context, c *client.Client, st store.St
 	in := receipt.ExportInput{Receipt: r, Facts: []receipt.FactInput{
 		{Kind: receipt.FactDefinition, Subject: m.TestSymbolKey, Anchors: []receipt.CitedAnchor{testCited}},
 	}}
-	// certify's own walk: each scope-file symbol is checked from the test
-	// forward, rather than condensing the whole graph.
-	g := callgraph.BuildBoth(nodes, edges)
+	// certify's own walk, each scope-file symbol checked from the test
+	// forward, over the resolved direct calls only: no syntax edge and no
+	// interface dispatch, so a reach the index misses is an under-claim
+	// that still verifies, never an over-claim.
+	g := callgraph.BuildResolved(nodes, oracleEdges(edges, core.EdgeDirect))
 	root := exp.Commit().Root
 	for _, key := range slices.Sorted(maps.Keys(byKey)) {
 		n := byKey[key]

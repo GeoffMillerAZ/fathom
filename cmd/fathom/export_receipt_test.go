@@ -38,8 +38,8 @@ func Hello() string {
 func Lonely() {}
 `
 
-// exportReceiptFixtureBSrc is pkg/b.go: a second file calling Greet, and
-// a struct field with a use of it.
+// exportReceiptFixtureBSrc is pkg/b.go: a second file calling Greet, a
+// struct field with a use of it, and an interface method call.
 const exportReceiptFixtureBSrc = `package pkg
 
 // Wave calls Greet from a second file.
@@ -50,10 +50,28 @@ type Config struct{ N int }
 
 // Size reads Config.N.
 func Size(c Config) int { return c.N }
+
+// Speak reaches Say only through the Greeter interface.
+func Speak(g Greeter) string { return g.Say() }
+`
+
+// exportReceiptFixtureCSrc is pkg/c.go: an interface and its one
+// implementer, whose Say no static call in pkg/b.go names.
+const exportReceiptFixtureCSrc = `package pkg
+
+// Greeter says something.
+type Greeter interface{ Say() string }
+
+// En is a Greeter.
+type En struct{}
+
+// Say answers in English.
+func (En) Say() string { return "hello" }
 `
 
 // exportReceiptFixtureTestSrc reaches Hello and, through it, Greet, and
-// a helper in its own file.
+// a helper in its own file; TestSpeak reaches Speak, and En.Say only
+// through the interface.
 const exportReceiptFixtureTestSrc = `package pkg
 
 import "testing"
@@ -67,6 +85,12 @@ func TestHello(t *testing.T) {
 
 // settle is a test-file helper: reached, but never what a test certifies.
 func settle() {}
+
+func TestSpeak(t *testing.T) {
+	if Speak(En{}) != "hello" {
+		t.Fatal("no answer")
+	}
+}
 `
 
 func exportReceiptFixture(t *testing.T) (root, storePath string) {
@@ -76,6 +100,7 @@ func exportReceiptFixture(t *testing.T) (root, storePath string) {
 	repo.writePlan("go.mod", "module example.invalid/rcpt\n\ngo 1.22\n")
 	repo.writePlan("pkg/a.go", exportReceiptFixtureSrc)
 	repo.writePlan("pkg/b.go", exportReceiptFixtureBSrc)
+	repo.writePlan("pkg/c.go", exportReceiptFixtureCSrc)
 	repo.writePlan("pkg/a_test.go", exportReceiptFixtureTestSrc)
 	repo.commitAll("a")
 	storePath = filepath.Join(t.TempDir(), "s.sqlite")
@@ -537,6 +562,49 @@ func TestExportReceiptReferencesTamperedFile(t *testing.T) {
 	}
 	if code, msg := verifyReceiptFile(t, root, path); code != 1 || !strings.Contains(msg, "pkg/a_test.go") {
 		t.Errorf("tampered references receipt: exit %d, want 1 naming pkg/a_test.go:\n%s", code, msg)
+	}
+}
+
+// TestExportReceiptSkipsInterfaceDispatch: receipt verify's go/types
+// oracle counts identifier uses and static calls, never an interface
+// dispatch. Speak's g.Say() is not a reference to En.Say, and TestSpeak
+// does not statically reach it, so neither receipt claims it, and both
+// verify.
+func TestExportReceiptSkipsInterfaceDispatch(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-speak", symbols: []string{"Speak", "En.Say"}}, "TestSpeak")
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		kind string
+		args []string
+	}{
+		{"references", []string{"--symbol", "En.Say"}},
+		{"certification", []string{"--test", "TestSpeak", "--target", "R-speak"}},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			path := filepath.Join(dir, tc.kind+".json")
+			var out, errBuf bytes.Buffer
+			if code := run(append([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", tc.kind, "-o", path}, tc.args...), &out, &errBuf); code != 0 {
+				t.Fatalf("export exit %d: %s", code, errBuf.String())
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var r receipt.ExportedReceipt
+			if err := json.Unmarshal(data, &r); err != nil {
+				t.Fatal(err)
+			}
+			if tc.kind == "references" && strings.Join(r.Files, ",") != "pkg/c.go" {
+				t.Errorf("files = %v, want pkg/c.go alone", r.Files)
+			}
+			if tc.kind == "certification" && (len(r.Reached) != 1 || !strings.HasSuffix(r.Reached[0], ".Speak")) {
+				t.Errorf("reached = %v, want Speak alone", r.Reached)
+			}
+			if code, msg := verifyReceiptFile(t, root, path); code != 0 {
+				t.Errorf("receipt verify exit %d:\n%s", code, msg)
+			}
+		})
 	}
 }
 
