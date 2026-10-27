@@ -217,3 +217,28 @@ func sortedCopy(in []string) []string {
 	}
 	return out
 }
+
+// TestCanonicalResolvesTheExistingPrefixOfAMissingPath (issue 120): a path
+// that does not exist yet still resolves the symlinks of the part of it
+// that does, so a registered service whose directory is missing on this
+// host still nests under its repository's canonical root when both are
+// spelled through a symlink.
+func TestCanonicalResolvesTheExistingPrefixOfAMissingPath(t *testing.T) {
+	base := t.TempDir()
+	real := mkdir(t, filepath.Join(base, "real"))
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	repo := mkdir(t, filepath.Join(real, "repo"))
+	want := filepath.Join(resolved(t, repo), "modules", "nested")
+	if got := Canonical(filepath.Join(link, "repo", "modules", "nested")); got != want {
+		t.Errorf("Canonical(missing path through a symlink) = %q, want %q", got, want)
+	}
+	if got, want := Canonical(filepath.Join(link, "repo")), resolved(t, repo); got != want {
+		t.Errorf("Canonical(existing path through a symlink) = %q, want %q", got, want)
+	}
+	if got, want := Canonical("/nonexistent-issue-120/a/../b/"), "/nonexistent-issue-120/b"; got != want {
+		t.Errorf("Canonical(nothing exists) = %q, want %q (only cleaned)", got, want)
+	}
+}
