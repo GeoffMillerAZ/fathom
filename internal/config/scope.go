@@ -100,6 +100,8 @@ var fieldScopes = []FieldScope{
 	{"gate.allow_receipt_acceptance", ScopeUserOnly, whyConsent + ": allows a repository to accept exact-tree gate evidence"},
 	{"gate.host_label", ScopeUserOnly, "an operator-named machine label, never a hostname read"},
 	{"gate.receipts_dir", ScopeRepoPath, "the directory for local gate evidence; project values stay within the repository"},
+	{"guards.egress", ScopeBehaviour, "the egress guard's mode, the strictest of the user's (default warn) and the repository's: a repository may tighten it and never loosen it (ADR-083)"},
+	{"guards.egress_allow", ScopeUserOnly, "widens what the egress guard lets through; a cloned repository must not (ADR-083)"},
 	{"guards.enforce", ScopeBehaviour, "turns the repository's own guards advisory"},
 	{"guards.git_safety", ScopeBehaviour, "enables the shipped git command safety pack; default on"},
 	{"hooks.claim_check", ScopeBehaviour, "the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go)"},

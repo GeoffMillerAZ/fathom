@@ -20,7 +20,7 @@ func verbHelpStatic() map[string][]helpFlag {
 		// read), then the channel identity, then the FlagSet.
 		"edit-hook": {
 			{"harness", "string", "", harnessFlagUsage},
-			{"pre", "bool", "", "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook"},
+			{"pre", "bool", "", "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook; it includes the egress guard ([guards] egress), a string-match tripwire, not data-loss prevention, which on Codex sees Bash only: Codex web search and MCP calls are not intercepted"},
 			{"url", "string", url, "fathom serve-http base URL"},
 		},
 		"prompt-hook": {

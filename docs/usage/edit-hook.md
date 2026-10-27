@@ -59,6 +59,22 @@ guard-enforcement capability switch make its denials advisory, just like reposit
 guards. A config or pack loading error skips the shipped pack; hooks keep their
 fail-open behavior.
 
+#### Egress guard
+
+The shipped egress pack (ADR-083) is on by default in `warn` mode: before a shell command
+(Claude Code and Codex Bash) or a Claude Code `WebFetch`/`WebSearch` that would send data
+to a host off the allowlist, one advisory line names the rule and how to allow it, for
+example `egress/curl_upload: curl sends data (...) to evil.example. To allow it, add
+"evil.example" to [guards] egress_allow in ~/.fathom/config.toml`. Near misses pass: a
+`curl` GET, an `scp` download, `ssh localhost`, a `git push` whose remote URL host is
+allowlisted, a dry-run push. `[guards] egress = "enforce"` denies instead while guard
+enforcement is on; `off` silences it. String matching is a tripwire, not data-loss
+prevention: Codex web search and MCP calls, and Claude Code's MCP fetch and browser tools,
+are not intercepted; a GET carrying data in its URL passes by design; and an agent with
+shell access can switch the guard off by editing `~/.fathom/config.toml`. Modes, the allowlist
+and the scope rule (a repository may tighten, never loosen):
+[configuration.md](../configuration.md#the-egress-guard-guards-egress).
+
 **The commit pin line (ADR-057 decision 4, PR-3..PR-6).** On a `git commit` seen by the
 PostToolUse `Bash` path, the hook takes the new sha from git's own `[branch sha]` summary
 line in the tool output (a `git commit -q`, or a commit that failed, has none and is not

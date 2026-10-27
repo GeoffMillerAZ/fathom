@@ -1,6 +1,6 @@
 package main
 
-// egress_allowlist_test.go — A5 (ADR-083): every package in the fathom
+// egress_allowlist_test.go — ADR-083 decision 3: every package in the fathom
 // binary that can reach the network or run a program is named, with the
 // reason it needs to and the gate that holds it, in
 // testdata/egress-allowlist.txt. TestEgressImportAllowlist reads `go list
@@ -232,7 +232,7 @@ func readEgressAllowlist(t *testing.T) map[string]bool {
 	return listed
 }
 
-// TestEgressImportAllowlist (A5, ADR-083): the binary's network and exec
+// TestEgressImportAllowlist (ADR-083 decision 3): the binary's network and exec
 // edges are exactly the reviewed list.
 func TestEgressImportAllowlist(t *testing.T) {
 	got := egressEdges(t)

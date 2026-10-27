@@ -71,7 +71,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	rpcOrigin = mcp.OriginEditHook // the daemon serves claim ids to this origin only (SR-61, claimIDsForCaller)
 	fs := newFlagSet("edit-hook", stderr)
 	urlFlag := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
-	pre := fs.Bool("pre", false, "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook")
+	pre := fs.Bool("pre", false, "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook; it includes the egress guard ([guards] egress), a string-match tripwire, not data-loss prevention, which on Codex sees Bash only: Codex web search and MCP calls are not intercepted")
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		// On flag error: silent exit 0 (hook contract).

@@ -129,6 +129,16 @@ package config
 #Guards: {
 	git_safety?: bool // default on; project or user may opt out of the shipped pack
 	enforce?: bool
+	// egress is the egress guard's mode (ADR-083): warn (the default)
+	// injects one advisory line, enforce denies while guard enforcement
+	// is on, off silences it. A repository may tighten the user's mode,
+	// never loosen it. String matching is a tripwire, not data-loss
+	// prevention.
+	egress?: "off" | "warn" | "enforce"
+	// egress_allow names the hosts the egress guard lets through: an exact
+	// host, "*.example.com" for its subdomains, or "s3://bucket" /
+	// "gs://bucket" for a storage bucket. User-only (scope.go).
+	egress_allow?: [...string & !=""]
 }
 
 // #Findings configures the findings-loop's governed external import

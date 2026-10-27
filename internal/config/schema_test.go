@@ -249,6 +249,14 @@ badGatePreflight: #Config & {
 badPromptDefinitions: #Config & {
 	hooks: prompt_definitions: "yes"
 }`},
+		{"[guards] egress outside off|warn|enforce", `
+badEgressMode: #Config & {
+	guards: egress: "deny"
+}`},
+		{"[guards] egress_allow naming an empty host", `
+badEgressAllow: #Config & {
+	guards: egress_allow: [""]
+}`},
 		{"[hooks] read_outline_hint is not a bool", `
 badReadOutlineHint: #Config & {
 	hooks: read_outline_hint: "yes"

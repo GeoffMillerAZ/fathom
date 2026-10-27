@@ -321,3 +321,13 @@ package config
 // badFloorOnPressure: #Config & {
 // 	tenancy: host: floor_on_pressure: "off"
 // }
+
+// [guards] egress is off, warn or enforce (ADR-083):
+// badEgressMode: #Config & {
+// 	guards: egress: "deny"
+// }
+//
+// [guards] egress_allow never names an empty host:
+// badEgressAllow: #Config & {
+// 	guards: egress_allow: [""]
+// }

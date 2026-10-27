@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
@@ -226,6 +227,8 @@ func adviceOn(root string, cap harness.Capability) bool {
 		return !capabilityOffAt(root, "obligations")
 	case harness.CapGuardPreEdit, harness.CapGuardPreShell:
 		return !capabilityOffAt(root, "guards")
+	case harness.CapGuardPreWeb:
+		return egressPolicyAt(root).mode != config.EgressOff
 	case harness.CapStopVerify:
 		return !capabilityOffAt(root, "verify-gate")
 	}

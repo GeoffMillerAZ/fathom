@@ -19,7 +19,7 @@ import (
 	"testing"
 )
 
-// goProxyTripwire (ADR-083, A5) points GOPROXY at a loopback listener that
+// goProxyTripwire (ADR-083 decision 3) points GOPROXY at a loopback listener that
 // answers every request with an error and returns a check that fails the
 // test when any request reached it: the runtime tripwire for a go command
 // the binary runs on its own that would otherwise download a module. It

@@ -2,7 +2,7 @@
 # that imports a standard package that dials, serves, runs a program or
 # loads one (egressImports), or calls os.StartProcess, syscall.Exec,
 # ForkExec or Socket, or x/sys/unix's Exec or Socket (egressCalls), on any
-# release target (A5, ADR-083). TestEgressImportAllowlist (egress_allowlist_test.go)
+# release target (ADR-083 decision 3). TestEgressImportAllowlist (egress_allowlist_test.go)
 # fails on an edge this list does not name and on an entry the binary no
 # longer has. Add a line only after reviewing what the new edge reaches.
 #
@@ -54,6 +54,7 @@ github.com/geoffmilleraz/fathom/internal/fusion | net os/exec | git log, the go 
 github.com/geoffmilleraz/fathom/internal/gatereceipt | os/exec | read-only git for gate receipts | git read commands only
 github.com/geoffmilleraz/fathom/internal/gitro | os/exec | the read-only git runner | git read commands only
 github.com/geoffmilleraz/fathom/internal/goenv | os/exec | `go env GOFLAGS`, to read the GOENV file's GOFLAGS before stripping -mod=mod | GOTOOLCHAIN=local; go env reads configuration only (ADR-083)
+github.com/geoffmilleraz/fathom/internal/guardspec | net | the egress pack parses a command's target host to pass loopback | no connection is opened (ADR-083 decision 4h)
 github.com/geoffmilleraz/fathom/internal/hookguard | net net/http | the hooks' daemon transport with deadlines | loopback daemon only (pkg/client CallerTransport)
 github.com/geoffmilleraz/fathom/internal/labs | net | parses a loopback address for the eval suite | no connection is opened
 github.com/geoffmilleraz/fathom/internal/mcp | os/exec | read-only git and rg for the search tool | git read commands and rg only
