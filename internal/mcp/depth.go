@@ -111,6 +111,15 @@ type depthRow struct {
 	EdgeKind string `json:"edge_kind,omitempty"`
 }
 
+// changedFieldRow discloses a changed Go field separately from the
+// traversable radius: field references are not indexed.
+type changedFieldRow struct {
+	Key     string `json:"key"`
+	Depth   int    `json:"depth"`
+	Changed bool   `json:"changed"`
+	Note    string `json:"note"`
+}
+
 // sortedDepthRows renders infos as rows ordered by depth, then key.
 func sortedDepthRows(infos map[string]depthInfo) []depthRow {
 	rows := make([]depthRow, 0, len(infos))
@@ -158,6 +167,13 @@ func blastRadiusByDepth(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 // `symbols` — a summary that outruns the thing it summarises is how a
 // bounded answer starts reading as a complete one.
 func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string, maxDepth int, include map[string]bool) []blastBucket {
+	return blastBucketsExcluding(g, nodes, changedFiles, maxDepth, include, nil)
+}
+
+// blastBucketsExcluding mirrors the bounded walk's query-only exclusions.
+// This keeps the displayed by_depth buckets on exactly the same graph as
+// symbols, including when a field has an adversarial typed edge.
+func blastBucketsExcluding(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string, maxDepth int, include, exclude map[string]bool) []blastBucket {
 	changed := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changed[f] = true
@@ -169,6 +185,9 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 	for _, n := range nodes {
 		if changed[n.FilePath] {
 			k := n.Key()
+			if exclude[k] {
+				continue
+			}
 			if _, ok := seen[k]; !ok {
 				seen[k] = depthInfo{Depth: 0}
 				queue = append(queue, k)
@@ -186,6 +205,9 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 		// CallersDetail leaves out since wave lg) stay in the radius, as
 		// impact.BlastRadiusBounded walks them, labelled on the row.
 		for _, d := range callgraph.DependentsDetail(g, cur) {
+			if exclude[d.Key] {
+				continue
+			}
 			if _, ok := seen[d.Key]; ok {
 				continue
 			}

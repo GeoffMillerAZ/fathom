@@ -245,9 +245,18 @@ architecture in one pass instead of a second invocation.
 
 ---
 
+## Deleting a Go field
+
+`blast_radius` with `kind:"delete"` resolves names through the same tiers as
+`find_symbol`. A field matched by its bare name, a qualified name or an
+ambiguous field/method name retains recorded referents and reports
+`field_references_indexed: false`. The field-only member pass
+records definitions without reference edges, so an empty referent list does
+not establish that the field has no readers or writers.
+
 ## Maintained
 
-This doc covers: `fathom conserve` (`--since`, `--json`, `--strict`,
+This doc covers: `blast_radius` (`kind:"delete"`), `fathom conserve` (`--since`, `--json`, `--strict`,
 `--plan`), `fathom refactor plan` (`--out`, `--service`, `--store`),
 `fathom refactor status` (`--json`), `fathom review` (`--since`) and
 `review_diff` (`since`), `fathom verify` (`--since`, the `gone:` plan key),

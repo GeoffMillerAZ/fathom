@@ -26,6 +26,10 @@ type Options struct {
 	// is cut, shallowest-first then by key, so the cap never hides a direct
 	// caller in order to show a distant one.
 	MaxSymbols int
+	// ExcludeKeys removes these keys from the bounded query walk, including
+	// seeds, dependents, and depth-cap lookahead. Nil preserves the original
+	// walk for benchmarks and other callers.
+	ExcludeKeys map[string]bool
 }
 
 // BoundedResult is Result plus what the bounds did to it. A truncated answer
@@ -84,6 +88,9 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 			continue
 		}
 		k := n.Key()
+		if opts.ExcludeKeys[k] {
+			continue
+		}
 		if _, ok := depth[k]; !ok {
 			depth[k] = 0
 			queue = append(queue, k)
@@ -101,6 +108,9 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 		if opts.MaxDepth > 0 && d >= opts.MaxDepth {
 			// Only report a cap when there was actually something past it.
 			for _, caller := range callgraph.RenameImpact(g, cur) {
+				if opts.ExcludeKeys[caller] {
+					continue
+				}
 				if _, seen := depth[caller]; !seen {
 					out.DepthCapped = true
 					break
@@ -112,6 +122,9 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 		// with each edge's kind: a reference to a Go type is walked like a
 		// call (a type's consumers break when it changes) and marked.
 		for _, dep := range callgraph.DependentsDetail(g, cur) {
+			if opts.ExcludeKeys[dep.Key] {
+				continue
+			}
 			if _, seen := depth[dep.Key]; seen {
 				continue
 			}

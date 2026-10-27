@@ -9,8 +9,9 @@ package callgraph
 // by) every other member; a self-loop alone is not a cycle, so a symbol
 // never counts itself.
 //
-// Memory: one bitset of ceil(components/64) words per component that is
-// still needed. A component's set is released as soon as every component
+// Memory: one bitset of ceil(components/64) words per nonempty reach set
+// that is still needed. Empty reach sets stay nil, so isolated symbols do not
+// allocate a full-width zero bitset. A component's set is released as soon as every component
 // that consumes it has been computed (a reference count on the DAG's
 // out-degree), so live sets track the frontier of the walk, not the whole
 // graph.
@@ -151,8 +152,8 @@ type bitset []uint64
 func newBitset(n int) bitset { return make(bitset, (n+63)/64) }
 func (b bitset) set(i int)   { b[i/64] |= 1 << (uint(i) % 64) }
 func (b bitset) union(o bitset) {
-	for i := range b {
-		b[i] |= o[i]
+	for i, word := range o {
+		b[i] |= word
 	}
 }
 
@@ -168,7 +169,10 @@ func (c condensation) closure(walk []int, next, consumers [][]int, keep map[int]
 		remaining[i] = len(consumers[i])
 	}
 	for _, x := range walk {
-		s := newBitset(nc)
+		var s bitset
+		if len(next[x]) != 0 {
+			s = newBitset(nc)
+		}
 		for _, y := range next[x] {
 			s.set(y)
 			s.union(sets[y])
@@ -250,6 +254,9 @@ func ForwardReach(g *Graph, sources []string) *Reach {
 		}
 		s := append(bitset(nil), desc...)
 		if len(c.members[x]) > 1 {
+			if s == nil {
+				s = newBitset(len(c.members))
+			}
 			s.set(x)
 		}
 		for _, src := range srcs {

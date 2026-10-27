@@ -1,0 +1,206 @@
+{
+  "scope": "Wave C same-frozen-index Go regrade after 6db920e72 and other Wave C merges; no producer rerun or field-scope change",
+  "merged_commit": "6eff4e2ecad732f233859bbba44732e4d2b80666",
+  "prior_c13_receipt_sha256": "bd9c1af263226b86aa80ce63f361a0e5dc7ea9ac20e2f02f714091705db24e7a",
+  "prior_c13_merged_commit": "d28ff1d94ae56b86f271a35c70367cf03a96bd5c",
+  "indexbench_sha256": "ec3f6d0fc939b56809df7981d9d38d86cf4cb5ac7d415534d90b3d17c9851377",
+  "ctags_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+  "scip_go_version": "0.2.7",
+  "scip_go_sha256": "daab5aab501e35578e3fcfd86df439d9f65030a42c823645de7b97523ba928dd",
+  "go_version": "1.27.3",
+  "subject_pins": {
+    "cli/cli": "45ffa3c668f7105e92089220d42aa64c9acbd11c",
+    "spf13/cobra": "40b5bc1437a564fc795d388b23835e84f54cd1d1",
+    "gin-gonic/gin": "75ccf94d605a05fe24817fc2f166f6f2959d5cea"
+  },
+  "frozen_indexes_sha256": {
+    "cli.scip": "883e1b36bfede07d533b29f45c152b8b8d0afc14ccd11045a153ea366c0165e4",
+    "cobra.scip": "63474e6b68f48955a135601585caaca23efb44a4d5beda4501b15886eb0db7e0",
+    "cli-independent.scip": "7a392698ab454a2226f7ebbe6c1ca53efd281d820b7d0e1ad71eb42915d393aa",
+    "cobra-independent.scip": "c64d082419914ee1e7f01f7151c91988b8330aebb2de60b6b7e33724b3470d90",
+    "gin.scip": "89e05dc56a8bdd3ecaf87780c226ec3c75b271b46f271c225a40ae9f2df00497"
+  },
+  "measured_raw_readings_sha256": {
+    "canonical": "a7f0c43aad888e089671543eb04acc298b60ebc0436211ae972ff101789d8786",
+    "independent": "9ebdd6e6d83ac736445468d26362629d63bd3af94134e8d625b07751858cc2f6",
+    "gin": "662771cc6f739116e2c928e57ef149dafa3a7455c2fc156ec5e58a1032255695"
+  },
+  "previous_published_readings_sha256": {
+    "canonical": "0f44e69372fbf63107a13b49045863a24131b4398215ea1d163eee79193bf953",
+    "independent": "8ed6da1bc5b4e82bc4e7496b05dda1d7228bed04e57fc761de441754726a1581",
+    "gin": "e0d0d449482c6fab66b6aedfa7b7b4b8df11d771f18f4e7035e1442761196a31"
+  },
+  "published_readings_sha256": {
+    "canonical": "1216dab62ba25cf78bc5f13fa15fbc4765cd89649353cb3f3410f092c153cd85",
+    "independent": "3fe42e0a83d891c32b288deae5f21c6118d0195578d717841a028251c168728d",
+    "gin": "bb6f0c57a87ba42b9d0b0f312ffff0311485c6ee615db07ef9b9add6e104da00"
+  },
+  "canonical_independent_equal": true,
+  "counts_metrics_grades_equal_to_prior": true,
+  "phases": [
+    {
+      "phase": "build-indexbench",
+      "exit": 0,
+      "launch_load": 5.8125,
+      "seconds": 7.238
+    },
+    {
+      "phase": "canonical-grade-cli",
+      "exit": 0,
+      "launch_load": 5.6669921875,
+      "seconds": 5.363
+    },
+    {
+      "phase": "canonical-grade-cobra",
+      "exit": 0,
+      "launch_load": 5.61328125,
+      "seconds": 0.587
+    },
+    {
+      "phase": "canonical-retime",
+      "exit": 0,
+      "launch_load": 5.61328125,
+      "seconds": 1.984
+    },
+    {
+      "phase": "independent-grade-cli",
+      "exit": 0,
+      "launch_load": 5.48388671875,
+      "seconds": 4.241
+    },
+    {
+      "phase": "independent-grade-cobra",
+      "exit": 0,
+      "launch_load": 5.36474609375,
+      "seconds": 0.591
+    },
+    {
+      "phase": "independent-retime",
+      "exit": 0,
+      "launch_load": 5.36474609375,
+      "seconds": 2.049
+    },
+    {
+      "phase": "gin-grade",
+      "exit": 0,
+      "launch_load": 5.36474609375,
+      "seconds": 1.086
+    },
+    {
+      "phase": "gin-retime",
+      "exit": 0,
+      "launch_load": 5.36474609375,
+      "seconds": 0.474
+    }
+  ],
+  "results": {
+    "canonical": {
+      "level_met": "L4",
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "good"
+      },
+      "metrics": {
+        "call_precision": 0.9254,
+        "call_recall": 0.9241,
+        "def_mapping": 0.9345,
+        "file_edge_precision": 0.9956,
+        "file_edge_recall": 0.703,
+        "import_resolution": 1,
+        "kind_agreement": 0.9999,
+        "range_agreement": 1,
+        "signature_coverage": 1,
+        "sym_precision": 0.9994,
+        "sym_recall": 0.9991,
+        "typed_recall": 0.9889
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "throughput_mb_s": 20.43,
+        "throughput_basis": "cpu",
+        "wall_throughput_mb_s": 24.4,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    "independent": {
+      "level_met": "L4",
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "good"
+      },
+      "metrics": {
+        "call_precision": 0.9254,
+        "call_recall": 0.9241,
+        "def_mapping": 0.9345,
+        "file_edge_precision": 0.9956,
+        "file_edge_recall": 0.703,
+        "import_resolution": 1,
+        "kind_agreement": 0.9999,
+        "range_agreement": 1,
+        "signature_coverage": 1,
+        "sym_precision": 0.9994,
+        "sym_recall": 0.9991,
+        "typed_recall": 0.9889
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "throughput_mb_s": 20.83,
+        "throughput_basis": "cpu",
+        "wall_throughput_mb_s": 25.14,
+        "max_file_ms": 6,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    "gin": {
+      "level_met": "L4",
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "good",
+        "L4": "excellent"
+      },
+      "metrics": {
+        "call_precision": 0.9146,
+        "call_recall": 0.9861,
+        "def_mapping": 0.9744,
+        "file_edge_precision": 0.9235,
+        "file_edge_recall": 0.6255,
+        "import_resolution": 1,
+        "kind_agreement": 1,
+        "range_agreement": 1,
+        "signature_coverage": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "typed_recall": 0.9889
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "throughput_mb_s": 15.7,
+        "throughput_basis": "cpu",
+        "wall_throughput_mb_s": 19.46,
+        "max_file_ms": 6,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  },
+  "classification": {
+    "issue_17_class_2_unmeasured_definitions": 3,
+    "cli_unmapped_func": 1,
+    "cli_unmapped_package_var": 2,
+    "cli_unmapped_from_func": 4,
+    "cli_unmapped_to_package_var": 2,
+    "field_scope": "named top-level struct fields only; no interface methods or field reference edges",
+    "o1237": "historical standard-library interface dispatch shift; unchanged on same oracle in field pass"
+  }
+}

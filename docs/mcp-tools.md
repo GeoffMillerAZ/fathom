@@ -22,6 +22,9 @@ statuses and counts, the primary receipt band and deterministic detail prefixes,
 named omissions and logged elision counts; small results are unchanged. See
 [change review](use-cases/change-review.md) for the disclosure contract.
 
+Deletion checks on Go fields disclose `field_references_indexed: false` and keep
+recorded referents without proving absence. See the [investigation contract](mcp-tools/investigation.md#investigation-tools).
+
 See [usage.md](usage.md) for how to connect a client and select a surface.
 See [architecture.md](architecture.md) for how the tool groups map to the three-layer design.
 

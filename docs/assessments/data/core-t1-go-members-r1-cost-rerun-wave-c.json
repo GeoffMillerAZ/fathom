@@ -1,0 +1,364 @@
+{
+  "baseline": {
+    "median_store_bytes": 205312000,
+    "median_wall_seconds": 86.637
+  },
+  "binary_sha256": {
+    "baseline": "6c8ef17240d3517993e2695dd0ec15075156b24d2a32d0a69d5d189d13211536",
+    "candidate": "f19dc3a3f692cafc171c78be269008b9cb94b783ea54a3c9722e8da0bb124537"
+  },
+  "candidate": {
+    "median_store_bytes": 218238976,
+    "median_wall_seconds": 97.768
+  },
+  "candidate_commit": "d0faef431b755297cd1b924965457bacfde1bfdd",
+  "changed_field_work_executed": true,
+  "gate": "PASS",
+  "method": "three alternating baseline/candidate direct CLI ingests, fresh stores, nice 10, 20-minute timeout; no daemon or SCIP",
+  "readout": "SQLite immutable read only after process exit and no nonempty WAL",
+  "runs": [
+    {
+      "arm": "baseline",
+      "cpu_seconds": 97.52,
+      "exit": 0,
+      "load_end": 7.44,
+      "load_start": 8.71,
+      "max_sampled_load": 10.21,
+      "run": 1,
+      "source_unchanged": true,
+      "store_bytes": 205312000,
+      "store_sidecar_bytes": 0,
+      "symbols": 63329,
+      "table_rows": {
+        "observations": 63442,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 96.697,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "candidate",
+      "cpu_seconds": 98.105,
+      "exit": 0,
+      "load_end": 7.82,
+      "load_start": 7.44,
+      "max_sampled_load": 10.56,
+      "run": 1,
+      "source_unchanged": true,
+      "store_bytes": 218238976,
+      "store_sidecar_bytes": 0,
+      "symbols": 84893,
+      "table_rows": {
+        "observations": 85006,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 97.785,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "baseline",
+      "cpu_seconds": 89.597,
+      "exit": 0,
+      "load_end": 8.32,
+      "load_start": 7.82,
+      "max_sampled_load": 9.1,
+      "run": 2,
+      "source_unchanged": true,
+      "store_bytes": 205312000,
+      "store_sidecar_bytes": 0,
+      "symbols": 63329,
+      "table_rows": {
+        "observations": 63442,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 86.637,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "candidate",
+      "cpu_seconds": 98.572,
+      "exit": 0,
+      "load_end": 17.27,
+      "load_start": 8.32,
+      "max_sampled_load": 17.27,
+      "run": 2,
+      "source_unchanged": true,
+      "store_bytes": 218238976,
+      "store_sidecar_bytes": 0,
+      "symbols": 84893,
+      "table_rows": {
+        "observations": 85006,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 96.685,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "baseline",
+      "cpu_seconds": 85.729,
+      "exit": 0,
+      "load_end": 12.05,
+      "load_start": 8.29,
+      "max_sampled_load": 12.79,
+      "run": 3,
+      "source_unchanged": true,
+      "store_bytes": 205312000,
+      "store_sidecar_bytes": 0,
+      "symbols": 63329,
+      "table_rows": {
+        "observations": 63442,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 81.595,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "candidate",
+      "cpu_seconds": 104.258,
+      "exit": 0,
+      "load_end": 5.54,
+      "load_start": 8.26,
+      "max_sampled_load": 8.26,
+      "run": 3,
+      "source_unchanged": true,
+      "store_bytes": 218238976,
+      "store_sidecar_bytes": 0,
+      "symbols": 84893,
+      "table_rows": {
+        "observations": 85006,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 97.768,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    }
+  ],
+  "source_commit": "5b84aa5b4d179460a2f9b7a96973a89a6cd8b322",
+  "source_manifest_sha256": "63f56d8e78e127193e1640e3ae8cb1fa8422806762f1de11dd70e9c6e2e632ef",
+  "store_change": 0.06296259351620948,
+  "store_gate": 0.2,
+  "wall_change": 0.12847859459584243,
+  "wall_gate": 0.15,
+  "work_equivalent": true
+}

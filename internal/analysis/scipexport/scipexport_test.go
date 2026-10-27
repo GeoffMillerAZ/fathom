@@ -65,6 +65,7 @@ func TestSymbolID_Format(t *testing.T) {
 	}{
 		{"function: term suffix", core.KindGoFunc, "fathom service svc . pkg/A."},
 		{"variable: term suffix", core.KindGoVar, "fathom service svc . pkg/A."},
+		{"field: term suffix", core.KindGoField, "fathom service svc . pkg/A."},
 		{"const: term suffix", core.KindGoConst, "fathom service svc . pkg/A."},
 		{"method: method suffix", core.KindGoMethod, "fathom service svc . pkg/A()."},
 		{"type: type suffix", core.KindGoType, "fathom service svc . pkg/A#"},
@@ -76,6 +77,18 @@ func TestSymbolID_Format(t *testing.T) {
 				t.Errorf("SymbolID(svc, pkg, A, %v) = %q, want %q", tc.kind, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestBuildFromNodesGoFieldKind(t *testing.T) {
+	field := core.SymbolNode{Service: "svc", Package: "Owner", Name: "Owner.value", Kind: core.KindGoField, FilePath: "owner.go", Line: 2}
+	idx := BuildFromNodes("svc", []core.SymbolNode{field}, nil, nil)
+	info := findSymbolInfo(idx, SymbolID("svc", field.Package, field.Name, field.Kind))
+	if info == nil {
+		t.Fatal("Go field is absent from SCIP symbol information")
+	}
+	if info.Kind != scip.SymbolInformation_Field {
+		t.Errorf("Go field kind = %v, want Field", info.Kind)
 	}
 }
 

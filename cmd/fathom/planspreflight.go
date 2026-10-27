@@ -75,7 +75,7 @@ func newPreflightSources(ctx context.Context, c *client.Client, service, root st
 }
 
 // anchorNodes are the definitions of the row's symbol (under its package
-// when it names one).
+// when it names one), never a struct field the name shadows.
 func (s *preflightSources) anchorNodes(ctx context.Context, symbol, pkg string) []core.SymbolNode {
 	if symbol == "" {
 		return nil
@@ -94,6 +94,8 @@ func (s *preflightSources) anchorNodes(ctx context.Context, symbol, pkg string) 
 		}
 		out = append(out, n)
 	}
+	// A same-named struct field never shadows the row's symbol.
+	out = core.WithoutShadowingFields(out, symbol)
 	sort.Slice(out, func(i, j int) bool { return out[i].Key() < out[j].Key() })
 	return out
 }
