@@ -28,10 +28,12 @@ type CallResult struct {
 type Call struct {
 	// Kind is the event kind the call came from: tool_use, skill or
 	// subagent_start.
-	Kind      string     `json:"kind"`
-	Name      string     `json:"name"`
-	Shape     string     `json:"shape"`
-	ToolUseID string     `json:"tool_use_id"`
+	Kind  string `json:"kind"`
+	Name  string `json:"name"`
+	Shape string `json:"shape"`
+	// ToolUseID joins a call to its result and is never serialized: a
+	// raw id traces back to the original transcript.
+	ToolUseID string     `json:"-"`
 	Result    CallResult `json:"result"`
 }
 
@@ -75,6 +77,13 @@ func ExtractDecisionPoints(res transcript.Result, salt, sessionID string) ([]Poi
 		UnreadableFiles: res.UnreadableFiles,
 		Duplicates:      res.Duplicates,
 	}
+	// With no salt or no session there is no hash to key the points by:
+	// keep none and count the miss, so no session is pooled under "".
+	if salt == "" || sessionID == "" {
+		counts.UnreadableFiles++
+		counts.Issues = append(append([]transcript.Issue(nil), counts.Issues...), transcript.Issue{File: "session", Kind: "unhashed_session"})
+		return nil, counts
+	}
 	results := map[string]CallResult{}
 	for _, e := range res.Events {
 		if e.Kind == "tool_result" && e.ToolUseID != "" {
@@ -102,10 +111,7 @@ func ExtractDecisionPoints(res transcript.Result, salt, sessionID string) ([]Poi
 		calls[i].Result = results[calls[i].ToolUseID]
 	}
 	points := make([]Point, 0, len(calls))
-	session := ""
-	if salt != "" && sessionID != "" {
-		session = bundle.HashService(salt, sessionID)
-	}
+	session := bundle.HashService(salt, sessionID)
 	for i, call := range calls {
 		points = append(points, Point{
 			Session:   session,

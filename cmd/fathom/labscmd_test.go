@@ -145,6 +145,21 @@ func TestCmdLabsFireReadsTheFunnelAndWritesTheLedger(t *testing.T) {
 		t.Fatalf("labs fire output:\n%s", got)
 	}
 
+	// --json encodes: a rate with no data is NaN and must not reach the encoder.
+	stdout.Reset()
+	stderr.Reset()
+	if code := cmdLabs([]string{"fire", "--cards", cards, "--json"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("labs fire --json = %d: %s", code, stderr.String())
+	}
+	var fired struct {
+		Readings []struct {
+			Surface string `json:"surface"`
+		} `json:"readings"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &fired); err != nil || len(fired.Readings) != 1 || fired.Readings[0].Surface != "mcp:read_source" {
+		t.Fatalf("labs fire --json: %v %s", err, stdout.String())
+	}
+
 	// --write needs the preregistration keys the row is stamped with.
 	stdout.Reset()
 	stderr.Reset()
@@ -205,3 +220,168 @@ kill: [{"criterion": "firing improves but helped is harmed", "reading": "docs/be
 knobs: []
 owners: []
 `
+
+// M1 (I38): a project subdirectory the walk cannot open is counted, and
+// the totals are printed as lower bounds.
+func TestCmdLabsCorpusCountsAnUnreadableDirectory(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a mode 000 directory")
+	}
+	root := labsFixtureProjects(t, labsAssistantLine, labsResultLine)
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("fixture: %v %+v", err, entries)
+	}
+	locked := filepath.Join(root, entries[0].Name(), "locked")
+	if err := os.Mkdir(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	var stdout, stderr bytes.Buffer
+	if code := cmdLabs([]string{"corpus", "--out", filepath.Join(t.TempDir(), "s")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("labs corpus = %d: %s", code, stderr.String())
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "1 unreadable file(s)") || !strings.Contains(got, "\u2265 2 decision point(s)") {
+		t.Fatalf("an unreadable directory was not counted or bounded:\n%s", got)
+	}
+	if strings.Contains(got, locked) {
+		t.Fatalf("a path reached the output:\n%s", got)
+	}
+}
+
+// M1: a transcript whose bytes cannot be digested is counted, not dropped.
+func TestCmdLabsCorpusCountsAnUndigestableTranscript(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a mode 000 file")
+	}
+	root := labsFixtureProjects(t, labsAssistantLine, labsResultLine)
+	entries, _ := os.ReadDir(root)
+	file := filepath.Join(root, entries[0].Name(), "session-one.jsonl")
+	if err := os.Chmod(file, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(file, 0o600) })
+	var stdout, stderr bytes.Buffer
+	if code := cmdLabs([]string{"corpus", "--out", filepath.Join(t.TempDir(), "s")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("labs corpus = %d: %s", code, stderr.String())
+	}
+	if got := stdout.String(); !strings.Contains(got, "1 unreadable file(s)") || !strings.Contains(got, "\u2265") {
+		t.Fatalf("an unreadable transcript was not bounded:\n%s", got)
+	}
+}
+
+// M2: the default glob is the encoded repository path, exactly or as a
+// Claude Code worktree of it, never a sibling that shares the prefix.
+func TestLabsProjectDirEncodingAndMatch(t *testing.T) {
+	enc := labsEncodeProject("/a/b.c/my_repo")
+	if enc != "-a-b-c-my-repo" {
+		t.Fatalf("encoding = %q", enc)
+	}
+	for name, want := range map[string]bool{
+		enc:                                  true,
+		enc + "--claude-worktrees-feature-x": true,
+		enc + "-sibling":                     false,
+		enc + "2":                            false,
+		"x" + enc:                            false,
+	} {
+		if got := labsProjectDirMatches(enc, name); got != want {
+			t.Errorf("match(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestCmdLabsCorpusSkipsSiblingProjects(t *testing.T) {
+	root := labsFixtureProjects(t, labsAssistantLine, labsResultLine)
+	entries, _ := os.ReadDir(root)
+	sibling := filepath.Join(root, entries[0].Name()+"-sibling")
+	if err := os.MkdirAll(sibling, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sibling, "other.jsonl"), []byte(labsAssistantLine+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLabs([]string{"corpus", "--out", filepath.Join(t.TempDir(), "s")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("labs corpus = %d: %s", code, stderr.String())
+	}
+	if got := stdout.String(); !strings.Contains(got, "1 project(s), 1 transcript(s)") {
+		t.Fatalf("a sibling repository was read:\n%s", got)
+	}
+}
+
+// M2: a linked worktree reads the main worktree's transcripts.
+func TestLabsMainRootFromALinkedWorktree(t *testing.T) {
+	main := labsFixtureRepo(t)
+	labsGit(t, main, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "--allow-empty", "-m", "init")
+	linked := filepath.Join(t.TempDir(), "linked")
+	labsGit(t, main, "worktree", "add", "-b", "wt", linked)
+	t.Chdir(linked)
+	top := gitToplevel(linked)
+	if got := labsMainRoot(top); got != main {
+		t.Fatalf("main root = %q, want %q", got, main)
+	}
+	if got := labsMainRoot(main); got != main {
+		t.Fatalf("main root of the main worktree = %q, want %q", got, main)
+	}
+}
+
+// m3: a relative --cards and --ledger resolve against the repository, not
+// the working directory, and a --write that cannot append every row
+// appends none.
+func TestCmdLabsFireResolvesRelativePathsAndWritesAllOrNothing(t *testing.T) {
+	labsFixtureProjects(t, labsAssistantLine, labsResultLine)
+	top := gitToplevel(".")
+	cards := filepath.Join(top, "cards.d")
+	if err := os.MkdirAll(cards, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	second := strings.NewReplacer("lab-read-source", "lab-read-source-two", "plugin-minus-read-source", "plugin-minus-read-source-two", "mcp:read_source", "mcp:search").Replace(labsReadSourceCard)
+	for name, body := range map[string]string{"lab-read-source.yaml": labsReadSourceCard, "lab-read-source-two.yaml": second} {
+		if err := os.WriteFile(filepath.Join(cards, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sub := filepath.Join(top, "deep", "er")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(sub)
+	previous := labsCommit
+	labsCommit = func() string { return "0123456789ab" }
+	t.Cleanup(func() { labsCommit = previous })
+
+	// The second surface's key is already in the ledger: nothing may be appended.
+	ledger := filepath.Join(top, "ledger.jsonl")
+	args := []string{"fire", "--cards", "cards.d", "--ledger", "ledger.jsonl", "--write", "--run-id", "run-1", "--criterion", "firing", "--prereg-sha", strings.Repeat("a", 64)}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLabs(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("labs fire from a subdirectory = %d: %s", code, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(sub, "ledger.jsonl")); err == nil {
+		t.Fatal("the ledger was written under the working directory")
+	}
+	before, err := os.ReadFile(ledger)
+	if err != nil || strings.Count(string(before), "\n") != 2 {
+		t.Fatalf("ledger: %v %q", err, before)
+	}
+	// Keep only the second row, then write again: the first row would
+	// append before the second is refused as a duplicate, so an
+	// all-or-nothing write must append nothing.
+	first := strings.SplitAfter(string(before), "\n")[1]
+	if err := os.WriteFile(ledger, []byte(first), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := cmdLabs(args, &stdout, &stderr); code == 0 {
+		t.Fatalf("a write over a duplicate key succeeded: %s", stdout.String())
+	}
+	after, _ := os.ReadFile(ledger)
+	if string(after) != first {
+		t.Fatalf("a refused write still appended:\n%s", after)
+	}
+}

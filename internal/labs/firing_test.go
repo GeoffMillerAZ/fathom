@@ -1,6 +1,7 @@
 package labs
 
 import (
+	"encoding/json"
 	"math"
 	"os"
 	"path/filepath"
@@ -172,5 +173,40 @@ func TestFiringReadingRowPerSurface(t *testing.T) {
 	}
 	if readings[0].Surface != "hook:stop-hook [stop/stop-verify Stop matcher=]" || readings[1].Surface != "mcp:verify_plan" {
 		t.Fatalf("surfaces are not sorted: %+v", readings)
+	}
+}
+
+// M3: a surface that fired where v0 classifies no point should-fire has no
+// eligible margin: eligible and fired read "not measured", never 0 of n.
+func TestFiringReadingNoEligiblePointIsNotAMeasuredZero(t *testing.T) {
+	points := []Point{{Call: Call{Kind: "tool_use", Name: "mcp__fathom__find_symbol", Shape: "object{string}", ToolUseID: "a", Result: CallResult{Present: true, Bytes: 4}}}}
+	got := readingFor(t, FiringReading(points, []Lab{firingLab("lab-find", "mcp:find_symbol")}), "lab-find")
+	if got.Eligible != 0 || got.Fired != 1 {
+		t.Fatalf("setup: %+v", got)
+	}
+	want := "not measured: v0 classifies no point should-fire for mcp:find_symbol"
+	if got.Stages.Eligible != want || got.Stages.Fired != want {
+		t.Fatalf("eligible %v, fired %v; want %q", got.Stages.Eligible, got.Stages.Fired, want)
+	}
+}
+
+// B2: the reading is JSON-encodable even where a rate has no data (NaN).
+func TestFiringReadingEncodesAsJSON(t *testing.T) {
+	readings := FiringReading(firingPoints(), []Lab{firingLab("lab-search", "mcp:search")})
+	if _, err := json.Marshal(readings); err != nil {
+		t.Fatalf("a reading with an empty rate cannot be encoded: %v", err)
+	}
+}
+
+// M4: an unbounded read_source call is open discovery, a should-not the
+// surface fired at: a false fire, and specificity below 1.
+func TestFiringReadingCountsAFalseFire(t *testing.T) {
+	points := []Point{
+		{Call: Call{Kind: "tool_use", Name: "mcp__fathom__read_source", Shape: "object{string,string}", ToolUseID: "a", Result: CallResult{Present: true, Bytes: 9}}},
+		{Call: Call{Kind: "tool_use", Name: "Read", Shape: "object{number,number,string}", ToolUseID: "b", Result: CallResult{Present: true, Bytes: 9}}},
+	}
+	got := readingFor(t, FiringReading(points, []Lab{firingLab("lab-read-source", "mcp:read_source")}), "lab-read-source")
+	if got.FalseFires != 1 || got.ShouldNot != 1 || got.Rates.TNR.Value >= 1 {
+		t.Fatalf("false fire not counted: %+v", got)
 	}
 }

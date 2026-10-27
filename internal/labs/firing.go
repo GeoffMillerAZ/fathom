@@ -64,7 +64,7 @@ type FiringReadingRow struct {
 	DeliveredOf     int               `json:"delivered_of"`
 	TreeUnrecovered int               `json:"tree_unrecovered"`
 	Missed          []SubstituteCount `json:"missed,omitempty"`
-	Rates           Rates             `json:"rates"`
+	Rates           Rates             `json:"-"` // NaN where a rate has no data; Stages carries the same reading
 	Stages          Stages            `json:"stages"`
 }
 
@@ -164,10 +164,14 @@ func (row FiringReadingRow) stages(lab Lab, surface string) Stages {
 		stages.Eligible, stages.Fired, stages.Delivered = unreadable, unreadable, unreadable
 		return stages
 	}
-	stages.Eligible = share(row.Eligible, row.Points)
 	if row.Eligible == 0 {
-		stages.Fired = fmt.Sprintf("not measured: no should-fire point for %s", surface)
+		// The surface fired but v0 classifies none of its points
+		// should-fire (a verb that needs the call's argument): there is no
+		// eligible margin, so neither stage is a measured zero.
+		reason := fmt.Sprintf("not measured: v0 classifies no point should-fire for %s", surface)
+		stages.Eligible, stages.Fired = reason, reason
 	} else {
+		stages.Eligible = share(row.Eligible, row.Points)
 		stages.Fired = rateStage(row.Rates.TPR, row.Eligible)
 	}
 	if row.DeliveredOf == 0 {

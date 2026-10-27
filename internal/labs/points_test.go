@@ -1,6 +1,7 @@
 package labs
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -136,6 +137,68 @@ func TestDecisionPointsCarryNoText(t *testing.T) {
 	for _, secret := range []string{"sk-fixture-secret-prompt-12345", "private-command", "private-output", "private-task", "session-1"} {
 		if strings.Contains(rendered, secret) {
 			t.Fatalf("decision point retained %q", secret)
+		}
+	}
+}
+
+func synthEvent(kind, name, id string) transcript.Event {
+	return transcript.Event{Kind: kind, Name: name, Shape: "object{string}", ToolUseID: id}
+}
+
+// A Task tool_use and the subagent_start it opens share an id: one choice.
+func TestExtractDecisionPointsPairsATaskWithItsSubagentStart(t *testing.T) {
+	res := transcript.Result{Events: []transcript.Event{
+		synthEvent("tool_use", "Task", "t1"),
+		synthEvent("subagent_start", "general-purpose", "t1"),
+	}}
+	points, counts := ExtractDecisionPoints(res, "salt", "s")
+	if len(points) != 1 || counts.Points != 1 || points[0].Call.Kind != "subagent_start" {
+		t.Fatalf("Task pair: %+v", points)
+	}
+}
+
+func TestExtractDecisionPointsCarriesOversizeLines(t *testing.T) {
+	_, counts := ExtractDecisionPoints(transcript.Result{OversizeLines: 2}, "salt", "s")
+	if counts.OversizeLines != 2 {
+		t.Fatalf("oversize lines carried: %+v", counts)
+	}
+}
+
+// The context window is exactly five calls before and three after.
+func TestExtractDecisionPointsWindowBounds(t *testing.T) {
+	var events []transcript.Event
+	for i := 0; i < 12; i++ {
+		events = append(events, synthEvent("tool_use", fmt.Sprintf("T%d", i), fmt.Sprintf("id%d", i)))
+	}
+	points, _ := ExtractDecisionPoints(transcript.Result{Events: events}, "salt", "s")
+	mid := points[5]
+	if len(mid.Preceding) != 5 || mid.Preceding[0].Name != "T0" || len(mid.Followers) != 3 || mid.Followers[2].Name != "T8" {
+		t.Fatalf("window: %d preceding, %d followers: %+v", len(mid.Preceding), len(mid.Followers), mid)
+	}
+}
+
+// m1: the raw tool-use id is joined to its result and dropped; it never
+// reaches a serialized point.
+func TestPointsDoNotSerializeTheToolUseID(t *testing.T) {
+	res := transcript.Result{Events: []transcript.Event{synthEvent("tool_use", "Read", "toolu_RAW_ID")}}
+	points, _ := ExtractDecisionPoints(res, "salt", "s")
+	data, err := json.Marshal(points)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "toolu_RAW_ID") || strings.Contains(string(data), "tool_use_id") {
+		t.Fatalf("raw id serialized: %s", data)
+	}
+}
+
+// m2: with no salt or session there is no hash, so no point is kept and
+// the miss is counted, never pooled under an empty session.
+func TestExtractDecisionPointsRefusesAnUnhashedSession(t *testing.T) {
+	res := transcript.Result{Events: []transcript.Event{synthEvent("tool_use", "Read", "a")}}
+	for _, args := range [][2]string{{"", "s"}, {"salt", ""}} {
+		points, counts := ExtractDecisionPoints(res, args[0], args[1])
+		if len(points) != 0 || counts.Points != 0 || counts.UnreadableFiles != 1 || len(counts.Issues) != 1 || counts.Issues[0].Kind != "unhashed_session" {
+			t.Fatalf("salt %q session %q: %+v %+v", args[0], args[1], points, counts)
 		}
 	}
 }

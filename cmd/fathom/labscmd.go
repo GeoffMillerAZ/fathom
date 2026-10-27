@@ -1,21 +1,27 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/labs"
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/research/bundle"
 	"github.com/geoffmilleraz/fathom/internal/transcript"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 const (
@@ -128,11 +134,21 @@ func cmdLabsFire(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *write {
-		for flagName, value := range map[string]string{"--run-id": *runID, "--criterion": *criterion, "--prereg-sha": *preregSHA} {
-			if strings.TrimSpace(value) == "" {
-				fmt.Fprintf(stderr, "error: labs fire --write requires %s\n", flagName)
+		// A fixed order, so the error names the same flag every time.
+		for _, required := range []struct{ name, value string }{{"--run-id", *runID}, {"--criterion", *criterion}, {"--prereg-sha", *preregSHA}} {
+			if strings.TrimSpace(required.value) == "" {
+				fmt.Fprintf(stderr, "error: labs fire --write requires %s\n", required.name)
 				return 1
 			}
+		}
+	}
+	// Relative paths belong to the repository, not to wherever the verb ran.
+	if top := gitToplevel("."); top != "" {
+		if !filepath.IsAbs(*cards) {
+			*cards = filepath.Join(top, *cards)
+		}
+		if !filepath.IsAbs(*ledger) {
+			*ledger = filepath.Join(top, *ledger)
 		}
 	}
 	surfaces, err := shippedLabSurfaces()
@@ -156,11 +172,14 @@ func cmdLabsFire(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "error: labs fire --write: a replay row needs the corpus sha and the fathom commit that read it")
 			return 2
 		}
+		results := make([]any, 0, len(rows))
 		for _, row := range rows {
-			if err := labs.AppendLabResult(*ledger, row.ResultRow(*runID, *criterion, *preregSHA, provenance)); err != nil {
-				fmt.Fprintf(stderr, "error: labs fire --write: %v\n", err)
-				return 1
-			}
+			results = append(results, row.ResultRow(*runID, *criterion, *preregSHA, provenance))
+		}
+		// All rows or none: a refused row must not leave a partial run behind.
+		if err := labs.AppendLabResults(*ledger, results); err != nil {
+			fmt.Fprintf(stderr, "error: labs fire --write: %v\n", err)
+			return 1
 		}
 		fmt.Fprintf(stdout, "labs fire: appended %d row(s) to %s under run %s\n", len(rows), *ledger, *runID)
 	}
@@ -207,28 +226,32 @@ func readLabsCorpus(projects, out string, stderr io.Writer) (labsCorpusReading, 
 		fmt.Fprintln(stderr, "error: labs: not inside a git repository, so the corpus has no owner")
 		return reading, 2
 	}
-	glob := projects
-	if glob == "" {
-		// This repository's own project directories, encoded the way
-		// Claude Code encodes a project path, with a worktree suffix
-		// allowed (owner ruling R5).
-		glob = strings.ReplaceAll(filepath.ToSlash(repoRoot), "/", "-") + "*"
-	}
-	if _, err := filepath.Match(glob, ""); err != nil {
-		fmt.Fprintf(stderr, "error: labs --projects: %v\n", err)
-		return reading, 1
+	// Default: this repository's own project directories, encoded the way
+	// Claude Code encodes a path, exactly or as one of its worktrees (owner
+	// ruling R5). A linked worktree reads the main worktree's directories.
+	// A glob given with --projects replaces the rule.
+	match := func(name string) bool { return labsProjectDirMatches(labsEncodeProject(labsMainRoot(repoRoot)), name) }
+	if projects != "" {
+		if _, err := filepath.Match(projects, ""); err != nil {
+			fmt.Fprintf(stderr, "error: labs --projects: %v\n", err)
+			return reading, 1
+		}
+		match = func(name string) bool { ok, _ := filepath.Match(projects, name); return ok }
 	}
 	salt, err := bundle.LoadOrCreateSalt(repoRoot)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: labs: the research salt: %v\n", err)
 		return reading, 2
 	}
-	files, projectCount, err := labsTranscriptFiles(root, glob)
+	files, projectCount, walkIssues, err := labsTranscriptFiles(root, match)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: labs: reading the transcripts: %v\n", err)
 		return reading, 2
 	}
 	reading.Projects, reading.Files = projectCount, len(files)
+	// A directory the walk could not open hid transcripts: count it (I38).
+	reading.Counts.Issues = append(reading.Counts.Issues, walkIssues...)
+	reading.Counts.UnreadableFiles += len(walkIssues)
 	var digests []string
 	for index, path := range files {
 		res := transcript.DecodeTranscriptEvents(path, salt, index)
@@ -253,6 +276,11 @@ func readLabsCorpus(projects, out string, stderr io.Writer) (labsCorpusReading, 
 		}
 		if digest, derr := labsFileDigest(path); derr == nil {
 			digests = append(digests, digest)
+		} else if res.UnreadableFiles == 0 {
+			// The decoder read it but the digest could not: the corpus sha
+			// leaves this file out, so say so.
+			reading.Counts.UnreadableFiles++
+			reading.Counts.Issues = append(reading.Counts.Issues, transcript.Issue{File: fmt.Sprintf("digest:%d", index), Kind: "unreadable_file"})
 		}
 	}
 	reading.Out = filepath.ToSlash(out)
@@ -264,41 +292,74 @@ func readLabsCorpus(projects, out string, stderr io.Writer) (labsCorpusReading, 
 // labsTranscriptFiles lists every *.jsonl transcript under the project
 // directories the glob matches, in sorted path order, skipping a workflow
 // run's step journal (which is no transcript).
-func labsTranscriptFiles(root, glob string) ([]string, int, error) {
+func labsTranscriptFiles(root string, match func(string) bool) ([]string, int, []transcript.Issue, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		if ok, _ := filepath.Match(glob, e.Name()); ok {
+		if e.IsDir() && match(e.Name()) {
 			names = append(names, e.Name())
 		}
 	}
 	sort.Strings(names)
 	var files []string
+	var issues []transcript.Issue
 	projects := 0
 	for _, name := range names {
 		before := len(files)
 		err := filepath.WalkDir(filepath.Join(root, name), func(p string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() || !strings.HasSuffix(p, ".jsonl") || replayWorkflowJournal(p) {
+			if err != nil {
+				// The label is a class and the walk's order, never a path.
+				issues = append(issues, transcript.Issue{File: fmt.Sprintf("dir:%d", len(issues)), Kind: "unreadable_dir"})
+				return nil
+			}
+			if d.IsDir() || !strings.HasSuffix(p, ".jsonl") || replayWorkflowJournal(p) {
 				return nil
 			}
 			files = append(files, p)
 			return nil
 		})
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, nil, err
 		}
 		if len(files) > before {
 			projects++
 		}
 	}
 	sort.Strings(files)
-	return files, projects, nil
+	return files, projects, issues, nil
+}
+
+var labsNonAlnum = regexp.MustCompile(`[^A-Za-z0-9]`)
+
+// labsEncodeProject is Claude Code's project directory name for a path:
+// every character that is not a letter or digit becomes "-".
+func labsEncodeProject(path string) string {
+	return labsNonAlnum.ReplaceAllString(filepath.ToSlash(path), "-")
+}
+
+// labsProjectDirMatches reports a project directory that is the encoded
+// repository or one of its Claude Code worktrees, and no sibling sharing
+// the prefix. Sessions started from a subdirectory need --projects.
+func labsProjectDirMatches(enc, name string) bool {
+	return name == enc || strings.HasPrefix(name, enc+"--claude-worktrees-")
+}
+
+// labsMainRoot is the main worktree's root for a repository root, which is
+// the root itself unless top is a linked worktree. Its transcripts live
+// under the main worktree's project directory.
+func labsMainRoot(top string) string {
+	out, err := gitro.Output(context.Background(), top, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return top
+	}
+	common := strings.TrimSpace(string(out))
+	if filepath.Base(common) != ".git" {
+		return top
+	}
+	return filepath.Dir(common)
 }
 
 // writeLabsSession writes one session's points, named by its session hash
@@ -309,7 +370,7 @@ func writeLabsSession(dir string, points []labs.Point) error {
 	}
 	name := points[0].Session
 	if name == "" {
-		name = "unhashed"
+		return fmt.Errorf("a decision point has no session hash")
 	}
 	data, err := json.MarshalIndent(points, "", "  ")
 	if err != nil {
@@ -352,8 +413,10 @@ func emitLabsJSON(stdout, stderr io.Writer, v any) int {
 }
 
 func printLabsCorpus(w io.Writer, reading labsCorpusReading) {
-	fmt.Fprintf(w, "labs corpus: %d project(s), %d transcript(s), %d session(s), %d decision point(s)\n",
-		reading.Projects, reading.Files, reading.Sessions, reading.Tally.Points)
+	coverage := labsCoverage(reading.Counts)
+	fmt.Fprintf(w, "labs corpus: %s, %s, %s, %s\n",
+		readcoverage.RenderCount(coverage, reading.Projects, "project(s)"), readcoverage.RenderCount(coverage, reading.Files, "transcript(s)"),
+		readcoverage.RenderCount(coverage, reading.Sessions, "session(s)"), readcoverage.RenderCount(coverage, reading.Tally.Points, "decision point(s)"))
 	fmt.Fprintf(w, "  eligibility: %d should-fire, %d should-not, %d unclassified (%d point(s) with no recoverable tree)\n",
 		reading.Tally.ShouldFire, reading.Tally.ShouldNot, reading.Tally.Unclassified, reading.Tally.TreeUnrecovered)
 	for _, reason := range reading.Tally.Reasons {
@@ -369,8 +432,23 @@ func printLabsCorpus(w io.Writer, reading labsCorpusReading) {
 	}
 }
 
+// labsCoverage turns the decoder's unreadable files and directories into a
+// read manifest, so every total is written as a named lower bound when any
+// input could not be read (I38). Labels are classes and indexes, no paths.
+func labsCoverage(counts labs.Counts) readmanifest.Manifest {
+	set := readmanifest.NewSet()
+	for _, issue := range counts.Issues {
+		if strings.HasPrefix(issue.Kind, "unreadable_") || issue.Kind == "unhashed_session" {
+			set.Record(issue.File, readmanifest.Unreadable(errors.New(issue.Kind)))
+		}
+	}
+	return set.Manifest()
+}
+
 func printLabsFiring(w io.Writer, reading labsCorpusReading, rows []labs.FiringReadingRow) {
-	fmt.Fprintf(w, "labs fire: %d decision point(s) over %d session(s), %d surface(s)\n", reading.Tally.Points, reading.Sessions, len(rows))
+	fmt.Fprintf(w, "labs fire: %s over %s, %d surface(s)\n",
+		readcoverage.RenderCount(labsCoverage(reading.Counts), reading.Tally.Points, "decision point(s)"),
+		readcoverage.RenderCount(labsCoverage(reading.Counts), reading.Sessions, "session(s)"), len(rows))
 	for _, row := range rows {
 		fmt.Fprintf(w, "  %s %s: %s\n", row.Lab, row.Surface, labsStageLine(row))
 	}
