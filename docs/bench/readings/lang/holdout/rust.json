@@ -229,6 +229,7 @@
     "crossbeam-rs/crossbeam: a Rust module is a namespace, file granularity, never a fathom symbol (K18, LB-F389): 156 module definitions (a file module's whole file, a crate root, an inline mod) are out of def_mapping (scip_defs_namespace), 1665 references to a module (scip_edges_namespace_target) and 1488 made at a module's top level, a use line or an impl header (scip_edges_namespace_from), out of typed_recall; module references are graded at L3 as file edges",
     "import_resolution: 416 of 439 in-repo imports resolve to a file the oracle names (0 unresolved, 23 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.6893 (264 of 383) and recall 0.9231 (264 of 286); 29 of 518 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 2 oracle import targets outside the files measured; 529 imports name only a crate outside the subject (std, core, a registry dependency) and are out of scope, left out of the count above (LB-F197); 238 oracle references on import statements left out because their symbol is defined in more than one file",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 58eba2bb)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 58eba2bb)"
   ],
   "disposition": null

@@ -211,6 +211,7 @@
     "openstack/kolla-ansible: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
     "openstack/kolla: include-path resolution read 0 compile database(s); 0 quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound 0 call(s) (caller file and name) to the one file defining the function (0 of them chosen among definers by the files the build compiles), left 0 unbound for two or more definers, 0 for no definer among the files read and 0 for definers the build does not compile",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 85b73ee11)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 85b73ee11)"
   ],
   "disposition": null

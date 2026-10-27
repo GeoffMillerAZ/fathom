@@ -229,6 +229,7 @@
     "import_resolution: 46 of 46 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.9787 (46 of 47) and recall 1 (46 of 46); 1 of 51 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "nohwnd/Profiler: powershell-ast imports (tier A, PowerShell 7.5.4): 8 dot-sourcings, 14 Import-Module, 0 using module and 1 manifest RootModule/NestedModules entries in 43 files (0 with parse errors); 21 resolve to a subject file and 0 name a file outside it or none; 1 paths resolve against the current location, which no static reading knows, 0 are module names PSModulePath resolves and 1 are dynamic (a variable, Join-Path, a hashtable), each counted and written to no truth; 1 manifest entries Test-ModuleManifest validated, 0 read by Import-PowerShellDataFile's rules alone",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 6a0b22fc)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 6a0b22fc)"
   ],
   "disposition": null

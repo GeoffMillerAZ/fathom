@@ -4,13 +4,13 @@
   "target_level": "L2",
   "level_met": "L2",
   "grade": {
-    "L1": "good",
-    "L2": "good",
+    "L1": "excellent",
+    "L2": "excellent",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-24",
-  "fathom_commit": "470726f",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "faa72fd93",
   "extractor": "dialect",
   "subjects": [
     {
@@ -31,8 +31,8 @@
         "ref_truth_found": 1
       },
       "families": {
-        "l1": "C",
-        "refs": "C"
+        "l1": "A",
+        "refs": "A"
       },
       "kind_intersection": [
         "element",
@@ -44,8 +44,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.7969999999999999,
-        "extract_cpu_ms": 0.7969999999999999,
+        "extract_ms": 0.43,
+        "extract_cpu_ms": 0.433,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -54,9 +54,14 @@
   ],
   "oracles": [
     {
-      "tier": "C",
-      "tool": "pgbouncer",
-      "version": "PgBouncer 1.26.1 + line scanner"
+      "tier": "A",
+      "tool": "PgBouncer native SHOW DATABASES population and exhaustive auth_dbname startup enumeration",
+      "version": "PgBouncer 1.26.1"
+    },
+    {
+      "tier": "A",
+      "tool": "pgbouncer-native-positions",
+      "version": "PgBouncer 1.26.1 native cfparser"
     }
   ],
   "metrics": {
@@ -68,10 +73,10 @@
     "xref_recall": null
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C"
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
   },
   "required_kinds": [
     "key",
@@ -100,9 +105,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 23.62,
+    "throughput_mb_s": 43.48,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 23.62,
+    "wall_throughput_mb_s": 43.78,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -111,8 +116,9 @@
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pgbouncer/pgbouncer: 1 files skipped by ingest's gates (ambiguous)",
-    "pgbouncer/pgbouncer: pgbouncer loaded 6 of 6 files on a scratch instance (0 read by the line scanner alone); 0 entries the scanner read and pgbouncer did not report were left out",
-    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 470726f)"
+    "pgbouncer/pgbouncer: Native PgBouncer 1.26.1 cfparser enumerates every explicit token before comparison; each token line is attested by syntax ablation. Exact native callback prefixes before and after each token line bracket all 161 positions. Five existing logfile values point to private scratch; graded keys and lines are unchanged. Native SHOW DATABASES enumerates all sources for auth_dbname bindings. Full six-file canonical population; no backend SQL, Docker or L3.",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at faa72fd93)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 47.07 MB/CPU-s; run 2: 17.71 MB/CPU-s; run 3: 43.48 MB/CPU-s; median run 3: 43.48 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit faa72fd93"
   ],
   "disposition": null
 }

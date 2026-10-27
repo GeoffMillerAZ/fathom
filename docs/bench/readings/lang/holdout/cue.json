@@ -170,6 +170,7 @@
     "import_resolution: 95 of 95 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 1 (821 of 821) and recall 1 (821 of 821); 0 of 143 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "oracle independence: the cue binary (cue vet, cue def, cue lsp, cue export) runs as separate processes and shares no code path with the dialect, which parses with cuelang.org/go/cue/parser in process; the language server evaluates, so its answers include references CUE settles only by unification (a field of a definition reached through another), which the dialect resolves lexically where the file writes them",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at f6a0865af)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at f6a0865af)"
   ],
   "disposition": "holdout reading of LB-Q-cue's L3 rule (the cue-module strategy, LB-F583), 2026-10-20, wave lang8 item cue: L1 excellent, L2 excellent, L3 good (import_resolution 1, 95 of 95; file_edge_precision 1; file_edge_recall 0.3009, O1472); cross-file references at ingest 1441 of 1624 (doc-xref pass, precision 1)"

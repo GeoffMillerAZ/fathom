@@ -160,6 +160,7 @@
     "maven: restricted to pom.xml, */pom.xml (-only; the files outside are a disclosed gap, not measured)",
     "oracle tiers (wave ox, 2026-10-02): references and cross-references are tier A. Each POM's own parent and dependencies are attested by Maven's input location tracking (mvn help:effective-pom -Dverbose, Maven 3.9.16 and maven-help-plugin 3.5.1, offline): the effective model holds the element located in that POM's own model (1,235 of 1,235; one dubbo dependency at another line of its POM, where an active profile re-declares it); a parent and a dependency edge join the effective coordinates to a reactor project; each <module> edge is attested by ablation, every occurrence of the module cut from its aggregator in a scratch copy of the reactor's POMs and the project leaving the reactor Maven builds (129 of 129). The groupId:artifactId (Maven) versus artifactId (dialect) join difference is unchanged and stays disclosed (LB-Q-maven-rest); dubbo is measured with -P release",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at a63b7c2f)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at a63b7c2f)"
   ],
   "disposition": null

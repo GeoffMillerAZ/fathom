@@ -195,6 +195,7 @@
     "matlab2tikz: miss-hit-core 0.9.44 parser dump, 64 .m files, 64 parsed",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "profile (chebfun, -only scope, in-guest call timers; the same wasm module runs parse and query): tree-sitter parse (fathom_parse_bounded) 70% of extraction CPU, query evaluation (ts_query_cursor_next_match) 29%, tree delete 1.4%; a one-pattern tags.scm floor cut the pass from 8.99 s to 7.86 s, so the whole 154-line query costs at most 12% over a bare traversal and rewriting it could not have moved the VM reading to 1.0; the cost is the grammar's parse, left unedited (owner ruling M-R3)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at bea95991b)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at bea95991b)"
   ],
   "disposition": "L1 excellent is the measured free-oracle ceiling (assessment 2026-10-25, docs/assessments/2026-10-25-matlab-free-oracle-ceiling.md). MISS_HIT leaves call-versus-indexing references ambiguous; McLab SimpleFunctionCollection at beeea16c rejects scripts and classdef, so no independent L2/L3 call and resolution truth covers the unchanged subjects. L2/L3 remain not-attempted. Retry when a free analyzer covers classes, scripts and function resolution on the pinned subjects with an independent call dump, or an approved MATLAB oracle becomes available."

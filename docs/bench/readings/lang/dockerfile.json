@@ -182,6 +182,7 @@
   "excluded_by_kind": {},
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 0e2c7702)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 0e2c7702)"
   ],
   "disposition": "partial: L1 and L2 excellent against a tier-A oracle (buildkit-dockerfile-parser, the parser docker buildx build --print=outline is built on) across docker/cli, docker/compose and docker-library/python (73 files): sym_recall .9949, sym_precision .9975, ref_recall/ref_precision 1.0. L3 not attempted: tool-format xref scoring now exists (LB-F30, owner decision D4, 2026-09-28), but a Dockerfile's one cross-file reference — FROM <local image> to the Dockerfile that builds it — needs the image-to-Dockerfile strategy designed and deferred as LB-X-docker-image-ref (D7: its evidence lives in compose image+build pairs, docker-bake.hcl and shell `docker build -t`), and none of the three subjects builds a FROM image in-repo. Re-graded, not re-measured, in round 2: D1 changes only the throughput basis of future readings, and this reading's oracle program was never committed. Trigger: LB-X-docker-image-ref lands, then this reading is re-measured with a cross_references oracle."

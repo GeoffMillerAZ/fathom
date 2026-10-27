@@ -188,6 +188,7 @@
     "devrimgunduz/pagila: range_agreement measured against pglast (libpg_query, the PostgreSQL parser) (tier B, pglast v8.5, PostgreSQL 18.6 parser: 3 files, 1 it could not parse): the first and last line of each CREATE TABLE, VIEW, MATERIALIZED VIEW, FUNCTION, PROCEDURE and INDEX statement (stmt_location and stmt_len, the semicolon excluded; a column has no end and is not scored); 2 statements in 1 files did not parse alone and are not scored, 127 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); only the range counts are taken, so the L1 oracle is unchanged",
     "devrimgunduz/pagila: restricted to pagila-schema.sql, pagila-schema-jsonb.sql, pagila-temporal-setup.sql (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 94ad898ab)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 94ad898ab)",
     "sqitchers/sqitch: Three serialized complete measurements at niceness 10, each started below load 6; median pooled CPU throughput retained; scope unchanged",
     "sqitchers/sqitch: native catalog: 28 unchanged scoped files, 14 distinct inline CREATE TABLE FK pairs; every CREATE TABLE accepted; 6 rejected statements outside CREATE TABLE named in the companion report; ALTER TABLE and inherited-only keys excluded",

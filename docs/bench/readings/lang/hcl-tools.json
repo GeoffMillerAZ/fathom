@@ -409,6 +409,7 @@
     "hashicorp/packer-plugin-docker: restricted to builder/docker/test-fixtures/fix_upload_owner.pkr.hcl, builder/docker/test-fixtures/large_download.pkr.hcl, builder/docker/test-fixtures/upload_download.pkr.hcl (-only; the files outside are a disclosed gap, not measured)",
     "moby/buildkit: restricted to docker-bake.hcl, examples/create-certs/docker-bake.hcl (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at eb900e7a)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at eb900e7a)"
   ],
   "disposition": null

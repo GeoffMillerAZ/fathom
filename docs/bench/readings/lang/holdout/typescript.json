@@ -350,6 +350,7 @@
     "palantir/blueprint: 8189 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
     "palantir/blueprint: 917 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `<get>x`) and are left out of the call truth (L2 is call sites)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 2a425155)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 2a425155)"
   ],
   "disposition": null

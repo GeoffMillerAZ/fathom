@@ -216,6 +216,7 @@
     "nvm-sh/nvm: bash-source (tier B): 349 source/. statements in 277 files (0 shfmt rejected): 342 resolve to a subject file, 0 literal paths name no subject file, 1 are absolute, 0 are slash-less names in a sh script (PATH only), 6 are dynamic ($VAR, $(...), ~) and 0 globs, counted and never resolved, 0 have no argument; the current directory is the operator's (the script's directory, then the subject root)",
     "nvm-sh/nvm: range_agreement measured against shfmt --to-json (mvdan.cc/sh/v3 syntax, -ln bash) (tier B, v3.14.1: 277 files, 0 it could not parse): the first and last line of each function declaration (a syntax.FuncDecl, nested ones included), 731 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); only the range counts are taken, so the L1 oracle is unchanged",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 4f6fef03)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 4f6fef03)"
   ],
   "disposition": null

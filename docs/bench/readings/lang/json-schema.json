@@ -155,6 +155,7 @@
     "SchemaStore/schemastore: 6 files skipped by ingest's gates (oversize)",
     "SchemaStore/schemastore: 64151 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 02255415)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 02255415)"
   ],
   "disposition": null

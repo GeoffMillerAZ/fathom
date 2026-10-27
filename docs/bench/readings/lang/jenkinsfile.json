@@ -359,6 +359,7 @@
     "nemerosa/ontrack-jenkins-cli-pipeline: Jenkins steps read in the 42 files the dialect reads: 0 load steps, 2 literal shell steps; 1 shell-step edges left out of the unit, 96 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
     "nemerosa/ontrack-jenkins-cli-pipeline: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 3ead4c19)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 3ead4c19)",
     "tomarv2/jenkins-pipeline-library: 8 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "tomarv2/jenkins-pipeline-library: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 23 library-step references reach a vars/ file's call",

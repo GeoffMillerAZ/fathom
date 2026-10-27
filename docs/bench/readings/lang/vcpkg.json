@@ -158,6 +158,7 @@
   "notes": [
     "microsoft/vcpkg: restricted to ports/** (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 01d302a4)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 01d302a4)"
   ],
   "disposition": null

@@ -279,6 +279,7 @@
     "NVIDIA/cuda-samples: throughput read 3 times at fathom d16eb2ae in one VM, one subject (owner ruling C-R5): 0.96, 1.05 and 0.96 MB/s per core (wall 1.00, 1.06 and 0.97); the median run 3 (wall 0.97), 0.96, is this reading (sort by recorded CPU rate, then take zero-based position 1; equal CPU rates retain run order)",
     "import_resolution: 36 of 36 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.6545 (36 of 55) and recall 1 (36 of 36); 19 of 1111 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 226 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at d16eb2ae)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at d16eb2ae)",
     "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier B)"
   ],

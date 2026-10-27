@@ -6,11 +6,11 @@
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "good",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-10",
-  "fathom_commit": "4abb08ea",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "df20b1f1810c96dde9c00d919166f44746376993",
   "extractor": "dialect",
   "subjects": [
     {
@@ -29,10 +29,10 @@
         "ref_fathom_in_truth": 1807,
         "ref_truth": 1807,
         "ref_truth_found": 1807,
-        "xref_fathom": 664,
-        "xref_fathom_in_truth": 651,
+        "xref_fathom": 879,
+        "xref_fathom_in_truth": 866,
         "xref_truth": 866,
-        "xref_truth_found": 651
+        "xref_truth_found": 866
       },
       "families": {
         "l1": "A",
@@ -53,9 +53,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 36.515,
-        "extract_cpu_ms": 53.229000000000006,
-        "max_file_ms": 6,
+        "extract_ms": 51.044000000000004,
+        "extract_cpu_ms": 63.02499999999999,
+        "max_file_ms": 7,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -76,10 +76,10 @@
         "ref_fathom_in_truth": 2390,
         "ref_truth": 2390,
         "ref_truth_found": 2390,
-        "xref_fathom": 1496,
-        "xref_fathom_in_truth": 1496,
+        "xref_fathom": 2662,
+        "xref_fathom_in_truth": 2662,
         "xref_truth": 2662,
-        "xref_truth_found": 1496
+        "xref_truth_found": 2662
       },
       "families": {
         "l1": "A",
@@ -100,8 +100,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 33.17099999999999,
-        "extract_cpu_ms": 52.698,
+        "extract_ms": 46.91300000000002,
+        "extract_cpu_ms": 58.498000000000005,
         "max_file_ms": 7,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -120,8 +120,8 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": 0.994,
-    "xref_recall": 0.6086
+    "xref_precision": 0.9963,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "A",
@@ -156,17 +156,17 @@
     "ref_fathom_in_truth": 4197,
     "ref_truth": 4197,
     "ref_truth_found": 4197,
-    "xref_fathom": 2160,
-    "xref_fathom_in_truth": 2147,
+    "xref_fathom": 3541,
+    "xref_fathom_in_truth": 3528,
     "xref_truth": 3528,
-    "xref_truth_found": 2147
+    "xref_truth_found": 3528
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 9.22,
+    "throughput_mb_s": 8.04,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 14.01,
+    "wall_throughput_mb_s": 9.97,
     "max_file_ms": 7,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -175,12 +175,15 @@
     "fathom:TerraformProvider": 26
   },
   "notes": [
+    "Independence: a provider-free fixture's native raw truth changes when a source fact changes. A separate document-fixture replay changes real Terraform extractor output while the raw native truth remains identical before and after; other exercised document extraction and mixed-dialect fixture results stay stable. The replay is fixture coverage, not full-subject regrading of other document dialects. See docs/assessments/2026-10-26-iac-docxref-impact.md.",
     "L2: the oracle's references are every reference a definition makes to a definition of its own module, keyed by the referring file wherever the target is declared and named by address (module.m.o names the call module.m), as lang-oracle compares Calls. ref_recall 1.0; ref_precision .9866: the 57 references fathom draws beyond the tool (9 vpc, 48 eks) were each checked to be written in their definition's source, in the oracle's two blind spots: a local value's (36), read from the plan graph, and a dynamic block's content (21), which the configuration JSON does not render and the plan graph keeps only when no other reference of the same definition already depends on the target (OpenTofu transitively reduces the graph): vpc's local.vpc_id -> aws_vpc.this, eks's aws_eks_cluster.this -> var.encryption_config.",
-    "L3: cross-file references resolve through ResolveDocXrefs' label-selector join, the same resolver ingest stores doc-xref edges from (each definition labelled terraform.address in the scope of its module directory; a reference to a definition another file declares; a module call's input arguments to the called module's variables; a module.m.o read through a module block the same file declares to output o there). xref_precision .994 (the 13 beyond the tool are the L2 blind spots, a local or a data source's dynamic block referring to variables.tf); xref_recall .6086 (2147 of 3528; vpc 1496 of 2662, .562; eks 651 of 866, .752): every one of the 1381 missed is a module.m.o read in a file that does not declare module \"m\" (an example's outputs.tf reading module.vpc.* declared in its main.tf, checked by script for all 1381), whose target, output o in the called directory, takes a second hop through the call's source in another file: the one-hop label join cannot take it and a file's ExtractDoc cannot know it. The reference to the call itself (outputs.tf -> main.tf) is resolved.",
+    "L3 limits: the repaired engine emits 13 cross-file pairs beyond the native set. Historical adjudication: the 13 beyond the tool are the L2 blind spots, a local or a data source's dynamic block referring to variables.tf. This rerun did not individually re-adjudicate them. The native oracle scores file-granularity destinations, not typed attribute binding. The recovered 1381 pairs show the repair's measured effect; this aggregate result does not itself classify every historical miss by cause. Registry, remote, escaping, caller-directory and nonliteral module sources remain outside the repaired two-hop strategy.",
+    "L3: baseline 6db920e72: EKS 651/866, VPC 1496/2662, total 2147/3528, recall 0.6086, precision 0.9940; repaired df20b1f1810c96dde9c00d919166f44746376993: EKS 866/866, VPC 2662/2662, total 3528/3528, recall 1.0000, precision 0.9963. The original clean baseline ran three times, and the clean landing engine ran three times against the same raw native truth and full 87-file/523029-byte and 77-file/453543-byte measured sets. Counts, metrics and grades agreed within each set of runs. The reading uses the landing engine's median CPU-throughput run. L1 and L2 grades are excellent and excellent, respectively.",
+    "Native oracle: OpenTofu 1.13.0 show -json -config and graph -type=plan on every .tf directory (19 roots per subject), after init -backend=false -get=false. Preparation checks scratch .tf paths and bytes, strips all cached local records, and preseeds exact registry pins. Plain native init installs local entries; bounded retries retain native locals and restore only missing pinned registry descendants. Every native local key and source agrees with the separate scanner proposal; subject-local destinations agree lexically. Physical checkout paths for local children under registry modules pass only when their resolved target equals the pinned cache alias, with a separate alias count in the receipt. Native Dir values are never rewritten. All roots succeeded. Positions come from an independent line reader: 0 definitions unlocated, range_agreement 1.0 across 3,111 definitions. Registry module files are outside the measured subject. Providers came only from a private filesystem mirror; no plan, apply or cloud API was run. AWS 6.67.0 was identified previously; seven ancillary provider versions and ten registry module versions are newly pinned compatible inputs. See docs/assessments/data/terraform-two-hop-2026-10-26/summary.json.",
+    "Timing: landing-engine CPU-throughput median 8.04 MB/s from three runs on a shared Apple Silicon helper, Go 1.27.3, nice 10, GOMAXPROCS=2, GOFLAGS=-p=2. The 1-minute load at each launch was 5.7026; concurrent jobs were not recorded. The original baseline median was 8.53 MB/s under a load guard <=9, but its per-run load and concurrent jobs were not recorded. Wall extract_ms is not comparable, and this reading makes no extraction-cost regression claim.",
     "names are compared whole (name_match identity): a terraform address carries dots (aws_vpc.this, data.T.N, module.m, var.x, local.x, output.o), so the last-segment rule would conflate every resource named `this`. Local values are measured (canonical variable) now that the oracle is the tool: universal-ctags 6.2.1's spurious nested-map `local` tags were why the earlier tier-B reading excluded them. Providers have no canonical kind and are excluded.",
-    "oracle: OpenTofu 1.13.0 itself, tier A (calibration/oracles/terraform): every directory holding a .tf file is a root module of a scratch copy of the subject (19 roots per subject, all initialized and graphed), `tofu init -backend=false` against a shared offline filesystem provider mirror (hashicorp/aws 6.67.0, tls, time, cloudinit, null, helm, http, local: 215 MiB of packages, no direct installation), then `tofu show -json -config` (each module's resources, data sources, variables, outputs and module calls, and every expression's references, count/for_each and depends_on), `tofu graph -type=plan` (local values, and the references of a dynamic block's content, which the configuration JSON omits) and init's modules.json (where each module path lives). Positions come from an independent line reader (no HCL parser): 0 definitions unlocated, range_agreement 1.0. A registry module an example calls is downloaded by init and lies outside the subject: it is not measured.",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 4abb08ea)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at df20b1f1810c96dde9c00d919166f44746376993)",
     "the label-selector join compares every reference with every label set (O320): 4449 references against 3111 labels resolved in 80 ms on both subjects together.",
     "wave c3 (LB-F371, 2026-10-10): re-measured after CloudWatch as IaC and the Lambda handler binding (a log metric filter's literal metric is a TerraformMetric, a function's literal function_name a TelemetryIdentity, an alarm's metric and a /aws/lambda/<name> log group identity references, a function's handler through its archive_file): every count is unchanged on both subjects, neither of which declares a CloudWatch alarm, a metric filter or a Lambda function; the joins and the binding are measured on fixtures (TestIngest_TerraformCloudWatch) and their corpus coverage is LB-F371-rest's"
   ],

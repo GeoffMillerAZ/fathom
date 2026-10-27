@@ -156,6 +156,7 @@
     "open-props: 371 oracle and 372 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 107f6f11)",
     "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 107f6f11)"
   ],
   "disposition": null
