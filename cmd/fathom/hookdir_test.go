@@ -94,6 +94,15 @@ func TestReadoutHookScopesRootsByTheCommandsDirectory(t *testing.T) {
 }
 
 func TestGatePreflightReadsTheRepoTheCommandPushesFrom(t *testing.T) {
+	// This case is the gate preflight's alone. A has no remote, so its
+	// `git push origin HEAD` is an unknown egress target and the user's
+	// egress guard would warn (ADR-083 decision 4b): it is off here, and
+	// egress_test.go covers it.
+	home := t.TempDir()
+	t.Setenv("FATHOM_HOME", home)
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte("[guards]\negress = \"off\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	b, _ := preflightRepo(t) // the preflight is on in B, with a session that ran no test
 	a := t.TempDir()         // the session's project: the preflight is off there
 	gitInitTempRepo(t, a)
