@@ -38,8 +38,12 @@ func Hello() string {
 func Lonely() {}
 `
 
-// exportReceiptFixtureBSrc is pkg/b.go: a struct field and a use of it.
+// exportReceiptFixtureBSrc is pkg/b.go: a second file calling Greet, and
+// a struct field with a use of it.
 const exportReceiptFixtureBSrc = `package pkg
+
+// Wave calls Greet from a second file.
+func Wave() string { return Greet() }
 
 // Config carries a field.
 type Config struct{ N int }
@@ -121,11 +125,11 @@ func TestCmdExportReceipt(t *testing.T) {
 	}
 
 	callers, _ := exportReceipt(t, storePath, "--symbol", "Greet", "--kind", "callers")
-	if len(callers.Callers) != 1 || !strings.HasSuffix(callers.Callers[0], "Hello") {
-		t.Fatalf("callers = %v, want Hello", callers.Callers)
+	if len(callers.Callers) != 2 || !strings.HasSuffix(callers.Callers[0], "Hello") || !strings.HasSuffix(callers.Callers[1], "Wave") {
+		t.Fatalf("callers = %v, want Hello and Wave", callers.Callers)
 	}
-	if len(callers.Facts) != 1 || callers.Facts[0].Kind != receipt.FactCaller || !strings.Contains(callers.Facts[0].Anchors[0].Excerpt, "return Greet()") {
-		t.Errorf("caller facts = %+v, want Hello's anchored definition", callers.Facts)
+	if len(callers.Facts) != 2 || callers.Facts[0].Kind != receipt.FactCaller || !strings.Contains(callers.Facts[0].Anchors[0].Excerpt, "return Greet()") {
+		t.Errorf("caller facts = %+v, want Hello's and Wave's anchored definitions", callers.Facts)
 	}
 
 	none, _ := exportReceipt(t, storePath, "--symbol", "Lonely", "--kind", "callers")
@@ -455,8 +459,10 @@ func TestExportReceiptAllKindsRequireCleanAndBars(t *testing.T) {
 					t.Errorf("facts = %+v, want the test's and each reached symbol's definition", r.Facts)
 				}
 			}
-			if tc.kind == "references" && strings.Join(r.Files, ",") != "pkg/a.go" {
-				t.Errorf("files = %v, want pkg/a.go", r.Files)
+			// Wave calls Greet from pkg/b.go: the file set comes from the
+			// edges, not from the declaring file alone.
+			if tc.kind == "references" && strings.Join(r.Files, ",") != "pkg/a.go,pkg/b.go" {
+				t.Errorf("files = %v, want pkg/a.go and pkg/b.go", r.Files)
 			}
 			if code, msg := verifyReceiptFile(t, root, path); code != 0 {
 				t.Errorf("receipt verify exit %d:\n%s", code, msg)
