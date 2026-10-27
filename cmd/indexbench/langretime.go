@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
@@ -117,7 +118,9 @@ func retimeOneMinuteLoad() (float64, error) {
 	var err error
 	switch runtime.GOOS {
 	case "darwin":
-		raw, err = exec.Command("sysctl", "-n", "vm.loadavg").Output()
+		ctx, cancel := context.WithTimeout(context.Background(), retimeProbeTimeout)
+		defer cancel()
+		raw, err = exec.CommandContext(ctx, "sysctl", "-n", "vm.loadavg").Output()
 	case "linux":
 		raw, err = os.ReadFile("/proc/loadavg")
 	default:
@@ -197,13 +200,19 @@ func retimeBoundedReading(path string) (langbench.Reading, string, error) {
 	return reading, retimeSHA(data), nil
 }
 
+// retimeProbeTimeout bounds the short host probes lang-retime runs (the load
+// average and the checkout root), so a hung subprocess cannot stall a retime.
+const retimeProbeTimeout = 10 * time.Second
+
 func retimeWorkspaceRoot() (string, error) {
-	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), retimeProbeTimeout)
+	defer cancel()
+	root, err := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		return "", fmt.Errorf("checkout root unavailable: %w", err)
 	}
 	workspace := filepath.Join(strings.TrimSpace(string(root)), "workspace")
-	if err := exec.Command("git", "-C", strings.TrimSpace(string(root)), "check-ignore", "-q", "--", "workspace/").Run(); err != nil {
+	if err := exec.CommandContext(ctx, "git", "-C", strings.TrimSpace(string(root)), "check-ignore", "-q", "--", "workspace/").Run(); err != nil {
 		return "", fmt.Errorf("checkout workspace is not git-ignored: %w", err)
 	}
 	return workspace, nil
