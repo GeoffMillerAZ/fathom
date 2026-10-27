@@ -186,7 +186,7 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 			idx.specs.put(pf.ref.Path, ts.SpecLang(), pf.hash, sp)
 		}
 	} else {
-		nodes, extractErr = extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
+		nodes, extractErr = extractWithFacts(extExtractor, serviceID, pf.ref.Path, pf.content)
 	}
 	if extractErr != nil {
 		// Non-fatal: record the fingerprint so we don't retry on next ingest,

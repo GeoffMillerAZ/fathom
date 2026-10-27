@@ -124,6 +124,10 @@ func (x *DocExtractor) compileObs(kinds map[string]bool) error {
 	return nil
 }
 
+// DeclaresFacts reports whether the doc spec declares any fact
+// (DocSpec.Facts): ingest stores a declaring dialect's facts (WAE-4).
+func (x *DocExtractor) DeclaresFacts() bool { return len(x.facts) > 0 }
+
 // checkSignatureFields refuses an empty field or key name.
 func checkSignatureFields(e DocEntity, where string) error {
 	for _, f := range append(append([]string(nil), e.SignatureFields...), e.SignatureKeys...) {

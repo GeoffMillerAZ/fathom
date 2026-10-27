@@ -33,8 +33,14 @@ review/investigation packets, see [platform engineering](use-cases/platform-engi
 It records scratch-store demonstrations of the lookup, source, obligations,
 localization and change-review tools. Kubernetes `K8sFact` rows are reachable as
 symbols named `<workload>#<key>`, with the value in `signature`; a search hit can
-name that fact symbol. A fact sheet with anchors and coverage (WAE-5) and fact
-receipts remain unbuilt. A missing `#readinessProbe` symbol is unknown, never
+name that fact symbol. `symbol_context` on a workload serves its `K8sFact` rows, and on a
+Prometheus rule or Alertmanager route its stored `EntityFact` rows, under `facts` (WAE-5):
+`rows` sorted by line then key, each with `key`, `value`, `kind` and an `anchor` (path, line,
+and the file's `citation_status` when not clean), and `coverage` (`state` `complete`, or
+`incomplete` once the file differs from the index; `extractor`, `tier`, `read_set`); omitted
+for an entity with no stored fact. `rows` keep a quarter of the 16000-char budget (RC-19):
+past it, `rows_elided` counts the rows cut, and the count joins the response's one `elision` line.
+Fact receipts remain unbuilt. A missing `#readinessProbe` symbol is unknown, never
 absent; documents that fail decoding, including Helm templates, are silently
 skipped by the Kubernetes extractor. It adds no MCP tool
 or readiness verdict.

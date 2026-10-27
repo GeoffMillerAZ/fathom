@@ -5,7 +5,7 @@
       "kind": "AlertmanagerConfig",
       "package": "am-legacy",
       "line": 3,
-      "end_line": 27,
+      "end_line": 29,
       "tier": "verified"
     },
     {
@@ -13,7 +13,7 @@
       "kind": "AlertmanagerRoute",
       "package": "am-legacy",
       "line": 3,
-      "end_line": 15,
+      "end_line": 17,
       "signature": "receiver=default",
       "calls": [
         "default"
@@ -37,7 +37,7 @@
       "kind": "AlertmanagerRoute",
       "package": "am-legacy",
       "line": 10,
-      "end_line": 15,
+      "end_line": 17,
       "signature": "receiver=foobar; match_re={service: ^(foo|bar)$}",
       "calls": [
         "foobar"
@@ -49,7 +49,7 @@
       "kind": "AlertmanagerRoute",
       "package": "am-legacy",
       "line": 14,
-      "end_line": 15,
+      "end_line": 17,
       "signature": "receiver=team-x; match={owner: team-x}",
       "calls": [
         "team-x"
@@ -60,16 +60,16 @@
       "name": "default",
       "kind": "AlertmanagerReceiver",
       "package": "am-legacy",
-      "line": 17,
-      "end_line": 17,
+      "line": 19,
+      "end_line": 19,
       "tier": "verified"
     },
     {
       "name": "api-pager",
       "kind": "AlertmanagerReceiver",
       "package": "am-legacy",
-      "line": 18,
-      "end_line": 21,
+      "line": 20,
+      "end_line": 23,
       "signature": "victorops_configs",
       "tier": "verified"
     },
@@ -77,24 +77,24 @@
       "name": "foobar",
       "kind": "AlertmanagerReceiver",
       "package": "am-legacy",
-      "line": 22,
-      "end_line": 22,
+      "line": 24,
+      "end_line": 24,
       "tier": "verified"
     },
     {
       "name": "team-x",
       "kind": "AlertmanagerReceiver",
       "package": "am-legacy",
-      "line": 23,
-      "end_line": 23,
+      "line": 25,
+      "end_line": 25,
       "tier": "verified"
     },
     {
       "name": "inhibit_rules[0]",
       "kind": "AlertmanagerInhibitRule",
       "package": "am-legacy",
-      "line": 25,
-      "end_line": 27,
+      "line": 27,
+      "end_line": 29,
       "signature": "source_match={severity: critical}; target_match_re={severity: warning|info}; equal=[service]",
       "tier": "verified"
     }
@@ -132,7 +132,7 @@
       "matchers": [
         "severity=critical"
       ],
-      "line": 25
+      "line": 27
     },
     {
       "entity": "inhibit_rules[0]",
@@ -140,7 +140,7 @@
       "matchers": [
         "severity=~warning|info"
       ],
-      "line": 26
+      "line": 28
     }
   ],
   "facts": [
@@ -167,6 +167,18 @@
       "key": "receiver",
       "value": "team-x",
       "line": 15
+    },
+    {
+      "entity": "route.routes[1].routes[0]",
+      "key": "group_interval",
+      "value": "5m",
+      "line": 16
+    },
+    {
+      "entity": "route.routes[1].routes[0]",
+      "key": "repeat_interval",
+      "value": "4h",
+      "line": 17
     }
   ]
 }
