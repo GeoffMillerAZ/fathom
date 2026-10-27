@@ -147,8 +147,8 @@ spec:
 	}
 	// Tier C caps every level at good; level_met also needs the tenancy
 	// floor, which four tiny files under the race detector may not reach.
-	if r.Grade.L3 != "good" {
-		t.Errorf("grade L3 = %q, want good (tier C)\n%s", r.Grade.L3, raw)
+	if g := l3OnAmpleEvidence(t, r); g != "good" {
+		t.Errorf("grade L3 = %q, want good (tier C)\n%s", g, raw)
 	}
 	for _, note := range []string{"1 oracle route references on files the route pass does not read", "fixture: 1 core Service selector route references (observed-by's hop, TL-15) and 1 that select no workload", "route cross-check by istioctl analyze 1.0 (tier A, not scored): 2 of 2"} {
 		if !bytes.Contains(raw, []byte(note)) {

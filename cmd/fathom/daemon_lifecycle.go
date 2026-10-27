@@ -64,23 +64,30 @@ func writeSwitchFile(dir, name string, rec tenancy.SwitchRecord) (string, error)
 
 // installedPosture reads the installed plist for label ("" = discover).
 func installedPosture(label string) (lbl, plistPath string, post plistPostureReport, ok bool) {
+	lbl, plistPath, post, err := installedPostureErr(label)
+	return lbl, plistPath, post, lbl != "" && err == nil
+}
+
+// installedPostureErr is installedPosture with the reason a found plist
+// could not be read or parsed; lbl is "" when no agent is installed.
+func installedPostureErr(label string) (lbl, plistPath string, post plistPostureReport, err error) {
 	lbl = label
 	if lbl == "" {
 		lbl = labelInstalled()
 	}
 	if lbl == "" {
-		return "", "", plistPostureReport{}, false
+		return "", "", plistPostureReport{}, nil
 	}
 	plistPath = filepath.Join(launchAgentsDir(), lbl+".plist")
 	raw, err := os.ReadFile(plistPath)
 	if err != nil {
-		return lbl, plistPath, plistPostureReport{}, false
+		return lbl, plistPath, plistPostureReport{}, err
 	}
 	post, err = plistPosture(raw)
 	if err != nil {
-		return lbl, plistPath, plistPostureReport{}, false
+		return lbl, plistPath, plistPostureReport{}, err
 	}
-	return lbl, plistPath, post, true
+	return lbl, plistPath, post, nil
 }
 
 // reconcileCommand is the exact remedy line for a drifted plist.

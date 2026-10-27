@@ -1,0 +1,3 @@
+### Changed
+
+- A language or tool format's L3 now needs at least 20 references in the denominator of each cross-file metric it is graded on: a thinner metric is not measured and caps L3 at good, and when every one is thinner, and none is missing, L3 reads unmet with the evidence stated (`grade.L3_reason`, shown in `docs/languages.md`). Eight tool formats measured on too few resolvable cross-file references now read L2 instead of L3: JSON Schema (3), OpenTelemetry Collector (4), Protocol Buffers (11), Kong (12), Kustomize (13), nginx (13), Taskfile (14) and HAProxy (19). Tailwind CSS reads L2, its own target, and Dart's L3 is good rather than excellent. Their extraction is unchanged; the level returns when the corpus holds 20 such references (design 1.2, 1.9).

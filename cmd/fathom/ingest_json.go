@@ -38,12 +38,36 @@ type ingestTypedEdgesJSON struct {
 	// discoverable and therefore overridden (defect 2, same wave).
 	Fallback string `json:"fallback,omitempty"`
 
+	// PackagesSkipped counts the packages the load returned and the pass
+	// did not resolve; Skipped lists them by reason with the first five
+	// names, NotLoaded the discovered Go directories and nested modules no
+	// load covered (EW-83, O1506). Both sorted by reason.
+	PackagesSkipped int                        `json:"packages_skipped"`
+	Skipped         []ingestTypedSkipJSON      `json:"skipped,omitempty"`
+	NotLoaded       []ingestTypedNotLoadedJSON `json:"not_loaded,omitempty"`
+
 	// Pre-O82 fields, kept for compatibility.
 	Packages       int `json:"packages"`
 	PackagesFailed int `json:"packages_failed"`
 	Direct         int `json:"direct"`
 	IfaceDispatch  int `json:"iface_dispatch"`
 	Unresolved     int `json:"unresolved"`
+}
+
+// ingestTypedSkipJSON is one reason the typed pass skipped packages: the
+// exact count and the first five, sorted.
+type ingestTypedSkipJSON struct {
+	Reason   string   `json:"reason"`
+	Count    int      `json:"count"`
+	Packages []string `json:"packages"`
+}
+
+// ingestTypedNotLoadedJSON is one reason discovered Go directories or nested
+// modules (by go.mod) were not loaded: the exact count and the first five.
+type ingestTypedNotLoadedJSON struct {
+	Reason string   `json:"reason"`
+	Count  int      `json:"count"`
+	Paths  []string `json:"paths"`
 }
 
 // ingestCUEEdgesJSON is the CUE typed-edge pass counters (ADR-041 decision
@@ -126,13 +150,27 @@ type ingestPassTimeJSON struct {
 // ingestJSON is the `fathom ingest --json` envelope.
 type ingestJSON struct {
 	Service string `json:"service"`
-	// Outcome is ok | degraded | refused | incomplete. degraded: every
-	// readable file was indexed and read_failed > 0; refused: nothing was
-	// written (O16 guard); incomplete: every file failed with no index to
-	// protect — nothing was written and the ingest was not recorded
-	// complete (F2).
-	Outcome    string `json:"outcome"`
-	ExitCode   int    `json:"exit_code"`
+	// Outcome is ok | degraded | refused | incomplete | cancelled | busy. degraded:
+	// every readable file was indexed and read_failed > 0; refused: nothing
+	// was written (O16 guard); incomplete: every file failed with no index
+	// to protect — nothing was written and the ingest was not recorded
+	// complete (F2); cancelled: SIGINT or SIGTERM stopped it (signal names
+	// which; exit_code 130 or 143), and no step after it ran (GDEV-02);
+	// busy: another live process holds an uncommitted ingest of the service
+	// (owner_pid, owner_started_at), and nothing was read or written.
+	Outcome  string `json:"outcome"`
+	ExitCode int    `json:"exit_code"`
+	// OwnerPID and OwnerStartedAt name the other process whose uncommitted
+	// ingest of the service refused this one (outcome busy, GDEV-02).
+	OwnerPID       int    `json:"owner_pid,omitempty"`
+	OwnerStartedAt string `json:"owner_started_at,omitempty"`
+	// CountsPartial marks a cancelled ingest that stopped before it
+	// committed: its counts are as far as it got (symbols is counted only
+	// at the end), never totals.
+	CountsPartial bool `json:"counts_partial,omitempty"`
+	// Signal names the signal that stopped a cancelled ingest (SIGINT,
+	// SIGTERM); omitted otherwise.
+	Signal     string `json:"signal,omitempty"`
 	Discovered int    `json:"discovered"`
 	Extracted  int    `json:"extracted"`
 	Skipped    int    `json:"skipped"`
@@ -147,6 +185,7 @@ type ingestJSON struct {
 	Unclassified      int                     `json:"unclassified"`
 	Oversize          int                     `json:"oversize"`
 	ClassifiedZero    int                     `json:"classified_zero"`
+	ModelsRefused     int                     `json:"models_refused,omitempty"`
 	// SkippedGenerated, ClassifiedBySniff and AmbiguousUnclassified are the
 	// dialect gate's counts (LB-F9, LB-F10); omitted when zero.
 	SkippedGenerated      int `json:"skipped_generated,omitempty"`
@@ -196,11 +235,47 @@ func errnoClass(errText string) string {
 	return ""
 }
 
+// renderIngestCancelledJSON writes the envelope of a run a signal stopped:
+// the finished envelope's counts and SCIP imports (partial when the ingest
+// is known not to have committed: its counts are as far as it got, not
+// totals; when its state could not be read, the error says so and no claim
+// is made), outcome "cancelled", the signal, its exit code, and the error
+// and hint ingestCancelled names.
+func renderIngestCancelledJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult, partial bool, signal string, code int, msg, hint string) {
+	out := ingestJSONOf(service, svcPath, report, readErr, scipResults)
+	out.Outcome, out.ExitCode, out.Signal, out.Error, out.Hint = "cancelled", code, signal, msg, hint
+	out.CountsPartial = partial
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+}
+
+// renderIngestBusyJSON writes the envelope of an ingest refused beside
+// another live process's uncommitted ingest of the service.
+func renderIngestBusyJSON(w io.Writer, service string, pid int, startedAt, msg, hint string) {
+	out := ingestJSON{Service: service, Outcome: "busy", ExitCode: 1, OwnerPID: pid, OwnerStartedAt: startedAt,
+		ReadFailures: []ingestReadFailureJSON{}, Error: msg, Hint: hint}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+}
+
 // renderIngestJSON writes the envelope and returns the exit code (the same
 // 0/1 the text path returns). scipResults carries every --scip (or
 // auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
 // nil when none ran.
 func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) int {
+	out := ingestJSONOf(service, svcPath, report, readErr, scipResults)
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+	return out.ExitCode
+}
+
+// ingestJSONOf is the envelope of a finished ingest: every count the Report
+// carries, the SCIP imports, and the outcome its read failures and typed
+// pass give.
+func ingestJSONOf(service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) ingestJSON {
 	out := ingestJSON{
 		Service:           service,
 		Outcome:           "ok",
@@ -215,6 +290,7 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		Unclassified:      report.Unclassified,
 		Oversize:          report.Oversize,
 		ClassifiedZero:    report.ClassifiedZero,
+		ModelsRefused:     report.ModelsRefused,
 
 		SkippedGenerated:      report.SkippedGenerated,
 		ClassifiedBySniff:     report.ClassifiedBySniff,
@@ -236,13 +312,22 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 	// never the pre-O82 "non-zero packages/failures only" condition, which
 	// is exactly what let a Go tree with ZERO typed edges (packages seen,
 	// none processed) report a silently empty block.
-	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed {
+	// EW-83: also when not_loaded alone has entries (a tree with no module
+	// at all), its counts then 0 and failed false.
+	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed || len(report.TypedNotLoaded) > 0 {
 		edges := report.TypedEdgesDirect + report.TypedEdgesIfaceDispatch + report.TypedEdgesUnresolved
 		out.TypedEdges = &ingestTypedEdgesJSON{
-			PackagesSeen: report.TypedPackagesSeen, PackagesProcessed: report.TypedPackages,
+			PackagesSkipped: report.TypedPackagesSkipped,
+			PackagesSeen:    report.TypedPackagesSeen, PackagesProcessed: report.TypedPackages,
 			Edges: edges, Failed: report.TypedFailed, Error: report.TypedFailReason, Fallback: report.TypedFallback,
 			Packages: report.TypedPackages, PackagesFailed: report.TypedPackagesFailed,
 			Direct: report.TypedEdgesDirect, IfaceDispatch: report.TypedEdgesIfaceDispatch, Unresolved: report.TypedEdgesUnresolved,
+		}
+		for _, sk := range report.TypedSkips {
+			out.TypedEdges.Skipped = append(out.TypedEdges.Skipped, ingestTypedSkipJSON{Reason: sk.Reason, Count: sk.Count, Packages: sk.Names})
+		}
+		for _, nl := range report.TypedNotLoaded {
+			out.TypedEdges.NotLoaded = append(out.TypedEdges.NotLoaded, ingestTypedNotLoadedJSON{Reason: nl.Reason, Count: nl.Count, Paths: nl.Names})
 		}
 	}
 	for _, r := range scipResults {
@@ -302,8 +387,5 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		out.ExitCode = 1
 		out.Error = "typed-edge pass failed: " + report.TypedFailReason
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	_ = enc.Encode(out)
-	return out.ExitCode
+	return out
 }

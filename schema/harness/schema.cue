@@ -26,7 +26,9 @@ package harness
 	// RO-38/RO-39: the stop claim check (H2), opt-in.
 	"claim-check" |
 	// H8: the Read outline hint, opt-in.
-	"read-outline-hint"
+	"read-outline-hint" |
+	// ADR-083: the egress guard on a harness's own web tools.
+	"guard-pre-web"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
@@ -38,7 +40,7 @@ package harness
 	"user-prompt-submit" | "subagent-stop"
 
 // #ToolClass normalizes a harness's tool names.
-#ToolClass: "file-edit" | "shell" | "discovery-read" | "discovery-grep" | "discovery-glob" | "other"
+#ToolClass: "file-edit" | "shell" | "discovery-read" | "discovery-grep" | "discovery-glob" | "web" | "other"
 
 // #Tier is the degradation ladder rung: A hooks + inject, B block-only,
 // C in-process JS only, D none.
@@ -170,6 +172,7 @@ package harness
 		"readout":                #Vehicle
 		"claim-check":            #Vehicle
 		"read-outline-hint":      #Vehicle
+		"guard-pre-web":          #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string

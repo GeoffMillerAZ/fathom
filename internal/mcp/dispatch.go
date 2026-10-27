@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
-	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -436,18 +435,14 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	// response in production was silent: "a silent filter is
 	// indistinguishable from a recall bug", the exact condition the row
 	// forbids, while the row sat checked on internal-object tests.
-	ctx, collector := scope.WithCollector(ctx)
-	// RT-150: a read whose auto-refresh was deferred says so.
-	ctx, refreshed := withRefreshNotes(ctx)
-	if citationTool(te.desc.Name) {
-		ctx = context.WithValue(ctx, citationReadsKey{}, newCitationReads(ctx, s.backend, serviceOfArgs(p.Arguments), s.RefreshQueue()))
-	}
-
-	result, rpcErr := runHandler(ctx, te, p.Arguments)
-	// RT-57 (§3.4): the answer names itself — abandoned, partial or ok.
-	result, rpcErr, partial, settled := s.settleCall(ctx, te.desc.Name, tk, result, rpcErr)
-	settled.class = meta.class
-	meta = settled
+	// GDEV-08: runAdmitted owns the call from here to settle, so a panic in
+	// the setup or the handler releases the ticket and answers a named
+	// error. RT-57 (§3.4): the answer names itself — abandoned, partial or
+	// ok.
+	a := s.runAdmitted(ctx, te, p.Arguments, tk)
+	result, rpcErr, partial, collector, refreshed := a.result, a.rpcErr, a.partial, a.collector, a.refreshed
+	a.meta.class = meta.class
+	meta = a.meta
 	if rpcErr != nil {
 		return nil, rpcErr, meta
 	}

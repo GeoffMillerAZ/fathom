@@ -1,0 +1,52 @@
+{
+  "candidate": {
+    "commit": "b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+    "entry_point": "tree_sitter_opencl",
+    "generate": true,
+    "id": "opencl-c-semicolonless",
+    "repository": "https://github.com/tree-sitter/tree-sitter-c",
+    "scanner": false,
+    "version": "v0.24.2 plus experimental OpenCL C and newline-delimited macro statements"
+  },
+  "hashes": {
+    "archive_sha256": "dc3979e40fce678c27273ba8ab93b48b5acd6b91d1dfde6a4451222d366d689f",
+    "candidate_config_sha256": "82c29ad17bb4b6033f21cece977534e6fa1827b2adc074d518ef802f176e20e4",
+    "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+    "native_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+    "original_parser_c_sha256": "f2883ff9b21f4a5bd5553c1b10366c418947d17a7bc6bf256124a7542f079dd2",
+    "parser_c_sha256": "a80b70ec3ff815bf6c80a2f86f2035ee2a0f1d838cc48c40f108a22fde4ef116",
+    "patches_sha256": "bc520fa0a6adaf301eb2048851b39445e80fd685b5e19adfd0bc4880adb57430",
+    "tool_versions_sha256": "efcd4729536bb5bf9848ced1e5cce8aa422ffb79e2629e63ab4543801551a73c"
+  },
+  "patches": [
+    {
+      "path": "patches/opencl/0001-opencl-c-syntax.patch",
+      "sha256": "3227529eaa2d1c2c19f0d4d99ca6e856a23f8092cde8cc06b249a833a9743677"
+    },
+    {
+      "path": "patches/opencl/0002-semicolonless-macro-statements.patch",
+      "sha256": "5f769a24e945900dec64df11cecef762b70d4239941982c9810075e84d1ba8c4"
+    }
+  ],
+  "proof": {
+    "language": "openclproofa80b70ec3ff8",
+    "native_sha256": "b0978d1254051d4c8b0c369fb1bfc2e74ac2497f9946b3ec14d4a75729e880f0",
+    "original_parser_unchanged": true,
+    "parser_c_sha256": "51b74cfcbc11cc750090c739b634cbd525902a859ede6a748955af49f7af4feb"
+  },
+  "schema": "opencl-native-grammar-build-v1",
+  "scope": "calibration-only native grammar build; no product WASM",
+  "test": {
+    "exit_code": 0,
+    "failed": 0,
+    "passed": 145,
+    "skipped": 0,
+    "total": 145
+  },
+  "tool_versions": {
+    "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "git": "git version 2.54.0 (Apple Git-157)",
+    "tree_sitter": "tree-sitter 0.26.11"
+  }
+}

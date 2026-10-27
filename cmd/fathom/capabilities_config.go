@@ -20,6 +20,7 @@ func configSwitchKeys() [][2]string {
 		{"hooks.test_run", "test-run-hook"},
 		{"hooks.pin_check", "pin-check"},
 		{"guards.enforce", "guard-enforce"},
+		{"guards.egress", "egress-guard"},
 		{"daemon.auto_refresh", "auto-refresh"},
 	}
 }
@@ -54,6 +55,8 @@ func configSwitchSettings(root string) capability.Settings {
 			out[id] = hooks.PinCheck != config.PinCheckOff
 		case "guards.enforce":
 			out[id] = guards.Enforce == nil || *guards.Enforce
+		case "guards.egress":
+			out[id] = guards.EgressMode() != config.EgressOff
 		}
 	}
 	return out

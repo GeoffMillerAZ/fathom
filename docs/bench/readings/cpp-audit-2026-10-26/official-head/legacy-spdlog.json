@@ -1,0 +1,40 @@
+{
+  "status": "complete",
+  "mode": "external-candidate-diagnostic",
+  "baseline_revision": "0deba117abaadee0343a58a1645f9232a92b6167",
+  "counts_complete": true,
+  "files": 116,
+  "bytes": 489588,
+  "written": {
+    "error_containing": 45,
+    "missing_containing": 57,
+    "both": 28,
+    "error_only": 17,
+    "missing_only": 29,
+    "union": 74,
+    "faults": 0
+  },
+  "selected": {
+    "error_containing": 5,
+    "missing_containing": 29,
+    "both": 1,
+    "error_only": 4,
+    "missing_only": 28,
+    "union": 33,
+    "faults": 0
+  },
+  "reading_sha256": "92121b35cdf738f519aedb8906dba4b7d9e1b0f99055f040adf86715b49744fc",
+  "unmatched_sha256": "d0c397ee1ecb2cfde89334b50ee1ce2fe2cb559d58d27ccb04f0100cf82647f2",
+  "population_sha256": "0426708f1cb6398542e92ec2bbb377c4496202cdb48d97ffd5423eee6d1b1c8a",
+  "source_sha256": "ceca3caaee6c7f2cc0c792a2e863eaf4f2a45b6c5f5c286a4db4e74c8727bd6c",
+  "product_revision": "2cfc7626c943a320a390faae4ac92819929ba89a",
+  "product_binary_sha256": "e0813ff6fc3d1036fb15c63565667a67d0f83570f280a07f4ff210cf666f3f85",
+  "grammar_blob_sha256": "fde7035227a488422e95cc1a408fecbbc5b3440dceebf109e42d483d31270ed2",
+  "grammar_entry_point": "tree_sitter_cpp",
+  "audit_grammar_version": "c009222808634c1014f82438d4883753516a2c24",
+  "audit_runtime_version": "0.26.11",
+  "audit_grammar_archive_sha256": "6c6efaf024f5c02fee0403e4e2373346eeadc40828587bcfad9351df2f0a7986",
+  "audit_runtime_archive_sha256": "fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e",
+  "preprocess": true,
+  "preprocess_selected": 41
+}

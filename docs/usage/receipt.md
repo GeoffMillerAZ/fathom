@@ -44,8 +44,10 @@ file is missing/invalid — an operational refusal, never a false pass or fail.
 
 **Offline (EVX-6, I56).** The toolchain rung never downloads: every go
 command it runs (the go/packages load, and `go test` under `--run-tests`)
-runs with your environment plus `GOWORK=off`, `GOPROXY=off` and
-`GOFLAGS=-mod=readonly`, appended last so they win. It first checks the
+runs under goenv's offline environment (ADR-083): your environment plus
+`GOWORK=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`, `GOSUMDB=off`, `GONOPROXY=,`,
+`GOTELEMETRY=off` and `GOTOOLCHAIN=local`, appended last so they win, whatever
+`[ingest] go_network` says. `GOPRIVATE` no longer reaches version control. It first checks the
 module cache (`go mod download` under that environment, which fetches
 nothing); a module the cache lacks exits 2 and is named
 (`receipt verify: cannot run: receipt: example.com/dep@v1.2.3 is not in the

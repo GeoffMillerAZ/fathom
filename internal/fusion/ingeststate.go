@@ -79,13 +79,17 @@ func (p *Pipeline) ingestTarget(ctx context.Context, svc core.ServiceRef) string
 
 // beginIngestState reads the target watermark and writes ingest_state =
 // in_progress (best-effort: a store without the table, or a failed write,
-// never aborts the ingest — the watermark ordering alone still holds).
+// never aborts the ingest — the watermark ordering alone still holds). The
+// row is read and written under WithoutCancel (GDEV-02): a read that failed
+// under an already-cancelled context would take the previous row for
+// absent, and the abandon that follows would delete it.
 func (p *Pipeline) beginIngestState(ctx context.Context, svc core.ServiceRef) ingestRun {
 	run := ingestRun{service: svc.ID, target: p.ingestTarget(ctx, svc), path: absCorpusPath(svc.Path), started: time.Now().UnixNano()}
 	iss, ok := p.st.(store.IngestStateStore)
 	if !ok {
 		return run
 	}
+	ctx = context.WithoutCancel(ctx)
 	run.prev, run.hadPrev, _ = iss.GetIngestState(ctx, svc.ID)
 	_ = iss.SetIngestState(ctx, store.IngestState{
 		ServiceID: svc.ID, State: store.IngestInProgress, PID: os.Getpid(),

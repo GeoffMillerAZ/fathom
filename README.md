@@ -54,7 +54,15 @@ mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local
 export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.23.0 @ <commit>
 ```
 
-The binaries are not signed or notarized. A macOS browser download carries a quarantine
+The binaries are not signed or notarized, but each archive and `checksums.txt` carries a
+build-provenance attestation, starting with the first release after v0.23.0. Verify a downloaded archive against this repository's release workflow:
+
+```sh
+gh attestation verify "fathom_${V}_${OS}_${ARCH}.tar.gz" --repo GeoffMillerAZ/fathom \
+  --signer-workflow GeoffMillerAZ/fathom/.github/workflows/release.yml
+```
+
+A macOS browser download carries a quarantine
 flag (`curl` does not set it); clear it with `xattr -d com.apple.quarantine fathom`.
 
 *Or `go install github.com/geoffmilleraz/fathom/cmd/fathom@latest`* (macOS needs the Xcode
@@ -130,7 +138,7 @@ claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/ag
 ```
 
 `init` only adds files (`git status` lists them): `.fathomignore`, `.fathom/`, a marked
-stanza in `AGENTS.md`, hooks in `.claude/settings.json` and ten skills in `.claude/skills/`,
+stanza in `AGENTS.md`, hooks in `.claude/settings.json` and eleven skills in `.claude/skills/`,
 plus `~/.fathom/` and a `~/.local/bin/fathom` shim. Its `MANUAL:` lines are optional.
 Codex: [docs/adoption/codex.md](docs/adoption/codex.md).
 
@@ -210,6 +218,7 @@ decisions in [ADR.md](ADR.md), indexed in [docs/intent/decisions/](docs/intent/d
 | [adoption/claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md) | Full wiring guides per harness |
 | [docs/languages.md](docs/languages.md) | Per-language extraction, typed-edge sources, the generated board |
 | [docs/mcp-tools.md](docs/mcp-tools.md), [docs/usage.md](docs/usage.md) | MCP tools and surfaces; the CLI reference |
+| [docs/security.md](docs/security.md) | Threat model, every egress path, a reviewer checklist, hardening; report vulnerabilities per [SECURITY.md](SECURITY.md) |
 | [docs/architecture.md](docs/architecture.md) | Layers, data model, fusion pipeline, store |
 | [docs/intent/README.md](docs/intent/README.md) | Principles, invariants, scope and non-goals, decisions |
 | [CHANGELOG.md](CHANGELOG.md) | Releases; `### Breaking` lines link migration notes in `docs/upgrades/` |

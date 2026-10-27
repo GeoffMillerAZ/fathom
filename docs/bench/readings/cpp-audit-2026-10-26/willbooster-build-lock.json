@@ -1,0 +1,40 @@
+{
+  "budget_sha256": "85789d1809c3b536fc06200e1f25a4233d06b9887d3a13e19e88ee456a7b2d84",
+  "builder_sha256": "1e50a3d35b0d2fb2c42bdfbe2e12f107b30f6cb4319fd8316abfe39b70cfc812",
+  "grammar": {
+    "archive_bytes": 1365727,
+    "archive_sha256": "8c892195d9e44d816b4cc5ffa9f8cf53d2d1c00b3030feb0d35e612ae5f34bcc",
+    "crate": "willbooster-tree-sitter-cpp",
+    "entries": 22,
+    "extracted_bytes": 28599993,
+    "files": 22,
+    "licence": "MIT",
+    "licence_sha256": "2bb45b424e2a497412ab9eb903554eebb9847e4f70bc81eecd2609817301679f",
+    "version": "6.0.2"
+  },
+  "module": {
+    "abi": 1463943174,
+    "blob": "cpp",
+    "bytes": 3852285,
+    "entrypoint": "tree_sitter_cpp",
+    "sha256": "e39bd1cf09c15b52b9495b8e19e6b0627f41312f1e60453f4427695baf29e684"
+  },
+  "runtime": {
+    "archive_bytes": 246632,
+    "archive_sha256": "166cf42202927500081763e65e63d3c0bc9273e05ba998496756fff7569de9c5",
+    "crate": "willbooster-tree-sitter",
+    "entries": 95,
+    "extracted_bytes": 1252869,
+    "files": 95,
+    "licence": "MIT",
+    "licence_sha256": "f1e1e62c6e1119d27f5ba38a0cbdae0788fc00f1d0bdf71cb7710ca5d2421d1c",
+    "version": "7.0.5"
+  },
+  "schema": "fathom-cpp-external-audit-v1",
+  "toolchain": {
+    "wasm_opt_sha256": "2bf3eadf0b156ab57982f580b9603b5034a22878e08a9516310c14932bd533d4",
+    "wasm_opt_version": "129",
+    "zig_sha256": "e6cd688d25664983833aae272f501d4bceeae304875b8f1741209d15fd13a4ec",
+    "zig_version": "0.16.0"
+  }
+}

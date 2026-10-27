@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -113,6 +114,9 @@ type Grade struct {
 	L2 string `json:"L2"`
 	L3 string `json:"L3"`
 	L4 string `json:"L4"`
+	// L3Reason states why L3 is unmet when no graded L3 metric holds the minimum evidence
+	// (owner ruling D19, E3): a thin corpus, not a metric failure. Empty otherwise.
+	L3Reason string `json:"L3_reason,omitempty"`
 }
 
 func (g *Grade) set(level, v string) {
@@ -237,6 +241,67 @@ type Reading struct {
 	ExcludedByKind   map[string]int      `json:"excluded_by_kind"`
 	Notes            []string            `json:"notes"`
 	Disposition      *string             `json:"disposition"`
+	// L3Evidence is the manifest's minimum-evidence bar for L3 (owner ruling S-R6, scoped
+	// to the dialect that sets it): nil for every reading whose manifest sets none.
+	L3Evidence *EvidenceBar `json:"l3_evidence,omitempty"`
+}
+
+// EvidenceBar is a dialect manifest's minimum evidence for L3: its cross-file metric's
+// denominator (xref_truth for a tool format, file_edges_truth for a language) holds at
+// least MinReferences resolvable references across at least MinSubjects subjects, else L3
+// grades unmet whatever its metrics read.
+type EvidenceBar struct {
+	MinReferences int `json:"min_references"`
+	MinSubjects   int `json:"min_subjects"`
+}
+
+// l3EvidenceCount is the count an EvidenceBar reads: the L3 recall metric's denominator.
+func l3EvidenceCount(kind string) string {
+	if kind == "tooling" {
+		return "xref_truth"
+	}
+	return "file_edges_truth"
+}
+
+// l3EvidenceHolds reports whether r carries the evidence its bar asks for (true with none).
+func l3EvidenceHolds(r Reading) bool {
+	b := r.L3Evidence
+	if b == nil {
+		return true
+	}
+	k := l3EvidenceCount(r.Kind)
+	refs, subjects := 0, 0
+	for _, s := range r.Subjects {
+		if n := s.Counts[k]; n > 0 {
+			refs += n
+			subjects++
+		}
+	}
+	return refs >= b.MinReferences && subjects >= b.MinSubjects
+}
+
+// MinL3Evidence is owner ruling D19's minimum evidence for L3 (E1, E2): a graded L3 metric
+// counts only when its own denominator, summed over the reading's subjects, holds at least
+// this many references; under it the metric is not measured, which caps L3 at good, and L3
+// is unmet when every graded L3 metric is under it. Breadth is the corpus rules' job, so
+// there is no subject minimum.
+const MinL3Evidence = 20
+
+// l3Denominator names the count each L3 metric is a ratio over (merge.go's recompute):
+// for file_edge_precision the raw fathom count, before any oracle-blind pairs come back.
+var l3Denominator = map[string]string{
+	MXrefRecall: CntXrefTruth, MXrefPrecision: CntXrefFathom,
+	MFileEdgeRecall: CntFileEdgesTruth, MFileEdgePrecision: CntFileEdgesFathom,
+	MImportResolution: CntImportsInRepo,
+}
+
+// l3Evidence is metric's denominator summed over r's subjects.
+func l3Evidence(r Reading, metric string) int {
+	n := 0
+	for _, s := range r.Subjects {
+		n += s.Counts[l3Denominator[metric]]
+	}
+	return n
 }
 
 func thresholdsFor(kind string) map[string][]threshold {
@@ -292,7 +357,8 @@ func tenancyHolds(r Reading) bool {
 // LevelMet computes a reading's level and per-level grade from its metrics,
 // the §1.2 thresholds and the §1.3 tiers alone. A level is met when its own
 // metrics grade good or better, every level below it is met, and the
-// tenancy floor holds.
+// tenancy floor holds; an L3 metric under MinL3Evidence counts as not measured (D19),
+// and L3 also needs the manifest's evidence bar, if it sets one.
 func LevelMet(r Reading) (string, Grade) {
 	th := thresholdsFor(r.Kind)
 	var g Grade
@@ -305,7 +371,13 @@ func LevelMet(r Reading) (string, Grade) {
 			chain = false
 			continue
 		}
-		grade := gradeLevel(r, level, ts)
+		grade, thin, allThin := gradeLevel(r, level, ts)
+		if allThin {
+			g.L3Reason = fmt.Sprintf("evidence: %d references, under %d", thin, MinL3Evidence)
+		}
+		if level == "L3" && grade != GradeNotAttempted && !l3EvidenceHolds(r) {
+			grade = GradeUnmet
+		}
 		g.set(level, grade)
 		if chain && (grade == GradeExcellent || grade == GradeGood) {
 			levelMet = level
@@ -316,9 +388,13 @@ func LevelMet(r Reading) (string, Grade) {
 	return levelMet, g
 }
 
-func gradeLevel(r Reading, level string, ts []threshold) string {
-	measured, missing := 0, 0
-	grade := GradeExcellent
+// gradeLevel grades one level's metrics. At L3 a metric under MinL3Evidence is not
+// measured; when every graded L3 metric is, and none is missing, the level is unmet, allThin
+// is set and thin is the most evidence any of them held. A missing metric is never thin
+// evidence: it is the level's own cause.
+func gradeLevel(r Reading, level string, ts []threshold) (grade string, thin int, allThin bool) {
+	measured, missing, thinMetrics := 0, 0, 0
+	grade = GradeExcellent
 	capped := false
 	for _, t := range ts {
 		if slices.Contains(r.NotApplicable, t.metric) {
@@ -332,6 +408,14 @@ func gradeLevel(r Reading, level string, ts []threshold) string {
 		if v == nil {
 			missing++
 			continue
+		}
+		if level == "L3" {
+			if n := l3Evidence(r, t.metric); n < MinL3Evidence {
+				thinMetrics++
+				thin = max(thin, n)
+				capped = true
+				continue
+			}
 		}
 		measured++
 		var mg string
@@ -349,14 +433,18 @@ func gradeLevel(r Reading, level string, ts []threshold) string {
 		grade = minGrade(grade, mg)
 	}
 	switch {
+	case measured == 0 && thinMetrics > 0 && missing == 0:
+		return GradeUnmet, thin, true
+	case measured == 0 && thinMetrics > 0:
+		return GradeUnmet, 0, false
 	case measured == 0:
-		return GradeNotAttempted
+		return GradeNotAttempted, 0, false
 	case missing > 0:
-		return GradeUnmet
+		return GradeUnmet, 0, false
 	case capped:
-		return minGrade(grade, GradeGood)
+		return minGrade(grade, GradeGood), 0, false
 	}
-	return grade
+	return grade, 0, false
 }
 
 // Finalize computes LevelMet and Grade and normalizes the reading's slices
@@ -427,6 +515,9 @@ func (r Reading) Validate() error {
 	if len(r.Subjects) == 0 {
 		return fmt.Errorf("reading %s: no subjects", r.Dialect)
 	}
+	if b := r.L3Evidence; b != nil && (b.MinReferences < 1 || b.MinSubjects < 1) {
+		return fmt.Errorf("reading %s: l3_evidence %+v needs both counts at least 1", r.Dialect, *b)
+	}
 	for _, o := range r.Oracles {
 		if o.Source != "" && (!RevisionPattern.MatchString(o.Revision) || strings.TrimSpace(o.Licence) == "" || o.Tier != "C") {
 			return fmt.Errorf("reading %s: oracle %s from %s needs a 40-hex revision (%q), a licence (%q) and tier C (%q) — ADR-048's D5 extension", r.Dialect, o.Tool, o.Source, o.Revision, o.Licence, o.Tier)
@@ -492,13 +583,18 @@ func (r Reading) Validate() error {
 }
 
 // MarshalReading is the one writer of a reading's bytes (§10): two-space
-// indent, trailing newline, so `"level_met": "L3"` is always one line.
+// indent, trailing newline, so `"level_met": "L3"` is always one line. HTML
+// escaping is off, so a note's <, > and & are written as measured — every
+// committed reading is byte-equal to its own re-marshal.
 func MarshalReading(r Reading) ([]byte, error) {
-	b, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(r); err != nil {
 		return nil, err
 	}
-	return append(b, '\n'), nil
+	return buf.Bytes(), nil
 }
 
 // GradeAt returns the grade recorded for level.

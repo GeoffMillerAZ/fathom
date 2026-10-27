@@ -31,7 +31,7 @@ cd /path/to/your/repo && fathom init --skills   # --harness codex|gemini-cli|cur
 fathom doctor                                   # the checklist; every SKIP says why
 ```
 
-`--skills` installs the ten shipped skills into `.claude/skills` and links
+`--skills` installs the eleven shipped skills into `.claude/skills` and links
 `.agents/skills` (the Agent Skills standard path that Codex, Gemini CLI,
 Cursor and Copilot read) to it. `fathom plugin render` packages the same ten
 with the hook template and the MCP registration as one plugin tree.

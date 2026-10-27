@@ -84,6 +84,18 @@ over a syntax-only graph. `fallback:"GOWORK=off"` names when an ambient
 workspace was discoverable and overridden (TypedEdgeEnv forces GOWORK=off
 unconditionally, so this is disclosure, not a live risk).
 
+`ingest` alone (the MCP tool, and `fathom ingest` text and `--json`; not
+`list_services`) also names what the typed pass did not resolve (EW-83,
+O1506): `packages_skipped`, `skipped:[{reason, count, packages}]` (test main,
+test-only, connector scope, build constraints, outside ./...) and
+`not_loaded:[{reason, count, paths}]` (a directory with no go.mod or outside
+./..., a nested module not loaded by its go.mod), sorted by reason with at
+most five names each. The text output counts the skips on the typed-edges
+line and names each package, directory and module that loses evidence on
+one more line. None of it is persisted: a status replayed after a restart
+omits these fields rather than read 0, and the MCP tool has no block for a
+tree with no module at all (no status is recorded there; the CLI names it).
+
 **A hook may never re-point a service (O82).** `worktree.CheckReroot`
 (O22/PC-33) only refuses re-rooting a service onto a LINKED git worktree of
 its own recorded root; a plain `git clone` elsewhere sails through it. The

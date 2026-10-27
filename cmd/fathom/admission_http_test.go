@@ -110,6 +110,7 @@ func TestDaemonServerTimeoutsAndLoopbackHost(t *testing.T) {
 	serve := func(host, origin, path string) int {
 		r := httptest.NewRequest(http.MethodPost, path, nil)
 		r.Host = host
+		r.RemoteAddr = "127.0.0.1:50000" // a loopback peer (httptest's default is a network one; ADR-083)
 		if origin != "" {
 			r.Header.Set("Origin", origin)
 		}
@@ -190,6 +191,7 @@ func TestTestCallerRefusedByManagedDaemon(t *testing.T) {
 	call := func(s *http.Server, caller string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(toolsCall("capabilities")))
 		r.Host = "127.0.0.1:7581"
+		r.RemoteAddr = "127.0.0.1:50000" // a loopback peer (ADR-083)
 		if caller != "" {
 			r.Header.Set(client.CallerHeaderName, caller)
 		}
@@ -333,6 +335,11 @@ func TestRefusalNamesItsScope(t *testing.T) {
 		{tenancy.Refusal{Code: tenancy.RefusalDeadline, RetryAfter: time.Second}, hookguard.BusyScopeClass},
 		{tenancy.Refusal{Code: tenancy.RefusalLevel, RetryAfter: 30 * time.Second}, hookguard.BusyScopeDaemon},
 		{tenancy.Refusal{Code: tenancy.RefusalSafeMode, RetryAfter: 60 * time.Second}, hookguard.BusyScopeDaemon},
+		// GDEV-08: a handler's store-distress refusal has no code that
+		// scopes it, so it carries its class scope itself; without the
+		// mark an uncoded refusal stays daemon-scoped.
+		{*(&tenancy.Refusal{RetryAfter: 60 * time.Second}).WithClassScope(), hookguard.BusyScopeClass},
+		{tenancy.Refusal{RetryAfter: 60 * time.Second}, hookguard.BusyScopeDaemon},
 	} {
 		rec := httptest.NewRecorder()
 		writeRefusal(rec, &tc.ref)

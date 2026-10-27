@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"runtime/debug"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
@@ -20,9 +18,24 @@ const Version = "fathom " + buildinfo.Release
 // -buildvcs (default on). It needs no ldflags. This is the staleness signal:
 // compare it against `git rev-parse HEAD` to tell whether a long-running
 // serve-mcp process is serving code older than the repo.
-func BuildRevision() string {
-	rev, when, dirty := vcsInfo()
+func BuildRevision() string { return formatBuildRevision(versionStamp()) }
+
+// versionStamp reads the binary's build identity; a variable so tests can
+// supply a fake build info.
+var versionStamp = buildinfo.Read
+
+// formatBuildRevision renders a Stamp. With no VCS revision (a `go install
+// pkg@version` build) it falls back to the module version and go.sum hash,
+// so the text still names what was built.
+func formatBuildRevision(st buildinfo.Stamp) string {
+	rev, when, dirty := st.Revision, st.BuiltAt, st.Dirty
 	if rev == "" {
+		switch {
+		case st.ModuleVersion != "" && st.ModuleSum != "":
+			return fmt.Sprintf("%s (module %s, sum %s)", Version, st.ModuleVersion, st.ModuleSum)
+		case st.ModuleVersion != "":
+			return fmt.Sprintf("%s (module %s)", Version, st.ModuleVersion)
+		}
 		return Version + " (revision unknown)"
 	}
 	short := rev
@@ -39,31 +52,12 @@ func BuildRevision() string {
 	return fmt.Sprintf("%s @ %s%s", Version, short, tag)
 }
 
-// vcsInfo extracts the embedded VCS settings from the build info.
-func vcsInfo() (revision, time string, modified bool) {
-	bi, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "", "", false
-	}
-	for _, s := range bi.Settings {
-		switch s.Key {
-		case "vcs.revision":
-			revision = s.Value
-		case "vcs.time":
-			time = s.Value
-		case "vcs.modified":
-			modified = strings.EqualFold(s.Value, "true")
-		}
-	}
-	return revision, time, modified
-}
-
 // shortRevision returns the embedded VCS revision truncated to 12 chars (BuildRevision's
-// own truncation length), or "" when no VCS info is embedded — used by
+// own truncation length), or "" when no VCS info is embedded -- used by
 // `fathom research bundle` to identify the fathom BINARY, never the
 // adopting repo's own commit.
 func shortRevision() string {
-	rev, _, _ := vcsInfo()
+	rev := versionStamp().Revision
 	if len(rev) > 12 {
 		rev = rev[:12]
 	}
@@ -72,10 +66,7 @@ func shortRevision() string {
 
 // revisionDirty reports whether the embedded VCS state was modified
 // (uncommitted changes) at build time.
-func revisionDirty() bool {
-	_, _, dirty := vcsInfo()
-	return dirty
-}
+func revisionDirty() bool { return versionStamp().Dirty }
 
 // cmdVersion prints the build identity; `--json` adds the responsible-tenant
 // contract this binary speaks (tenancy_contract, design §8.3), which
@@ -93,10 +84,11 @@ func revisionDirty() bool {
 // ingest stores while the contract_keys table is frozen.
 func cmdVersion(args []string, stdout, _ io.Writer) int {
 	if hasFlag(args, "json") {
-		rev, when, dirty := vcsInfo()
+		st := versionStamp()
 		enc := json.NewEncoder(stdout)
 		_ = enc.Encode(map[string]any{
-			"version": Version, "revision": rev, "revision_time": when, "dirty": dirty,
+			"version": Version, "revision": st.Revision, "revision_time": st.BuiltAt, "dirty": st.Dirty,
+			"module_version": st.ModuleVersion, "module_sum": st.ModuleSum,
 			"tenancy_contract": tenancyContract,
 			"extractor_epoch":  fusion.ExtractorEpoch,
 			"typed_edge_epoch": fusion.TypedEdgeEpoch,

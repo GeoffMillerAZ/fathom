@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
@@ -70,5 +71,47 @@ func TestVersionJSONCarriesCacheKeyComponents(t *testing.T) {
 func TestVersionIsTheBuildinfoRelease(t *testing.T) {
 	if want := "fathom " + buildinfo.Release; Version != want {
 		t.Fatalf("Version = %q, want %q", Version, want)
+	}
+}
+
+func TestFormatBuildRevisionModuleFallback(t *testing.T) {
+	cases := []struct {
+		name string
+		st   buildinfo.Stamp
+		want string
+	}{
+		{"nothing", buildinfo.Stamp{}, Version + " (revision unknown)"},
+		{"module and sum", buildinfo.Stamp{ModuleVersion: "v9.9.9", ModuleSum: "h1:abc="}, Version + " (module v9.9.9, sum h1:abc=)"},
+		{"module only", buildinfo.Stamp{ModuleVersion: "v9.9.9"}, Version + " (module v9.9.9)"},
+		{"vcs wins", buildinfo.Stamp{Revision: "0123456789abcdef", ModuleVersion: "v9.9.9"}, Version + " @ 0123456789ab"},
+	}
+	for _, c := range cases {
+		if got := formatBuildRevision(c.st); got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestVersionJSONCarriesModuleIdentity(t *testing.T) {
+	old := versionStamp
+	versionStamp = func() buildinfo.Stamp {
+		return buildinfo.Stamp{ModuleVersion: "v9.9.9", ModuleSum: "h1:abc="}
+	}
+	defer func() { versionStamp = old }()
+	var out bytes.Buffer
+	if code := cmdVersion([]string{"--json"}, &out, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["module_version"] != "v9.9.9" || got["module_sum"] != "h1:abc=" {
+		t.Errorf("module_version/module_sum = %v / %v", got["module_version"], got["module_sum"])
+	}
+	out.Reset()
+	cmdVersion([]string{}, &out, &bytes.Buffer{})
+	if want := Version + " (module v9.9.9, sum h1:abc=)"; strings.TrimSpace(out.String()) != want {
+		t.Errorf("text = %q, want %q", out.String(), want)
 	}
 }

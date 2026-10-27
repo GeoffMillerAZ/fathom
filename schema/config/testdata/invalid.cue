@@ -231,6 +231,11 @@ package config
 // 	typed: skip_modules: "calibration/**"
 // }
 
+// An [ingest] go_network that is not a bool (ADR-083):
+// badIngest1: #Config & {
+// 	ingest: go_network: "yes"
+// }
+
 // The [decide] consent and kill fields (KS-3): enabled and
 // allow_repo_provider are bools, session_sites names only the session
 // sites, and deny_sites only known sites:
@@ -315,4 +320,14 @@ package config
 // The swap-volume floor requires a pressure level, never "off".
 // badFloorOnPressure: #Config & {
 // 	tenancy: host: floor_on_pressure: "off"
+// }
+
+// [guards] egress is off, warn or enforce (ADR-083):
+// badEgressMode: #Config & {
+// 	guards: egress: "deny"
+// }
+//
+// [guards] egress_allow never names an empty host:
+// badEgressAllow: #Config & {
+// 	guards: egress_allow: [""]
 // }
