@@ -42,9 +42,15 @@ python3 calibration/oracles/kustomize/publish_reading.py --cache "$KUST_CACHE" -
 
 The `rev-parse` command must print the fixed full commit; `status` must be
 empty. `go version -m` must report that same `vcs.revision` and
-`vcs.modified=false`. The public receipt records only the clean source identity. Its earlier
-untrimmed local binary digest was withdrawn because build paths can affect it.
-Historical raw-log digests are also withdrawn; execution status remains. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
+`vcs.modified=false`. The public receipt records the clean source identity and
+`indexbench_local_artifact_sha256` of the exact graded binary. The reading
+publisher cross-checks that digest against the graded run's `indexbench_sha256`.
+It is a historical local-artifact identity, not a portable rebuild checksum:
+the baseline build omits `-trimpath`, so another build path can change it.
+The digest was removed during R-D19 and is restored under I-R6. Removed raw-log
+digests are non-portable local digests retained in public history; their removal
+is not privacy remediation. A SHA-256 does not encode a path. Execution commands
+and status remain. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
 --step tool --step subjects` before the shown sequence. Use one heavy job at a
 time and niceness 10. Both
 drivers wait and recheck while one-minute load exceeds 9 before each subject.
