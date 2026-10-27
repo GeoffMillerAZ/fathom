@@ -52,7 +52,8 @@ type Config struct{ N int }
 func Size(c Config) int { return c.N }
 `
 
-// exportReceiptFixtureTestSrc reaches Hello and, through it, Greet.
+// exportReceiptFixtureTestSrc reaches Hello and, through it, Greet, and
+// a helper in its own file.
 const exportReceiptFixtureTestSrc = `package pkg
 
 import "testing"
@@ -61,7 +62,11 @@ func TestHello(t *testing.T) {
 	if Hello() != "hi" {
 		t.Fatal("no greeting")
 	}
+	settle()
 }
+
+// settle is a test-file helper: reached, but never what a test certifies.
+func settle() {}
 `
 
 func exportReceiptFixture(t *testing.T) (root, storePath string) {
@@ -356,9 +361,20 @@ func TestCmdExportReceiptRedactHelp(t *testing.T) {
 	}
 }
 
+// certTarget is a certification target as internal/certify resolves it:
+// a rule names symbols and certify scopes the claim to the files of those
+// the test reaches; an invariant or incident names no symbol and certify
+// scopes the claim to its doc file (reach is vacuous).
+type certTarget struct {
+	kind, id string
+	symbols  []string // the target symbols the test reaches
+	doc      string   // a symbol-less target's file
+}
+
 // seedCertification writes one certifications-layer claim per test name
-// to storePath, each certifying target over pkg/a.go.
-func seedCertification(t *testing.T, storePath string, target string, tests ...string) {
+// to storePath, each certifying target with the scope certify writes: the
+// test's file plus the target's files.
+func seedCertification(t *testing.T, storePath string, target certTarget, tests ...string) {
 	t.Helper()
 	ctx := context.Background()
 	st, err := store.Open(storePath)
@@ -370,29 +386,40 @@ func seedCertification(t *testing.T, storePath string, target string, tests ...s
 	if err != nil {
 		t.Fatal(err)
 	}
-	var claims []core.SemanticClaim
-	for _, test := range tests {
-		key := ""
+	node := func(name string) core.SymbolNode {
 		for _, o := range obs {
-			if n := o.ToSymbolNode(); n.Name == test {
-				key = n.Key()
+			if n := o.ToSymbolNode(); n.Name == name {
+				return n
 			}
 		}
-		if key == "" {
-			t.Fatalf("the index holds no %s", test)
+		t.Fatalf("the index holds no %s", name)
+		return core.SymbolNode{}
+	}
+	var claims []core.SemanticClaim
+	for _, test := range tests {
+		tn := node(test)
+		scope := []string{tn.FilePath}
+		for _, sym := range target.symbols {
+			scope = append(scope, node(sym).FilePath)
 		}
+		if target.doc != "" {
+			scope = append(scope, target.doc)
+		}
+		slices.Sort(scope)
+		scope = slices.Compact(scope)
 		meta, err := json.Marshal(certify.Meta{
 			Test: test, Strength: "asserts", State: "live", RunDigest: "run-" + test,
-			TestSymbolKey: key, TargetKind: "invariant", TargetID: target, TestFile: "pkg/a_test.go",
+			TestSymbolKey: tn.Key(), TargetKind: target.kind, TargetID: target.id, TestFile: tn.FilePath,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
+		subject := target.kind + ":" + target.id
 		claims = append(claims, core.SemanticClaim{
-			ClaimID: core.ClaimID(certify.Layer, certify.Kind, target, key), ServiceID: "rcpt",
-			Layer: certify.Layer, Kind: certify.Kind, Subject: target, Rule: test + " certifies " + target,
-			Scope: []string{"pkg/a.go"}, Tier: core.TierVerified, Status: core.ClaimFresh,
-			ReproKey: key, CompiledAt: time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), Meta: meta,
+			ClaimID: core.ClaimID(certify.Layer, certify.Kind, subject, tn.Key()), ServiceID: "rcpt",
+			Layer: certify.Layer, Kind: certify.Kind, Subject: subject, Rule: test + " certifies " + subject,
+			Scope: scope, Tier: core.TierVerified, Status: core.ClaimFresh,
+			ReproKey: tn.Key(), CompiledAt: time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), Meta: meta,
 		})
 	}
 	if err := st.PutClaims(ctx, claims, nil); err != nil {
@@ -413,7 +440,7 @@ func verifyReceiptFile(t *testing.T, root, path string) (int, string) {
 // and names the uncommitted path.
 func TestExportReceiptAllKindsRequireCleanAndBars(t *testing.T) {
 	root, storePath := exportReceiptFixture(t)
-	seedCertification(t, storePath, "I-fixture", "TestHello")
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-fixture", symbols: []string{"Greet"}}, "TestHello")
 	dir := t.TempDir()
 	for _, tc := range []struct {
 		kind string
@@ -422,7 +449,7 @@ func TestExportReceiptAllKindsRequireCleanAndBars(t *testing.T) {
 		{"symbol_location", []string{"--symbol", "Greet"}},
 		{"callers", []string{"--symbol", "Greet"}},
 		{"references", []string{"--symbol", "Greet"}},
-		{"certification", []string{"--test", "TestHello", "--target", "I-fixture"}},
+		{"certification", []string{"--test", "TestHello", "--target", "R-fixture"}},
 	} {
 		t.Run(tc.kind, func(t *testing.T) {
 			path := filepath.Join(dir, tc.kind+".json")
@@ -449,7 +476,7 @@ func TestExportReceiptAllKindsRequireCleanAndBars(t *testing.T) {
 				t.Fatalf("receipt = %+v, want a %s receipt with facts", r, tc.kind)
 			}
 			if tc.kind == "certification" {
-				if r.Test != "pkg/pkg.TestHello" || r.Target != "invariant:I-fixture" || r.Strength != "asserts" || r.RunDigest != "run-TestHello" {
+				if r.Test != "pkg/pkg.TestHello" || r.Target != "rule:R-fixture" || r.Strength != "asserts" || r.RunDigest != "run-TestHello" {
 					t.Errorf("certification envelope = %+v", r.Receipt)
 				}
 				if len(r.Reached) != 2 || !strings.HasSuffix(r.Reached[0], ".Greet") || !strings.HasSuffix(r.Reached[1], ".Hello") {
@@ -513,12 +540,33 @@ func TestExportReceiptReferencesTamperedFile(t *testing.T) {
 	}
 }
 
+// TestExportReceiptCertificationVacuousReach: an invariant or incident
+// target names no symbol, so certify's scope is the test file plus a doc
+// file. The test's own helpers are not what it certifies, so the export
+// refuses rather than claim them as the reach.
+func TestExportReceiptCertificationVacuousReach(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "invariant", id: "I-fixture", doc: "docs/intent/invariants.md"}, "TestHello")
+	seedCertification(t, storePath, certTarget{kind: "incident", id: "INC-fixture", doc: "docs/intent/incidents.md"}, "TestHello")
+	for _, target := range []string{"I-fixture", "INC-fixture"} {
+		t.Run(target, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification", "--test", "TestHello", "--target", target}, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			if want := "reach is vacuous"; !strings.Contains(errBuf.String(), want) {
+				t.Errorf("refusal = %q, want %q", errBuf.String(), want)
+			}
+		})
+	}
+}
+
 // TestExportReceiptCertificationClaimChoice: --test and --target must pick
 // exactly one claim; none or several is an error naming the candidates.
 func TestExportReceiptCertificationClaimChoice(t *testing.T) {
 	_, storePath := exportReceiptFixture(t)
-	seedCertification(t, storePath, "I-one", "TestHello")
-	seedCertification(t, storePath, "I-two", "TestHello")
+	seedCertification(t, storePath, certTarget{kind: "invariant", id: "I-one", doc: "docs/intent/invariants.md"}, "TestHello")
+	seedCertification(t, storePath, certTarget{kind: "invariant", id: "I-two", doc: "docs/intent/invariants.md"}, "TestHello")
 	for _, tc := range []struct {
 		name string
 		args []string

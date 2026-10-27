@@ -273,9 +273,13 @@ func exportReferencesInput(ctx context.Context, c *client.Client, exp *receipt.E
 
 // exportCertificationInput is the certification receipt for the one
 // certifications-layer claim test and target select (an empty flag
-// matches any). The claim's scope is files, so Reached is every symbol
-// in a scope file the test reaches over the call graph, typed edges
-// included; each carries a definition fact, as the test does.
+// matches any). The claim's scope is the test's file plus the target's
+// files, so Reached is every symbol in a target file the test reaches over
+// the call graph, typed edges included; each carries a definition fact, as
+// the test does. The test's own helpers are not what it certifies, and a
+// target that names no symbol (an invariant or incident, whose scope
+// beyond the test file is a doc file) leaves the reach vacuous: no receipt
+// can re-derive it, so the export refuses.
 func exportCertificationInput(ctx context.Context, c *client.Client, st store.Store, service, test, target string) (receipt.ExportInput, error) {
 	claim, m, err := oneCertification(ctx, st, service, test, target)
 	if err != nil {
@@ -318,7 +322,8 @@ func exportCertificationInput(ctx context.Context, c *client.Client, st store.St
 	root := exp.Commit().Root
 	for _, key := range slices.Sorted(maps.Keys(byKey)) {
 		n := byKey[key]
-		if key == m.TestSymbolKey || !inScope(claim.Scope, repoRelPath(root, n.FilePath)) || !callgraph.Reachable(g, m.TestSymbolKey, key) {
+		file := repoRelPath(root, n.FilePath)
+		if file == testCited.Anchor.Path || !inScope(claim.Scope, file) || !callgraph.Reachable(g, m.TestSymbolKey, key) {
 			continue
 		}
 		cited, err := exp.Cite(ctx, nodeSpan(n))
@@ -329,7 +334,7 @@ func exportCertificationInput(ctx context.Context, c *client.Client, st store.St
 		in.Facts = append(in.Facts, receipt.FactInput{Kind: receipt.FactDefinition, Subject: key, Anchors: []receipt.CitedAnchor{cited}})
 	}
 	if len(in.Receipt.Reached) == 0 {
-		return receipt.ExportInput{}, fmt.Errorf("%s reaches no symbol in the scope of %s (%s)", m.Test, r.Target, strings.Join(claim.Scope, ", "))
+		return receipt.ExportInput{}, fmt.Errorf("%s reaches no symbol outside its own file in the scope of %s (%s): the reach is vacuous, and a certification receipt has nothing to re-derive", m.Test, r.Target, strings.Join(claim.Scope, ", "))
 	}
 	return in, nil
 }
