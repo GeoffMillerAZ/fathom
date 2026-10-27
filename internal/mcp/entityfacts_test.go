@@ -61,17 +61,30 @@ const entityFactsRules = `groups:
           severity: critical
 `
 
+const entityFactsAlertmanager = `route:
+  receiver: team-default
+  continue: false
+  group_wait: 30s
+receivers:
+  - name: team-default
+    email_configs:
+      - to: oncall@example.org
+        auth_password: not-a-real-secret
+`
+
 // TestSymbolContextServesWorkloadFactsWithCoverage (WAE-5): symbol_context on
 // a Kubernetes workload serves its K8sFact rows, and on a dialect entity its
 // EntityFact rows, under `facts`, sorted by line then key, each anchored at
 // its path and line, with coverage naming the extractor, tier and read set;
-// a workload whose name prefixes another's serves only its own; a source
+// a workload whose name prefixes another's serves only its own; an
+// Alertmanager route withholds its snippet and serves its facts; a source
 // changed since the index makes coverage incomplete and names the citation
 // status on each anchor.
 func TestSymbolContextServesWorkloadFactsWithCoverage(t *testing.T) {
 	root := t.TempDir()
 	writeFixtureFile(t, filepath.Join(root, "deploy/api.yaml"), entityFactsWorkload)
 	writeFixtureFile(t, filepath.Join(root, "monitoring/rules.yml"), entityFactsRules)
+	writeFixtureFile(t, filepath.Join(root, "monitoring/alertmanager.yml"), entityFactsAlertmanager)
 	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "facts.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -147,6 +160,25 @@ func TestSymbolContextServesWorkloadFactsWithCoverage(t *testing.T) {
 	}
 	if rows, _ = facts(diskFull); !reflect.DeepEqual(rows, wantDisk) {
 		t.Errorf("facts(DiskFull) at line %v\n got %q\nwant %q", def["line"], rows, wantDisk)
+	}
+
+	// An Alertmanager route keeps its source withheld (LB-F367) and is
+	// still served its allow-listed facts (review F6).
+	res = callTool(t, srv, "symbol_context", map[string]any{"service": "facts", "symbol": "route"})
+	if why, _ := res["snippet_withheld"].(string); why == "" {
+		t.Errorf("symbol_context(route) withholds no snippet: %v", res)
+	}
+	if _, ok := res["snippet"]; ok {
+		t.Errorf("symbol_context(route) served a snippet: %v", res["snippet"])
+	}
+	rows, _ = facts("route")
+	want = []string{
+		"monitoring/alertmanager.yml:2 EntityFact receiver team-default",
+		"monitoring/alertmanager.yml:3 EntityFact continue false",
+		"monitoring/alertmanager.yml:4 EntityFact group_wait 30s",
+	}
+	if !reflect.DeepEqual(rows, want) {
+		t.Errorf("facts(route)\n got %q\nwant %q", rows, want)
 	}
 
 	// The rule file changes after the index: the facts are still served,
