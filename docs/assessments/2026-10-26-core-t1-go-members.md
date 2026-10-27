@@ -139,6 +139,37 @@ field refresh/build-equality controls. Only the controller-owned generated
 tracker assertion was excluded. Wave C focused reading/SCIP controls, X-R2,
 X-R3 and merge-debris checks passed. No new production change followed the regrade.
 
+## R-D19 main-merged replay (2026-10-27)
+
+Main 440a94365 and the field branch merged at 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca.
+The combined harness regraded the canonical, independently produced and already
+spent Gin readings from their five frozen SCIP indexes, then retimed extraction.
+The [new receipt](data/2026-10-27-core-t1-go-members-rd19-regrade.json) records
+the merged source, binary and input hashes, all nine successful phase loads and
+durations, raw and published reading hashes, and the prior receipt hash. Launch
+loads stayed below 9; no SCIP producer or K17 cost gate ran.
+
+Canonical and independent counts, metrics and grades again agree: L4 good,
+def_mapping .9345 (9,877 of 10,569), typed_recall .9889, and L1-L3 excellent.
+Their median extraction rates are now 20.93 and 20.38 MB/CPU-s. D19's 20-reference
+floor leaves Go's L3 evidence sufficient: file-edge precision has a 3,158-reference
+denominator, recall 4,472 and import resolution 359. The field-only symbols account for the
+L4 lift. The same-oracle main control found unchanged call and file-edge metrics
+with and without fields. The earlier L2 dispatch shift belongs to TypedEdgeEpoch 7
+/ O1237; historical file-edge differences between old main and this replay are
+prior measurement context, not attributed to fields.
+
+The landing-base K17 critic rerun remains historical: base 6db920e72 versus
+candidate d0faef431 passed at +12.85% wall and +6.30% store. It was not rerun
+against main 440a94365 or the R-D19 merged source.
+
+The spent Gin reading remains L4 excellent and L3 good, with file-edge precision
+.9235, recall .6255 and median extraction 16.29 MB/CPU-s. Its file-edge
+denominators, 170 and 251, exceed D19's floor; its six in-repo imports do not.
+Import resolution therefore supplies thin L3 evidence and caps the grade at
+good, without changing Gin's earlier grade or the failed L3-excellent criterion.
+No new holdout exposure, tuning, oracle change or producer run occurred.
+
 
 ## Go field deletion coverage
 

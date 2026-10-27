@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "good"
   },
-  "measured_at": "2026-10-26",
-  "fathom_commit": "6eff4e2ecad732f233859bbba44732e4d2b80666",
+  "measured_at": "2026-10-27",
+  "fathom_commit": "78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca",
   "extractor": "incumbent",
   "subjects": [
     {
@@ -95,9 +95,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 201.8639999999998,
-        "extract_cpu_ms": 241.7079999999997,
-        "max_file_ms": 4,
+        "extract_ms": 209.6860000000002,
+        "extract_cpu_ms": 250.59700000000004,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -174,9 +174,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 17.741999999999997,
-        "extract_cpu_ms": 23.396,
-        "max_file_ms": 6,
+        "extract_ms": 16.846,
+        "extract_cpu_ms": 20.24100000000001,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -291,10 +291,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 20.83,
+    "throughput_mb_s": 20.38,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 25.14,
-    "max_file_ms": 6,
+    "wall_throughput_mb_s": 24.37,
+    "max_file_ms": 5,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -306,6 +306,7 @@
   },
   "notes": [
     "C-R13 independent frozen-index reproduction at d28ff1d94ae56b86f271a35c70367cf03a96bd5c: all canonical counts, metrics and grades equal; no new SCIP producer execution. The three unmeasured cli/cli internal/build definitions (issue #17 class 2) remain in the denominator; O1237's older L2 dispatch shift is unrelated to field symbols.",
+    "Wave C independent frozen-index reproduction at 6eff4e2ecad732f233859bbba44732e4d2b80666: every canonical count, metric and grade agrees; no producer rerun. Median-of-three extraction rate 20.83 MB/CPU-s.",
     "GoType covers every named type; ctags struct and type both map to struct",
     "cli/cli: 1110 file edges only a reference to a package symbol would draw are left out of the file-edge truth: scip-go defines a package at the package clause of every file, so a reference to the package (an import spec, the `b` of `b.Foo`) names no one file and the index's first document of the package stands in for it, a guess (design §1.2 amendment, F.34, LB-F298; the same rule leaves a symbol defined in two documents out of an import truth)",
     "cli/cli: 14096 references to a Go package are a namespace's (K18): out of typed_recall, counted (scip_edges_namespace_target); a reference whose enclosing definition is itself unmapped stays an unmapped endpoint of its from class (LB-F344)",
@@ -321,7 +322,7 @@
     "cli/cli: Go file edges drawn only by an interface-dispatch edge (one per implementer; the call names the interface method, in the interface's file) or an instantiation fact (a held value's type, written or inferred) are not references the source writes to a definition in another file (design §1.2, amendment F.34) and are left out of file_edge_precision: 4097 of the typed pass's 7136 file edges, 880 of them in the truth (cost to recall, counted); the edges stay in the store and in every served graph",
     "cli/cli: Go typed_recall is graded on the SCIP import (design §1.2); the native go/types typed pass covers its edges between mapped definitions so: of 39691 unique (from, to) pairs, 15280 are edges of the native typed pass (.3850; by kind: direct 10724, direct+func-value 7, direct+iface-dispatch 14, func-value 186, iface-dispatch 620, instantiates 3729), and of 35883 non-self pairs, 15255 of them native (.4251); the native pass is a call graph and stores no reference to a type or a variable but an instantiation fact (a held type), so this is a coverage figure, not a graded one (LB-F300)",
     "cli/cli: of scip-go's 82266 edges between definitions, 81272 import as typed edges; unmapped endpoints by class: from_func 4, to_field 988, to_package-var 2; of those endpoints, a reference in a _test.go file: to_field 105 (a member pass storing no field reference from a test file, O673's first lever, would still miss them); scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (21 references, scip_edges_param_target, LB-F299)",
-    "cli/cli: scip-go's 9793 named definitions, 9104 mapped to a fathom symbol; unmapped definitions by class: field 686, func 1, package-var 2; 3 of them in a file the reading does not measure (a directory fathom's corpus prunes by name, RT-145's default list: no symbol to map to, still counted). A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: the earlier full member pass failed its historical cost gate and was reverted (wave lf2, O673); the current field-symbol-only pass leaves interface methods and field references out",
+    "cli/cli: scip-go's 9793 named definitions, 9104 mapped to a fathom symbol; unmapped definitions by class: field 686, func 1, package-var 2; 3 of them in a file the reading does not measure (a directory fathom's corpus prunes by name, RT-145's default list: no symbol to map to, still counted). This remaining field-category oracle class includes interface methods outside the field-symbol-only pass. The current extractor emits GoField symbols for top-level struct fields; K17's earlier full-member pass failed its cost gate and was reverted (wave lf2, O673)",
     "cli/cli: typed edges read as pairs: 16638 direct, 6969 interface dispatch (6969 edges, one per implementer, collapse to 1807 pairs by method name, where scip-go writes one interface-method term), 243 function values, 1584 unresolved (a function value names no callee: no pair), 9603 instantiations (a fact, not a call); 0 edges have a caller with no node in the measured files; 0 of 13064 truth pairs name a callee the subject does not define (the standard library or a dependency) and are left out of the servable truth, counted here",
     "go: file_edge_precision and file_edge_recall score the typed go/packages pass's edges (fusion.EnrichTypedEdges, the cross-file edges ingest stores for Go, run in process into an in-memory store), and import_resolution each import spec resolved by Go's own loader (go/packages, the typed pass's environment) to the measured files of the package it names; Go has no tags dialect and no file resolver (LB-F58)",
     "import_resolution: 359 of 359 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.0302 (359 of 11874) and recall 1 (359 of 359); 2374 of 6842 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 1 oracle import targets outside the files measured; 2355 oracle references on import statements left out because their symbol is defined in more than one file",
@@ -341,10 +342,10 @@
     "spf13/cobra: Go typed_recall is graded on the SCIP import (design §1.2); the native go/types typed pass covers its edges between mapped definitions so: of 4215 unique (from, to) pairs, 2230 are edges of the native typed pass (.5291; by kind: direct 1515, func-value 252, instantiates 463), and of 3644 non-self pairs, 2204 of them native (.6048); the native pass is a call graph and stores no reference to a type or a variable but an instantiation fact (a held type), so this is a coverage figure, not a graded one (LB-F300)",
     "spf13/cobra: of scip-go's 8158 edges between definitions, 8150 import as typed edges; unmapped endpoints by class: to_field 8; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (0 references, scip_edges_param_target, LB-F299)",
     "spf13/cobra: scip-go resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
-    "spf13/cobra: scip-go's 776 named definitions, 773 mapped to a fathom symbol; unmapped definitions by class: field 3. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: the earlier full member pass failed its historical cost gate and was reverted (wave lf2, O673); the current field-symbol-only pass leaves interface methods and field references out",
+    "spf13/cobra: scip-go's 776 named definitions, 773 mapped to a fathom symbol; unmapped definitions by class: field 3. This remaining field-category oracle class includes interface methods outside the field-symbol-only pass. The current extractor emits GoField symbols for top-level struct fields; K17's earlier full-member pass failed its cost gate and was reverted (wave lf2, O673)",
     "spf13/cobra: typed edges read as pairs: 2163 direct, 56 interface dispatch (56 edges, one per implementer, collapse to 49 pairs by method name, where scip-go writes one interface-method term), 396 function values, 81 unresolved (a function value names no callee: no pair), 539 instantiations (a fact, not a call); 0 edges have a caller with no node in the measured files; 0 of 1816 truth pairs name a callee the subject does not define (the standard library or a dependency) and are left out of the servable truth, counted here",
-    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 20.44 MB/CPU-s; run 2: 21.03 MB/CPU-s; run 3: 20.83 MB/CPU-s; median run 3: 20.83 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 6eff4e2ecad732f233859bbba44732e4d2b80666",
-    "Wave C independent frozen-index reproduction at 6eff4e2ecad732f233859bbba44732e4d2b80666: every canonical count, metric and grade agrees; no producer rerun. Median-of-three extraction rate 20.83 MB/CPU-s."
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M2; run 1: 20.38 MB/CPU-s; run 2: 20.38 MB/CPU-s; run 3: 19.81 MB/CPU-s; median run 1: 20.38 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca",
+    "R-D19 independent frozen-SCIP replay at 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca: every count, metric and grade equals canonical; no SCIP producer rerun. D19 L3 denominators 3158/4472/359 exceed the 20-reference floor, so L3 stays excellent. L4 remains good from field-only symbols; earlier O1237 L2 and historical file-edge shifts are not field effects."
   ],
   "disposition": null
 }

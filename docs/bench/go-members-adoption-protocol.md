@@ -193,3 +193,65 @@ was excluded because the controller owns regeneration. The focused merged
 Go/SCIP/refresh tests, release-note check, merge-debris check and ADR-011
 org-name test also passed. All readings and cost receipts remain attributed
 to their named measured sources; no new cost measurement is claimed.
+
+## R-D19 main-merged frozen-index replay
+
+After main 440a94365 merged at 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca,
+the combined D19 harness regraded canonical, independent and already spent Gin
+readings using their frozen SCIP indexes and retimed extraction. The
+[R-D19 receipt](../assessments/data/2026-10-27-core-t1-go-members-rd19-regrade.json)
+records binary/input/output hashes and all nine successful phase loads and
+durations; every launch load was below 9. No producer, new holdout or K17 cost
+rerun occurred. Earlier receipts remain measurements of their named sources.
+
+Canonical and independent readings still agree on every count, metric and grade:
+L4 good (.9345 definition mapping, .9889 typed recall), L1-L3 excellent, with
+median extraction 20.93/20.38 MB/CPU-s. D19's 20-reference floor is met by
+Go's L3 denominators 3,158/4,472/359. The spent Gin reading remains L3 good
+and L4 excellent, at 16.29 MB/CPU-s; its 170/251 file-edge denominators pass,
+but six in-repo imports are thin and cap L3 at good. The failed Gin
+L3-excellent criterion remains failed. GoField accounts for the L4 lift;
+same-oracle main controls show no field-caused call or file-edge change. O1237's
+L2 dispatch shift predates this pass, while historical file-edge differences
+are prior remeasurement context. Field scope and issue #17 classification are
+unchanged.
+
+Reproduction uses the committed `lang-oracle` and `lang-retime` recipe in
+`calibration/oracles/scip-go/README.md`. On a clean checkout of 78d38fbaa,
+build `cmd/indexbench` and grade cli/cli and spf13/cobra into fresh outputs with their matching frozen
+SCIP index, `-dialect go`, `-subject-name`, the pinned ctags binary,
+`-commit 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca`, and `-date 2026-10-27`.
+Run the same two commands with the independent indexes into a separate fresh output;
+grade the spent Gin subject once from its frozen index. Then run `lang-retime
+-runs 3 -write` on each output, passing every recorded subject as
+`-subject name=checkout`. Keep all outputs under `workspace/`; compare their
+input hashes, counts, metrics and grades to the R-D19 receipt. Its raw output
+hashes bind the original timed replay; a later retime need not match them.
+Only after raw replay,
+preserve historical notes from a1c7109fa, qualify the legacy field diagnostic,
+and append the dated R-D19 notes before publishing. This replay does not launch
+scip-go.
+
+With `CLI_ROOT`, `COBRA_ROOT`, `GIN_ROOT`, `CTAGS_BINARY`, `CLI_SCIP`,
+`COBRA_SCIP`, `CLI_INDEPENDENT_SCIP`, `COBRA_INDEPENDENT_SCIP` and `GIN_SCIP`
+pointing to the pinned checkouts and frozen files named by the receipt, the
+committed commands are:
+
+```sh
+mkdir -p workspace/tmp/go-rd19
+test ! -e workspace/tmp/go-rd19/canonical.json
+test ! -e workspace/tmp/go-rd19/independent.json
+test ! -e workspace/tmp/go-rd19/gin.json
+go build -trimpath -buildvcs=false -o workspace/tmp/go-rd19/indexbench ./cmd/indexbench
+grade() {
+  workspace/tmp/go-rd19/indexbench lang-oracle -dialect go -subject "$1" -subject-name "$2" -ctags "$CTAGS_BINARY" -scip "$3" -out "$4" -commit 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca -date 2026-10-27
+}
+grade "$CLI_ROOT" cli/cli "$CLI_SCIP" workspace/tmp/go-rd19/canonical.json
+grade "$COBRA_ROOT" spf13/cobra "$COBRA_SCIP" workspace/tmp/go-rd19/canonical.json
+grade "$CLI_ROOT" cli/cli "$CLI_INDEPENDENT_SCIP" workspace/tmp/go-rd19/independent.json
+grade "$COBRA_ROOT" spf13/cobra "$COBRA_INDEPENDENT_SCIP" workspace/tmp/go-rd19/independent.json
+grade "$GIN_ROOT" gin-gonic/gin "$GIN_SCIP" workspace/tmp/go-rd19/gin.json
+workspace/tmp/go-rd19/indexbench lang-retime -reading workspace/tmp/go-rd19/canonical.json -subject "cli/cli=$CLI_ROOT" -subject "spf13/cobra=$COBRA_ROOT" -runs 3 -write
+workspace/tmp/go-rd19/indexbench lang-retime -reading workspace/tmp/go-rd19/independent.json -subject "cli/cli=$CLI_ROOT" -subject "spf13/cobra=$COBRA_ROOT" -runs 3 -write
+workspace/tmp/go-rd19/indexbench lang-retime -reading workspace/tmp/go-rd19/gin.json -subject "gin-gonic/gin=$GIN_ROOT" -runs 3 -write
+```
