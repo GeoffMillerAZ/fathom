@@ -112,3 +112,56 @@ func TestCallersAndTestImpactGoFieldWithheld(t *testing.T) {
 		})
 	}
 }
+
+// ingestFixtureServer ingests files as one Go module under service.
+func ingestFixtureServer(t *testing.T, service string, files map[string]string) *mcp.Server {
+	t.Helper()
+	root := t.TempDir()
+	for rel, body := range files {
+		path := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), service+".sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	c := client.New(connector.NewLocalConnector(), sq)
+	t.Cleanup(func() { _ = c.Close() })
+	if _, err := c.Ingest(t.Context(), client.ServiceRef{ID: service, Path: root}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	return mcp.NewServer(c)
+}
+
+// A bare member name only fields share (A.X and B.X) resolves to nothing in
+// the call graph; the exact-lookup fallback still finds the fields, so
+// rename, find_callers and test_impact withhold their zero.
+func TestBareNameOnlyFieldsShareIsWithheld(t *testing.T) {
+	srv := ingestFixtureServer(t, "xfix", map[string]string{
+		"go.mod":   "module xfix\n\ngo 1.22\n",
+		"m/a.go":   "package m\n\n// A has X.\ntype A struct{ X int }\n",
+		"m/b.go":   "package m\n\n// B has X.\ntype B struct{ X int }\n",
+		"m/use.go": "package m\n\n// Use reads both.\nfunc Use(a A, b B) int { return a.X + b.X }\n",
+	})
+	for _, tc := range []struct{ tool, kind string }{{"blast_radius", "rename"}, {"find_callers", ""}, {"test_impact", ""}} {
+		t.Run(tc.tool, func(t *testing.T) {
+			args := map[string]any{"service": "xfix", "symbol": "X"}
+			if tc.kind != "" {
+				args["kind"] = tc.kind
+			}
+			got := callTool(t, srv, tc.tool, args)
+			if got["field_references_indexed"] != false {
+				t.Errorf("%s(X): field_references_indexed = %v, want false: %v", tc.tool, got["field_references_indexed"], got)
+			}
+			if s, _ := got["summary"].(string); !strings.Contains(s, "field references are not indexed") {
+				t.Errorf("%s(X) summary = %q, want it withheld because field references are not indexed", tc.tool, s)
+			}
+		})
+	}
+}
