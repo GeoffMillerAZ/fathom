@@ -200,10 +200,12 @@
   },
   "excluded_by_kind": {},
   "notes": [
+    "R-D19 at 5d41806d0: relative to lane 6dd4a0a29, harness-rule non-note field changes: none; notes record D19 provenance; all frozen measurements preserved. Relative to main, lane evidence changes: counts.fathom_defs, counts.kind_equal, counts.matched, counts.oracle_defs, counts.ref_fathom, counts.ref_fathom_in_truth, counts.ref_truth, counts.ref_truth_found, counts.xref_fathom, counts.xref_fathom_in_truth, counts.xref_truth, counts.xref_truth_found, fathom_commit, grade.L1, measured_at, metric_tiers.sym_precision, metric_tiers.sym_recall, metrics.sym_precision, oracles, subjects, tenancy.max_file_ms, tenancy.throughput_mb_s, tenancy.wall_throughput_mb_s. Own L3 denominators are xref_fathom=33 (precision) and xref_truth=33 (recall), each requiring at least 20; grade L3=good. Manifest l3_evidence bar: none; no subject minimum applies.",
     "crossplane/crossplane: 2 files hold Argo, Flux or Crossplane documents beside other documents and stay Kubernetes, whole (fusion.CRMixed): test/e2e/manifests/pkg/image-config/signature-verification/keyless-private-with-attestation/image-config.yaml, test/e2e/manifests/pkg/image-config/signature-verification/with-key/image-config.yaml",
     "crossplane/crossplane: Independent yaml.v3 tier-C full walk, including composed elements; original three pinned subjects and canonical corpus scope; no native validation filter or post-harness reading edits",
     "crossplane/crossplane: restricted to cluster/composition/**, test/e2e/manifests/**/*.yaml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 5d41806d0 from the recorded subject counts (harness rules only; extraction as measured at 1b4c93a844e8b9727c2653636fd665a1748a2232)",
     "upbound/configuration-aws-network: Independent yaml.v3 tier-C full walk, including composed elements; original three pinned subjects and canonical corpus scope; no native validation filter or post-harness reading edits",
     "upbound/platform-ref-aws: Independent yaml.v3 tier-C full walk, including composed elements; original three pinned subjects and canonical corpus scope; no native validation filter or post-harness reading edits"
   ],

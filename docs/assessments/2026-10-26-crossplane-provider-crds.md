@@ -156,7 +156,8 @@ regression failed before the correction with `tier = "A", want C`; the full Go
 oracle race suite then passed with the native offline integration test enabled.
 The mixed-file schema regression also failed before its fix and passes afterward.
 Twenty-five Python tests, strict reading round-trip, exact X-R3, release and merge-debris
-checks pass. The controls and log hashes are in the public receipt.
+checks pass. The public receipt retains controls, commands and statuses; raw-log digests
+are withdrawn because private paths can enter tool output.
 
 Native and Go jobs ran serially at verified nice 10, with launch load at most 9,
 Go 1.27.3, GOMAXPROCS=2 and GOFLAGS=-p=2 on the shared Apple Silicon helper.
@@ -185,3 +186,25 @@ changed. F13 explicitly records the published L1 excellent-to-good downgrade.
 The private R2 scratch ingest stored source text but failed typed Go loading for
 340 of 1,266 packages because its importer supports export-data v4 while Go
 1.27.3 emits v5. O1508 records that limitation; no full plan-gate pass is claimed.
+
+## R-D19 reconciliation with main
+
+Main `5d41806d0` is merged once. Its clean harness regenerates the canonical
+reading from the frozen full-population lane counts through `lang-regrade`;
+there is no native/extractor rerun and no hand merge of reading fields.
+Precision and recall denominators are each 33, above D19's 20-reference floor;
+this manifest sets no additional subject bar. Tier C still caps L1/L2/L3 at good.
+No non-note value changes against the lane parent. Against main, the lane's
+full 244-file walk preserves 428 definitions, 86 references and 33 cross-file
+references, with all six accuracy tiers C; the reading note enumerates each
+changed field. Frozen subjects, timings, raw counts, extraction identity and
+required kinds are conserved. The new
+[regrade receipt](data/2026-10-26-crossplane-d19-regrade.json) binds current
+canonical bytes to exact main-harness output; earlier reading hashes bind only
+the historical extraction snapshots.
+
+Historical raw stream lengths/digests, private manifest hashes, local package
+output hashes and raw-log digests have been withdrawn from public receipts.
+They can encode private root identities even without literal paths. Existing
+source pins, actual measured counts and command statuses remain. Private raw
+owner-tool outputs stay ignored; they must not be copied into public evidence.

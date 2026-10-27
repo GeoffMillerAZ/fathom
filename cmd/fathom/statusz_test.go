@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -202,5 +203,28 @@ func TestStatuszBinaryLabel(t *testing.T) {
 	got := statuszBinaryLabel(StatuszBuildInfo{BinaryCommit: "6c6f4377b53aad47cf6ab86224721df8592cadf0", BinaryDirty: true, BuiltAt: "2026-09-01T00:00:00Z"})
 	if got != "6c6f4377b53a-dirty built 2026-09-01T00:00:00Z" {
 		t.Errorf("label = %q", got)
+	}
+}
+
+func TestStatuszBinaryLabelModuleFallback(t *testing.T) {
+	got := statuszBinaryLabel(StatuszBuildInfo{ModuleVersion: "v9.9.9", ModuleSum: "h1:abc="})
+	if got != "unstamped (module v9.9.9, sum h1:abc=)" {
+		t.Errorf("label = %q", got)
+	}
+	b, _ := json.Marshal(StatuszBuildInfo{ModuleVersion: "v9.9.9", ModuleSum: "h1:abc="})
+	if !strings.Contains(string(b), `"module_version":"v9.9.9"`) || !strings.Contains(string(b), `"module_sum":"h1:abc="`) {
+		t.Errorf("json = %s", b)
+	}
+}
+
+func TestStatuszBuildInfoCarriesModuleFields(t *testing.T) {
+	old := statuszStamp
+	statuszStamp = func() buildinfo.Stamp {
+		return buildinfo.Stamp{ModuleVersion: "v9.9.9", ModuleSum: "h1:abc="}
+	}
+	defer func() { statuszStamp = old }()
+	got := statuszBuildInfo()
+	if got.ModuleVersion != "v9.9.9" || got.ModuleSum != "h1:abc=" {
+		t.Errorf("statuszBuildInfo = %+v, want module fields carried", got)
 	}
 }

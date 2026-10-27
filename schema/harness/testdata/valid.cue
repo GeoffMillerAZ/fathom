@@ -64,6 +64,7 @@ registry: #Registry & [
 			"readout":                "absent"
 			"claim-check":            "absent"
 			"read-outline-hint":      "absent"
+			"guard-pre-web":          "absent"
 		}
 		notes: {"claim-gate": "not built"}
 		fail_mode:    "fail-open"

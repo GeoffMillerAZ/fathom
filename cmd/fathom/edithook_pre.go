@@ -54,6 +54,8 @@ func cmdEditHookPre(codec harness.Codec, in harness.HookInput, url string, armOf
 		return cmdEditHookPreCommand(codec, in.Command, in.Cwd, in.SessionID, url, armOff, stdout)
 	case harness.ToolDiscoveryRead, harness.ToolDiscoveryGrep, harness.ToolDiscoveryGlob:
 		return cmdEditHookPreDiscovery(in, armOff)
+	case harness.ToolWeb:
+		return cmdEditHookPreWeb(codec, in, armOff, stdout)
 	default:
 		return cmdEditHookPreFile(codec, in.FilePath, in.Cwd, in.SessionID, in.NewContent, in.OldContent, url, armOff, stdout)
 	}
@@ -454,6 +456,20 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		// A codec that cannot deny falls back to the ordinary advisory
 		// path below rather than losing the governance signal entirely.
 	}
+	// ADR-083: the egress pack denies only under enforce with guard
+	// enforcement on; otherwise its line joins the advisory notes below.
+	egressGuard, egressPol, egressMatched := egressCommandMatch(projDir, cwd, command)
+	if egressMatched && egressDenies(projDir, egressPol) {
+		if v := guardspec.EvaluateCommandEnforcement(egressGuard); v != nil {
+			d := newEnforceDecision(*v, "")
+			if out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Deny: true, DenyReason: d.Reason}); err == nil {
+				emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "command"}, sessionID, ""))
+				recordBlockedOutcome(d.OutcomeID(), sessionID, d.File)
+				fmt.Fprintln(stdout, string(out))
+				return 0
+			}
+		}
+	}
 	// RO-40: advisory after the guards' deny, "" when off. It reads the
 	// repository the command acts in (a leading cd, O1230); the guards above
 	// keep projDir. A command that never names git skips the lexer here.
@@ -501,6 +517,12 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 				note, matched = note+g.Note, true
 			}
 		}
+	}
+	if egressMatched {
+		if note != "" {
+			note += "\n"
+		}
+		note, matched = note+egressGuard.Note, true
 	}
 	if !matched || note == "" {
 		// Command guards serve only their note (design decision: there is

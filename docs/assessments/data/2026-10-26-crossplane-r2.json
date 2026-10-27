@@ -386,7 +386,6 @@
           "xref": "C"
         },
         "files": 238,
-        "harness_log_sha256": "a081fde0debb78a7115b53b6717204235d4a62ad6e67a200286cea604235d1d2",
         "kind_intersection": [
           "element",
           "resource",
@@ -394,7 +393,6 @@
           "service",
           "step"
         ],
-        "oracle_log_sha256": "024bfc7765dd3f6492d103d320d55faeda47c0eb2e547556ec28e217cd67417d",
         "oracle_truth_sha256": "badab0482397d6f221145fe057deeb12bfe81b683e8ee2a2c5450068aa3b34a8",
         "repository": "crossplane/crossplane",
         "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb",
@@ -431,7 +429,6 @@
           "xref": "C"
         },
         "files": 3,
-        "harness_log_sha256": "4c0f95793babf983b6eebcba615c4fc6fd7fcfc56f4833cab5b2e278a0b31976",
         "kind_intersection": [
           "element",
           "resource",
@@ -439,7 +436,6 @@
           "service",
           "step"
         ],
-        "oracle_log_sha256": "95be0247e3319f06ad766f8b578a61b03276677e61248df5f44d51ad1e0bd906",
         "oracle_truth_sha256": "48c3718e765cdcfd027d6e5c353bbc031507ae86d106e670d93face98456fa47",
         "repository": "upbound/configuration-aws-network",
         "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d",
@@ -476,7 +472,6 @@
           "xref": "C"
         },
         "files": 3,
-        "harness_log_sha256": "427bd850b27c2687e10ad8fbbf2454c81b2139b91c30f13a6e2975b74d81e9a8",
         "kind_intersection": [
           "element",
           "resource",
@@ -484,7 +479,6 @@
           "service",
           "step"
         ],
-        "oracle_log_sha256": "95be0247e3319f06ad766f8b578a61b03276677e61248df5f44d51ad1e0bd906",
         "oracle_truth_sha256": "b61a17dd3ec7092e335ee4186a39f1a33914cc979bdfa32839985ffe64772327",
         "repository": "upbound/platform-ref-aws",
         "sha": "be065e6afe89e656080557bacf1732168502e325",
@@ -512,61 +506,37 @@
         "exit": 0,
         "launch_load1": 7.64,
         "seconds": 0.11,
-        "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 11389,
-        "stdout_sha256": "1777e5df78e50924ac59eb5224aed17e1a40d383606985d08934aa62e78f66a3"
+        "status": "exit"
       },
       "crossplane-xpkg": {
         "exit": 0,
         "launch_load1": 7.64,
         "seconds": 0.05,
-        "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 3189,
-        "stdout_sha256": "9b04974d5d80b461c84cb0535eff9e898bd7c466d2f8c42d4c831beab7b416d5"
+        "status": "exit"
       },
       "up-render": {
         "exit": 1,
         "launch_load1": 7.64,
         "seconds": 0.085,
-        "status": "exit",
-        "stderr_bytes": 43,
-        "stderr_sha256": "b54bcf94e390c31373c8ad8f33dcd64b127511a0027537dd8b2e98d3ac6c70df",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "status": "exit"
       },
       "up-test": {
         "exit": 1,
         "launch_load1": 7.64,
         "seconds": 0.091,
-        "status": "exit",
-        "stderr_bytes": 58,
-        "stderr_sha256": "7d0a60ae8596a3a2c6e3c547c972159506c7a915b1126edb303584a9c9cf064e",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "status": "exit"
       },
       "up-version": {
         "exit": 0,
         "launch_load1": 7.64,
         "seconds": 0.122,
-        "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 106,
-        "stdout_sha256": "5efbd89ed7a9d7ce062aeee6314866dbbfd5ae61a19b23f2664dc2df7b93987f"
+        "status": "exit"
       },
       "xpls": {
         "exit": 0,
         "launch_load1": 7.64,
         "seconds": 0.089,
-        "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 577,
-        "stdout_sha256": "2c12ad01b598dbdc92a22336aa3fd45ffa9c5024c29689292516008b7a31b246"
+        "status": "exit"
       }
     },
     "legacy_render": [
@@ -577,10 +547,6 @@
         "launch_load1": 7.64,
         "seconds": 0.059,
         "status": "exit",
-        "stderr_bytes": 152,
-        "stderr_sha256": "3b6593a9e8ab6df8df742a8177d17a31a9462a796ccdef2adefa42df11554347",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-aws-network-resources"
       },
       {
@@ -590,10 +556,6 @@
         "launch_load1": 7.64,
         "seconds": 0.053,
         "status": "exit",
-        "stderr_bytes": 154,
-        "stderr_sha256": "43187537ac4f222f3332ae5210c21c81e65127c00626327dad01c4aa7db7d460",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-azure-network-resources"
       },
       {
@@ -603,14 +565,9 @@
         "launch_load1": 7.64,
         "seconds": 0.068,
         "status": "exit",
-        "stderr_bytes": 164,
-        "stderr_sha256": "49f41df0010f53c62d2ecf011b0f9a86f82fec241b0f9c0e6debda02d54b63fe",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-gcp-network-resources"
       }
     ],
-    "manifest_sha256": "0dfe35a9e2a2c6769996b2a65f7c87c67ee1eefb94c33f10cfef4093d86f4246",
     "schema": "crossplane-owner-probes-v1",
     "subject_files": {
       "crossplane/crossplane": 316,
@@ -636,10 +593,6 @@
           "launch_load1": 6.6,
           "seconds": 0.085,
           "status": "exit",
-          "stderr_bytes": 213,
-          "stderr_sha256": "3d4de87261f87af04a68dc35db872ecba8a24959b2d5db4469f207ccccbe629c",
-          "stdout_bytes": 0,
-          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "subject": "upbound/platform-ref-aws-network-resources"
         },
         {
@@ -648,10 +601,6 @@
           "launch_load1": 6.6,
           "seconds": 0.062,
           "status": "exit",
-          "stderr_bytes": 215,
-          "stderr_sha256": "7ee7f5e4d12bf8b51341bbad311bdf28132a74c018dfbdf92cc99076008f3b42",
-          "stdout_bytes": 0,
-          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "subject": "upbound/platform-ref-azure-network-resources"
         },
         {
@@ -660,10 +609,6 @@
           "launch_load1": 6.6,
           "seconds": 0.079,
           "status": "exit",
-          "stderr_bytes": 213,
-          "stderr_sha256": "2104807db60b2c28ee5a81d9da787c548ec883bb30aadd37734cadcf038550d9",
-          "stdout_bytes": 0,
-          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "subject": "upbound/platform-ref-gcp-network-resources"
         },
         {
@@ -672,10 +617,6 @@
           "launch_load1": 6.6,
           "seconds": 0.085,
           "status": "exit",
-          "stderr_bytes": 1439,
-          "stderr_sha256": "312bab3cf590ad3ff392e37ce9806bec7deca54f30b44fc7a5c39c9006b41831",
-          "stdout_bytes": 0,
-          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "subject": "upbound/configuration-aws-network"
         },
         {
@@ -684,10 +625,6 @@
           "launch_load1": 6.6,
           "seconds": 0.069,
           "status": "exit",
-          "stderr_bytes": 0,
-          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "stdout_bytes": 292,
-          "stdout_sha256": "3ff5430a22e40f13adf6ef6e99d24d2064cf581388ac1c1039db5ded16a62abb",
           "subject": "upbound/configuration-aws-network"
         }
       ],
@@ -696,31 +633,19 @@
           "exit": 0,
           "launch_load1": 6.6,
           "seconds": 0.07,
-          "status": "exit",
-          "stderr_bytes": 0,
-          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "stdout_bytes": 5826,
-          "stdout_sha256": "f4fcb96a375fd1185e4ead4452569f700e6217364da70ce497c6c1f560a25ef0"
+          "status": "exit"
         },
         "test": {
           "exit": 0,
           "launch_load1": 6.6,
           "seconds": 0.062,
-          "status": "exit",
-          "stderr_bytes": 0,
-          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "stdout_bytes": 3672,
-          "stdout_sha256": "2d68c26a72e5049362675d7bc696e0300e20490a3f434657e6e896b3fb04a1ca"
+          "status": "exit"
         },
         "version": {
           "exit": 0,
           "launch_load1": 6.6,
           "seconds": 0.116,
-          "status": "exit",
-          "stderr_bytes": 0,
-          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "stdout_bytes": 107,
-          "stdout_sha256": "25def7a93b3af6e0d6682b2181d61033a9d6fbdf271c57f1046dcd45e4c81596"
+          "status": "exit"
         }
       }
     },
@@ -729,52 +654,32 @@
         "exit": 1,
         "launch_load1": 7.64,
         "package_root": ".",
-        "package_sha256": null,
         "seconds": 0.06,
         "status": "exit",
-        "stderr_bytes": 3861,
-        "stderr_sha256": "b5410c88ed9f1d06c31162e5631a9c64a11197415eb18d1814627ff64184debd",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-aws-legacy"
       },
       {
         "exit": 0,
         "launch_load1": 7.64,
         "package_root": "package",
-        "package_sha256": "2ddc84fce7e39dbe0794c7522bb3ec181a574cd7c0a7425c98c338200d0acdc8",
         "seconds": 0.085,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-aws-network-resources"
       },
       {
         "exit": 0,
         "launch_load1": 7.64,
         "package_root": "package",
-        "package_sha256": "ebb47a21462f9102889bad8509704d0ca80576fd9085ef00174205b12a5fb2aa",
         "seconds": 0.076,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-azure-network-resources"
       },
       {
         "exit": 1,
         "launch_load1": 7.64,
         "package_root": ".",
-        "package_sha256": null,
         "seconds": 0.06,
         "status": "exit",
-        "stderr_bytes": 2859,
-        "stderr_sha256": "7ccb72cb0f2ad50af48a1d7749ae3e578493850d03cdc0e166a1d517f3cdd786",
-        "stdout_bytes": 0,
-        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "subject": "upbound/platform-ref-gcp-network-resources"
       }
     ],
@@ -790,10 +695,6 @@
         "selected_files": 316,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 118669,
-        "stdout_sha256": "805f36df56fcf3d0b4b26df4a19b2a10ec5ce24f275e8e6021971535bad7dde1",
         "subject": "crossplane/crossplane"
       },
       {
@@ -807,10 +708,6 @@
         "selected_files": 15,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 5952,
-        "stdout_sha256": "119c13d1b319d4079504c284cc47ad69eb7a3bca16fbb88dfd67c4c2899d0206",
         "subject": "upbound/platform-ref-aws"
       },
       {
@@ -824,10 +721,6 @@
         "selected_files": 11,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 4453,
-        "stdout_sha256": "c514b0bfc802f99464ba0ec3d7c3f5bf1169d4a354a6aec8e80f968894eef9ad",
         "subject": "upbound/configuration-aws-network"
       },
       {
@@ -841,10 +734,6 @@
         "selected_files": 14,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 8134,
-        "stdout_sha256": "ed6a6ef7635f4d78d922a1f91f4885c7833951418173c82cce6434d78f9c21bf",
         "subject": "upbound/platform-ref-aws-legacy"
       },
       {
@@ -858,10 +747,6 @@
         "selected_files": 15,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 6363,
-        "stdout_sha256": "06fdeac1397aee9199e2def14b015f52426df3695522e413d964197576d5e024",
         "subject": "upbound/platform-ref-azure"
       },
       {
@@ -875,10 +760,6 @@
         "selected_files": 16,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 6804,
-        "stdout_sha256": "a200f5ee3efaf3ff67be832eea1b99da610e0c4146e20a76c988139a512c8da1",
         "subject": "upbound/platform-ref-gcp"
       },
       {
@@ -892,10 +773,6 @@
         "selected_files": 2,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 5742,
-        "stdout_sha256": "0cf493d22265a6a4f568fb9f29babcbd75b8a54c343932e10b4438a80c7d2716",
         "subject": "upbound/platform-ref-aws-network-resources"
       },
       {
@@ -909,10 +786,6 @@
         "selected_files": 2,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 2440,
-        "stdout_sha256": "50671b141c5b1717d9431255566d78a2f201ccfdb9da0672c4fc6749123ea777",
         "subject": "upbound/platform-ref-azure-network-resources"
       },
       {
@@ -926,10 +799,6 @@
         "selected_files": 2,
         "shutdown_responded": false,
         "status": "exit",
-        "stderr_bytes": 0,
-        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "stdout_bytes": 1577,
-        "stdout_sha256": "55a899b9afbb0132d5060b893ea92045223dda87ec31ba6f87e127555f41d7b2",
         "subject": "upbound/platform-ref-gcp-network-resources"
       }
     ]
@@ -981,6 +850,7 @@
     }
   ],
   "pending_verification": [],
+  "privacy_erratum": "Historical raw stream lengths/digests, private manifest digest, package-output and log digests withdrawn; these can encode private paths. Source pins, measured counts and command statuses retained.",
   "reading_conservation": {
     "after_inventory_sha256": "782688ac7c0198be85e515cfc5f40f69dce7bff0fa91cecb351029817441b942",
     "base": "1b4c93a844e8b9727c2653636fd665a1748a2232",
@@ -994,63 +864,53 @@
     "required_kinds_preserved": true,
     "unchanged_bytes": 186
   },
+  "reading_provenance": "Historical pre-D19 extraction snapshot; the current canonical reading is regenerated by main harness under R-D19, with its own before/after receipt.",
   "verification": {
     "canonical_grade": {
       "command": "python3 calibration/oracles/crossplane/grade.py --cache workspace/artifacts/crossplane-r2 --manifest workspace/artifacts/crossplane-r2/manifest.json --indexbench \"$TOOLS/indexbench-crossplane-r2\" --oracle-bin \"$TOOLS/crossplane-oracle-r2\" --engine-commit 1b4c93a844e8b9727c2653636fd665a1748a2232 --out workspace/artifacts/crossplane-r2/canonical-reading.json",
-      "exit_code": 0,
-      "private_log_sha256": "8142409e70c25c0d6bfa799bb92e1bbd4ccc3a20067d5e83ac5b6d71c260268d"
+      "exit_code": 0
     },
     "merge_debris": {
       "command": "bash scripts/check-merge-debris.sh",
-      "exit_code": 0,
-      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "exit_code": 0
     },
     "oracle_race": {
       "command": "go -C calibration/oracles/crossplane test -race -count=1 ./...",
       "environment": "Pinned CLI on PATH; OX_CROSSPLANE_CRDS points to pinned core CRDs; native offline integration test enabled",
-      "exit_code": 0,
-      "private_log_sha256": "cdcf2259662fdfec56f10734a27654d4ef39990e8e9f1a5c4ffc98be75ed5bc7"
+      "exit_code": 0
     },
     "org_names": {
       "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
-      "exit_code": 0,
-      "private_log_sha256": "18abf7e1558ab628e13988a5bf2118c84a6554abc1b1e55a0b7676fd4f111928"
+      "exit_code": 0
     },
     "owner_candidates": {
       "command": "python3 calibration/oracles/crossplane/owner_probes.py --manifest workspace/artifacts/crossplane-r2/manifest.json --crossplane \"$TOOLS/crossplane\" --up \"$TOOLS/up-v0.34.2\" --up-modern \"$TOOLS/up-v0.38.0\" --out workspace/artifacts/crossplane-r2/owner-probes.json --scratch workspace/tmp/crossplane-r2-owner-probes",
-      "exit_code": 0,
-      "private_log_sha256": "2db2ae18ae39a8fd1c79df9a1dbebea2fd9d562f12b610481a559add4a334b67"
+      "exit_code": 0
     },
     "python_tests": {
       "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test",
-      "exit_code": 0,
-      "private_log_sha256": "6bea45e8460aee3b5ddd19d637b21ea2fe3e6cff26c864872125fe09f5a82b13"
+      "exit_code": 0
     },
     "reading_roundtrip": {
       "command": "go test -race ./internal/langbench -run ^TestCommittedReadingsRoundTrip$ -count=1",
-      "exit_code": 0,
-      "private_log_sha256": "7d45732ec3f57e3a5b4ecacab788e4794866da91e05a67c0e2b7942bea1da9a9"
+      "exit_code": 0
     },
     "release_notes": {
       "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
-      "exit_code": 0,
-      "private_log_sha256": "aaea4d261ba2554605b5e178329ac8bcc27f6122f56b09b9622b18aa45ebdfb3"
+      "exit_code": 0
     },
     "scratch_ingest": {
       "command": "fathom ingest --path . --service iac-crossplane-r2 --store workspace/db/crossplane-r2.sqlite",
       "exit_code": 1,
-      "private_log_sha256": "a65f6a6f57abfbafa908d8f01aa244f09789b5e60efe07247b2dd7e5052693e1",
       "scope": "Typed Go loading degraded (340/1266 packages, export v5 unsupported by v4 importer); text facts stored. O1508. Not a full gate pass."
     },
     "targeted_LB_F157": {
       "command": "fathom verify --strict --row LB-F157 --service iac-crossplane-r2 --store workspace/db/crossplane-r2.sqlite --plan docs/plans/language-breadth.md --ledger workspace/artifacts/crossplane-r2/verify-ledger.jsonl",
       "exit_code": 0,
-      "private_log_sha256": "ca2739dcc7accf6c864ef6983e51744458505a3f8a041b446b860cf0ca8f84ac",
       "scope": "One lexical row only, against stored source text; typed ingest success and full plan verification not claimed"
     },
     "walk_controls": {
       "exit_code": 0,
-      "private_log_sha256": "dd81b0c10d1fc388adf4b45a389245dc478fdeafdbb4aa9906abf8bc89bdb0d5",
       "procedure": "plain crossplane-oracle before/after the committed product_ablation.go.txt control; authored metadata.name fixture changes truth"
     }
   },

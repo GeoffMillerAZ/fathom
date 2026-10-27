@@ -110,6 +110,7 @@ func TestDaemonServerTimeoutsAndLoopbackHost(t *testing.T) {
 	serve := func(host, origin, path string) int {
 		r := httptest.NewRequest(http.MethodPost, path, nil)
 		r.Host = host
+		r.RemoteAddr = "127.0.0.1:50000" // a loopback peer (httptest's default is a network one; ADR-083)
 		if origin != "" {
 			r.Header.Set("Origin", origin)
 		}
@@ -190,6 +191,7 @@ func TestTestCallerRefusedByManagedDaemon(t *testing.T) {
 	call := func(s *http.Server, caller string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(toolsCall("capabilities")))
 		r.Host = "127.0.0.1:7581"
+		r.RemoteAddr = "127.0.0.1:50000" // a loopback peer (ADR-083)
 		if caller != "" {
 			r.Header.Set(client.CallerHeaderName, caller)
 		}

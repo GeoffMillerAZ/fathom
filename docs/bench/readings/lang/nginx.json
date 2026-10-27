@@ -2,12 +2,13 @@
   "dialect": "nginx",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L3",
+  "level_met": "L2",
   "grade": {
     "L1": "excellent",
     "L2": "good",
-    "L3": "good",
-    "L4": "not-applicable"
+    "L3": "unmet",
+    "L4": "not-applicable",
+    "L3_reason": "evidence: 13 references, under 20"
   },
   "measured_at": "2026-10-02",
   "fathom_commit": "44205772",
@@ -215,11 +216,15 @@
   "excluded_by_kind": {},
   "notes": [
     "awesome-compose: restricted to react-nginx/.nginx/nginx.conf (-only; the files outside are a disclosed gap, not measured)",
+    "crossplane 0.5.8 is tier B (LB-F170), relabelled from C: on the ladder in calibration/oracles/envoy/README.md it is NGINX Inc's parser tool and emits nginx's directive tree with lines, and design 1.5 D2 places independent parsers' syntax dumps at B (php-parser, luaparse); cross-checked against nginx 1.31.6 itself: nginx -T on a scratch copy of each file's prefix must load the file and crossplane must parse the same directives from the dump, 47 of 86 parsed files in scope, 39 not loaded by nginx here (a compose service name, a certificate, a module or an NGINX Plus directive) and 0 dump disagreements, all counted out of scope",
+    "nginx route pairs (a proxy_pass host joined to a compose service) stay tier C and are not scored: the reading is taken with lang-oracle, not lang-routes, so no tier C pair holds the xref family below B",
     "nginx-demos: 5 files skipped by ingest's gates (ambiguous)",
     "nginx-demos: restricted to kubernetes-demo-nginx-ingress-resources/apps/coffee-decaf/hello.conf, kubernetes-demo-nginx-ingress-resources/apps/coffee-special/hello.conf, kubernetes-demo-nginx-ingress-resources/apps/coffee/hello.conf, kubernetes-demo-nginx-ingress-resources/apps/tea/hello.conf, nginx-gcp-meetup-demo/nginxplus/nginx-stackdriver.conf, nginx-hello-nonroot/html-version/hello.conf, nginx-hello-nonroot/plain-text-version/hello.conf, nginx-hello/hello-plain-text.conf, nginx-hello/hello.conf, nginx-regex-tester/regextester/regextester.conf, nginx-swarm-demo/hello/hello.conf (-only; the files outside are a disclosed gap, not measured)",
     "nginx: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "nginx: restricted to conf/fastcgi.conf, conf/nginx.conf (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 44205772)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 44205772)",
     "server-configs-nginx: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "server-configs-nginx: 12 files skipped by ingest's gates (ambiguous)",
     "server-configs-nginx: 12 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
@@ -228,9 +233,7 @@
     "server-configs-nginx: 5 files skipped by ingest's gates (ambiguous)",
     "server-configs-nginx: 5 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "server-configs-nginx: restricted to conf.d/no-ssl.default.conf, conf.d/templates/no-ssl.example.com.conf, h5bp/basic.conf, h5bp/cross-origin/requests.conf, h5bp/cross-origin/resource_timing.conf, h5bp/errors/custom_errors.conf, h5bp/location/security_file_access.conf, h5bp/location/web_performance_filename-based_cache_busting.conf, h5bp/location/web_performance_svgz-compression.conf, h5bp/media_types/character_encodings.conf, h5bp/media_types/media_types.conf, h5bp/security/content-security-policy.conf, h5bp/security/cross-origin-policy.conf, h5bp/security/permissions-policy.conf, h5bp/security/referrer-policy.conf, h5bp/security/server_software_information.conf, h5bp/security/strict-transport-security.conf, h5bp/security/x-content-type-options.conf, h5bp/security/x-frame-options.conf, h5bp/tls/certificate_files.conf, h5bp/tls/ocsp_stapling.conf, h5bp/tls/policy_balanced.conf, h5bp/tls/policy_strict.conf, h5bp/tls/ssl_engine.conf, h5bp/web_performance/cache-control.conf, h5bp/web_performance/cache-file-descriptors.conf, h5bp/web_performance/cache_expiration.conf, h5bp/web_performance/compression.conf, h5bp/web_performance/content_transformation.conf, h5bp/web_performance/pre-compressed_content_gzip.conf, nginx.conf, test/vhosts/server.localhost.conf, test/vhosts/www-server.localhost.conf (-only; the files outside are a disclosed gap, not measured)",
-    "server-configs-nginx: restricted to conf.d/no-ssl.default.conf, h5bp/cross-origin/resource_timing.conf, h5bp/errors/custom_errors.conf, h5bp/location/security_file_access.conf, h5bp/location/web_performance_filename-based_cache_busting.conf, h5bp/media_types/character_encodings.conf, h5bp/media_types/media_types.conf, h5bp/security/server_software_information.conf, h5bp/security/strict-transport-security.conf, h5bp/security/x-content-type-options.conf, h5bp/tls/certificate_files.conf, h5bp/tls/ocsp_stapling.conf, h5bp/tls/policy_balanced.conf, h5bp/tls/policy_strict.conf, h5bp/tls/ssl_engine.conf, h5bp/web_performance/cache-file-descriptors.conf, h5bp/web_performance/cache_expiration.conf, h5bp/web_performance/compression.conf, h5bp/web_performance/content_transformation.conf, h5bp/web_performance/pre-compressed_content_gzip.conf, nginx.conf, test/vhosts/www-server.localhost.conf (-only; the files outside are a disclosed gap, not measured)",
-    "crossplane 0.5.8 is tier B (LB-F170), relabelled from C: on the ladder in calibration/oracles/envoy/README.md it is NGINX Inc's parser tool and emits nginx's directive tree with lines, and design 1.5 D2 places independent parsers' syntax dumps at B (php-parser, luaparse); cross-checked against nginx 1.31.6 itself: nginx -T on a scratch copy of each file's prefix must load the file and crossplane must parse the same directives from the dump, 47 of 86 parsed files in scope, 39 not loaded by nginx here (a compose service name, a certificate, a module or an NGINX Plus directive) and 0 dump disagreements, all counted out of scope",
-    "nginx route pairs (a proxy_pass host joined to a compose service) stay tier C and are not scored: the reading is taken with lang-oracle, not lang-routes, so no tier C pair holds the xref family below B"
+    "server-configs-nginx: restricted to conf.d/no-ssl.default.conf, h5bp/cross-origin/resource_timing.conf, h5bp/errors/custom_errors.conf, h5bp/location/security_file_access.conf, h5bp/location/web_performance_filename-based_cache_busting.conf, h5bp/media_types/character_encodings.conf, h5bp/media_types/media_types.conf, h5bp/security/server_software_information.conf, h5bp/security/strict-transport-security.conf, h5bp/security/x-content-type-options.conf, h5bp/tls/certificate_files.conf, h5bp/tls/ocsp_stapling.conf, h5bp/tls/policy_balanced.conf, h5bp/tls/policy_strict.conf, h5bp/tls/ssl_engine.conf, h5bp/web_performance/cache-file-descriptors.conf, h5bp/web_performance/cache_expiration.conf, h5bp/web_performance/compression.conf, h5bp/web_performance/content_transformation.conf, h5bp/web_performance/pre-compressed_content_gzip.conf, nginx.conf, test/vhosts/www-server.localhost.conf (-only; the files outside are a disclosed gap, not measured)"
   ],
   "disposition": null
 }

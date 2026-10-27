@@ -163,7 +163,8 @@ The core subject's `-only` globs are the original corpus shard scope, not the
 189 native-accepted-file list. Three full pooled runs must agree in counts and
 metrics; the driver copies the median CPU-rate harness bytes. Any achieved or
 unmet grade is recorded. Do not append or reorder notes after serialization.
-The final committed reading is copied from that output unchanged.
+That output is the frozen extraction snapshot. The current committed reading
+is regenerated under R-D19 by the exact main harness as described below.
 
 ## Bounded owner-tool probes
 
@@ -198,3 +199,28 @@ minimal Composition in a separate scratch directory, change only
 `metadata.name`, and require different oracle JSON with the changed definition
 name. This fixture is a control, never a scored subject. Round-2 records both
 controls separately from the earlier native-schema before/after experiment.
+
+## R-D19: current main-harness reading
+
+The frozen lane snapshot at `6dd4a0a29` keeps the complete 244-file tier-C
+population. A clean main `5d41806d0` indexbench, built with `-trimpath`, applies
+both D19 evidence rules without extraction or native calls. Set `D19_INDEXBENCH`
+to that executable and run serially at actual nice>=10 and load<=9:
+
+```sh
+python3 calibration/oracles/crossplane/regrade_d19.py --indexbench "$D19_INDEXBENCH" --lane-commit 6dd4a0a29 --main-commit 5d41806d0 --receipt docs/assessments/data/2026-10-26-crossplane-d19-regrade.json
+```
+
+The script reads both parents from Git, generates the reason-separated reading
+note before invoking main's harness, checks frozen measurements and copies its
+exact canonical bytes. Denominators are 33/33; D19's general floor is met, no
+manifest subject bar applies, and tier C still caps L3 at good. Old R2/R3 hashes
+are historical extraction identities; the new receipt binds the current bytes.
+Raw owner-tool output hashes/lengths, private manifest hashes, package-output
+hashes and raw-log digests are private artifacts, not public evidence. Publish
+owner-tool outcomes as aggregate counts/status; retain source pins and
+path-independent content identities, not path-bearing output fingerprints.
+
+The regrade wrapper enforces actual nice>=10 and waits for load<=9 before each
+Go metadata/harness launch. Raw command output stays private and is not hashed
+into the regrade receipt.

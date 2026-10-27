@@ -136,6 +136,11 @@ func (p *Pipeline) passStateUnder(ctx context.Context, service, key, inputs stri
 	case passStateValue(key, passStatePartial) + inputs:
 		return passStatePartial
 	}
+	// A partial typed Go pass that lacked modules (ADR-083) stands while
+	// each of them is still missing from the module cache.
+	if rest, ok := strings.CutPrefix(v, passStateValue(key, passStatePartial)+inputs); ok && strings.HasPrefix(rest, missingStampPrefix) && missingModulesUnchanged(typedModCache(), rest) {
+		return passStatePartial
+	}
 	return ""
 }
 
@@ -147,7 +152,12 @@ func (p *Pipeline) skippedReason(ctx context.Context, service, key string) strin
 
 // skippedReasonUnder is skippedReason under passStateUnder's inputs.
 func (p *Pipeline) skippedReasonUnder(ctx context.Context, service, key, inputs string) string {
-	if p.passStateUnder(ctx, service, key, inputs) == passStatePartial {
+	return skippedReasonFor(p.passStateUnder(ctx, service, key, inputs))
+}
+
+// skippedReasonFor is the skip disclosure for a recorded state.
+func skippedReasonFor(state string) string {
+	if state == passStatePartial {
 		return SkippedPartialPassReason
 	}
 	return SkippedPassReason

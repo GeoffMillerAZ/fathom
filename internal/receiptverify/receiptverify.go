@@ -34,6 +34,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/goenv"
 )
 
 // Outcome is one Verify call's result. OK true means the receipt's claim
@@ -93,14 +94,18 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 }
 
 // offlineGoEnv is the environment the toolchain rung runs the go command
-// under (EVX-6, I56): the operator's own environment, then GOWORK=off (the
-// checkout is its own module), GOPROXY=off (a module is never downloaded)
-// and GOFLAGS=-mod=readonly (go.mod and go.sum are never rewritten),
-// appended after os.Environ() so they win over the operator's settings. A
-// module the cache lacks makes the rung cannot-run (exit 2) and is named;
-// private dependencies need the operator's own module cache (GOMODCACHE).
+// under (EVX-6, I56, ADR-083 decision 2): the operator's own environment,
+// then GOWORK=off (the checkout is its own module) and
+// GOFLAGS=-mod=readonly (go.mod and go.sum are never rewritten), then
+// goenv.Offline with the network closed whatever the user's go_network
+// says: GOPROXY=off and GOSUMDB=off (a module is never downloaded),
+// GONOPROXY="," (a GOPRIVATE pattern never sends a module to its version
+// control), GOTELEMETRY=off and GOTOOLCHAIN=local last. Each is appended
+// after os.Environ() so it wins over the operator's settings. A module the
+// cache lacks makes the rung cannot-run (exit 2) and is named; private
+// dependencies need the operator's own module cache (GOMODCACHE).
 func offlineGoEnv() []string {
-	return append(os.Environ(), "GOWORK=off", "GOPROXY=off", "GOFLAGS=-mod=readonly")
+	return goenv.Offline(append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=readonly"), false)
 }
 
 // OfflineGoEnv is offlineGoEnv for the go commands cmd/fathom runs on the
@@ -124,7 +129,7 @@ func LoadTruth(ctx context.Context, dir, commit string) (publicloc.GoTruth, erro
 
 // offlineLookupRefused is the go command's own words for a module it may
 // not fetch under GOPROXY=off.
-const offlineLookupRefused = "module lookup disabled by GOPROXY=off"
+const offlineLookupRefused = goenv.LookupRefused
 
 // requireCachedModules runs `go mod download` under offlineGoEnv: with
 // GOPROXY=off it only checks the module cache, never fetches, and names
