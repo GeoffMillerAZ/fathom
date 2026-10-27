@@ -1,0 +1,392 @@
+{
+  "language": "GPU Slang (shader-slang/slang)",
+  "searched_on": "2026-10-26",
+  "scope": "X-R4 five-route discovery; no oracle execution, no calibration or ceiling",
+  "method": {
+    "http": "Read-only curl -L --fail --max-time 20-25 --max-filesize 1000000, except release/tag calls used max-time 20. Public responses saved under ignored workspace/tmp/slang-oracle. N1 registry follow-up: curl 8.7.1, GET with User-Agent fathom-oracle-search/1.0 (+public package metadata research), --max-time 20-25 and --max-filesize 1000000 (PyPI 3000000); raw responses remain ignored under workspace/tmp/.",
+    "search_bounds": "GitHub repository API per_page=10; exact queries and total_count below. Counts are query results, not global absence proof. N1 crates.io q=slang per_page=100, pages 1-2, all 181 reported results fetched; the query is bounded and is not an absence proof.",
+    "source_pin": "d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+    "execution": "No binary downloads, native builds, fixture runs, or calibration measurement."
+  },
+  "routes": [
+    {
+      "group": "own_toolchain",
+      "queries": [
+        "site:docs.shader-slang.org slangc dump AST IR command line dump-ast dump-ir reflection dependencies",
+        "site:github.com/shader-slang/slang slangc -dump-ast -dump-ir source",
+        "site:github.com/shader-slang/slang reflection-json depfile output-includes"
+      ],
+      "primary_sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/include/slang.h",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/LICENSE"
+      ],
+      "result": "Pinned CLI documents AST dump, IR dumps, depfile, output-includes, -reflection-json, and -trace-function-coverage. Header exposes IModule::getModuleReflection declaration tree, getDeclSourceLocation start point, and dependency-file paths. Exact field completeness remains untried. N1 registry follow-up found shader-slang Rust bindings and SlangPy Python bindings. Both wrap or invoke the compiler toolchain; their package metadata does not establish an independent declaration/reference oracle or a higher evidence tier.",
+      "status": "source-audited-untried",
+      "response_ids": [
+        "release",
+        "tag",
+        "tag-object",
+        "cli",
+        "slang_header",
+        "license",
+        "crates_shader_binding",
+        "pypi_slangpy"
+      ]
+    },
+    {
+      "group": "scip_lsif",
+      "queries": [
+        "GET Sourcegraph SCIP README at pinned commit d556dd3c24b3c1787e0b62cd31f25188300e3098",
+        "GET complete https://lsif.dev/ indexer page",
+        "GET GitHub repository search q=scip-slang in:name per_page=10",
+        "GET GitHub repository search q=slang lsif in:name,description per_page=10",
+        "GET Sourcegraph recommended-indexer documentation"
+      ],
+      "primary_sources": [
+        "https://github.com/sourcegraph/scip/blob/d556dd3c24b3c1787e0b62cd31f25188300e3098/README.md#tools-using-scip",
+        "https://lsif.dev/#implementations-server",
+        "https://api.github.com/search/repositories?q=scip-slang+in%3Aname&per_page=10",
+        "https://api.github.com/search/repositories?q=slang+lsif+in%3Aname%2Cdescription&per_page=10",
+        "https://sourcegraph.com/docs/code-navigation/writing-an-indexer"
+      ],
+      "result": "Complete fetched SCIP README tools list and lsif.dev LSIF Indexers page each have literal case-insensitive Slang count 0. Both bounded GitHub repository queries return total_count=0, and Sourcegraph recommended-indexer page also has literal Slang count 0. GPU Slang is distinct from unrelated SystemVerilog tools named slang; these are search misses only, not absence or ceiling proof.",
+      "status": "search-miss-not-absence-proof",
+      "response_ids": [
+        "scip_commit",
+        "scip_readme",
+        "lsif_home",
+        "scip_search",
+        "lsif_search",
+        "sourcegraph_indexers"
+      ]
+    },
+    {
+      "group": "language_servers",
+      "queries": [
+        "GET pinned slang-language-server.cpp",
+        "GET GitHub repo search q=slangd shader in:name,description per_page=10",
+        "GET GitHub repo search q=\"slang language server\" shader per_page=10"
+      ],
+      "primary_sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/source/slang/slang-language-server.cpp",
+        "https://api.github.com/search/repositories?q=slangd+shader+in%3Aname%2Cdescription&per_page=10",
+        "https://api.github.com/search/repositories?q=%22slang+language+server%22+shader&per_page=10"
+      ],
+      "result": "Official pinned server advertises document symbols, definition, semantic tokens and uses parsed AST/module. Search returned one shader-related slangd client adapter and zero exact-phrase repositories; no independent GPU Slang server fork proven. SystemVerilog slangd results are a different language and excluded.",
+      "status": "source-audited-untried",
+      "response_ids": [
+        "server",
+        "server_search",
+        "server_search2"
+      ]
+    },
+    {
+      "group": "package_parsers_ast_dumpers",
+      "queries": [
+        "GET npm tree-sitter-slang/latest",
+        "GET maintained grammar repository and master commit",
+        "Initial GET crates.io tree-sitter-slang returned HTTP 403; N1 retry on 2026-10-26 returned HTTP 200"
+      ],
+      "primary_sources": [
+        "https://registry.npmjs.org/tree-sitter-slang/latest",
+        "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/commits/master",
+        "https://crates.io/api/v1/crates/tree-sitter-slang"
+      ],
+      "result": "npm 0.3.1 MIT and pinned grammar master are syntax candidates. The initial headerless request returned HTTP 403 because crates.io requires a User-Agent; the retry with a descriptive User-Agent returned HTTP 200 and tree-sitter-slang 0.3.1 MIT. Its registry repository URL differs from the pinned grammar repository; equivalence is unproved. Syntax parsing alone is not a resolved reference oracle.",
+      "status": "source-audited-untried",
+      "response_ids": [
+        "npm_parser",
+        "parser_repo",
+        "parser_commit",
+        "crates_parser",
+        "crates_parser_retry"
+      ]
+    },
+    {
+      "group": "runtime_call_require_tracing",
+      "queries": [
+        "GET pinned CLI reference -trace-function-coverage and -trace-coverage flags",
+        "GET pinned building documentation interpreter target"
+      ],
+      "primary_sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md#L326-L337",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/building.md#L312-L314"
+      ],
+      "result": "Pinned -trace-function-coverage compiler option instruments per-function-entry counters and emits coverage metadata. -trace-coverage covers statement entries; build docs enable slangi. Instrumentation remains UNTRIED. Executed-function subset alone cannot prove complete static caller-callee edges; other tracing ability remains uninvestigated.",
+      "status": "search-miss-not-absence-proof",
+      "response_ids": [
+        "cli",
+        "slang_building"
+      ]
+    }
+  ],
+  "next_probes": [
+    "Fetch and SHA-256 verify the published v2026.20 macOS aarch64 archive only when a runtime probe is authorized.",
+    "Probe small public fixture through compiler AST, IR, dependency, reflection API/JSON and official slangd documentSymbol/definition; inspect exact end ranges and edge identity.",
+    "Search broader SCIP/LSIF and GPU Slang server forks if a later ceiling claim requires exhaustive negative evidence."
+  ],
+  "http_responses": [
+    {
+      "id": "release",
+      "url": "https://api.github.com/repos/shader-slang/slang/releases/tags/v2026.20",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/release.json",
+      "response_sha256": "e45b64d5c06d01c6add938af39f4008d38478b2d84a6ede88ec6a4c302a22cf0",
+      "response_bytes": 84566
+    },
+    {
+      "id": "tag",
+      "url": "https://api.github.com/repos/shader-slang/slang/git/ref/tags/v2026.20",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/tag.json",
+      "response_sha256": "5e77add975e80fd7a28126fb86c27c34112a34617dd5f54795ddc66eddcc426a",
+      "response_bytes": 382
+    },
+    {
+      "id": "tag-object",
+      "url": "https://api.github.com/repos/shader-slang/slang/git/tags/d8729bec562ca9d9c669f7b13263c06067cda40b",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/tag-object.json",
+      "response_sha256": "5f0b5e040b77c310d60f08061f6384b24fa82e6b697d9043c054f74f57d6cf59",
+      "response_bytes": 8416
+    },
+    {
+      "id": "cli",
+      "url": "https://raw.githubusercontent.com/shader-slang/slang/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/cli.txt",
+      "response_sha256": "5505494150679609112c3c2df940e1303866bea0161c5b390095d76ace296a1d",
+      "response_bytes": 67033
+    },
+    {
+      "id": "slang_header",
+      "url": "https://raw.githubusercontent.com/shader-slang/slang/d9ede2dd5836afc0e9586da18d9236b171d0faa8/include/slang.h",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/slang_header.txt",
+      "response_sha256": "850dc5fe9655a574b5e6df64453fb0c8882fe3e608e36644b1ca8ca3038c10a3",
+      "response_bytes": 244873
+    },
+    {
+      "id": "server",
+      "url": "https://raw.githubusercontent.com/shader-slang/slang/d9ede2dd5836afc0e9586da18d9236b171d0faa8/source/slang/slang-language-server.cpp",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/server.txt",
+      "response_sha256": "66f0041ad545aeb51b61750f47573d04d55658d2d8ce5c39de1e7b75367fcebe",
+      "response_bytes": 121090
+    },
+    {
+      "id": "license",
+      "url": "https://raw.githubusercontent.com/shader-slang/slang/d9ede2dd5836afc0e9586da18d9236b171d0faa8/LICENSE",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/license.txt",
+      "response_sha256": "b738d98b7725414b534c119ac66126876b8cbd40aa8ae48210db190714b81670",
+      "response_bytes": 1490
+    },
+    {
+      "id": "scip_search",
+      "url": "https://api.github.com/search/repositories?q=scip-slang+in%3Aname&per_page=10",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/scip_search.json",
+      "response_sha256": "08c082fdf7ca87ba911a2aabb0f0cf2d3e482a6feeaac9713e4578c20b2600b2",
+      "response_bytes": 73
+    },
+    {
+      "id": "lsif_search",
+      "url": "https://api.github.com/search/repositories?q=slang+lsif+in%3Aname%2Cdescription&per_page=10",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/lsif_search.json",
+      "response_sha256": "08c082fdf7ca87ba911a2aabb0f0cf2d3e482a6feeaac9713e4578c20b2600b2",
+      "response_bytes": 73
+    },
+    {
+      "id": "server_search",
+      "url": "https://api.github.com/search/repositories?q=slangd+shader+in%3Aname%2Cdescription&per_page=10",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/server_search.json",
+      "response_sha256": "1ebaaa847e46dec86f32f67e0645cac0964243ad2f983c46802e2e33403fb75d",
+      "response_bytes": 5955
+    },
+    {
+      "id": "server_search2",
+      "url": "https://api.github.com/search/repositories?q=%22slang+language+server%22+shader&per_page=10",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/server_search2.txt",
+      "response_sha256": "08c082fdf7ca87ba911a2aabb0f0cf2d3e482a6feeaac9713e4578c20b2600b2",
+      "response_bytes": 73
+    },
+    {
+      "id": "sourcegraph_indexers",
+      "url": "https://sourcegraph.com/docs/code-navigation/writing-an-indexer",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/sourcegraph_indexers.json",
+      "response_sha256": "3e3e89beafd2960492b40b751116a786dd30368cc58bc4849313f398056868e3",
+      "response_bytes": 191701
+    },
+    {
+      "id": "npm_parser",
+      "url": "https://registry.npmjs.org/tree-sitter-slang/latest",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/npm_parser.json",
+      "response_sha256": "a4af828f0da111a164e2c5b849f73d9bc0de387b29a498d7c3fa82f03c010972",
+      "response_bytes": 1914
+    },
+    {
+      "id": "crates_parser",
+      "url": "https://crates.io/api/v1/crates/tree-sitter-slang",
+      "http_status": 403,
+      "raw_path": null,
+      "response_sha256": null,
+      "response_bytes": 0
+    },
+    {
+      "id": "parser_repo",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/parser_repo.txt",
+      "response_sha256": "1e44e2841efbffd3f0ab5a746db76fb1413c3c4bee85e0be67f1c31b742b9809",
+      "response_bytes": 8016
+    },
+    {
+      "id": "parser_commit",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/commits/master",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/parser_commit.json",
+      "response_sha256": "8446af6a7bceb314181fa7f6d90a7ee1c042ffe53f06eaf849b1b3e861b198c2",
+      "response_bytes": 5736
+    },
+    {
+      "id": "slang_building",
+      "url": "https://raw.githubusercontent.com/shader-slang/slang/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/building.md",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/slang_building.txt",
+      "response_sha256": "7e28102929b51b1687e343beb37562041e2383c5d8023f52e4e23daeb0e46cff",
+      "response_bytes": 38220
+    },
+    {
+      "id": "scip_commit",
+      "url": "https://api.github.com/repos/sourcegraph/scip/commits/main",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/scip_commit.txt",
+      "response_sha256": "c9fb4d551d634c9c9b2687610d07746b388e1a891194a5732bf39b46783bec7d",
+      "response_bytes": 9097
+    },
+    {
+      "id": "scip_readme",
+      "url": "https://raw.githubusercontent.com/sourcegraph/scip/d556dd3c24b3c1787e0b62cd31f25188300e3098/README.md",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/scip_readme.txt",
+      "response_sha256": "fce767acbc4242c6f589fedf6f81a3089d6da766789e4d5a0a5673d2f6a927c0",
+      "response_bytes": 3176
+    },
+    {
+      "id": "lsif_home",
+      "url": "https://lsif.dev/",
+      "http_status": 200,
+      "raw_path": "workspace/tmp/slang-oracle/lsif_home.txt",
+      "response_sha256": "095c143c6a3bb6df0d93387b5b3f1a9150bfda3afd673a697c5ba6a7e6706de6",
+      "response_bytes": 17083
+    },
+    {
+      "id": "crates_parser_retry",
+      "url": "https://crates.io/api/v1/crates/tree-sitter-slang",
+      "http_status": 200,
+      "retrieved_on": "2026-10-26",
+      "raw_path": "workspace/tmp/slang-crates-tree-sitter.json",
+      "response_sha256": "dce725164dab886f82bb3432c3cdbf4a23d9b838db90c8e0fe82db9f280fa72a",
+      "response_bytes": 14247
+    },
+    {
+      "id": "crates_shader_binding",
+      "url": "https://crates.io/api/v1/crates/shader-slang",
+      "http_status": 200,
+      "retrieved_on": "2026-10-26",
+      "raw_path": "workspace/tmp/slang-crates-shader.json",
+      "response_sha256": "8921a013dd17f55f31d85affeef1f85a19f334efffdb757979692bdb8af9d24c",
+      "response_bytes": 3127
+    },
+    {
+      "id": "crates_search_page_1",
+      "url": "https://crates.io/api/v1/crates?q=slang&per_page=100&page=1",
+      "http_status": 200,
+      "retrieved_on": "2026-10-26",
+      "raw_path": "workspace/tmp/slang-crates-search.json",
+      "response_sha256": "47c3afafc5b6b8e1e68fd2fe14f23d9f31c8a79aa7b83e113a5c393c6d5fb95b",
+      "response_bytes": 97291
+    },
+    {
+      "id": "crates_search_page_2",
+      "url": "https://crates.io/api/v1/crates?q=slang&per_page=100&page=2",
+      "http_status": 200,
+      "retrieved_on": "2026-10-26",
+      "raw_path": "workspace/tmp/slang-crates-search-page2.json",
+      "response_sha256": "1afe5145d573bda2ac49a8be3632c3bb29fb4512055f0ae4c9e6c3676a957034",
+      "response_bytes": 75984
+    },
+    {
+      "id": "pypi_slangpy",
+      "url": "https://pypi.org/pypi/slangpy/json",
+      "http_status": 200,
+      "retrieved_on": "2026-10-26",
+      "raw_path": "workspace/tmp/slang-pypi-slangpy.json",
+      "response_sha256": "c968d07bfa57eb1bfb56d16d3ec7aec15fdf2fb5f8062f7ab6ca1dbf28d05880",
+      "response_bytes": 321362
+    }
+  ],
+  "compiler_release": {
+    "version": "v2026.20",
+    "tag_object": "d8729bec562ca9d9c669f7b13263c06067cda40b",
+    "source_commit": "d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+    "license": "Apache-2.0 WITH LLVM-exception",
+    "mac_aarch64_zip_published_sha256": "ede1865bf086442c8786c5b7c0470ce5f4fd4f032eefe881356726ff9c445f40",
+    "archive_downloaded": false
+  },
+  "registry_followup": {
+    "searched_on": "2026-10-26",
+    "queries": [
+      "GET https://crates.io/api/v1/crates/tree-sitter-slang",
+      "GET https://crates.io/api/v1/crates/shader-slang",
+      "GET https://crates.io/api/v1/crates?q=slang&per_page=100&page=1",
+      "GET https://crates.io/api/v1/crates?q=slang&per_page=100&page=2",
+      "GET https://pypi.org/pypi/slangpy/json"
+    ],
+    "crates_search": {
+      "reported_total": 181,
+      "pages_fetched": 2,
+      "results_fetched": 181,
+      "page_size": 100,
+      "next_page_after_page_2": null,
+      "interpretation": "Bounded name/description search, not a complete oracle census or absence proof."
+    },
+    "packages": [
+      {
+        "registry": "crates.io",
+        "name": "tree-sitter-slang",
+        "version": "0.3.1",
+        "license": "MIT",
+        "capability": "GPU Slang tree-sitter syntax grammar; no compiler-resolved definitions, references, or calls shown by registry metadata.",
+        "family": "syntax-parser",
+        "response_id": "crates_parser_retry"
+      },
+      {
+        "registry": "crates.io",
+        "name": "shader-slang",
+        "version": "0.1.0",
+        "license": "MIT OR Apache-2.0",
+        "capability": "Rust bindings for the Slang shader compiler; no separate oracle output or field completeness shown by registry metadata.",
+        "family": "own-toolchain-compiler-binding",
+        "response_id": "crates_shader_binding"
+      },
+      {
+        "registry": "PyPI",
+        "name": "slangpy",
+        "version": "0.43.1",
+        "license": "Apache-2.0",
+        "capability": "Python library to call Slang GPU functions; package metadata does not establish compiler-resolved static symbol or call edges.",
+        "family": "own-toolchain-compiler-binding",
+        "response_id": "pypi_slangpy"
+      }
+    ],
+    "tier_ruling": "No independent oracle or evidence-tier promotion from these package records. Compiler bindings share the own-toolchain reflection family; tree-sitter is syntax only. No native package execution or shader parsing was done."
+  }
+}

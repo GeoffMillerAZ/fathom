@@ -1,0 +1,128 @@
+{
+  "schema": "slang-grammar-candidates-triage-v1",
+  "as_of": "2026-10-26",
+  "language": "Slang GPU shading language (shader-slang/slang)",
+  "status": "metadata-only; no candidate parsed or measured",
+  "candidates": [
+    {
+      "id": "slang-upstream-v0.3.1",
+      "role": "native primary candidate",
+      "repository": "https://github.com/tree-sitter-grammars/tree-sitter-slang",
+      "original_repository": "https://github.com/theHamsta/tree-sitter-slang",
+      "original_repository_status": "GitHub redirects to tree-sitter-grammars/tree-sitter-slang; same repository lineage, not a separate fork candidate",
+      "release": "v0.3.1",
+      "release_url": "https://github.com/tree-sitter-grammars/tree-sitter-slang/releases/tag/v0.3.1",
+      "release_commit": "c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3",
+      "source_distribution": "https://pypi.org/project/tree-sitter-slang/0.3.1/",
+      "source_distribution_filename": "tree_sitter_slang-0.3.1.tar.gz",
+      "source_distribution_sha256": "1f8c432d3a4a752555f409217ad789c9db044db097f4dc5a6973d4cb45b1f8de",
+      "github_archive_sha256": "0394529e6b5530fa589089af91ee922df95a2b53c2ce375bc40f66514acea0ca",
+      "github_archive_sha256_status": "verified from 1,850,585 downloaded codeload bytes at exact release commit (HTTP 200)",
+      "license_spdx": "MIT",
+      "license_evidence": [
+        "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-slang/c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3/LICENSE",
+        "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-slang/c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3/package.json"
+      ],
+      "implementation": "native generated tree-sitter parser; grammar.js extends tree-sitter-hlsl and tree-sitter-cpp",
+      "limitations_upstream": [
+        "ambiguity between HLSL semantics and Slang type hints"
+      ],
+      "current_branch": "master",
+      "current_branch_commit": "1dbcc4abc7b3cdd663eb03d93031167d6ed19f56",
+      "current_branch_commit_status": "verified via GitHub commits/master API HTTP 200; release tag is older",
+      "candidate_state": "untried",
+      "evidence": [
+        "https://github.com/tree-sitter-grammars/tree-sitter-slang",
+        "https://github.com/tree-sitter-grammars/tree-sitter-slang/releases",
+        "https://pypi.org/project/tree-sitter-slang/",
+        "https://github.com/tree-sitter/tree-sitter/wiki/List-of-parsers"
+      ],
+      "license_file_sha256": "188fdcca13247f567cddb0d5155c622de1a6cf3f0245e52f0986907b6c2819f5",
+      "source_distribution_sha256_status": "Published PyPI release metadata only; source distribution not downloaded or used. Reproducible native candidate input is the separately hash-verified codeload archive."
+    },
+    {
+      "id": "slang-upstream-master",
+      "role": "current upstream branch candidate",
+      "repository": "https://github.com/tree-sitter-grammars/tree-sitter-slang",
+      "commit": "1dbcc4abc7b3cdd663eb03d93031167d6ed19f56",
+      "archive_sha256": "275040f67e2e73c3f290168c39a70a9e91137fdff85b21b2745ecd0c5fe2a4f2",
+      "license_spdx": "MIT",
+      "candidate_state": "exactly pinned; untried",
+      "note": "Current branch commit verified via GitHub API; package version still 0.3.1. No parse coverage measured.",
+      "archive_bytes": 1850584,
+      "license_file_sha256": "188fdcca13247f567cddb0d5155c622de1a6cf3f0245e52f0986907b6c2819f5"
+    },
+    {
+      "id": "slang-vostranox-fork",
+      "role": "native maintained fork candidate",
+      "repository": "https://github.com/Vostranox/tree-sitter-slang",
+      "upstream_repository": "https://github.com/tree-sitter-grammars/tree-sitter-slang",
+      "commit": "e42d9b7d4ea82105218aa57666355e7ab5a85216",
+      "archive_url": "https://codeload.github.com/Vostranox/tree-sitter-slang/tar.gz/e42d9b7d4ea82105218aa57666355e7ab5a85216",
+      "archive_sha256": "4640c7b6c96699fb220edbc63192cb6d4aa27a5c95897fffd84c788a7e045134",
+      "archive_bytes": 2689228,
+      "license_spdx": "MIT",
+      "license_file_sha256": "188fdcca13247f567cddb0d5155c622de1a6cf3f0245e52f0986907b6c2819f5",
+      "package_version": "0.3.1",
+      "upstream_comparison": {
+        "ahead_by": 2,
+        "behind_by": 0,
+        "grammar_js_modified": true,
+        "generated_parser_modified": true,
+        "corpus_test_modified": true
+      },
+      "candidate_state": "exactly pinned; untried",
+      "evidence": [
+        "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/compare/master...Vostranox:master",
+        "https://raw.githubusercontent.com/Vostranox/tree-sitter-slang/e42d9b7d4ea82105218aa57666355e7ab5a85216/LICENSE"
+      ]
+    }
+  ],
+  "predecessor_grammars_not_independent_slang_candidates": [
+    {
+      "id": "hlsl-locked",
+      "repository": "https://github.com/tree-sitter-grammars/tree-sitter-hlsl",
+      "relationship": "Slang grammar extends HLSL; HLSL itself is an extension of C++",
+      "commit": "0400dd363f4e8142dcfa7b5a7d2d9db59c129c6e",
+      "archive_sha256": "0a40e0a1573fb4b6e7433f2be53464f20da6740455d6d5f08316cdd67ccd9dbf",
+      "license_spdx": "MIT",
+      "source": "internal/extractor/tsengine/grammars/grammars.lock.json"
+    },
+    {
+      "id": "cuda-locked",
+      "repository": "https://github.com/tree-sitter-grammars/tree-sitter-cuda",
+      "relationship": "precedent: C++ grammar extended for CUDA storage/function specifiers and kernel launch syntax",
+      "commit": "d58080a327756e4d1d16ec329ba7cb2048f6c6cd",
+      "archive_sha256": "18f7bcaf6115c7b9ca57505653e787c565f4cdc7886caf76a004c36e8aa1548a",
+      "license_spdx": "MIT",
+      "source": "internal/extractor/tsengine/grammars/grammars.lock.json"
+    },
+    {
+      "id": "cpp-locked",
+      "repository": "https://github.com/tree-sitter/tree-sitter-cpp",
+      "relationship": "base grammar for the HLSL/CUDA/Slang extension family",
+      "tag": "v0.23.4",
+      "commit": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+      "archive_sha256": "7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051",
+      "license_spdx": "MIT",
+      "source": "internal/extractor/tsengine/grammars/grammars.lock.json"
+    }
+  ],
+  "fork_disposition": "GitHub API lists three forks. Vostranox/tree-sitter-slang is two grammar-changing commits ahead of current upstream and is a pinned untried candidate. guidoschmidt/tree-sitter-slang has zero ahead and 13 behind. henryhchchc/tree-sitter-slang has one old divergent commit and 24 behind; neither is a current competing grammar candidate.",
+  "other_forks": [
+    {
+      "repository": "https://github.com/guidoschmidt/tree-sitter-slang",
+      "commit": "a4454e3004a9e8fea2df7fd2535fbaa05500da21",
+      "ahead_by": 0,
+      "behind_by": 13,
+      "candidate_state": "excluded: no fork changes ahead of upstream"
+    },
+    {
+      "repository": "https://github.com/henryhchchc/tree-sitter-slang",
+      "commit": "4e20344b03a49986bdc3ee087d454e53d22ae724",
+      "ahead_by": 1,
+      "behind_by": 24,
+      "candidate_state": "excluded: old divergent fork, no changed grammar files in comparison"
+    }
+  ]
+}

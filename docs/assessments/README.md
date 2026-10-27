@@ -106,6 +106,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [hlsl-scope-replay](2026-10-26-hlsl-scope-replay.md), [unscoped receipt](data/hlsl-scope-replay-2026-10-26/unscoped-regrade-receipt.json) | G-R7 SQL/CUDA no-scope compatibility proof; exact-main HLSL replay automation on the owner-approved ubuntu-24.04 runner | ENGINE #45, G-R7 |
 | 2026-10-26 | [refused-angular-ceiling](2026-10-26-refused-angular-ceiling.md) | R-R4 spent: canonical 2/72, ng-matero 6/77 spent, ng-alain 55/55 context-deferred; no pooled grade and no implementation ships | LB-Q-angular-rest, R-R2, R-R3, R-R4 |
 | 2026-10-26 | [bash-oracle-candidates](2026-10-26-bash-oracle-candidates.md), [receipt](data/bash-oracle-2026-10-26/evidence.json) | Released SCIP leaves literal command coverage below the bar; native namespace and executed-call probes disclose their scope and observer limits | LB-Q-bash-rest, P-T1, X-R4 |
+| 2026-10-26 | [slang-triage](2026-10-26-slang-triage.md) | G-R10 bounded search, 466 dispositions; prospective 2,752-file primary and separate 461-file holdout with overlap disclosed, unmeasured | G-R1; NP-Q5 gates implementation |
 
 ## Companion pages
 
