@@ -154,3 +154,18 @@ X-R10 finds no lane-changed Go file, and four lexical consumers in one plan
 but verify exited operationally (2): an uncommitted change-note fragment held ten
 gone rows unknown under I44. Commit that fragment and repeat the scratch ingest
 and strict check from a clean HEAD; this attempt is not a passing verification.
+
+
+Clean-HEAD X-R10 rerun at 34f547acb: scratch ingest outcome `ok`; strict
+language-breadth verification exits 0 with 569 claimed rows verified and none
+failing (797 rows total). The ten held gone rows now verify. Reproduce without a
+daemon using the committed CLI implementation and a private store/ledger:
+
+```sh
+bash scripts/fathom-go.sh build -o workspace/artifacts/json-schema-d19-r1/bin/fathom ./cmd/fathom
+FATHOM_TENANCY_BUDGET=4GiB workspace/artifacts/json-schema-d19-r1/bin/fathom ingest --service fathom --path . --store workspace/artifacts/json-schema-d19-r1/verify-clean.sqlite --json
+workspace/artifacts/json-schema-d19-r1/bin/fathom verify --strict --since origin/main --service fathom --store workspace/artifacts/json-schema-d19-r1/verify-clean.sqlite --ledger workspace/artifacts/json-schema-d19-r1/verify-ledger.jsonl --plan docs/plans/language-breadth.md --quiet
+```
+
+The validation record changes no plan lexical input. Subjects, SDK and builds are
+pruned after the final check; reproduction recreates them with the commands above.
