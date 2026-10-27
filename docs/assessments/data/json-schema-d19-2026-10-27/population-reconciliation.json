@@ -1,0 +1,50 @@
+[
+  {
+    "subject": 0,
+    "tracked_json": 1001,
+    "tracked_bytes": 75198609,
+    "native_claimed": 983,
+    "native_claimed_bytes": 75196976,
+    "native_not_schema": 18,
+    "oversize": 6,
+    "oversize_bytes": 38772143,
+    "measured_files": 977,
+    "measured_bytes": 36424833
+  },
+  {
+    "subject": 1,
+    "tracked_json": 79,
+    "tracked_bytes": 17269,
+    "native_claimed": 52,
+    "native_claimed_bytes": 13036,
+    "native_not_schema": 27,
+    "oversize": 0,
+    "oversize_bytes": 0,
+    "measured_files": 52,
+    "measured_bytes": 13036
+  },
+  {
+    "subject": 2,
+    "tracked_json": 11,
+    "tracked_bytes": 24804,
+    "native_claimed": 11,
+    "native_claimed_bytes": 24804,
+    "native_not_schema": 0,
+    "oversize": 0,
+    "oversize_bytes": 0,
+    "measured_files": 11,
+    "measured_bytes": 24804
+  },
+  {
+    "subject": 3,
+    "tracked_json": 57,
+    "tracked_bytes": 188583,
+    "native_claimed": 57,
+    "native_claimed_bytes": 188583,
+    "native_not_schema": 0,
+    "oversize": 0,
+    "oversize_bytes": 0,
+    "measured_files": 57,
+    "measured_bytes": 188583
+  }
+]

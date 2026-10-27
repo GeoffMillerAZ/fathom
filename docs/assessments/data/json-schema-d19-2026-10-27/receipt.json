@@ -1,0 +1,381 @@
+{
+  "unattested_fathom": [
+    {
+      "fathom_pairs": 107,
+      "files": 977,
+      "graded": false,
+      "membership_sha256": "4b2d026e09221f1c1bf944cddacd0f6604eb6f1b9eaacf086b0a1c510bc22b7b",
+      "unit": "source file, root entity, target file",
+      "subject": 0,
+      "oracle_xref_family_present": false,
+      "unattested_unscored_pairs": 107
+    },
+    {
+      "fathom_pairs": 3,
+      "files": 52,
+      "graded": false,
+      "membership_sha256": "a2c391d78b4967fb55d6cbbd146535268212548167700ed56d2c2da920f1b83b",
+      "unit": "source file, root entity, target file",
+      "subject": 1,
+      "oracle_xref_family_present": true,
+      "unattested_unscored_pairs": 0
+    },
+    {
+      "fathom_pairs": 14,
+      "files": 11,
+      "graded": false,
+      "membership_sha256": "f79fbcabfa05f7ce22cb32461c9e06a45595bda88c5c1fc086edd511476efd7b",
+      "unit": "source file, root entity, target file",
+      "subject": 2,
+      "oracle_xref_family_present": false,
+      "unattested_unscored_pairs": 14
+    },
+    {
+      "fathom_pairs": 170,
+      "files": 57,
+      "graded": false,
+      "membership_sha256": "c178ccc3521e4983e237183c868ad89c8a1956a41a6ffb4d8446a4c2729f7c70",
+      "unit": "source file, root entity, target file",
+      "subject": 3,
+      "oracle_xref_family_present": false,
+      "unattested_unscored_pairs": 170
+    }
+  ],
+  "pair_counter_sha256": "f9e488556fea7a80a261e861e1d7fa236c22e6f43a677077023c12e156f322e6",
+  "pair_counter_source_sha256": "3f7102b8fb1be0b428886a8110fbc1b88bda7be59166ac891fb44f580d12982c",
+  "native": {
+    "protocol_sha256": "15865e8130a49a061607bcbde5ef08e5a0b04b8f687cb359528f2dfc7feeb5d9",
+    "oracle_sha256": "d0ee6ebf4ff965804cd5973aa70fd4c51b73a845e4f97b1d9d1f3b7cbf8f749d",
+    "controls_sha256": "76298df44b0a0ca07dfef4a40f7586a9e63decee29e91f09a845043b4d269476",
+    "subjects": [
+      {
+        "subject": 0,
+        "repository": "SchemaStore/schemastore",
+        "sha": "bf7c6745505ccace5568dc0d7f4ae29647e9b41a",
+        "inputs": {
+          "files": 1001,
+          "bytes": 75198609
+        },
+        "stats": {
+          "files": 1001,
+          "schemas": 983,
+          "not_schemas": 18,
+          "rejected": 0,
+          "definitions": 39790,
+          "refs_internal": 142098,
+          "refs_internal_in_truth": 142051,
+          "refs_internal_unresolved": 47,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 637,
+          "refs_file": 437,
+          "refs_file_in_subject": 3,
+          "refs_file_unresolved": 434,
+          "refs_url": 134,
+          "resolve_errors": 0,
+          "cross_references": 0
+        },
+        "definitions_sha256": "dd9c57801a59aeee963fbbbf4c45a34ced6fd1dbab7d59e1aebf26e272567f4e",
+        "cross_references_sha256": null
+      },
+      {
+        "subject": 1,
+        "repository": "json-schema-org/JSON-Schema-Test-Suite",
+        "sha": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+        "inputs": {
+          "files": 79,
+          "bytes": 17269
+        },
+        "stats": {
+          "files": 79,
+          "schemas": 52,
+          "not_schemas": 27,
+          "rejected": 0,
+          "definitions": 97,
+          "refs_internal": 3,
+          "refs_internal_in_truth": 3,
+          "refs_internal_unresolved": 0,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 15,
+          "refs_file": 3,
+          "refs_file_in_subject": 3,
+          "refs_file_unresolved": 0,
+          "refs_url": 12,
+          "resolve_errors": 0,
+          "cross_references": 3
+        },
+        "definitions_sha256": "2fb7d5f701e4d8b43b3c21bc88118331dc998b819a3ce27ee1918ab825ea4ee8",
+        "cross_references_sha256": "0742483b00935153625c9182fd8954780c9a296be522e279baa3f1b484461a9d"
+      },
+      {
+        "subject": 2,
+        "repository": "radiantearth/stac-spec",
+        "sha": "0fa147589ac5a6c92d8e8856bc81eb9c73779aff",
+        "inputs": {
+          "files": 11,
+          "bytes": 24804
+        },
+        "stats": {
+          "files": 11,
+          "schemas": 11,
+          "not_schemas": 0,
+          "rejected": 0,
+          "definitions": 40,
+          "refs_internal": 5,
+          "refs_internal_in_truth": 5,
+          "refs_internal_unresolved": 0,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 12,
+          "refs_file": 18,
+          "refs_file_in_subject": 0,
+          "refs_file_unresolved": 18,
+          "refs_url": 3,
+          "resolve_errors": 0,
+          "cross_references": 0
+        },
+        "definitions_sha256": "841ea1088360bc12d4164c2da5c39ff6016644d323b6bcc490ba52de6944d970",
+        "cross_references_sha256": null
+      },
+      {
+        "subject": 3,
+        "repository": "oasis-open/cti-stix2-json-schemas",
+        "sha": "9af1db41b7b86c06324f899649ae83480134f66e",
+        "inputs": {
+          "files": 57,
+          "bytes": 188583
+        },
+        "stats": {
+          "files": 57,
+          "schemas": 57,
+          "not_schemas": 0,
+          "rejected": 0,
+          "definitions": 142,
+          "refs_internal": 5,
+          "refs_internal_in_truth": 5,
+          "refs_internal_unresolved": 0,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 155,
+          "refs_file": 236,
+          "refs_file_in_subject": 0,
+          "refs_file_unresolved": 236,
+          "refs_url": 0,
+          "resolve_errors": 0,
+          "cross_references": 0
+        },
+        "definitions_sha256": "486118f59e2d2b2039a549be2435fd1b854714fb2cd47e5724c8a2ce79e4ae8c",
+        "cross_references_sha256": null
+      }
+    ]
+  },
+  "reading_sha256": "232b86d3206c0b30b36d7e1f591710a92a8f377c7ebbf77c9a70de5ce7241eb5",
+  "indexbench_sha256": "a99a1164b84bb4aa4f3979924bca57db30ccde5110ea7506a78c3dd8c7ce9c80",
+  "fathom_commit": "b6abd86a2",
+  "extractor_tree": "6ace9e87ca5a00490250a287f856a890479d0dc2",
+  "manifests": [
+    {
+      "subject": 0,
+      "scope": 0,
+      "summary": {
+        "bytes": 75198609,
+        "entries": 1001,
+        "files": 1001,
+        "gitlinks": 0,
+        "sha256": "2470d07fc7f94b9868f3ccdea031544601601b1a69a8796f6afb0c96437eddd7",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 1,
+      "scope": 0,
+      "summary": {
+        "bytes": 17269,
+        "entries": 79,
+        "files": 79,
+        "gitlinks": 0,
+        "sha256": "4649aa0805b86fc9706bb527907f5c001a1d28bc3eda647b67183c6d45e4a0f8",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": 0,
+      "summary": {
+        "bytes": 16809,
+        "entries": 9,
+        "files": 9,
+        "gitlinks": 0,
+        "sha256": "73f329994072b8998146ec8f068e50626944133ae63d2f69ea3ac47068d3a555",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": 1,
+      "summary": {
+        "bytes": 1473,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "7f7fda54ff213a39b89096d0c2783dfc499511a011f33df478cf7c99482dad72",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": 2,
+      "summary": {
+        "bytes": 6522,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "fd876480f55b03e1ce8688ff9d9fcaa4a9140ab8fc1550a2a1da26aa9511bd1c",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 3,
+      "scope": 0,
+      "summary": {
+        "bytes": 188583,
+        "entries": 57,
+        "files": 57,
+        "gitlinks": 0,
+        "sha256": "6f046333d8e55f5ec0c53e5830866c69c98dceede036ef45f4078eb1d3a28fee",
+        "symlinks": 0
+      }
+    }
+  ],
+  "subject_changes": [
+    {
+      "subject": 0,
+      "modified_untracked_ignored": 0
+    },
+    {
+      "subject": 1,
+      "modified_untracked_ignored": 0
+    },
+    {
+      "subject": 2,
+      "modified_untracked_ignored": 0
+    },
+    {
+      "subject": 3,
+      "modified_untracked_ignored": 0
+    }
+  ],
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "unmet",
+    "L4": "not-applicable",
+    "L3_reason": "evidence: 3 references, under 20"
+  },
+  "counts": {
+    "fathom_defs": 36227,
+    "kind_equal": 36227,
+    "matched": 36227,
+    "oracle_defs": 36227,
+    "ref_fathom": 40921,
+    "ref_fathom_in_truth": 40893,
+    "ref_truth": 40893,
+    "ref_truth_found": 40893,
+    "xref_fathom": 3,
+    "xref_fathom_in_truth": 3,
+    "xref_truth": 3,
+    "xref_truth_found": 3
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "subjects": [
+    {
+      "name": "SchemaStore/schemastore",
+      "sha": "bf7c6745505ccace5568dc0d7f4ae29647e9b41a",
+      "files": 977,
+      "bytes": 36424833,
+      "counts": {
+        "fathom_defs": 35948,
+        "kind_equal": 35948,
+        "matched": 35948,
+        "oracle_defs": 35948,
+        "ref_fathom": 40908,
+        "ref_fathom_in_truth": 40880,
+        "ref_truth": 40880,
+        "ref_truth_found": 40880
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      }
+    },
+    {
+      "name": "json-schema-org/JSON-Schema-Test-Suite",
+      "sha": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+      "files": 52,
+      "bytes": 13036,
+      "counts": {
+        "fathom_defs": 97,
+        "kind_equal": 97,
+        "matched": 97,
+        "oracle_defs": 97,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      }
+    },
+    {
+      "name": "oasis-open/cti-stix2-json-schemas",
+      "sha": "9af1db41b7b86c06324f899649ae83480134f66e",
+      "files": 57,
+      "bytes": 188583,
+      "counts": {
+        "fathom_defs": 142,
+        "kind_equal": 142,
+        "matched": 142,
+        "oracle_defs": 142,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      }
+    },
+    {
+      "name": "radiantearth/stac-spec",
+      "sha": "0fa147589ac5a6c92d8e8856bc81eb9c73779aff",
+      "files": 11,
+      "bytes": 24804,
+      "counts": {
+        "fathom_defs": 40,
+        "kind_equal": 40,
+        "matched": 40,
+        "oracle_defs": 40,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      }
+    }
+  ]
+}

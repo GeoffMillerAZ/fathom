@@ -1,0 +1,100 @@
+{
+  "id": "json-schema-d19-r1",
+  "date": "2026-10-27",
+  "base": "7b0778537",
+  "scope": "JSON Schema L3 corpus evidence and P-T1 authority only; no product extraction, shared ENGINE, epoch, generated tracker or plan-box changes",
+  "before": {
+    "pre_D19_L3": "excellent",
+    "current_L3": "unmet",
+    "level_met": "L2",
+    "xref_truth": 3,
+    "xref_fathom": 3,
+    "reading_sha256": "b6f2e1943a915173309056abd4a98983767fed6a2b59eca8241d1d0f6372ce21",
+    "corpus_sha256": "f9bcf38e95a2f21fd5a07b5e1ee422e350625eab86f1a1e4730f79466f1b097b"
+  },
+  "d19": {
+    "minimum_per_metric": 20,
+    "recall_denominator": "xref_truth",
+    "precision_denominator": "xref_fathom",
+    "subject_minimum": null,
+    "all_thin": "unmet",
+    "mixed_thin": "at most good",
+    "missing_metrics": "remain absent; not thin evidence"
+  },
+  "oracle": {
+    "name": "@apidevtools/json-schema-ref-parser",
+    "version": "16.0.5",
+    "license": "MIT",
+    "source_commit": "7b7dd3895e3f5bc48cf6a05b821870208e9a6736",
+    "integrity": "sha512-z3LiEMqTP2FNu6u8bdUgBYErVuwMSZReOJy1MCEIB0BDHMoNgBtkciby32HOlcrfWwrOSzRU8YIsZ0CogYRuYQ==",
+    "tier": "C",
+    "authority": "independent third-party analyzer under P-T1; withdraw historical generic-reference-resolver tier A, not a format-owner tool or maintained SCIP producer",
+    "positions": {
+      "name": "yaml",
+      "version": "2.8.2",
+      "license": "ISC",
+      "source_commit": "086fa6b5bae325da18734750cddee231ce578930",
+      "integrity": "sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A=="
+    }
+  },
+  "population": [
+    {
+      "repository": "SchemaStore/schemastore",
+      "sha": "bf7c6745505ccace5568dc0d7f4ae29647e9b41a",
+      "license": "Apache-2.0",
+      "scopes": [
+        "src/schemas/json"
+      ],
+      "role": "existing canonical"
+    },
+    {
+      "repository": "json-schema-org/JSON-Schema-Test-Suite",
+      "sha": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+      "license": "MIT",
+      "scopes": [
+        "remotes"
+      ],
+      "role": "existing canonical"
+    },
+    {
+      "repository": "radiantearth/stac-spec",
+      "sha": "0fa147589ac5a6c92d8e8856bc81eb9c73779aff",
+      "license": "Apache-2.0",
+      "license_source": "https://github.com/radiantearth/stac-spec/blob/0fa147589ac5a6c92d8e8856bc81eb9c73779aff/LICENSE",
+      "scopes": [
+        "item-spec/json-schema",
+        "catalog-spec/json-schema",
+        "collection-spec/json-schema"
+      ],
+      "role": "new canonical candidate, not a holdout"
+    },
+    {
+      "repository": "oasis-open/cti-stix2-json-schemas",
+      "sha": "9af1db41b7b86c06324f899649ae83480134f66e",
+      "license": "BSD-3-Clause",
+      "scopes": [
+        "schemas"
+      ],
+      "role": "new canonical candidate, not a holdout"
+    }
+  ],
+  "selection": "All tracked JSON within each complete pinned scope. Keep every file, native refusal, zero-reference input and extractor mismatch. STAC membership never depends on Fathom accuracy or reaching 20. No renaming, generated cross-file examples, URL rewrites, duplicate references or input edits to pad evidence. No holdout enters canonical corpus.",
+  "unit": "Existing file-granularity cross-reference pair (owning input file/root entity, distinct in-subject target file) from the independent resolver, preserving unresolved/external disclosures; no new URI/id/anchor semantics",
+  "controls": [
+    "Exact design 13.3.1 tracked-set manifests before/after; raw manifests private, counts/hashes public",
+    "Authored reference input changes native target; perturb independent Fathom output without changing native truth",
+    "Tier/scope/unit mutants fail then restore green; reject downgraded truth populations",
+    "Fresh same-commit measurements of all four subjects, retained C authority across L1/L2/L3; never type grades by hand",
+    "D19 denominator and per-subject numerator/denominator beside pooled reading; no throughput claim without measurement",
+    "Strict Reading round-trip and canonical serialization checks; X-R10 strict scratch verification for every affected lexical plan"
+  ],
+  "limits": {
+    "files_per_subject": 4096,
+    "source_file_bytes": 33554432,
+    "source_bytes_per_subject": 536870912,
+    "oracle_artifact_bytes": 67108864,
+    "subject_timeout_seconds": 300
+  },
+  "execution": "Private SDK/cache/subjects under ignored workspace or own cache; serial nice10, load<=6/free>=20GiB before each heavy step; no Docker/global install/paid calls; prune measured sources/builds. Existing oracle exclusions remain explicit.",
+  "source_only_amendment": "Before any new native/Fathom measurement, add the complete BSD-3-Clause STIX schema tree as a second genuine modular corpus. SDK and the first three source checkouts alone were prepared; no reference denominator, accuracy result or native oracle output was observed. Keep both new candidates regardless of accuracy or denominator."
+}
