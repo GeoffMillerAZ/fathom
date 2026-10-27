@@ -251,7 +251,6 @@
       "org_agnostic": "pass: TestNoOrgSpecificNames, 2.353s",
       "privacy": "pass: added lines have no @, Author, email, host-path or raw-person fields; non-subject records contain numeric IDs only",
       "scanner": "zero findings without baseline",
-      "independent_read_only_review": "pass, no findings; seven response hashes/counts, scoped ID mapping, clBLAS template lineage and claim scope checked",
       "admission_state": "53/386 refusal unchanged; no grammar, pool, reading or prepass implementation change"
     },
     "x_r10": {
@@ -291,8 +290,7 @@
       "org_agnostic": "pass: TestNoOrgSpecificNames, 2.377s",
       "privacy": "pass: no added @, Author, email, host-path or raw-person-key matches; non-subjects retain numeric IDs",
       "scanner": "zero findings without baseline",
-      "x_r10": "No Go changes and no affected lexical plan readers among 1,061 path declarations; tenancy lint and scratch plan verification not applicable.",
-      "independent_review": "pass, no findings; per-row lineage, reference 40-file count, four positive-control responses, public v1 provenance/indices/findings and restored owner question checked"
+      "x_r10": "No Go changes and no affected lexical plan readers among 1,061 path declarations; tenancy lint and scratch plan verification not applicable."
     }
   }
 }
