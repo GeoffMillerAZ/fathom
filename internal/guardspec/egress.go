@@ -6,10 +6,12 @@ package guardspec
 // data-loss prevention: it reads literal argv words only, so `python -c`,
 // a script, or an encoded payload passes unseen. A target the guard cannot
 // read (a shell expansion, an unresolvable git remote, a git config
-// override, a curl proxy or pinned address, an ssh jump or config) is not
+// override or a GIT_*/HOME change, a curl or wget proxy, pinned address or
+// config file, an ssh jump, forward, config or connection program) is not
 // on the allowlist, so it matches like any other unlisted host. Input the
 // lexer cannot read at all (eval, a function definition) that names an
-// egress tool warns and never denies.
+// egress tool warns and never denies: its text cannot tell an upload from
+// a read (ADR-083 decision 5).
 
 import (
 	_ "embed"
@@ -155,9 +157,9 @@ func matchEgressGuard(g Guard, u *shellcmd.Unit, prior []*shellcmd.Unit, opts Eg
 	var hit bool
 	switch g.commandCheck {
 	case "curl_upload":
-		targets, hit = curlUpload(u)
+		targets, hit = curlUpload(u, prior)
 	case "wget_upload":
-		targets, hit = wgetUpload(u)
+		targets, hit = wgetUpload(u, prior)
 	case "socket_tool":
 		targets, hit = socketTool(u)
 	case "remote_copy":
@@ -428,14 +430,24 @@ var curlSpec = egressSpec{short: "AbcCdDeEFHKmoPQrtTuUwxXyYz", long: longSet(
 	"--engine", "--delegation", "--krb", "--telnet-option",
 )}
 
-func curlUpload(u *shellcmd.Unit) ([]egressTarget, bool) {
+// curlUpload flags a curl upload by its URL hosts and routes, and any curl
+// that reads options the guard cannot see (-K, --config, or a HOME,
+// CURL_HOME or XDG_CONFIG_HOME change that loads another .curlrc), since
+// those options may add an upload and a URL of their own.
+func curlUpload(u *shellcmd.Unit, prior []*shellcmd.Unit) ([]egressTarget, bool) {
 	if u.Name() != "curl" {
 		return nil, false
 	}
 	opts, pos := readEgressArgs(u.Words[1:], curlSpec)
 	upload := false
+	var hidden []egressTarget
+	if why := envConfigChange(u, prior, curlConfigVar); why != "" {
+		hidden = append(hidden, unknownTarget(why+" can load another .curlrc"))
+	}
 	for _, o := range opts {
 		switch {
+		case o.name == "-K" || o.name == "--config":
+			hidden = append(hidden, unknownTarget("curl "+o.name+" reads options from a file"))
 		case o.name == "-d" || strings.HasPrefix(o.name, "--data") || o.name == "--json",
 			o.name == "-F" || o.name == "--form" || o.name == "--form-string",
 			o.name == "-T" || o.name == "--upload-file":
@@ -446,28 +458,50 @@ func curlUpload(u *shellcmd.Unit) ([]egressTarget, bool) {
 			pos = append(pos, o.value)
 		}
 	}
-	if !upload {
+	if !upload && len(hidden) == 0 {
 		return nil, false
 	}
 	targets := wordTargets(pos)
 	if len(targets) == 0 {
 		targets = []egressTarget{{unknown: true}}
 	}
-	return append(targets, curlRoutes(u, opts)...), true
+	return append(append(targets, curlRoutes(u, prior, opts)...), hidden...), true
+}
+
+// curlConfigVar names a variable that moves curl's .curlrc.
+func curlConfigVar(name string) bool {
+	return name == "HOME" || name == "CURL_HOME" || name == "XDG_CONFIG_HOME"
+}
+
+// proxyVar names a proxy variable (*_proxy or ALL_PROXY, any case, NO_PROXY
+// excepted).
+func proxyVar(name string) bool {
+	name = strings.ToLower(name)
+	return name == "all_proxy" || strings.HasSuffix(name, "_proxy") && name != "no_proxy"
+}
+
+// envProxies are the proxies a request reaches through the environment: a
+// proxy variable prefix is checked like a host, and one an earlier step of
+// the command line sets is unknown.
+func envProxies(u *shellcmd.Unit, prior []*shellcmd.Unit) []egressTarget {
+	var out []egressTarget
+	for _, a := range u.Env {
+		if proxyVar(a.Name) {
+			out = appendProxy(out, a.Value)
+		}
+	}
+	if why := priorEnvChange(prior, proxyVar); why != "" {
+		out = append(out, unknownTarget(why+" can set a proxy"))
+	}
+	return out
 }
 
 // curlRoutes are the destinations other than the URL's host that a curl
 // request reaches: a proxy (an option or a *_proxy / ALL_PROXY variable,
 // any case), or unknown under an option that pins the address or the DNS
 // server, so a loopback URL can still leave the machine.
-func curlRoutes(u *shellcmd.Unit, opts []egressOpt) []egressTarget {
-	var out []egressTarget
-	for _, a := range u.Env {
-		name := strings.ToLower(a.Name)
-		if name == "all_proxy" || strings.HasSuffix(name, "_proxy") && name != "no_proxy" {
-			out = appendProxy(out, a.Value)
-		}
-	}
+func curlRoutes(u *shellcmd.Unit, prior []*shellcmd.Unit, opts []egressOpt) []egressTarget {
+	out := envProxies(u, prior)
 	for _, o := range opts {
 		switch {
 		case o.name == "-x" || o.name == "--proxy" || o.name == "--proxy1.0" || o.name == "--preproxy",
@@ -506,24 +540,65 @@ var wgetSpec = egressSpec{short: "oaeiBtTwQPUlARDIXOn", long: longSet(
 	"--reject-regex", "--regex-type", "--follow-tags", "--ignore-tags", "--max-redirect",
 )}
 
-func wgetUpload(u *shellcmd.Unit) ([]egressTarget, bool) {
+// wgetUpload flags a wget upload by its URL hosts and proxies (a proxy
+// variable, or an -e/--execute proxy command), and any wget that reads
+// commands the guard cannot see (--config, an -e it cannot read, or a
+// WGETRC, HOME or XDG_CONFIG_HOME change that loads another wgetrc).
+func wgetUpload(u *shellcmd.Unit, prior []*shellcmd.Unit) ([]egressTarget, bool) {
 	if u.Name() != "wget" {
 		return nil, false
 	}
 	opts, pos := readEgressArgs(u.Words[1:], wgetSpec)
 	upload := false
+	routes := envProxies(u, prior)
+	var hidden []egressTarget
+	if why := envConfigChange(u, prior, wgetConfigVar); why != "" {
+		hidden = append(hidden, unknownTarget(why+" can load another wgetrc"))
+	}
 	for _, o := range opts {
 		switch o.name {
 		case "--post-data", "--post-file", "--body-data", "--body-file":
 			upload = true
 		case "--method":
 			upload = upload || o.has && o.value.Literal() && writeMethod(o.value.Text)
+		case "--config":
+			hidden = append(hidden, unknownTarget("wget --config reads commands from a file"))
+		case "-e", "--execute":
+			if !o.has {
+				continue
+			}
+			if !o.value.Literal() {
+				hidden = append(hidden, unknownTarget("a wget "+o.name+" command this guard cannot read"))
+				continue
+			}
+			// wgetrc commands ignore case, "_" and "-".
+			key, val, _ := strings.Cut(o.value.Text, "=")
+			key = strings.NewReplacer("_", "", "-", "").Replace(strings.ToLower(strings.TrimSpace(key)))
+			val = strings.TrimSpace(val)
+			switch key {
+			case "postdata", "postfile", "bodydata", "bodyfile":
+				upload = true
+			case "method":
+				upload = upload || writeMethod(val)
+			case "httpproxy", "httpsproxy", "ftpproxy":
+				routes = appendProxy(routes, shellcmd.Word{Text: val})
+			}
 		}
 	}
-	if !upload {
+	if !upload && len(hidden) == 0 {
 		return nil, false
 	}
-	return wordTargets(pos), true
+	targets := wordTargets(pos)
+	if upload {
+		targets = append(targets, routes...)
+	}
+	return append(targets, hidden...), true
+}
+
+// wgetConfigVar names a variable that moves wget's wgetrc (wget2 reads
+// XDG_CONFIG_HOME).
+func wgetConfigVar(name string) bool {
+	return name == "WGETRC" || name == "HOME" || name == "XDG_CONFIG_HOME"
 }
 
 func wordTargets(words []shellcmd.Word) []egressTarget {
@@ -682,7 +757,7 @@ func remoteCopy(u *shellcmd.Unit) ([]egressTarget, bool) {
 		if u.Name() == "rsync" {
 			return append([]egressTarget{t}, rsyncShellRoutes(opts)...), true
 		}
-		return append([]egressTarget{t}, sshRoutes(opts)...), true
+		return append([]egressTarget{t}, sshRoutes("scp", opts)...), true
 	case "sftp":
 		opts, pos := readEgressArgs(u.Words[1:], sftpSpec)
 		if len(pos) == 0 {
@@ -693,19 +768,27 @@ func remoteCopy(u *shellcmd.Unit) ([]egressTarget, bool) {
 		if !remote {
 			t = hostTarget(w)
 		}
-		return append([]egressTarget{t}, sshRoutes(opts)...), true
+		return append([]egressTarget{t}, sshRoutes("sftp", opts)...), true
 	}
 	return nil, false
 }
 
-// sshRoutes is an unknown target when ssh options (ssh, scp, sftp) send
-// the connection somewhere other than the named host: -J, -F, or -o
-// ProxyJump|ProxyCommand|HostName (any case, "=" or a space).
-func sshRoutes(opts []egressOpt) []egressTarget {
+// sshRouteLetters are, per tool, the short options that send the
+// connection past the named host: a jump host or config file (-J, -F); for
+// ssh a forward (-W, -L, -R, -D) or a shared control socket (-S); for scp
+// and sftp a program run for the connection (-S).
+var sshRouteLetters = map[string]string{"ssh": "JFWLRDS", "scp": "JFS", "sftp": "JFS"}
+
+// sshRoutes is an unknown target when tool's options (ssh, scp, sftp) send
+// the connection somewhere other than the named host: a letter of
+// sshRouteLetters, or -o ProxyJump|ProxyCommand|HostName, a forward or
+// ControlPath (any case, "=" or a space).
+func sshRoutes(tool string, opts []egressOpt) []egressTarget {
 	for _, o := range opts {
+		if len(o.name) == 2 && o.name[0] == '-' && strings.IndexByte(sshRouteLetters[tool], o.name[1]) >= 0 {
+			return []egressTarget{unknownTarget(tool + " " + o.name + " routes the connection")}
+		}
 		switch o.name {
-		case "-J", "-F":
-			return []egressTarget{unknownTarget("ssh " + o.name + " routes the connection")}
 		case "-o":
 			if !o.has {
 				continue
@@ -718,7 +801,7 @@ func sshRoutes(opts []egressOpt) []egressTarget {
 				key = f[0]
 			}
 			switch k := strings.ToLower(key); k {
-			case "proxyjump", "proxycommand", "hostname":
+			case "proxyjump", "proxycommand", "hostname", "localforward", "remoteforward", "dynamicforward", "controlpath":
 				return []egressTarget{unknownTarget("ssh -o " + key + " routes the connection")}
 			}
 		}
@@ -727,7 +810,8 @@ func sshRoutes(opts []egressOpt) []egressTarget {
 }
 
 // rsyncShellRoutes reads rsync's remote shell (-e, --rsh) as an ssh
-// command line: its routing options, or unknown when it cannot be read.
+// command line: its routing options, or unknown when it cannot be read or
+// runs a program other than ssh.
 func rsyncShellRoutes(opts []egressOpt) []egressTarget {
 	for _, o := range opts {
 		if o.name != "-e" && o.name != "--rsh" || !o.has {
@@ -741,8 +825,11 @@ func rsyncShellRoutes(opts []egressOpt) []egressTarget {
 		if c.Unreadable || len(units) != 1 || len(units[0].Words) == 0 {
 			return []egressTarget{unknownTarget("an rsync remote shell this guard cannot read")}
 		}
+		if units[0].Name() != "ssh" {
+			return []egressTarget{unknownTarget("an rsync remote shell other than ssh")}
+		}
 		ropts, _ := readEgressArgs(units[0].Words[1:], sshSpec)
-		return sshRoutes(ropts)
+		return sshRoutes("ssh", ropts)
 	}
 	return nil
 }
@@ -762,7 +849,7 @@ func sshRemote(u *shellcmd.Unit) ([]egressTarget, bool) {
 	if w.Literal() && strings.Contains(w.Text, "://") {
 		t = urlTarget(w)
 	}
-	return append([]egressTarget{t}, sshRoutes(opts)...), true
+	return append([]egressTarget{t}, sshRoutes("ssh", opts)...), true
 }
 
 // gitInvocation is one git command line read up to its subcommand.
@@ -820,16 +907,15 @@ func readGit(u *shellcmd.Unit) (gitInvocation, bool) {
 }
 
 // gitConfigChange names why a push's remote may not be what git reports
-// now: a config override on the command, a GIT_* variable, or an earlier
+// now: a config override on the command, a GIT_*, HOME or XDG_CONFIG_HOME
+// variable (a prefix, or set earlier in the command line), or an earlier
 // git remote|config|init in the same command line; "" when none.
 func gitConfigChange(u *shellcmd.Unit, inv gitInvocation, prior []*shellcmd.Unit) string {
 	if inv.override {
 		return "a git -c or --config-env override"
 	}
-	for _, a := range u.Env {
-		if strings.HasPrefix(a.Name, "GIT_") {
-			return "a " + a.Name + " variable"
-		}
+	if why := envConfigChange(u, prior, gitConfigVar); why != "" {
+		return why
 	}
 	for _, p := range prior {
 		if pi, ok := readGit(p); ok {
@@ -840,6 +926,76 @@ func gitConfigChange(u *shellcmd.Unit, inv gitInvocation, prior []*shellcmd.Unit
 		}
 	}
 	return ""
+}
+
+// gitConfigVar names a variable that changes which repository or config
+// git reads: GIT_*, and HOME or XDG_CONFIG_HOME (the global gitconfig).
+func gitConfigVar(name string) bool {
+	return strings.HasPrefix(name, "GIT_") || name == "HOME" || name == "XDG_CONFIG_HOME"
+}
+
+// envConfigChange names the variable match accepts that u's own prefix
+// sets, or that an earlier step of the command line sets (see
+// priorEnvChange); "" when none.
+func envConfigChange(u *shellcmd.Unit, prior []*shellcmd.Unit, match func(string) bool) string {
+	for _, a := range u.Env {
+		if match(a.Name) {
+			return "a " + a.Name + " variable"
+		}
+	}
+	return priorEnvChange(prior, match)
+}
+
+// priorEnvChange names an earlier step of the command line that sets a
+// variable match accepts: a bare assignment (it changes a variable already
+// exported), or an export, declare, typeset or readonly naming it. An
+// export or declare whose name the guard cannot read counts too; "" when
+// none.
+func priorEnvChange(prior []*shellcmd.Unit, match func(string) bool) string {
+	for _, p := range prior {
+		if len(p.Words) == 0 {
+			for _, a := range p.Env {
+				if match(a.Name) {
+					return "an earlier " + a.Name + " assignment"
+				}
+			}
+			continue
+		}
+		if !p.Words[0].Literal() {
+			continue
+		}
+		switch p.Name() {
+		case "export", "declare", "typeset", "readonly":
+		default:
+			continue
+		}
+		for _, w := range p.Words[1:] {
+			if strings.HasPrefix(w.Text, "-") || strings.HasPrefix(w.Text, "+") {
+				continue
+			}
+			name, _, _ := strings.Cut(w.Text, "=")
+			name = strings.TrimSuffix(name, "+")
+			if !shellVarName(name) {
+				return "an earlier " + p.Name() + " this guard cannot read"
+			}
+			if match(name) {
+				return "an earlier " + p.Name() + " of " + name
+			}
+		}
+	}
+	return ""
+}
+
+// shellVarName reports a shell variable name: a letter or "_", then
+// letters, digits or "_".
+func shellVarName(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c != '_' && !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return s != ""
 }
 
 // gitPushDryRunShorts reads a git push short option cluster letter by

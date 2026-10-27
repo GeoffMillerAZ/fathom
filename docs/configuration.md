@@ -1521,6 +1521,12 @@ What it does not stop:
   `WebFetch` and `WebSearch` are.
 - A `curl` or `wget` GET passes by design, so data carried in a URL's path or query
   string passes with it.
+- A command built or configured at run time passes: `xargs curl …`, a sourced script, or
+  a `git push` after a step that writes `.git/config` directly
+  (`printf … >> .git/config`), since the guard reads argv words, not file writes.
+- Input the lexer cannot read (`eval`, a function definition) that names an egress tool
+  warns and never denies, even under `enforce`: its text cannot tell an upload from a
+  read, so a deny would block every function that mentions `curl` or `git`.
 - An agent with shell access can switch the guard off: it can edit
   `~/.fathom/config.toml` or `~/.fathom/capabilities.cue` like any other file. The guard
   catches mistakes; it is not a boundary against an agent working around it.
@@ -1545,13 +1551,18 @@ egress_allow = ["docs.example.com", "*.example.org", "s3://example-bucket"]
 - Loopback hosts always pass. An entry is an exact host, `*.example.com` for its
   subdomains, or `s3://bucket` / `gs://bucket` for a storage bucket. A target the guard
   cannot read is not on the list: a shell expansion; a git remote git cannot resolve now;
-  a `git push` under `-c`/`--config-env`, a `GIT_*` variable, or after a `git remote`,
-  `git config` or `git init` earlier in the same command; a `curl` upload with
-  `--resolve`, `--connect-to` or `--doh-url`; `ssh`, `scp`, `sftp` or rsync's `-e` with
-  `-J`, `-F` or `-o ProxyJump|ProxyCommand|HostName`. A `curl` proxy (`-x`, `--proxy`,
-  `--preproxy`, `--socks*`, or a `*_proxy`/`ALL_PROXY` variable) is checked like the URL's
-  host. Input the lexer cannot read at all (`eval`, a function definition) that names an
-  egress tool warns and never denies.
+  a `git push` under `-c`/`--config-env`, with a `GIT_*`, `HOME` or `XDG_CONFIG_HOME`
+  prefix, or after an earlier assignment, `export` or `declare` of one, or a `git remote`,
+  `git config` or `git init`, in the same command; a `curl` upload with `--resolve`,
+  `--connect-to` or `--doh-url`; any `curl` with `-K`/`--config` or a `HOME`, `CURL_HOME`
+  or `XDG_CONFIG_HOME` change (another `.curlrc`), and any `wget` with `--config`, an `-e`
+  it cannot read, or a `WGETRC`, `HOME` or `XDG_CONFIG_HOME` change, since those may add
+  an upload of their own; a proxy variable set by an earlier step; `ssh`, `scp`, `sftp` or
+  rsync's `-e` with `-J`, `-F` or `-o ProxyJump|ProxyCommand|HostName|LocalForward|RemoteForward|DynamicForward|ControlPath`,
+  `ssh -W`, `-L`, `-R`, `-D` or `-S`, `scp`/`sftp -S`, or an rsync remote shell other
+  than `ssh`. A `curl` proxy (`-x`, `--proxy`, `--preproxy`, `--socks*`, or a
+  `*_proxy`/`ALL_PROXY` prefix) and a `wget` proxy (a `*_proxy` prefix or an `-e` proxy
+  command) are checked like the URL's host.
 - The real boundary is the harness's own: Claude Code's `permissions.deny` and its sandbox
   network allowlist; Codex's sandbox network setting. `fathom doctor`'s `egress_guard` row
   names them and recommends the guard when it is off.

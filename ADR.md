@@ -6158,3 +6158,36 @@ reads below its threshold with its oracle available for two releases; the consum
 - K6 reads no knob change holding on the confirm split, or has not read by 2027-01-31: the program stops at the P1 instruments and P3 is refused.
 - RT-M1 reads PASS: moving cards, cases or the ledger into the store needs a new ADR.
 - A Codex arm is needed: ADR-029 is amended first (cards already carry a `harness` field).
+
+## ADR-083: The egress guard: a user-governed tripwire on commands and web tools that send data off the machine; an unreadable target matches, unreadable input warns (2026-10-26)
+
+**Status.** Accepted 2026-10-26. **Type.** security / product. Code: `internal/guardspec/egress.cue`, `internal/guardspec/egress.go`, `cmd/fathom/egress.go`. Docs: `docs/configuration.md` (the egress guard section). Reads ADR-038 (a compiled guard denies at the edit), I14 and P13 (law 13) as constraints.
+
+**Context.** A coding agent with Bash can send a repository's contents, secrets or a whole tree off the machine in one command: a curl upload, an scp, a `git push` to a remote it just added, a gist. The harness's own boundary (Claude Code's `permissions.deny` and sandbox network allowlist, Codex's sandbox network setting) is the real control, but most sessions run without it, and nothing at the edit says "this command sends data to a host you never named". fathom's PreToolUse hook already reads every Bash command into argv units (`internal/shellcmd`) for the git-safety pack, so a typed egress check costs one more pack, not a new seam. A string reading is easy to evade on purpose; it still catches the mistake and the injected instruction that names its host plainly.
+
+**Decision.**
+1. *A shipped `egress` pack beside git-safety.* Typed checks over `internal/shellcmd` units read literal argv words: `curl_upload`, `wget_upload`, `socket_tool` (nc, ncat, netcat, socat), `remote_copy` (scp and rsync by destination, sftp), `ssh_remote`, `git_push_remote` (a URL as written, a remote name through `git remote get-url --push --all` in the command's directory, every push URL), `gh_gist_create` and `cloud_upload`, plus `web_fetch` and `web_search` for Claude Code's `WebFetch` and `WebSearch`. Loopback and `[guards] egress_allow` hosts pass. A GET passes by design.
+2. *A target the guard cannot read matches.* A shell expansion, a remote git cannot resolve now, a git config override or a `GIT_*`/`HOME`/`XDG_CONFIG_HOME` change (a prefix or an earlier assignment, `export` or `declare`), an earlier `git remote|config|init`, a curl or wget proxy, pinned address, DNS server or config file (`-K`, `--config`, another `.curlrc` or wgetrc), and an ssh jump, forward, config, control socket or connection program are unknown targets, and an unknown target is not on the allowlist.
+3. *The user sets the mode; a repository only tightens it.* `[guards] egress = "warn"` (default) `| "enforce" | "off"`, ordered off < warn < enforce (the `max_asks` precedent). `enforce` denies only while guard enforcement is on, and the user's `enforce` reads only the user's enforcement switches. A repository `.fathom/config.toml` that does not load is skipped, never read as the default, and doctor's `egress_guard` row names it.
+4. *The user governs the allowlist and the switch, inverting law 13 for this one capability.* `egress_allow` is user-only, and the `egress-guard` capability is user-governed: a repository's `capabilities.cue` may switch it on and is refused (`LoosenError`) when it switches it off. A cloned repository is the party the guard defends against, so it never widens or disables it.
+5. *Unreadable input warns and never denies, even under enforce.* Input the lexer cannot read (`eval`, a function definition) whose text names an egress tool gets one warning with an unknown target. Its text cannot tell an upload from a read, so a deny would block every function that mentions `curl` or `git`, and the guard is already open to `python -c` or a script, so the deny would buy no boundary.
+6. *One line per match.* The note names the rule (`egress/<check>`), what it saw or what hid the target, the `egress_allow` entry that lets it through, and how to switch the guard off. A deny cites the pack.
+7. *Reach is what the harness exposes.* Claude Code: Bash and one new PreToolUse binding, `WebFetch|WebSearch` (capability `guard-pre-web`). Codex: Bash only, `guard-pre-web` named absent. MCP fetch and browser tools are not intercepted, and doctor names each harness's own boundary.
+8. *Not I14.* The guard reads the agent's commands; it dials nothing (resolving a remote runs local git), and fathom's own egress rule (I14) is unchanged.
+
+**Decision models.** None applies. Every check is a deterministic reading on the hook path, and a hook process never opens the decision port (I14). The typed question that would fit, a `predicate` "does this command send data to a host outside the allowlist?" over unreadable input, is refused for now because it puts the port on the hook path. With provider `none` the reading in decision 1 is the only path, and `[guards] egress = "off"` is the opt-out. If the port is ever allowed on the hook path, the question is kept only if, on at least 100 labeled eval or function commands, its Wilson lower bound for TPR and TNR is at least 0.90.
+
+**Alternatives rejected.**
+- *Deny unreadable input under enforce.* Wins if: `internal/shellcmd` reads eval's literal argument and function bodies, so only input it still cannot read would deny, and a replay of hook logs shows no false deny on that remainder.
+- *Pass an unreadable target.* Never: a shell expansion is the cheapest bypass.
+- *A repository-governed allowlist or switch.* Never: a cloned repository could allow its own exfiltration host.
+- *A raw-text regex over the whole command.* Never: quoted argument text would impersonate argv words, which `internal/shellcmd` exists to prevent.
+- *Network enforcement inside fathom (a proxy or packet filter).* Never: the harness sandbox is the boundary, and fathom stays a loopback evidence engine.
+
+**Consequences.** Known limits are stated in the docs and the changelog: `python -c`, a script or an encoded payload passes; a GET carrying data in its URL passes; a command built at run time (`xargs`, a sourced script) or a direct write to `.git/config` passes; Claude Code's MCP fetch and browser tools and Codex's web search and MCP calls are not intercepted; an agent with shell access can switch the guard off by editing `~/.fathom/config.toml`. Adopters run `fathom init` (or `fathom fleet reconcile --apply`) to wire the new Claude Code binding.
+
+**Revisit when.**
+- An escape is observed in an incident or a `.fathom/observations` entry: a readable egress command passed that a typed check could read; the check gains the case and its test in the same commit.
+- An adopter reports a false deny under enforce on a readable command: the check that fired gains a near-miss test and narrows.
+- `internal/shellcmd` reads eval's literal argument or a function body: decision 5's unreadable set shrinks and the deny question reopens for the rest.
+- Codex hooks expose web or MCP tool events, or Claude Code exposes MCP fetch or browser URLs at PreToolUse in a stable shape: decision 7's reach widens to them.
