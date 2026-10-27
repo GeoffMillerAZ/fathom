@@ -1,0 +1,767 @@
+{
+  "schema": "slang-review-seeds-r3",
+  "searched_on": "2026-10-26",
+  "preregistration": {
+    "commit": "4c606debf",
+    "path": "calibration/oracles/slang/search-rule-r3.json",
+    "published_derivative_sha256": "26dde17cd3c5cd3821081eaeada4adcd010e9cb9f711280ed482121510821639",
+    "historical_ordering_record": "preregistration-provenance.json"
+  },
+  "scope": "Seven new dated review seeds only; prior r2 pins untouched; metadata only, no shader bodies or measurements.",
+  "method": "Authenticated read-only gh api -i (gh 2.102.1); latest public GitHub release else default-branch HEAD; pinned complete recursive tree or deterministic subtree walk. Raw public API responses under ignored workspace/tmp/slang-seeds-r3. License API at pinned commit; shader blobs not fetched.",
+  "seeds": [
+    {
+      "repository": "nvpro-samples/vk_raytracing_tutorial_KHR",
+      "primary_source": "https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR",
+      "stars_at_metadata": 1751,
+      "default_branch": "v2",
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "ref": "v2",
+        "release_tag": null,
+        "commit": "952a1a8e8b85f25781db7014d4d2bda124435e79",
+        "resolved_on": "2026-10-26"
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 266,
+        "regular_file_bytes": 16616711,
+        "selected": {
+          "files": 34,
+          "bytes": 293673,
+          "slang_files": 34,
+          "slangh_files": 0,
+          "distinct_git_blobs": 34
+        },
+        "symlinks": 0,
+        "gitlinks": 0,
+        "tree_response_count": 1
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+        "root_blob_bytes": 10173,
+        "per_file_terms": "unverified; admission check before measurement",
+        "osi_approved_root_grant": true
+      },
+      "receipts": {
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR",
+          "http_status": 200,
+          "sha256": "3f9d8d09787ea077b4d75bac7e60241602a9ed44eff966b6eae3e240022bbefd",
+          "bytes": 7515,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_raytracing_tutorial_KHR--repo.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/releases/latest",
+          "http_status": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_raytracing_tutorial_KHR--release.json"
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/commits/v2",
+          "http_status": 200,
+          "sha256": "e7cdfe51e0dc784de5003566d160da786fa5b4b008e684aea4a09dcadb04059c",
+          "bytes": 25177,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_raytracing_tutorial_KHR--default-commit.json"
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/git/trees/952a1a8e8b85f25781db7014d4d2bda124435e79?recursive=1",
+          "http_status": 200,
+          "sha256": "fe1b224479372e8d9a9bf835d0b176a5c1d9a6446dda88a615cc712b4b31da23",
+          "bytes": 88784,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_raytracing_tutorial_KHR--tree-recursive.json"
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/license?ref=952a1a8e8b85f25781db7014d4d2bda124435e79",
+          "http_status": 200,
+          "sha256": "a9bf966958bc4da9b07bcf38caf78289d4eb654db08daceedb1ab63e00b8721e",
+          "bytes": 15269,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_raytracing_tutorial_KHR--license.json"
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/readme?ref=952a1a8e8b85f25781db7014d4d2bda124435e79",
+          "http_status": 200,
+          "sha256": "cbf9d47244cfbaf781f91005d973da21ca4a33dedec02a13b252c348650ab846",
+          "bytes": 5588,
+          "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_raytracing_tutorial_KHR--readme.json"
+        }
+      },
+      "admission_status": "eligible-metadata; per-file terms and complete r3 union pending",
+      "all_exclusion_reasons": [],
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "pinned_doc_url": "https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/blob/952a1a8e8b85f25781db7014d4d2bda124435e79/README.md",
+        "readme_response_sha256": "cbf9d47244cfbaf781f91005d973da21ca4a33dedec02a13b252c348650ab846",
+        "readme_blob_sha256": "504eb90c2084f40297ea90e67325c95a7676bc65e95b4b83e3c8722c126c7b29",
+        "candidate_indicators": [
+          "shader-slang"
+        ],
+        "supporting_documents": [
+          {
+            "path": "CMakeLists.txt",
+            "pinned_url": "https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/blob/952a1a8e8b85f25781db7014d4d2bda124435e79/CMakeLists.txt",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/contents/CMakeLists.txt?ref=952a1a8e8b85f25781db7014d4d2bda124435e79",
+              "http_status": 200,
+              "sha256": "c8cde89f004e207162ba5c80bbcaf410e666b060f915a28e6eb25ec289de3ba5",
+              "bytes": 5085,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_raytracing_tutorial_KHR--doc-CMakeLists.txt.json"
+            },
+            "document_sha256": "4b3a80958c30d89b092207bb0d84ce3e117b1674cf69da3fa01631ff77ca20bd",
+            "indicators": [
+              "Slang"
+            ]
+          },
+          {
+            "path": "slangdconfig.json",
+            "pinned_url": "https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/blob/952a1a8e8b85f25781db7014d4d2bda124435e79/slangdconfig.json",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/vk_raytracing_tutorial_KHR/contents/slangdconfig.json?ref=952a1a8e8b85f25781db7014d4d2bda124435e79",
+              "http_status": 200,
+              "sha256": "7d5b18502309bdb59ee44417a958708a5ae9591761978fc40eb8f75010629f5d",
+              "bytes": 1439,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_raytracing_tutorial_KHR--doc-slangdconfig.json.json"
+            },
+            "document_sha256": "dd2fb6146867a89a26e1b8611b2ce9bf306d71c8d5a51c3a002890e6b561ffe4",
+            "indicators": [
+              "Slang"
+            ]
+          }
+        ],
+        "paraphrase": "The pinned README identifies Slang shaders; the build file selects a Slang compiler version.",
+        "evidence_source_url": "https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/blob/952a1a8e8b85f25781db7014d4d2bda124435e79/CMakeLists.txt",
+        "evidence_response_sha256": "c8cde89f004e207162ba5c80bbcaf410e666b060f915a28e6eb25ec289de3ba5"
+      },
+      "repository_id": 251647550
+    },
+    {
+      "repository": "nvpro-samples/vk_gaussian_splatting",
+      "primary_source": "https://github.com/nvpro-samples/vk_gaussian_splatting",
+      "stars_at_metadata": 511,
+      "default_branch": "main",
+      "pin": {
+        "kind": "latest_release",
+        "ref": "2026.2.9",
+        "release_tag": "2026.2.9",
+        "commit": "d0a3befe1d5b2620cb646bde5369186e835a930a",
+        "resolved_on": "2026-10-26"
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 274,
+        "regular_file_bytes": 71635649,
+        "selected": {
+          "files": 49,
+          "bytes": 436422,
+          "slang_files": 49,
+          "slangh_files": 0,
+          "distinct_git_blobs": 49
+        },
+        "symlinks": 0,
+        "gitlinks": 1,
+        "tree_response_count": 1
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+        "root_blob_bytes": 10173,
+        "per_file_terms": "unverified; admission check before measurement",
+        "osi_approved_root_grant": true
+      },
+      "receipts": {
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting",
+          "http_status": 200,
+          "sha256": "8becb21125c2332a980e6179494836fdfcabec8247f41d4a838a5de70a7adc9b",
+          "bytes": 7344,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gaussian_splatting--repo.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/releases/latest",
+          "http_status": 200,
+          "sha256": "36549438c47a8c2ebf9ecfad5c9af83b9e22c16f7c321c5c6cebac73b121f361",
+          "bytes": 6277,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gaussian_splatting--release.json"
+        },
+        "release_commit": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/commits/2026.2.9",
+          "http_status": 200,
+          "sha256": "e46068e271e1e27377d23197ccc27d5ab696850413285b1ea145a5f623c31523",
+          "bytes": 12342,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gaussian_splatting--release-commit.json"
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/git/trees/d0a3befe1d5b2620cb646bde5369186e835a930a?recursive=1",
+          "http_status": 200,
+          "sha256": "2eec0cd7d79ff47f8c48ef096e279bdea074ea025ff699102d326804fc8a5d08",
+          "bytes": 77296,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gaussian_splatting--tree-recursive.json"
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/license?ref=d0a3befe1d5b2620cb646bde5369186e835a930a",
+          "http_status": 200,
+          "sha256": "6ad3d38ab5bb35b87dbc058d70638306bac13b780a75c42b85d289704b53c4d3",
+          "bytes": 15234,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gaussian_splatting--license.json"
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/readme?ref=d0a3befe1d5b2620cb646bde5369186e835a930a",
+          "http_status": 200,
+          "sha256": "6a2a20ae28ba88d3c91102affd3f2beb482b562d25f88f5765e46598c39a3914",
+          "bytes": 16292,
+          "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_gaussian_splatting--readme.json"
+        }
+      },
+      "admission_status": "eligible-metadata; per-file terms and complete r3 union pending",
+      "all_exclusion_reasons": [],
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "pinned_doc_url": "https://github.com/nvpro-samples/vk_gaussian_splatting/blob/d0a3befe1d5b2620cb646bde5369186e835a930a/README.md",
+        "readme_response_sha256": "6a2a20ae28ba88d3c91102affd3f2beb482b562d25f88f5765e46598c39a3914",
+        "readme_blob_sha256": "1cb8a3c1e7ae5ac32b75a228244e256bedc321646e967369316b6a1e7760cfbb",
+        "candidate_indicators": [],
+        "supporting_documents": [
+          {
+            "path": "CMakeLists.txt",
+            "pinned_url": "https://github.com/nvpro-samples/vk_gaussian_splatting/blob/d0a3befe1d5b2620cb646bde5369186e835a930a/CMakeLists.txt",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/contents/CMakeLists.txt?ref=d0a3befe1d5b2620cb646bde5369186e835a930a",
+              "http_status": 200,
+              "sha256": "b6adb9dd03717a1fd0d18c8655f75093e820ad8576c9918ff411ad498395f4af",
+              "bytes": 7866,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_gaussian_splatting--doc-CMakeLists.txt.json"
+            },
+            "document_sha256": "46b4b01ab026238b42bb0e4ac5c085cfa4794ba74c892420c11736a324f2e62b",
+            "indicators": [
+              "Slang"
+            ]
+          },
+          {
+            "path": "slangdconfig.json",
+            "pinned_url": "https://github.com/nvpro-samples/vk_gaussian_splatting/blob/d0a3befe1d5b2620cb646bde5369186e835a930a/slangdconfig.json",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/vk_gaussian_splatting/contents/slangdconfig.json?ref=d0a3befe1d5b2620cb646bde5369186e835a930a",
+              "http_status": 200,
+              "sha256": "a6ebddc5615672187ea1996b1c1c985baa4adf9199f0ef4c92138870ad7ed46b",
+              "bytes": 1358,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_gaussian_splatting--doc-slangdconfig.json.json"
+            },
+            "document_sha256": "724cf791d2f981b65a4cacbe58dd795cf536e623c51eeac6c42de025b3fd77a2",
+            "indicators": [
+              "Slang"
+            ]
+          }
+        ],
+        "paraphrase": "The pinned build file selects .slang shaders, and Slang language-server configuration is present.",
+        "evidence_source_url": "https://github.com/nvpro-samples/vk_gaussian_splatting/blob/d0a3befe1d5b2620cb646bde5369186e835a930a/CMakeLists.txt",
+        "evidence_response_sha256": "b6adb9dd03717a1fd0d18c8655f75093e820ad8576c9918ff411ad498395f4af"
+      },
+      "repository_id": 945894128
+    },
+    {
+      "repository": "nvpro-samples/vk_gltf_renderer",
+      "primary_source": "https://github.com/nvpro-samples/vk_gltf_renderer",
+      "stars_at_metadata": 435,
+      "default_branch": "main",
+      "pin": {
+        "kind": "latest_release",
+        "ref": "v2026.11",
+        "release_tag": "v2026.11",
+        "commit": "174625d5c621c088bf3610377999f9dbdcf5c3b5",
+        "resolved_on": "2026-10-26"
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 510,
+        "regular_file_bytes": 21879369,
+        "selected": {
+          "files": 36,
+          "bytes": 409191,
+          "slang_files": 36,
+          "slangh_files": 0,
+          "distinct_git_blobs": 36
+        },
+        "symlinks": 0,
+        "gitlinks": 0,
+        "tree_response_count": 1
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "9bf53e1eb3c95d75ac1b15cb46316dac863dadf8affc35b1a6ffe0de7ad5b707",
+        "root_blob_bytes": 11022,
+        "per_file_terms": "unverified; admission check before measurement",
+        "osi_approved_root_grant": true
+      },
+      "receipts": {
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gltf_renderer",
+          "http_status": 200,
+          "sha256": "784a5dcf7f6836208620eae8dabc4e8b6bb7040489c8f5a492b958b1d3808c04",
+          "bytes": 7305,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gltf_renderer--repo.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gltf_renderer/releases/latest",
+          "http_status": 200,
+          "sha256": "a22d6939a716d9b084b610ad05a4944288116358369772cf2fd870210ed51670",
+          "bytes": 9480,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gltf_renderer--release.json"
+        },
+        "release_commit": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gltf_renderer/commits/v2026.11",
+          "http_status": 200,
+          "sha256": "b24af3058bd115c81f394c8d302f0cb18b60fcef463a323465280f99c5ac7083",
+          "bytes": 4705,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gltf_renderer--release-commit.json"
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gltf_renderer/git/trees/174625d5c621c088bf3610377999f9dbdcf5c3b5?recursive=1",
+          "http_status": 200,
+          "sha256": "b15bc394c36a10b7117ce2f0a96d8b3ba6969f5c0fa276ff78d4b28934181896",
+          "bytes": 131937,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gltf_renderer--tree-recursive.json"
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gltf_renderer/license?ref=174625d5c621c088bf3610377999f9dbdcf5c3b5",
+          "http_status": 200,
+          "sha256": "7e0cb5cafad4165bcf81b5c8425091331ce1a1bccfd34f5590044cad9870a42f",
+          "bytes": 16367,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_gltf_renderer--license.json"
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_gltf_renderer/readme?ref=174625d5c621c088bf3610377999f9dbdcf5c3b5",
+          "http_status": 200,
+          "sha256": "60bc47b5bc11c229fa06bb0078164f0d8db6adaa53d9eb43d045336ce742184f",
+          "bytes": 25619,
+          "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_gltf_renderer--readme.json"
+        }
+      },
+      "admission_status": "eligible-metadata; per-file terms and complete r3 union pending",
+      "all_exclusion_reasons": [],
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "pinned_doc_url": "https://github.com/nvpro-samples/vk_gltf_renderer/blob/174625d5c621c088bf3610377999f9dbdcf5c3b5/README.md",
+        "readme_response_sha256": "60bc47b5bc11c229fa06bb0078164f0d8db6adaa53d9eb43d045336ce742184f",
+        "readme_blob_sha256": "a9e22bfa085cc1900f98d9633550587a0333bb3a72d4c02f37ee4ebc9c9944c7",
+        "candidate_indicators": [
+          "shader-slang"
+        ],
+        "paraphrase": "The pinned README identifies this GPU renderer as using Slang shaders.",
+        "evidence_source_url": "https://github.com/nvpro-samples/vk_gltf_renderer/blob/174625d5c621c088bf3610377999f9dbdcf5c3b5/README.md",
+        "evidence_response_sha256": "60bc47b5bc11c229fa06bb0078164f0d8db6adaa53d9eb43d045336ce742184f"
+      },
+      "repository_id": 225621170
+    },
+    {
+      "repository": "nvpro-samples/vk_minimal_latest",
+      "primary_source": "https://github.com/nvpro-samples/vk_minimal_latest",
+      "stars_at_metadata": 380,
+      "default_branch": "main",
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "ref": "main",
+        "release_tag": null,
+        "commit": "14f31142bc2faf71e19a5bf00c59a3d0c3c60c26",
+        "resolved_on": "2026-10-26"
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 24,
+        "regular_file_bytes": 1146126,
+        "selected": {
+          "files": 2,
+          "bytes": 9544,
+          "slang_files": 2,
+          "slangh_files": 0,
+          "distinct_git_blobs": 2
+        },
+        "symlinks": 0,
+        "gitlinks": 0,
+        "tree_response_count": 1
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "9264a6b3c134511ccfcae48ed3808320688ae6933ec4fc547476a005095fc1ef",
+        "root_blob_bytes": 10349,
+        "per_file_terms": "unverified; admission check before measurement",
+        "osi_approved_root_grant": true
+      },
+      "receipts": {
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_minimal_latest",
+          "http_status": 200,
+          "sha256": "a660465427888f6f9dbf89c1a3edca16940e732a69c2473e411c518d7dc5cd3e",
+          "bytes": 7075,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_minimal_latest--repo.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_minimal_latest/releases/latest",
+          "http_status": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_minimal_latest--release.json"
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_minimal_latest/commits/main",
+          "http_status": 200,
+          "sha256": "3cf484dbc447df8eb39042061b1a21a5a49df6ca08e1a0a2e668827e01a6fa60",
+          "bytes": 6289,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_minimal_latest--default-commit.json"
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_minimal_latest/git/trees/14f31142bc2faf71e19a5bf00c59a3d0c3c60c26?recursive=1",
+          "http_status": 200,
+          "sha256": "3645aef72ce256d339de22dd5f927e65a1a825975ae3755817e25accbcd6813c",
+          "bytes": 7102,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_minimal_latest--tree-recursive.json"
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_minimal_latest/license?ref=14f31142bc2faf71e19a5bf00c59a3d0c3c60c26",
+          "http_status": 200,
+          "sha256": "9deda10cfad6f7a72debd99c3c9b9b19fb79bcb9a16307d45ae1eafbf3a23dce",
+          "bytes": 15448,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_minimal_latest--license.json"
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_minimal_latest/readme?ref=14f31142bc2faf71e19a5bf00c59a3d0c3c60c26",
+          "http_status": 200,
+          "sha256": "8c285967d917bc4269e24a7b19d5440121e1424e75775c1c28bfc6877018122c",
+          "bytes": 29636,
+          "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_minimal_latest--readme.json"
+        }
+      },
+      "admission_status": "eligible-metadata; per-file terms and complete r3 union pending",
+      "all_exclusion_reasons": [],
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "pinned_doc_url": "https://github.com/nvpro-samples/vk_minimal_latest/blob/14f31142bc2faf71e19a5bf00c59a3d0c3c60c26/README.md",
+        "readme_response_sha256": "8c285967d917bc4269e24a7b19d5440121e1424e75775c1c28bfc6877018122c",
+        "readme_blob_sha256": "60f384ac00ef5cb4938785ba5c31fd00bb41c4bf49f6995ecefaa08cdb5b837d",
+        "candidate_indicators": [
+          "shader-slang"
+        ],
+        "paraphrase": "The pinned README names the official Slang compiler and identifies Slang as the sample shader language.",
+        "evidence_source_url": "https://github.com/nvpro-samples/vk_minimal_latest/blob/14f31142bc2faf71e19a5bf00c59a3d0c3c60c26/README.md",
+        "evidence_response_sha256": "8c285967d917bc4269e24a7b19d5440121e1424e75775c1c28bfc6877018122c"
+      },
+      "repository_id": 895517676
+    },
+    {
+      "repository": "nvpro-samples/vk_mini_samples",
+      "primary_source": "https://github.com/nvpro-samples/vk_mini_samples",
+      "stars_at_metadata": 377,
+      "default_branch": "main",
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "ref": "main",
+        "release_tag": null,
+        "commit": "af5c0a6b63095bb7b84b59dd4f88b718c28206a8",
+        "resolved_on": "2026-10-26"
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 397,
+        "regular_file_bytes": 21807986,
+        "selected": {
+          "files": 37,
+          "bytes": 211175,
+          "slang_files": 37,
+          "slangh_files": 0,
+          "distinct_git_blobs": 37
+        },
+        "symlinks": 0,
+        "gitlinks": 0,
+        "tree_response_count": 1
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+        "root_blob_bytes": 10173,
+        "per_file_terms": "unverified; admission check before measurement",
+        "osi_approved_root_grant": true
+      },
+      "receipts": {
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_mini_samples",
+          "http_status": 200,
+          "sha256": "7afa24416490231206e5fcdb1e195fdcb2c55b0562341dcf27acc9bd7d082e9c",
+          "bytes": 6892,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_mini_samples--repo.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_mini_samples/releases/latest",
+          "http_status": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_mini_samples--release.json"
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_mini_samples/commits/main",
+          "http_status": 200,
+          "sha256": "ea2ae1f22c060f049f0cd872feac4600f79f4af960ad54cad7787815dd21f70f",
+          "bytes": 93389,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_mini_samples--default-commit.json"
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_mini_samples/git/trees/af5c0a6b63095bb7b84b59dd4f88b718c28206a8?recursive=1",
+          "http_status": 200,
+          "sha256": "6aa91c683f5035160b5cb62afca81bc3af6ec7fd4f125c66079250d143fd3af3",
+          "bytes": 127792,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_mini_samples--tree-recursive.json"
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_mini_samples/license?ref=af5c0a6b63095bb7b84b59dd4f88b718c28206a8",
+          "http_status": 200,
+          "sha256": "83dec8780f01334d5f1af65438d7bfe55bd96558d37443898f3a1cca2fe835da",
+          "bytes": 15192,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--vk_mini_samples--license.json"
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/nvpro-samples/vk_mini_samples/readme?ref=af5c0a6b63095bb7b84b59dd4f88b718c28206a8",
+          "http_status": 200,
+          "sha256": "bf26b995864010d45dad0269fc43e34317586aaf2203fb3d6b69137c5fca8743",
+          "bytes": 20346,
+          "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--vk_mini_samples--readme.json"
+        }
+      },
+      "admission_status": "eligible-metadata; per-file terms and complete r3 union pending",
+      "all_exclusion_reasons": [],
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "pinned_doc_url": "https://github.com/nvpro-samples/vk_mini_samples/blob/af5c0a6b63095bb7b84b59dd4f88b718c28206a8/README.md",
+        "readme_response_sha256": "bf26b995864010d45dad0269fc43e34317586aaf2203fb3d6b69137c5fca8743",
+        "readme_blob_sha256": "663d0ce0ffadb9042ed4fb0c214eadd3da693abf26e43e216533a9b640904b15",
+        "candidate_indicators": [
+          "shader-slang"
+        ],
+        "paraphrase": "The pinned README presents GPU samples with Slang shader implementations beside GLSL variants.",
+        "evidence_source_url": "https://github.com/nvpro-samples/vk_mini_samples/blob/af5c0a6b63095bb7b84b59dd4f88b718c28206a8/README.md",
+        "evidence_response_sha256": "bf26b995864010d45dad0269fc43e34317586aaf2203fb3d6b69137c5fca8743"
+      },
+      "repository_id": 423511757
+    },
+    {
+      "repository": "nvpro-samples/nvpro_core2",
+      "primary_source": "https://github.com/nvpro-samples/nvpro_core2",
+      "stars_at_metadata": 145,
+      "default_branch": "main",
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "ref": "main",
+        "release_tag": null,
+        "commit": "7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+        "resolved_on": "2026-10-26"
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 1533,
+        "regular_file_bytes": 38296059,
+        "selected": {
+          "files": 35,
+          "bytes": 341251,
+          "slang_files": 35,
+          "slangh_files": 0,
+          "distinct_git_blobs": 35
+        },
+        "symlinks": 0,
+        "gitlinks": 0,
+        "tree_response_count": 1
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+        "root_blob_bytes": 10173,
+        "per_file_terms": "unverified; admission check before measurement",
+        "osi_approved_root_grant": true
+      },
+      "receipts": {
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2",
+          "http_status": 200,
+          "sha256": "f69fa87c965f0d6a146415a932732a18f60e920300c7d1550f65cf4def75d1c5",
+          "bytes": 6801,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--nvpro_core2--repo.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/releases/latest",
+          "http_status": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--nvpro_core2--release.json"
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/commits/main",
+          "http_status": 200,
+          "sha256": "ea2d0e5a1c52f93ecd75073f3aaa0fcf6f0968665a9a8976a19131ac0ca37f7c",
+          "bytes": 8342,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--nvpro_core2--default-commit.json"
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/git/trees/7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0?recursive=1",
+          "http_status": 200,
+          "sha256": "d04872d9f1067db6256491de0d9f60ca52373dee31d87e950002c5ab7be19790",
+          "bytes": 420383,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--nvpro_core2--tree-recursive.json"
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/license?ref=7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+          "http_status": 200,
+          "sha256": "95cbe9c353c394bbcd477abe72f2dcd914dd581a955a7659790c1f87f20d60bb",
+          "bytes": 15164,
+          "raw_path": "workspace/tmp/slang-seeds-r3/nvpro-samples--nvpro_core2--license.json"
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/readme?ref=7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+          "http_status": 200,
+          "sha256": "c0017843cece3a5a26a668b607ff264f8e94fb9845d3f8a6978d0db5b6410acd",
+          "bytes": 13261,
+          "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--nvpro_core2--readme.json"
+        }
+      },
+      "admission_status": "eligible-metadata; per-file terms and complete r3 union pending",
+      "all_exclusion_reasons": [],
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "pinned_doc_url": "https://github.com/nvpro-samples/nvpro_core2/blob/7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0/README.md",
+        "readme_response_sha256": "c0017843cece3a5a26a668b607ff264f8e94fb9845d3f8a6978d0db5b6410acd",
+        "readme_blob_sha256": "59e9f79273f0129968e26fa7b60218954b678dc39febc1aaae7efbb9db1ab961",
+        "candidate_indicators": [],
+        "supporting_documents": [
+          {
+            "path": "CMakeLists.txt",
+            "pinned_url": "https://github.com/nvpro-samples/nvpro_core2/blob/7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0/CMakeLists.txt",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/contents/CMakeLists.txt?ref=7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+              "http_status": 200,
+              "sha256": "d7513e087c15340f487cf470e563b777d1b992f17f8eeccfa2bbbbbe09e5515b",
+              "bytes": 9904,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--nvpro_core2--doc-CMakeLists.txt.json"
+            },
+            "document_sha256": "f9c68ba2bd48c5ed6f157f36e6e3e95b7dbd6de23e28a0b755a9f1b3ed1919a5",
+            "indicators": [
+              "Slang",
+              "SlangShader"
+            ]
+          },
+          {
+            "path": "cmake/CompilerSlangShader.cmake",
+            "pinned_url": "https://github.com/nvpro-samples/nvpro_core2/blob/7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0/cmake/CompilerSlangShader.cmake",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/contents/cmake/CompilerSlangShader.cmake?ref=7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+              "http_status": 200,
+              "sha256": "e6095fc890c03c38c0d034532bd19434fbde3d21baa689e3de9ed258379cb092",
+              "bytes": 19780,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--nvpro_core2--doc-cmake--CompilerSlangShader.cmake.json"
+            },
+            "document_sha256": "949544de0d999ce3239fba958ec60afffa7457ec3dfd470b6dde220fce86ef0b",
+            "indicators": [
+              "slangc",
+              "Slang"
+            ]
+          },
+          {
+            "path": "slangdconfig.json",
+            "pinned_url": "https://github.com/nvpro-samples/nvpro_core2/blob/7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0/slangdconfig.json",
+            "response": {
+              "url": "https://api.github.com/repos/nvpro-samples/nvpro_core2/contents/slangdconfig.json?ref=7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+              "http_status": 200,
+              "sha256": "c7e192bdb091960963166cd8b669cb5e5d03742cfe200093de455728350c3aea",
+              "bytes": 1318,
+              "raw_path": "workspace/tmp/slang-additional-r3/nvpro-samples--nvpro_core2--doc-slangdconfig.json.json"
+            },
+            "document_sha256": "5add935ec5956fb180808c9342d2f4beb6db97b0a0ccad1f26592796ae66b4ef",
+            "indicators": [
+              "Slang"
+            ]
+          }
+        ],
+        "paraphrase": "The pinned compiler build module invokes slangc to produce SPIR-V and C++ shader outputs.",
+        "evidence_source_url": "https://github.com/nvpro-samples/nvpro_core2/blob/7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0/cmake/CompilerSlangShader.cmake",
+        "evidence_response_sha256": "e6095fc890c03c38c0d034532bd19434fbde3d21baa689e3de9ed258379cb092"
+      },
+      "repository_id": 1012491846
+    },
+    {
+      "repository_id": 688691303,
+      "disposition": "license-excluded",
+      "admission_status": "license-excluded",
+      "stars_at_metadata": 437,
+      "all_exclusion_reasons": [
+        "Pinned root CC-BY-SA-4.0 is not an OSI-approved license grant."
+      ],
+      "population_counts": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 1085,
+        "regular_file_bytes": 136081436,
+        "selected": {
+          "files": 62,
+          "bytes": 448858,
+          "slang_files": 62,
+          "slangh_files": 0,
+          "distinct_git_blobs": 52
+        },
+        "symlinks": 0,
+        "gitlinks": 0,
+        "tree_response_count": 1
+      },
+      "license_gate": {
+        "spdx_expression": "CC-BY-SA-4.0",
+        "osi_approved_root_grant": false
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.repository_metadata",
+          "sha256": "ccb7e506586887ae97fb3a42132bee5ed9923909a4594221fd7e8eb5475ea7b3",
+          "bytes": 6966,
+          "http_status": 200
+        },
+        {
+          "kind": "receipts.release_lookup",
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "http_status": 404
+        },
+        {
+          "kind": "receipts.default_branch_commit",
+          "sha256": "b2e0d942687adf82dc8070b0ea1dfab3e20af434cf437b99f8d6147525fc8d72",
+          "bytes": 6797,
+          "http_status": 200
+        },
+        {
+          "kind": "receipts.tree_recursive",
+          "sha256": "efe6e80470234be1097b325e5e360eabbe7f26cb14d5e466e188cea6f7ead0be",
+          "bytes": 343274,
+          "http_status": 200
+        },
+        {
+          "kind": "receipts.root_license",
+          "sha256": "8be736d33f554c9549fece8eb439335ce99a3ffcbfad52a1cbe98d57569886a0",
+          "bytes": 28961,
+          "http_status": 200
+        },
+        {
+          "kind": "receipts.pinned_readme",
+          "sha256": "8fdd76a05c3378da57ba3b29172c4a73594d7243753a2f059e0e5627d3fce4f1",
+          "bytes": 8212,
+          "http_status": 200
+        }
+      ]
+    }
+  ],
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private."
+}

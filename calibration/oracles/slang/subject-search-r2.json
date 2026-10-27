@@ -1,0 +1,1443 @@
+{
+  "schema": "slang-subject-search-r2",
+  "searched_on": "2026-10-26",
+  "status": "metadata population frozen; per-file license admission pending; no shader bodies or measurements fetched",
+  "preregistration": {
+    "commit": "380f8801cd8b546703975bdb6ca087da85165804",
+    "path": "calibration/oracles/slang/search-rule-r2.json",
+    "sha256": "0620aee9c4998007e4e0bff01118d0a06874048f1b0c3e2c1ae89bcfa0ef21c6",
+    "committed_before_r2_requests": true,
+    "published_derivative_sha256": "0620aee9c4998007e4e0bff01118d0a06874048f1b0c3e2c1ae89bcfa0ef21c6",
+    "historical_ordering_record": "preregistration-provenance.json"
+  },
+  "reach_boundary": "A prospective reach-focused search: at least 100 GitHub stars at search time, plus the explicit 11 seed repositories regardless of stars. This bound is fixed before the r2 result set is fetched and is not a claim to enumerate every Slang project.",
+  "search_receipts": [
+    {
+      "id": "github-language",
+      "query": "language:Slang stars:>=100",
+      "url": "https://api.github.com/search/repositories?q=language%3ASlang%20stars%3A%3E%3D100&sort=stars&order=desc&per_page=100&page=1",
+      "page": 1,
+      "total_count": 4,
+      "incomplete_results": false,
+      "returned_count": 4,
+      "sha256": "788923f6bae15809871e9178ac66cd115e72f03ac9cfe3b204b09101cb8578cb",
+      "bytes": 22472,
+      "raw_path": "workspace/tmp/slang-subject-r2/search-language-1.json"
+    },
+    {
+      "id": "github-name-description",
+      "query": "slang shader in:name,description stars:>=100",
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Aname%2Cdescription%20stars%3A%3E%3D100&sort=stars&order=desc&per_page=100&page=1",
+      "page": 1,
+      "total_count": 10,
+      "incomplete_results": false,
+      "returned_count": 10,
+      "sha256": "29ebbb7cfacb7b582a8871aedf37e2f189e2d9aa2f2c07aa053c46e6aecb66a1",
+      "bytes": 54806,
+      "raw_path": "workspace/tmp/slang-subject-r2/search-name-1.json"
+    }
+  ],
+  "completion": {
+    "queries_exhausted": true,
+    "github_1000_cap_reached": false,
+    "incomplete_results_seen": false,
+    "search_hits_before_dedup": 14,
+    "distinct_search_hits": 12,
+    "named_seeds": 11,
+    "union_repositories": 18,
+    "all_union_repositories_disposed": true,
+    "historical_first_10": {
+      "source": "prior subject-search.json first page, 2026-10-26",
+      "raw_response_sha256": "04f31f185e92d12397b0e36d22f2facc8a4e666604cce3acace009077c8a8403",
+      "all_10_have_r2_disposition": true,
+      "repositories": [
+        93882897,
+        "crossgl/crosstl",
+        1049409985,
+        371776599,
+        "shader-slang/slang-rhi",
+        512733015,
+        "shader-slang/neural-shading-s25",
+        "shader-slang/slangpy",
+        1134692580,
+        "floatymonkey/slang-rs"
+      ]
+    }
+  },
+  "rules": {
+    "selected_suffixes": [
+      ".slang",
+      ".slangh"
+    ],
+    "regular_modes": [
+      "100644",
+      "100755"
+    ],
+    "whole_repository": true,
+    "min_selected_files": 1,
+    "max_selected_files": 5000,
+    "max_selected_bytes": 50000000,
+    "root_license": "OSI-approved grant required; per-file terms pending before measurement",
+    "role": "largest eligible project by selected-file count is whole-project holdout; tie by repository identity"
+  },
+  "repositories": [
+    {
+      "repository": "crossgl/crosstl",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 2,
+          "stars_at_search": 1563
+        }
+      ],
+      "pin": {
+        "kind": "latest_release",
+        "tag": "v3.4.0",
+        "commit": "e7211e0281f7fc1992c7cac4751fa53525745852",
+        "provenance": "r2 public GitHub API metadata"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 2690,
+        "regular_file_bytes": 90284103,
+        "selected": {
+          "files": 5,
+          "bytes": 3537,
+          "slang_files": 5,
+          "slangh_files": 0,
+          "distinct_git_blobs": 5
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "receipts": {
+        "release": {
+          "url": "https://api.github.com/repos/crossgl/crosstl/releases/latest",
+          "http": 200,
+          "sha256": "7303464f9fd2cf4756ee792b47a1e885ba9ead8f06357641530b2c376ac42c70",
+          "bytes": 14964,
+          "raw_path": "workspace/tmp/slang-subject-r2/crossgl--crosstl--release.json"
+        },
+        "tag_ref": {
+          "url": "https://api.github.com/repos/crossgl/crosstl/git/ref/tags/v3.4.0",
+          "http": 200,
+          "sha256": "7b5782e92dd9e6dafb4a8340a4c570b9e79904bf75bb01d38ea4548c52f65259",
+          "bytes": 325,
+          "raw_path": "workspace/tmp/slang-subject-r2/crossgl--crosstl--tagref.json"
+        },
+        "tag_object": {
+          "url": "https://api.github.com/repos/crossgl/crosstl/git/tags/fe058596f83cabde7066cac7aad329b0d554e551",
+          "http": 200,
+          "sha256": "132c289245cd0a19a816eb3f69550a83bcd3bae20c4dff915f8c7180787b977b",
+          "bytes": 685,
+          "raw_path": "workspace/tmp/slang-subject-r2/crossgl--crosstl--tagobject.json"
+        },
+        "tree": {
+          "url": "https://api.github.com/repos/crossgl/crosstl/git/trees/e7211e0281f7fc1992c7cac4751fa53525745852?recursive=1",
+          "http": 200,
+          "sha256": "94d5af4a026ec3ddd4a82885d7b39d8e87ce04ab360e656e182c75c1c268c265",
+          "bytes": 855769,
+          "raw_path": "workspace/tmp/slang-subject-r2/crossgl--crosstl--tree.json"
+        },
+        "license": {
+          "url": "https://api.github.com/repos/crossgl/crosstl/license?ref=e7211e0281f7fc1992c7cac4751fa53525745852",
+          "http": 200,
+          "sha256": "f02f68253dac2a817da69ee67b1f9efcd066427617933a3528b74fe924ed747a",
+          "bytes": 16726,
+          "raw_path": "workspace/tmp/slang-subject-r2/crossgl--crosstl--license.json"
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "root_missing": false,
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": {
+        "path": "docs/source/backends/slang.rst",
+        "url": "https://raw.githubusercontent.com/crossgl/crosstl/e7211e0281f7fc1992c7cac4751fa53525745852/docs/source/backends/slang.rst",
+        "sha256": "04a9e9c00911ca21f1d9d4d52c89086205d2eba79dd25012d41938465e3d06ab",
+        "description": "Explicit Slang source import and Slang backend"
+      },
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "crossgl/crosstl",
+      "repository_id": 795144462
+    },
+    {
+      "repository_id": 1049409985,
+      "disposition": "zero-population",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 3,
+          "stars_at_search": 682
+        }
+      ],
+      "all_exclusion_reasons": [
+        "zero selected regular .slang/.slangh files"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 192,
+        "regular_file_bytes": 1663499,
+        "selected": {
+          "files": 0,
+          "bytes": 0,
+          "slang_files": 0,
+          "slangh_files": 0,
+          "distinct_git_blobs": 0
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license_gate": {
+        "spdx_expression": "NOASSERTION"
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.release",
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "http": 404
+        },
+        {
+          "kind": "receipts.commit",
+          "sha256": "3da9f03662ce464ce6e810683bbaeb328fe8480e327d9aa72b9f99d057918983",
+          "bytes": 7416,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tree",
+          "sha256": "6035e846b62bb603d3b2841545d108c27b25ccba13a77c06078f3713be21065d",
+          "bytes": 52049,
+          "http": 200
+        },
+        {
+          "kind": "receipts.license",
+          "sha256": "9b659e8b7dede2602eadd1a56bd19be6dbc0d73cb47ecf4040df36764662950a",
+          "bytes": 3291,
+          "http": 200
+        }
+      ]
+    },
+    {
+      "repository": "floatymonkey/slang-rs",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 10,
+          "stars_at_search": 117
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "f9c9eece467aa84f3be1aa1137426f59591095fc",
+        "provenance": "r2 public GitHub API metadata"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 24,
+        "regular_file_bytes": 88996,
+        "selected": {
+          "files": 1,
+          "bytes": 272,
+          "slang_files": 1,
+          "slangh_files": 0,
+          "distinct_git_blobs": 1
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "receipts": {
+        "release": {
+          "url": "https://api.github.com/repos/floatymonkey/slang-rs/releases/latest",
+          "http": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-subject-r2/floatymonkey--slang-rs--release.json"
+        },
+        "commit": {
+          "url": "https://api.github.com/repos/floatymonkey/slang-rs/commits/main",
+          "http": 200,
+          "sha256": "0b94459748e1086362ce248d017e6cacb4745fa86016cdbc9ce9acff26cadb45",
+          "bytes": 10126,
+          "raw_path": "workspace/tmp/slang-subject-r2/floatymonkey--slang-rs--commit.json"
+        },
+        "tree": {
+          "url": "https://api.github.com/repos/floatymonkey/slang-rs/git/trees/f9c9eece467aa84f3be1aa1137426f59591095fc?recursive=1",
+          "http": 200,
+          "sha256": "3d676f5a6ae06cf8660a741df1d988f3e2db0c4ea280bcbdcb5cadb9814d1917",
+          "bytes": 6828,
+          "raw_path": "workspace/tmp/slang-subject-r2/floatymonkey--slang-rs--tree.json"
+        },
+        "license": {
+          "url": "https://api.github.com/repos/floatymonkey/slang-rs/license?ref=f9c9eece467aa84f3be1aa1137426f59591095fc",
+          "http": 200,
+          "sha256": "cb7709da96e083850d6c0f2fdabc9b0aeb83f84e1461fa444c89e3282bb313ac",
+          "bytes": 16760,
+          "raw_path": "workspace/tmp/slang-subject-r2/floatymonkey--slang-rs--license.json"
+        }
+      },
+      "license": {
+        "root_path": "LICENSE-APACHE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+        "root_missing": false,
+        "per_file_terms": "unverified; admission check before measurement",
+        "manual_review": "Pinned LICENSE-APACHE starts with the standard Apache License, Version 2.0, January 2004; GitHub classifier says NOASSERTION."
+      },
+      "language_evidence": {
+        "path": "README.md",
+        "url": "https://raw.githubusercontent.com/floatymonkey/slang-rs/f9c9eece467aa84f3be1aa1137426f59591095fc/README.md",
+        "sha256": "7eb9b0e47a15681d34d79ae841da58aa8b5477b92a76d32d45bb3ec58567c066",
+        "description": "Rust binding for shader-slang compiler"
+      },
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "floatymonkey/slang-rs",
+      "repository_id": 765405407
+    },
+    {
+      "repository": "google/slang-gaussian-rasterization",
+      "sources": [
+        {
+          "source": "github-language",
+          "page": 1,
+          "rank": 2,
+          "stars_at_search": 381
+        },
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/google/slang-gaussian-rasterization",
+          "reason": "Prior independent candidate missing from the prior search results"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "8f8498e14af84eb2e50e45a5ce9409eed71213fb",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 26,
+        "regular_file_bytes": 94236,
+        "selected": {
+          "files": 5,
+          "bytes": 33205,
+          "slang_files": 5,
+          "slangh_files": 0,
+          "distinct_git_blobs": 5
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/google/slang-gaussian-rasterization/git/trees/8f8498e14af84eb2e50e45a5ce9409eed71213fb?recursive=1",
+          "http": 200,
+          "sha256": "e70949096f8255e42c2f4ae48988f906be88a4ba663bb303cd0e982abc6d3705",
+          "bytes": 8820,
+          "raw_path": "workspace/tmp/slang-subject/tree-7.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/google/slang-gaussian-rasterization/releases/latest",
+          "http": 404,
+          "sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "bytes": 25
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/google/slang-gaussian-rasterization/contents/LICENSE?ref=8f8498e14af84eb2e50e45a5ce9409eed71213fb",
+          "http": 200,
+          "response_sha256": "25f99ec2c44a11d98064edd74bf5a2151dafad97dd3292008b724c0cb35a5ec0",
+          "response_bytes": 16704
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/google/slang-gaussian-rasterization",
+          "http": 200,
+          "sha256": "7f60eb91889c37e7df3242c18f762355edc37ccfe55b6ab3bc6d6affcc75545b",
+          "bytes": 7145
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/google/slang-gaussian-rasterization/commits/main",
+          "http": 200,
+          "sha256": "2ac31618c4d89b9e65a88d90c48f8f1aadafc499c653ac46517239945794459a",
+          "bytes": 14363
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "google/slang-gaussian-rasterization",
+      "repository_id": 841890294
+    },
+    {
+      "repository": "khronosgroup/vulkan-samples",
+      "sources": [
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/KhronosGroup/Vulkan-Samples",
+          "reason": "Independent Vulkan sample population identified by the r1 critic; evaluate the whole pinned project"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "69622af06f7652c7fc9b9a9180e7142046315cbc",
+        "provenance": "r2 public GitHub API metadata"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 2305,
+        "regular_file_bytes": 90188601,
+        "selected": {
+          "files": 158,
+          "bytes": 270943,
+          "slang_files": 158,
+          "slangh_files": 0,
+          "distinct_git_blobs": 147
+        },
+        "symlinks": 0,
+        "gitlinks": 20
+      },
+      "receipts": {
+        "repository": {
+          "url": "https://api.github.com/repos/khronosgroup/vulkan-samples",
+          "http": 200,
+          "sha256": "005e7c337adb751559679a1ce3a7728dbae682b999080dcacf22a40aff23c4fd",
+          "bytes": 6847,
+          "raw_path": "workspace/tmp/slang-subject-r2/khronosgroup--vulkan-samples--repo.json"
+        },
+        "release": {
+          "url": "https://api.github.com/repos/khronosgroup/vulkan-samples/releases/latest",
+          "http": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-subject-r2/khronosgroup--vulkan-samples--release.json"
+        },
+        "commit": {
+          "url": "https://api.github.com/repos/khronosgroup/vulkan-samples/commits/main",
+          "http": 200,
+          "sha256": "330682ab5985ee13dd58915788909a53d0b4888f20184ec6a5cb87ac00e9fcef",
+          "bytes": 9438,
+          "raw_path": "workspace/tmp/slang-subject-r2/khronosgroup--vulkan-samples--commit.json"
+        },
+        "tree": {
+          "url": "https://api.github.com/repos/khronosgroup/vulkan-samples/git/trees/69622af06f7652c7fc9b9a9180e7142046315cbc?recursive=1",
+          "http": 200,
+          "sha256": "f63223d2abad9f8bec44fd9525e7fc3cc15ccbaa904081be1c4b9ae08a3ca527",
+          "bytes": 745939,
+          "raw_path": "workspace/tmp/slang-subject-r2/khronosgroup--vulkan-samples--tree.json"
+        },
+        "license": {
+          "url": "https://api.github.com/repos/khronosgroup/vulkan-samples/license?ref=69622af06f7652c7fc9b9a9180e7142046315cbc",
+          "http": 200,
+          "sha256": "d1154e8155ba57008c400032946b5d95fa9642aa8927c71984a802e15729cd40",
+          "bytes": 16806,
+          "raw_path": "workspace/tmp/slang-subject-r2/khronosgroup--vulkan-samples--license.json"
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "9c18288ad9997b4b8d62a544e01d960d3effa28e45e8cfcea6e0cacb9db33f6b",
+        "root_missing": false,
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": {
+        "path": "shaders/README.adoc",
+        "url": "https://raw.githubusercontent.com/khronosgroup/vulkan-samples/69622af06f7652c7fc9b9a9180e7142046315cbc/shaders/README.adoc",
+        "sha256": "ed263077473f4d7124e8b9f78e42e10519fa9d0aee2cc0407c0783ee56063415",
+        "description": "Explicit Slang shaders and required Slang compiler"
+      },
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "khronosgroup/vulkan-samples",
+      "repository_id": 218329478
+    },
+    {
+      "repository_id": 512733015,
+      "disposition": "wrong-language",
+      "sources": [
+        {
+          "source": "github-language",
+          "page": 1,
+          "rank": 3,
+          "stars_at_search": 192
+        },
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 6,
+          "stars_at_search": 192
+        }
+      ],
+      "all_exclusion_reasons": [
+        "wrong-language: RetroArch slang shader format"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 275,
+        "regular_file_bytes": 12256271,
+        "selected": {
+          "files": 29,
+          "bytes": 350036,
+          "slang_files": 29,
+          "slangh_files": 0,
+          "distinct_git_blobs": 29
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license_gate": {
+        "spdx_expression": "GPL-3.0"
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.release",
+          "sha256": "d2b8780bba2a6f254501dd83cceb5c9d20e4d2b7ee7e972d82b6388ecbc2293c",
+          "bytes": 3394,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tag_ref",
+          "sha256": "79061d58079e7248827bd915bfd71a050dbdd473a12cc5bb6d59bd21ba53f8c0",
+          "bytes": 361,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tree",
+          "sha256": "d91f3a7bc30cffbb760eb990191dbf5407935d6f3654d37aacedc580a7734bc1",
+          "bytes": 80883,
+          "http": 200
+        },
+        {
+          "kind": "receipts.license",
+          "sha256": "4112d18449050fc8811b06940be9d08ae2370c9ba7c6f82e5854bee952d07217",
+          "bytes": 49568,
+          "http": 200
+        }
+      ]
+    },
+    {
+      "repository_id": 1134692580,
+      "disposition": "wrong-language",
+      "sources": [
+        {
+          "source": "github-language",
+          "page": 1,
+          "rank": 4,
+          "stars_at_search": 147
+        },
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 9,
+          "stars_at_search": 147
+        }
+      ],
+      "all_exclusion_reasons": [
+        "wrong-language: RetroArch slang shader format",
+        "license-excluded: pinned root license API returned 404 and repository metadata has no license grant"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 37,
+        "regular_file_bytes": 15941055,
+        "selected": {
+          "files": 8,
+          "bytes": 36316,
+          "slang_files": 8,
+          "slangh_files": 0,
+          "distinct_git_blobs": 8
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license_gate": {
+        "spdx_expression": null
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.release",
+          "sha256": "3d81f8b630d142e2200ccbca31315755be1a1d51eef3aabfab868d2af4446bfc",
+          "bytes": 4396,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tag_ref",
+          "sha256": "e1318dd45176986e89556db380f956592fb1922aed9d8eff39ff513f1e6c4a8b",
+          "bytes": 347,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tree",
+          "sha256": "f2836ee3c646275ae0f744a471d794d0df2a05cfe361fdbec2aa9b8fe110b13f",
+          "bytes": 16349,
+          "http": 200
+        },
+        {
+          "kind": "receipts.license",
+          "sha256": "6c0109c2ac75f1f264b61da6aff1737f7bc7eac254e6396710ff81a4139f32b1",
+          "bytes": 140,
+          "http": 404
+        }
+      ]
+    },
+    {
+      "repository": "nvidiagameworks/falcor",
+      "sources": [
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/NVIDIAGameWorks/Falcor",
+          "reason": "Prior production holdout missing from the prior search results"
+        }
+      ],
+      "pin": {
+        "kind": "release",
+        "tag": "9.0",
+        "commit": "759aad033ff610fb0d82c74f7e0a508d0096d5f2",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 2052,
+        "regular_file_bytes": 46962380,
+        "selected": {
+          "files": 461,
+          "bytes": 2951994,
+          "slang_files": 446,
+          "slangh_files": 15,
+          "distinct_git_blobs": 461
+        },
+        "symlinks": 0,
+        "gitlinks": 6
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/NVIDIAGameWorks/Falcor/git/trees/759aad033ff610fb0d82c74f7e0a508d0096d5f2?recursive=1",
+          "http": 200,
+          "sha256": "278e96b9d30056602bc43a00736a56ac2818e8e482b470772fee775172e0b01b",
+          "bytes": 602871,
+          "raw_path": "workspace/tmp/slang-subject/tree-6.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/NVIDIAGameWorks/Falcor/releases/latest",
+          "http": 200,
+          "sha256": "6ea434f44d3c4da7807867f991fbaba0d85db4dd17e3e44a3f462da701781483",
+          "bytes": 5742
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/NVIDIAGameWorks/Falcor/contents/LICENSE.md?ref=759aad033ff610fb0d82c74f7e0a508d0096d5f2",
+          "http": 200,
+          "response_sha256": "2e841343b894788f4aedb24c9e7f004d4a5526cbbefa2ed24f6e31a186410b46",
+          "response_bytes": 3671
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/NVIDIAGameWorks/Falcor",
+          "http": 200,
+          "sha256": "b4ec4ce5c5c84c66f9706de963e8909a72fc92d8ff9219e7946dfdb5d121b2c1",
+          "bytes": 6634
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/NVIDIAGameWorks/Falcor/commits/master",
+          "http": 200,
+          "sha256": "69047f698ba4821c087aacb99f79fbd05f9b89f208e8d834aaa43fe6ce65591e",
+          "bytes": 1098969
+        },
+        "release_commit": {
+          "url": "https://api.github.com/repos/NVIDIAGameWorks/Falcor/commits/9.0",
+          "http": 200,
+          "sha256": "69047f698ba4821c087aacb99f79fbd05f9b89f208e8d834aaa43fe6ce65591e",
+          "bytes": 1098969
+        }
+      },
+      "license": {
+        "root_path": "LICENSE.md",
+        "spdx_expression": "BSD-3-Clause",
+        "root_blob_sha256": "9cb6eb6cfd0c5acee041a465f211e9416402f7a504487210a1a41b51d3393d1f",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-holdout",
+      "full_name": "nvidiagameworks/falcor",
+      "repository_id": 98350667
+    },
+    {
+      "repository": "saschawillems/vulkan",
+      "sources": [
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/SaschaWillems/Vulkan",
+          "reason": "Independent Vulkan sample population identified by the r1 critic; evaluate the whole pinned project"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "6e1cc299c22eaf2b1771944b3adb7b8258f84ff9",
+        "provenance": "r2 public GitHub API metadata"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 4809,
+        "regular_file_bytes": 23710205,
+        "selected": {
+          "files": 176,
+          "bytes": 295081,
+          "slang_files": 176,
+          "slangh_files": 0,
+          "distinct_git_blobs": 170
+        },
+        "symlinks": 1,
+        "gitlinks": 2
+      },
+      "receipts": {
+        "repository": {
+          "url": "https://api.github.com/repos/saschawillems/vulkan",
+          "http": 200,
+          "sha256": "29884cdf84808c15edd1e8b8e18975a658172df1a6fd270e87e5b92b6498d206",
+          "bytes": 5404,
+          "raw_path": "workspace/tmp/slang-subject-r2/saschawillems--vulkan--repo.json"
+        },
+        "release": {
+          "url": "https://api.github.com/repos/saschawillems/vulkan/releases/latest",
+          "http": 404,
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "raw_path": "workspace/tmp/slang-subject-r2/saschawillems--vulkan--release.json"
+        },
+        "commit": {
+          "url": "https://api.github.com/repos/saschawillems/vulkan/commits/master",
+          "http": 200,
+          "sha256": "4e2edb77b1f65d70421b084deade84258c3bac34acab10c632bd0c729c5e1743",
+          "bytes": 38792,
+          "raw_path": "workspace/tmp/slang-subject-r2/saschawillems--vulkan--commit.json"
+        },
+        "tree": {
+          "url": "https://api.github.com/repos/saschawillems/vulkan/git/trees/6e1cc299c22eaf2b1771944b3adb7b8258f84ff9?recursive=1",
+          "http": 200,
+          "sha256": "edd7f69e6dfd18d6bbaa3e6850c7de351e14045adbefbb93e129ed61cdfa4594",
+          "bytes": 1928294,
+          "raw_path": "workspace/tmp/slang-subject-r2/saschawillems--vulkan--tree.json"
+        },
+        "license": {
+          "url": "https://api.github.com/repos/saschawillems/vulkan/license?ref=6e1cc299c22eaf2b1771944b3adb7b8258f84ff9",
+          "http": 200,
+          "sha256": "19ea0cdff3faf5fe69d2d8eab53a29770b2c83cf9ff244f555126cc6ddd70f69",
+          "bytes": 2597,
+          "raw_path": "workspace/tmp/slang-subject-r2/saschawillems--vulkan--license.json"
+        }
+      },
+      "license": {
+        "root_path": "LICENSE.md",
+        "spdx_expression": "MIT",
+        "root_blob_sha256": "d8db1712b2a1383b27cebeab2ddb8840a6e31ea820b0d56552a0f1c65f920983",
+        "root_missing": false,
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": {
+        "path": "shaders/slang/README.md",
+        "url": "https://raw.githubusercontent.com/saschawillems/vulkan/6e1cc299c22eaf2b1771944b3adb7b8258f84ff9/shaders/slang/README.md",
+        "sha256": "2ba7af00663fe8f1122972e0a326dec87287eaca54aace1ccf76e1d861e267ee",
+        "description": "Explicit shader-slang release link and Slang shader folder"
+      },
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "saschawillems/vulkan",
+      "repository_id": 37821236
+    },
+    {
+      "repository": "shader-slang/neural-shading-s25",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 7,
+          "stars_at_search": 191
+        },
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/shader-slang/neural-shading-s25",
+          "reason": "Prior subject-search.json candidate"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "6e4afe7de13d04dbccc88b553baa4af9541d0094",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 210,
+        "regular_file_bytes": 35775793,
+        "selected": {
+          "files": 27,
+          "bytes": 65554,
+          "slang_files": 27,
+          "slangh_files": 0,
+          "distinct_git_blobs": 26
+        },
+        "symlinks": 0,
+        "gitlinks": 4
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/shader-slang/neural-shading-s25/git/trees/6e4afe7de13d04dbccc88b553baa4af9541d0094?recursive=1",
+          "http": 200,
+          "sha256": "c4aa6a9f4165af39bcb46cbc46ae1fd752cdda204f861d685d07b15866a37549",
+          "bytes": 61858,
+          "raw_path": "workspace/tmp/slang-subject/tree-8.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/shader-slang/neural-shading-s25/releases/latest",
+          "http": 404,
+          "sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "bytes": 25
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/shader-slang/neural-shading-s25/contents/LICENSE?ref=6e4afe7de13d04dbccc88b553baa4af9541d0094",
+          "http": 200,
+          "response_sha256": "cdd9997c815f0766ec8dd7203ac7816bca3c153379ea2d27d8173b7c2ab1063a",
+          "response_bytes": 15242
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/shader-slang/neural-shading-s25",
+          "http": 200,
+          "sha256": "fed2e42d7ba01b2239203c5e5b715ee5355a0293fb72f8589f924044768eaff1",
+          "bytes": 6987
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/shader-slang/neural-shading-s25/commits/main",
+          "http": 200,
+          "sha256": "e64882fca0fc4b947c9df72a23667905d72c64c4c3df5d05b0a65dd87b9bdf60",
+          "bytes": 16938
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "1e4dec7c25c4ef297da1a35e1b659d959f17fa005f4bdc0bb7f5c5140712811c",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "shader-slang/neural-shading-s25",
+      "repository_id": 1017479079
+    },
+    {
+      "repository_id": 93882897,
+      "disposition": "diagnostic-role",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 1,
+          "stars_at_search": 5762
+        },
+        {
+          "source": "named-seed",
+          "primary_source": "GitHub repository id 93882897",
+          "reason": "Compiler and diagnostic boundary from prior subject-search.json"
+        }
+      ],
+      "all_exclusion_reasons": [
+        "size-excluded: over 5,000 selected files",
+        "diagnostic-role: compiler implementation and intentional regression corpus"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 13359,
+        "regular_file_bytes": 65296621,
+        "selected": {
+          "files": 9474,
+          "bytes": 16720664,
+          "slang_files": 9474,
+          "slangh_files": 0,
+          "distinct_git_blobs": 9468
+        },
+        "symlinks": 0,
+        "gitlinks": 22
+      },
+      "license_gate": {
+        "spdx_expression": "Apache-2.0 WITH LLVM-exception"
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.tree",
+          "sha256": "c4eb96d0a6770df5beda88b04475cf10e9784d1919e10f5ea7d90c1fad698b25",
+          "bytes": 3772796,
+          "http": 200
+        },
+        {
+          "kind": "receipts.release_lookup",
+          "sha256": "d8e41cf296b856b65296c637ff13b26a28a9d4463e18816d08001348e7f372a3",
+          "bytes": 73451,
+          "http": 200
+        },
+        {
+          "kind": "receipts.repository_metadata",
+          "sha256": "7413a408da80fd1cc099e33bb387a57e0aedb9b87b20cb76ef12bfda7444d41d",
+          "bytes": 6438,
+          "http": 200
+        },
+        {
+          "kind": "receipts.default_branch_commit",
+          "sha256": "3972e91fe55cc28abc6a0be2ceed229e99e18a72bbaa6a7531be1bf412db0053",
+          "bytes": 8885,
+          "http": 200
+        },
+        {
+          "kind": "receipts.release_commit",
+          "sha256": "db3ad00422a88e3fe642160f877c06a48d1566bf00672496ff213973130c11a1",
+          "bytes": 69399,
+          "http": 200
+        }
+      ]
+    },
+    {
+      "repository": "shader-slang/slang-rhi",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 5,
+          "stars_at_search": 218
+        },
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/shader-slang/slang-rhi",
+          "reason": "Prior subject-search.json candidate"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "5a1d9da17ecd8235d85988916de1c7d62b39bcf8",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 705,
+        "regular_file_bytes": 7973626,
+        "selected": {
+          "files": 87,
+          "bytes": 207038,
+          "slang_files": 87,
+          "slangh_files": 0,
+          "distinct_git_blobs": 87
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/shader-slang/slang-rhi/git/trees/5a1d9da17ecd8235d85988916de1c7d62b39bcf8?recursive=1",
+          "http": 200,
+          "sha256": "4d3e8eb92da9fa36f848eae9670849c7a43983ce43173489809eda6cb8eead7c",
+          "bytes": 180886,
+          "raw_path": "workspace/tmp/slang-subject/tree-1.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/shader-slang/slang-rhi/releases/latest",
+          "http": 404,
+          "sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "bytes": 25
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/shader-slang/slang-rhi/contents/LICENSE?ref=5a1d9da17ecd8235d85988916de1c7d62b39bcf8",
+          "http": 200,
+          "response_sha256": "0ae28373230780a4f742ba472f5aea24435d5c96bc5104937b8fcbd71b157f18",
+          "response_bytes": 3018
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/shader-slang/slang-rhi",
+          "http": 200,
+          "sha256": "bdc1b56c11161c30d8155384e2db7589c98cac5ebfcfd7203828227c66ddf70d",
+          "bytes": 6506
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/shader-slang/slang-rhi/commits/main",
+          "http": 200,
+          "sha256": "2b1610c7c52902a60ac29d64cee43943757eda8f1438a52757c4e4b3fd38293d",
+          "bytes": 8783
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0 WITH LLVM-exception",
+        "root_blob_sha256": "b738d98b7725414b534c119ac66126876b8cbd40aa8ae48210db190714b81670",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "shader-slang/slang-rhi",
+      "repository_id": 846627057
+    },
+    {
+      "repository": "shader-slang/slang-torch",
+      "sources": [
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/shader-slang/slang-torch",
+          "reason": "Prior subject-search.json candidate missing from the prior search results"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "7f1ea3a20c0951a48a9fc1f58fb7da19095fd202",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 149,
+        "regular_file_bytes": 33829086,
+        "selected": {
+          "files": 23,
+          "bytes": 50241,
+          "slang_files": 23,
+          "slangh_files": 0,
+          "distinct_git_blobs": 23
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/shader-slang/slang-torch/git/trees/7f1ea3a20c0951a48a9fc1f58fb7da19095fd202?recursive=1",
+          "http": 200,
+          "sha256": "88602af28443902eaee82cf31fc84dbdec3086b492deac2d4e99e9cbcef33d72",
+          "bytes": 48188,
+          "raw_path": "workspace/tmp/slang-subject/tree-4.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/shader-slang/slang-torch/releases/latest",
+          "http": 404,
+          "sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "bytes": 25
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/shader-slang/slang-torch/contents/LICENSE?ref=7f1ea3a20c0951a48a9fc1f58fb7da19095fd202",
+          "http": 200,
+          "response_sha256": "cb4fc25814e8e3ea3cc694e187b541eb1793ef2941415a2ff3eb4da40a44570b",
+          "response_bytes": 3032
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/shader-slang/slang-torch",
+          "http": 200,
+          "sha256": "0068e4b02f7c42e655d7240a3a3510870b9aef40857e9104926e8ea7d18c8f6c",
+          "bytes": 6614
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/shader-slang/slang-torch/commits/main",
+          "http": 200,
+          "sha256": "c1bbba99eccd1241eaea4cceead02dc5974c4c7f1e42eb3e0dfd3cb17b974f30",
+          "bytes": 6538
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0 WITH LLVM-exception",
+        "root_blob_sha256": "b738d98b7725414b534c119ac66126876b8cbd40aa8ae48210db190714b81670",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "shader-slang/slang-torch",
+      "repository_id": 784553841
+    },
+    {
+      "repository": "shader-slang/slangpy",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 8,
+          "stars_at_search": 156
+        },
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/shader-slang/slangpy",
+          "reason": "Prior subject-search.json candidate"
+        }
+      ],
+      "pin": {
+        "kind": "release",
+        "tag": "v0.43.1",
+        "commit": "2f6c4625fdd2b3bd812ca6cd2802cf98bd89b248",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 788,
+        "regular_file_bytes": 8530310,
+        "selected": {
+          "files": 96,
+          "bytes": 388501,
+          "slang_files": 95,
+          "slangh_files": 1,
+          "distinct_git_blobs": 96
+        },
+        "symlinks": 0,
+        "gitlinks": 9
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy/git/trees/2f6c4625fdd2b3bd812ca6cd2802cf98bd89b248?recursive=1",
+          "http": 200,
+          "sha256": "2b57e2f7dc4e37bf13f92630e9eac00457c58a8d7dab092bb3920918a6ad77a8",
+          "bytes": 218135,
+          "raw_path": "workspace/tmp/slang-subject/release-tree-2.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy/releases/latest",
+          "http": 200,
+          "sha256": "e3124adbfa452cf4b5f73449c0720088d55dc00770608d5069c46622ce2f89c2",
+          "bytes": 42910
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy/contents/LICENSE?ref=6b7c581f7b93b7245ebc0f652c0576ead3c1b6ab",
+          "http": 200,
+          "response_sha256": "b38a26ec8f591f1d47919b79ecc91caf333aa55ecf4d591e5ff0dbcc8c7e4523",
+          "response_bytes": 3004
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy",
+          "http": 200,
+          "sha256": "2055ce456adb83fea65044b11ff30281fb14e08a5d20003e8745a8365d0e0c9c",
+          "bytes": 6468
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy/commits/main",
+          "http": 200,
+          "sha256": "3e87201f3f45467a26187a9038ce1a66f948f465c03071eb69d37bb57353016e",
+          "bytes": 11707
+        },
+        "release_commit": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy/commits/v0.43.1",
+          "http": 200,
+          "sha256": "2c91eafb2922c5209849b651216d0fcca4d2ac339a03511425db231c2a03918e",
+          "bytes": 9219
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0 WITH LLVM-exception",
+        "root_blob_sha256": "b738d98b7725414b534c119ac66126876b8cbd40aa8ae48210db190714b81670",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "shader-slang/slangpy",
+      "repository_id": 912798934
+    },
+    {
+      "repository": "shader-slang/slangpy-samples",
+      "sources": [
+        {
+          "source": "named-seed",
+          "primary_source": "https://github.com/shader-slang/slangpy-samples",
+          "reason": "Prior subject-search.json candidate missing from the prior search results"
+        }
+      ],
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "tag": null,
+        "commit": "822c61262a50b7b5ccd5e12f28d70adf7c5cbfd8",
+        "provenance": "same-day prior subject-search.json; pinned tree response SHA-256 reverified locally"
+      },
+      "tree": {
+        "truncated": false,
+        "regular_files": 286,
+        "regular_file_bytes": 5173382,
+        "selected": {
+          "files": 87,
+          "bytes": 466283,
+          "slang_files": 85,
+          "slangh_files": 2,
+          "distinct_git_blobs": 85
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "receipts": {
+        "prior_inventory_sha256": "52c87f26a7eafc2c2dae3a312049bf49c69ca0e6b4dfd5e1a20fd14a559d3396",
+        "tree": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy-samples/git/trees/822c61262a50b7b5ccd5e12f28d70adf7c5cbfd8?recursive=1",
+          "http": 200,
+          "sha256": "845322bb113119c820d2233333acf5eb74d4184f721a5d41c8fa4f139244ae29",
+          "bytes": 89119,
+          "raw_path": "workspace/tmp/slang-subject/tree-3.json"
+        },
+        "release_lookup": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy-samples/releases/latest",
+          "http": 404,
+          "sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "bytes": 25
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy-samples/contents/LICENSE?ref=822c61262a50b7b5ccd5e12f28d70adf7c5cbfd8",
+          "http": 200,
+          "response_sha256": "1544d13ed2036501f7cda5d5579fcb53c3bf1fe6ed89e8b30af2b15f5437c02c",
+          "response_bytes": 1827
+        },
+        "repository_metadata": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy-samples",
+          "http": 200,
+          "sha256": "f6ff155288aa1d69abe81dcae694bcd72e5d2ee2ecdbcac548b50b09a1aa0364",
+          "bytes": 6752
+        },
+        "default_branch_commit": {
+          "url": "https://api.github.com/repos/shader-slang/slangpy-samples/commits/main",
+          "http": 200,
+          "sha256": "cb81cfd5245227e5646f40edaa026291f27e085a7139f7338b892fcb5f5ec061",
+          "bytes": 20611
+        }
+      },
+      "license": {
+        "root_path": "LICENSE",
+        "spdx_expression": "Apache-2.0",
+        "root_blob_sha256": "9210058070f7b4d9ee67c62ac4b0a793fbfe20a597660bbd1727e3784902bfd7",
+        "per_file_terms": "unverified; admission check before measurement"
+      },
+      "language_evidence": "Prior pinned Slang project documentation and tree metadata in subject-search.json; compiler family or named seed provenance.",
+      "all_exclusion_reasons": [],
+      "disposition": "eligible-primary",
+      "full_name": "shader-slang/slangpy-samples",
+      "repository_id": 838988254
+    },
+    {
+      "repository_id": 860597035,
+      "disposition": "zero-population",
+      "sources": [
+        {
+          "source": "named-seed",
+          "primary_source": "GitHub repository id 860597035",
+          "reason": "Prior zero-population candidate"
+        }
+      ],
+      "all_exclusion_reasons": [
+        "zero selected regular .slang/.slangh files"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 164,
+        "regular_file_bytes": 1841680,
+        "selected": {
+          "files": 0,
+          "bytes": 0,
+          "slang_files": 0,
+          "slangh_files": 0,
+          "distinct_git_blobs": 0
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license_gate": {
+        "spdx_expression": "Apache-2.0 WITH LLVM-exception"
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.tree",
+          "sha256": "65cae5089ea6905a040b010dae53642200bc60109232e1d8f43738b4c3dd353f",
+          "bytes": 41778,
+          "http": 200
+        },
+        {
+          "kind": "receipts.release_lookup",
+          "sha256": "d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6",
+          "bytes": 25,
+          "http": 404
+        },
+        {
+          "kind": "receipts.repository_metadata",
+          "sha256": "1705df1875c7f0a6566c8ed8e0584e9b8b6993484a6ad7904e7c913ef1418d2a",
+          "bytes": 6329,
+          "http": 200
+        },
+        {
+          "kind": "receipts.default_branch_commit",
+          "sha256": "33f0ff0975e85ad7d41bc1568cd2a312c6880b1c9188f01ec75b5db8337edf16",
+          "bytes": 42187,
+          "http": 200
+        }
+      ]
+    },
+    {
+      "repository_id": 76163822,
+      "disposition": "license-excluded",
+      "sources": [
+        {
+          "source": "github-language",
+          "page": 1,
+          "rank": 1,
+          "stars_at_search": 976
+        }
+      ],
+      "all_exclusion_reasons": [
+        "license-excluded: pinned root license API returned 404 and repository metadata has no license grant"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 8593,
+        "regular_file_bytes": 154174873,
+        "selected": {
+          "files": 253,
+          "bytes": 6420482,
+          "slang_files": 253,
+          "slangh_files": 0,
+          "distinct_git_blobs": 252
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license_gate": {
+        "spdx_expression": null
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.release",
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130,
+          "http": 404
+        },
+        {
+          "kind": "receipts.commit",
+          "sha256": "ffc92f4bd35b63b5070d3c5f137ddee9dc2f1c94166680a9482370aa7849ef41",
+          "bytes": 482428,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tree",
+          "sha256": "984d28a37781059227a1a2f3316744acddcc58432e71d46b093b7f42067695bf",
+          "bytes": 2493524,
+          "http": 200
+        },
+        {
+          "kind": "receipts.license",
+          "sha256": "6c0109c2ac75f1f264b61da6aff1737f7bc7eac254e6396710ff81a4139f32b1",
+          "bytes": 140,
+          "http": 404
+        }
+      ]
+    },
+    {
+      "repository_id": 371776599,
+      "disposition": "zero-population",
+      "sources": [
+        {
+          "source": "github-name-description",
+          "page": 1,
+          "rank": 4,
+          "stars_at_search": 426
+        }
+      ],
+      "all_exclusion_reasons": [
+        "zero selected regular .slang/.slangh files"
+      ],
+      "population_counts": {
+        "truncated": false,
+        "regular_files": 27,
+        "regular_file_bytes": 45990,
+        "selected": {
+          "files": 0,
+          "bytes": 0,
+          "slang_files": 0,
+          "slangh_files": 0,
+          "distinct_git_blobs": 0
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license_gate": {
+        "spdx_expression": "MIT"
+      },
+      "evidence_receipts": [
+        {
+          "kind": "receipts.release",
+          "sha256": "7368767d2a9b3a8a3a7a4f450cbab93e1a0037f604ef1e165e66d0d20cba2406",
+          "bytes": 2231,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tag_ref",
+          "sha256": "d51ba08bb77469e5e97f386f938db891cd03dd0a338883b259b0b88d83d3f9fa",
+          "bytes": 365,
+          "http": 200
+        },
+        {
+          "kind": "receipts.tree",
+          "sha256": "b8dbb74f3b0c94b5917bc11fee94fef0f3cad6684ce5e3be45b11d83e4a96c86",
+          "bytes": 7863,
+          "http": 200
+        },
+        {
+          "kind": "receipts.license",
+          "sha256": "cf3bb84bbe55c16ebaa75fa5435dc93f2864acf022f10788e885ea51a7f4b030",
+          "bytes": 2636,
+          "http": 200
+        }
+      ]
+    }
+  ],
+  "prospective_roles": {
+    "primary_repositories": [
+      "crossgl/crosstl",
+      "floatymonkey/slang-rs",
+      "google/slang-gaussian-rasterization",
+      "khronosgroup/vulkan-samples",
+      "saschawillems/vulkan",
+      "shader-slang/neural-shading-s25",
+      "shader-slang/slang-rhi",
+      "shader-slang/slang-torch",
+      "shader-slang/slangpy",
+      "shader-slang/slangpy-samples"
+    ],
+    "primary_projects": 10,
+    "primary_files": 665,
+    "primary_bytes": 1780655,
+    "holdout_repository": "nvidiagameworks/falcor",
+    "holdout_files": 461,
+    "holdout_bytes": 2951994,
+    "holdout_vs_primary_blob_intersections": {
+      "crossgl/crosstl": 0,
+      "floatymonkey/slang-rs": 0,
+      "google/slang-gaussian-rasterization": 0,
+      "khronosgroup/vulkan-samples": 0,
+      "saschawillems/vulkan": 0,
+      "shader-slang/neural-shading-s25": 0,
+      "shader-slang/slang-rhi": 0,
+      "shader-slang/slang-torch": 0,
+      "shader-slang/slangpy": 0,
+      "shader-slang/slangpy-samples": 0
+    }
+  },
+  "admission_limits": "Root grants checked from pinned license files. Per-file terms and checkout identity remain pending; no measurement or support level authorized. Unlicensed CS2 tracker is excluded by concrete missing-grant evidence; its Slang dialect was not inferred.",
+  "raw_responses": "workspace/tmp/slang-subject-r2 and reused workspace/tmp/slang-subject, both ignored",
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private."
+}
