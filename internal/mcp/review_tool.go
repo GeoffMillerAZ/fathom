@@ -230,7 +230,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if err := ctx.Err(); err != nil {
 			return nil, navLoadError("review_diff", p.Service, err)
 		}
-		gap := reviewTestGap(ctx, backend, in)
+		gap := reviewTestGap(in, sources.graphErr)
 		payload["test_impact"] = gap.Payload()
 		markReviewLocations(ctx, backend, p.Service, &v, payload, &gap)
 
@@ -242,15 +242,18 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// resolved — plus the daemon's watermark for the service.
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
-		// this tally.
+		// this tally. Every graph section reads the impact dimension's own
+		// graph and snapshot nodes (NP-W3): no second load, so a refresh
+		// landing mid-review cannot make them disagree with the verdict,
+		// and a graph the memo could not serve is named, never retried.
 		if err := ctx.Err(); err != nil {
 			return nil, navLoadError("review_diff", p.Service, err)
 		}
-		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
-		if gerr == nil {
-			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
+		graph, nodes := in.ImpactGraph, in.Nodes
+		if graph != nil {
+			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(graph, nodes, in.ChangedFiles))
 		} else {
-			payload["partial"] = navLoadError("review_diff", p.Service, gerr).Message
+			payload["partial"] = navLoadError("review_diff", p.Service, sources.graphErr).Message
 		}
 		if err := ctx.Err(); err != nil {
 			return nil, navLoadError("review_diff", p.Service, err)
@@ -273,8 +276,8 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		withServiceRefHops(payload, hops, unextracted)
 		// GL-22: the changed files layered by blast radius (leaf, shared
 		// callee, cross-service provider) from the graph and hops above.
-		if gerr == nil {
-			payload["layers"] = layerDiffByBlastRadius(ng.Both, ng.Nodes, in.ChangedFiles, hops)
+		if graph != nil {
+			payload["layers"] = layerDiffByBlastRadius(graph, nodes, in.ChangedFiles, hops)
 			// CX-5 (docs/plans/change-and-compliance.md §2): the change risk
 			// receipt, additive, over the SAME graph/hops/verdict this call
 			// already resolved — review_receipt.go's own doc comment names
@@ -286,7 +289,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			// corpusRoot-gated discipline every other read in this file
 			// already keeps).
 			table := riskreview.RiskTableFor(in.Root)
-			risk := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
+			risk := reviewDiffReceipt(graph, nodes, in, v, hops, table)
 			riskPayload := riskReceiptPayload(risk)
 			for _, hint := range riskPayload["link_hints"].([]*reviewLinkLocation) {
 				if file := citationPath(hint.Citation); file != "" {
@@ -305,7 +308,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			if err := ctx.Err(); err != nil {
 				return nil, navLoadError("review_diff", p.Service, err)
 			}
-			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes,
+			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: nodes,
 				RepositoryURIAt: receipt.ConfiguredRepositoryURI}
 			if rcb, ok := backend.(reviewClaimsBackend); ok {
 				anchorRun.Stored = func(path string) (string, bool) {
@@ -338,21 +341,16 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 // verdict instead of sending the agent back for N test_impact calls.
 // Additive: every existing payload field is unchanged (law 4).
 //
-// The walk runs on the shared syntax+typed graph (RT-74) — the same
-// graph BuildBoth(in.Nodes, in.TypedEdges) would build, once per (service,
-// watermark) instead of once per review.
-func reviewTestGap(ctx context.Context, backend QueryInterface, in review.Input) impact.TestGapResult {
-	snap, err := serviceSnapshot(ctx, backend, in.Service)
-	if err != nil {
-		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+// The walk runs on the impact dimension's own graph and snapshot nodes
+// (in.ImpactGraph, in.Nodes: the shared syntax+typed graph, RT-74), never a
+// second load. When the memo could not serve that graph, test_impact is
+// unchecked and names graphErr (I38): "no symbols indexed" stays the answer
+// for a service with no symbols only.
+func reviewTestGap(in review.Input, graphErr error) impact.TestGapResult {
+	if in.ImpactGraph == nil && len(in.Nodes) > 0 {
+		return impact.TestGapResult{Reason: navLoadNote(in.Service, graphErr), AffectedTests: []impact.TestReach{}, Gap: []impact.SymbolGap{}}
 	}
-	// A typed-edge read failure degrades this review to the syntax graph
-	// and is never cached (GraphForTyped).
-	g, _, _, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
-	if err != nil {
-		return impact.TestGapOn(nil, nil, in.ChangedFiles)
-	}
-	return impact.TestGapOn(g, snap.Nodes, in.ChangedFiles)
+	return impact.TestGapOn(in.ImpactGraph, in.Nodes, in.ChangedFiles)
 }
 
 // reviewVerdictOutcome computes review_diff's gate-shaped result summary
@@ -559,6 +557,10 @@ type reviewCorpus struct {
 	indexCommit            string
 	indexFound, indexKnown bool
 	typedNote              string
+	// graphErr is why the memo could not serve the impact dimension's
+	// graph (Input.ImpactGraph nil): the sections that read that graph
+	// name it instead of loading the graph again in the same call.
+	graphErr error
 }
 
 func (rc *reviewCorpus) indexCurrent(ctx context.Context, backend QueryInterface, service string) bool {
@@ -619,13 +621,14 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
 	loadTyped := typedLoader(backend, service)
-	graph, typed, typedErr, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, loadTyped)
-	if err != nil {
+	graph, typed, typedErr, graphErr := memo.GraphForTyped(ctx, snap, memo.GraphBoth, loadTyped)
+	if graphErr != nil {
 		if ctx.Err() != nil {
 			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, ctx.Err())
 		}
 		// The memo is optional. Its admission or build failure leaves the
-		// ordinary uncached typed-impact path available for this review.
+		// ordinary uncached typed-impact path available for this review;
+		// the graph sections name graphErr (reviewCorpus.graphErr).
 		graph = nil
 		typed, typedErr = backend.TypedEdges(ctx, service)
 	}
@@ -768,6 +771,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	}
 	rc := readReviewCorpus(ctx, backend, service, changedFiles, now)
 	rc.indexScope = snap.Scope
+	rc.graphErr = graphErr
 	rc.indexCommit, rc.indexFound, rc.indexKnown = indexCommit, indexFound, metaErr == nil
 	if typedErr != nil {
 		in.TypedEdges = nil
