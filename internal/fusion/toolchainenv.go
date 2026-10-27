@@ -14,7 +14,10 @@ package fusion
 // `nice -n 10` — and `taskpolicy -b` on darwin — and every process it forks
 // inherits the priority. The shim also pins GOTOOLCHAIN=local (K22,
 // typedenv.go): whatever environment a `go` it fronts starts with, no
-// toolchain a repository names is fetched or run.
+// toolchain a repository names is fetched or run. And it runs offline
+// (ADR-083, internal/goenv): GOPROXY=off, GOSUMDB=off, GOTELEMETRY=off and
+// no -mod=mod in GOFLAGS, unless the user's `[ingest] go_network = true`
+// was set when the shim was written (then GOPROXY and GOSUMDB pass through).
 
 import (
 	"fmt"
@@ -24,6 +27,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/config"
 )
 
 // defaultToolchainProcs is the parallelism ceiling for the typed pass's
@@ -104,9 +109,10 @@ func shellQuote(s string) string {
 }
 
 // writeToolchainShim writes dir/go: a script that runs realGo at background
-// priority with the caps and GOTOOLCHAIN=local (K22), whatever environment
-// it is started with. It returns the shim's path.
-func writeToolchainShim(dir, realGo string) (string, error) {
+// priority with the caps, offline (ADR-083; network true keeps the
+// inherited GOPROXY and GOSUMDB) and with GOTOOLCHAIN=local (K22), whatever
+// environment it is started with. It returns the shim's path.
+func writeToolchainShim(dir, realGo string, network bool) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
@@ -128,8 +134,16 @@ func writeToolchainShim(dir, realGo string) (string, error) {
 			"_fathom_p=; for _fathom_f in ${GOFLAGS:-}; do case $_fathom_f in -p=*) _fathom_p=${_fathom_f#-p=} ;; esac; done\n" +
 			"case \"$_fathom_p\" in ''|0|*[!0-9]*) GOFLAGS=\"${GOFLAGS:+$GOFLAGS }-p=" + c + "\" ;; *) [ \"$_fathom_p\" -gt " + c + " ] && GOFLAGS=\"$GOFLAGS -p=" + c + "\" ;; esac; export GOFLAGS\n"
 	}
+	// ADR-083: an inherited -mod=mod is dropped before the caps read
+	// GOFLAGS; every other flag is kept in order.
+	offline := "_fathom_g=; for _fathom_f in ${GOFLAGS:-}; do case $_fathom_f in -mod=mod|--mod=mod) ;; *) _fathom_g=\"${_fathom_g:+$_fathom_g }$_fathom_f\" ;; esac; done; GOFLAGS=$_fathom_g; export GOFLAGS\n"
+	if !network {
+		offline += "GOPROXY=off; export GOPROXY\nGOSUMDB=off; export GOSUMDB\n"
+	}
+	offline += "GOTELEMETRY=off; export GOTELEMETRY\n"
 	script := "#!/bin/sh\n" +
-		"# fathom background toolchain shim (RT-106): the daemon's go, capped and niced.\n" +
+		"# fathom background toolchain shim (RT-106): the daemon's go, capped, niced and offline (ADR-083).\n" +
+		offline +
 		caps +
 		goToolchainLocal + "; export GOTOOLCHAIN\n" +
 		"exec " + strings.Join(append(prio, shellQuote(realGo)), " ") + " \"$@\"\n"
@@ -148,7 +162,10 @@ func writeToolchainShim(dir, realGo string) (string, error) {
 // into dir and puts dir first on this process's PATH, so every `go` the
 // process execs (go/packages' go list, go env) runs capped and niced. The
 // cleanup restores PATH and removes dir. For a long-lived daemon only — it
-// changes the process environment. No `go` on PATH: nothing to shim.
+// changes the process environment. No `go` on PATH: nothing to shim. The
+// user's `[ingest] go_network` is read once, here: a changed setting
+// reaches the shim at the next daemon start (TypedEdgeEnv reads it per
+// pass).
 func InstallBackgroundToolchain(dir string) (func(), error) {
 	realGo, err := exec.LookPath("go")
 	if err != nil {
@@ -160,7 +177,7 @@ func InstallBackgroundToolchain(dir string) (func(), error) {
 	if filepath.Dir(realGo) == dir {
 		return func() {}, nil // already installed
 	}
-	if _, err := writeToolchainShim(dir, realGo); err != nil {
+	if _, err := writeToolchainShim(dir, realGo, config.UserGoNetwork()); err != nil {
 		return func() {}, fmt.Errorf("toolchain shim: %w", err)
 	}
 	prev := os.Getenv("PATH")

@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
 
 	"github.com/geoffmilleraz/fathom/internal/depgraph"
+	"github.com/geoffmilleraz/fathom/internal/goenv"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
@@ -41,20 +43,26 @@ func BuildIndex(root string) (guardspec.LayerRuleIndex, error) {
 		return guardspec.LayerRuleIndex{}, fmt.Errorf("layerrules: %w", err)
 	}
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedImports | packages.NeedModule,
-		Dir:  abs,
-		// The subject is its own module; a go.work above it (a developer's,
-		// never the subject's) must not redirect the load — same
-		// convention as internal/contextbench/publicloc.LoadGoTruth.
-		Env:   append(os.Environ(), "GOWORK=off"),
+		Mode:  packages.NeedName | packages.NeedImports | packages.NeedModule,
+		Dir:   abs,
+		Env:   loadEnv(),
 		Tests: false,
 	}
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
+		if mod, ok := goenv.MissingModule(err.Error()); ok {
+			return guardspec.LayerRuleIndex{}, fmt.Errorf("layerrules: loading %s: %s is not in the module cache and the load runs go offline (GOPROXY=off, ADR-083): %s: %w", abs, missingName(mod), goenv.Remedy(abs), err)
+		}
 		return guardspec.LayerRuleIndex{}, fmt.Errorf("layerrules: loading %s: %w", abs, err)
 	}
 	if len(pkgs) == 0 {
 		return guardspec.LayerRuleIndex{}, fmt.Errorf("layerrules: loading %s: no packages (is there a go.mod?)", abs)
+	}
+	// I38: a dependency the offline load could not fetch leaves its
+	// importers' edges out; a rule evaluated over that partial graph would
+	// pass for the wrong reason, so the load fails and names it.
+	if missing := missingPackages(pkgs); len(missing) > 0 {
+		return guardspec.LayerRuleIndex{}, fmt.Errorf("layerrules: loading %s: %s not in the module cache and the load runs go offline (GOPROXY=off, ADR-083): %s", abs, strings.Join(missing, ", "), goenv.Remedy(abs))
 	}
 
 	var modulePath string
@@ -83,6 +91,49 @@ func BuildIndex(root string) (guardspec.LayerRuleIndex, error) {
 		}
 	}
 	return guardspec.LayerRuleIndex{PackageEdges: g}, nil
+}
+
+// loadEnv is the go command's environment for BuildIndex: this process's,
+// GOWORK=off (the subject is its own module; a go.work above it, a
+// developer's and never the subject's, must not redirect the load — the
+// convention of internal/contextbench/publicloc.LoadGoTruth), then the
+// offline overrides (ADR-083, goenv.Apply: GOPROXY=off and GOSUMDB=off
+// unless the user's own `[ingest] go_network` says otherwise,
+// GOTELEMETRY=off, no -mod=mod) with GOTOOLCHAIN=local last.
+func loadEnv() []string {
+	return goenv.Apply(append(os.Environ(), "GOWORK=off"))
+}
+
+// missingPackages returns, sorted and deduplicated, the packages among pkgs
+// and their imports whose load error is the go command's offline refusal.
+func missingPackages(pkgs []*packages.Package) []string {
+	found := map[string]bool{}
+	packages.Visit(pkgs, nil, func(p *packages.Package) {
+		for _, e := range p.Errors {
+			if strings.Contains(e.Msg, goenv.LookupRefused) {
+				path := p.PkgPath
+				if path == "" {
+					path = p.ID
+				}
+				found[path] = true
+			}
+		}
+	})
+	out := make([]string, 0, len(found))
+	for p := range found {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// missingName is the module a whole-load refusal names, or a stand-in when
+// it names none.
+func missingName(mod string) string {
+	if mod == "" {
+		return "a required module"
+	}
+	return mod
 }
 
 // trimModule reports pkgPath's directory relative to modulePath ("." for

@@ -231,6 +231,11 @@ package config
 // 	typed: skip_modules: "calibration/**"
 // }
 
+// An [ingest] go_network that is not a bool (ADR-083):
+// badIngest1: #Config & {
+// 	ingest: go_network: "yes"
+// }
+
 // The [decide] consent and kill fields (KS-3): enabled and
 // allow_repo_provider are bools, session_sites names only the session
 // sites, and deny_sites only known sites:

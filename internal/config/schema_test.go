@@ -165,6 +165,10 @@ bad31: #Config & {
 bad32: #Config & {
 	typed: skip_modules: "calibration/**"
 }`},
+		{"[ingest] go_network that is not a bool (ADR-083)", `
+badIngest1: #Config & {
+	ingest: go_network: "yes"
+}`},
 		{"[readouts] mode outside off, observe, lean, rich (RO-15)", `
 bad37: #Config & {
 	readouts: mode: "loud"

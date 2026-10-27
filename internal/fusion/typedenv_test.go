@@ -79,11 +79,20 @@ func TestEnrichTypedEdges_RelativeGOPATH(t *testing.T) {
 // every adopter). The one flag it may add is RT-106's -p, the parallelism
 // cap (how many builds run at once, not what they build), and that cap
 // never RAISES an operator's own -p. An operator's GOFLAGS otherwise passes
-// through flag for flag. (Before RT-106 the guard was "GOFLAGS equals the
-// ambient value"; RT-106 deliberately adds -p=2, so the guard now pins the
-// premise it was written for: no semantic flag, no lost operator flag.)
+// through flag for flag, except an inherited -mod=mod, which ADR-083 drops
+// (it lets go list look up missing imports and rewrite the adopter's go.mod
+// and go.sum). Before ADR-083 this guard pinned -mod=mod surviving; the
+// case stays in the loop and now pins it gone, with -mod=vendor kept.
+// (Before RT-106 the guard was "GOFLAGS equals the ambient value"; RT-106
+// deliberately adds -p=2, so the guard pins the premise it was written for:
+// no semantic flag added, no operator flag lost but -mod=mod.)
+//
+// ADR-083: the module network is closed whatever the operator inherited —
+// GOPROXY=off, GOSUMDB=off, GOTELEMETRY=off, GOTOOLCHAIN=local last.
 func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
 	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "") // the default cap
+	t.Setenv("GOPROXY", "https://proxy.example.test")
+	t.Setenv("GOSUMDB", "sum.example.test")
 	for _, ambientFlags := range []string{"<unset>", "", "-mod=vendor -tags=integration", "-mod=mod -p=1", "-p=8 -trimpath"} {
 		if ambientFlags == "<unset>" {
 			t.Setenv("GOFLAGS", "")
@@ -115,9 +124,18 @@ func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
 					t.Fatalf("GOPATH=%q: %s = %q carries an unexpanded variable — this is the daemon's exact failure", broken, key, v)
 				}
 			}
+			for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local"} {
+				if got[key] != want {
+					t.Fatalf("GOFLAGS %q: %s = %q, want %s (ADR-083: the typed pass never reaches the module network)", ambientFlags, key, got[key], want)
+				}
+			}
+			if env[len(env)-1] != "GOTOOLCHAIN=local" {
+				t.Fatalf("TypedEdgeEnv ends %q, want GOTOOLCHAIN=local last (K22)", env[len(env)-1])
+			}
 			ambient := os.Getenv("GOFLAGS")
 			gotSemantic, gotP := splitParallelism(got["GOFLAGS"])
 			wantSemantic, ambientP := splitParallelism(ambient)
+			wantSemantic = withoutModMod(wantSemantic)
 			if strings.Join(gotSemantic, " ") != strings.Join(wantSemantic, " ") {
 				t.Fatalf("GOFLAGS %q (ambient %q): the loader changed build-semantic flags %q, want exactly the operator's %q",
 					got["GOFLAGS"], ambient, gotSemantic, wantSemantic)
@@ -140,6 +158,17 @@ func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
 
 // splitParallelism splits a GOFLAGS value into its build-semantic flags and
 // its -p (parallelism) flags.
+// withoutModMod is flags less -mod=mod, which TypedEdgeEnv drops (ADR-083).
+func withoutModMod(flags []string) []string {
+	var out []string
+	for _, f := range flags {
+		if f != "-mod=mod" {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 func splitParallelism(flags string) (semantic, p []string) {
 	for _, f := range strings.Fields(flags) {
 		if strings.HasPrefix(f, "-p=") {
@@ -286,5 +315,42 @@ func TestIngestReport_DisclosesTypedFailure(t *testing.T) {
 	}
 	if report.TypedFailReason == "" {
 		t.Error("report.TypedFailReason is empty (I24: a named reason, never a bare count)")
+	}
+}
+
+// TestTypedEdgeEnv_GoNetworkIsTheUsersOptOut (ADR-083): the user's own
+// `[ingest] go_network = true` (~/.fathom/config.toml) passes the inherited
+// GOPROXY and GOSUMDB through; the toolchain pin and the -mod=mod strip
+// stay. A repository cannot set it (internal/config scope.go), so with no
+// user file the pass is offline.
+func TestTypedEdgeEnv_GoNetworkIsTheUsersOptOut(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FATHOM_HOME", home)
+	t.Setenv("GOPROXY", "https://proxy.example.test")
+	t.Setenv("GOSUMDB", "sum.example.test")
+	t.Setenv("GOFLAGS", "-mod=mod")
+	lastOf := func(env []string, key string) string {
+		v := ""
+		for _, kv := range env {
+			if k, val, ok := strings.Cut(kv, "="); ok && k == key {
+				v = val
+			}
+		}
+		return v
+	}
+	if v := lastOf(fusion.TypedEdgeEnv(), "GOPROXY"); v != "off" {
+		t.Fatalf("no user config: GOPROXY = %q, want off", v)
+	}
+	if err := os.WriteFile(home+"/config.toml", []byte("[ingest]\ngo_network = true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := fusion.TypedEdgeEnv()
+	for key, want := range map[string]string{"GOPROXY": "https://proxy.example.test", "GOSUMDB": "sum.example.test", "GOTOOLCHAIN": "local"} {
+		if v := lastOf(env, key); v != want {
+			t.Errorf("go_network = true: %s = %q, want %q", key, v, want)
+		}
+	}
+	if f := lastOf(env, "GOFLAGS"); strings.Contains(f, "-mod=mod") {
+		t.Errorf("go_network = true: GOFLAGS = %q, want -mod=mod still stripped", f)
 	}
 }

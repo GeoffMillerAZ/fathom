@@ -201,6 +201,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.subagent_map_facts` | behaviour | opts in to local exploration-map excerpts in subagent prompts |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
 | `hooks.tests_to_run` | behaviour | the tests-to-run line runs nothing: it asks the daemon which tests reach the edited file and prints the go test recipe as text (edithook_teststorun.go) |
+| `ingest.go_network` | user-only | reopens the module network (GOPROXY, GOSUMDB) for the go commands fathom runs on its own (ADR-083, internal/goenv) |
 | `learning.promote_corroborations` | behaviour | a threshold (the learned-rule promotion bar) |
 | `learning.promote_min_sessions` | behaviour | a threshold (the learned-rule promotion bar) |
 | `learning.promote_window_days` | behaviour | a threshold (the learned-rule promotion window) |
@@ -1661,6 +1662,33 @@ skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
   (`fathom config` names it). It is refused in the user layer
   (`~/.fathom/config.toml`): a load error names the file, since the pass
   reads only the corpus's own file.
+
+## The offline go environment: `[ingest]`
+
+Every go command fathom runs on its own (the typed pass at ingest and in the
+daemon, the daemon's toolchain shim, ask's module loads, the layer-rules
+import graph) runs offline (ADR-083): `GOPROXY=off`, `GOSUMDB=off`,
+`GOTELEMETRY=off` and `GOTOOLCHAIN=local`, and an inherited `-mod=mod` is
+dropped from `GOFLAGS` so `go list` never rewrites the repository's `go.mod`
+or `go.sum` (`-mod=vendor`, `-mod=readonly` and every other flag are kept).
+A dependency missing from the module cache fails the typed pass with a named
+reason: the module, and `run go mod download in <module dir>`. The next
+ingest retries.
+
+```toml
+# ~/.fathom/config.toml (user scope only)
+[ingest]
+go_network = true
+```
+
+- `go_network` (optional, default false): true passes the inherited
+  `GOPROXY` and `GOSUMDB` through, so the typed pass downloads a missing
+  module itself. The toolchain pin and the `-mod=mod` strip stay.
+- It is read only from `~/.fathom/config.toml`: a repository's copy is
+  dropped and named, since a cloned repository must not reopen the network.
+  A user file that does not load reads as false.
+- `GOTELEMETRY=off` is a declaration: the go command takes its telemetry
+  mode from `go telemetry`, not the environment.
 
 ## Receipts: `[receipts]`
 

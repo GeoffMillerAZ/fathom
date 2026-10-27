@@ -66,7 +66,7 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 		t.Fatal(err)
 	}
 	shimDir := filepath.Join(dir, "shim")
-	shim, err := writeToolchainShim(shimDir, fake)
+	shim, err := writeToolchainShim(shimDir, fake, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,9 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 		t.Fatalf("shim is %s; it must be named go so PATH lookups of go find it", shim)
 	}
 	cmd := exec.Command(shim, "list", "-json", "./...")
-	cmd.Env = append(os.Environ(), "GOMAXPROCS=16", "GOFLAGS=-mod=mod")
+	// ADR-083: the shim drops an inherited -mod=mod and keeps every other
+	// flag (this case pinned -mod=mod kept before ADR-083).
+	cmd.Env = append(os.Environ(), "GOMAXPROCS=16", "GOFLAGS=-mod=mod -trimpath")
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("shim: %v", err)
@@ -87,8 +89,8 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 	if err != nil || nice < 10 {
 		t.Fatalf("toolchain child niceness %q; want ≥ 10", parts[0])
 	}
-	if parts[1] != "2" || !strings.Contains(parts[2], "-p=2") || !strings.Contains(parts[2], "-mod=mod") {
-		t.Fatalf("toolchain child GOMAXPROCS=%q GOFLAGS=%q; want 2 and -p=2 (inherited flags kept)", parts[1], parts[2])
+	if parts[1] != "2" || !strings.Contains(parts[2], "-p=2") || !strings.Contains(parts[2], "-trimpath") || strings.Contains(parts[2], "-mod=mod") {
+		t.Fatalf("toolchain child GOMAXPROCS=%q GOFLAGS=%q; want 2 and -p=2 (inherited flags kept but -mod=mod, ADR-083)", parts[1], parts[2])
 	}
 	if parts[3] != "list -json ./..." {
 		t.Fatalf("arguments reached the real toolchain as %q", parts[3])
@@ -171,7 +173,7 @@ func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 	run := func(knob string, env ...string) string {
 		t.Helper()
 		t.Setenv(toolchainProcsEnv, knob)
-		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake)
+		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,9 +193,14 @@ func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 		want string
 	}{
 		{"", []string{"GOMAXPROCS=1", "GOFLAGS=-p=1"}, "1|-p=1"},
-		{"", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod -p=8"}, "2|-mod=mod -p=8 -p=2"},
+		// ADR-083: these two cases pinned an inherited -mod=mod surviving
+		// the shim; -mod=vendor now shows the kept flags, and -mod=mod is
+		// dropped with or without the caps.
+		{"", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=vendor -p=8"}, "2|-mod=vendor -p=8 -p=2"},
+		{"", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod -p=8"}, "2|-p=8 -p=2"},
 		{"", nil, "2|-p=2"},
-		{"off", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod"}, "16|-mod=mod"},
+		{"off", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=vendor"}, "16|-mod=vendor"},
+		{"off", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod"}, "16|"},
 	} {
 		if got := run(c.knob, c.env...); got != c.want {
 			t.Errorf("shim knob %q env %q: child saw %q, want %q", c.knob, c.env, got, c.want)
@@ -215,7 +222,7 @@ func TestToolchainShimRunsLocalToolchain(t *testing.T) {
 	}
 	for _, knob := range []string{"", "off"} {
 		t.Setenv(toolchainProcsEnv, knob)
-		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake)
+		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -233,5 +240,44 @@ func TestToolchainShimRunsLocalToolchain(t *testing.T) {
 	}
 	if v, _ := envValue(TypedEdgeEnv(), "GOTOOLCHAIN"); v != "local" {
 		t.Fatalf("TypedEdgeEnv GOTOOLCHAIN = %q, want local", v)
+	}
+}
+
+// TestToolchainShimRunsOffline (ADR-083): whatever environment a `go` the
+// shim fronts starts with, the toolchain child sees GOPROXY=off,
+// GOSUMDB=off and GOTELEMETRY=off, and no -mod=mod. A shim written under the
+// user's go_network = true leaves the inherited proxy and checksum database
+// alone and still strips -mod=mod.
+func TestToolchainShimRunsOffline(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "realgo")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s|%s|%s|%s|%s\\n' \"$GOPROXY\" \"$GOSUMDB\" \"$GOTELEMETRY\" \"$GOTOOLCHAIN\" \"$GOFLAGS\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(toolchainProcsEnv, "off")
+	inherited := []string{"GOPROXY=https://proxy.example.test", "GOSUMDB=sum.example.test", "GOTELEMETRY=on", "GOTOOLCHAIN=auto", "GOFLAGS=-mod=mod -tags=x"}
+	for _, c := range []struct {
+		network bool
+		want    string
+	}{
+		{false, "off|off|off|local|-tags=x"},
+		{true, "https://proxy.example.test|sum.example.test|off|local|-tags=x"},
+	} {
+		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+strconv.FormatBool(c.network)), fake, c.network)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(shim)
+		cmd.Env = append(os.Environ(), inherited...)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("shim: %v", err)
+		}
+		if got := strings.TrimSpace(string(out)); got != c.want {
+			t.Errorf("go_network=%v: the toolchain child saw %q, want %q", c.network, got, c.want)
+		}
 	}
 }
