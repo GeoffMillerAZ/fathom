@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -161,5 +162,50 @@ func TestSymbolContextServesWorkloadFactsWithCoverage(t *testing.T) {
 		if r[len(r)-1] != ']' {
 			t.Errorf("anchor after an edit names no citation status: %s", r)
 		}
+	}
+}
+
+// TestSymbolContextBudgetsEntityFacts (WAE-5, review F2): an entity with more
+// facts than a quarter of the character budget is served the sorted prefix
+// that fits, `rows_elided` inside `facts` counts the rest, and the response's
+// one elision line carries that count.
+func TestSymbolContextBudgetsEntityFacts(t *testing.T) {
+	const labels = 200
+	var b strings.Builder
+	b.WriteString("groups:\n  - name: wide\n    rules:\n      - alert: Wide\n        expr: vector(1)\n        labels:\n")
+	for i := 0; i < labels; i++ {
+		fmt.Fprintf(&b, "          label_%03d: value-%03d\n", i, i)
+	}
+	root := t.TempDir()
+	writeFixtureFile(t, filepath.Join(root, "monitoring/wide.rules.yml"), b.String())
+	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "wide.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	c := client.New(connector.NewLocalConnector(), sq)
+	t.Cleanup(func() { _ = c.Close() })
+	if _, err := c.Ingest(context.Background(), client.ServiceRef{ID: "wide", Path: root}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	res := callTool(t, mcp.NewServer(c), "symbol_context", map[string]any{"service": "wide", "symbol": "Wide", "snippet": false})
+	f, ok := res["facts"].(map[string]any)
+	if !ok {
+		t.Fatalf("no facts in %v", res)
+	}
+	rows := f["rows"].([]any)
+	if len(rows) == 0 || len(rows) >= labels {
+		t.Fatalf("served %d of %d rows, want a nonempty truncated prefix", len(rows), labels)
+	}
+	if first := rows[0].(map[string]any)["key"]; first != "labels.label_000" {
+		t.Errorf("first row key = %v, want the sorted prefix to start at labels.label_000", first)
+	}
+	elided, _ := f["rows_elided"].(float64)
+	if int(elided) != labels-len(rows) {
+		t.Errorf("rows_elided = %v, want %d", f["rows_elided"], labels-len(rows))
+	}
+	line, _ := res["elision"].(string)
+	if !strings.Contains(line, fmt.Sprintf("elided: %d more", labels-len(rows))) {
+		t.Errorf("elision = %q, want it to carry the %d elided fact rows", line, labels-len(rows))
 	}
 }

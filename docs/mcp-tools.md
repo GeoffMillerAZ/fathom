@@ -35,7 +35,9 @@ Prometheus rule or Alertmanager route its stored `EntityFact` rows, under `facts
 `rows` sorted by line then key, each with `key`, `value`, `kind` and an `anchor` (path, line,
 and the file's `citation_status` when not clean), and `coverage` (`state` `complete`, or
 `incomplete` once the file differs from the index; `extractor`, `tier`, `read_set`); omitted
-for an entity with no stored fact. Fact receipts remain unbuilt. A missing `#readinessProbe` symbol is unknown, never
+for an entity with no stored fact. `rows` keep a quarter of the 16000-char budget (RC-19):
+past it, `rows_elided` counts the rows cut, and the count joins the response's one `elision` line.
+Fact receipts remain unbuilt. A missing `#readinessProbe` symbol is unknown, never
 absent; documents that fail decoding, including Helm templates, are silently
 skipped by the Kubernetes extractor. It adds no MCP tool
 or readiness verdict.

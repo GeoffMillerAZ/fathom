@@ -22,9 +22,11 @@ import (
 // K8sWorkload carries no end line and matches by name), sorted by line
 // then key, and the coverage {state, extractor, tier, read_set}. The state is complete while the
 // file's citation is clean and incomplete once its bytes differ from the
-// index (the citation status bindCitation settles at call end). ok is false
-// when def has no stored fact: the key is omitted, never faked.
-func entityFactsSection(ctx context.Context, backend QueryInterface, service string, def core.SymbolNode, nodes []core.SymbolNode) (map[string]any, bool) {
+// index (the citation status bindCitation settles at call end). The rows
+// keep a quarter of the character budget; elided counts the rest, also
+// named `rows_elided` in the value. ok is false when def has no stored
+// fact: the key is omitted, never faked.
+func entityFactsSection(ctx context.Context, backend QueryInterface, service string, def core.SymbolNode, nodes []core.SymbolNode) (map[string]any, int, bool) {
 	kind := core.KindEntityFact
 	if def.Kind == core.KindK8sWorkload {
 		kind = core.KindK8sFact
@@ -42,7 +44,7 @@ func entityFactsSection(ctx context.Context, backend QueryInterface, service str
 		facts = append(facts, n)
 	}
 	if def.Name == "" || def.FilePath == "" || len(facts) == 0 {
-		return nil, false
+		return nil, 0, false
 	}
 	sort.SliceStable(facts, func(i, j int) bool {
 		if facts[i].Line != facts[j].Line {
@@ -62,6 +64,10 @@ func entityFactsSection(ctx context.Context, backend QueryInterface, service str
 			"anchor": anchor,
 		})
 	}
+	// RC-19: the rows grow with the entity's source, so they keep a
+	// quarter of the budget like referenced_by and references.
+	rows, elided := fitToolBudget(rows, defaultCharBudget/4)
+	anchors = anchors[:len(rows)]
 	tier := def.Tier
 	if tier == "" {
 		tier = core.TierVerified
@@ -85,5 +91,9 @@ func entityFactsSection(ctx context.Context, backend QueryInterface, service str
 			}
 		}
 	})
-	return map[string]any{"rows": rows, "coverage": coverage}, true
+	section := map[string]any{"rows": rows, "coverage": coverage}
+	if elided > 0 {
+		section["rows_elided"] = elided
+	}
+	return section, elided, true
 }

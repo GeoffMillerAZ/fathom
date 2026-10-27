@@ -260,7 +260,8 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		if len(refs) > 0 {
 			result["references"] = stringsToAny(refs)
 		}
-		if line := elisionLine(callersElided+calleesElided+refByElided+refsElided, "find_callers (depth) for every caller"); line != "" {
+		graphElided := callersElided + calleesElided + refByElided + refsElided
+		if line := elisionLine(graphElided, "find_callers (depth) for every caller"); line != "" {
 			result["elision"] = line
 		}
 
@@ -356,8 +357,16 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 
 		// Facts (WAE-5): a dialect entity's stored EntityFact rows, or a
 		// Kubernetes workload's K8sFact rows, anchored, with coverage.
-		if facts, ok := entityFactsSection(ctx, backend, p.Service, sctx.Def, nodes); ok {
+		// Elided fact rows join the one elision line (RC-19).
+		if facts, factsElided, ok := entityFactsSection(ctx, backend, p.Service, sctx.Def, nodes); ok {
 			result["facts"] = facts
+			if factsElided > 0 {
+				refine := "read_source on the definition's file for every fact"
+				if graphElided > 0 {
+					refine = "find_callers (depth) for every caller, " + refine
+				}
+				result["elision"] = elisionLine(graphElided+factsElided, refine)
+			}
 		}
 
 		// Cross-service callers/callees (P1-2, closing O12(a)): g/sctx above
