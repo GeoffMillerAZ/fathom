@@ -43,13 +43,13 @@ OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/a
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
 mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
-fathom version    # fathom v0.23.0 @ <commit>
+fathom version    # fathom v0.24.0 @ <commit>
 ```
 
 The binaries are **not signed or notarized**. A file downloaded through a macOS browser is
 quarantined; clear it with `xattr -d com.apple.quarantine fathom`. (`curl` does not set the flag.)
 
-Each archive and `checksums.txt` carries a build-provenance attestation, starting with the first release after v0.23.0. Verify a downloaded archive against this repository's release workflow:
+Each archive and `checksums.txt` carries a build-provenance attestation, starting with v0.24.0. Verify a downloaded archive against this repository's release workflow:
 
 ```sh
 gh attestation verify "fathom_${V}_${OS}_${ARCH}.tar.gz" --repo GeoffMillerAZ/fathom \
@@ -508,7 +508,7 @@ open.
   container of the VM's shape, and the setup indexes only the fathom
   repository itself.
 - **The prebuilt binaries are not code-signed or notarized**; each archive carries a
-  build-provenance attestation (releases after v0.23.0). See
+  build-provenance attestation (v0.24.0 and later). See
   [Install](#1-download-a-release-archive) for the quarantine flag and the verify command.
 - **Go typed edges need the repository's modules in your module cache and a local Go at least
   its `go` line**: run `go mod download` before ingest, or set `[ingest] go_network = true` in

@@ -1,2 +1,0 @@
-### Added
-- Record a preregistered Slang triage search with all 466 candidate dispositions. Keep non-subject identities numeric, disclose the incomplete shader search and Falcor lineage, and require separate primary and holdout gates. Preserve preregistration hashes and critic attestations across the privacy squash. Implementation remains gated on the owner's lane-count decision; no Slang level is claimed.
