@@ -578,3 +578,72 @@ func foreignModulesLine(serviceID string, skipped []string, loads []moduleLoad) 
 	parts = append(parts, "skip a module with "+skipModulesKnob)
 	return fmt.Sprintf("fusion: typed-edge pass %q: %s\n", serviceID, strings.Join(parts, "; "))
 }
+
+// unloadedGoDirs names, by reason, the input of the typed pass that no
+// module load covers (EW-82, O1506): each nested module not loaded, by its
+// go.mod and why (foreign, as typedModulesSkipping returned it), and each
+// directory of an allowed Go file that typedModulesSkipping dropped — under
+// a testdata, vendor, "_" or "." segment ("outside ./...", which Go's own
+// tool never enters), or, with no root go.mod, governed by no go.mod at all
+// ("no go.mod", the root directory included). Directories are named, not
+// files, and the Go files need not exist on disk: only the go.mod files
+// are looked up. Sorted by reason, each naming its first five in order.
+func unloadedGoDirs(repoPath string, allowed map[string]bool, foreign []goModule) []TypedSkip {
+	var tally typedSkipTally
+	for _, m := range foreign {
+		tally.add(m.skip, m.goModFile())
+	}
+	hasRoot := hasGoModule(repoPath)
+	hasMod := map[string]bool{} // repo-relative dir -> holds a go.mod
+	modAt := func(dir string) bool {
+		v, ok := hasMod[dir]
+		if !ok {
+			_, err := os.Stat(filepath.Join(repoPath, filepath.FromSlash(dir), "go.mod"))
+			v = err == nil
+			hasMod[dir] = v
+		}
+		return v
+	}
+	dirs := map[string]string{} // directory -> why it is not loaded
+	for rel, ok := range allowed {
+		if !ok || !strings.HasSuffix(rel, ".go") {
+			continue
+		}
+		dir := path.Dir(rel)
+		if _, done := dirs[dir]; done {
+			continue
+		}
+		var segs []string
+		if dir != "." {
+			segs = strings.Split(dir, "/")
+		}
+		outside := false
+		for _, sg := range segs {
+			if excludedFromPattern(sg) {
+				outside = true
+				break
+			}
+		}
+		if outside {
+			dirs[dir] = typedSkipOutside
+			continue
+		}
+		if hasRoot {
+			continue
+		}
+		governed := false
+		for i := len(segs); i > 0; i-- {
+			if modAt(strings.Join(segs[:i], "/")) {
+				governed = true
+				break
+			}
+		}
+		if !governed {
+			dirs[dir] = typedSkipNoGoMod
+		}
+	}
+	for dir, why := range dirs {
+		tally.add(why, dir) // skips sorts: map order never reaches the result
+	}
+	return tally.skips()
+}

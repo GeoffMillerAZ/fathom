@@ -282,7 +282,15 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	// A root go.mod, or a nested module governing a discovered file (EW-59:
 	// a repository whose only modules are nested ones has typed edges too).
 	if !hasTypedGoModule(svc.Path, allowed) {
-		return TypedEdgeReport{}, nil
+		// EW-82: nothing to load, but the discovered Go directories are
+		// still named — here, because the deferred lines below are not set
+		// up yet. No status and no pass state: a status is persisted.
+		_, foreign := typedModulesSkipping(svc.Path, allowed, typedSkipModules(svc.Path))
+		rep := TypedEdgeReport{NotLoaded: unloadedGoDirs(svc.Path, allowed, foreign)}
+		if line := typedSkipsLine(svc.ID, nil, rep.NotLoaded); line != "" {
+			p.diagWarn("%s", line)
+		}
+		return rep, nil
 	}
 	// EW-68: the state row names the skip_modules set the last pass ran
 	// under; a changed set reads as no completed pass.
@@ -592,6 +600,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	mods, foreign := typedModulesSkipping(repoPath, allowed, report.SkipModules)
 	run.mods = mods
 	report.ForeignModules = skippedModuleNames(foreign)
+	report.NotLoaded = unloadedGoDirs(repoPath, allowed, foreign)
 	env := TypedEdgeEnv()
 	nestedEnv := nestedModuleEnv(env) // O812: one compile at a time for a nested module's graph
 
