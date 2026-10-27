@@ -177,8 +177,12 @@ func loadAuditCandidate(c config) (*auditCandidate, error) {
 	if err != nil {
 		return nil, err
 	}
+	builder := "calibration/oracles/scip-clang/build-willbooster.py"
+	if lock.Module.SHA256 == "fde7035227a488422e95cc1a408fecbbc5b3440dceebf109e42d483d31270ed2" || lock.Module.SHA256 == "613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df" {
+		builder = "calibration/oracles/scip-clang/build-cpp-candidates.py"
+	}
 	for _, source := range []struct{ rel, want string }{
-		{"calibration/oracles/scip-clang/build-willbooster.py", lock.BuilderSHA256},
+		{builder, lock.BuilderSHA256},
 		{"internal/extractor/tsengine/grammars/budget.c", lock.BudgetSHA256},
 	} {
 		b, err := os.ReadFile(filepath.Join(root, source.rel))
@@ -190,12 +194,10 @@ func loadAuditCandidate(c config) (*auditCandidate, error) {
 			return nil, errors.New("audit builder or budget source mismatch")
 		}
 	}
-	if lock.Schema != "fathom-cpp-external-audit-v1" || lock.Module.Blob != "cpp" || lock.Module.EntryPoint != "tree_sitter_cpp" || lock.Module.ABI != 0x57420006 || lock.Module.Bytes != auditModuleBytes || lock.Module.SHA256 != auditModuleSHA256 ||
-		!validAuditSource(lock.Grammar, "willbooster-tree-sitter-cpp", "6.0.2", auditGrammarArchive, auditGrammarLicence, 1365727) ||
-		!validAuditSource(lock.Runtime, "willbooster-tree-sitter", "7.0.5", auditRuntimeArchive, auditRuntimeLicence, 246632) ||
-		!hex64(lock.BuilderSHA256) || !hex64(lock.BudgetSHA256) || lock.Toolchain.ZigSHA256 != auditZigSHA256 || lock.Toolchain.WasmOptSHA256 != auditWasmOptSHA256 || lock.Toolchain.ZigVersion != "0.16.0" || lock.Toolchain.WasmOptVersion != "129" {
+	if !knownAuditMetadata(lock) {
 		return nil, errors.New("audit lock metadata refused")
 	}
+
 	raw, err := auditRead(c.CandidateModule, auditModuleCap)
 	if err != nil {
 		return nil, err
@@ -205,6 +207,27 @@ func loadAuditCandidate(c config) (*auditCandidate, error) {
 		return nil, errors.New("audit module identity mismatch")
 	}
 	return &auditCandidate{Raw: raw, Spec: tsengine.GrammarAuditSpec{Blob: "cpp", EntryPoint: "tree_sitter_cpp", SHA256: lock.Module.SHA256, Bytes: lock.Module.Bytes, ABI: lock.Module.ABI, Licence: "MIT"}, ModuleSHA256: lock.Module.SHA256, GrammarVersion: lock.Grammar.Version, RuntimeVersion: lock.Runtime.Version, GrammarArchiveSHA256: lock.Grammar.ArchiveSHA256, RuntimeArchiveSHA256: lock.Runtime.ArchiveSHA256}, nil
+}
+
+func knownAuditMetadata(lock auditLock) bool {
+	if lock.Schema != "fathom-cpp-external-audit-v1" || lock.Module.Blob != "cpp" || lock.Module.EntryPoint != "tree_sitter_cpp" || !hex64(lock.BuilderSHA256) || !hex64(lock.BudgetSHA256) || lock.Toolchain.ZigSHA256 != auditZigSHA256 || lock.Toolchain.WasmOptSHA256 != auditWasmOptSHA256 || lock.Toolchain.ZigVersion != "0.16.0" || lock.Toolchain.WasmOptVersion != "129" {
+		return false
+	}
+	if lock.Module.SHA256 == auditModuleSHA256 {
+		return lock.Module.ABI == 0x57420006 && lock.Module.Bytes == auditModuleBytes &&
+			validAuditSource(lock.Grammar, "willbooster-tree-sitter-cpp", "6.0.2", auditGrammarArchive, auditGrammarLicence, 1365727) &&
+			validAuditSource(lock.Runtime, "willbooster-tree-sitter", "7.0.5", auditRuntimeArchive, auditRuntimeLicence, 246632)
+	}
+	if lock.Module.ABI != 15 || !validAuditSource(lock.Runtime, "tree-sitter/tree-sitter", "0.26.11", "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971", "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", 920828) {
+		return false
+	}
+	switch lock.Module.SHA256 {
+	case "fde7035227a488422e95cc1a408fecbbc5b3440dceebf109e42d483d31270ed2":
+		return lock.Module.Bytes == 2790800 && validAuditSource(lock.Grammar, "tree-sitter/tree-sitter-cpp", "c009222808634c1014f82438d4883753516a2c24", "6c6efaf024f5c02fee0403e4e2373346eeadc40828587bcfad9351df2f0a7986", "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1", 1740811)
+	case "613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df":
+		return lock.Module.Bytes == 3975018 && validAuditSource(lock.Grammar, "taku25/tree-sitter-unreal-cpp", "920e9810cc64a47fa05cfcf30c7caecb85b5f2c3", "285ad7c2969a03254ed7a77068e0effca26cb8f014bc5b9d300bd4415ec0b17b", "ef02f1077281d63262946e50ec461ba72efda41e51084c887379b59397b96a6d", 2628614)
+	}
+	return false
 }
 
 func validAuditSource(s auditSource, crate, version, archive, licence string, archiveBytes int) bool {

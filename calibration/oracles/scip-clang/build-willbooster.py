@@ -145,6 +145,9 @@ def build(args):
     assertion = work / "abi_assert.c"
     assertion.write_text("""#include <tree_sitter/api.h>\n_Static_assert(sizeof(TSNode) == 24, \"TSNode\");\n_Static_assert(sizeof(TSQueryMatch) == 12, \"TSQueryMatch\");\n_Static_assert(sizeof(TSQueryCapture) == 28, \"TSQueryCapture\");\n#ifdef TREE_SITTER_LANGUAGE_VERSION\n_Static_assert(TREE_SITTER_LANGUAGE_VERSION == 0x57420006, \"fork ABI\");\n#endif\n""")
     raw = work / "cpp.wasm"
+    env = os.environ.copy()
+    env["ZIG_GLOBAL_CACHE_DIR"] = str(work / "zig-global-cache")
+    env["ZIG_LOCAL_CACHE_DIR"] = str(work / "zig-local-cache")
     flags = [f"-Wl,--export={name}" for name in EXPORTS]
     argv = [zig, "cc", "--target=wasm32-wasi-musl", "-mexec-model=reactor",
             "-I", str(runtime / "include"), "-I", str(runtime / "src"),
@@ -152,11 +155,12 @@ def build(args):
             str(grammar / "src/parser.c"), str(grammar / "src/scanner.c"), str(assertion),
             "-o", str(raw), "-Oz", "-Werror=incompatible-pointer-types",
             "-Wl,--no-entry", "-Wl,--strip-debug", *flags]
-    audit.run(argv, ROOT, work / "zig.stdout", work / "zig.stderr", 900, 1 << 20)
+    audit.run(argv, work, work / "zig.stdout", work / "zig.stderr", 900, 1 << 20, env=env)
     optimized = work / "cpp.opt.wasm"
     audit.run([wasm_opt, "-Oz", str(raw), "-o", str(optimized), "--enable-bulk-memory"],
-              ROOT, work / "opt.stdout", work / "opt.stderr", 600, 1 << 20)
-    data = optimized.read_bytes()
+              work, work / "opt.stdout", work / "opt.stderr", 600, 1 << 20, env=env)
+    with optimized.open("rb") as stream:
+        data = stream.read((32 << 20) + 1)
     if len(data) != MODULE_BYTES or sha(data) != MODULE_SHA256:
         raise audit.Refusal("measured WASM module identity mismatch")
     (out / "cpp.wasm").write_bytes(data)

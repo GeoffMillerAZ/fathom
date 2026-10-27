@@ -2,12 +2,15 @@
 """Publish bounded, identity-checked C++ audit numbers without source content."""
 
 import argparse
+import copy
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import stat
+import subprocess
 import sys
 import tempfile
 
@@ -43,6 +46,44 @@ NATIVE_FILES = ("calls.json", "preproc.json", "preproc.ranges.json")
 SYNTAX_FIELDS = ("error_containing", "missing_containing", "both", "error_only",
                  "missing_only", "union", "faults")
 MAX_TENANCY = 100000
+DRIVER_PATH = "calibration/oracles/scip-clang/cpp-audit.py"
+
+
+def _git(repo, *args):
+    try:
+        result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
+                                timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise Refusal("git identity check unavailable") from exc
+    if result.returncode:
+        raise Refusal("git identity check failed")
+    return result.stdout
+
+
+def _require_clean_repo():
+    repo = Path(__file__).resolve().parents[3]
+    if _git(repo, "status", "--porcelain", "--untracked-files=all"):
+        raise Refusal("nonignored fathom tree changed")
+
+
+def _historical_driver_sha256():
+    repo = Path(__file__).resolve().parents[3]
+    return hashlib.sha256(_git(repo, "show", f"{BASELINE}:{DRIVER_PATH}")).hexdigest()
+
+
+def _current_revision():
+    repo = Path(__file__).resolve().parents[3]
+    return _git(repo, "rev-parse", "HEAD").decode("ascii").strip()
+
+
+def _bounded_bytes(path, cap):
+    if cap < 0:
+        raise Refusal("invalid input cap")
+    with path.open("rb") as stream:
+        data = stream.read(cap + 1)
+    if len(data) > cap:
+        raise Refusal("input absent or over cap")
+    return data
 
 def _integer(value):
     if type(value) is not int or value < 0:
@@ -147,11 +188,11 @@ def _safe_file(path, root, cap, budget, snapshots):
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode) or info.st_size > cap or info.st_size > budget[0]:
             raise Refusal("input absent or over cap")
-        data = path.read_bytes()
+        data = _bounded_bytes(path, min(cap, budget[0]))
         if len(data) != info.st_size:
             raise Refusal("input changed during read")
         digest = hashlib.sha256(data).hexdigest()
-        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        if hashlib.sha256(_bounded_bytes(path, min(cap, budget[0]))).hexdigest() != digest:
             raise Refusal("input changed during read")
     except OSError as exc:
         raise Refusal("input unreadable") from exc
@@ -202,6 +243,96 @@ def _same_grading(a, b):
                 raise Refusal("version graded tenancy changed")
 
 
+def _validate_pooled(reading):
+    subjects = reading.get("subjects")
+    metrics = reading.get("metrics")
+    tiers = reading.get("metric_tiers")
+    aggregate = reading.get("counts")
+    if not isinstance(subjects, list) or not isinstance(metrics, dict) or \
+            not isinstance(tiers, dict) or not isinstance(aggregate, dict):
+        raise Refusal("reading pooled metrics absent")
+    subject_counts = [subject.get("counts") for subject in subjects]
+    if any(not isinstance(counts, dict) for counts in subject_counts):
+        raise Refusal("subject counts absent")
+    keys = set().union(*(counts.keys() for counts in subject_counts))
+    if set(aggregate) != keys or any(
+            _integer(aggregate[key]) != sum(_integer(counts.get(key, 0))
+                                            for counts in subject_counts)
+            for key in keys):
+        raise Refusal("reading aggregate count mismatch")
+    rows = [metric_rows(subject) for subject in subjects]
+    for name in METRICS:
+        n = sum(row[name]["numerator"] for row in rows)
+        d = sum(row[name]["denominator"] for row in rows)
+        value = math.floor(n / d * 10000 + 0.5) / 10000 if d else None
+        if metrics.get(name) != value or tiers.get(name) != METRICS[name][2]:
+            raise Refusal("reading pooled metric or tier mismatch")
+
+
+def _timing_measurement(reading):
+    value = copy.deepcopy(reading)
+    value.pop("grade", None)
+    value.pop("level_met", None)
+    value["notes"] = sorted(note for note in value.get("notes", [])
+                            if not note.startswith("throughput (design 1.9 T1, T2)"))
+    timing_keys = ("throughput_mb_s", "wall_throughput_mb_s", "max_file_ms")
+    tenancy = value.get("tenancy", {})
+    for key in timing_keys:
+        tenancy.pop(key, None)
+    if not tenancy:
+        value.pop("tenancy", None)
+    for subject in value.get("subjects", []):
+        tenancy = subject.get("tenancy", {})
+        for key in ("extract_ms", "extract_cpu_ms", "max_file_ms"):
+            tenancy.pop(key, None)
+        if not tenancy:
+            subject.pop("tenancy", None)
+    return value
+
+
+def _timing_row(original, fresh, log, old_hash, new_hash, current_revision, binary_hash):
+    if _timing_measurement(original) != _timing_measurement(fresh):
+        raise Refusal("retime changed measured reading")
+    old_tenancy = original.get("tenancy", {})
+    new_tenancy = fresh.get("tenancy", {})
+    old_floor = (old_tenancy.get("throughput_mb_s", 0) >= 1,
+                 old_tenancy.get("max_file_ms", 0) <= 2000)
+    new_floor = (new_tenancy.get("throughput_mb_s", 0) >= 1,
+                 new_tenancy.get("max_file_ms", 0) <= 2000)
+    if old_floor == new_floor and (original.get("grade") != fresh.get("grade") or
+                                   original.get("level_met") != fresh.get("level_met")):
+        raise Refusal("retime changed grade without timing floor change")
+    if log.get("schema") != "fathom-lang-retime-load-v1" or \
+            log.get("reading_before_sha256") != old_hash or \
+            log.get("reading_after_sha256") != new_hash or \
+            log.get("os") != "darwin" or log.get("arch") != "arm64" or \
+            log.get("product_revision") != current_revision or \
+            log.get("product_binary_sha256") != binary_hash or \
+            log.get("product_modified") is not False:
+        raise Refusal("retime log provenance mismatch")
+    runs = log.get("runs")
+    if not isinstance(runs, list) or len(runs) != 3:
+        raise Refusal("retime runs incomplete")
+    rates, loads = [], []
+    for number, run in enumerate(runs, 1):
+        if not isinstance(run, dict) or type(run.get("number")) is not int or run["number"] != number:
+            raise Refusal("retime run sequence mismatch")
+        for key in ("rate_mb_cpu_s", "load_before", "load_after"):
+            value = run.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or \
+                    not math.isfinite(value) or value < 0 or (key == "rate_mb_cpu_s" and value == 0):
+                raise Refusal("retime run value invalid")
+        rates.append(run["rate_mb_cpu_s"])
+        loads.append({"before": run["load_before"], "after": run["load_after"]})
+    median_index = sorted(range(3), key=lambda i: (rates[i], i))[1]
+    median = rates[median_index]
+    if new_tenancy.get("throughput_mb_s") != median:
+        raise Refusal("retime median disagrees with reading")
+    return {"sha256": new_hash, "median_run": median_index + 1,
+            "throughput_mb_cpu_s": median, "run_rates_mb_cpu_s": rates,
+            "run_loads_1m": loads, "load_condition": "observed"}
+
+
 def _screen(screen, reading_hash, unmatched_hash, tenancy, measured, scope, slug, binary_hash):
     population = hashlib.sha256("".join(path + "\n" for path in tenancy).encode()).hexdigest()
     complete = screen.get("status") == "complete" and screen.get("counts_complete") is True
@@ -231,7 +362,8 @@ def _screen(screen, reading_hash, unmatched_hash, tenancy, measured, scope, slug
 
 def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
             json_cap=256 << 20, scip_cap=256 << 20, before_publish=None,
-            screen_binary=None):
+            screen_binary=None, timing_dir=None):
+    _require_clean_repo()
     audit = audit_module or _audit()
     if Path(audit_root).is_symlink() or Path(out).parent.is_symlink():
         raise Refusal("symlinked audit root or output directory")
@@ -252,6 +384,22 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
         raise Refusal("output or audit root outside workspace")
     if target == root or root in target.parents or target in root.parents:
         raise Refusal("output overlaps audit inputs")
+    timing_root = None
+    if timing_dir is not None:
+        directory = Path(timing_dir)
+        if not directory.is_absolute() or directory != Path(os.path.abspath(directory)) or \
+                directory.is_symlink():
+            raise Refusal("timing directory must be canonical and regular")
+        try:
+            timing_root = directory.resolve(strict=True)
+        except OSError as exc:
+            raise Refusal("timing directory absent") from exc
+        if directory != timing_root or not timing_root.is_dir() or not any(
+                base == timing_root or base in timing_root.parents
+                                               for base in roots) or \
+                timing_root == root or timing_root in root.parents or root in timing_root.parents or \
+                timing_root == target or timing_root in target.parents or target in timing_root.parents:
+            raise Refusal("timing directory outside workspace or overlaps inputs")
     cursor = target.parent
     if not cursor.is_dir() or cursor.is_symlink():
         raise Refusal("output directory absent or symlinked")
@@ -282,21 +430,46 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
             raise Refusal("report producer absent or symlinked")
         if producer.stat().st_size > 1 << 20:
             raise Refusal("report producer over cap")
-        producer_hash = hashlib.sha256(producer.read_bytes()).hexdigest()
+        producer_hash = hashlib.sha256(_bounded_bytes(producer, 1 << 20)).hexdigest()
     except OSError as exc:
         raise Refusal("binary or producer unavailable") from exc
     json_budget, scip_budget, snapshots = [json_cap], [scip_cap * 6], {}
     index_receipt = _read_json(root / "indexes/candidate-indexes.json", root, json_cap, json_budget, snapshots)
     grade = _read_json(root / "readings/cpp-audit-receipt.json", root, json_cap, json_budget, snapshots)
     native = _read_json(root / "work/native/receipt.json", root, json_cap, json_budget, snapshots)
-    driver_hash = hashlib.sha256(Path(audit.__file__).read_bytes()).hexdigest()
+    historical_driver_hash = _historical_driver_sha256()
+    helper = Path(audit.__file__)
+    if helper.is_symlink() or not helper.is_file() or helper.stat().st_size > 1 << 20:
+        raise Refusal("current audit helper absent or over cap")
+    helper_hash = hashlib.sha256(_bounded_bytes(helper, 1 << 20)).hexdigest()
+    inputs = grade.get("inputs")
+    if not isinstance(inputs, dict):
+        raise Refusal("grade inputs absent")
+    native_inputs = native.get("inputs")
+    identity = inputs.get("tool_identity")
+    if not isinstance(native_inputs, dict) or not isinstance(identity, dict):
+        raise Refusal("tool identity absent")
+    indexbench = identity.get("indexbench")
+    ctags = identity.get("ctags")
+    if not isinstance(indexbench, dict) or not isinstance(ctags, dict) or \
+            indexbench.get("source") != "cmd/indexbench" or \
+            indexbench.get("revision") != BASELINE or indexbench.get("modified") is not False or \
+            indexbench.get("sha256") != inputs.get("indexbench_sha256") or \
+            ctags.get("version") != "6.2.1" or ctags.get("sha256") != inputs.get("ctags_sha256"):
+        raise Refusal("tool identity mismatch")
+    for value in (inputs.get("indexbench_sha256"), inputs.get("ctags_sha256"),
+                  native_inputs.get("clang_sha256")):
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise Refusal("tool hash absent")
     if index_receipt.get("status") != "complete" or grade.get("status") != "complete" or \
             native.get("status") != "complete" or \
             index_receipt.get("producer") != "calibration/oracles/scip-clang/cpp-audit.py" or \
-            index_receipt.get("driver_sha256") != driver_hash or \
-            grade.get("inputs", {}).get("driver_sha256") != driver_hash or \
-            grade["inputs"].get("native_inputs") != native.get("inputs") or \
-            grade["inputs"].get("native_outputs") != native.get("outputs"):
+            grade.get("commit") != BASELINE or \
+            index_receipt.get("driver_sha256") != historical_driver_hash or \
+            inputs.get("driver_sha256") != historical_driver_hash or \
+            native_inputs.get("driver_sha256") != historical_driver_hash or \
+            inputs.get("native_inputs") != native_inputs or \
+            inputs.get("native_outputs") != native.get("outputs"):
         raise Refusal("incomplete or unbound audit receipts")
     native_outputs = native.get("outputs")
     if not isinstance(native_outputs, dict) or set(native_outputs) != set(audit.PINS):
@@ -328,19 +501,76 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
             if attested.get("sha256") != snapshots[root / "readings" / name][0] or attested.get("subjects") != 3 or \
                     value.get("fathom_commit") != grade.get("commit"):
                 raise Refusal("reading receipt mismatch")
+            rates = attested.get("run_rates_mb_cpu_s")
+            median_run = attested.get("median_run")
+            throughput = attested.get("throughput_mb_cpu_s")
+            if not isinstance(rates, list) or len(rates) != 3 or any(
+                    isinstance(rate, bool) or not isinstance(rate, (float, int)) or
+                    not math.isfinite(rate) or rate <= 0 for rate in rates) or \
+                    type(median_run) is not int or median_run not in (1, 2, 3) or \
+                    isinstance(throughput, bool) or not isinstance(throughput, (float, int)) or \
+                    throughput != rates[median_run - 1]:
+                raise Refusal("reading timing receipt mismatch")
             try:
                 audit.validate_cpp_reading(value, version)
             except audit.Refusal as exc:
                 raise Refusal("reading validation failed") from exc
+            _validate_pooled(value)
             readings[(scope, version)] = value
             receipt_rows[name] = {"sha256": attested["sha256"],
-                                  "median_run": attested.get("median_run"),
-                                  "throughput_mb_cpu_s": attested.get("throughput_mb_cpu_s")}
+                                  "median_run": median_run,
+                                  "throughput_mb_cpu_s": throughput,
+                                  "run_rates_mb_cpu_s": rates,
+                                  "run_loads_1m": None,
+                                  "load_condition": "unrecorded"}
         _same_grading(readings[(scope, "v0.4.0")], readings[(scope, "v0.4.1")])
+    timing_snapshots = {}
+    timing_product_revision = None
+    timing_product_binary_sha256 = None
+    if timing_root is not None:
+        timing_product_revision = _current_revision()
+        if len(timing_product_revision) != 40 or any(
+                char not in "0123456789abcdef" for char in timing_product_revision):
+            raise Refusal("current timing revision invalid")
+        for scope in SCOPES:
+            for version in audit.INDEX_BINARY:
+                name = f"cpp-{scope}-{version}.json"
+                reading_path = timing_root / name
+                log_path = timing_root / (name + ".loads.json")
+                fresh = _read_json(reading_path, timing_root, json_cap, json_budget, snapshots)
+                log = _read_json(log_path, timing_root, json_cap, json_budget, snapshots)
+                try:
+                    audit.validate_cpp_reading(fresh, version)
+                except audit.Refusal as exc:
+                    raise Refusal("retimed reading validation failed") from exc
+                _validate_pooled(fresh)
+                timing_log_binary = log.get("product_binary_sha256")
+                if not isinstance(timing_log_binary, str) or len(timing_log_binary) != 64 or any(
+                        char not in "0123456789abcdef" for char in timing_log_binary):
+                    raise Refusal("timing binary hash invalid")
+                if timing_product_binary_sha256 is None:
+                    timing_product_binary_sha256 = timing_log_binary
+                row = _timing_row(readings[(scope, version)], fresh, log,
+                                  receipt_rows[name]["sha256"], snapshots[reading_path][0],
+                                  timing_product_revision, timing_product_binary_sha256)
+                row["historical_timing"] = receipt_rows[name]
+                receipt_rows[name] = row
+                timing_snapshots[name] = {"reading_sha256": snapshots[reading_path][0],
+                                          "load_log_sha256": snapshots[log_path][0]}
     result = {"status": "complete", "dialect": "cpp", "subjects": {},
               "readings": receipt_rows, "indexes": {}, "audit_inputs_sha256": {},
               "diagnostic_changes": {}, "syntax": {},
+              "commit": BASELINE, "driver_sha256": historical_driver_hash,
+              "current_audit_helper_sha256": helper_hash,
+              "indexbench_sha256": inputs["indexbench_sha256"],
+              "ctags_sha256": inputs["ctags_sha256"],
+              "clang_sha256": native_inputs["clang_sha256"],
+              "scip_clang_sha256": dict(audit.INDEX_BINARY),
               "screen_binary_sha256": binary_hash, "producer_sha256": producer_hash}
+    if timing_root is not None:
+        result["timing_product_revision"] = timing_product_revision
+        result["timing_product_binary_sha256"] = timing_product_binary_sha256
+        result["timing_inputs"] = timing_snapshots
     for slug, pin in audit.PINS.items():
         result["subjects"][slug] = {}
         result["indexes"][slug] = {}
@@ -397,8 +627,9 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
                                 json_cap, json_budget, snapshots)
             measured = next(s["files"] for s in readings[(scope, "v0.4.1")]["subjects"]
                             if s["name"] == pin[1])
+            screen_reading = receipt_rows[f"cpp-{scope}-v0.4.1.json"]
             result["syntax"][slug][scope] = _screen(
-                screen, receipt_rows[f"cpp-{scope}-v0.4.1.json"]["sha256"],
+                screen, screen_reading.get("historical_timing", screen_reading)["sha256"],
                 unmatched_hash, paths, measured, scope, slug, binary_hash)
             first = readings[(scope, "v0.4.0")]["subjects"]
             second = readings[(scope, "v0.4.1")]["subjects"]
@@ -408,16 +639,21 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
                 key: [x[key], y[key]] for key in DIAGNOSTICS if x.get(key) != y.get(key)}
     if set(grade.get("readings", {})) != set(receipt_rows):
         raise Refusal("unexpected reading receipt")
-    result["audit_inputs_sha256"] = {str(path.relative_to(root)): digest for path, (digest, _) in sorted(snapshots.items())}
+    result["audit_inputs_sha256"] = {
+        ("timing/" + path.relative_to(timing_root).as_posix()
+         if timing_root is not None and timing_root in path.parents else path.relative_to(root).as_posix()): digest
+        for path, (digest, _) in sorted(snapshots.items())}
     if before_publish:
         before_publish()
+    _require_clean_repo()
     if binary.is_symlink() or not binary.is_file() or binary.stat().st_size > SCREEN_BINARY_CAP or \
-            hashlib.sha256(binary.read_bytes()).hexdigest() != binary_hash or \
-            producer.is_symlink() or hashlib.sha256(producer.read_bytes()).hexdigest() != producer_hash:
+            hashlib.sha256(_bounded_bytes(binary, SCREEN_BINARY_CAP)).hexdigest() != binary_hash or \
+            producer.is_symlink() or hashlib.sha256(_bounded_bytes(producer, 1 << 20)).hexdigest() != producer_hash or \
+            helper.is_symlink() or hashlib.sha256(_bounded_bytes(helper, 1 << 20)).hexdigest() != helper_hash:
         raise Refusal("binary or producer changed before publish")
     for path, (digest, cap) in snapshots.items():
         if path.is_symlink() or not path.is_file() or path.stat().st_size > cap or \
-                hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                hashlib.sha256(_bounded_bytes(path, cap)).hexdigest() != digest:
             raise Refusal("audit input changed before publish")
     data = (json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n").encode()
     temp = None
@@ -441,8 +677,10 @@ if __name__ == "__main__":
     parser.add_argument("--audit-root", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--screen-binary", type=Path, required=True)
+    parser.add_argument("--timing-dir", type=Path)
     args = parser.parse_args()
     try:
-        produce(args.audit_root, args.out, screen_binary=args.screen_binary)
+        produce(args.audit_root, args.out, screen_binary=args.screen_binary,
+                timing_dir=args.timing_dir)
     except Refusal as exc:
         parser.error(str(exc))

@@ -68,6 +68,11 @@ func TestAuditLockRefusesSelfConsistentModuleAndWrongTool(t *testing.T) {
 	if _, err := loadAuditCandidate(config{CandidateLock: lockFile, CandidateModule: module}); err == nil || !strings.Contains(err.Error(), "metadata") {
 		t.Fatalf("wrong tool accepted or wrong refusal: %v", err)
 	}
+	lock.Toolchain.ZigSHA256 = auditZigSHA256
+	write()
+	if _, err := loadAuditCandidate(config{CandidateLock: lockFile, CandidateModule: module}); err == nil || err.Error() != "audit module identity mismatch" {
+		t.Fatalf("valid lock must reach module identity check: %v", err)
+	}
 }
 
 func TestAuditReadWorkspaceCapsAndSymlinks(t *testing.T) {
@@ -97,7 +102,40 @@ func TestAuditReadWorkspaceCapsAndSymlinks(t *testing.T) {
 	if _, err := auditRead(link, 5); err == nil {
 		t.Fatal("accepted symlink")
 	}
-	if _, err := auditRead(filepath.Join(t.TempDir(), "outside.json"), 5); err == nil {
-		t.Fatal("accepted outside workspace")
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	if err := os.WriteFile(outside, []byte("valid"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(outside); err != nil || !info.Mode().IsRegular() {
+		t.Fatalf("outside fixture must be a real regular file: %v", err)
+	}
+	if _, err := auditRead(outside, 5); err == nil || err.Error() != "audit input outside ignored workspace" {
+		t.Fatalf("existing regular file outside workspace must be refused by containment: %v", err)
+	}
+}
+
+func TestKnownAuditMetadataAcceptsOnlyPinnedCandidates(t *testing.T) {
+	base := auditLock{Schema: "fathom-cpp-external-audit-v1", BuilderSHA256: strings.Repeat("a", 64), BudgetSHA256: strings.Repeat("b", 64)}
+	base.Module.Blob, base.Module.EntryPoint, base.Module.ABI = "cpp", "tree_sitter_cpp", 15
+	base.Runtime = auditSource{Crate: "tree-sitter/tree-sitter", Version: "0.26.11", ArchiveSHA256: "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971", Licence: "MIT", LicenceSHA256: "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", ArchiveBytes: 920828, Entries: 673, Files: 600, ExtractedBytes: 3922532}
+	base.Toolchain.ZigVersion, base.Toolchain.ZigSHA256 = "0.16.0", auditZigSHA256
+	base.Toolchain.WasmOptVersion, base.Toolchain.WasmOptSHA256 = "129", auditWasmOptSHA256
+	for _, c := range []struct {
+		name, pin, archive, licence, module string
+		archiveBytes, moduleBytes           int
+	}{
+		{"tree-sitter/tree-sitter-cpp", "c009222808634c1014f82438d4883753516a2c24", "6c6efaf024f5c02fee0403e4e2373346eeadc40828587bcfad9351df2f0a7986", "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1", "fde7035227a488422e95cc1a408fecbbc5b3440dceebf109e42d483d31270ed2", 1740811, 2790800},
+		{"taku25/tree-sitter-unreal-cpp", "920e9810cc64a47fa05cfcf30c7caecb85b5f2c3", "285ad7c2969a03254ed7a77068e0effca26cb8f014bc5b9d300bd4415ec0b17b", "ef02f1077281d63262946e50ec461ba72efda41e51084c887379b59397b96a6d", "613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df", 2628614, 3975018},
+	} {
+		lock := base
+		lock.Module.SHA256, lock.Module.Bytes = c.module, c.moduleBytes
+		lock.Grammar = auditSource{Crate: c.name, Version: c.pin, ArchiveSHA256: c.archive, Licence: "MIT", LicenceSHA256: c.licence, ArchiveBytes: c.archiveBytes, Entries: 110, Files: 100, ExtractedBytes: 40000000}
+		if !knownAuditMetadata(lock) {
+			t.Fatalf("pinned candidate refused: %s", c.name)
+		}
+		lock.Grammar.ArchiveSHA256 = strings.Repeat("0", 64)
+		if knownAuditMetadata(lock) {
+			t.Fatalf("changed source accepted: %s", c.name)
+		}
 	}
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Focused archive boundary checks for the private C++ builder."""
 
+import argparse
 import importlib.util
 import io
 from pathlib import Path
@@ -16,6 +17,42 @@ spec.loader.exec_module(builder)
 
 
 class ArchiveTest(unittest.TestCase):
+    def test_zig_build_uses_work_local_caches_and_cwd(self):
+        with tempfile.TemporaryDirectory(dir=builder.ROOT / "workspace") as temp:
+            root = Path(temp)
+            work, out = root / "work", root / "out"
+
+            def extracted(_archive, dest, _prefix):
+                (dest / "LICENSE").write_text("MIT")
+                return (1, 1, 3)
+
+            def digest(path):
+                if path.name == "LICENSE":
+                    for crate, version, _, license_sha, _ in builder.SOURCES:
+                        if path.parent.name == f"{crate}-{version}":
+                            return license_sha
+                self.fail(f"unexpected digest: {path}")
+
+            class StopAfterZig(Exception):
+                pass
+
+            def check_run(argv, cwd, stdout, stderr, timeout, cap, env=None):
+                self.assertEqual(argv[:2], ["zig", "cc"])
+                self.assertEqual(cwd, work)
+                self.assertEqual(env["ZIG_GLOBAL_CACHE_DIR"], str(work / "zig-global-cache"))
+                self.assertEqual(env["ZIG_LOCAL_CACHE_DIR"], str(work / "zig-local-cache"))
+                self.assertEqual(stdout, work / "zig.stdout")
+                self.assertEqual(stderr, work / "zig.stderr")
+                raise StopAfterZig
+
+            with mock.patch.object(builder, "tool", side_effect=lambda name, *_: (name, "hash")), \
+                    mock.patch.object(builder, "fetch"), \
+                    mock.patch.object(builder, "extract", side_effect=extracted), \
+                    mock.patch.object(builder.audit, "digest", side_effect=digest), \
+                    mock.patch.object(builder.audit, "run", side_effect=check_run):
+                with self.assertRaises(StopAfterZig):
+                    builder.build(argparse.Namespace(work_dir=work, out_dir=out, gzip=False))
+
     def test_wrong_tool_hash_refused(self):
         with tempfile.TemporaryDirectory(dir=builder.ROOT / "workspace") as temp:
             binary = Path(temp) / "zig"

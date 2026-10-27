@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import time
@@ -10,14 +11,101 @@ from unittest import mock
 
 
 SCRIPT = Path(__file__).with_name("cpp-audit.py")
+TEST_TMP = SCRIPT.parents[3] / "workspace" / "tmp" / "cpp-audit-tests"
+TEST_TMP.mkdir(parents=True, exist_ok=True)
 spec = importlib.util.spec_from_file_location("cpp_audit", SCRIPT)
 audit = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(audit)
 
 
 class DriverTest(unittest.TestCase):
+    def test_clean_repo_refuses_dirty_checkout(self):
+        with mock.patch.object(audit, "git", side_effect=lambda root, *argv: (
+                " M calibration/oracles/scip-clang/cpp-audit.py"
+                if argv[0] == "status" else "a" * 40)):
+            with self.assertRaisesRegex(audit.Refusal, "fathom tree changed"):
+                audit.clean_repo()
+
+    def test_bounded_inputs_refuse_growth_after_initial_check(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
+            source = Path(tmp) / "reading.json"
+            source.write_bytes(b"{}")
+            original_digest = audit.digest
+            def grow(path, cap=None):
+                result = original_digest(path, cap)
+                if path == source:
+                    source.write_bytes(b" " * 11)
+                return result
+            with mock.patch.object(audit, "digest", side_effect=grow), \
+                    self.assertRaisesRegex(audit.Refusal, "over cap"):
+                audit.load_json(source, 10)
+            with mock.patch.object(audit, "READING_CAP", 10), \
+                    mock.patch.object(audit, "digest", side_effect=grow), \
+                    self.assertRaisesRegex(audit.Refusal, "over cap"):
+                audit.scip_identity(source, source.parent, "v0.4.0")
+
+    def test_bounded_json_accepts_exact_cap_and_refuses_next_byte(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
+            source = Path(tmp) / "reading.json"
+            source.write_bytes(b'{"a":1}')
+            self.assertEqual(audit.load_json(source, 7), {"a": 1})
+            with self.assertRaisesRegex(audit.Refusal, "over cap"):
+                audit.load_json(source, 6)
+
+    def test_digest_refuses_growth_after_stale_stat(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
+            source = Path(tmp) / "growing.bin"
+            source.write_bytes(b"x" * 11)
+            stat = Path.stat
+            def stale_size(path, *args, **kwargs):
+                result = stat(path, *args, **kwargs)
+                if path == source:
+                    return os.stat_result((result.st_mode, result.st_ino, result.st_dev,
+                        result.st_nlink, result.st_uid, result.st_gid, 10,
+                        result.st_atime, result.st_mtime, result.st_ctime))
+                return result
+            with mock.patch.object(Path, "stat", stale_size), \
+                    self.assertRaisesRegex(audit.Refusal, "over cap"):
+                audit.digest(source, 10)
+
+    def test_scip_identity_accepts_exact_cap_and_refuses_next_byte(self):
+        def varint(number):
+            out = bytearray()
+            while number > 127:
+                out.append((number & 127) | 128)
+                number >>= 7
+            return bytes(out + bytes((number,)))
+        def field(number, value):
+            return varint(number * 8 + 2) + varint(len(value)) + value
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
+            root = Path(tmp)
+            tool = field(1, b"scip-clang") + field(2, b"0.4.0")
+            metadata = field(2, tool) + field(3, root.as_uri().encode())
+            data = field(1, metadata) + field(2, field(1, b"unit.cpp"))
+            source = root / "index.scip"
+            source.write_bytes(data)
+            with mock.patch.object(audit, "READING_CAP", len(data)):
+                self.assertEqual(audit.scip_identity(source, root, "v0.4.0"), 1)
+            with mock.patch.object(audit, "READING_CAP", len(data) - 1), \
+                    self.assertRaisesRegex(audit.Refusal, "over cap"):
+                audit.scip_identity(source, root, "v0.4.0")
+
+    def test_each_phase_refuses_dirty_repo_before_outputs(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
+            root = Path(tmp)
+            args = mock.Mock(index_receipt=root / "index.json", readings_dir=root / "readings",
+                             work_dir=root / "work")
+            with mock.patch.object(audit, "clean_repo", side_effect=audit.Refusal("fathom tree changed")):
+                for phase in (audit.index_phase, audit.native, audit.grade):
+                    with self.subTest(phase=phase.__name__), \
+                            self.assertRaisesRegex(audit.Refusal, "fathom tree changed"):
+                        phase(args, {})
+            self.assertFalse(args.index_receipt.exists())
+            self.assertFalse(args.readings_dir.exists())
+            self.assertFalse(args.work_dir.exists())
+
     def test_build_fanout_refuses_at_cap_plus_one_without_draining(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             subject, db = root / "subject", root / "compile_commands.json"
             subject.mkdir()
@@ -43,7 +131,7 @@ class DriverTest(unittest.TestCase):
             self.assertEqual(len(reads), 3, "refuse before draining an unbounded directory")
 
     def test_native_inputs_survive_json_receipt_roundtrip(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             subject, db, binary = root / "subject", root / "compile_commands.json", root / "clang"
             subject.mkdir()
@@ -60,7 +148,7 @@ class DriverTest(unittest.TestCase):
             self.assertEqual(inputs, json.loads(json.dumps(inputs)))
 
     def test_build_manifest_refuses_cap_fanout_and_escaping_inputs(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             subject, build = root / "subject", root / "build"
             subject.mkdir()
@@ -118,7 +206,7 @@ class DriverTest(unittest.TestCase):
                 audit.build_inputs(subject, db)
 
     def test_fetched_source_requires_pinned_clean_head(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             subject, build = root / "subject", root / "build"
             subject.mkdir()
@@ -149,7 +237,7 @@ class DriverTest(unittest.TestCase):
                 audit.build_inputs(subject, db)
 
     def test_external_build_source_and_header_change_index_stamp(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             subject, build = root / "subject", root / "build"
             subject.mkdir()
@@ -192,7 +280,7 @@ class DriverTest(unittest.TestCase):
                 self.assertTrue(all(left != right for left, right in zip(after_source, after_header)))
 
     def test_output_confinement_refuses_subject_and_tracked_repo(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             workspace = root / "workspace"
             subject = workspace / "subjects" / "fmt"
@@ -212,7 +300,7 @@ class DriverTest(unittest.TestCase):
             self.assertFalse(workspace.exists())
 
     def test_grade_rejects_uncommitted_binary_and_ctags_oracle(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             indexbench = root / "indexbench"
             ctags = root / "ctags"
@@ -303,7 +391,7 @@ class DriverTest(unittest.TestCase):
             return bytes(out)
         def field(number, data):
             return varint(number * 8 + 2) + varint(len(data)) + data
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             binaries = root / "tools"
             versions = {}
@@ -342,6 +430,7 @@ class DriverTest(unittest.TestCase):
                 stderr.write_text("Finished indexing 1 translation units in 0.1s "
                                   "(indexing: 0.1s, merging: 0.0s, num errored TUs: 0).\n")
             with mock.patch.object(audit, "INDEX_BINARY", versions), \
+                    mock.patch.object(audit, "clean_repo") as clean, \
                     mock.patch.object(audit, "SCIP_LICENSE", audit.digest(binaries / "v0.4.0" / "LICENSE")), \
                     mock.patch.object(audit, "POPULATION", {slug: (1, 1, 0) for slug in audit.PINS}), \
                     mock.patch.object(audit, "tracked_manifest", return_value="a" * 64), \
@@ -352,6 +441,7 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "run", side_effect=fake_run):
                 audit.index_phase(args, found)
                 evidence = audit.index_evidence(args, found)
+                self.assertGreaterEqual(clean.call_count, 10)
             receipt = args.index_receipt.read_text()
             self.assertNotIn(tmp, receipt)
             self.assertEqual(json.loads(receipt)["status"], "complete")
@@ -368,7 +458,7 @@ class DriverTest(unittest.TestCase):
                 audit.index_evidence(args, found)
 
     def test_runner_refuses_failed_timeout_and_cap(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             cases = (("import sys; sys.exit(7)", 5, "subprocess failed"),
                      ("import time; time.sleep(5)", 0.1, "subprocess timeout"),
@@ -381,6 +471,13 @@ class DriverTest(unittest.TestCase):
                     audit.run(["python3", "-c", code], root,
                               root / f"out-{index}", root / f"err-{index}",
                               timeout, 100, load_limit=1000)
+            for stream in ("stdout", "stderr"):
+                with self.subTest(stream=stream), mock.patch.object(audit.os, "nice"), \
+                        mock.patch.object(audit, "LOG_CAP", 100):
+                    out, err = root / f"exact-{stream}.out", root / f"exact-{stream}.err"
+                    audit.run(["python3", "-c", f"import sys; sys.{stream}.write('x'*100)"],
+                              root, out, err, 5, 100, load_limit=1000)
+                    self.assertEqual((out if stream == "stdout" else err).stat().st_size, 100)
             source = root / "capped.json"
             source.write_bytes(b"x" * 100)
             audit.digest(source, 100)
@@ -389,7 +486,7 @@ class DriverTest(unittest.TestCase):
                 audit.digest(source, 100)
 
     def test_runner_kills_child_after_leader_exits(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             code = ("import subprocess,sys; "
                     "subprocess.Popen([sys.executable,'-c','import time; time.sleep(20)'])")
@@ -400,7 +497,7 @@ class DriverTest(unittest.TestCase):
             self.assertLess(time.monotonic() - start, 7)
 
     def test_grade_scope_and_tool_flags(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             args = mock.Mock(indexbench=Path(tmp) / "indexbench", ctags=Path(tmp) / "ctags",
                              work_dir=Path(tmp))
             for slug in audit.PINS:
@@ -417,7 +514,7 @@ class DriverTest(unittest.TestCase):
                 self.assertEqual(legacy[legacy.index("-calls-from") + 1], "scip")
 
     def test_subject_refuses_pin_mismatch(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             for slug in audit.PINS:
                 (root / slug).mkdir()
@@ -426,12 +523,13 @@ class DriverTest(unittest.TestCase):
                 audit.subjects(args)
 
     def test_failed_grade_receipt_has_null_readings_and_no_paths(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             work = root / "private-work"
             readings = root / "published"
             args = mock.Mock(readings_dir=readings, work_dir=work)
             with mock.patch.object(audit, "git", return_value="a" * 40), \
+                    mock.patch.object(audit, "clean_repo"), \
                     mock.patch.object(audit, "grade_inputs", side_effect=audit.Refusal("private path")), \
                     self.assertRaises(audit.Refusal):
                 audit.grade(args, {})
@@ -442,7 +540,7 @@ class DriverTest(unittest.TestCase):
             self.assertTrue(all(value is None for value in data["readings"].values()))
 
     def test_grade_merges_three_subjects_then_retimes(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             args = mock.Mock(readings_dir=root / "published", work_dir=root / "work",
                              indexes_dir=root / "indexes", indexbench=root / "indexbench",
@@ -482,10 +580,12 @@ class DriverTest(unittest.TestCase):
                                  "file_edges": "A", "imports": "A", "typed": "A"}})
                 reading.write_text(json.dumps(previous))
             with mock.patch.object(audit, "git", return_value="a" * 40), \
+                    mock.patch.object(audit, "clean_repo") as clean, \
                     mock.patch.object(audit, "grade_inputs", return_value={"safe_sha256": "b" * 64}), \
                     mock.patch.object(audit, "grade_command_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run):
                 audit.grade(args, found)
+                self.assertGreaterEqual(clean.call_count, 21)
             self.assertEqual(len(commands), 16)
             receipt = (args.readings_dir / "cpp-audit-receipt.json").read_text()
             self.assertNotIn(tmp, receipt)
@@ -501,6 +601,7 @@ class DriverTest(unittest.TestCase):
                     args.readings_dir = root / (phase + "-published")
                     args.work_dir = root / (phase + "-work")
                     with mock.patch.object(audit, "git", return_value="a" * 40), \
+                            mock.patch.object(audit, "clean_repo"), \
                             mock.patch.object(audit, "grade_inputs", return_value={"safe_sha256": "b" * 64}), \
                             mock.patch.object(audit, "grade_command_stamp", return_value=("frozen",)), \
                             mock.patch.object(audit, "run", side_effect=fake_run), \
@@ -513,7 +614,7 @@ class DriverTest(unittest.TestCase):
                     self.assertTrue(all(value is None for value in failed["readings"].values()))
 
     def test_native_errors_write_failed_receipt_with_counts(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             args = mock.Mock(work_dir=root, clang=root / "clang", timeout=2, load_limit=1000)
             args.clang.write_text("clang")
@@ -529,6 +630,7 @@ class DriverTest(unittest.TestCase):
                     stderr.write_text(f"translation_units 1 stopped 0 {suffix}\n")
             with mock.patch.object(audit, "build_oracles", return_value={
                     name: args.clang for name, _, _ in audit.ORACLES}), \
+                    mock.patch.object(audit, "clean_repo"), \
                     mock.patch.object(audit, "native_inputs", return_value={"frozen": True}), \
                     mock.patch.object(audit, "native_command_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run), \
@@ -540,7 +642,7 @@ class DriverTest(unittest.TestCase):
             self.assertEqual(receipt["counts"]["fmt"]["ranges"]["errored"], 1)
 
     def test_preprocessor_stopped_is_recorded_and_refused(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
             root = Path(tmp)
             clang = root / "clang"
             clang.write_text("clang")
@@ -554,6 +656,7 @@ class DriverTest(unittest.TestCase):
                 stderr.write_text("translation_units 1 stopped 1 files 0 includes_in_subject 0\n")
             with mock.patch.object(audit, "build_oracles", return_value={
                     name: clang for name, _, _ in audit.ORACLES}), \
+                    mock.patch.object(audit, "clean_repo"), \
                     mock.patch.object(audit, "native_inputs", return_value={"frozen": True}), \
                     mock.patch.object(audit, "native_command_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run), \

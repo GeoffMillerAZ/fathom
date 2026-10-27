@@ -59,10 +59,26 @@ def digest(path, cap=None):
     if not path.is_file() or (cap is not None and path.stat().st_size > cap):
         raise Refusal("input absent or over cap")
     h = hashlib.sha256()
+    size = 0
     with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+        while True:
+            chunk = stream.read(1024 * 1024 if cap is None else
+                                min(1024 * 1024, cap - size + 1))
+            if not chunk:
+                break
+            size += len(chunk)
+            if cap is not None and size > cap:
+                raise Refusal("input absent or over cap")
             h.update(chunk)
     return h.hexdigest()
+
+
+def read_bounded(path, cap):
+    with path.open("rb") as stream:
+        data = stream.read(cap + 1)
+    if len(data) > cap:
+        raise Refusal("input absent or over cap")
+    return data
 
 
 def write_json(path, value):
@@ -75,7 +91,7 @@ def write_json(path, value):
 
 def load_json(path, cap=JSON_CAP):
     digest(path, cap)
-    return json.loads(path.read_text())
+    return json.loads(read_bounded(path, cap))
 
 
 def git(root, *args):
@@ -84,6 +100,11 @@ def git(root, *args):
     if result.returncode:
         raise Refusal("git identity or cleanliness check failed")
     return result.stdout.decode().strip()
+
+
+def clean_repo():
+    if git(REPO, "status", "--porcelain", "--untracked-files=all"):
+        raise Refusal("fathom tree changed")
 
 
 def tracked_manifest(root):
@@ -380,7 +401,7 @@ def wire_fields(data):
 
 def scip_identity(path, subject, version):
     digest(path, READING_CAP)
-    raw = path.read_bytes()
+    raw = read_bounded(path, READING_CAP)
     if not raw:
         raise Refusal("empty SCIP index")
     metadata, documents = [], 0
@@ -438,7 +459,8 @@ def index_evidence(args, found):
                 raise Refusal("index receipt does not attest frozen input")
             digest(log, LOG_CAP)
             digest(stdout_log, LOG_CAP)
-            summary = log.read_text(errors="replace") + "\n" + stdout_log.read_text(errors="replace")
+            summary = (read_bounded(log, LOG_CAP).decode(errors="replace") + "\n" +
+                       read_bounded(stdout_log, LOG_CAP).decode(errors="replace"))
             lines = re.findall(r"^Finished indexing (\d+) translation units .*num errored TUs: (\d+)\)\.$",
                                summary, re.MULTILINE)
             if len(lines) != 1 or (int(lines[0][0]), int(lines[0][1])) != (POPULATION[slug][0], 0):
@@ -467,6 +489,7 @@ def index_stamp(args, subject, compdb, binary, license_path):
 
 
 def index_phase(args, found):
+    clean_repo()
     if args.scip_binaries_root is None:
         raise Refusal("--scip-binaries-root is required for index")
     expected = [(slug, version) for slug in PINS for version in INDEX_BINARY]
@@ -492,7 +515,8 @@ def index_phase(args, found):
             run([str(binary), "--version"], REPO, stdout,
                 args.work_dir / "index" / version / "version.stderr", 30,
                 LOG_CAP, load_limit=args.load_limit)
-            if stdout.read_text(errors="replace").splitlines()[:1] != ["scip-clang " + version[1:]]:
+            clean_repo()
+            if read_bounded(stdout, LOG_CAP).decode(errors="replace").splitlines()[:1] != ["scip-clang " + version[1:]]:
                 raise Refusal("SCIP binary version mismatch")
             binaries[version] = (binary, license_path)
         phase_stamps = {(slug, version): index_stamp(args, found[slug][0], found[slug][1],
@@ -514,11 +538,13 @@ def index_phase(args, found):
                        "--no-progress-report", "--log-level", "warning"]
             run(command, subject, stdout_log,
                 log, args.timeout, LOG_CAP, load_limit=args.load_limit)
+            clean_repo()
             if stamp != index_stamp(args, subject, compdb, binary, license_path):
                 raise Refusal("index inputs changed during command")
             digest(log, LOG_CAP)
             digest(stdout_log, LOG_CAP)
-            summary = log.read_text(errors="replace") + "\n" + stdout_log.read_text(errors="replace")
+            summary = (read_bounded(log, LOG_CAP).decode(errors="replace") + "\n" +
+                       read_bounded(stdout_log, LOG_CAP).decode(errors="replace"))
             lines = re.findall(r"^Finished indexing (\d+) translation units .*num errored TUs: (\d+)\)\.$",
                                summary, re.MULTILINE)
             if len(lines) != 1 or (int(lines[0][0]), int(lines[0][1])) != (entries, 0):
@@ -539,6 +565,7 @@ def index_phase(args, found):
         if any(stamp != index_stamp(args, found[slug][0], found[slug][1], *binaries[version])
                for (slug, version), stamp in phase_stamps.items()):
             raise Refusal("index inputs changed during phase")
+        clean_repo()
         state["status"] = "complete"
         state["rows"] = rows
         state.pop("reason", None)
@@ -704,6 +731,7 @@ def build_oracles(args):
 
 
 def native(args, found):
+    clean_repo()
     receipt = args.work_dir / "native" / "receipt.json"
     prior = load_json(receipt) if receipt.exists() else None
     if prior is not None and prior.get("status") != "complete":
@@ -723,6 +751,7 @@ def native(args, found):
         if prior is not None:
             if prior.get("inputs") != inputs or prior.get("outputs") != native_outputs(args.work_dir):
                 raise Refusal("native receipt or inputs changed; use a fresh work directory")
+            clean_repo()
             complete = True
             return
         if any(digest(args.clang) not in item[3] for item in found.values()):
@@ -747,6 +776,7 @@ def native(args, found):
                 try:
                     run(argv, REPO, partial, target / (name + ".stderr"), args.timeout,
                         JSON_CAP, load_limit=args.load_limit)
+                    clean_repo()
                     if stamp != native_command_stamp(args, slug, subject, compdb, binaries[name], module):
                         raise Refusal("native inputs changed during command")
                     data = load_json(partial)
@@ -759,7 +789,7 @@ def native(args, found):
                                 data["units"] <= 0 or data["units"] + data["skipped"] != entries):
                             raise Refusal("AST range oracle population or errors mismatch")
                     else:
-                        summary = (target / (name + ".stderr")).read_text(errors="replace")
+                        summary = read_bounded(target / (name + ".stderr"), LOG_CAP).decode(errors="replace")
                         pattern = (r"^translation_units (\d+) stopped (\d+) files (\d+) includes_in_subject (\d+)$"
                                    if name == "preproc" else
                                    r"^translation_units (\d+) stopped (\d+) sites (\d+)$")
@@ -777,6 +807,7 @@ def native(args, found):
         if inputs != native_inputs(args, found, binaries):
             raise Refusal("native inputs changed during phase")
         stage = "finalize"
+        clean_repo()
         write_json(receipt, {"status": "complete", "inputs": inputs,
                              "commands": [module for _, module, _ in ORACLES],
                              "outputs": native_outputs(args.work_dir), "counts": counts})
@@ -907,6 +938,7 @@ def grade_command(args, slug, subject, index, output, unmatched, scope, commit):
 
 
 def grade(args, found):
+    clean_repo()
     if args.readings_dir is None:
         raise Refusal("--readings-dir is required for grade")
     commit = git(REPO, "rev-parse", "HEAD")
@@ -938,6 +970,7 @@ def grade(args, found):
                     stamp = grade_command_stamp(args, slug, subject, compdb, index)
                     run(cmd, REPO, target / slug / "stdout.log", target / slug / "stderr.log",
                         args.timeout, LOG_CAP, load_limit=args.load_limit)
+                    clean_repo()
                     if stamp != grade_command_stamp(args, slug, subject, compdb, index):
                         raise Refusal("grade inputs changed during command")
                 published["reason"] = "reading_validation"
@@ -954,6 +987,7 @@ def grade(args, found):
                     retime.extend(["-subject", PINS[slug][1] + "=" + str(subject)])
                 run(retime, REPO, target / "retime.stdout", target / "retime.stderr",
                     args.timeout, LOG_CAP, load_limit=args.load_limit)
+                clean_repo()
                 if before != grade_inputs(args, found):
                     raise Refusal("retime inputs changed during command")
                 published["reason"] = "retime_validation"
@@ -962,13 +996,14 @@ def grade(args, found):
                         len(retimed["subjects"]) != 3:
                     raise Refusal("retime changed subject identity")
                 validate_cpp_reading(retimed, version)
-                summary = (target / "retime.stdout").read_text(errors="replace")
+                summary = read_bounded(target / "retime.stdout", LOG_CAP).decode(errors="replace")
                 runs = re.findall(r"^run ([123]): ([0-9]+(?:\.[0-9]+)?) MB/CPU-s$", summary, re.MULTILINE)
                 median = re.findall(r"^median run ([123]): ([0-9]+(?:\.[0-9]+)?) MB/CPU-s$",
                                     summary, re.MULTILINE)
                 if len(runs) != 3 or len(median) != 1 or [int(x[0]) for x in runs] != [1, 2, 3]:
                     raise Refusal("retime summary incomplete")
                 final = args.readings_dir / f"{stem}.json"
+                clean_repo()
                 with reading.open("rb") as source, final.open("xb") as destination:
                     shutil.copyfileobj(source, destination)
                 published["readings"][final.name] = {"sha256": digest(final, READING_CAP),
@@ -977,6 +1012,7 @@ def grade(args, found):
                     "run_rates_mb_cpu_s": [float(x[1]) for x in runs]}
         if published["inputs"] != grade_inputs(args, found):
             raise Refusal("grade inputs changed during phase")
+        clean_repo()
         published["status"] = "complete"
         published.pop("reason", None)
     except Exception:
@@ -1044,6 +1080,7 @@ def main(argv=None):
     try:
         args.work_dir.mkdir(parents=True, exist_ok=True)
         try:
+            clean_repo()
             found = subjects(args)
             if args.phase == "index":
                 index_phase(args, found)

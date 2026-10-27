@@ -34,13 +34,20 @@ grammar candidate measured against an older reading. Its receipt says
 from the candidate product revision. The flag waives only those revisions'
 equality and the reading's optional grammar equality. It still checks the
 subject pin, exact population and bytes, caps, paths, hashes, and output
-confinement. The Git diff from baseline to candidate must contain only the
-C++ grammar lock row and blob, grammar provenance, and this helper;
+confinement. The Git diff from baseline to candidate admits only the listed audit
+helpers, their measurement metadata/tests and (in embedded mode) the C++
+grammar lock row, blob and provenance;
 all non-C++ lock rows and product parsing/routing code must stay unchanged.
 Helper-only diffs are admitted for diagnostic reproduction. A
 candidate receipt cannot establish accuracy, adoption, or a new reading.
 Parser faults print phase, 1-based file ordinal, peak WASM pages, and safe
 engine error text to private stderr without a source path or source text.
+
+For isolated official-head/Unreal experiments, use
+`calibration/oracles/scip-clang/build-cpp-candidates.py --candidate official-head`
+(or `--candidate unreal`) with fresh `--work-dir` and `--out-dir` paths.
+The same tagged screen flags load those exact pinned modules. The product
+lock and blob must remain unchanged.
 
 For the isolated WillBooster experiment, build a private module with
 `calibration/oracles/scip-clang/build-willbooster.py --work-dir <fresh-ignored-workspace-dir> --out-dir <fresh-ignored-workspace-dir>`.
@@ -56,6 +63,12 @@ The tagged parser compiles this blob in isolation. The receipt says
 without assigning the published crates a Git commit identity. The ordinary
 binary rejects these flags; the embedded parser and grammar lock are unchanged.
 This diagnostic does not establish accuracy, adoption, or a support level.
+`task test` also vets both tagged packages, so default CI detects drift in the
+optional loader even though ordinary product builds exclude it.
+
+The recorded WillBooster measurement used the tagged tool source frozen at
+`8f90d5e59`. Reproduce that measurement from the pinned revision before
+using it as evidence.
 
 Inputs are bounded at 256 MiB per JSON, 20,000 files, 16 MiB per source,
 and 512 MiB total source. JSON traversal also stops at depth 64 or two

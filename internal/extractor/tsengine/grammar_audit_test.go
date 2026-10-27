@@ -53,11 +53,11 @@ func TestGrammarAuditRefusesInvalidIdentityBeforeInstantiation(t *testing.T) {
 	raw, spec := auditCPPFixture(t)
 	base := LiveModules()
 	ownedBase := ownedModules.Load()
+	instantiationBase := Instantiations()
 	for _, change := range []func(*GrammarAuditSpec){
 		func(s *GrammarAuditSpec) { s.SHA256 = "0" + s.SHA256[1:] },
 		func(s *GrammarAuditSpec) { s.Bytes++ },
 		func(s *GrammarAuditSpec) { s.Licence = "GPL-3.0" },
-		func(s *GrammarAuditSpec) { s.ABI = 0x57420006 },
 		func(s *GrammarAuditSpec) { s.EntryPoint = "tree_sitter_c" },
 	} {
 		bad := spec
@@ -72,6 +72,26 @@ func TestGrammarAuditRefusesInvalidIdentityBeforeInstantiation(t *testing.T) {
 		if got := ownedModules.Load(); got != ownedBase {
 			t.Fatalf("owned module count %d, want %d", got, ownedBase)
 		}
+		if got := Instantiations(); got != instantiationBase {
+			t.Fatalf("identity refusal instantiated module: count %d, want %d", got, instantiationBase)
+		}
+	}
+	badABI := spec
+	badABI.ABI = 0x57420006
+	if p, err := NewGrammarAuditParser(context.Background(), raw, badABI); err == nil {
+		p.Close()
+		t.Fatal("accepted mismatched ABI")
+	} else if !strings.Contains(err.Error(), "audit language ABI mismatch") {
+		t.Fatalf("ABI mismatch must reach instantiated language: %v", err)
+	}
+	if got := Instantiations(); got != instantiationBase+1 {
+		t.Fatalf("ABI refusal instantiations %d, want %d", got, instantiationBase+1)
+	}
+	if got := LiveModules(); got != base {
+		t.Fatalf("live module count %d, want %d", got, base)
+	}
+	if got := ownedModules.Load(); got != ownedBase {
+		t.Fatalf("owned module count %d, want %d", got, ownedBase)
 	}
 }
 

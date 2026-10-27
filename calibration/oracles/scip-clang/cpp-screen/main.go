@@ -51,6 +51,21 @@ type config struct {
 }
 
 var candidatePaths = map[string]bool{
+	"Taskfile.yml": true,
+	"calibration/oracles/scip-clang/cpp-audit.py":                 true,
+	"calibration/oracles/scip-clang/cpp-audit_test.py":            true,
+	"calibration/oracles/scip-clang/build-cpp-candidates.py":      true,
+	"calibration/oracles/scip-clang/build-cpp-candidates_test.py": true,
+	"cmd/indexbench/langretime.go":                                true,
+	"cmd/indexbench/langretime_load_test.go":                      true,
+	"docs/assessments/2026-10-26-core-t1-cpp-ceiling.md":          true,
+	"docs/assessments/README.md":                                  true,
+	"docs/plans/language-breadth.md":                              true,
+	"docs/bench/cpp-historical-holdout.yaml":                      true,
+	"calibration/holdouts/cpp.yaml":                               true,
+	"calibration/corpus.d/cpp.yaml":                               true,
+	".fathom/observations/O1508.md":                               true,
+
 	"internal/extractor/tsengine/grammars/grammars.lock.json":            true,
 	"internal/extractor/tsengine/grammars/cpp.wasm.gz":                   true,
 	"internal/extractor/tsengine/grammars/PROVENANCE.md":                 true,
@@ -97,7 +112,7 @@ func candidateDiffAllowedForMode(root, baseline, candidate string, external bool
 	changed := map[string]bool{}
 	for _, name := range bytes.Split(bytes.TrimSuffix(raw, []byte{0}), []byte{0}) {
 		p := string(name)
-		if !candidatePaths[p] {
+		if !candidatePaths[p] && !(strings.HasPrefix(p, "docs/bench/readings/cpp-audit-2026-10-26/") && strings.HasSuffix(p, ".json")) {
 			return errors.New("candidate_unrelated_change")
 		}
 		if external && (p == "internal/extractor/tsengine/grammars/grammars.lock.json" || p == "internal/extractor/tsengine/grammars/cpp.wasm.gz") {

@@ -1,6 +1,8 @@
 import hashlib
+import copy
 import importlib.util
 import json
+import math
 from pathlib import Path
 import sys
 import tempfile
@@ -9,6 +11,8 @@ from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 AUDIT_PATH = HERE / "cpp-audit.py"
+HISTORICAL_DRIVER_SHA256 = "baf94aaa397277fff0bd78cfefa7a384142aefba0665c08ea187ebafda348461"
+TMP = HERE.parents[2] / "workspace" / "tmp"
 
 
 def load(name, path):
@@ -77,16 +81,29 @@ def reading(version):
                for name, tier, release in (("universal-ctags", "B", "6.2.1"),
                    ("scip-clang", "A", version[1:]), ("clang-ast", "A", "synthetic"),
                    ("clang-preprocessor", "A", "synthetic"))]
+    metrics = {}
+    for name in metric_tiers:
+        rows = [report.metric_rows(s)[name] for s in subjects]
+        n = sum(row["numerator"] for row in rows)
+        d = sum(row["denominator"] for row in rows)
+        metrics[name] = math.floor(n / d * 10000 + 0.5) / 10000 if d else None
+    pooled_counts = {key: sum(s["counts"].get(key, 0) for s in subjects)
+                     for key in subjects[0]["counts"]}
     return {"dialect": "cpp", "fathom_commit": report.BASELINE,
             "subjects": subjects, "oracles": oracles,
-            "metrics": {name: 0.5 for name in metric_tiers},
+            "counts": pooled_counts,
+            "metrics": metrics,
             "metric_tiers": metric_tiers,
             "notes": ["PRIVATE PERSON /private/subject/file.cpp"]}
 
 
 def audit_fixture(test):
-    base = Path(tempfile.mkdtemp(dir=HERE))
+    TMP.mkdir(parents=True, exist_ok=True)
+    base = Path(tempfile.mkdtemp(dir=TMP))
     test.addCleanup(lambda: __import__("shutil").rmtree(base))
+    clean = mock.patch.object(report, "_require_clean_repo")
+    clean.start()
+    test.addCleanup(clean.stop)
     binary = base / "cpp-screen-bin"
     binary.write_bytes(b"synthetic screen binary")
     binary_pin = mock.patch.object(report, "SCREEN_BINARY_SHA256", sha(binary.read_bytes()))
@@ -110,7 +127,7 @@ def audit_fixture(test):
                                "binary_sha256": audit.INDEX_BINARY[version]})
             index_evidence[slug][version] = {"scip_sha256": sha(raw), "documents": 3}
     index_receipt = {"status": "complete", "producer": "calibration/oracles/scip-clang/cpp-audit.py",
-                     "driver_sha256": sha(AUDIT_PATH.read_bytes()), "rows": index_rows}
+                     "driver_sha256": HISTORICAL_DRIVER_SHA256, "rows": index_rows}
     put(root / "indexes" / "candidate-indexes.json", index_receipt)
     native_outputs = {}
     for slug in audit.PINS:
@@ -120,7 +137,9 @@ def audit_fixture(test):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"synthetic native")
             native_outputs[slug][name] = sha(path.read_bytes())
-    native = {"status": "complete", "inputs": {"synthetic": 1}, "outputs": native_outputs}
+    native = {"status": "complete", "inputs": {"synthetic": 1,
+              "clang_sha256": "a" * 64, "driver_sha256": HISTORICAL_DRIVER_SHA256},
+              "outputs": native_outputs}
     put(root / "work" / "native" / "receipt.json", native)
     outputs = {}
     for scope in ("legacy", "full"):
@@ -136,7 +155,11 @@ def audit_fixture(test):
                 put(root / "work" / "grade" / stem / slug / "unmatched.json",
                     {"tenancy_files": ["a.cpp"], "dialect_only": ["PRIVATE"]})
     grade = {"status": "complete", "commit": report.BASELINE,
-             "inputs": {"driver_sha256": sha(AUDIT_PATH.read_bytes()),
+             "inputs": {"driver_sha256": HISTORICAL_DRIVER_SHA256,
+                        "indexbench_sha256": "b" * 64, "ctags_sha256": "c" * 64,
+                        "tool_identity": {"indexbench": {"source": "cmd/indexbench",
+                          "revision": report.BASELINE, "sha256": "b" * 64, "modified": False},
+                          "ctags": {"version": "6.2.1", "sha256": "c" * 64}},
                         "native_inputs": native["inputs"], "native_outputs": native["outputs"],
                         "index_evidence": {"receipt_sha256": sha((root / "indexes" / "candidate-indexes.json").read_bytes()),
                                            "indexes": index_evidence}},
@@ -164,7 +187,123 @@ def audit_fixture(test):
     return root, base / "summary.json", base
 
 
+def timing_fixture(root, base):
+    timing = base / "timing"
+    timing.mkdir()
+    for scope in report.SCOPES:
+        for version in audit.INDEX_BINARY:
+            name = f"cpp-{scope}-{version}.json"
+            original = root / "readings" / name
+            fresh = copy.deepcopy(json.loads(original.read_text()))
+            fresh["tenancy"] = {"throughput_mb_s": 1.2, "max_file_ms": 8}
+            for sub in fresh["subjects"]:
+                sub["tenancy"].update(extract_ms=8, extract_cpu_ms=7, max_file_ms=8)
+            fresh["notes"].append("throughput (design 1.9 T1, T2): retimed")
+            put(timing / name, fresh)
+            log = {"schema": "fathom-lang-retime-load-v1",
+                   "reading_before_sha256": sha(original.read_bytes()),
+                   "reading_after_sha256": sha((timing / name).read_bytes()),
+                   "os": "darwin", "arch": "arm64", "product_revision": "d" * 40,
+                   "product_binary_sha256": "e" * 64, "product_modified": False,
+                   "runs": [{"number": n, "rate_mb_cpu_s": rate,
+                             "load_before": 2.0 + n, "load_after": 2.5 + n}
+                            for n, rate in enumerate((1.1, 1.2, 1.3), 1)]}
+            put(timing / (name + ".loads.json"), log)
+    return timing
+
+
 class ReportTests(unittest.TestCase):
+    def test_aggregate_counts_match_subjects_before_ratio_rounding(self):
+        value = reading("v0.4.0")
+        report._validate_pooled(value)
+        value["counts"]["matched"] += 1
+        with self.assertRaisesRegex(report.Refusal, "aggregate count"):
+            report._validate_pooled(value)
+
+    def test_fresh_timing_positive_and_identity_refusals(self):
+        root, out, base = audit_fixture(self)
+        timing = timing_fixture(root, base)
+        kwargs = {"workspace_roots": [base], "audit_module": audit,
+                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing}
+        with mock.patch.object(report, "_current_revision", return_value="d" * 40):
+            result = report.produce(root, out, **kwargs)
+        row = result["readings"]["cpp-full-v0.4.0.json"]
+        self.assertEqual(row["throughput_mb_cpu_s"], 1.2)
+        self.assertEqual(row["run_rates_mb_cpu_s"], [1.1, 1.2, 1.3])
+        self.assertEqual(row["run_loads_1m"], [{"before": 3.0, "after": 3.5},
+                                                 {"before": 4.0, "after": 4.5},
+                                                 {"before": 5.0, "after": 5.5}])
+        self.assertEqual(row["historical_timing"]["load_condition"], "unrecorded")
+        self.assertEqual(result["timing_product_revision"], "d" * 40)
+        self.assertEqual(result["timing_product_binary_sha256"], "e" * 64)
+        self.assertEqual(len(result["audit_inputs_sha256"]), report.MAX_INPUTS)
+        self.assertEqual(len(result["timing_inputs"]), 4)
+        out.unlink()
+        for fault in ("counts", "before_hash", "after_hash", "binary", "revision", "loads", "rate"):
+            with self.subTest(fault=fault):
+                path = timing / "cpp-full-v0.4.0.json"
+                log_path = timing / (path.name + ".loads.json")
+                original_reading, original_log = path.read_bytes(), log_path.read_bytes()
+                reading, log = json.loads(original_reading), json.loads(original_log)
+                if fault == "counts":
+                    reading["subjects"][0]["counts"]["matched"] += 1
+                    put(path, reading)
+                    log["reading_after_sha256"] = sha(path.read_bytes())
+                elif fault == "before_hash":
+                    log["reading_before_sha256"] = "0" * 64
+                elif fault == "after_hash":
+                    log["reading_after_sha256"] = "0" * 64
+                elif fault == "binary":
+                    log["product_binary_sha256"] = "0" * 64
+                elif fault == "revision":
+                    log["product_revision"] = "0" * 40
+                elif fault == "loads":
+                    log["runs"][0]["load_before"] = -1
+                else:
+                    log["runs"][1]["rate_mb_cpu_s"] = 9.0
+                put(log_path, log)
+                with mock.patch.object(report, "_current_revision", return_value="d" * 40):
+                    with self.assertRaises(report.Refusal):
+                        report.produce(root, out, **kwargs)
+                self.assertFalse(out.exists())
+                path.write_bytes(original_reading)
+                log_path.write_bytes(original_log)
+
+    def test_timing_shared_budget_and_growing_file(self):
+        root, out, base = audit_fixture(self)
+        timing = timing_fixture(root, base)
+        kwargs = {"workspace_roots": [base], "audit_module": audit,
+                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing}
+        total = sum(path.stat().st_size for path in root.rglob("*.json")) + \
+                sum(path.stat().st_size for path in timing.glob("*.json"))
+        with mock.patch.object(report, "_current_revision", return_value="d" * 40):
+            report.produce(root, out, json_cap=total, **kwargs)
+            out.unlink()
+            with self.assertRaises(report.Refusal):
+                report.produce(root, out, json_cap=total - 1, **kwargs)
+        self.assertFalse(out.exists())
+        path = timing / "cpp-full-v0.4.0.json"
+        size = path.stat().st_size
+        original_open = Path.open
+        changed = [False]
+        def growing_open(item, *args, **kwargs):
+            if item == path and not changed[0]:
+                changed[0] = True
+                path.write_bytes(path.read_bytes() + b"x")
+            return original_open(item, *args, **kwargs)
+        with mock.patch.object(Path, "open", growing_open):
+            with self.assertRaises(report.Refusal):
+                report._safe_file(path, timing, size, [size], {})
+        self.assertTrue(changed[0])
+
+    def test_clean_repo_status_gate(self):
+        with mock.patch.object(report, "_git", return_value=b"") as git:
+            report._require_clean_repo()
+            self.assertEqual(git.call_args.args[1:], ("status", "--porcelain", "--untracked-files=all"))
+        with mock.patch.object(report, "_git", return_value=b" M tracked.py\n"):
+            with self.assertRaisesRegex(report.Refusal, "nonignored fathom tree changed"):
+                report._require_clean_repo()
+
     def test_metric_numerators_denominators_and_zero(self):
         row = report.metric_rows(subject("fmt"))
         self.assertEqual((row["sym_precision"]["numerator"], row["sym_precision"]["denominator"]), (8, 9))
@@ -218,10 +357,120 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(set(result["subjects"]), set(audit.PINS))
         self.assertEqual(result["screen_binary_sha256"], sha((base / "cpp-screen-bin").read_bytes()))
         self.assertEqual(result["producer_sha256"], sha((HERE / "cpp-report.py").read_bytes()))
+        self.assertEqual(result["commit"], report.BASELINE)
+        self.assertEqual(result["driver_sha256"], HISTORICAL_DRIVER_SHA256)
+        self.assertEqual(result["current_audit_helper_sha256"], sha(AUDIT_PATH.read_bytes()))
+        self.assertEqual(result["indexbench_sha256"], "b" * 64)
+        self.assertEqual(result["ctags_sha256"], "c" * 64)
+        self.assertEqual(result["clang_sha256"], "a" * 64)
+        self.assertEqual(result["scip_clang_sha256"], audit.INDEX_BINARY)
+        self.assertEqual(result["readings"]["cpp-full-v0.4.0.json"]["run_rates_mb_cpu_s"],
+                         [1.0, 1.0, 1.0])
+        self.assertIsNone(result["readings"]["cpp-full-v0.4.0.json"]["run_loads_1m"])
+        self.assertEqual(result["readings"]["cpp-full-v0.4.0.json"]["load_condition"],
+                         "unrecorded")
         with self.assertRaises(report.Refusal):
             report.produce(root, out, workspace_roots=[base], audit_module=audit,
                                 screen_binary=base / "cpp-screen-bin")
         self.assertEqual(out.read_text(), published)
+
+    def test_clean_repo_checked_before_and_after_processing(self):
+        root, out, base = audit_fixture(self)
+        with mock.patch.object(report, "_require_clean_repo", side_effect=report.Refusal("dirty")):
+            with self.assertRaisesRegex(report.Refusal, "dirty"):
+                report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                               screen_binary=base / "cpp-screen-bin")
+        self.assertFalse(out.exists())
+        with mock.patch.object(report, "_require_clean_repo", side_effect=[None, report.Refusal("dirty")]) as clean:
+            with self.assertRaisesRegex(report.Refusal, "dirty"):
+                report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                               screen_binary=base / "cpp-screen-bin")
+            self.assertEqual(clean.call_count, 2)
+        self.assertFalse(out.exists())
+
+    def test_receipt_identity_refuses_drift(self):
+        for fault in ("commit", "driver", "indexbench", "ctags", "clang", "scip"):
+            with self.subTest(fault=fault):
+                root, out, base = audit_fixture(self)
+                grade_path = root / "readings/cpp-audit-receipt.json"
+                grade = json.loads(grade_path.read_text())
+                if fault == "commit":
+                    grade["commit"] = "0" * 40
+                elif fault == "driver":
+                    grade["inputs"]["driver_sha256"] = sha(AUDIT_PATH.read_bytes())
+                elif fault in ("indexbench", "ctags"):
+                    grade["inputs"][fault + "_sha256"] = "0" * 64
+                elif fault == "clang":
+                    grade["inputs"]["native_inputs"]["clang_sha256"] = "0" * 64
+                else:
+                    grade["inputs"]["index_evidence"]["indexes"]["fmt"]["v0.4.0"]["scip_sha256"] = "0" * 64
+                put(grade_path, grade)
+                with self.assertRaises(report.Refusal):
+                    report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                                   screen_binary=base / "cpp-screen-bin")
+                self.assertFalse(out.exists())
+
+    def test_pooled_reading_metrics_and_tiers_refuse_drift(self):
+        for field in ("metrics", "metric_tiers", "counts"):
+            with self.subTest(field=field):
+                root, out, base = audit_fixture(self)
+                grade_path = root / "readings/cpp-audit-receipt.json"
+                grade = json.loads(grade_path.read_text())
+                for version in audit.INDEX_BINARY:
+                    path = root / "readings" / f"cpp-full-{version}.json"
+                    row = json.loads(path.read_text())
+                    if field == "metrics":
+                        row[field]["kind_agreement"] = 0.1
+                    elif field == "metric_tiers":
+                        row[field]["kind_agreement"] = "A"
+                    else:
+                        row[field]["matched"] += 1
+                    put(path, row)
+                    grade["readings"][path.name]["sha256"] = sha(path.read_bytes())
+                put(grade_path, grade)
+                with self.assertRaises(report.Refusal):
+                    report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                                   screen_binary=base / "cpp-screen-bin")
+                self.assertFalse(out.exists())
+
+    def test_input_count_tenancy_and_byte_caps_at_boundary(self):
+        root, out, base = audit_fixture(self)
+        path = root / "indexes/fmt-v0.4.0.scip"
+        raw = path.read_bytes()
+        with mock.patch.object(report, "MAX_TENANCY", 1):
+            self.assertEqual(report.scip_coverage(raw, ["a.cpp"], "v0.4.0")["tenancy_files"], 1)
+            with self.assertRaises(report.Refusal):
+                report.scip_coverage(raw, ["a.cpp", "b.cpp"], "v0.4.0")
+        snapshots = {root / f"prior-{i}": ("0" * 64, 1) for i in range(report.MAX_INPUTS - 1)}
+        self.assertEqual(report._safe_file(path, root, len(raw), [len(raw)], snapshots), raw)
+        with self.assertRaises(report.Refusal):
+            report._safe_file(root / "indexes/json-v0.4.0.scip", root, len(raw), [len(raw)], snapshots)
+        with self.assertRaises(report.Refusal):
+            report._safe_file(path, root, len(raw) - 1, [len(raw)], {})
+        with self.assertRaises(report.Refusal):
+            report._safe_file(path, root, len(raw), [len(raw) - 1], {})
+        with mock.patch.object(Path, "read_bytes", side_effect=AssertionError("unbounded read")):
+            self.assertEqual(report._safe_file(path, root, len(raw), [len(raw)], {}), raw)
+
+    def test_scip_cap_and_shared_budget_at_boundary(self):
+        root, out, base = audit_fixture(self)
+        scip_sizes = [p.stat().st_size for p in (root / "indexes").glob("*.scip")]
+        cap = max(scip_sizes)
+        result = report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                                screen_binary=base / "cpp-screen-bin", scip_cap=cap)
+        self.assertEqual(result["status"], "complete")
+        out.unlink()
+        with self.assertRaises(report.Refusal):
+            report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                           screen_binary=base / "cpp-screen-bin", scip_cap=cap - 1)
+        self.assertFalse(out.exists())
+        json_size = sum(p.stat().st_size for p in root.rglob("*.json"))
+        report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                       screen_binary=base / "cpp-screen-bin", json_cap=json_size)
+        out.unlink()
+        with self.assertRaises(report.Refusal):
+            report.produce(root, out, workspace_roots=[base], audit_module=audit,
+                           screen_binary=base / "cpp-screen-bin", json_cap=json_size - 1)
 
     def test_bad_metadata_missing_input_and_cap(self):
         for fault in ("status", "missing", "cap", "path"):
@@ -249,6 +498,7 @@ class ReportTests(unittest.TestCase):
             path = root / "readings" / f"cpp-{scope}-v0.4.1.json"
             value = json.loads(path.read_text())
             value["subjects"][0]["counts"]["scip_file_edges_every_definer"] += 2
+            value["counts"]["scip_file_edges_every_definer"] += 2
             put(path, value)
             receipt = root / "readings" / "cpp-audit-receipt.json"
             grade = json.loads(receipt.read_text())

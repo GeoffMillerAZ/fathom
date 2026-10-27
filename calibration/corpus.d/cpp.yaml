@@ -65,3 +65,4 @@ repos:
       - sink class templates over a mutex policy (base_sink<Mutex>) with explicit
         instantiations in src/
       - formatter<T> specializations and user flag formatters in the example and tests
+# Historical SPENT pin/criterion: docs/bench/cpp-historical-holdout.yaml; never canonical input.
