@@ -1133,6 +1133,48 @@ func (g *Graph) canonicalize(symbol string) string {
 	return hits[0].Key()
 }
 
+// AmbiguousKeys returns, sorted, the canonical keys symbol names when it
+// names more than one node (why Canonical answers "" for it), and nil when
+// it names one node or none. It reads canonicalize's own last tiers: a
+// "svc::pkg.Name" key by its package-qualified name, anything else by the
+// component-boundary suffix match, a Go struct field never counting beside
+// the func, method or type the name means (core.WithoutShadowingFields).
+// A caller that would answer zero for an unresolved name asks it first: an
+// ambiguous name is never an absence.
+func AmbiguousKeys(g *Graph, symbol string) []string {
+	if g == nil || symbol == "" || g.canonicalize(symbol) != "" {
+		return nil
+	}
+	var hits []core.SymbolNode
+	if i := strings.Index(symbol, "::"); i >= 0 {
+		rest := symbol[i+2:]
+		for _, n := range g.nodes {
+			if n.Package+"."+n.Name == rest {
+				hits = append(hits, n)
+			}
+		}
+	} else {
+		for key, n := range g.nodes {
+			if keyEndsWith(key, symbol) {
+				hits = append(hits, n)
+			}
+		}
+	}
+	seen := make(map[string]bool, len(hits))
+	var keys []string
+	for _, n := range core.WithoutShadowingFields(hits, symbol) {
+		if k := n.Key(); !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) < 2 {
+		return nil
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 // keyEndsWith reports whether the canonical key ends with the partial
 // reference raw at a component boundary: "."+raw (the historical
 // "svc::pkg.Name" shape, and "Recv.Method" against "svc::dir/Recv.Recv.Method")

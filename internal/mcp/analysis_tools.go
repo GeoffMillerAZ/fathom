@@ -130,7 +130,33 @@ func renameImpactAnswer(ctx context.Context, backend QueryInterface, service, sy
 		summary := fmt.Sprintf("call sites for %s are unknown: field references are not indexed; %d recorded call site%s", symbol, len(callers), pluralS(len(callers)))
 		return withSummary(capSummary(summary), result), nil
 	}
+	if amb := callgraph.AmbiguousKeys(g, symbol); len(amb) > 1 {
+		return withSummary(ambiguousNameAnswer(result, symbol, amb), result), nil
+	}
 	return withSummary(renameImpactSummary(symbol, callers), result), nil
+}
+
+// ambiguousNameAnswer marks result as answering an ambiguous name (one the
+// graph resolves to nothing because it names several definitions) and
+// returns its summary. Pre-existing on main: rename and test_impact
+// rendered such a name as "0 call sites — nothing to rename" and "no tests
+// reach", an absence the graph never measured.
+func ambiguousNameAnswer(result map[string]any, symbol string, keys []string) string {
+	listed, elided := fitToolBudget(keys, defaultCharBudget/2)
+	result["ambiguous"] = true
+	result["candidates"] = stringsToAny(listed)
+	if line := elisionLine(elided, "a qualified name (pkg.Name or a key) for one definition"); line != "" {
+		result["elision"] = line
+	}
+	n := len(keys)
+	if n > 3 {
+		n = 3
+	}
+	summary := fmt.Sprintf("%s names %d definitions (%s", symbol, len(keys), strings.Join(keys[:n], ", "))
+	if len(keys) > n {
+		summary += fmt.Sprintf(", +%d more", len(keys)-n)
+	}
+	return capSummary(summary + "): pass a qualified name (pkg.Name or a key)")
 }
 
 // goFieldTarget reports whether symbol names a Go struct field, whose
@@ -304,6 +330,9 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 			// unknown, never none.
 			result["field_references_indexed"] = false
 			return withSummary(capSummary(fmt.Sprintf("tests reaching %s are unknown: field references are not indexed; %d recorded reaching test%s", p.Symbol, len(tests), pluralS(len(tests)))), result), nil
+		}
+		if amb := callgraph.AmbiguousKeys(g, p.Symbol); len(amb) > 1 {
+			return withSummary(ambiguousNameAnswer(result, p.Symbol, amb), result), nil
 		}
 		return withSummary(testImpactSummary(p.Symbol, tests, infos), result), nil
 	})

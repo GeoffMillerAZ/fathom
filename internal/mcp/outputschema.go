@@ -398,6 +398,12 @@ type renameImpactResult struct {
 	// FieldReferencesIndexed is false, and present only, when the target
 	// is a Go struct field: its call sites are unknown, never zero.
 	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
+	// Ambiguous/Candidates/Elision: present only when symbol names several
+	// definitions; callers is then empty and the summary asks for a
+	// qualified name, never "nothing to rename".
+	Ambiguous  bool     `json:"ambiguous,omitempty"`
+	Candidates []string `json:"candidates,omitempty"`
+	Elision    string   `json:"elision,omitempty"`
 }
 
 // testImpactResult mirrors test_impact's payload (analysis_tools.go).
@@ -416,6 +422,11 @@ type testImpactResult struct {
 	// FieldReferencesIndexed is false, and present only, when the symbol
 	// is a Go struct field: its reaching tests are unknown, never none.
 	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
+	// Ambiguous/Candidates: present only when symbol names several
+	// definitions; tests is then empty and the summary asks for a
+	// qualified name, never "no tests reach".
+	Ambiguous  bool     `json:"ambiguous,omitempty"`
+	Candidates []string `json:"candidates,omitempty"`
 }
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).

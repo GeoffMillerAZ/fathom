@@ -174,6 +174,17 @@ func buildRefactorPlan(ctx context.Context, c *client.Client, svc, root, baselin
 		}
 	}
 
+	// A name several definitions share resolves to no one symbol: refuse
+	// it naming them, never render it as an import plan (pre-existing on
+	// main).
+	if amb := callgraph.AmbiguousKeys(g, target); len(amb) > 1 {
+		listed := amb
+		if len(listed) > 5 {
+			listed = append(append([]string{}, amb[:5]...), "…")
+		}
+		return "", fmt.Errorf("target %q names %d definitions (%s): pass a qualified name (pkg.Name or a key)", target, len(amb), strings.Join(listed, ", "))
+	}
+
 	importPath, ierr := resolveImportTarget(root, target)
 	if ierr != nil {
 		return "", fmt.Errorf("target %q is not a known symbol in %q, and %v", target, svc, ierr)

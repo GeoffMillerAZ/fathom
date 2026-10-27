@@ -1,6 +1,7 @@
 package callgraph_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
@@ -61,5 +62,23 @@ func TestGoFieldDoesNotShadowBareMethodName(t *testing.T) {
 	}
 	if got := callgraph.Canonical(g, "Decided.Record"); got != field.Key() {
 		t.Fatalf("Canonical(Decided.Record) = %q, want the field %q", got, field.Key())
+	}
+}
+
+// AmbiguousKeys names why Canonical answers "" for a name two definitions
+// share, and is nil for a name that resolves or names nothing.
+func TestAmbiguousKeys(t *testing.T) {
+	a := core.SymbolNode{Service: "svc", Package: "a", Name: "Default", Kind: core.KindGoFunc, FilePath: "a/a.go"}
+	b := core.SymbolNode{Service: "svc", Package: "b", Name: "Default", Kind: core.KindGoFunc, FilePath: "b/b.go"}
+	field := core.SymbolNode{Service: "svc", Package: "Config", Name: "Config.Default", Kind: core.KindGoField, FilePath: "a/config.go"}
+	one := core.SymbolNode{Service: "svc", Package: "a", Name: "Only", Kind: core.KindGoFunc, FilePath: "a/a.go"}
+	g := callgraph.Build([]core.SymbolNode{a, b, field, one})
+	if got, want := callgraph.AmbiguousKeys(g, "Default"), []string{a.Key(), b.Key()}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AmbiguousKeys(Default) = %v, want %v (the field never counts)", got, want)
+	}
+	for _, name := range []string{"Only", "a.Default", "Missing", a.Key()} {
+		if got := callgraph.AmbiguousKeys(g, name); got != nil {
+			t.Errorf("AmbiguousKeys(%q) = %v, want nil", name, got)
+		}
 	}
 }
