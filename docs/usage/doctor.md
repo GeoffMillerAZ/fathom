@@ -153,7 +153,8 @@ beyond loopback, because the daemon has no authentication. The remedy is `fathom
 install --reconcile` for the plist, a kickstart for the managed daemon, or `kill <pid>`
 for a scratch one. It WARNs when the user config's `[daemon].addr` is not loopback
 (serve-http binds `127.0.0.1` on that port in its place) and when it cannot read the
-installed plist or the user config, naming the error.
+installed plist, a `LaunchAgents` plist whose file name names fathom, or the user config,
+naming the error.
 
 Exit `0` no confirmed failure (including runs with `unknown`, `timeout`, `warn` or
 `skipped` rows); `1` at least one check failed; `2` doctor itself could not

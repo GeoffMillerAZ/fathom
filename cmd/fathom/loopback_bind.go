@@ -81,6 +81,9 @@ type daemonBindFacts struct {
 	// installed or it cannot be read (PlistErr says why).
 	Post     *plistPostureReport
 	PlistErr string
+	// Skipped are fathom-named plists labelInstalled could not read or
+	// XML-parse, so they never reached the posture read.
+	Skipped []skippedPlist
 	// Rows is the daemon census (ps joined with the records).
 	Rows        []censusRow
 	CensusTaken bool
@@ -94,8 +97,9 @@ type daemonBindFacts struct {
 // plist passes a wide --addr or a running serve-http listens beyond
 // loopback, naming each with the one command that fixes it; WARN when it
 // cannot read the installed plist or the user config, or the user config's
-// [daemon].addr is wide (serve-http binds loopback in its place), so no
-// unread input passes silently (I38). Pure.
+// [daemon].addr is wide (serve-http binds loopback in its place), or a
+// fathom-named plist cannot be read or parsed, so no unread input passes
+// silently (I38). Pure.
 func daemonBindCheck(f daemonBindFacts) doctorCheck {
 	const name = "daemon_bind"
 	var warns []string
@@ -108,6 +112,12 @@ func daemonBindCheck(f daemonBindFacts) doctorCheck {
 	}
 	if f.PlistErr != "" {
 		warn(fmt.Sprintf("cannot read the installed agent's plist %s: %s", f.PlistPath, f.PlistErr), "plutil -lint "+f.PlistPath)
+	}
+	for _, sp := range f.Skipped {
+		if sp.Path == f.PlistPath {
+			continue // already named as the installed agent's
+		}
+		warn(fmt.Sprintf("cannot read the launchd plist %s, so it is not judged as an installed agent: %s", sp.Path, sp.Err), "plutil -lint "+sp.Path)
 	}
 	if f.ConfigErr != "" {
 		warn(fmt.Sprintf("the user config %s did not load, so its [daemon].addr is unread: %s", f.ConfigPath, f.ConfigErr), "fathom config")
@@ -171,7 +181,7 @@ func daemonBindCheck(f daemonBindFacts) doctorCheck {
 // checkDaemonBind is daemon_bind over this machine: the installed plist,
 // the census doctor's resources projection took, and the user config.
 func checkDaemonBind(rep resourcesReport) doctorCheck {
-	f := daemonBindFacts{CensusTaken: rep.Scratch.Taken, CensusErr: rep.Scratch.Error, Rows: rep.Scratch.rows}
+	f := daemonBindFacts{CensusTaken: rep.Scratch.Taken, CensusErr: rep.Scratch.Error, Rows: rep.Scratch.rows, Skipped: skippedAgentPlists()}
 	if lbl, plistPath, post, err := installedPostureErr(""); lbl != "" {
 		f.Label, f.PlistPath = lbl, plistPath
 		if err != nil {

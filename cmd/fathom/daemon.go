@@ -72,16 +72,9 @@ func labelInstalled() string {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".plist") {
 			continue
 		}
-		body, readErr := os.ReadFile(filepath.Join(dir, e.Name()))
+		body, readErr := readAgentPlist(filepath.Join(dir, e.Name()))
 		if readErr != nil {
-			continue
-		}
-		var doc struct {
-			Keys []string `xml:"dict>key"`
-			Strs []string `xml:"dict>string"`
-		}
-		if xml.Unmarshal(body, &doc) != nil {
-			continue
+			continue // skippedAgentPlists reports a fathom-named one
 		}
 		text := string(body)
 		if !strings.Contains(text, "serve-http") || !strings.Contains(text, "fathom") {
@@ -94,6 +87,52 @@ func labelInstalled() string {
 		return ""
 	}
 	return found[0]
+}
+
+// readAgentPlist reads a LaunchAgents plist and checks it parses as XML:
+// labelInstalled skips one that fails, and skippedAgentPlists reports it.
+func readAgentPlist(path string) ([]byte, error) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var doc struct {
+		Keys []string `xml:"dict>key"`
+		Strs []string `xml:"dict>string"`
+	}
+	if err := xml.Unmarshal(body, &doc); err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+// skippedPlist is a LaunchAgents plist labelInstalled could not judge.
+type skippedPlist struct{ Path, Err string }
+
+// skippedAgentPlists are the LaunchAgents plists whose file name names
+// fathom but which labelInstalled skips because they cannot be read or
+// XML-parsed, sorted by path, so doctor can say so rather than pass on
+// input it never read (I38). Nil off macOS or without the directory.
+func skippedAgentPlists() []skippedPlist {
+	dir := launchAgentsDir()
+	if dir == "" || runtime.GOOS != "darwin" {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []skippedPlist
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".plist") || !strings.Contains(strings.ToLower(e.Name()), "fathom") {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if _, err := readAgentPlist(path); err != nil {
+			out = append(out, skippedPlist{Path: path, Err: err.Error()})
+		}
+	}
+	return out
 }
 
 // restartHintNow is daemonRestartHint's clock (a timed stop's expiry).

@@ -262,6 +262,10 @@ func TestDoctorDaemonBindRow(t *testing.T) {
 		}}, status: doctorFail, reason: []string{"pid 4243 listens on 0.0.0.0:7600"}, remedy: "kill 4243"},
 		{name: "unreadable plist", facts: daemonBindFacts{Label: "L", PlistPath: "/p/L.plist", PlistErr: "plist: root is <array>, want <dict>", CensusTaken: true},
 			status: doctorWarn, reason: []string{"/p/L.plist", "root is <array>"}, remedy: "plutil -lint /p/L.plist", reasonAbsent: "every fathom listener is loopback"},
+		{name: "skipped fathom plist", facts: daemonBindFacts{CensusTaken: true, Skipped: []skippedPlist{{Path: "/p/dev.fathom.serve-http.plist", Err: "permission denied"}}},
+			status: doctorWarn, reason: []string{"/p/dev.fathom.serve-http.plist", "permission denied"}, remedy: "plutil -lint /p/dev.fathom.serve-http.plist", reasonAbsent: "every fathom listener is loopback"},
+		{name: "skipped fathom plist, no agent, no census", facts: daemonBindFacts{Skipped: []skippedPlist{{Path: "/p/x.fathom.plist", Err: "XML syntax error"}}},
+			status: doctorWarn, reason: []string{"/p/x.fathom.plist", "XML syntax error"}},
 		{name: "wide user config", facts: daemonBindFacts{CensusTaken: true, ConfigPath: "/h/config.toml", ConfigAddr: "0.0.0.0:7591"},
 			status: doctorWarn, reason: []string{"/h/config.toml", "[daemon].addr 0.0.0.0:7591", "127.0.0.1:7591"}, remedy: `set addr = "127.0.0.1:7591" under [daemon] in /h/config.toml`},
 		{name: "wide user config, no agent, no census", facts: daemonBindFacts{ConfigPath: "/h/config.toml", ConfigAddr: ":7591"},
@@ -333,4 +337,43 @@ func TestDoctorDaemonBindReadsThisMachine(t *testing.T) {
 			t.Fatalf("an installed plist daemon_bind cannot read must WARN naming it: %+v", got)
 		}
 	})
+	// A fathom-named plist that cannot be read or XML-parsed is skipped by
+	// labelInstalled, so it never reaches the posture read: it still WARNs
+	// rather than passing as "every listener is loopback" (I38).
+	for _, c := range []struct {
+		name string
+		body string
+		mode os.FileMode
+		why  string
+	}{
+		{name: "a chmod 000 plist warns", body: `<?xml version="1.0"?><plist version="1.0"><dict><key>Label</key><string>dev.fathom.serve-http</string></dict></plist>`, mode: 0o000, why: "permission denied"},
+		{name: "a malformed plist warns", body: `<?xml version="1.0"?><plist version="1.0"><dict><key>Label</key><string>fathom serve-http`, mode: 0o644, why: "XML syntax error"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if runtime.GOOS != "darwin" {
+				t.Skip("installed agents are launchd's")
+			}
+			if c.mode == 0 && os.Geteuid() == 0 {
+				t.Skip("root reads a chmod 000 file")
+			}
+			h := t.TempDir()
+			t.Setenv("HOME", h)
+			agents := filepath.Join(h, "Library", "LaunchAgents")
+			if err := os.MkdirAll(agents, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(agents, "dev.fathom.serve-http.plist")
+			if err := os.WriteFile(path, []byte(c.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(path, c.mode); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
+			got := checkDaemonBind(resourcesReport{Scratch: resourcesScratch{Taken: true}})
+			if got.Status != doctorWarn || !strings.Contains(got.Reason, path) || !strings.Contains(got.Reason, c.why) || got.Remedy != "plutil -lint "+path {
+				t.Fatalf("a fathom plist labelInstalled skips must WARN naming it and %q: %+v", c.why, got)
+			}
+		})
+	}
 }
