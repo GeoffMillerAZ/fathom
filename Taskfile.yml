@@ -176,6 +176,7 @@ tasks:
     # (cmd/fathom/testrunhook_declared.go) reads the declared test commands
     # from this Taskfile.
     cmds:
+      - "{{.GO}} vet -tags=fathom_grammar_audit ./internal/extractor/tsengine ./calibration/oracles/scip-clang/cpp-screen"
       - |
         export CGO_ENABLED=1
         rc=0
