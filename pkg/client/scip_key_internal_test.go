@@ -11,12 +11,26 @@ import (
 // keyed by its root-relative path, so the same repository ingested from
 // another checkout or a remapped root reconciles against the same
 // namespace; outside the root it is keyed by base name, so an explicit
-// --scip into a fresh temp directory each run does too.
+// --scip into a fresh temp directory each run does too. Both roots are
+// spelled through a symlink (a symlinked TMPDIR, issue 120), and every
+// index inside a root exists, as it does when ImportSCIP keys it.
 func TestSCIPIndexKey_StableAcrossRootsAndTempPaths(t *testing.T) {
-	rootA := t.TempDir()
-	rootB := t.TempDir()
+	base := t.TempDir()
+	if err := os.Mkdir(filepath.Join(base, "real"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(base, "real"), filepath.Join(base, "tmp")); err != nil {
+		t.Fatal(err)
+	}
+	rootA := filepath.Join(base, "tmp", "a")
+	rootB := filepath.Join(base, "tmp", "b")
 	for _, r := range []string{rootA, rootB} {
 		if err := os.MkdirAll(filepath.Join(r, ".fathom", "scip"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, index := range []string{filepath.Join(rootA, "index.scip"), filepath.Join(rootB, "index.scip"), filepath.Join(rootA, ".fathom", "scip", "ts.scip")} {
+		if err := os.WriteFile(index, nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -22,7 +22,13 @@ func withIsolatedConfigHome(t *testing.T) (userDir, projectDir string) {
 	userDir = t.TempDir()
 	t.Setenv("HOME", userDir)
 
-	projectDir = t.TempDir()
+	// The project config is read at os.Getwd(), which after a Chdir is the
+	// kernel's symlink-resolved spelling (a symlinked TMPDIR, issue 120), so
+	// the project directory is returned in that spelling.
+	projectDir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	origWD, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
