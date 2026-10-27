@@ -7,7 +7,8 @@ import (
 
 // TestComputeEnvIsOffline (ADR-083): ask's module loads run the go command
 // offline whatever environment they start from: GOPROXY=off, GOSUMDB=off,
-// GOTELEMETRY=off, no inherited -mod=mod, GOTOOLCHAIN=local last, and
+// GONOPROXY=",", GOTELEMETRY=off, no inherited -mod=mod, GOTOOLCHAIN=local
+// last, and
 // GOWORK=off for the default environment. A caller's own environment gets
 // the same overrides on top.
 func TestComputeEnvIsOffline(t *testing.T) {
@@ -27,7 +28,7 @@ func TestComputeEnvIsOffline(t *testing.T) {
 		"default": computeEnv(nil),
 		"caller":  computeEnv([]string{"GOPROXY=https://proxy.example.test", "GOFLAGS=-mod=mod"}),
 	} {
-		for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local"} {
+		for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GONOPROXY": ",", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local"} {
 			if got := lastOf(env, key); got != want {
 				t.Errorf("%s env: %s = %q, want %q", name, key, got, want)
 			}

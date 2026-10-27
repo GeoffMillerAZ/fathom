@@ -51,14 +51,17 @@ package fusion
 // internal/receiptverify).
 //
 // ADR-083 (internal/goenv): the typed pass also never reaches the module
-// network. TypedEdgeEnv carries GOPROXY=off, GOSUMDB=off and GOTELEMETRY=off
-// and drops an inherited -mod=mod from GOFLAGS (-mod=vendor, -mod=readonly
-// and every other flag kept), so a cloned repository's dependencies are
-// read from the module cache or the pass fails with the missing module
-// named (typed_missingmodules.go); the user's own `[ingest] go_network = true`
-// passes the inherited GOPROXY and GOSUMDB through. layerrules.BuildIndex,
-// which a `fathom rules gen-test` test runs inside the user's go test, uses
-// the same environment.
+// network or writes the repository. TypedEdgeEnv carries GOPROXY=off,
+// GOSUMDB=off, GONOPROXY="," (no GOPRIVATE module goes straight to its
+// version control) and GOTELEMETRY=off, and sets GOFLAGS to the effective
+// value (the environment's, or else the GOENV file's) without -mod=mod and
+// never empty (-mod=vendor, -mod=readonly and every other flag kept), so a
+// cloned repository's dependencies are read from the module cache or the
+// pass fails with the missing module named (typed_missingmodules.go); the
+// user's own `[ingest] go_network = true` passes the inherited GOPROXY,
+// GOSUMDB and GONOPROXY through. layerrules.BuildIndex, which a `fathom
+// rules gen-test` test runs inside the user's go test, uses the same
+// environment.
 
 import (
 	"context"
@@ -90,8 +93,9 @@ import (
 // Later entries win in exec's environment, so appending is enough; the
 // inherited entries are kept so nothing else (PATH, HOME) is silently
 // dropped. ADR-083: the offline overrides (goenv.Apply: GOPROXY=off,
-// GOSUMDB=off unless the user's go_network says otherwise, GOTELEMETRY=off,
-// no -mod=mod) come next. RT-106: the toolchain caps (GOFLAGS -p,
+// GOSUMDB=off and GONOPROXY="," unless the user's go_network says
+// otherwise, GOTELEMETRY=off, GOFLAGS without -mod=mod and never empty)
+// come next. RT-106: the toolchain caps (GOFLAGS -p,
 // GOMAXPROCS; at most 2 by default) are applied after them.
 //
 // K22: GOTOOLCHAIN=local is the very last entry, after the caps.

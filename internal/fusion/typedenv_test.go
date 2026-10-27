@@ -91,6 +91,7 @@ func TestEnrichTypedEdges_RelativeGOPATH(t *testing.T) {
 // GOPROXY=off, GOSUMDB=off, GOTELEMETRY=off, GOTOOLCHAIN=local last.
 func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
 	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "") // the default cap
+	t.Setenv("GOENV", "off")               // no GOENV file GOFLAGS (ADR-083 reads it)
 	t.Setenv("GOPROXY", "https://proxy.example.test")
 	t.Setenv("GOSUMDB", "sum.example.test")
 	for _, ambientFlags := range []string{"<unset>", "", "-mod=vendor -tags=integration", "-mod=mod -p=1", "-p=8 -trimpath"} {
@@ -124,7 +125,7 @@ func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
 					t.Fatalf("GOPATH=%q: %s = %q carries an unexpanded variable — this is the daemon's exact failure", broken, key, v)
 				}
 			}
-			for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local"} {
+			for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GONOPROXY": ",", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local"} {
 				if got[key] != want {
 					t.Fatalf("GOFLAGS %q: %s = %q, want %s (ADR-083: the typed pass never reaches the module network)", ambientFlags, key, got[key], want)
 				}

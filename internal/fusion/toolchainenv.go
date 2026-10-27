@@ -15,9 +15,11 @@ package fusion
 // inherits the priority. The shim also pins GOTOOLCHAIN=local (K22,
 // typedenv.go): whatever environment a `go` it fronts starts with, no
 // toolchain a repository names is fetched or run. And it runs offline
-// (ADR-083, internal/goenv): GOPROXY=off, GOSUMDB=off, GOTELEMETRY=off and
-// no -mod=mod in GOFLAGS, unless the user's `[ingest] go_network = true`
-// was set when the shim was written (then GOPROXY and GOSUMDB pass through).
+// (ADR-083, internal/goenv): GOPROXY=off, GOSUMDB=off, GONOPROXY=",",
+// GOTELEMETRY=off, and GOFLAGS (the environment's, or else the GOENV
+// file's) without -mod=mod and never empty, unless the user's `[ingest]
+// go_network = true` was set when the shim was written (then GOPROXY,
+// GOSUMDB and GONOPROXY pass through).
 
 import (
 	"fmt"
@@ -29,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/goenv"
 )
 
 // defaultToolchainProcs is the parallelism ceiling for the typed pass's
@@ -134,18 +137,21 @@ func writeToolchainShim(dir, realGo string, network bool) (string, error) {
 			"_fathom_p=; for _fathom_f in ${GOFLAGS:-}; do case $_fathom_f in -p=*) _fathom_p=${_fathom_f#-p=} ;; esac; done\n" +
 			"case \"$_fathom_p\" in ''|0|*[!0-9]*) GOFLAGS=\"${GOFLAGS:+$GOFLAGS }-p=" + c + "\" ;; *) [ \"$_fathom_p\" -gt " + c + " ] && GOFLAGS=\"$GOFLAGS -p=" + c + "\" ;; esac; export GOFLAGS\n"
 	}
-	// ADR-083: an inherited -mod=mod is dropped before the caps read
-	// GOFLAGS; every other flag is kept in order.
-	offline := "_fathom_g=; for _fathom_f in ${GOFLAGS:-}; do case $_fathom_f in -mod=mod|--mod=mod) ;; *) _fathom_g=\"${_fathom_g:+$_fathom_g }$_fathom_f\" ;; esac; done; GOFLAGS=$_fathom_g; export GOFLAGS\n"
-	if !network {
-		offline += "GOPROXY=off; export GOPROXY\nGOSUMDB=off; export GOSUMDB\n"
-	}
-	offline += "GOTELEMETRY=off; export GOTELEMETRY\n"
 	script := "#!/bin/sh\n" +
 		"# fathom background toolchain shim (RT-106): the daemon's go, capped, niced and offline (ADR-083).\n" +
-		offline +
-		caps +
+		// GOFLAGS is read with pathname expansion off: a glob character in
+		// it never expands against the files of the repository being loaded.
+		"set -f\n" +
 		goToolchainLocal + "; export GOTOOLCHAIN\n" +
+		shimOfflineFlags(realGo)
+	if !network {
+		script += "GOPROXY=off; export GOPROXY\nGOSUMDB=off; export GOSUMDB\n" + goenv.NoProxyNone + "; export GONOPROXY\n"
+	}
+	script += "GOTELEMETRY=off; export GOTELEMETRY\n" +
+		caps +
+		// Never empty, so the go command never falls back to the GOENV
+		// file's GOFLAGS (goenv.EmptyFlags).
+		"[ -n \"$GOFLAGS\" ] || GOFLAGS='" + goenv.EmptyFlags + "'; export GOFLAGS\n" +
 		"exec " + strings.Join(append(prio, shellQuote(realGo)), " ") + " \"$@\"\n"
 	p := filepath.Join(dir, "go")
 	tmp := p + ".tmp"
@@ -156,6 +162,34 @@ func writeToolchainShim(dir, realGo string, network bool) (string, error) {
 		return "", err
 	}
 	return p, nil
+}
+
+// shimOfflineFlags is the shim's GOFLAGS rule, goenv.Flags in sh
+// (ADR-083): the effective GOFLAGS is the environment's, or else the GOENV
+// file's (realGo's own `go env GOFLAGS`); its fields are read the way
+// cmd/go reads them (goenv.SplitFlags: spaces, tabs, newlines and carriage
+// returns separate, a field starting with ' or " runs to the next same
+// quote), every -mod=mod and --mod=mod is dropped and the rest is written
+// back in order, a field quoted again when it must be (goenv.JoinFlags). A
+// value with an unterminated quote is left as it is: the go command
+// refuses it and runs nothing.
+func shimOfflineFlags(realGo string) string {
+	return "[ -n \"${GOFLAGS:-}\" ] || GOFLAGS=$(GOFLAGS= " + shellQuote(realGo) + " env GOFLAGS 2>/dev/null) || GOFLAGS=\n" +
+		"_fathom_ws=$(printf ' \\t\\n\\rx'); _fathom_ws=${_fathom_ws%x}\n" +
+		"_fathom_s=$GOFLAGS; _fathom_g=; _fathom_ok=1\n" +
+		"while :; do\n" +
+		"  _fathom_s=${_fathom_s#\"${_fathom_s%%[!$_fathom_ws]*}\"}\n" +
+		"  [ -n \"$_fathom_s\" ] || break\n" +
+		"  case $_fathom_s in\n" +
+		"  \\'*) _fathom_s=${_fathom_s#?}; case $_fathom_s in *\\'*) ;; *) _fathom_ok=; break ;; esac; _fathom_w=${_fathom_s%%\\'*}; _fathom_s=${_fathom_s#*\\'} ;;\n" +
+		"  \\\"*) _fathom_s=${_fathom_s#?}; case $_fathom_s in *\\\"*) ;; *) _fathom_ok=; break ;; esac; _fathom_w=${_fathom_s%%\\\"*}; _fathom_s=${_fathom_s#*\\\"} ;;\n" +
+		"  *) _fathom_w=${_fathom_s%%[$_fathom_ws]*}; _fathom_s=${_fathom_s#\"$_fathom_w\"} ;;\n" +
+		"  esac\n" +
+		"  case $_fathom_w in -mod=mod|--mod=mod) continue ;; esac\n" +
+		"  case $_fathom_w in ''|*[$_fathom_ws]*|\\'*|\\\"*) case $_fathom_w in *\\'*) _fathom_w=\"\\\"$_fathom_w\\\"\" ;; *) _fathom_w=\"'$_fathom_w'\" ;; esac ;; esac\n" +
+		"  _fathom_g=\"${_fathom_g:+$_fathom_g }$_fathom_w\"\n" +
+		"done\n" +
+		"[ -z \"$_fathom_ok\" ] || GOFLAGS=$_fathom_g\n"
 }
 
 // InstallBackgroundToolchain writes the shim for the `go` currently on PATH

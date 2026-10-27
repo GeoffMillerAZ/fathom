@@ -9,12 +9,16 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/goenv/goenvtest"
 )
 
 // TestBuildIndexRunsGoOffline (ADR-083): the import graph a generated
 // layer-rules test loads runs the go command offline: GOPROXY=off,
-// GOSUMDB=off, GOTELEMETRY=off, no inherited -mod=mod, GOTOOLCHAIN=local
-// last, GOWORK=off.
+// GOSUMDB=off, GONOPROXY=",", GOTELEMETRY=off, no inherited -mod=mod,
+// GOTOOLCHAIN=local last, GOWORK=off. GOFLAGS is never empty (an empty one
+// lets the GOENV file's apply); this case pinned "" before ADR-083 closed
+// that.
 func TestBuildIndexRunsGoOffline(t *testing.T) {
 	t.Setenv("FATHOM_HOME", t.TempDir()) // no user go_network opt-out
 	t.Setenv("GOPROXY", "https://proxy.example.test")
@@ -26,7 +30,7 @@ func TestBuildIndexRunsGoOffline(t *testing.T) {
 			got[k] = v
 		}
 	}
-	for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local", "GOWORK": "off", "GOFLAGS": ""} {
+	for key, want := range map[string]string{"GOPROXY": "off", "GOSUMDB": "off", "GONOPROXY": ",", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local", "GOWORK": "off", "GOFLAGS": " "} {
 		if got[key] != want {
 			t.Errorf("%s = %q, want %q", key, got[key], want)
 		}
@@ -78,6 +82,29 @@ func TestBuildIndexColdModuleCacheIsNamed(t *testing.T) {
 	for _, want := range []string{"github.com/google/uuid", "run go mod download in " + dir} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q lacks %q", err, want)
+		}
+	}
+}
+
+// TestBuildIndexNeverRewritesGoSum (ADR-083): over a warm module cache and
+// a go.sum one line short, BuildIndex leaves go.sum as it was with -mod=mod
+// in the process GOFLAGS or only in the GOENV file (`go env -w
+// GOFLAGS=-mod=mod`), which an empty GOFLAGS would let apply.
+func TestBuildIndexNeverRewritesGoSum(t *testing.T) {
+	w := goenvtest.WarmModule(t)
+	file := filepath.Join(t.TempDir(), "env")
+	if err := os.WriteFile(file, []byte("GOFLAGS=-mod=mod\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	t.Setenv("GOENV", file)
+	t.Setenv("GOMODCACHE", w.ModCache)
+	for _, flags := range []string{"", "-mod=mod"} {
+		t.Setenv("GOFLAGS", flags)
+		w.Reset(t)
+		_, _ = BuildIndex(w.Dir) // the load may fail on the missing go.sum line; go.sum is the check
+		if rewritten, got := w.GoSumRewritten(t); rewritten {
+			t.Errorf("process GOFLAGS %q, GOENV file -mod=mod: BuildIndex rewrote go.sum:\n%s", flags, got)
 		}
 	}
 }

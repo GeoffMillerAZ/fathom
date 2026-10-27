@@ -5,8 +5,10 @@ package fusion
 // refusal ("module lookup disabled by GOPROXY=off"), never a download. The
 // refusal is counted like any failed package and named on the service with
 // the module and its remedy (I38: a cold cache never reads as a smaller,
-// healthy graph). The pass's partial state is not recorded for it, so the
-// next ingest retries once `go mod download` filled the cache, with no Go
+// healthy graph). The pass's partial state is recorded with the missing
+// modules in its stamp (missingModulesStamp): the next ingest skips the
+// pass like any partial one (RT-104) until a Go input changes or one of
+// those modules appears in the module cache (`go mod download`), with no Go
 // file changed.
 
 import (
@@ -17,6 +19,7 @@ import (
 	"strings"
 
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/geoffmilleraz/fathom/internal/goenv"
@@ -171,4 +174,86 @@ func formatMissingModules(missing []MissingGoModule) string {
 		i = j
 	}
 	return fmt.Sprintf(": %d module(s) not in the module cache, and fathom runs go offline (GOPROXY=off, ADR-083): %s", len(missing), strings.Join(parts, "; "))
+}
+
+// missingStampPrefix starts the part of a partial pass's state row that
+// names the modules the module cache lacked.
+const missingStampPrefix = "@missing="
+
+// missingModulesStamp is what a partial typed pass's state row appends for
+// the modules the module cache lacked: "" for none, else "@missing=" and,
+// sorted and comma-separated, each module with the cache files it had when
+// the pass ended ("path@version:" then "m" for its .mod and "z" for its
+// .zip under modCache/cache/download).
+func missingModulesStamp(modCache string, missing []MissingGoModule) string {
+	if len(missing) == 0 {
+		return ""
+	}
+	seen := map[string]bool{}
+	var entries []string
+	for _, m := range missing {
+		if seen[m.Module] {
+			continue
+		}
+		seen[m.Module] = true
+		entries = append(entries, m.Module+":"+cachedModuleFiles(modCache, m.Module))
+	}
+	sort.Strings(entries)
+	return missingStampPrefix + strings.Join(entries, ",")
+}
+
+// missingModulesUnchanged reports whether every module stamp (a
+// missingModulesStamp) names still has exactly the cache files it had: true
+// keeps the partial pass standing, false (a module appeared, or modCache is
+// unknown) runs the pass again.
+func missingModulesUnchanged(modCache, stamp string) bool {
+	list, ok := strings.CutPrefix(stamp, missingStampPrefix)
+	if !ok || list == "" || modCache == "" {
+		return false
+	}
+	for _, entry := range strings.Split(list, ",") {
+		i := strings.LastIndexByte(entry, ':')
+		if i < 0 || cachedModuleFiles(modCache, entry[:i]) != entry[i+1:] {
+			return false
+		}
+	}
+	return true
+}
+
+// cachedModuleFiles names which of mod's (path@version) download files
+// modCache holds: "m" for the .mod, "z" for the .zip, "" for neither or
+// for a module without a version.
+func cachedModuleFiles(modCache, mod string) string {
+	path, version, ok := strings.Cut(mod, "@")
+	if !ok || modCache == "" {
+		return ""
+	}
+	escPath, err := module.EscapePath(path)
+	if err != nil {
+		return ""
+	}
+	escVersion, err := module.EscapeVersion(version)
+	if err != nil {
+		return ""
+	}
+	base := filepath.Join(modCache, "cache", "download", filepath.FromSlash(escPath), "@v", escVersion)
+	out := ""
+	if _, err := os.Stat(base + ".mod"); err == nil {
+		out += "m"
+	}
+	if _, err := os.Stat(base + ".zip"); err == nil {
+		out += "z"
+	}
+	return out
+}
+
+// typedModCache is the GOMODCACHE TypedEdgeEnv hands the go command.
+func typedModCache() string {
+	v := ""
+	for _, kv := range repairedGoEnv() {
+		if c, ok := strings.CutPrefix(kv, "GOMODCACHE="); ok {
+			v = c
+		}
+	}
+	return v
 }

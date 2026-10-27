@@ -207,8 +207,8 @@ type TypedEdgeReport struct {
 	// refused to fetch because the module cache lacks it (ADR-083,
 	// typed_missingmodules.go), with the module directory whose `go mod
 	// download` fills the cache. The packages it failed are counted in
-	// PackagesFailed; a pass with any is not recorded as partial, so the
-	// next ingest retries it.
+	// PackagesFailed; the pass's partial state names them, so it runs
+	// again once one appears in the module cache (missingModulesStamp).
 	MissingModules []MissingGoModule
 	Duration       time.Duration
 	// nestedLoads is each nested module's load wall this run, in load
@@ -285,8 +285,8 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	// EW-68: the state row names the skip_modules set the last pass ran
 	// under; a changed set reads as no completed pass.
 	skipStamp := skipModulesStamp(typedSkipModules(svc.Path))
-	if !typedPassNeeded(changed, p.passStateUnder(ctx, svc.ID, goPassStateKey, skipStamp) != "") {
-		return TypedEdgeReport{Skipped: p.skippedReasonUnder(ctx, svc.ID, goPassStateKey, skipStamp)}, nil
+	if state := p.passStateUnder(ctx, svc.ID, goPassStateKey, skipStamp); !typedPassNeeded(changed, state != "") {
+		return TypedEdgeReport{Skipped: skippedReasonFor(state)}, nil
 	}
 	atomic.AddInt64(&p.typedPassTotal, 1)
 
@@ -369,11 +369,10 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		// RT-104: a package that always fails must not defeat the gate —
 		// the same inputs fail the same way; wait for a Go change. ADR-083:
 		// a module missing from the cache is fixed outside the tree (`go mod
-		// download`), so that pass is not recorded and the next ingest
-		// retries it.
-		if len(rep.MissingModules) == 0 {
-			p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
-		}
+		// download`), so the row names the missing modules and the pass
+		// also runs again once one of them appears in the module cache
+		// (missingModulesStamp).
+		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules)+missingModulesStamp(typedModCache(), rep.MissingModules))
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
 		// Never-silent guard: go/packages saw packages but the connector-
 		// scope filter excluded every one of them. Legitimate only when the

@@ -1668,12 +1668,17 @@ skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
 Every go command fathom runs on its own (the typed pass at ingest and in the
 daemon, the daemon's toolchain shim, ask's module loads, the layer-rules
 import graph) runs offline (ADR-083): `GOPROXY=off`, `GOSUMDB=off`,
-`GOTELEMETRY=off` and `GOTOOLCHAIN=local`, and an inherited `-mod=mod` is
-dropped from `GOFLAGS` so `go list` never rewrites the repository's `go.mod`
-or `go.sum` (`-mod=vendor`, `-mod=readonly` and every other flag are kept).
+`GONOPROXY=,` (a `GOPRIVATE` module is never fetched straight from its
+version control), `GOTELEMETRY=off` and `GOTOOLCHAIN=local`. `GOFLAGS` is
+the environment's, or else the one `go env -w` wrote to the GOENV file,
+with `-mod=mod` dropped in every form the go command reads (quoted
+included), so `go list` never rewrites the repository's `go.mod` or
+`go.sum`; `-mod=vendor`, `-mod=readonly` and every other flag are kept, and
+`GOFLAGS` is never left empty, so the GOENV file cannot add `-mod=mod` back.
 A dependency missing from the module cache fails the typed pass with a named
-reason: the module, and `run go mod download in <module dir>`. The next
-ingest retries.
+reason: the module, and `run go mod download in <module dir>`. Later ingests
+skip the pass, like any pass with failed packages, until a Go file changes
+or one of the missing modules appears in the module cache.
 
 ```toml
 # ~/.fathom/config.toml (user scope only)
@@ -1682,8 +1687,8 @@ go_network = true
 ```
 
 - `go_network` (optional, default false): true passes the inherited
-  `GOPROXY` and `GOSUMDB` through, so the typed pass downloads a missing
-  module itself. The toolchain pin and the `-mod=mod` strip stay.
+  `GOPROXY`, `GOSUMDB` and `GONOPROXY` through, so the typed pass downloads
+  a missing module itself. The toolchain pin and the `-mod=mod` strip stay.
 - It is read only from `~/.fathom/config.toml`: a repository's copy is
   dropped and named, since a cloned repository must not reopen the network.
   A user file that does not load reads as false.

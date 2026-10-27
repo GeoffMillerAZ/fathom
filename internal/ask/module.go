@@ -99,10 +99,11 @@ func Compute(ctx context.Context, root string, spans []Span, env []string) ([]Co
 
 // computeEnv is the environment Compute's go command runs under: env (nil:
 // this process's, with GOWORK=off), then the offline overrides (ADR-083,
-// goenv.Apply: GOPROXY=off and GOSUMDB=off unless the user's own
-// `[ingest] go_network` says otherwise, GOTELEMETRY=off, no -mod=mod) with
-// GOTOOLCHAIN=local last. A module the cache lacks fails its batch's load,
-// which excludes those spans as ExcludedLoad.
+// goenv.Apply: GOPROXY=off, GOSUMDB=off and GONOPROXY="," unless the
+// user's own `[ingest] go_network` says otherwise, GOTELEMETRY=off, GOFLAGS
+// without -mod=mod and never empty) with GOTOOLCHAIN=local last. A module
+// the cache lacks fails its batch's load, which excludes those spans as
+// ExcludedLoad.
 func computeEnv(env []string) []string {
 	if env == nil {
 		env = append(os.Environ(), "GOWORK=off")

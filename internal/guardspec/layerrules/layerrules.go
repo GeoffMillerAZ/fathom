@@ -97,9 +97,10 @@ func BuildIndex(root string) (guardspec.LayerRuleIndex, error) {
 // GOWORK=off (the subject is its own module; a go.work above it, a
 // developer's and never the subject's, must not redirect the load — the
 // convention of internal/contextbench/publicloc.LoadGoTruth), then the
-// offline overrides (ADR-083, goenv.Apply: GOPROXY=off and GOSUMDB=off
-// unless the user's own `[ingest] go_network` says otherwise,
-// GOTELEMETRY=off, no -mod=mod) with GOTOOLCHAIN=local last.
+// offline overrides (ADR-083, goenv.Apply: GOPROXY=off, GOSUMDB=off and
+// GONOPROXY="," unless the user's own `[ingest] go_network` says
+// otherwise, GOTELEMETRY=off, GOFLAGS without -mod=mod and never empty)
+// with GOTOOLCHAIN=local last.
 func loadEnv() []string {
 	return goenv.Apply(append(os.Environ(), "GOWORK=off"))
 }

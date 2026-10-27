@@ -1,10 +1,12 @@
 # egress-allowlist.txt: every non-standard package in the fathom binary
-# that imports net, net/http, net/rpc, crypto/tls or os/exec, on any release
-# target (A5, ADR-083). TestEgressImportAllowlist (egress_allowlist_test.go)
+# that imports a standard package that dials, serves, runs a program or
+# loads one (egressImports), or calls os.StartProcess, syscall.Exec,
+# ForkExec or Socket, or x/sys/unix's Exec or Socket (egressCalls), on any
+# release target (A5, ADR-083). TestEgressImportAllowlist (egress_allowlist_test.go)
 # fails on an edge this list does not name and on an entry the binary no
 # longer has. Add a line only after reviewing what the new edge reaches.
 #
-# <package> | <imports> | <reason> | <gate>
+# <package> | <imports and calls> | <reason> | <gate>
 
 # Third-party: the CUE module registry (closed), CUE's own tool packages
 # (never run), and libraries whose network code fathom never calls.
@@ -29,15 +31,17 @@ github.com/tetratelabs/wazero/internal/sys | net | WASI socket support for a gue
 github.com/tetratelabs/wazero/internal/sysfs | net | WASI socket support for a guest | fathom passes no listener to a guest
 golang.org/x/oauth2 | net/http | token transport for the CUE registry auth | registry closed: internal/cuerefuse
 golang.org/x/oauth2/internal | net/http | token transport for the CUE registry auth | registry closed: internal/cuerefuse
+golang.org/x/sys/unix | syscall.Exec | the package's own Exec wrapper | its one caller is listed (modernc.org/libc)
 golang.org/x/tools/go/gcexportdata | os/exec | asks the go command where export data lives | runs under the offline go environment (internal/goenv, ADR-083)
 golang.org/x/tools/go/packages | os/exec | runs `go list` for the typed pass, ask and layer rules | offline go environment (internal/goenv, ADR-083); the gate's tripwire tests
 golang.org/x/tools/internal/gcimporter | os/exec | asks the go command for export data | offline go environment (internal/goenv, ADR-083)
 golang.org/x/tools/internal/gocommand | os/exec | the go command runner behind go/packages | offline go environment (internal/goenv, ADR-083)
-modernc.org/libc | os/exec | libc emulation for the pure-Go SQLite (system and popen) | SQLite never calls them; fathom loads no extension
+modernc.org/libc | os/exec golang.org/x/sys/unix.Exec | libc emulation for the pure-Go SQLite (system, popen and execve) | SQLite never calls them; fathom loads no extension
 
 # fathom: the CLI and daemon. cmd/fathom must stay listed, so the runtime
-# tripwire (goProxyTripwire) covers new calls inside it.
-github.com/geoffmilleraz/fathom/cmd/fathom | net net/http os/exec | the CLI and daemon: serve-http, the daemon client, git and the go toolchain | serve-http binds loopback by default; LLM and decision calls need a configured provider; go runs offline (ADR-083)
+# tripwire (goProxyTripwire in TestCmdIngest_ColdModuleCacheNamesTheRemedy)
+# covers the go toolchain's module downloads inside it.
+github.com/geoffmilleraz/fathom/cmd/fathom | net net/http os/exec syscall.Exec | the CLI and daemon: serve-http, the daemon client, git and the go toolchain; the fathomd launcher execs the fathom binary beside it | serve-http binds loopback by default; LLM and decision calls need a configured provider; go runs offline (ADR-083); the launcher runs only as fathomd and execs only its sibling
 github.com/geoffmilleraz/fathom/internal/analysis/rulereplay | os/exec | read-only git for rule replay over history | git read commands only
 github.com/geoffmilleraz/fathom/internal/analysis/scipexport | os/exec | runs scip-go when it is on PATH | the explicit `fathom export` verb only
 github.com/geoffmilleraz/fathom/internal/config | os/exec | runs the user's api_key_cmd to read a credential | user scope only (internal/config scope.go)
@@ -49,6 +53,7 @@ github.com/geoffmilleraz/fathom/internal/decide | net net/http | the decision po
 github.com/geoffmilleraz/fathom/internal/fusion | net os/exec | git log, the go toolchain for the typed pass; net only parses addresses and errors | go runs offline (internal/goenv, ADR-083); git read commands only
 github.com/geoffmilleraz/fathom/internal/gatereceipt | os/exec | read-only git for gate receipts | git read commands only
 github.com/geoffmilleraz/fathom/internal/gitro | os/exec | the read-only git runner | git read commands only
+github.com/geoffmilleraz/fathom/internal/goenv | os/exec | `go env GOFLAGS`, to read the GOENV file's GOFLAGS before stripping -mod=mod | GOTOOLCHAIN=local; go env reads configuration only (ADR-083)
 github.com/geoffmilleraz/fathom/internal/hookguard | net net/http | the hooks' daemon transport with deadlines | loopback daemon only (pkg/client CallerTransport)
 github.com/geoffmilleraz/fathom/internal/labs | net | parses a loopback address for the eval suite | no connection is opened
 github.com/geoffmilleraz/fathom/internal/mcp | os/exec | read-only git and rg for the search tool | git read commands and rg only

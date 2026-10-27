@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/goenv/goenvtest"
 )
 
 func envValue(env []string, key string) (string, bool) {
@@ -19,6 +21,11 @@ func envValue(env []string, key string) (string, bool) {
 	}
 	return v, ok
 }
+
+// fakeGoEnv makes a stand-in "real go" answer the shim's own `go env
+// GOFLAGS` the way the real toolchain does when the environment sets none:
+// with the GOENV file's value, here $FAKE_FILE_GOFLAGS (empty by default).
+const fakeGoEnv = "#!/bin/sh\n[ \"$1 $2\" = 'env GOFLAGS' ] && { printf '%s\\n' \"${FAKE_FILE_GOFLAGS:-}\"; exit 0; }\n"
 
 // TestTypedPassChildrenNicedAndCapped is RT-106 (design §7.2): the typed
 // pass's toolchain children run with GOFLAGS carrying -p=2 (an inherited
@@ -46,6 +53,7 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 	t.Setenv(toolchainProcsEnv, "")
 	t.Setenv("GOFLAGS", "")
 	t.Setenv("GOMAXPROCS", "")
+	t.Setenv("GOENV", "off") // no GOENV file GOFLAGS (ADR-083 reads it)
 	te := TypedEdgeEnv()
 	if v, _ := envValue(te, "GOMAXPROCS"); v != "2" {
 		t.Fatalf("TypedEdgeEnv GOMAXPROCS = %q, want 2", v)
@@ -61,7 +69,7 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 	// with, and the arguments it was handed.
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "realgo")
-	script := "#!/bin/sh\nprintf '%s|%s|%s|%s\\n' \"$(ps -o nice= -p $$ | tr -d ' ')\" \"$GOMAXPROCS\" \"$GOFLAGS\" \"$*\"\n"
+	script := fakeGoEnv + "printf '%s|%s|%s|%s\\n' \"$(ps -o nice= -p $$ | tr -d ' ')\" \"$GOMAXPROCS\" \"$GOFLAGS\" \"$*\"\n"
 	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +175,7 @@ func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 	// started with.
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "realgo")
-	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s|%s\\n' \"$GOMAXPROCS\" \"$GOFLAGS\"\n"), 0o755); err != nil {
+	if err := os.WriteFile(fake, []byte(fakeGoEnv+"printf '%s|%s\\n' \"$GOMAXPROCS\" \"$GOFLAGS\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	run := func(knob string, env ...string) string {
@@ -201,6 +209,15 @@ func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 		{"", nil, "2|-p=2"},
 		{"off", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=vendor"}, "16|-mod=vendor"},
 		{"off", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod"}, "16|"},
+		// ADR-083: -mod=mod in every form cmd/go reads, and the GOENV
+		// file's GOFLAGS (the shim asks `go env GOFLAGS` when the
+		// environment sets none), with the caps and without.
+		{"off", []string{"GOFLAGS='-mod=mod' \"--mod=mod\" -trimpath"}, "|-trimpath"},
+		{"off", []string{"GOFLAGS=-mod=mod\t-trimpath"}, "|-trimpath"},
+		{"off", []string{"GOFLAGS='-tags=a b' -mod=mod"}, "|'-tags=a b'"},
+		{"off", []string{"FAKE_FILE_GOFLAGS=-mod=mod -tags=f"}, "|-tags=f"},
+		{"", []string{"FAKE_FILE_GOFLAGS=-tags=f '-mod=mod'"}, "2|-tags=f -p=2"},
+		{"", []string{"GOFLAGS=-trimpath", "FAKE_FILE_GOFLAGS=-mod=mod"}, "2|-trimpath -p=2"},
 	} {
 		if got := run(c.knob, c.env...); got != c.want {
 			t.Errorf("shim knob %q env %q: child saw %q, want %q", c.knob, c.env, got, c.want)
@@ -217,7 +234,7 @@ func TestToolchainShimRunsLocalToolchain(t *testing.T) {
 	}
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "realgo")
-	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s\\n' \"$GOTOOLCHAIN\"\n"), 0o755); err != nil {
+	if err := os.WriteFile(fake, []byte(fakeGoEnv+"printf '%s\\n' \"$GOTOOLCHAIN\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for _, knob := range []string{"", "off"} {
@@ -254,17 +271,17 @@ func TestToolchainShimRunsOffline(t *testing.T) {
 	}
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "realgo")
-	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s|%s|%s|%s|%s\\n' \"$GOPROXY\" \"$GOSUMDB\" \"$GOTELEMETRY\" \"$GOTOOLCHAIN\" \"$GOFLAGS\"\n"), 0o755); err != nil {
+	if err := os.WriteFile(fake, []byte(fakeGoEnv+"printf '%s|%s|%s|%s|%s|%s\\n' \"$GOPROXY\" \"$GOSUMDB\" \"$GONOPROXY\" \"$GOTELEMETRY\" \"$GOTOOLCHAIN\" \"$GOFLAGS\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv(toolchainProcsEnv, "off")
-	inherited := []string{"GOPROXY=https://proxy.example.test", "GOSUMDB=sum.example.test", "GOTELEMETRY=on", "GOTOOLCHAIN=auto", "GOFLAGS=-mod=mod -tags=x"}
+	inherited := []string{"GOPROXY=https://proxy.example.test", "GOSUMDB=sum.example.test", "GOPRIVATE=corp.example.test", "GONOPROXY=", "GOTELEMETRY=on", "GOTOOLCHAIN=auto", "GOFLAGS=-mod=mod -tags=x"}
 	for _, c := range []struct {
 		network bool
 		want    string
 	}{
-		{false, "off|off|off|local|-tags=x"},
-		{true, "https://proxy.example.test|sum.example.test|off|local|-tags=x"},
+		{false, "off|off|,|off|local|-tags=x"},
+		{true, "https://proxy.example.test|sum.example.test||off|local|-tags=x"},
 	} {
 		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+strconv.FormatBool(c.network)), fake, c.network)
 		if err != nil {
@@ -278,6 +295,127 @@ func TestToolchainShimRunsOffline(t *testing.T) {
 		}
 		if got := strings.TrimSpace(string(out)); got != c.want {
 			t.Errorf("go_network=%v: the toolchain child saw %q, want %q", c.network, got, c.want)
+		}
+	}
+}
+
+// TestToolchainShimNeverLeavesGOFLAGSEmpty (ADR-083): with the caps lifted
+// and no flag left, the shim still exports a non-empty GOFLAGS, so the go
+// command never falls back to the GOENV file's GOFLAGS.
+func TestToolchainShimNeverLeavesGOFLAGSEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "realgo")
+	if err := os.WriteFile(fake, []byte(fakeGoEnv+"printf '[%s]\\n' \"${GOFLAGS-unset}\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(toolchainProcsEnv, "off")
+	shim, err := writeToolchainShim(filepath.Join(dir, "shim"), fake, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, env := range [][]string{{"GOFLAGS="}, {"GOFLAGS=-mod=mod"}, {"GOFLAGS=", "FAKE_FILE_GOFLAGS=-mod=mod"}} {
+		cmd := exec.Command(shim)
+		cmd.Env = append(os.Environ(), env...)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("shim: %v", err)
+		}
+		if got := strings.TrimRight(string(out), "\n"); got != "[ ]" {
+			t.Errorf("env %q: the toolchain child saw GOFLAGS %s, want [ ] (set, never empty)", env, got)
+		}
+	}
+}
+
+// TestToolchainShimNeverGlobsGOFLAGS: the shim reads GOFLAGS with
+// pathname expansion off, so a glob character in the user's GOFLAGS never
+// expands against the files of the repository being loaded (here a file
+// named -toolexec=x.sh).
+func TestToolchainShimNeverGlobsGOFLAGS(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "realgo")
+	if err := os.WriteFile(fake, []byte(fakeGoEnv+"printf '%s\\n' \"$GOFLAGS\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Join(dir, "repo")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"-toolexec=x.sh", "-p=9"} {
+		if err := os.WriteFile(filepath.Join(repo, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, knob := range []string{"", "off"} {
+		t.Setenv(toolchainProcsEnv, knob)
+		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(shim)
+		cmd.Dir = repo
+		cmd.Env = append(os.Environ(), "GOFLAGS=-mod=mod -[t]oolexec=* -[p]=*")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("shim: %v", err)
+		}
+		if got := string(out); strings.Contains(got, "x.sh") || strings.Contains(got, "-p=9") {
+			t.Errorf("knob %q: GOFLAGS expanded against the repository's files: %q", knob, got)
+		}
+	}
+}
+
+// TestToolchainShimNeverRewritesGoSum (ADR-083) runs the shim in front of
+// the real toolchain over a warm module cache and a go.sum one line short:
+// with -mod=mod in the process GOFLAGS or in the GOENV file, caps on or
+// lifted, go list leaves go.sum as it was. The control (the real go, the
+// GOENV file's -mod=mod) rewrites it.
+func TestToolchainShimNeverRewritesGoSum(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+	w := goenvtest.WarmModule(t)
+	realGo, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("no go toolchain on PATH")
+	}
+	if realGo, err = filepath.Abs(realGo); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(t.TempDir(), "env")
+	if err := os.WriteFile(file, []byte("GOFLAGS=-mod=mod\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	list := func(goBin, flags string) {
+		t.Helper()
+		cmd := exec.Command(goBin, "list", "-e", "-deps", "./...")
+		cmd.Dir = w.Dir
+		cmd.Env = append(os.Environ(), "GOWORK=off", "GOENV="+file, "GOMODCACHE="+w.ModCache, "GOFLAGS="+flags, "GOPROXY=off", "GOSUMDB=off", "GOTOOLCHAIN=local")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s list: %v\n%s", goBin, err, out)
+		}
+	}
+	list(realGo, "")
+	if rewritten, _ := w.GoSumRewritten(t); !rewritten {
+		t.Fatal("control: the GOENV file's -mod=mod did not rewrite go.sum, so this fixture cannot detect a rewrite")
+	}
+	for _, knob := range []string{"", "off"} {
+		t.Setenv(toolchainProcsEnv, knob)
+		shim, err := writeToolchainShim(filepath.Join(t.TempDir(), "shim"), realGo, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, flags := range []string{"", "-mod=mod"} {
+			w.Reset(t)
+			list(shim, flags)
+			if rewritten, got := w.GoSumRewritten(t); rewritten {
+				t.Errorf("knob %q, process GOFLAGS %q, GOENV file -mod=mod: the shim's go rewrote go.sum:\n%s", knob, flags, got)
+			}
 		}
 	}
 }
