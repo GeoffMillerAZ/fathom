@@ -1504,6 +1504,39 @@ Each computed call logs channel `prompt-definitions`: kind `line`, `missed`
 `dropped=budget` when the line would not fit, and `emitted`. Observe always
 logs `emitted=false`. The row carries no prompt text.
 
+## The egress guard: `[guards] egress`
+
+The egress guard (ADR-083) is a **tripwire, not data-loss prevention**: it reads the literal
+argv words of a shell command, and the URL of Claude Code's `WebFetch` (or the
+`allowed_domains` of `WebSearch`), so `python -c`, a script or an encoded payload passes
+it unseen. It flags `curl` and `wget` uploads, `nc`/`ncat`/`netcat`/`socat`,
+`scp`/`rsync`/`sftp` and `ssh` to a non-loopback host, `git push` to a remote whose URL host
+is not allowlisted, `gh gist create`, and cloud uploads (`aws s3 cp|sync|mv` to `s3://`,
+`gsutil`, `gcloud storage`, `az storage blob upload`). On Codex, fathom's hooks see Bash
+only: Codex web search and MCP calls are not intercepted.
+
+```toml
+# ~/.fathom/config.toml
+[guards]
+egress = "warn"            # warn (default) | enforce | off
+egress_allow = ["docs.example.com", "*.example.org", "s3://example-bucket"]
+```
+
+- `warn` injects one advisory line naming the rule (`egress/curl_upload`) and the
+  `egress_allow` entry that would let the call through. `enforce` denies instead, only
+  while guard enforcement is on (`FATHOM_ENFORCE=off`, `[guards] enforce = false` and the
+  `guard-enforce` switch make it warn). `off` is silent.
+- The user sets the mode. A repository's `.fathom/config.toml` may tighten it
+  (off < warn < enforce) and never loosen it; the user's `enforce` reads only the user's
+  enforcement switches. `egress_allow` is user-only. The `egress-guard` capability is the
+  same switch: only `~/.fathom/capabilities.cue` may turn it off.
+- Loopback hosts always pass. An entry is an exact host, `*.example.com` for its
+  subdomains, or `s3://bucket` / `gs://bucket` for a storage bucket. A target the guard
+  cannot read (a shell expansion, an unresolvable remote) is not on the list.
+- The real boundary is the harness's own: Claude Code's `permissions.deny` and its sandbox
+  network allowlist; Codex's sandbox network setting. `fathom doctor`'s `egress_guard` row
+  names them and recommends the guard when it is off.
+
 ## The console: `[console]`
 
 The Observatory console bounds its own background work

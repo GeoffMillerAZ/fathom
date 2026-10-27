@@ -817,6 +817,13 @@ doctor write and expect it only while `[hooks] read_outline_hint = true` (see `d
 |---|---|---|---|---|
 | `PreToolUse` | `Read` | `fathom readout-hook --event pre-read` | yes | before a Read with no offset or limit of a source file over 200 lines the session has not edited, one line: its top-level symbols with line ranges from the file on disk and the offset and limit recipe; `additionalContext` only, so the read runs unchanged |
 
+The egress guard (ADR-083) adds one row of its own, appended after ADR-080's rows. It is on by default
+(`[guards] egress = "warn"`; `off` silences it at the verb, so the entry stays wired):
+
+| Event | Matcher | Command | Injects? | What it does |
+|---|---|---|---|---|
+| `PreToolUse` | `WebFetch\|WebSearch` | `fathom edit-hook --pre` | yes | checks `WebFetch`'s URL host, or `WebSearch`'s `allowed_domains`, against `[guards] egress_allow`; one advisory line under `warn`, a deny under `enforce` while guard enforcement is on. A tripwire, not data-loss prevention: `permissions.deny` and the sandbox network allowlist are the boundary |
+
 ---
 
 ## 8. Per-project `.fathom/`

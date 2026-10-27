@@ -355,6 +355,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		{name: "ident_cache_env", probe: func(ctx context.Context) doctorCheck { return checkIdentCacheEnv() }},
 		{name: "user_scope_ignore", probe: func(ctx context.Context) doctorCheck { return checkUserScopeIgnoreContext(ctx, root) }},
 		{name: "user_scope_guard", probe: func(ctx context.Context) doctorCheck { return checkUserScopeGuard() }},
+		{name: "egress_guard", probe: func(ctx context.Context) doctorCheck { return checkEgressGuard(root, harness) }}, // ADR-083: recommends the guard when off, names the harness's native control (egress.go)
 		{name: "session_ledger_tokens", probe: func(ctx context.Context) doctorCheck { return checkSessionLedgerTokens() }},
 		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
 		{name: "metrics_tier", probe: func(ctx context.Context) doctorCheck { return checkMetricsTier() }},

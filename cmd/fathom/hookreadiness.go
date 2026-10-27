@@ -39,6 +39,7 @@ func hookReadinessRegistry() map[harness.Capability]readinessEntry {
 		harness.CapObligationsPostShell: {"post-shell obligations", readinessInstructions},
 		harness.CapGuardPreEdit:         {"edit guards", readinessAlways},
 		harness.CapGuardPreShell:        {"shell guards", readinessAlways},
+		harness.CapGuardPreWeb:          {"web egress guard", readinessAlways},
 		harness.CapStopVerify:           {"stop verification", readinessAlways},
 		harness.CapClaimGate:            {"claim gate", readinessAlways},
 		harness.CapSubagentPrime:        {"exploration maps", readinessAlways},
