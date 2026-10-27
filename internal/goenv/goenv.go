@@ -35,8 +35,10 @@
 package goenv
 
 import (
+	"context"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 )
@@ -100,13 +102,21 @@ func Flags(env []string) string {
 	return kept
 }
 
+// configuredFlagsTimeout bounds ConfiguredFlags' `go env` query. The
+// environment is built before any caller's context exists (Apply and Offline
+// take none), so the query cannot inherit one; a local `go env` answers in
+// milliseconds, and one that hangs must not hold up the command it prepares.
+const configuredFlagsTimeout = 10 * time.Second
+
 // ConfiguredFlags is the GOFLAGS the go command reads when the environment
 // sets none: `go env GOFLAGS` under env with GOFLAGS empty and
 // GOTOOLCHAIN=local, which reads the GOENV file and $GOROOT/go.env. ""
 // when the go command cannot answer: the caller's go command then gets
 // EmptyFlags, which drops the file's flags rather than trusting them.
 func ConfiguredFlags(env []string) string {
-	cmd := exec.Command("go", "env", "GOFLAGS")
+	ctx, cancel := context.WithTimeout(context.Background(), configuredFlagsTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", "env", "GOFLAGS")
 	cmd.Env = append(append(make([]string, 0, len(env)+2), env...), "GOFLAGS=", toolchainLocal)
 	out, err := cmd.Output()
 	if err != nil {

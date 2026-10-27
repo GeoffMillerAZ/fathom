@@ -86,7 +86,7 @@ func WarmModule(t testing.TB) Warm {
 		"GOPROXY=file://"+filepath.ToSlash(proxy), "GOSUMDB=off", "GONOPROXY=", "GONOSUMDB=", "GOPRIVATE=", "GOINSECURE=",
 		"GOMODCACHE="+w.ModCache, "GOTOOLCHAIN=local")
 	for _, args := range [][]string{{"mod", "download", Dep + "@" + DepVersion}, {"mod", "tidy"}, {"list", "-deps", "./..."}} {
-		cmd := exec.Command("go", args...)
+		cmd := exec.CommandContext(t.Context(), "go", args...)
 		cmd.Dir, cmd.Env = w.Dir, env
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("goenvtest: go %s: %v\n%s", strings.Join(args, " "), err, out)
