@@ -1,7 +1,10 @@
 # IaC provider schemas: local evidence before typed claims
 
-Design proposal for issue #55, 2026-10-26. Implementation is blocked by I-R0
-and design review. This document changes no reading or product behavior.
+Design for issue #55, approved by the controller and merged as PR #59. The
+current provider-schema follow-up is design and probe only, based on main
+`4e7eea67a`. It changes no reading or product behavior and authorizes no schema
+reader, declaration persistence or typed edge. The policy and dependency-plane
+prerequisites below remain open.
 
 Owner request: "let's add the major terraform providers and pulumi providers and
 crossplane providers if applicable ... the providers for aws, azure and gcp, no?"
@@ -33,7 +36,9 @@ reading claim, even if the implementation proves native typed bindings.
   Existing store-v0 fields and edge kinds keep their meanings. This proposal adds
   no public tool, command, configuration key or compatibility change by itself.
 - Crossplane's explicit schema-fetch trigger has fired on the owner's request.
-  Function execution still needs containers and remains excluded by the brief.
+  A Development runtime can use a local process; runtime evaluation remains
+  outside this provider-schema probe. The former container-only premise is
+  superseded.
 - Kustomize's directory-preference trigger has already been addressed in code:
   `oneDocFile` prefers the referring dialect, and
   `TestKustomizeBaseDirectoryNeedsTheOneFileRule` includes Kubernetes manifests.
@@ -44,42 +49,24 @@ reading claim, even if the implementation proves native typed bindings.
   a state migration. Keep provider and schema identity in evidence; build no
   migration engine or future dependency database for this lane.
 
-## Present behavior and the first structural gap
+## Delivered prerequisite and remaining schema boundary
 
-`HCLExtractor.ExtractDoc` in `internal/extractor/hclextract.go` labels definitions
-by Terraform address and directory. Its `childDir` map exists for one file only.
-A module-output reference is emitted only when that file also declares the module
-call. A sibling `outputs.tf` keeps the call reference but loses the output target
-and child-directory provenance before `ResolveDocXrefs` sees it. The recorded
-reading finds 2,147/3,528 cross-file pairs (.6086 recall), missing 1,381 such reads.
-The current regression corpus explicitly expects only the sibling's call edge.
+The Terraform/OpenTofu two-hop module-output change landed as PR #85 in v0.23.0.
+`terraformModuleOutputIntents` carries explicit module/output intent from sibling
+files; `resolveTerraformModuleOutputs` resolves the bounded caller-directory,
+local module-source and output join. Plain lexical override ordering and
+provider-free installer destinations have native regression evidence. The
+committed reading now finds 3,528/3,528 cross-file references on the same two
+canonical subjects. See the Terraform two-hop calibration assessment for its
+population, native truth, throughput and regrade limits. That delivery does not
+resolve a provider attribute or admit external schema declarations.
 
-The future `terraformModuleOutputIntents` helper in `internal/extractor` carries
-facts explicitly: the module call's existing `DocLabelSet` gains a
-`terraform.local_source_dir` label from `localModuleDir`; an unresolved
-`DocCrossFileRef` uses strategy `terraform-module-output`, caller-directory
-scope and labels naming the module call and requested output. These are
-proposed carrier keys, not strings to recover from a Signature. Emit the intent
-from every relevant traversal, including sibling files; retain existing Calls.
-
-The new `resolveTerraformModuleOutputs` in `internal/fusion` consumes only that
-strategy: uniquely join the call by caller-directory scope and address, take
-its labelled local source, then uniquely join the output in the child directory.
-It is a bounded two-hop join, not arbitrary recursive graph traversal. Keep the
-existing `localModuleDir` rejection of registry/remote sources, escapes and the
-caller directory under this path. The product first accepts literal local
-sources only. Terraform requires literal sources; OpenTofu also permits some
-constant-variable expressions, which this pass counts unresolved instead
-of calling invalid. See [OpenTofu constant inputs](https://opentofu.org/docs/language/values/variables/#marking-variable-as-constant).
-Ambiguous calls/outputs stay unresolved and counted. Count/for_each module
-indices need explicit regression cases. Preserve same-file behavior and dedupe
-identical output intents; never open sibling files inside a per-file extractor.
-
-This is ENGINE and EPOCH work. Intent/label output changes require an extractor
-epoch entry, even if every existing symbol remains unchanged. IAC-11 inventories
-all doc-xref readings, nested holdout/tuned included, regrades every moved reading
-and records the epoch entry for controller renumbering. No epoch/code change is
-part of this design revision.
+On the current main, SG-30/SG-36/SG-37 are still undelivered and
+`internal/depplane` does not exist. Existing `typed_edges` represent call edges;
+repo-relative governance anchors bind source lines to an enclosing stored
+symbol. Neither is an admitted external provider declaration representation.
+The design does not substitute a per-service copy or implement that future
+plane in this lane.
 
 ## Local schema input contract
 
@@ -241,6 +228,25 @@ ensure whole-export refusal, persistence stays deferred. Report counters and
 bounded reasons, never a partial provider presented as complete. No new cache,
 memo or background worker is introduced by this lane.
 
+## Provider-schema feasibility evidence
+
+The IAC-2 [design/probe assessment](../assessments/iac-provider-schema-calibration.md)
+records controlled offline captures for AWS 6.67.0, AzureRM 5.11.0 and Google
+8.8.1. Native configuration display enumerates all four authored traversals per
+provider; native validation rejects each individually renamed field with an
+attributable diagnostic. These controls establish feasibility, not an L4 grade
+or full-public-subject coverage. Native function, ephemeral-resource and
+resource-identity metadata is present and remains ungraded.
+
+Measured full exports are 19,517,134, 3,204,662 and 9,782,236 bytes respectively.
+All exceed SG-37's planned 2 MiB file cap; AWS and Google also exceed its 8 MiB
+package cap. The selected three-attribute JSON proxies are only 739, 699 and
+833 bytes, but neither store bytes nor a usable declaration-anchor measurement.
+All exports have one physical line. This evidence reinforces the existing
+IAC-12 gate: settle source admission, anchors and ecosystem budgets through the
+dependency plane before implementing IAC-7/IAC-8. It does not authorize raising
+caps or selecting an interim per-service declaration copy. IAC-2 remains open.
+
 ## Calibration and acceptance
 
 1. Freeze subjects, tool/provider pins, artifact checksums, metric definitions and
@@ -312,7 +318,7 @@ interpreted by patch direction: FromComposite reads the XRD schema; ToComposite
 reads the managed resource schema; environment patches require their own source.
 Optional/missing fields and runtime transforms do not prove a static binding.
 Function input validation, reference evaluation, group-aware instance joins and
-container-dependent render remain distinct gaps. IAC-19 supplies the missing
+Function runtime evaluation remain distinct gaps. IAC-19 supplies the missing
 calibration/remaining-ceiling assessment, while GAP1-34 covers the provider inputs
 in the eventual reading. Upjet-generated AWS/Azure/GCP providers can reuse pinned
 Terraform schemas as source inputs; bridged Pulumi AWS/GCP can too, while Azure
@@ -354,8 +360,10 @@ metadata or copyright-holder text. Raw exports/logs/manifests stay local unless
 a bounded sanitized representation is explicitly selected. Inspect new files
 for at-signs, Author and name/email shapes before READY, alongside X-R2/X-R3.
 
-Controller acceptance belongs on a real Accepted line in this design, independent
-of calibration. No such acceptance or slot release is asserted by this revision.
+The controller owns any implementation Accepted line. Design approval of PR #59
+and release of the earlier IaC slot do not accept the L4 policy, declaration
+representation or source caps. The current authorization remains design and
+probe only; no implementation acceptance is asserted here.
 
 ## Decision models
 

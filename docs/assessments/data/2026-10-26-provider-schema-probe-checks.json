@@ -1,0 +1,48 @@
+{
+  "actual_store_bytes": "not measured; no admitted dependency-plane store",
+  "artifact_freeze_commit": "e4a76a7e8ad710d058d15d34ec31199cfff56ccd",
+  "base_commit": "4e7eea67a24a48d2c9df46740560c7cb16b0344d",
+  "fixture_freeze_commit": "fa8f0525d1b2208a9cfa0e279928de22a496a98d",
+  "initial_capture": {
+    "providers": 3,
+    "receipt_sha256": "feebb98997922737850aa4701d6bad92328e03a8fbc0fc53c9a8ecc7ff84a76e",
+    "repaired_with": "RED/GREEN owner-output-shape regression, followed by a fresh native capture with the same pinned fixture bytes",
+    "status": "failed accounting: native show output unwrapped, original parser expected configuration wrapper; all three rows retained"
+  },
+  "native_receipt_sha256": "b78b68ba47cfea07ed8c896ba9e4c1232dc7fcefe14c23971ff57102aaf5c235",
+  "scope": "IAC-2 design/probe feasibility, no support grade or declaration persistence",
+  "size_receipt_sha256": "ab248c4a3b725024cb0428609851c723ac0445cd2f4f5aebca3454dbc1b817e0",
+  "summarizer_sha256": "87a3533c528b23323b6c1b07c89cdcf986ca737cd83728ded0a8ae6c4f1bf97d",
+  "verification": {
+    "cost_proxy": {
+      "command": "nice -n 10 python3 calibration/oracles/terraform-provider-schema/summarize_exports.py --capture workspace/tmp/ps2 --out workspace/artifacts/provider-schemas-probe-r1/export-sizes.json",
+      "exit_code": 0,
+      "private_log_sha256": "f91867957c7d48fbe2837020688dcca08e31643e4ee611bdc71f3f156c1b301e"
+    },
+    "merge_debris": {
+      "command": "bash scripts/check-merge-debris.sh",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native_probe": {
+      "command": "nice -n 10 python3 calibration/oracles/terraform-provider-schema/probe.py --inputs workspace/artifacts/provider-schemas-probe-r1/preparation-inputs.json --scratch workspace/tmp/ps2 --out workspace/artifacts/provider-schemas-probe-r1/native-final.json",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "org_names": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "exit_code": 0,
+      "private_log_sha256": "e45294661428a1065ba5e429cecda9ff982d5a9b863cfea938ff7ed6e629c229"
+    },
+    "release_notes": {
+      "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
+      "exit_code": 0,
+      "private_log_sha256": "3d4b3262c04355cae0d103737f9346302050edecaffde071e5a357b828203027"
+    },
+    "unit_tests": {
+      "command": "PYTHONPYCACHEPREFIX=workspace/tmp/pycache python3 -m unittest discover -s calibration/oracles/terraform-provider-schema -p '*_test.py'",
+      "exit_code": 0,
+      "private_log_sha256": "40dd2cff4338959b18880dee07b78f39dab6a35ebfeb013d8fcc4f40d353ba37"
+    }
+  }
+}
