@@ -250,6 +250,13 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callees":       stringsToAny(callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
 		}
+		if sctx.Def.Kind == core.KindGoField {
+			// Field references are not indexed (depth.go's changed-field
+			// note): no caller or test list for a field is an answer.
+			result["callers"] = fieldReferencesNotIndexed
+			result["related_tests"] = fieldReferencesNotIndexed
+			result["field_references_indexed"] = false
+		}
 		// referenced_by / references (wave lg): present only when non-empty,
 		// each under its own quarter of the budget.
 		refBy, refByElided := fitToolBudget(referencedBy, defaultCharBudget/4)

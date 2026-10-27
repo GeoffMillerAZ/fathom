@@ -43,3 +43,23 @@ func TestGoFieldDoesNotHideMethodCandidate(t *testing.T) {
 		t.Errorf("method callers after refresh = %v, want one", got)
 	}
 }
+
+// A bare method name also suffix-matches a same-named struct field's key;
+// the field never shadows the method (core.WithoutShadowingFields), so the
+// method still resolves and its callers are found. The field's own
+// Owner.Field spelling still resolves the field.
+func TestGoFieldDoesNotShadowBareMethodName(t *testing.T) {
+	method := core.SymbolNode{Service: "svc", Package: "Recorder", Name: "Recorder.Record", Kind: core.KindGoMethod, FilePath: "internal/decide/record.go"}
+	field := core.SymbolNode{Service: "svc", Package: "Decided", Name: "Decided.Record", Kind: core.KindGoField, FilePath: "internal/decide/decided.go"}
+	call := core.SymbolNode{Service: "svc", Package: "decide", Name: "Use", Kind: core.KindGoFunc, FilePath: "internal/decide/use.go", Calls: []string{"x.Record"}}
+	g := callgraph.Build([]core.SymbolNode{field, method, call})
+	if got := callgraph.Canonical(g, "Record"); got != method.Key() {
+		t.Fatalf("Canonical(Record) = %q, want the method %q", got, method.Key())
+	}
+	if got := callgraph.RenameImpact(g, "Record"); len(got) != 1 || got[0] != call.Key() {
+		t.Fatalf("RenameImpact(Record) = %v, want the method's caller %s", got, call.Key())
+	}
+	if got := callgraph.Canonical(g, "Decided.Record"); got != field.Key() {
+		t.Fatalf("Canonical(Decided.Record) = %q, want the field %q", got, field.Key())
+	}
+}

@@ -383,6 +383,17 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			result["cross_service_callers"] = cross
 		}
 		summary := findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth, len(typedCallers))
+		var fieldGraph *callgraph.Graph
+		var fieldNodes []core.SymbolNode
+		if navErr == nil {
+			fieldGraph, fieldNodes = navs.Syntax, navs.Nodes
+		}
+		if goFieldTarget(ctx, backend, p.Service, p.Symbol, fieldGraph, fieldNodes) {
+			// Field references are not indexed: its callers are unknown,
+			// never none.
+			result["field_references_indexed"] = false
+			summary = capSummary(fmt.Sprintf("callers of %s are unknown: field references are not indexed; %d recorded caller%s", p.Symbol, len(wireCallers), pluralS(len(wireCallers))))
+		}
 		if navErr != nil {
 			summary += "; " + navLoadNote(p.Service, navErr) + " (direct syntax callers only)"
 		}

@@ -65,6 +65,9 @@ type findCallersResult struct {
 	// backend cannot name one).
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when the symbol
+	// is a Go struct field: its callers are unknown, never none.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
 }
 
 // typedEdgeRef is one kind-labeled typed edge ({key, kind}).
@@ -308,11 +311,16 @@ type symbolContextResult struct {
 	// Def is absent on an ambiguous, hub or not_found answer.
 	Def *symbolNodeDTO `json:"def,omitempty"`
 	// Callers/Callees/RelatedTests are lists of symbol keys, or the string
-	// "not computed (cold graph)" on a partial answer (O1446); absent on an
-	// ambiguous, hub or not_found answer.
+	// "not computed (cold graph)" on a partial answer (O1446), or, for a
+	// Go struct field's callers and related tests, "not computed (field
+	// references are not indexed)"; absent on an ambiguous, hub or
+	// not_found answer.
 	Callers      any `json:"callers,omitempty"`
 	Callees      any `json:"callees,omitempty"`
 	RelatedTests any `json:"related_tests,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when Def is a Go
+	// struct field.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
 	// Partial (O1446): present only when the call graph was cold and the
 	// answer holds what the symbol index alone could give.
 	Partial string `json:"partial,omitempty"`
@@ -387,6 +395,9 @@ type renameImpactResult struct {
 	// callers, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when the target
+	// is a Go struct field: its call sites are unknown, never zero.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
 }
 
 // testImpactResult mirrors test_impact's payload (analysis_tools.go).
@@ -402,6 +413,9 @@ type testImpactResult struct {
 	// Risk (TQ-5): rank:"risk"'s risk-weighted coverage list; tests is
 	// then empty.
 	Risk *certify.RiskReport `json:"risk,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when the symbol
+	// is a Go struct field: its reaching tests are unknown, never none.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
 }
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).

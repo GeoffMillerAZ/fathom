@@ -1116,17 +1116,21 @@ func (g *Graph) canonicalize(symbol string) string {
 		}
 		return ""
 	}
-	// Try suffix match for dotted partial keys like "pkg.Name".
-	var match string
-	for key := range g.nodes {
+	// Try suffix match for dotted partial keys like "pkg.Name". A Go struct
+	// field's key ends with its member name like a method's does, and a
+	// field never shadows the method, func or type the name means
+	// (core.WithoutShadowingFields); its own Owner.Field spelling still
+	// resolves it.
+	var hits []core.SymbolNode
+	for key, n := range g.nodes {
 		if keyEndsWith(key, symbol) {
-			if match != "" {
-				return "" // ambiguous
-			}
-			match = key
+			hits = append(hits, n)
 		}
 	}
-	return match
+	if hits = core.WithoutShadowingFields(hits, symbol); len(hits) != 1 {
+		return "" // none, or ambiguous
+	}
+	return hits[0].Key()
 }
 
 // keyEndsWith reports whether the canonical key ends with the partial

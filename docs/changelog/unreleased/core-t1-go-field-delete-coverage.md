@@ -1,3 +1,3 @@
 ### Fixed
 - Resolve Go field deletion targets through symbol lookup name matching, including bare names and field/method collisions, and disclose that field references are not indexed.
-- Withhold the zero-caller proof for a Go field in `gone: callers` rows (Unknown, naming that field references are not indexed) and in `fathom export receipt --kind callers` (refused with the same reason).
+- Withhold the zero-caller proof for a Go field in `gone: callers` rows (Unknown, naming that field references are not indexed), `fathom export receipt --kind callers` (refused), `blast_radius kind:"rename"`, `find_callers` and `test_impact` (`field_references_indexed: false`, call sites or tests named unknown), and `symbol_context` (callers and related tests replaced by the not-indexed note); a changed field is no longer reported as an untested gap.

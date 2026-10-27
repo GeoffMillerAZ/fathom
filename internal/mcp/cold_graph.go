@@ -30,6 +30,11 @@ import (
 // compute because the call graph was cold: never an empty list (I38).
 const notComputedColdGraph = "not computed (cold graph)"
 
+// fieldReferencesNotIndexed stands in for a Go struct field's callers and
+// related tests in symbol_context: field references are not indexed, so an
+// empty list would read as "nothing uses it".
+const fieldReferencesNotIndexed = "not computed (field references are not indexed)"
+
 // coldKeepMargin is added to memo.NavKeepAfter so a caller leaving a flight
 // it started is past the keep threshold, not on it.
 const coldKeepMargin = 100 * time.Millisecond

@@ -122,7 +122,45 @@ func renameImpactAnswer(ctx context.Context, backend QueryInterface, service, sy
 			}
 		}
 	}
+	// Field references are not indexed (safe_delete.go's rule): a rename
+	// of a Go struct field keeps whatever call sites were recorded and
+	// never claims there are none.
+	if goFieldTarget(ctx, backend, service, symbol, g, ng.Nodes) {
+		result["field_references_indexed"] = false
+		summary := fmt.Sprintf("call sites for %s are unknown: field references are not indexed; %d recorded call site%s", symbol, len(callers), pluralS(len(callers)))
+		return withSummary(capSummary(summary), result), nil
+	}
 	return withSummary(renameImpactSummary(symbol, callers), result), nil
+}
+
+// goFieldTarget reports whether symbol names a Go struct field, whose
+// references are not indexed: the node g resolves symbol to, or, when g
+// resolves nothing (or is nil), any field the exact lookup still matches
+// once a same-named func, method or type has taken precedence
+// (core.WithoutShadowingFields). rename, find_callers and test_impact then
+// withhold their zero.
+func goFieldTarget(ctx context.Context, backend QueryInterface, service, symbol string, g *callgraph.Graph, nodes []core.SymbolNode) bool {
+	key := ""
+	if g != nil {
+		key = callgraph.Canonical(g, symbol)
+	}
+	var targets []core.SymbolNode
+	if key != "" {
+		for _, n := range nodes {
+			if n.Key() == key {
+				targets = append(targets, n)
+				break
+			}
+		}
+	} else if found, err := backend.FindSymbol(ctx, service, symbol); err == nil {
+		targets = core.WithoutShadowingFields(found, symbol)
+	}
+	for _, n := range targets {
+		if n.Kind == core.KindGoField {
+			return true
+		}
+	}
+	return false
 }
 
 // renameImpactSummary renders rename_impact's answer-first sentence (wave
@@ -210,7 +248,7 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: symbol required"}
 		}
-		_, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
+		tiNodes, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -260,6 +298,12 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
+		}
+		if goFieldTarget(ctx, backend, p.Service, p.Symbol, g, tiNodes) {
+			// Field references are not indexed: the reaching tests are
+			// unknown, never none.
+			result["field_references_indexed"] = false
+			return withSummary(capSummary(fmt.Sprintf("tests reaching %s are unknown: field references are not indexed; %d recorded reaching test%s", p.Symbol, len(tests), pluralS(len(tests)))), result), nil
 		}
 		return withSummary(testImpactSummary(p.Symbol, tests, infos), result), nil
 	})
