@@ -46,7 +46,8 @@ def main():
         if rejected:discarded_unknown+=unknown
         else:without_syntax.update(independent)
         phase.update(native_function_pairs=len(native_pairs),native_function_sites=len(native_hits),function_site_unpaired_rows=unknown,events_accepted=not rejected)
-    assert hits and len(hits)==original['function_attested_sites']
+    assert hits and len(hits)==original['function_attested_sites'],('whole-unit refusal: native frames do not reproduce recorded site coverage under --native; '
+        'captures must stay at their recorded absolute path because frame filenames are not rebased when an archive is relocated')
     assert pairs==without_syntax
     result.update(function_pairs=[dict(path=f,**{'from':c,'to':t}) for f,c,t in sorted(pairs)],
         function_unknown_rows=accepted_unknown,discarded_function_site_unpaired_rows=discarded_unknown,

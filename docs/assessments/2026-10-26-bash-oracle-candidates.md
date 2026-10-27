@@ -89,9 +89,17 @@ dynamic/no-argument sites, also unmeasured. No L3 diagnostic runs for either.
 The binding review found that the former 318/318 and 213/222 denominators were
 selected by tier-C shfmt sites. Those figures are withdrawn as tier-A recall.
 Re-decoding all 40 hash-verified raw files yields 489 NVM / 248 Bats in-root native
-identities without syntax selection. NVM has 32 identities whose callers are
-outside the original eligible Bash file set; none is an unresolved in-scope pair.
-The unchanged eligible-file population is 457 / 248, with 450 / 225 found.
+identities without syntax selection. NVM's 32 excluded identities occur in 17
+executed `#!/bin/sh` scripts whose dotted basenames fall outside the shared
+extension-first scope rule, which product discovery also applies. They are
+product-discovery misses, rather than non-Bash noise. The scope rule accepts
+`.sh`/`.bash`, then tries a shebang only when Go-style `filepath.Ext` is empty;
+a descriptive basename containing another dot therefore never reaches shebang
+dispatch. The pinned tree contains 30 such dotted-name `#!/bin/sh` files, of which
+17 contributed these executed pairs. The unchanged eligible-file population is
+457 / 248, with 450 / 225 found. NVM's all-in-root recall bound is at most
+**450/489 (.9202)**, beside **450/457 (.9847)** on eligible callers. No broader
+full-population grade is inferred from either number.
 Seven NVM and 23 Bats misses remain. They include computed command dispatch and
 implicit ERR/EXIT callbacks, rather than only the nine previously retained ERR
 callbacks. The difference from the historical selected-population counts is 132/139 and
@@ -185,10 +193,11 @@ bytes. Original checkouts have no new untracked or ignored files after probes.
 Dependencies, generated tests, runtime downloads and disposable Git metadata stay
 in private runtime copies. No raw source/file list or subject people are committed.
 
-All 44 current regressions pass, including the same suite in a fresh isolated copy with
-no pre-existing workspace. All 31 current unit mutants fail their focused assertion, then pass after
-restoration. The original 29 mutants/native-mode proof remain historical at the
-capture revision; no new subject execution is claimed. The mutation receipt names each changed file, mutant,
+The first-review correction passed 44 regressions, including a fresh isolated copy
+with no pre-existing workspace. Its 31 unit mutants failed their focused assertion, then passed after
+restoration. The correction remains pinned to the reviewed revision; the original
+29 mutants/native-mode proof remain at the capture revision. No new subject
+execution is claimed. The mutation receipt names each changed file, mutant,
 runnable command, FAIL line and restored GREEN. Actual GNU/SCIP independence passes:
 changing real product outputs to fabricated pairs leaves native source/function
 raw digests and SCIP bytes unchanged; changing known source/function/alias inputs
@@ -270,7 +279,7 @@ bash scripts/check-merge-debris.sh
 bash scripts/check-merge-debris.sh --staged
 ```
 
-The README gives the historical native and current 31-unit-mutation proof commands,
+The README gives the historical native and 31-unit-mutation proof commands,
 including every input flag. The canonical reading bytes, holdout sets and generated
 board are unchanged. The controller retains full integration validation.
 
@@ -280,3 +289,26 @@ separate rejected rows; Minor 2 by accurately limiting the per-process cap claim
 to Bash >=4; Minor 3 by attaching this assessment's row to the index table; Minor 4
 by the four versioned trace/parser contract rows above. Historical execution
 artifacts were reused after digest checks; no new subject test pass is claimed.
+
+## Deferred-minor follow-up
+
+**Observation draft — dotted-basename script discovery.** The shared extension-
+first rule in `internal/fusion/shebangdispatch.go` and the independent original
+scope in `calibration/oracles/bash-source/bash_source_dump.py` both skip the 30
+dotted-name `#!/bin/sh` scripts above; 17 yielded 32 native executed identities.
+This is a discovery gap, not an oracle inability. A separate controller-serialized
+ENGINE change must decide whether an unrecognised extension may fall through to
+shebang dispatch, then regrade affected languages. This lane records the draft
+without allocating an observation id, as required by the program brief.
+
+Offline re-decode requires raw captures at their recorded absolute path. Native
+frame filenames retain that location, so a digest-identical archive restored
+elsewhere does not reproduce coverage merely by changing `--native`. Restore the
+original location first. The new authored regression runs a miniature capture
+through the actual decoder: relocation refuses with a clear path/coverage message
+and no output, while replay at the original root succeeds with the same bytes.
+This uses the reviewer's documented-precondition option; it adds no rebasing or
+new source execution. The current 45-regression suite passes, including the new
+relocation diagnostic. The receipt pins historical replay/decoder hashes to the
+reviewed revision and checks current code separately. Native counts and canonical
+reading bytes stay unchanged.

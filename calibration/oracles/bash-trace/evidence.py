@@ -50,13 +50,27 @@ def check(data,verify_code=True):
         row=control[key];assert row['tests']==row['passed']+row['skipped']+row['failed']
     assert control['only_observed_failed_tests']+control['shared_failed_tests']==control['observed']['failed']
     assert control['only_control_failed_tests']+control['shared_failed_tests']==control['control']['failed']
+    if 'followup' in data:
+        import subprocess
+        followup=data['followup'];row=runtime['subjects']['nvm']
+        assert followup['excluded_executed_pairs']==row['native_pairs_outside_original_caller_scope']==32
+        assert followup['excluded_executed_files']==17 and followup['dotted_shebang_files']==30
+        assert followup['all_in_root_recall_bound']==row['executed_pairs_found']/row['executed_native_pairs']
+        assert runtime['code_revision']==followup['historical_replay_revision']
+        assert all(r['decoder_code_revision']==followup['historical_replay_revision'] for r in runtime['subjects'].values())
+        old_reading=subprocess.check_output(['git','show',followup['historical_replay_revision']+':docs/bench/readings/lang/bash.json'])
+        assert hashlib.sha256(old_reading).hexdigest()==followup['historical_canonical_reading_sha256']
+        before,after=json.loads(old_reading),json.loads((REPO/'docs/bench/readings/lang/bash.json').read_text())
+        before.pop('notes');after.pop('notes')
+        assert before==after,'canonical reading changed beyond inherited notes'
     def visit(value,revision=None):
         if isinstance(value,dict):
             revision=value.get('code_revision',revision)
             for k,v in value.items():
                 if verify_code and k in ['code_sha256','instrument_sha256','decoder_code_sha256','current_code_sha256']:
                     code_revision=value.get('capture_code_revision',revision) if k=='instrument_sha256' else revision
-                    if k in ['decoder_code_sha256','current_code_sha256']:code_revision=None
+                    if k=='decoder_code_sha256':code_revision=value.get('decoder_code_revision')
+                    if k=='current_code_sha256':code_revision=None
                     for filename,digest in v.items():
                         path=HERE/filename
                         assert path.parent==HERE and path.is_file()
@@ -116,11 +130,33 @@ def main():
     p.add_argument('--tools',type=Path)
     p.add_argument('--out',type=Path,default=DEFAULT)
     p.add_argument('--historical-base',help='committed capture revision for an offline review refresh')
+    p.add_argument('--followup-base',help='retain reviewed measurements at this revision; refresh disclosure/check hashes only')
     p.add_argument('--runtime-folder',default='runtime-final')
     p.add_argument('--mutations-folder',default='mutations-final')
     p.add_argument('--nvm-folder',default='nvm-functions')
     p.add_argument('--bats-folder',default='bats-final-v4')
     a=p.parse_args()
+    if a.followup_base:
+        import subprocess
+        historical_hash(a.followup_base,'redecode.py')  # validate the revision before invoking git
+        data=json.loads(subprocess.check_output(['git','show',a.followup_base+':docs/assessments/data/bash-oracle-2026-10-26/evidence.json']))
+        data['runtime']['code_revision']=a.followup_base
+        for row in data['runtime']['subjects'].values():row['decoder_code_revision']=a.followup_base
+        data['current_code_sha256']={p.name:sha(p) for p in HERE.iterdir() if p.is_file()}
+        nvm=data['runtime']['subjects']['nvm']
+        data['followup']=dict(historical_replay_revision=a.followup_base,excluded_executed_pairs=32,
+            excluded_executed_files=17,dotted_shebang_files=30,
+            historical_canonical_reading_sha256=data['canonical_reading_sha256'],
+            all_in_root_recall_bound=nvm['executed_pairs_found']/nvm['executed_native_pairs'],
+            scope_basis='Binding round-2 review: excluded pairs are executed dotted-basename shebang scripts skipped by the shared extension-first discovery rule; counts, not file lists.',
+            replay_precondition='Raw captures must stay at their recorded absolute path. A relocated archive is refused with a coverage/path diagnostic; no frame rebasing is implemented.',
+            policy='Disclosure/diagnostic follow-up only. Native executions, offline re-score and 31 mutants remain at historical_replay_revision; current authored regression/check code is separately hashed. No new subject execution or grade.')
+        data['canonical_reading_sha256']=sha(REPO/'docs/bench/readings/lang/bash.json')
+        check(data)
+        a.out.parent.mkdir(parents=True,exist_ok=True)
+        a.out.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
+        print('PASS: retained historical measurements and refreshed follow-up disclosure/check hashes')
+        return
     if a.capture:
         assert a.tools,'--tools required for capture'
         def read(folder,filename='summary.json'):return json.loads((a.capture/folder/filename).read_text())

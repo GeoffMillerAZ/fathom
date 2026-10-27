@@ -1,6 +1,6 @@
 {
   "canonical_reading_changed": false,
-  "canonical_reading_sha256": "aa7aa8e12eb6fb31f7148629df3ba17ebe68ede11dbd75ac3150ee6cadff1635",
+  "canonical_reading_sha256": "7dddbbb3bd3780259b6cbef6c7f688500fc30a4df38e0fec69f9568a0b170244",
   "contracts": {
     "binary_sha256": "7b4da0fdf20be7d952c46449280d1eda8eecec4cb9de8659beb98c9e0bd42fa1",
     "code_sha256": {
@@ -39,7 +39,7 @@
     "source_changed": false
   },
   "current_code_sha256": {
-    "README.md": "4c3ba0d44df5507f85f4e5dd0f1035aa54a2a62a9ad00f928bf574d108f8a2d1",
+    "README.md": "25f6c37c06c04085c2bd3d873ab3a78404071421b89c4de7056b5a1498560047",
     "bash-pins.json": "52d372564b02af14027aa172de89f9f75200cf269228a7267e976cd3019234c2",
     "build_bash.py": "32b4c1efab67dab39ffbb03cd2c7bd7b6f0ccee5c66b2a46684555a671fd01ca",
     "build_scip.py": "3268b1f02f004d383f21c3b8b0b43f31ed3aa80eeb9d0a9cc4700176aa5a6ff3",
@@ -47,7 +47,7 @@
     "collect.py": "b7d5c52857de7fe40172d6f6089b6c12a0d7a7c4dac7a69d7cbca034bf241402",
     "control.py": "80dfa5cce520b2b44a05c0f30b37c86cafca8a55c13f2705f1a2a356d1659dac",
     "entry_hook.sh": "b8f98692daedf014dace66d1c440a4ce9b82f7b51c1ce6baf4241395c08fb738",
-    "evidence.py": "5a09c63e7f2df437a34fb1f57128fd0d1ea87b00b25326e86a9a41155c045d46",
+    "evidence.py": "f71c361f1fa8982585c7af946553886aa189298c1f092379fa22c692aafe31ef",
     "fetch.py": "fa55ac93354fad463964a1aea623bec1233099cb9c509b20730b629efdb6eb49",
     "function_decode.py": "eb150adde8b427f7b1939c3e7ee7334fa6dfae20d4a69910d08d0b41f71193ac",
     "function_hook.sh": "57e17a3829ffc7ff59753c301f56725d74f464c960e55f8470c2a5956aafe553",
@@ -58,7 +58,7 @@
     "prove_mode.py": "8b500cfbf3282eaeb1daad8127c1861d7ae4c62f97b921441d3f4dfa4c9165ff",
     "prove_mutations.py": "3834aca1d05171963bfbc1c821b11500683c1c360c866b4ae6b938dc0a0c1752",
     "prove_native.py": "f1fcb88dc8379bab4c76890707cffd046f2b431251d650fbc115aeb053fc2a06",
-    "redecode.py": "1bb8e5f328248147b5aa6811a370ebf71f3be7dbe374fec263f70eed62410bc9",
+    "redecode.py": "0480384882b65b79c3e903b97e81e43f45a9a6bd893e4ec13086f068ae2af9df",
     "replay.py": "61632fbbeadcf7c179417b5d16ac4ee21f2d7c774c2d1f3f1dc1f8ffbe8f49e5",
     "runtime_copy.py": "97fd653bccb1171c2582ea6b4af34f175dec99954e0a3a01b7286a866c33c45e",
     "rust-pins.json": "6fc8cca56e43fe20d60f408eb66724d6544c833e457273db79bf86405b5b1b21",
@@ -67,7 +67,7 @@
     "supervise.py": "26ee52de748438e71b6c85656c8f12a3fce6c707b14d486cedf0e8cee59f1897",
     "syntax_scope.py": "d7e712140b145700758555db6dc1f459be8bd088fb36c6258a46a9e9b78aa47d",
     "test_control.py": "e9799b9c8dc04c914f0302c242d209037372cd0d1aa3c74fd6dd3fa16551f71b",
-    "test_function_decode.py": "f8d0e816398b1833b041138fc0ce8b3e94c277e68d8e170242024aea4eebd8fc",
+    "test_function_decode.py": "86bb119dbca84a5bfa1f9761c6dd83f2cf7efb43f52efedf7686ddedd9737886",
     "test_lookup.py": "d48928cdb82e4251bec0199fbb8f4da390e23100eae810249138007a6b71de13",
     "test_replay.py": "17a4b5cba32dc1b0824cdd72c590b7ff919b663158083c2e85613ea8010d56d8",
     "test_runtime_copy.py": "43cda60f83a4a2aadffae8e90b47a4d869ceae268a481ffeb6230a8daf38b8cb",
@@ -79,6 +79,17 @@
     "trace_driver.py": "f5360980caef96e5671dde29fa326edf827050171892f967c3fb9d70c6ba797e",
     "trace_hook.sh": "85ad1602120abea3f56fcd8c22b47d5e70e99c71a6063922a8219e7f5e4ab9a0",
     "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+  },
+  "followup": {
+    "all_in_root_recall_bound": 0.9202453987730062,
+    "dotted_shebang_files": 30,
+    "excluded_executed_files": 17,
+    "excluded_executed_pairs": 32,
+    "historical_canonical_reading_sha256": "aa7aa8e12eb6fb31f7148629df3ba17ebe68ede11dbd75ac3150ee6cadff1635",
+    "historical_replay_revision": "0140aae9d0753df26b2f254d5e84b56cbbfea2a0",
+    "policy": "Disclosure/diagnostic follow-up only. Native executions, offline re-score and 31 mutants remain at historical_replay_revision; current authored regression/check code is separately hashed. No new subject execution or grade.",
+    "replay_precondition": "Raw captures must stay at their recorded absolute path. A relocated archive is refused with a coverage/path diagnostic; no frame rebasing is implemented.",
+    "scope_basis": "Binding round-2 review: excluded pairs are executed dotted-basename shebang scripts skipped by the shared extension-first discovery rule; counts, not file lists."
   },
   "historical_capture_revision": "db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c",
   "historical_mutations": [
@@ -779,7 +790,7 @@
   "runtime": {
     "benchmark_product_revision": "0ded53658ba326103a05927155c7681a4a1d6068",
     "canonical_reading_changed": false,
-    "code_revision": null,
+    "code_revision": "0140aae9d0753df26b2f254d5e84b56cbbfea2a0",
     "code_sha256": {
       "replay.py": "61632fbbeadcf7c179417b5d16ac4ee21f2d7c774c2d1f3f1dc1f8ffbe8f49e5"
     },
@@ -790,6 +801,7 @@
         "bash_version": "GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin24.3.0)",
         "capture_code_revision": "db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c",
         "command_sites": 1423,
+        "decoder_code_revision": "0140aae9d0753df26b2f254d5e84b56cbbfea2a0",
         "decoder_code_sha256": {
           "collect.py": "b7d5c52857de7fe40172d6f6089b6c12a0d7a7c4dac7a69d7cbca034bf241402",
           "function_decode.py": "eb150adde8b427f7b1939c3e7ee7334fa6dfae20d4a69910d08d0b41f71193ac",
@@ -899,6 +911,7 @@
         "bash_version": "GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin24.3.0)",
         "capture_code_revision": "db8faed7ba3feb5a02dbcd4548f6ab1ac9850e5c",
         "command_sites": 9147,
+        "decoder_code_revision": "0140aae9d0753df26b2f254d5e84b56cbbfea2a0",
         "decoder_code_sha256": {
           "collect.py": "b7d5c52857de7fe40172d6f6089b6c12a0d7a7c4dac7a69d7cbca034bf241402",
           "function_decode.py": "eb150adde8b427f7b1939c3e7ee7334fa6dfae20d4a69910d08d0b41f71193ac",
