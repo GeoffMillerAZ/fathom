@@ -216,7 +216,7 @@
     }
   ],
   "plan_rows": {
-    "LB-F157": "Original tier-A deliverable and pattern restored, claim withdrawn as refused under controller F12",
+    "LB-F157": "Original tier-A deliverable and pattern restored, claim withdrawn as refused under P-T1 because schema acceptance did not enumerate nested definitions",
     "LB-IAC-crossplane-pt1": "New full-population qualification, unchecked for controller claim"
   },
   "privacy": {
@@ -276,7 +276,7 @@
     "python_before_fix": {
       "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test",
       "exit_code": 1,
-      "scope": "25 tests in the same isolated setup before F10, six FileNotFoundError errors"
+      "scope": "25 tests in the same isolated setup before the fresh-tree scratch-directory fix, six FileNotFoundError errors"
     },
     "python_tests": {
       "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test calibration.oracles.crossplane.verify_archives_test",

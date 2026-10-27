@@ -78,7 +78,7 @@ controller, and keep IAC-10 deferred. No table expansion is authorized here.
 
 ## Remaining issue #55 deliverables
 
-- [ ] Calibrate Crossplane with pinned AWS/Azure/GCP provider CRDs, validate composed resources and directional fromFieldPath evidence, and record the remaining ceiling (GAP1-34) {id: IAC-19, oracle: lexical, path: docs/assessments/2026-10-26-crossplane-provider-crds.md, pattern: "(?s)^## Verdict$.*^## Remaining ceiling$", eq: 1, needs: IAC-1}
+- [ ] Calibrate Crossplane with pinned AWS/Azure/GCP provider CRDs, validate composed resources and directional fromFieldPath evidence, and record the remaining native-oracle question (GAP1-34) {id: IAC-19, oracle: lexical, path: docs/assessments/2026-10-26-crossplane-provider-crds.md, pattern: "(?s)^## Verdict$.*^## Open L2/L3 question$", eq: 1, needs: IAC-1}
 - [ ] Triage Terragrunt, HCL tool configs and AWS CDK using their concrete native candidates, recording tried, refused or needs-owner-approval for each and a Verdict per format (GAP1-37) {id: IAC-20, oracle: lexical, path: docs/assessments/2026-10-26-iac-oracle-first-triage.md, pattern: "(?s)^## Terragrunt$.*^## Verdict: Terragrunt$.*^## HCL tool configs$.*^## Verdict: HCL tool configs$.*^## AWS CDK$.*^## Verdict: AWS CDK$", eq: 1, needs: IAC-1}
 
 IAC-19's assessment records source/version/digests and native evidence without

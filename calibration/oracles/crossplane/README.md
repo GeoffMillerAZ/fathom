@@ -224,3 +224,72 @@ path-independent content identities, not path-bearing output fingerprints.
 The regrade wrapper enforces actual nice>=10 and waits for load<=9 before each
 Go metadata/harness launch. Raw command output stays private and is not hashed
 into the regrade receipt.
+
+## Reading qualification contract
+
+`LB-IAC-crossplane-pt1` reads the canonical Crossplane reading. It requires the
+recorded L1/L2/L3 good grades, level L3, all six accuracy metrics at 1, all six
+oracle tiers C, the pooled definition/reference counts, the three subject pins
+and file counts (238 + 3 + 3), and required/measured kinds. The driver accepts
+an open or checked production row and refuses a skipped row. `qualification_contract.py` copies that exact row into
+an isolated scratch Git tree, claims only the scratch copy, and uses the real
+strict verifier against a copied reading. The store supplies the CLI's symbol
+bootstrap, not the lexical evidence. Scratch verify ledgers stay inside that
+temporary tree and do not enter the operator's global ledger.
+
+The controls change each grade, symbol recall, oracle tier and matched count
+separately, then remove a file, subject, required element kind or measured
+element kind. Another control sets all subjects' found cross-file references to
+zero and runs the actual main `lang-regrade`, which lowers L3 to unmet. Each
+mutant must fail the claimed scratch gate with exit 1. The original and restored
+reading must pass with exit 0. Neither the production reading nor its checkbox
+is written. The receipt hashes the row with its checkbox normalized to `[ ]`, so checking
+the row does not change its contract identity. `authored_state` records the
+actual `[ ]` or `[x]` separately; it replaces the former `production_claimed`
+field. The receipt contains public reading/normalized-row hashes, authored
+state and verdicts only.
+
+From the repository root, prepare clean main tools and an ignored scratch
+store. Use the existing Go/cache environment from the probe setup above. Every
+setup command and subsequent CLI launch enforces actual nice at least 10 and
+waits for one-minute load at most 9:
+
+```sh
+QUAL_MAIN="$PWD/workspace/tmp/crossplane-qualification-main"
+QUAL_TOOLS="$PWD/workspace/artifacts/crossplane-qualification-tools"
+QUAL_STORE="$PWD/workspace/db/crossplane-qualification.sqlite"
+mkdir -p "$QUAL_TOOLS" workspace/db
+python3 - "$QUAL_MAIN" "$QUAL_TOOLS" "$QUAL_STORE" <<'PY_SETUP'
+import os, runpy, subprocess, sys
+admit = runpy.run_path('calibration/oracles/crossplane/regrade_d19.py')['admit_launch']
+env = {**os.environ, 'GOWORK': 'off', 'GOTOOLCHAIN': 'go1.27.3', 'FATHOM_TENANCY_BUDGET': '4GiB'}
+commands = [
+    ['git', 'worktree', 'add', '--detach', sys.argv[1], '3118be853'],
+    ['go', '-C', sys.argv[1], 'build', '-mod=readonly', '-trimpath', '-o', sys.argv[2] + '/', './cmd/fathom', './cmd/indexbench'],
+    [sys.argv[2] + '/fathom', 'ingest', '--store', sys.argv[3], '--service', 'fathom', '--path', '.'],
+]
+for command in commands:
+    admit()
+    subprocess.run(command, env=env, check=True)
+PY_SETUP
+python3 calibration/oracles/crossplane/qualification_contract.py \
+  --fathom "$QUAL_TOOLS/fathom" --indexbench "$QUAL_TOOLS/indexbench" \
+  --store "$QUAL_STORE" --main-commit 3118be853 \
+  --out docs/assessments/data/2026-10-27-crossplane-qualification-contract.json
+```
+
+The driver refuses tools that are not clean builds of the named main revision.
+It reproduces the committed contract receipt without a native oracle, extraction
+measurement, provider fetch or cloud call.
+
+The checked-row regression runs the complete driver on a checked copy in an
+isolated tree. It compares every receipt field to the committed receipt, with
+only `authored_state` expected to become `[x]`; the fourteen verdicts, reading
+hash and normalized contract hash must reproduce unchanged. The production
+plan and reading remain untouched:
+
+```sh
+python3 calibration/oracles/crossplane/qualification_contract_test.py \
+  --fathom "$QUAL_TOOLS/fathom" --indexbench "$QUAL_TOOLS/indexbench" \
+  --store "$QUAL_STORE" --main-commit 3118be853
+```
