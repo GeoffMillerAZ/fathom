@@ -756,6 +756,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// tenancy's one ingest slot, so a derived-table backfill never
 			// runs beside it. A caller whose request ends while another
 			// ingest or backfill holds the slot leaves, named.
+			//
+			// The wait ends only with ctx, and dispatch never hands this
+			// handler a ctx that ends by itself: ingest-class work is
+			// detached from its requester, and a gate's cancel or class
+			// deadline is settled as an abandonment, which replaces this
+			// answer. The refusal below is defensive (the wire shape a
+			// direct caller gets), not a reachable product answer.
 			releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
 			if slotErr != nil {
 				return nil, handlerRefusal(ctx, &tenancy.Refusal{Code: tenancy.RefusalSlots, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String(), RetryAfter: 30 * time.Second,

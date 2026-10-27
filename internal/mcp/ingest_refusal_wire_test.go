@@ -251,8 +251,11 @@ func TestIngestToolRefusalsUseTheAdmissionWireFormat(t *testing.T) {
 	})
 
 	t.Run("ingest slot wait", func(t *testing.T) {
-		// The wait ends only when the call's context does: ingest-class
-		// work is detached, so this is the handler's answer in isolation.
+		// The wait ends only when the call's context does, and dispatch
+		// never delivers that as a refusal: ingest-class work is detached
+		// (no gate: the wait never ends), and a gate's cancel is settled
+		// as an abandonment (the next case). So this pins only the
+		// handler's defensive answer, called directly.
 		release, err := tenancy.AcquireIngestSlot(context.Background())
 		if err != nil {
 			t.Fatal(err)
