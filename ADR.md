@@ -6158,3 +6158,33 @@ reads below its threshold with its oracle available for two releases; the consum
 - K6 reads no knob change holding on the confirm split, or has not read by 2027-01-31: the program stops at the P1 instruments and P3 is refused.
 - RT-M1 reads PASS: moving cards, cases or the ledger into the store needs a new ADR.
 - A Codex arm is needed: ADR-029 is amended first (cards already carry a `harness` field).
+
+## ADR-083: Security defaults for the go commands fathom runs on its own: offline, never writing the repository, on the local toolchain, with the user's own config the only way to reopen the network (2026-10-26)
+
+**Status.** Accepted 2026-10-26, recorded with the security review of the offline-go change. **Type.** security / architecture. Extends K22 (`docs/plans/language-breadth.md` LB-F341, `GOTOOLCHAIN=local`). Code: `internal/goenv`; `internal/fusion` (`TypedEdgeEnv`, the toolchain shim in `toolchainenv.go`, `typed_missingmodules.go`); `internal/ask`; `internal/guardspec/layerrules`. Gate: `cmd/fathom/egress_allowlist_test.go` (A5). Reads I38, RT-104 (`docs/design/responsible-tenant.md` §7.2) and ADR-011.
+
+**Context.** Fathom runs go commands nobody typed: the typed pass at every ingest and on every daemon drift, ask's module loads, and the import graph a generated layer-rules test loads. They inherited the user's whole environment, so ingesting a cloned repository could download every module its go.mod names, send a module matching `GOPRIVATE` straight to its version control, and, under an inherited `-mod=mod`, rewrite the repository's go.mod and go.sum. The first cut closed `GOPROXY` and stripped `-mod=mod` from the process `GOFLAGS`. The review found two bypasses: `GONOPROXY` defaults to `GOPRIVATE`, which skips `GOPROXY=off`, and an empty `GOFLAGS` lets the GOENV file's `GOFLAGS` (`go env -w GOFLAGS=-mod=mod`) apply, which rewrote go.sum in ask and layer rules. A mutation run also showed tests that passed whatever the code did.
+
+**Decision.**
+1. *One environment.* Every go command fathom runs on its own gets `internal/goenv`'s environment: `GOPROXY=off`, `GOSUMDB=off`, `GONOPROXY=,` (a list that matches no module, so `GOPRIVATE` never sends one to its version control), `GOTELEMETRY=off`, and `GOTOOLCHAIN=local` last. The daemon's toolchain shim applies the same rule in sh, with pathname expansion off.
+2. *GOFLAGS is resolved, stripped and never empty.* The effective `GOFLAGS` is the process value, or else `go env GOFLAGS`, which reads the GOENV file and `$GOROOT/go.env`. It is split the way cmd/go splits it (quoted fields included), every `-mod=mod` and `--mod=mod` is dropped, and every other flag is kept in order, `-mod=vendor` and `-mod=readonly` included. The result is always set and never empty (a single space when nothing is left), so the GOENV file cannot fill it back in. When `go env` cannot answer, the file's flags are dropped, never trusted.
+3. *A missing module is named, and the pass waits for it.* A dependency the module cache lacks fails the typed pass with the module and `run go mod download in <module dir>` (I38). The pass's partial state names the missing modules and which of their `.mod` and `.zip` files the cache held. Later ingests skip the pass (RT-104) until a Go input changes or one of those files changes.
+4. *The user alone reopens the network.* The one opt-out is `[ingest] go_network = true` in the user's own `~/.fathom/config.toml`. A repository's copy is dropped and named. It passes the inherited `GOPROXY`, `GOSUMDB` and `GONOPROXY` through; the toolchain pin and the `-mod=mod` strip stay.
+5. *Explicit verbs keep their environments.* `fathom doctor --stranger` runs the repository's own script, and `fathom receipt verify --run-tests` runs go test offline on its own terms.
+6. *Egress is listed.* Every non-standard package in the binary that imports a standard package that dials, serves, runs a program or loads one, or that calls `os.StartProcess`, `syscall.Exec`, `ForkExec` or `Socket`, or x/sys/unix's `Exec` or `Socket`, is listed with its reason and gate. A cold-cache ingest test points `GOPROXY` at a loopback listener that fails on any request.
+
+**Decision models.** None applies: whether an automatic go command may reach the network or write the repository is a security default computed with provider `none`, the only switch is the user's own `go_network`, and no decision model may reopen it.
+
+**Alternatives rejected.**
+- *Pass the user's environment through* (the state before): a cloned repository chose what was fetched, run and written.
+- *`GOFLAGS=-mod=readonly` as the never-empty value:* it is a build-semantic flag and would turn off a vendored repository's default `-mod=vendor`.
+- *`GOENV=off`:* it would also drop the user's `GOMODCACHE`, `GOPRIVATE` and other settings the module cache depends on.
+- *`GOVCS=*:off` alone:* it blocks the version-control fetch but not the choice to bypass the proxy. `GONOPROXY=,` removes the bypass where it starts.
+- *Not recording the partial state while a module is missing:* the daemon reran the whole typed pass on every drift, a non-Go edit included (the RT-104 hazard).
+
+**Consequences.** A machine with a cold module cache gets a failed typed pass with the remedy, never a download, and adopters must run `go mod download` or opt in (the changelog's migration line). When the environment sets no `GOFLAGS`, each load runs one `go env GOFLAGS` first. The GOENV file's other flags now reach the typed pass; before, the `-p` cap made `GOFLAGS` non-empty and hid the file entirely.
+
+**Revisit when.**
+- A go release changes how `GOFLAGS`, `GONOPROXY` or the GOENV file are read (cmd/internal/quoted.Split, cfg.Getenv's fallback on an empty value). The goenv and shim tests pin today's reading.
+- A go command fathom runs on its own reaches the network or writes a repository under these defaults.
+- Adopters ask for a per-repository network opt-in. It would need a new decision, since a cloned repository must never reopen the network.

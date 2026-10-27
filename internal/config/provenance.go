@@ -200,6 +200,13 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	if im, ok := raw["ingest"].(map[string]any); ok {
+		if b, ok := im["go_network"].(bool); ok {
+			cfg.Ingest.GoNetwork = b
+			prov["ingest.go_network"] = SourceInfo{source, path}
+		}
+	}
+
 	if rm, ok := raw["receipts"].(map[string]any); ok {
 		if v, ok := stringField(rm, "repository_uri"); ok {
 			cfg.Receipts.RepositoryURI = v

@@ -279,6 +279,12 @@ exampleTyped: #Config & {
 	typed: skip_modules: ["calibration/oracles/**", "calibration/telemetry-census"]
 }
 
+// The user's opt-out from the offline go environment (ADR-083): user scope
+// only, off unless set.
+exampleIngest: #Config & {
+	ingest: go_network: true
+}
+
 // The readout hook's modes (RO-15): user scope only, off unless set.
 exampleReadouts: #Config & {
 	readouts: {

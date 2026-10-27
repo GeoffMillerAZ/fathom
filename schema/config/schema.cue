@@ -453,6 +453,17 @@ package config
 	skip_modules?: [...(string & !="")]
 }
 
+// #Ingest configures how ingest runs the language toolchains (ADR-083).
+// go_network = true lets the go commands fathom runs on its own (the typed
+// pass at ingest and in the daemon, the toolchain shim, ask's loads, the
+// layer-rules import graph) use the inherited GOPROXY and GOSUMDB; unset or
+// false they run with GOPROXY=off and GOSUMDB=off, so a cold module cache
+// fails the typed pass with a named reason instead of a download. User scope
+// only: a repository's .fathom/config.toml cannot set it.
+#Ingest: {
+	go_network?: bool
+}
+
 // #Gate configures local gate evidence; acceptance defaults off.
 #Gate: {
 	accept_receipts?: bool
@@ -568,6 +579,7 @@ package config
 	receipts?:  #Receipts
 	gate?:      #Gate
 	typed?:     #Typed
+	ingest?:    #Ingest
 	tenancy?:   #Tenancy
 	readouts?:  #Readouts
 	shell?:     #Shell

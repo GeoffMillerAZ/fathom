@@ -1,0 +1,79 @@
+# egress-allowlist.txt: every non-standard package in the fathom binary
+# that imports a standard package that dials, serves, runs a program or
+# loads one (egressImports), or calls os.StartProcess, syscall.Exec,
+# ForkExec or Socket, or x/sys/unix's Exec or Socket (egressCalls), on any
+# release target (A5, ADR-083). TestEgressImportAllowlist (egress_allowlist_test.go)
+# fails on an edge this list does not name and on an entry the binary no
+# longer has. Add a line only after reviewing what the new edge reaches.
+#
+# <package> | <imports and calls> | <reason> | <gate>
+
+# Third-party: the CUE module registry (closed), CUE's own tool packages
+# (never run), and libraries whose network code fathom never calls.
+cuelabs.dev/go/oci/ociregistry | net/http | the CUE module registry client (OCI) | registry closed: internal/cuerefuse, fusion/cueregistry.go, projectdir/load.go
+cuelabs.dev/go/oci/ociregistry/internal/ocirequest | net/http | the CUE module registry client (OCI requests) | registry closed: internal/cuerefuse
+cuelabs.dev/go/oci/ociregistry/ociauth | net/http os/exec | registry auth, which can run a docker credential helper | registry closed: internal/cuerefuse
+cuelabs.dev/go/oci/ociregistry/ociclient | net/http | the CUE module registry client (OCI) | registry closed: internal/cuerefuse
+cuelang.org/go/internal/core/adt | os/exec | CUE's debug graph viewer opens a URL in a browser | CUE debug flag only; fathom never sets it
+cuelang.org/go/internal/cueversion | net/http | the user agent RoundTripper CUE's registry client wraps | registry closed: internal/cuerefuse
+cuelang.org/go/internal/mod/modresolve | net | registry host parsing (net.SplitHostPort) | registry closed: internal/cuerefuse
+cuelang.org/go/mod/modconfig | net/http | the CUE module registry configuration | registry closed: internal/cuerefuse
+cuelang.org/go/mod/modregistry | net/http | the CUE module registry client | registry closed: internal/cuerefuse
+cuelang.org/go/pkg/net | net | CUE's net builtin: pure address parsing, no dial | no connection is opened
+cuelang.org/go/pkg/tool/exec | os/exec | CUE's tool/exec, run only by `cue cmd` | fathom never runs CUE tool tasks
+cuelang.org/go/pkg/tool/http | crypto/tls net net/http | CUE's tool/http, run only by `cue cmd` | fathom never runs CUE tool tasks
+github.com/a-h/templ | net/http | templ's HTTP handler helpers (server side) | serves the console only; no outbound call
+github.com/a-h/templ/runtime | net/http | templ's runtime helpers (server side) | serves the console only; no outbound call
+github.com/google/uuid | net | version-1 UUIDs read interface hardware addresses | no connection is opened
+github.com/tetratelabs/wazero | net | WASI socket support for a guest | fathom passes no listener to a guest
+github.com/tetratelabs/wazero/internal/sock | net | WASI socket support for a guest | fathom passes no listener to a guest
+github.com/tetratelabs/wazero/internal/sys | net | WASI socket support for a guest | fathom passes no listener to a guest
+github.com/tetratelabs/wazero/internal/sysfs | net | WASI socket support for a guest | fathom passes no listener to a guest
+golang.org/x/oauth2 | net/http | token transport for the CUE registry auth | registry closed: internal/cuerefuse
+golang.org/x/oauth2/internal | net/http | token transport for the CUE registry auth | registry closed: internal/cuerefuse
+golang.org/x/sys/unix | syscall.Exec | the package's own Exec wrapper | its one caller is listed (modernc.org/libc)
+golang.org/x/tools/go/gcexportdata | os/exec | asks the go command where export data lives | runs under the offline go environment (internal/goenv, ADR-083)
+golang.org/x/tools/go/packages | os/exec | runs `go list` for the typed pass, ask and layer rules | offline go environment (internal/goenv, ADR-083); the gate's tripwire tests
+golang.org/x/tools/internal/gcimporter | os/exec | asks the go command for export data | offline go environment (internal/goenv, ADR-083)
+golang.org/x/tools/internal/gocommand | os/exec | the go command runner behind go/packages | offline go environment (internal/goenv, ADR-083)
+modernc.org/libc | os/exec golang.org/x/sys/unix.Exec | libc emulation for the pure-Go SQLite (system, popen and execve) | SQLite never calls them; fathom loads no extension
+
+# fathom: the CLI and daemon. cmd/fathom must stay listed, so the runtime
+# tripwire (goProxyTripwire in TestCmdIngest_ColdModuleCacheNamesTheRemedy)
+# covers the go toolchain's module downloads inside it.
+github.com/geoffmilleraz/fathom/cmd/fathom | net net/http os/exec syscall.Exec | the CLI and daemon: serve-http, the daemon client, git and the go toolchain; the fathomd launcher execs the fathom binary beside it | serve-http binds loopback by default; LLM and decision calls need a configured provider; go runs offline (ADR-083); the launcher runs only as fathomd and execs only its sibling
+github.com/geoffmilleraz/fathom/internal/analysis/rulereplay | os/exec | read-only git for rule replay over history | git read commands only
+github.com/geoffmilleraz/fathom/internal/analysis/scipexport | os/exec | runs scip-go when it is on PATH | the explicit `fathom export` verb only
+github.com/geoffmilleraz/fathom/internal/config | os/exec | runs the user's api_key_cmd to read a credential | user scope only (internal/config scope.go)
+github.com/geoffmilleraz/fathom/internal/connector | os/exec | `git ls-files` for discovery | [connector] respect_gitignore; a read
+github.com/geoffmilleraz/fathom/internal/conserve | os/exec | read-only git (rev-parse, ls-files, show) | git read commands only
+github.com/geoffmilleraz/fathom/internal/console | net net/http | the console's HTTP handlers and its daemon client | loopback daemon only
+github.com/geoffmilleraz/fathom/internal/custodian | net/http os/exec | the daemon check (stanza_tools_served) and `git ls-files` | loopback daemon only; git read commands only
+github.com/geoffmilleraz/fathom/internal/decide | net net/http | the decision port's remote providers | provider none by default; FATHOM_DECIDE=off, decide.off and user consent (consent.go)
+github.com/geoffmilleraz/fathom/internal/fusion | net os/exec | git log, the go toolchain for the typed pass; net only parses addresses and errors | go runs offline (internal/goenv, ADR-083); git read commands only
+github.com/geoffmilleraz/fathom/internal/gatereceipt | os/exec | read-only git for gate receipts | git read commands only
+github.com/geoffmilleraz/fathom/internal/gitro | os/exec | the read-only git runner | git read commands only
+github.com/geoffmilleraz/fathom/internal/goenv | os/exec | `go env GOFLAGS`, to read the GOENV file's GOFLAGS before stripping -mod=mod | GOTOOLCHAIN=local; go env reads configuration only (ADR-083)
+github.com/geoffmilleraz/fathom/internal/hookguard | net net/http | the hooks' daemon transport with deadlines | loopback daemon only (pkg/client CallerTransport)
+github.com/geoffmilleraz/fathom/internal/labs | net | parses a loopback address for the eval suite | no connection is opened
+github.com/geoffmilleraz/fathom/internal/mcp | os/exec | read-only git and rg for the search tool | git read commands and rg only
+github.com/geoffmilleraz/fathom/internal/modulehost | os/exec | `git rev-parse HEAD` for a federated module | git read commands only
+github.com/geoffmilleraz/fathom/internal/provenance | os/exec | read-only git for provenance | git read commands only
+github.com/geoffmilleraz/fathom/internal/receiptverify | os/exec | `go mod download` and go test for receipt verify | GOPROXY=off and -mod=readonly; explicit verbs only
+github.com/geoffmilleraz/fathom/internal/testisolate | os/exec | `go env -json` for the cache variables | no module download; go env only
+github.com/geoffmilleraz/fathom/internal/worktree | os/exec | read-only git for worktree identity | git read commands only
+github.com/geoffmilleraz/fathom/pkg/client | net net/http | the daemon client | loopback or the user's FATHOM_HTTP; the caller header goes only to that host
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/bounded-exec | os/exec | bounded child processes for the CLI model lanes | a configured claude-cli or codex-cli profile only
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/openai | net/http | the OpenAI decision provider | decide provider openai, with user consent
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe | net/http | the typesafe decision provider | decide provider typesafe, with user consent
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic | net/http | the Anthropic LLM lane | an API key or profile; compile, smoke, providers and doctor pings only
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock | net net/http | the Bedrock LLM lane | provider bedrock in a profile
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock/awscred | net/http os/exec | AWS credentials, including a credential_process | provider bedrock in a profile
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/claudecli | net/http os/exec | the claude-cli lane runs the claude binary | a claude-cli profile; profiles.*.bin is user scope only
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/codexcli | net/http os/exec | the codex-cli lane runs the codex binary | a codex-cli profile; profiles.*.bin is user scope only
+github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/openai | net/http | the OpenAI and Azure LLM lanes | an API key or profile; profiles.*.endpoint is user scope only
+github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/appearance | net/http | console UI handlers (server side) | serves the console only; no outbound call
+github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/live | net/http | console live-update handlers (server side) | serves the console only; no outbound call
+github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/overlay | net/http | console UI handlers (server side) | serves the console only; no outbound call
+github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette | net/http | console UI handlers (server side) | serves the console only; no outbound call
+github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide | net net/http | the styleguide's HTTP handlers (server side) | serves the console only; no outbound call

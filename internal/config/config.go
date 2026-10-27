@@ -568,6 +568,28 @@ type Typed struct {
 	SkipModules []string
 }
 
+// Ingest configures how ingest runs the language toolchains (schema.cue
+// #Ingest, ADR-083). GoNetwork lets the go commands fathom runs on its own
+// use the inherited GOPROXY and GOSUMDB; false (the default) runs them with
+// GOPROXY=off and GOSUMDB=off (internal/goenv). User scope only: a
+// repository's copy is dropped and named (scope.go).
+type Ingest struct {
+	GoNetwork bool
+}
+
+// UserGoNetwork reports the user layer's `[ingest] go_network` (ADR-083),
+// read from ~/.fathom/config.toml alone: a repository can never reopen the
+// module network. An absent, unreadable or invalid file reads as false, so
+// a broken config never opens it.
+func UserGoNetwork() bool {
+	path := DefaultUserPath()
+	if path == "" {
+		return false
+	}
+	l, err := Load(path, "")
+	return err == nil && l.Config.Ingest.GoNetwork
+}
+
 // Receipts configures what a portable receipt states about the repository
 // it was produced in (schema.cue #Receipts). RepositoryURI is the absolute
 // URI a receipt's SARIF names in versionControlProvenance; "" (the
@@ -592,6 +614,7 @@ type Config struct {
 	Receipts       Receipts
 	Gate           Gate
 	Typed          Typed
+	Ingest         Ingest
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon

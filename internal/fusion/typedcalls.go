@@ -203,7 +203,14 @@ type TypedEdgeReport struct {
 	// applied (EW-68, typedSkipModules): its stamp is what the pass's state
 	// row records.
 	SkipModules []string
-	Duration    time.Duration
+	// MissingModules names, sorted, each dependency the offline go command
+	// refused to fetch because the module cache lacks it (ADR-083,
+	// typed_missingmodules.go), with the module directory whose `go mod
+	// download` fills the cache. The packages it failed are counted in
+	// PackagesFailed; the pass's partial state names them, so it runs
+	// again once one appears in the module cache (missingModulesStamp).
+	MissingModules []MissingGoModule
+	Duration       time.Duration
 	// nestedLoads is each nested module's load wall this run, in load
 	// order (EW-69): the line names the slowest.
 	nestedLoads []moduleLoad
@@ -278,8 +285,8 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	// EW-68: the state row names the skip_modules set the last pass ran
 	// under; a changed set reads as no completed pass.
 	skipStamp := skipModulesStamp(typedSkipModules(svc.Path))
-	if !typedPassNeeded(changed, p.passStateUnder(ctx, svc.ID, goPassStateKey, skipStamp) != "") {
-		return TypedEdgeReport{Skipped: p.skippedReasonUnder(ctx, svc.ID, goPassStateKey, skipStamp)}, nil
+	if state := p.passStateUnder(ctx, svc.ID, goPassStateKey, skipStamp); !typedPassNeeded(changed, state != "") {
+		return TypedEdgeReport{Skipped: skippedReasonFor(state)}, nil
 	}
 	atomic.AddInt64(&p.typedPassTotal, 1)
 
@@ -346,21 +353,26 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		})
 		p.diagWarn("fusion: typed-edge pass %q failed to load: %v — syntax-only edges remain the baseline\n", svc.ID, err)
 	case rep.PackagesFailed > 0:
+		missing := formatMissingModules(rep.MissingModules)
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			PackagesSeen:           rep.PackagesTotal,
 			Packages:               rep.PackagesLoaded + rep.PackagesCached,
 			EdgesTotal:             edgesTotal,
 			Failed:                 true,
-			Reason:                 fmt.Sprintf("%d/%d package(s) failed typed loading%s", rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages)),
+			Reason:                 fmt.Sprintf("%d/%d package(s) failed typed loading%s%s", rep.PackagesFailed, rep.PackagesTotal, missing, formatFailedTypedPackages(rep.FailedPackages)),
 			Fallback:               rep.Fallback,
 			DiscoveryGaps:          rep.DiscoveryGaps,
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
-		p.diagWarn("fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those%s\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages))
+		p.diagWarn("fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those%s%s\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal, missing, formatFailedTypedPackages(rep.FailedPackages))
 		// RT-104: a package that always fails must not defeat the gate —
-		// the same inputs fail the same way; wait for a Go change.
-		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
+		// the same inputs fail the same way; wait for a Go change. ADR-083:
+		// a module missing from the cache is fixed outside the tree (`go mod
+		// download`), so the row names the missing modules and the pass
+		// also runs again once one of them appears in the module cache
+		// (missingModulesStamp).
+		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules)+missingModulesStamp(typedModCache(), rep.MissingModules))
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
 		// Never-silent guard: go/packages saw packages but the connector-
 		// scope filter excluded every one of them. Legitimate only when the
@@ -606,7 +618,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			}
 		}
 		if lErr != nil {
-			failed = append(failed, moduleFailure{mod: m, err: lErr})
+			failed = append(failed, moduleFailure{mod: m, err: run.offlineLoadError(lErr, m.dir(repoPath))})
 			continue
 		}
 		loadedModules++
@@ -614,6 +626,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			return halted(hErr) // no reconcile: the stored rows of every package not reached stand
 		}
 	}
+	report.MissingModules = run.missingModules()
 	if loadedModules == 0 && len(failed) > 0 {
 		report.Duration = time.Since(start)
 		return report, failed[0].err
@@ -729,6 +742,11 @@ type typedRun struct {
 	// (nil until it ran): a nested module calling into the root module
 	// through a replace directive reaches first-party code.
 	rootPackages map[string]bool
+	// missing is every dependency the offline go command refused this run
+	// (ADR-083); requires memoizes each module directory's go.mod
+	// requirements for naming them (typed_missingmodules.go).
+	missing  map[MissingGoModule]bool
+	requires map[string]map[string]string
 }
 
 // enrichModule resolves and stores one module's loaded packages. A non-nil
@@ -787,6 +805,7 @@ func (r *typedRun) enrichModule(m goModule, fset *token.FileSet, pkgs []*package
 		r.keep[storeKey] = true
 
 		if loadErrors := typedPackageLoadErrors(pkg); len(loadErrors) > 0 {
+			r.noteMissing(m.dir(repoPath), typedMissingPackages(pkg))
 			report.PackagesFailed++
 			if len(report.FailedPackages) < 5 {
 				report.FailedPackages = append(report.FailedPackages, FailedTypedPackage{
