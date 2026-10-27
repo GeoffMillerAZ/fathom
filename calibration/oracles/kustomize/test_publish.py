@@ -14,6 +14,140 @@ import grade
 
 
 class PublicationTests(unittest.TestCase):
+    def test_generated_receipt_has_exact_public_contract_and_scored_artifact(self):
+        """Synthetic measurements exercise the real publisher and its exact public schema."""
+        root = pathlib.Path(__file__).resolve().parents[3]
+        committed = json.loads((root / "docs/assessments/data/2026-10-26-kustomize-r1.json").read_text())
+        expected_keys = {
+            "D19_xref_denominators", "D19_xref_thin", "base_commit", "counts", "date",
+            "go_runtime_env", "grade", "indexbench_local_artifact_sha256",
+            "indexbench_source_identity", "lane_disposition", "leave_one_subject_out",
+            "level_met", "load_at_launch_by_run", "median_reading_sha256", "median_run",
+            "metric_tiers", "metrics", "native_bin_sha256", "niceness",
+            "oracle_bin_sha256", "original_population_conservation_failed",
+            "original_xref_floor_met", "original_xref_truth", "pins_sha256",
+            "pool_xref_floor_met", "subjects", "throughput_mb_per_cpu_second",
+        }
+        fixed = prepare.PINS
+        pin_digest = publish.digest(publish.PINS_PATH)
+        artifact_digest = "a" * 64  # Synthetic local build artifact, not a subject hash.
+        counts_by_subject = [12, 1, 0, 0, 0]
+        pooled = {"xref_truth": 13, "xref_fathom": 13, "matched": 5}
+        scored_subjects = []
+        before_subjects = []
+        root.joinpath("workspace/tmp").mkdir(parents=True, exist_ok=True)
+
+        with tempfile.TemporaryDirectory(dir=root / "workspace/tmp") as path:
+            cache = pathlib.Path(path)
+            lane = cache / "kustomize-r1"
+            native, manifests, graded = (lane / name for name in ("native", "manifests", "grade"))
+            for folder in (native, manifests, graded):
+                folder.mkdir(parents=True)
+            for pin, xrefs in zip(fixed["subjects"], counts_by_subject):
+                name = pin["repository"]
+                stem = publish.slug(pin)
+                truth_path = native / (stem + "-before.json")
+                files_path = native / (stem + "-before.files")
+                receipt_path = native / (stem + "-before.receipt")
+                truth = {"definitions": [{"name": "synthetic"}],
+                         "references": [{} for _ in range(xrefs)],
+                         "cross_references": [{"to_path": "synthetic.yaml"}
+                                              for _ in range(xrefs)]}
+                receipt = {"binary_sha256": "native-tool", "files": 1,
+                           "built_roots": 1, "typed_entries": 0, "excluded": {},
+                           "inventory": {}, "stats": {}, "component_contexts": {}}
+                truth_path.write_text(json.dumps(truth))
+                files_path.write_text("synthetic fixture\n")
+                receipt_path.write_text(json.dumps(receipt))
+                for suffix in (".json", ".files", ".receipt"):
+                    (native / (stem + "-after" + suffix)).write_bytes(
+                        (native / (stem + "-before" + suffix)).read_bytes())
+                manifest = {"sha256": "synthetic-manifest", "entries": 1, "bytes": 1}
+                for when in ("before", "after"):
+                    (manifests / (stem + "-" + when + ".json")).write_text(json.dumps(manifest))
+                before_subjects.append({"repository": name, "subject_sha": pin["sha"],
+                                        "oracle_sha256": publish.digest(truth_path),
+                                        "files_sha256": publish.digest(files_path),
+                                        "receipt_sha256": publish.digest(receipt_path),
+                                        "native_receipt": receipt, "definitions": 1,
+                                        "references": xrefs, "cross_references": xrefs,
+                                        "built_files": 1})
+                scored_subjects.append({"repository": name, "sha": pin["sha"],
+                                        "files": 1, "bytes": 1,
+                                        "unsupported_native_basename": 0,
+                                        "counts": {"xref_truth": xrefs,
+                                                   "xref_fathom": xrefs, "matched": 1},
+                                        "ratios": {}})
+
+            native_summary = {"pins_sha256": pin_digest, "oracle_bin_sha256": "oracle-tool",
+                              "native_bin_sha256": "native-tool", "subjects": before_subjects}
+            for when in ("before", "after"):
+                (native / (when + "-summary.json")).write_text(json.dumps(native_summary))
+            median = {"counts": pooled, "metrics": {}, "metric_tiers": {},
+                      "grade": {"L1": "good"}, "level_met": "L1"}
+            median_path = graded / "median.json"
+            median_path.write_text(json.dumps(median))
+            loo = []
+            for subject in scored_subjects:
+                omitted = subject["counts"]
+                loo.append({"omitted_repository": subject["repository"],
+                            "counts": {key: value - omitted.get(key, 0)
+                                       for key, value in pooled.items()},
+                            "metrics": {}, "grade": {}, "level_met": "none"})
+            scored = {**median, "reading_sha256": publish.digest(median_path),
+                      "base_commit": fixed["base_commit"], "pins_sha256": pin_digest,
+                      "indexbench_sha256": artifact_digest, "median_run": 2,
+                      "runs_mb_per_cpu_second": [1.0, 2.0, 3.0],
+                      "subjects": scored_subjects, "leave_one_subject_out": loo,
+                      "D19_xref_denominators": {"precision": 13, "recall": 13},
+                      "original_xref_truth": {
+                          fixed["subjects"][0]["repository"]: 12,
+                          fixed["subjects"][1]["repository"]: 1},
+                      "original_xref_floor_met": True, "pool_xref_floor_met": True,
+                      "niceness": 10, "go_runtime_env": {"GOMAXPROCS": "2"},
+                      "load_at_launch_by_run": []}
+            (graded / "summary.json").write_text(json.dumps(scored))
+            output = cache / "public.json"
+            with mock.patch.object(sys, "argv", ["publish", "--cache", str(cache),
+                                                  "--out", str(output)]):
+                publish.main()
+            public = json.loads(output.read_text())
+            self.assertEqual(set(public), expected_keys)
+            self.assertEqual(set(committed), expected_keys)
+            self.assertEqual(public["indexbench_local_artifact_sha256"],
+                             scored["indexbench_sha256"])
+            self.assertNotIn("local_artifact_privacy", public)
+
+    def test_reading_rejects_artifact_digest_different_from_scored_summary(self):
+        root = pathlib.Path(__file__).resolve().parents[3]
+        root.joinpath("workspace/tmp").mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root / "workspace/tmp") as path:
+            cache = pathlib.Path(path)
+            grade_dir = cache / "kustomize-r1" / "grade"
+            grade_dir.mkdir(parents=True)
+            median_path = grade_dir / "median.json"
+            public_path, current_path = cache / "public.json", cache / "current.json"
+            median_path.write_text(json.dumps({"fathom_commit": "synthetic-base"}))
+            (grade_dir / "summary.json").write_text(json.dumps({"indexbench_sha256": "a" * 64}))
+            public_path.write_text(json.dumps({"pins_sha256": "synthetic-pins",
+                                               "median_reading_sha256": publish.digest(median_path),
+                                               "base_commit": "synthetic-base",
+                                               "indexbench_source_identity": {
+                                                   "vcs_revision": "synthetic-base",
+                                                   "vcs_modified": False},
+                                               "indexbench_local_artifact_sha256": "b" * 64}))
+            current_path.write_text("{}")
+            actual_digest = publish_reading.digest
+
+            def fake_digest(path):
+                return "synthetic-pins" if path == publish_reading.PINS_PATH else actual_digest(path)
+
+            with mock.patch.object(publish_reading, "pins",
+                                   return_value={"base_commit": "synthetic-base"}), \
+                    mock.patch.object(publish_reading, "digest", side_effect=fake_digest):
+                with self.assertRaisesRegex(RuntimeError, "indexbench.*artifact|artifact.*indexbench"):
+                    publish_reading.verify(median_path, public_path, current_path, cache)
+
     def test_leave_one_out_uses_harness_regrade(self):
         median = {"subjects": [{"name": "one", "counts": {"matched": 3}},
                                {"name": "two", "counts": {"matched": 4}}]}

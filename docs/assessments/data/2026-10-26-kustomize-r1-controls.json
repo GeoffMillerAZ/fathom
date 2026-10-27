@@ -20,6 +20,7 @@
   "date": "2026-10-26",
   "integration_base_commit": "12aa23eee7f819c6c7967a8651b0953a27e0abc6",
   "lane_final_gates_complete": true,
+  "local_digest_provenance": "Non-portable local raw-log digests were removed from this receipt and remain in public history. Their removal is not privacy remediation: SHA-256 does not encode a path. Execution commands/status retained; the exact graded indexbench artifact binding is restored in the publication receipt and reading publisher.",
   "native_before_after_byte_identity": true,
   "oracle_build_flags": [
     "-trimpath",
@@ -44,7 +45,6 @@
     "candidate_files": 24,
     "local_home_paths": 0,
     "name_email_shapes": 0,
-    "raw_log_digests": "Withdrawn: raw command logs can echo private paths; execution commands/status retained",
     "subject_identities": 0
   },
   "product_control": {

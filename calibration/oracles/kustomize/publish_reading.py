@@ -74,6 +74,9 @@ def verify(median_path, public_path, current_path, cache):
     require(public["indexbench_source_identity"] ==
             {"vcs_revision": frozen["base_commit"], "vcs_modified": False},
             "indexbench clean source identity differs")
+    require(public["indexbench_local_artifact_sha256"] ==
+            read(cache / "kustomize-r1" / "grade" / "summary.json")["indexbench_sha256"],
+            "indexbench local artifact digest differs from graded summary")
     require(median["dialect"] == current["dialect"] == "kustomize", "dialect differs")
     for key in ("kind", "target_level", "required_kinds"):
         require(median[key] == current[key], "existing reading contract changed: " + key)
