@@ -17,8 +17,10 @@ import (
 
 // entityFactsSection is symbol_context's `facts` value for def: the rows
 // of def's own file whose name is `<def>#<key>` (EntityFact; K8sFact for a
-// K8sWorkload), sorted by line then key, and the coverage
-// {state, extractor, tier, read_set}. The state is complete while the
+// K8sWorkload) and, when def carries a line span, whose line falls inside
+// it (two same-named entities in one file keep their own rows; a
+// K8sWorkload carries no end line and matches by name), sorted by line
+// then key, and the coverage {state, extractor, tier, read_set}. The state is complete while the
 // file's citation is clean and incomplete once its bytes differ from the
 // index (the citation status bindCitation settles at call end). ok is false
 // when def has no stored fact: the key is omitted, never faked.
@@ -28,11 +30,16 @@ func entityFactsSection(ctx context.Context, backend QueryInterface, service str
 		kind = core.KindK8sFact
 	}
 	prefix := def.Name + "#"
+	spanned := def.Line > 0 && def.EndLine >= def.Line
 	var facts []core.SymbolNode
 	for _, n := range nodes {
-		if n.Kind == kind && n.FilePath == def.FilePath && strings.HasPrefix(n.Name, prefix) {
-			facts = append(facts, n)
+		if n.Kind != kind || n.FilePath != def.FilePath || !strings.HasPrefix(n.Name, prefix) {
+			continue
 		}
+		if spanned && (n.Line < def.Line || n.Line > def.EndLine) {
+			continue
+		}
+		facts = append(facts, n)
 	}
 	if def.Name == "" || def.FilePath == "" || len(facts) == 0 {
 		return nil, false

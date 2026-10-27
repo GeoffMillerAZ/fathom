@@ -50,6 +50,14 @@ const entityFactsRules = `groups:
         labels:
           severity: critical
           team: infra
+      - alert: DiskFull
+        expr: disk_free < 0.10
+        labels:
+          severity: warning
+      - alert: DiskFull
+        expr: disk_free < 0.05
+        labels:
+          severity: critical
 `
 
 // TestSymbolContextServesWorkloadFactsWithCoverage (WAE-5): symbol_context on
@@ -118,6 +126,26 @@ func TestSymbolContextServesWorkloadFactsWithCoverage(t *testing.T) {
 	}
 	if cov["state"] != "complete" || cov["tier"] != "verified" || !reflect.DeepEqual(cov["read_set"], []any{"monitoring/rules.yml"}) {
 		t.Errorf("coverage(NodeDown) = %v", cov)
+	}
+
+	// Two alerts in one file share a name (the warning and critical pair):
+	// the bare name is ambiguous, the key resolves one of them, and that
+	// def is served its own rows, never its namesake's (review F1).
+	const diskFull = "facts::monitoring/rules.DiskFull"
+	res := callTool(t, srv, "symbol_context", map[string]any{"service": "facts", "symbol": diskFull, "snippet": false})
+	def, _ := res["def"].(map[string]any)
+	if def == nil {
+		t.Fatalf("DiskFull: no def in %v", res)
+	}
+	wantDisk := map[float64][]string{
+		9:  {"monitoring/rules.yml:12 EntityFact labels.severity warning"},
+		13: {"monitoring/rules.yml:16 EntityFact labels.severity critical"},
+	}[def["line"].(float64)]
+	if wantDisk == nil {
+		t.Fatalf("DiskFull resolved to an unexpected def %v", def)
+	}
+	if rows, _ = facts(diskFull); !reflect.DeepEqual(rows, wantDisk) {
+		t.Errorf("facts(DiskFull) at line %v\n got %q\nwant %q", def["line"], rows, wantDisk)
 	}
 
 	// The rule file changes after the index: the facts are still served,
