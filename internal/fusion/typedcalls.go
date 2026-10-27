@@ -66,8 +66,10 @@
 // files and targets within those packages. Without that filter, an ignored
 // directory's Go file whose package/func names collide
 // with an indexed package would emit edges keyed onto LIVE symbols. A
-// package with zero allowed files is skipped entirely (and reconciled away
-// if previously stored); an edge is dropped when either its call-site file
+// package with no allowed file is skipped entirely, for one reason from a
+// closed set (typedSkipReason, EW-81), and reconciled away if previously
+// stored; a package whose only allowed files are cgo sources compiled from
+// the build cache resolves from them. An edge is dropped when either its call-site file
 // or its target's declaring file is outside the set. A nil allowed set
 // disables filtering (whole-module scope, for direct callers/tests).
 //
@@ -149,7 +151,14 @@ type TypedEdgeReport struct {
 	PackagesLoaded  int // packages actually re-resolved this run (cache miss)
 	PackagesCached  int // packages skipped: content hash unchanged since last run
 	PackagesFailed  int // packages that failed to load/typecheck/persist (fallback, never blocks)
-	PackagesSkipped int // packages with zero connector-allowed files (ignored dirs; reconciled away)
+	PackagesSkipped int // packages the pass did not resolve, each for one reason in Skips (reconciled away)
+	// Skips counts PackagesSkipped by reason (typedSkipReason's closed set,
+	// O1506), sorted by reason, each naming its first five packages in
+	// order; NotLoaded is the same for the discovered Go directories and
+	// nested modules no load covered (unloadedGoDirs). Neither is persisted:
+	// they live on this report, fusion.Report and the in-memory status.
+	Skips     []TypedSkip
+	NotLoaded []TypedSkip
 	// FailedPackages names a few (capped, in load order) of the packages
 	// behind PackagesFailed, with the go/packages load error(s) that failed
 	// each one (DG-8) — before this field, every surface (the stderr line,
@@ -314,6 +323,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		if line := foreignModulesLine(svc.ID, rep.ForeignModules, rep.nestedLoads); line != "" {
 			p.diagInfo("%s", line)
 		}
+		if line := typedSkipsLine(svc.ID, rep.Skips, rep.NotLoaded); line != "" {
+			p.diagWarn("%s", line)
+		}
 	}()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
 	// The named reason travels with it (I24) so /statusz,
@@ -362,9 +374,11 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		// the same inputs fail the same way; wait for a Go change.
 		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
-		// Never-silent guard: go/packages saw packages but the connector-
-		// scope filter excluded every one of them. Legitimate only when the
-		// ignore rules really do exclude all Go source; otherwise it is a
+		// Never-silent guard: go/packages saw packages but the pass skipped
+		// every one of them, each for its reason (EW-81: the Reason names
+		// the counts by reason, never a package — it is persisted).
+		// Legitimate only when the ignore rules, build constraints or Go's
+		// ignored names really do exclude all Go source; otherwise it is a
 		// path-mapping bug of exactly the kind the relative-repoPath
 		// regression was (see TestEnrichTypedEdges_RelativeRepoPath). Also
 		// the shape a Go tree with ZERO typed edges takes (wave P3 / O82):
@@ -373,13 +387,13 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			PackagesSeen:           rep.PackagesTotal,
 			Failed:                 true,
-			Reason:                 fmt.Sprintf("%d package(s) seen but 0 processed — every package excluded by the connector scope filter", rep.PackagesTotal),
+			Reason:                 fmt.Sprintf("%d package(s) seen but 0 processed — skipped: %s", rep.PackagesTotal, formatTypedSkipCounts(rep.Skips)),
 			Fallback:               rep.Fallback,
 			DiscoveryGaps:          rep.DiscoveryGaps,
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
-		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
+		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — skipped: %s; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal, formatTypedSkipCounts(rep.Skips))
 		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
 	default:
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
@@ -487,8 +501,8 @@ func loadableByRootPattern(repoPath, rel string) bool {
 // typed_nestedmodules.go for how modules are found and loaded.
 //
 // allowed is the connector-scope filter (repo-relative forward-slash .go
-// paths, as SourceRef.Path records them): a package with zero allowed
-// files is skipped; an edge is dropped when its call-site file OR its
+// paths, as SourceRef.Path records them): a package with no allowed file
+// is skipped, counted under its reason in Skips (typedSkipReason); an edge is dropped when its call-site file OR its
 // target's declaring file is outside the set; a nested module is loaded
 // only when it governs an allowed file and its module path is the
 // repository's own (the rest are named in ForeignModules). nil disables filtering
@@ -532,7 +546,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// (typedpass_governor.go).
 	gov := governTypedPass(ctx)
 	defer gov.close()
+	var run *typedRun
 	halted := func(err error) (TypedEdgeReport, error) {
+		if run != nil {
+			report.Skips = run.skips.skips()
+		}
 		report.Duration = time.Since(start)
 		return report, fmt.Errorf("fusion: typed-edge pass %q halted after %d package(s): %w%s", repoPath, report.PackagesLoaded, err, overBudgetHint(err))
 	}
@@ -543,7 +561,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		report.Fallback = "GOWORK=off"
 	}
 
-	run := &typedRun{
+	run = &typedRun{
 		policy: declaredExclusion(repoPath), policySeen: map[string]bool{},
 		ctx: ctx, st: st, gov: gov,
 		serviceID: serviceID, repoPath: repoPath, allowed: allowed,
@@ -614,6 +632,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			return halted(hErr) // no reconcile: the stored rows of every package not reached stand
 		}
 	}
+	report.Skips = run.skips.skips()
 	if loadedModules == 0 && len(failed) > 0 {
 		report.Duration = time.Since(start)
 		return report, failed[0].err
@@ -725,6 +744,8 @@ type typedRun struct {
 	discoveryGapSeen  map[string]bool
 	policySeen        map[string]bool
 	policy            func(rel string) bool
+	// skips names every package the run skipped, by reason (EW-81).
+	skips typedSkipTally
 	// rootPackages are the package paths the root module's load produced
 	// (nil until it ran): a nested module calling into the root module
 	// through a replace directive reaches first-party code.
@@ -776,12 +797,14 @@ func (r *typedRun) enrichModule(m goModule, fset *token.FileSet, pkgs []*package
 			return hErr
 		}
 		storeKey := m.typedStoreKey(pkg.ID)
-		// Connector scope (see the package doc): a package with zero
-		// allowed files contributes nothing — and is deliberately NOT in
-		// the keep set, so previously stored rows for a now-ignored
-		// package are reconciled away below.
-		if allowed != nil && !anyFileAllowed(repoPath, allowed, pkg.CompiledGoFiles) {
+		// Connector scope (see the package doc): a package with no
+		// allowed file contributes nothing, and is counted and named under
+		// its reason (EW-81) — and is deliberately NOT in the keep set, so
+		// previously stored rows for a now-ignored package are reconciled
+		// away below. A cgo-only package's allowed files are its GoFiles.
+		if reason := typedSkipReason(pkg, repoPath, allowed); reason != "" {
 			report.PackagesSkipped++
+			r.skips.add(reason, typedSkipName(m, pkg.ID))
 			continue
 		}
 		r.keep[storeKey] = true
@@ -1716,7 +1739,12 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // interface the module does not declare dispatches to the type's methods in
 // that interface's method set (typedcalls_conversions.go); rows written
 // before it carry no edge into a method only the standard library calls.
-const TypedEdgeEpoch = "7"
+// Epoch 8 (O1506, EW-81): a package whose every Go file imports "C" is
+// resolved from its source files (its compiled files are all build-cache
+// copies, so it was skipped as connector-ignored), and every skipped
+// package is named; rows written before it carry no edge from such a
+// package, and a pass under the new epoch re-runs once to name the skips.
+const TypedEdgeEpoch = "8"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache
