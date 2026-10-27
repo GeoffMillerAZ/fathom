@@ -39,7 +39,8 @@ func Lonely() {}
 `
 
 // exportReceiptFixtureBSrc is pkg/b.go: a second file calling Greet, a
-// struct field with a use of it, and an interface method call.
+// struct field with a use of it, an interface method call, and a call
+// that matches a package function by name alone.
 const exportReceiptFixtureBSrc = `package pkg
 
 // Wave calls Greet from a second file.
@@ -53,6 +54,13 @@ func Size(c Config) int { return c.N }
 
 // Speak reaches Say only through the Greeter interface.
 func Speak(g Greeter) string { return g.Say() }
+
+// Echo is a package function.
+func Echo() string { return "echo" }
+
+// Shadow calls its parameter, which shadows Echo: a name-matching syntax
+// edge binds the call to the package function, go/types does not.
+func Shadow(Echo func() string) string { return Echo() }
 `
 
 // exportReceiptFixtureCSrc is pkg/c.go: an interface and its one
@@ -78,7 +86,8 @@ var Spare = Limit
 
 // exportReceiptFixtureTestSrc reaches Hello and, through it, Greet, and
 // a helper in its own file; TestSpeak reaches Speak, and En.Say only
-// through the interface.
+// through the interface; TestSay reaches En.Say through the interface
+// alone; TestShadow reaches Shadow, and Echo by name alone.
 const exportReceiptFixtureTestSrc = `package pkg
 
 import "testing"
@@ -95,6 +104,19 @@ func settle() {}
 
 func TestSpeak(t *testing.T) {
 	if Speak(En{}) != "hello" {
+		t.Fatal("no answer")
+	}
+}
+
+func TestShadow(t *testing.T) {
+	if Shadow(func() string { return "x" }) != "x" {
+		t.Fatal("no echo")
+	}
+}
+
+func TestSay(t *testing.T) {
+	var g Greeter = En{}
+	if g.Say() != "hello" {
 		t.Fatal("no answer")
 	}
 }
@@ -633,6 +655,49 @@ func TestExportReceiptSkipsInterfaceDispatch(t *testing.T) {
 				t.Errorf("receipt verify exit %d:\n%s", code, msg)
 			}
 		})
+	}
+}
+
+// TestExportReceiptCertificationIgnoresSyntaxEdges: Shadow's Echo() calls
+// a parameter that matches the package function Echo by name alone. The
+// syntax graph binds it, go/types does not, so the certification reach is
+// Shadow without Echo, and it verifies.
+func TestExportReceiptCertificationIgnoresSyntaxEdges(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-shadow", symbols: []string{"Shadow", "Echo"}}, "TestShadow")
+	path := filepath.Join(t.TempDir(), "shadow.json")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification", "--test", "TestShadow", "--target", "R-shadow", "-o", path}, &out, &errBuf); code != 0 {
+		t.Fatalf("export exit %d: %s", code, errBuf.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var r receipt.ExportedReceipt
+	if err := json.Unmarshal(data, &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Reached) != 1 || !strings.HasSuffix(r.Reached[0], ".Shadow") {
+		t.Errorf("reached = %v, want Shadow alone", r.Reached)
+	}
+	if code, msg := verifyReceiptFile(t, root, path); code != 0 {
+		t.Errorf("receipt verify exit %d:\n%s", code, msg)
+	}
+}
+
+// TestExportReceiptCertificationDispatchOnlyReach: a rule target the
+// test reaches only through an interface dispatch has symbols in scope,
+// so its reach is not vacuous; the refusal names the dispatch instead.
+func TestExportReceiptCertificationDispatchOnlyReach(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-say", symbols: []string{"En.Say"}}, "TestSay")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification", "--test", "TestSay", "--target", "R-say"}, &out, &errBuf); code != 1 || out.Len() != 0 {
+		t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+	}
+	if msg := errBuf.String(); !strings.Contains(msg, "interface dispatch") || strings.Contains(msg, "vacuous") {
+		t.Errorf("refusal = %q, want it to name the interface dispatch, not a vacuous reach", msg)
 	}
 }
 

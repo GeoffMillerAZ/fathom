@@ -297,10 +297,12 @@ func exportReferencesInput(ctx context.Context, c *client.Client, exp *receipt.E
 // matches any). The claim's scope is the test's file plus the target's
 // files, so Reached is every symbol in a target file the test reaches over
 // direct calls alone, the edges receipt verify re-derives reach from; each
-// carries a definition fact, as the test does. The test's own helpers are not what it certifies, and a
-// target that names no symbol (an invariant or incident, whose scope
-// beyond the test file is a doc file) leaves the reach vacuous: no receipt
-// can re-derive it, so the export refuses.
+// carries a definition fact, as the test does. The test's own helpers are
+// not what it certifies. The export refuses an empty Reached, naming why:
+// a target that names no symbol (an invariant or incident, whose scope
+// beyond the test file is a doc file) leaves the reach vacuous, and a
+// target reached only through an interface dispatch or a func value has
+// no direct call for receipt verify to re-derive.
 func exportCertificationInput(ctx context.Context, c *client.Client, st store.Store, service, test, target string) (receipt.ExportInput, error) {
 	claim, m, err := oneCertification(ctx, st, service, test, target)
 	if err != nil {
@@ -343,10 +345,15 @@ func exportCertificationInput(ctx context.Context, c *client.Client, st store.St
 	// that still verifies, never an over-claim.
 	g := callgraph.BuildResolved(nodes, oracleEdges(edges, core.EdgeDirect))
 	root := exp.Commit().Root
+	scoped := 0
 	for _, key := range slices.Sorted(maps.Keys(byKey)) {
 		n := byKey[key]
 		file := repoRelPath(root, n.FilePath)
-		if file == testCited.Anchor.Path || !inScope(claim.Scope, file) || !callgraph.Reachable(g, m.TestSymbolKey, key) {
+		if file == testCited.Anchor.Path || !inScope(claim.Scope, file) {
+			continue
+		}
+		scoped++
+		if !callgraph.Reachable(g, m.TestSymbolKey, key) {
 			continue
 		}
 		cited, err := exp.Cite(ctx, nodeSpan(n))
@@ -356,8 +363,12 @@ func exportCertificationInput(ctx context.Context, c *client.Client, st store.St
 		in.Receipt.Reached = append(in.Receipt.Reached, key)
 		in.Facts = append(in.Facts, receipt.FactInput{Kind: receipt.FactDefinition, Subject: key, Anchors: []receipt.CitedAnchor{cited}})
 	}
-	if len(in.Receipt.Reached) == 0 {
+	switch {
+	case len(in.Receipt.Reached) > 0:
+	case scoped == 0:
 		return receipt.ExportInput{}, fmt.Errorf("%s reaches no symbol outside its own file in the scope of %s (%s): the reach is vacuous, and a certification receipt has nothing to re-derive", m.Test, r.Target, strings.Join(claim.Scope, ", "))
+	default:
+		return receipt.ExportInput{}, fmt.Errorf("%s reaches none of the %d symbol(s) in the scope of %s (%s) over a direct call: receipt verify re-derives reach from static calls alone, so a reach only through an interface dispatch or a func value cannot be exported", m.Test, scoped, r.Target, strings.Join(claim.Scope, ", "))
 	}
 	return in, nil
 }
