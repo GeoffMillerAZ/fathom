@@ -195,7 +195,7 @@ The ranking weighs value to the consumer's goals, then feasibility, then fit wit
 | 6 | U7 PLT-10 now, isolation recipe | an investigation type; an honest answer to authorization | docs | ADR-069 d10, non-goals | RVU-6 (and a PLT-10 reorder) |
 | 7 | U6 governance recipe | names producers that already exist | docs | ADR-040, EVX-21 | RVU-7 |
 
-## 4. Proposed plan rows (not added to any plan)
+## 4. Plan rows (added to docs/plans/platform-engineering.md)
 
 These use grammar v2 and are all unchecked. The `RVU-` prefix is free today. Symbols marked provisional must be
 grounded with `find_symbol` when the row starts. Lanes follow the PLT- convention.
@@ -212,7 +212,7 @@ grounded with `find_symbol` when the row starts. Lanes follow the PLT- conventio
 - [-] `search kind: docs` across every service the daemon holds, ranked jointly {id: RVU-D2, disposition: deferred, reason: "a fleet fan-out is daemon load RT-M1 measures", trigger: "RT-M1 reads PASS and a named consumer asks in writing"}
 ```
 
-Reorder rather than add: move PLT-10 into P0. A controller edit to `docs/plans/platform-engineering.md` would do it.
+Reorder rather than add: PLT-10 moved into P0 in `docs/plans/platform-engineering.md`.
 
 ## 5. What fathom should not do
 
