@@ -16,7 +16,7 @@ package guardspec
 import (
 	_ "embed"
 	"fmt"
-	"net"
+	"net/netip"
 	"net/url"
 	"path"
 	"regexp"
@@ -280,8 +280,12 @@ func egressLoopback(host string) bool {
 	if h == "localhost" || strings.HasSuffix(h, ".localhost") || h == "0.0.0.0" {
 		return true
 	}
-	ip := net.ParseIP(h)
-	return ip != nil && ip.IsLoopback()
+	// net/netip, not net: the package parses addresses and never dials, so
+	// it stays off the egress allowlist (ADR-083 decision 3). A zoned
+	// address is not loopback, as net.ParseIP read it; Unmap keeps
+	// ::ffff:127.0.0.1 loopback.
+	addr, err := netip.ParseAddr(h)
+	return err == nil && addr.Zone() == "" && addr.Unmap().IsLoopback()
 }
 
 // urlTarget reads a URL, or a bare host[:port][/path], as a target. A

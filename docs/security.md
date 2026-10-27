@@ -46,7 +46,9 @@ Fathom has no telemetry and no update check. Every way data or requests can leav
 | Go module fetches (`go list` in the typed pass, ask, layer rules) | Offline: `GOPROXY=off`, `GOSUMDB=off`, `GONOPROXY=,`, `GOTELEMETRY=off`, `GOTOOLCHAIN=local`, `-mod=mod` stripped | `[ingest] go_network = true`, user config only |
 | Bedrock `credential_process` | Off | Provider `bedrock` |
 | `scip-typescript`, `scip-python` | Only during `init`, only if already on `PATH` | You run `init` |
-| `receipt certify`, `doctor --stranger` | Not run | Explicit verbs, your environment |
+| `receipt verify` (`go mod download`, the go/packages load, the `--run-tests` go test) | Offline: the Go module environment above plus `GOWORK=off` and `-mod=readonly`, whatever `go_network` says | Explicit verb |
+| `export scip --module` | Runs `scip-go` only if it is on `PATH`. scip-go runs `go list` with your inherited `GOPROXY`, so it can fetch modules | Explicit verb, your environment |
+| `doctor --stranger` | Not run | Explicit verb. Runs the repository's own script in your environment |
 | CUE module registry | Closed | Refused in code |
 | git | Read-only commands | No fetch, clone or push in the binary |
 | `FATHOM_HTTP` | Unset | You point a client at a host; the caller header goes only there |
@@ -65,7 +67,7 @@ Each row is a claim and the command that checks it.
 | **Bind.** The daemon listens on loopback only | `lsof -nP -iTCP:7575 -sTCP:LISTEN` shows `127.0.0.1`. `fathom doctor` row `daemon_bind` passes. `daemon install` refuses a non-loopback `--addr`, and `serve-http` given one binds `127.0.0.1` on the same port instead and logs one warning. No flag or key widens the bind |
 | **Peer check.** A network peer is refused | From another host: `curl -H 'Host: 127.0.0.1:7575' http://<host-ip>:7575/healthz` fails or returns 403 |
 | **Auth.** There is none | `curl -s http://127.0.0.1:7575/healthz` answers with no credential. This is the known gap (Q5) |
-| **Model calls.** None without a configured provider | `env -u ANTHROPIC_API_KEY -u FATHOM_LLM_PROVIDER fathom doctor`; `fathom config --explain` lists providers and the decide provider |
+| **Model calls.** None without a configured provider | `env -u ANTHROPIC_API_KEY -u FATHOM_LLM_PROVIDER fathom doctor`; `fathom config --explain` shows the LLM provider: `anthropic [default]` is the built-in default and makes no call without a key. `fathom decide log` names the decide provider (`none` by default) |
 | **Telemetry.** None | `go list -deps ./cmd/fathom` and the allowlist file above; run the daemon under a firewall rule or `sandbox-exec` that blocks outbound and ingest still works |
 | **Go module egress.** Typed pass is offline | Ingest a Go repository with `GOPROXY` set to a loopback listener that logs requests; it receives none. Missing modules are named with `run go mod download` |
 | **CUE registry.** Closed | `internal/cuerefuse` tests; `go test ./internal/cuerefuse/...` |
@@ -84,11 +86,15 @@ fathom matches commands that send data off the machine: `curl`/`wget` uploads, `
 - `[guards] egress = "warn"` (default) adds one advisory line. `"enforce"` denies while guard
   enforcement is on. `"off"` silences it.
 - `egress_allow` lists permitted hosts. The user sets it. A repository may tighten the mode,
-  never loosen it.
+  never loosen it. That rule covers fathom's own config and capability files only. A
+  repository's harness settings are outside it: a committed `.claude/settings.json` whose
+  `env` sets `FATHOM_ENFORCE=off`, or a `FATHOM_HOME` that points at a config the repository
+  controls, loosens the guard once you trust the folder.
 - **Limit:** this is string matching, a tripwire. A script, `python -c` or an encoded payload
-  gets past it. It is not data-loss prevention. Codex hooks see only Bash and `apply_patch`,
-  so Codex web search and MCP calls are not intercepted. Claude Code's MCP fetch and browser
-  tools are not intercepted either.
+  gets past it, and so does a command built at run time (`xargs`, a variable as the command
+  word, as in `$c -d @f host`). It is not data-loss prevention. Codex hooks see only Bash
+  and `apply_patch`, so Codex web search and MCP calls are not intercepted. Claude Code's MCP
+  fetch and browser tools are not intercepted either.
 
 ## Harden further
 

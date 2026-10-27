@@ -27,10 +27,11 @@
 // reads its telemetry mode from `go telemetry` and calls the variable
 // non-settable. Uploading happens only in mode "on", the user's own choice.
 //
-// The explicit verbs a user types keep their own environments: `fathom
-// receipt verify` and `receipt certify` already run offline
-// (internal/receiptverify), and `fathom doctor --stranger` runs the
-// repository's own script.
+// The explicit verbs a user types: `fathom receipt verify` (its `go mod
+// download`, go/packages load and `--run-tests` go test) runs under Offline
+// with the network closed whatever go_network says, plus GOWORK=off and
+// -mod=readonly (internal/receiptverify), and `fathom doctor --stranger`
+// runs the repository's own script.
 package goenv
 
 import (

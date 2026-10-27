@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/goenv"
 	"github.com/geoffmilleraz/fathom/internal/receiptverify"
 )
 
@@ -72,10 +74,52 @@ func TestVerifyOfflineNamesMissingModule(t *testing.T) {
 	}
 
 	// The environment itself: the operator's settings first, the offline
-	// rule appended after them so it wins.
+	// rule appended after them so it wins (exec reads the last entry).
 	env := receiptverify.OfflineGoEnv()
-	tail := strings.Join(env[len(env)-3:], " ")
-	if tail != "GOWORK=off GOPROXY=off GOFLAGS=-mod=readonly" {
-		t.Errorf("OfflineGoEnv ends %q, want GOWORK=off GOPROXY=off GOFLAGS=-mod=readonly after os.Environ()", tail)
+	got := map[string]string{}
+	for _, kv := range env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			got[k] = v
+		}
+	}
+	want := map[string]string{
+		"GOWORK": "off", "GOPROXY": "off", "GOSUMDB": "off", "GONOPROXY": ",",
+		"GOFLAGS": "-mod=readonly", "GOTELEMETRY": "off", "GOTOOLCHAIN": "local",
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("OfflineGoEnv sets %s=%q, want %q after os.Environ()", k, got[k], v)
+		}
+	}
+	if last := env[len(env)-1]; last != "GOTOOLCHAIN=local" {
+		t.Errorf("OfflineGoEnv's last entry is %q, want GOTOOLCHAIN=local", last)
+	}
+}
+
+// TestVerifyOfflineUnderGOPRIVATE: a GOPRIVATE pattern is GONOPROXY's
+// default, and a module it matches goes straight to its version control
+// past GOPROXY=off. The offline environment is goenv's (GONOPROXY=","), so
+// with GOPRIVATE naming the dependency the go command still refuses with
+// its own lookup refusal, never dials the module's host, and Verify names
+// the module.
+func TestVerifyOfflineUnderGOPRIVATE(t *testing.T) {
+	t.Setenv("GOMODCACHE", t.TempDir())
+	t.Setenv("GOPRIVATE", "example.invalid")
+	t.Setenv("GOPROXY", "off")
+	t.Setenv("GOFLAGS", "")
+
+	root, commit := stageUncachedDepModule(t)
+	cmd := exec.Command("go", "mod", "download")
+	cmd.Dir = root
+	cmd.Env = receiptverify.OfflineGoEnv()
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), goenv.LookupRefused) {
+		t.Fatalf("go mod download under OfflineGoEnv with GOPRIVATE set: err %v, output %q; want the go command's %q", err, out, goenv.LookupRefused)
+	}
+
+	r := core.Receipt{Kind: core.ReceiptKindCallers, Symbol: "run", IndexCommit: commit, Callers: []string{"main"}}
+	_, err = receiptverify.Verify(context.Background(), root, r)
+	if err == nil || !strings.Contains(err.Error(), "example.invalid/dep@v1.0.0") || !strings.Contains(err.Error(), "never downloads") {
+		t.Errorf("Verify with GOPRIVATE set: error %v; want cannot-run naming example.invalid/dep@v1.0.0 and the offline rule", err)
 	}
 }

@@ -54,13 +54,12 @@ github.com/geoffmilleraz/fathom/internal/fusion | net os/exec | git log, the go 
 github.com/geoffmilleraz/fathom/internal/gatereceipt | os/exec | read-only git for gate receipts | git read commands only
 github.com/geoffmilleraz/fathom/internal/gitro | os/exec | the read-only git runner | git read commands only
 github.com/geoffmilleraz/fathom/internal/goenv | os/exec | `go env GOFLAGS`, to read the GOENV file's GOFLAGS before stripping -mod=mod | GOTOOLCHAIN=local; go env reads configuration only (ADR-083)
-github.com/geoffmilleraz/fathom/internal/guardspec | net | the egress pack parses a command's target host to pass loopback | no connection is opened (ADR-083 decision 4h)
 github.com/geoffmilleraz/fathom/internal/hookguard | net net/http | the hooks' daemon transport with deadlines | loopback daemon only (pkg/client CallerTransport)
 github.com/geoffmilleraz/fathom/internal/labs | net | parses a loopback address for the eval suite | no connection is opened
 github.com/geoffmilleraz/fathom/internal/mcp | os/exec | read-only git and rg for the search tool | git read commands and rg only
 github.com/geoffmilleraz/fathom/internal/modulehost | os/exec | `git rev-parse HEAD` for a federated module | git read commands only
 github.com/geoffmilleraz/fathom/internal/provenance | os/exec | read-only git for provenance | git read commands only
-github.com/geoffmilleraz/fathom/internal/receiptverify | os/exec | `go mod download` and go test for receipt verify | GOPROXY=off and -mod=readonly; explicit verbs only
+github.com/geoffmilleraz/fathom/internal/receiptverify | os/exec | `go mod download` and go test for receipt verify | goenv.Offline with the network closed, GOWORK=off and -mod=readonly; explicit verbs only
 github.com/geoffmilleraz/fathom/internal/testisolate | os/exec | `go env -json` for the cache variables | no module download; go env only
 github.com/geoffmilleraz/fathom/internal/worktree | os/exec | read-only git for worktree identity | git read commands only
 github.com/geoffmilleraz/fathom/pkg/client | net net/http | the daemon client | loopback or the user's FATHOM_HTTP; the caller header goes only to that host
