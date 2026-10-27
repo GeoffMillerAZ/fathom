@@ -335,6 +335,11 @@ func TestRefusalNamesItsScope(t *testing.T) {
 		{tenancy.Refusal{Code: tenancy.RefusalDeadline, RetryAfter: time.Second}, hookguard.BusyScopeClass},
 		{tenancy.Refusal{Code: tenancy.RefusalLevel, RetryAfter: 30 * time.Second}, hookguard.BusyScopeDaemon},
 		{tenancy.Refusal{Code: tenancy.RefusalSafeMode, RetryAfter: 60 * time.Second}, hookguard.BusyScopeDaemon},
+		// GDEV-08: a handler's store-distress refusal has no code that
+		// scopes it, so it carries its class scope itself; without the
+		// mark an uncoded refusal stays daemon-scoped.
+		{*(&tenancy.Refusal{RetryAfter: 60 * time.Second}).WithClassScope(), hookguard.BusyScopeClass},
+		{tenancy.Refusal{RetryAfter: 60 * time.Second}, hookguard.BusyScopeDaemon},
 	} {
 		rec := httptest.NewRecorder()
 		writeRefusal(rec, &tc.ref)

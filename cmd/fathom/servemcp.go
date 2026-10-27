@@ -11,6 +11,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -109,12 +110,17 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// Default: keep the index fresh transparently. A query for a service whose
 	// git HEAD has drifted from the indexed commit triggers a hash-gated
 	// re-ingest before the answer — removing the manual staleness→ingest loop.
+	// GDEV-02: this server's ingests (the ingest tool runs with or without
+	// --auto-refresh) are refused by name beside another live process's
+	// uncommitted ingest of the same service.
+	ownerProbe := newIngestOwnerProbe()
+	defer fusion.InstallIngestOwnerProbe(ownerProbe)()
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
 		backend = mcp.NewAutoRefresh(c, flog)
 		// RT-109: an in_progress row is an interrupted ingest only once
 		// its owner is gone (a live CLI ingest is never duplicated).
-		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
+		mcp.SetIngestOwnerProbe(ownerProbe)
 	}
 
 	srv := mcp.NewServerWithFleet(backend, newFleetAdapter(c, flog))

@@ -810,6 +810,26 @@ root, so a first ingest killed before any `service_meta` exists is re-ingested f
 ingest that stops before its first write (Discover or fetch failure, IT-15 refusal) puts the
 previous row back.
 
+New ingests beside a live owner (2026-10-26, GDEV-02). The live-owner rule above also
+governs a new ingest by `fathom ingest`, serve-http or serve-mcp. Before it writes its own row, an ingest
+whose service has an `in_progress` row owned by another process that the installed probe
+reads alive (the pid-reuse-safe check above, cmd/fathom's `ingestOwnerProbe`, installed by
+`fathom ingest`, serve-http and serve-mcp through `fusion.InstallIngestOwnerProbe`) is
+refused by name (`fusion.ConcurrentIngestError`: service, owner pid, start), before any
+read or write; and `ensure` defers a drift beside such a row (`deferred (another process
+is ingesting <svc>: pid N since T)`) instead of queueing a second ingest. The queue counts
+the refusal as a refusal (no failure, no backoff, no distress), the `ingest` tool answers
+it class-scoped in §3.4's format, and `fathom ingest` exits 1 with `outcome: "busy"`. A
+library caller with no probe installed is unchanged, and so, for now, are `fathom watch`,
+`ingest-diff` and `platform-ingest`, which install none. Known limits: two processes that start
+in the same instant can both pass the check before either writes its row (closing it needs
+a conditional store write); and a row an ingest left `in_progress` after a write reads the
+same as a running ingest while its owner lives, so a long-lived owner (the daemon,
+`fathom watch`, a serve-mcp on the same store) refuses a CLI ingest of that service, and
+defers another process's drift, until it ingests the service again or restarts. The CLI
+names the row, not a certainty; telling the two apart needs a field or a lock, which waits
+for RT-M1 (ADR-049 d2).
+
 ADR-017 amendment: a service whose stored watermark is a git SHA never takes the content
 manifest path — a git failure is `freshness: unknown`, disclosed. Genuine non-git corpora
 use a stat manifest (paths, sizes, mtimes from `file_stats`), capped and cached with a TTL. (As built, RT-110:
