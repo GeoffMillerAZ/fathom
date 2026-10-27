@@ -57,6 +57,40 @@ class HistoricalReceiptTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError,'followup required'):
             self.check()
 
+    def test_s1e_later_receipt_cannot_drop_followup(self):
+        self.data['runtime']['code_revision']='c2a7acafe7bc96860936bbd648bd9222095de1ad'
+        del self.data['followup']
+        with self.assertRaisesRegex(AssertionError,'followup required by historical receipt'):
+            self.check()
+
+    def test_inherited_followup_cannot_retarget_historical_revision(self):
+        revision='c2a7acafe7bc96860936bbd648bd9222095de1ad'
+        self.data['followup']['historical_replay_revision']=revision
+        self.data['followup']['historical_canonical_reading_sha256']=self.data['canonical_reading_sha256']
+        self.data['runtime']['code_revision']=revision
+        for row in self.data['runtime']['subjects'].values():
+            row['decoder_code_revision']=revision
+            row['decoder_code_sha256']={name:evidence.historical_hash(revision,name) for name in row['decoder_code_sha256']}
+        with self.assertRaisesRegex(AssertionError,'historical replay revision must be preserved'):
+            self.check()
+
+    def test_historical_object_outside_head_ancestry_is_refused(self):
+        import redecode
+        foreign=self.root/'history'
+        subprocess.run(['git','init','--quiet',str(foreign)],check=True)
+        blob=subprocess.check_output(['git','hash-object','-w','--stdin'],input=b'{}',cwd=foreign).decode().strip()
+        tree=subprocess.check_output(['git','mktree'],input=('100644 blob '+blob+'\treading.json\n').encode(),cwd=foreign).decode().strip()
+        def commit(message):
+            return subprocess.check_output(['git','-c','user.name=fixture','-c','user.email=fixture.invalid',
+                'commit-tree',tree,'-m',message],cwd=foreign).decode().strip()
+        head,unrelated=commit('head fixture'),commit('unrelated fixture')
+        subprocess.run(['git','update-ref','HEAD',head],cwd=foreign,check=True)
+        # The object exists and is readable, but it is outside HEAD's history.
+        self.assertEqual(subprocess.check_output(['git','show',unrelated+':reading.json'],cwd=foreign),b'{}')
+        with patch.object(redecode,'REPO',foreign):
+            with self.assertRaisesRegex(AssertionError,'ancestor of HEAD'):
+                redecode.historical_bytes(unrelated,'reading.json')
+
     def test_notes_only_change_is_allowed(self):
         reading=json.loads(self.reading.read_text());reading['notes']='fixture notes only'
         self.save_reading(reading)

@@ -315,7 +315,7 @@ original location first. The new authored regression runs a miniature capture
 through the actual decoder: relocation refuses with a clear path/coverage message
 and no output, while replay at the original root succeeds with the same bytes.
 This uses the reviewer's documented-precondition option; it adds no rebasing or
-new source execution. The current 53-regression suite passes, including the new
+new source execution. The current 56-regression suite passes, including the new
 relocation diagnostic. The receipt pins historical replay/decoder hashes to the
 reviewed revision and checks current code separately. Native counts stay
 unchanged. This branch does not edit the canonical reading; main's inherited
@@ -332,7 +332,7 @@ The guard-deletion and coordinated-revision-swap regressions first failed on
 the reviewed code, then passed after the fix. Notes-only refreshes and an
 unchanged historical reading remain accepted; metric changes stay refused.
 
-Current guard mutation proof uses
+OL-R15's guard mutation proof uses
 `python3 -B -m unittest discover -s calibration/oracles/bash-trace -p 'test_evidence.py'`.
 Each mutant below was applied separately, killed, then restored; the full
 53-test suite passed after restoration. These four current guard mutants are
@@ -344,3 +344,19 @@ separate from the 31 historical native/replay mutants.
 | `evidence.py` | Remove the historical receipt hash equality | `FAIL: test_revision_swap_must_match_receipt_recorded_at_that_revision` |
 | `redecode.py` | Remove `cwd=REPO` from historical Git reads | `FAIL: test_check_and_historical_hash_work_outside_repo` |
 | `redecode.py` | Remove 40-hex revision validation | `ERROR: test_revision_is_validated_before_git` (unexpected unvalidated Git result) |
+
+The PR122 re-check's S1e follow-up additionally requires every historical revision
+to be an ancestor of HEAD (`git merge-base --is-ancestor`, with `cwd=REPO`). If
+the receipt at that revision contains `followup`, the current receipt must
+contain it with the same `historical_replay_revision`. The S1e regression first
+reproduced guard deletion by selecting a later receipt; two further regressions
+cover retargeting that inherited revision and a real, readable Git object outside
+HEAD's ancestry. All three guards were separately mutated and refused by those
+regressions, then restored; the full 56-test suite passed. No native replay or
+re-score was performed.
+The `evidence.py` inherited-block and replay-revision mutants produced
+`FAIL: test_s1e_later_receipt_cannot_drop_followup` and
+`FAIL: test_inherited_followup_cannot_retarget_historical_revision`;
+the `redecode.py` ancestry mutant produced
+`FAIL: test_historical_object_outside_head_ancestry_is_refused`, using the same
+focused mutation-test command above.

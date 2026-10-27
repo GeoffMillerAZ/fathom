@@ -268,12 +268,12 @@ at the capture revision. It is not claimed as a new execution of modified code.
 
 The historical capture commit must be available in the branch history for the
 receipt checker and offline re-decoder. A shallow clone must fetch that ancestor
-first. Historical checks validate committed bytes at that revision; current
+and enough history to prove ancestry first. Historical checks validate committed bytes at that revision; current
 code hashes validate the modified decoder and receipt reader.
 
 The deferred-minor update retains the native/replay/31-mutant measurements at
 their recorded review revision. Only the relocation diagnostic, its authored
-regression, 53-test authored suite, scope disclosure and receipt checks are current; no new native
+regression, 56-test authored suite, scope disclosure and receipt checks are current; no new native
 execution or re-score is claimed. Main's inherited reading refresh changed only
 notes; the receipt retains its historical reading hash and asserts equality of
 every other JSON field before pinning the current reading bytes. This branch
@@ -292,5 +292,8 @@ and its committed receipt must record the same historical reading hash.
 `followup` is required whenever the current hash differs from the historical
 reading or receipt. Every historical Git read runs from the repository root,
 including when the checker is launched from another working directory.
+Each historical revision must also be an ancestor of HEAD. A historical receipt
+that contains `followup` requires the current receipt to preserve that block's
+`historical_replay_revision`; a later receipt cannot erase or retarget the guard.
 The authored regressions refuse guard deletion and coordinated revision swaps,
 allow notes-only refreshes, and exercise a foreign Git working directory.

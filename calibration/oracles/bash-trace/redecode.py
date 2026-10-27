@@ -15,6 +15,8 @@ def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def historical_bytes(revision,path):
     assert isinstance(revision,str) and re.fullmatch(r'[0-9a-f]{40}',revision),'expected a lowercase 40-hex historical revision'
+    assert subprocess.run(['git','merge-base','--is-ancestor',revision,'HEAD'],cwd=REPO,
+                          capture_output=True).returncode==0,'historical revision must be an ancestor of HEAD'
     return subprocess.check_output(['git','show',revision+':'+path],cwd=REPO)
 
 

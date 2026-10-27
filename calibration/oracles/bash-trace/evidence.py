@@ -22,6 +22,9 @@ def check(data,verify_code=True):
         old_reading=historical_bytes(revision,'docs/bench/readings/lang/bash.json')
         historical_reading_sha256=hashlib.sha256(old_reading).hexdigest()
         historical_receipt=json.loads(historical_bytes(revision,'docs/assessments/data/bash-oracle-2026-10-26/evidence.json'))
+        if 'followup' in historical_receipt:
+            assert 'followup' in data,'followup required by historical receipt'
+            assert data['followup']['historical_replay_revision']==historical_receipt['followup']['historical_replay_revision'],'historical replay revision must be preserved'
         if (data['canonical_reading_sha256']!=historical_reading_sha256 or
                 data['canonical_reading_sha256']!=historical_receipt['canonical_reading_sha256']):
             assert 'followup' in data,'followup required when reading differs from historical bytes'
