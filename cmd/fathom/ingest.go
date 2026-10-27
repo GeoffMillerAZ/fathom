@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -39,6 +43,179 @@ func parseModeFlag(s string) (client.Mode, bool) {
 // IT-14 / IT-15) — never by touching a real TCC grant.
 var newIngestClient = func(m client.Mode, storePath string) (*client.Client, error) {
 	return client.NewConstantClient(m, storePath)
+}
+
+// ingestSignals arms the stop signals of a CLI ingest (GDEV-02): the
+// channel yields the signal that arrived, and stop disarms it, so a second
+// signal takes the default action at once. A package variable so a test
+// delivers a signal without signalling its own process. SIGINT is armed
+// only when it is not ignored (a shell's background job, nohup): arming
+// it would make an ingest interruptible that was not.
+var ingestSignals = func() (<-chan os.Signal, func()) {
+	ch := make(chan os.Signal, 1)
+	sigs := []os.Signal{syscall.SIGTERM}
+	if !signal.Ignored(os.Interrupt) {
+		sigs = append(sigs, os.Interrupt)
+	}
+	signal.Notify(ch, sigs...)
+	return ch, func() { signal.Stop(ch) }
+}
+
+// ingestStop is a CLI ingest's signal watch (watchIngestSignals).
+type ingestStop struct {
+	disarm    func()
+	disarmOne sync.Once
+	closeOne  sync.Once
+	done      chan struct{}
+	cancel    context.CancelFunc
+
+	mu  sync.Mutex
+	sig os.Signal
+}
+
+// watchIngestSignals derives the ingest's context from parent and cancels it
+// on the first SIGINT or SIGTERM: the seam is disarmed first (a second
+// signal takes the default action at once), then the signal is recorded,
+// then the context is cancelled, so a step that sees its context end finds
+// the signal in caught. The signal is read from the seam, never parsed from
+// a context cause.
+func watchIngestSignals(parent context.Context) (context.Context, *ingestStop) {
+	ctx, cancel := context.WithCancel(parent)
+	sigs, disarm := ingestSignals()
+	st := &ingestStop{disarm: disarm, done: make(chan struct{}), cancel: cancel}
+	go func() {
+		select {
+		case s := <-sigs:
+			st.disarmOne.Do(st.disarm)
+			st.mu.Lock()
+			st.sig = s
+			st.mu.Unlock()
+			cancel()
+		case <-st.done:
+		}
+	}()
+	return ctx, st
+}
+
+// caught is the signal that stopped the ingest, or nil.
+func (st *ingestStop) caught() os.Signal {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	return st.sig
+}
+
+// close disarms the watch and ends its goroutine.
+func (st *ingestStop) close() {
+	st.closeOne.Do(func() {
+		st.disarmOne.Do(st.disarm)
+		close(st.done)
+		st.cancel()
+	})
+}
+
+// signalExit is a signal's conventional name and exit status (128 + its
+// number, as a shell reports a death by it).
+func signalExit(s os.Signal) (string, int) {
+	switch s {
+	case os.Interrupt, syscall.SIGINT:
+		return "SIGINT", 128 + int(syscall.SIGINT)
+	case syscall.SIGTERM:
+		return "SIGTERM", 128 + int(syscall.SIGTERM)
+	}
+	if n, ok := s.(syscall.Signal); ok {
+		return s.String(), 128 + int(n)
+	}
+	return s.String(), 1
+}
+
+// ingestStopped is what a signal stopped: the ingest's Report and read
+// failures, the SCIP imports that completed, the post-ingest step running
+// when the signal was caught ("" while the ingest itself ran), and the
+// service's ingest_state row read after the stop.
+type ingestStopped struct {
+	service, svcPath string
+	report           client.Report
+	readErr          *client.ReadFailuresError
+	scipResults      []scipImportResult
+	step             string
+	row              store.IngestState
+	rowFound         bool
+	rowErr           error
+	// unchanged: the row after the stop is the one before the run (only
+	// meaningful when rowErr is nil).
+	unchanged bool
+}
+
+// ingestCancelled names a run a signal stopped (GDEV-02): how far the ingest
+// got (the Report's own counts), what the store holds (read from its
+// ingest_state row after the stop, never assumed: a signal can land before
+// the first write, after it, or after the commit), and which step it
+// stopped. The identity cache is busted: the run may have written.
+func ingestCancelled(stdout, stderr io.Writer, jsonOut bool, st ingestStopped, s os.Signal) int {
+	name, code := signalExit(s)
+	hookcache.BustIdent()
+	known := st.rowErr == nil
+	ours := known && !st.unchanged && st.rowFound && st.row.PID == os.Getpid()
+	committed := ours && st.row.State == store.IngestComplete
+	var state, hint string
+	switch {
+	case !known:
+		state = fmt.Sprintf("what it wrote is not known (%v)", st.rowErr)
+		hint = "a stop before the first write leaves the store as it was; one after it leaves ingest_state in_progress, and the next ingest redoes the service (RT-109)"
+	case committed:
+		state = "the ingest committed before the stop"
+	case ours && st.row.State == store.IngestInProgress:
+		state = "it stopped after it began writing: ingest_state stays in_progress"
+		hint = "the next ingest redoes the service (RT-109)"
+	case st.unchanged:
+		state = "it stopped before its first write: the store keeps its previous state"
+		hint = "nothing of this run was written (RT-109)"
+	case st.rowFound:
+		state = fmt.Sprintf("ingest_state now names another process's ingest (%s, pid %d), so what this run wrote is not known", st.row.State, st.row.PID)
+	default:
+		state = "ingest_state names no ingest, so what this run wrote is not known"
+	}
+	progress := fmt.Sprintf("discovered %d, extracted %d, skipped %d", st.report.Discovered, st.report.Extracted, st.report.Skipped)
+	if !committed {
+		progress += " before the stop"
+	}
+	if st.report.Discovered == 0 && !committed {
+		progress = "stopped during discovery"
+	}
+	steps := "no SCIP import, [tests] pickup or certify step ran"
+	if st.step != "" {
+		steps = fmt.Sprintf("stopped at or after the %s, which may be partial; no step after it ran", st.step)
+	}
+	if n := len(st.scipResults); n > 0 {
+		steps += fmt.Sprintf(" (%d SCIP import(s) completed)", n)
+	}
+	msg := fmt.Sprintf("ingest cancelled (%s) for %s: %s; %s; %s", name, st.service, progress, state, steps)
+	fmt.Fprintf(stderr, "error: %s\n", msg)
+	if hint != "" {
+		fmt.Fprintf(stderr, "hint: %s\n", hint)
+	}
+	if jsonOut {
+		renderIngestCancelledJSON(stdout, st.service, st.svcPath, st.report, st.readErr, st.scipResults, known && (ours || st.unchanged) && !committed, name, code, msg, hint)
+	}
+	return code
+}
+
+// ingestBusy names an ingest refused beside another live process's
+// uncommitted ingest of the service (GDEV-02). It names the row, not a
+// certainty: a running ingest and one that stopped after a write (RT-109
+// leaves in_progress under its owner's live pid) read the same, and
+// telling them apart needs state the store does not keep. Nothing was
+// read or written; the exit is 1.
+func ingestBusy(stdout, stderr io.Writer, jsonOut bool, service string, e *fusion.ConcurrentIngestError) int {
+	at := e.StartedAt.UTC().Format(time.RFC3339)
+	msg := fmt.Sprintf("ingest of %s refused: pid %d (alive) began an ingest of %s at %s that has not committed: it is still running or stopped partway", service, e.PID, service, at)
+	hint := "if that pid is a fathom daemon, run the ingest through the daemon's ingest tool (it runs in the owning process) or restart the daemon; otherwise retry when that ingest finishes"
+	fmt.Fprintf(stderr, "error: %s\n", msg)
+	fmt.Fprintf(stderr, "hint: %s\n", hint)
+	if jsonOut {
+		renderIngestBusyJSON(stdout, service, e.PID, at, msg, hint)
+	}
+	return 1
 }
 
 // docElidedShown caps how many budget-elided doc units the summary names
@@ -134,7 +311,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	path := fs.String("path", ".", "path to service source root (local mode)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
-	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused)")
+	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused|incomplete|cancelled|busy)")
 	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store")
 	rehash := fs.Bool("rehash", false, "read and hash every file, ignoring the stat gate")
 	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
@@ -206,11 +383,55 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	} else {
 		defer undo()
 	}
-	ctx := fusion.WithPassClock(context.Background(), ingestPassClock)
+	// GDEV-02: an ingest beside another live process's uncommitted ingest
+	// of the service (a daemon's, or another CLI's) is refused by name.
+	defer fusion.InstallIngestOwnerProbe(newIngestOwnerProbe())()
+	// GDEV-02: SIGINT or SIGTERM stops the ingest and every step after it
+	// by name (ingestCancelled), never a death by signal mid-write.
+	ctx, stop := watchIngestSignals(fusion.WithPassClock(context.Background(), ingestPassClock))
+	defer stop.close()
+	// The row before this run: after a signal, a row unchanged from it is
+	// the previous ingest's, not this run's (RT-109 puts it back).
+	iss, hasState := c.Store().(store.IngestStateStore)
+	var prevRow store.IngestState
+	var prevFound bool
+	var prevErr error
+	if hasState {
+		prevRow, prevFound, prevErr = iss.GetIngestState(context.WithoutCancel(ctx), *service)
+	}
 	report, err := c.Ingest(ctx, client.ServiceRef{
 		ID:   *service,
 		Path: svcPath,
 	})
+	// What a signal stops is named from what ran: the post-ingest step under
+	// way (step), the SCIP imports done, and the store's own ingest_state.
+	var readErr *client.ReadFailuresError
+	var scipResults []scipImportResult
+	step := ""
+	cancelled := func() (int, bool) {
+		s := stop.caught()
+		if s == nil {
+			return 0, false
+		}
+		st := ingestStopped{service: *service, svcPath: svcPath, report: report, readErr: readErr, scipResults: scipResults, step: step}
+		switch {
+		case !hasState:
+			st.rowErr = errors.New("the store keeps no ingest_state")
+		case prevErr != nil:
+			st.rowErr = fmt.Errorf("the row before the run could not be read: %w", prevErr)
+		default:
+			st.row, st.rowFound, st.rowErr = iss.GetIngestState(context.Background(), *service)
+			st.unchanged = st.rowErr == nil && st.rowFound == prevFound && st.row == prevRow
+		}
+		return ingestCancelled(stdout, stderr, *jsonOut, st, s), true
+	}
+	if code, ok := cancelled(); ok {
+		return code
+	}
+	var busy *fusion.ConcurrentIngestError
+	if errors.As(err, &busy) {
+		return ingestBusy(stdout, stderr, *jsonOut, *service, busy)
+	}
 	// Ingest honesty (docs/plans/instrument-truth.md IT-14 / IT-15, O16): a
 	// *client.ReadFailuresError arrives beside a COMPLETE report — every
 	// readable file was processed — so the summary prints in full with its
@@ -218,7 +439,6 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// non-zero, as a fetch error always was. A Refused one wrote nothing at
 	// all (the store already held evidence and this run could read nothing).
 	// Any other error is the abort it always was.
-	var readErr *client.ReadFailuresError
 	if err != nil && !errors.As(err, &readErr) {
 		fmt.Fprintf(stderr, "error: ingest failed: %v\n", err)
 		return 1
@@ -238,10 +458,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// just refused to index would fabricate coverage the symbol table
 	// doesn't have. Best-effort per file: one bad SCIP index never aborts
 	// the ingest that already succeeded.
-	var scipResults []scipImportResult
 	if readErr == nil || !readErr.WroteNothing() {
 		for _, p := range resolveSCIPPaths(svcPath, scipPaths) {
-			imp, ierr := c.ImportSCIP(context.Background(), *service, p)
+			if code, ok := cancelled(); ok {
+				return code
+			}
+			step = "SCIP import of " + p
+			imp, ierr := c.ImportSCIP(ctx, *service, p)
 			if ierr != nil {
 				fmt.Fprintf(stderr, "warning: scip import %s: %v\n", p, ierr)
 				continue
@@ -260,13 +483,17 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// warns and never turns an otherwise-successful ingest into a
 	// failure.
 	newRuns := false
+	if code, ok := cancelled(); ok {
+		return code
+	}
 	if readErr == nil || !readErr.WroteNothing() {
-		runsBefore, snapErr := lastRunDigests(context.Background(), *storePath, *service)
-		if n, cerr := ingestConfiguredTestResults(context.Background(), *storePath, *service, svcPath); cerr != nil {
+		step = "[tests] pickup"
+		runsBefore, snapErr := lastRunDigests(ctx, *storePath, *service)
+		if n, cerr := ingestConfiguredTestResults(ctx, *storePath, *service, svcPath); cerr != nil {
 			fmt.Fprintf(stderr, "warning: [tests] results_dir envelope pickup: %v\n", cerr)
 		} else {
 			if n > 0 {
-				runsAfter, aerr := lastRunDigests(context.Background(), *storePath, *service)
+				runsAfter, aerr := lastRunDigests(ctx, *storePath, *service)
 				newRuns = snapErr != nil || aerr != nil || runsBefore != runsAfter
 			}
 			if n > 0 && !*jsonOut {
@@ -283,14 +510,21 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// only → every certificate reads unproven, never silently absent).
 	// Hash-gated (runCertifyCompileGated) so a repeat ingest against an
 	// unchanged declaration/watermark set is a cheap no-op.
+	if code, ok := cancelled(); ok {
+		return code
+	}
 	if readErr == nil || !readErr.WroteNothing() {
 		// The certificate sweep re-derives state from files and runs: it
 		// runs only when this ingest read a file, deleted one, or picked
 		// up a run (O1270).
 		sweep := report.Extracted+report.Skipped-report.StatSkipped > 0 || report.Deleted > 0 || newRuns
+		step = "certify step"
 		ingestConfiguredCertifications(ctx, *storePath, *service, svcPath, stdout, stderr, *jsonOut, sweep)
 	}
 
+	if code, ok := cancelled(); ok {
+		return code
+	}
 	if *jsonOut {
 		return renderIngestJSON(stdout, *service, svcPath, report, readErr, scipResults) // RP-14: ingest_json.go
 	}
@@ -369,8 +603,14 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// none processed) print nothing at all.
 	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed {
 		edges := report.TypedEdgesDirect + report.TypedEdgesIfaceDispatch + report.TypedEdgesUnresolved
-		fmt.Fprintf(stdout, "typed-edges: %d/%d pkg(s) processed (%d failed), %d edge(s) (%d direct / %d iface-dispatch / %d unresolved)\n",
-			report.TypedPackages, report.TypedPackagesSeen, report.TypedPackagesFailed,
+		// EW-83: the packages the pass skipped, counted by reason; the line
+		// reads as before when it skipped none.
+		skipped := ""
+		if report.TypedPackagesSkipped > 0 {
+			skipped = fmt.Sprintf(", %d skipped: %s", report.TypedPackagesSkipped, fusion.FormatTypedSkipCounts(report.TypedSkips))
+		}
+		fmt.Fprintf(stdout, "typed-edges: %d/%d pkg(s) processed (%d failed%s), %d edge(s) (%d direct / %d iface-dispatch / %d unresolved)\n",
+			report.TypedPackages, report.TypedPackagesSeen, report.TypedPackagesFailed, skipped,
 			edges, report.TypedEdgesDirect, report.TypedEdgesIfaceDispatch, report.TypedEdgesUnresolved)
 		if report.TypedFallback != "" {
 			fmt.Fprintf(stdout, "typed-edges: an ambient Go workspace was overridden (%s)\n", report.TypedFallback)
@@ -379,6 +619,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
 		}
 	}
+	printTypedSkips(stdout, report)
 	// RT-104/RT-105: a gated-off pass is named, never silent.
 	if report.TypedSkipped != "" {
 		fmt.Fprintf(stdout, "typed-edges: skipped — %s (stored typed edges kept)\n", report.TypedSkipped)
@@ -627,4 +868,33 @@ func (ingestRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 func init() {
 	declareVerb(verb{Name: "ingest", Group: "index", Order: 10, Run: ingestRunner{},
 		Summary: "Ingest a service into the knowledge store"})
+}
+
+// printTypedSkips names, in one line, the input the syntax pass indexed and
+// the typed pass did not resolve (EW-83, O1506): each package of a class
+// that loses evidence (build constraints, outside ./...), each discovered
+// Go directory no load covered, and each nested module not loaded, by its
+// go.mod — with its reason, at most five per reason. The harmless classes
+// (test main, test-only, connector scope) are counted on the typed-edges
+// line and named only in --json. It prints even when nothing else typed
+// does (a tree with no module at all), and nothing when there is nothing to
+// name.
+func printTypedSkips(w io.Writer, report client.Report) {
+	var parts []string
+	for _, s := range report.TypedSkips {
+		if fusion.TypedSkipLosesEvidence(s.Reason) {
+			parts = append(parts, fmt.Sprintf("%s %d package(s): %s", s.Reason, s.Count, fusion.FormatTypedSkipNames(s)))
+		}
+	}
+	for _, s := range report.TypedNotLoaded {
+		unit := "module(s)" // a nested module, named by its go.mod
+		if fusion.TypedSkipLosesEvidence(s.Reason) {
+			unit = "directory(ies)"
+		}
+		parts = append(parts, fmt.Sprintf("%s %d %s: %s", s.Reason, s.Count, unit, fusion.FormatTypedSkipNames(s)))
+	}
+	if len(parts) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "typed-edges: syntax-only, the typed pass did not resolve: %s\n", strings.Join(parts, "; "))
 }

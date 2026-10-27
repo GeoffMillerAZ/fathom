@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -68,7 +69,8 @@ func lifecycleRefusal(c tenancy.Class, now time.Time) *lcRefusal {
 
 // writeBusy writes §3.4's refusal: 503, Retry-After, X-Fathom-Busy-Scope
 // (scope; daemon when empty) and -32050 "fathom busy: <reason>" {reason,
-// class, level, retry_after_ms} — the admission path's shape.
+// class, level, retry_after_ms, in_flight, outcome} — the admission path's
+// shape (mcp's busyError).
 func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class, scope string, retry time.Duration) {
 	if len(id) == 0 {
 		id = json.RawMessage("null")
@@ -84,6 +86,8 @@ func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class, scope s
 				"class":          class,
 				"level":          tenancy.CurrentLevel().String(),
 				"retry_after_ms": retry.Milliseconds(),
+				"in_flight":      busyInFlight(class),
+				"outcome":        string(tenancy.OutcomeRefused),
 			},
 		},
 	})
@@ -95,6 +99,24 @@ func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class, scope s
 	w.Header().Set("Retry-After", strconv.Itoa(int((retry+time.Second-1)/time.Second)))
 	w.WriteHeader(http.StatusServiceUnavailable)
 	_, _ = w.Write(body)
+}
+
+// busyInFlight lists the tools in flight in class, sorted, from the
+// process's in-flight registry (serve-http's gate is built on it), as an
+// admission refusal's in_flight names what holds its class (GDEV-08); []
+// when none is, or when the refusal has no class (store unavailable).
+func busyInFlight(class string) []string {
+	names := []string{}
+	if class == "" {
+		return names
+	}
+	for _, e := range tenancy.DefaultInFlight.Snapshot() {
+		if e.Class.String() == class && e.Tool != "" {
+			names = append(names, e.Tool)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // rpcCallInfo parses the parts of a /rpc message the gate needs: the

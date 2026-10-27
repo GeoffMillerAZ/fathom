@@ -164,6 +164,11 @@ func (r *serveRun) buildBackend() {
 	} else {
 		r.deferred(undo)
 	}
+	// GDEV-02: every ingest this process runs (the queue's jobs, the
+	// ingest tool), auto-refresh or not, is refused by name beside another
+	// live process's uncommitted ingest of the same service.
+	ownerProbe := newIngestOwnerProbe()
+	r.deferred(fusion.InstallIngestOwnerProbe(ownerProbe))
 	r.refreshQ = mcp.NewRefreshQueueLogged(c, refresh.Config{Started: r.startedAt}, flog)
 	r.refreshQ.Start(r.refreshCtx)
 	var backend mcp.QueryInterface = c
@@ -171,7 +176,7 @@ func (r *serveRun) buildBackend() {
 		backend = mcp.NewAutoRefreshQueued(c, flog, r.refreshQ)
 		// RT-109: an in_progress row is an interrupted ingest only once
 		// its owner is gone (a live CLI ingest is never duplicated).
-		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
+		mcp.SetIngestOwnerProbe(ownerProbe)
 	}
 	r.backend = backend
 }

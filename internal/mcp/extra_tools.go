@@ -488,6 +488,29 @@ func registerRenameService(s *Server, backend QueryInterface) {
 
 // ─── shared: ingest ───────────────────────────────────────────────────────────
 
+// ingestGateRefusal is the refresh gate's refusal of an explicit ingest
+// (refresh.TenancyGate: an explicit request is refused only for store
+// distress or at the refuse rung) as an admission refusal. The kind is read
+// from the typed state, in the gate's own order, never parsed from why:
+// distress refuses writes and still serves reads, so it reaches only the
+// ingest class (lifecycleRefusal scopes it the same way); the rung reaches
+// the daemon.
+func ingestGateRefusal(svc, why string, now time.Time) *tenancy.Refusal {
+	ref := &tenancy.Refusal{Reason: "ingest of " + svc + " refused: " + why, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String()}
+	if _, on := tenancy.StoreDistressNow(now); on {
+		ref.RetryAfter = 60 * time.Second
+		return ref.WithClassScope()
+	}
+	ref.Code, ref.RetryAfter = tenancy.RefusalLevel, 30*time.Second
+	return ref
+}
+
+// isConcurrentIngest reports a fusion.ConcurrentIngestError in err's chain.
+func isConcurrentIngest(err error) bool {
+	var cie *fusion.ConcurrentIngestError
+	return errors.As(err, &cie)
+}
+
 func registerIngest(s *Server, backend QueryInterface) {
 	// Ingest honesty (docs/plans/instrument-truth.md IT-15, O16): the
 	// pipeline's refusal to replace a populated index with a wedged
@@ -716,8 +739,17 @@ func registerIngest(s *Server, backend QueryInterface) {
 			st := q.RequestRefresh(waitCtx, refresh.Request{Service: svc, Path: p.Path, Reason: refresh.ReasonIngestTool, Done: late.runDone}, true)
 			budgetSpent := waitCtx.Err() != nil && ctx.Err() == nil
 			stopWait()
+			// GDEV-08: the refresh gate refused the request, or dropped
+			// the queued job when distress or the refuse rung arrived
+			// while it waited; either way nothing ran, and the answer is
+			// the admission wire format, never -32600 or an ingest failure
+			// (which would re-arm distress and bust caches for a write that
+			// never happened).
 			if st.State == refresh.StateRefused {
-				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + st.Refused}
+				return nil, handlerRefusal(ctx, ingestGateRefusal(svc, st.Refused, time.Now()))
+			}
+			if st.Done && errors.Is(st.Err, refresh.ErrRefused) && !isConcurrentIngest(st.Err) {
+				return nil, handlerRefusal(ctx, ingestGateRefusal(svc, st.Err.Error(), time.Now()))
 			}
 			if !st.Done && budgetSpent {
 				late.answerEarly()
@@ -730,9 +762,17 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// tenancy's one ingest slot, so a derived-table backfill never
 			// runs beside it. A caller whose request ends while another
 			// ingest or backfill holds the slot leaves, named.
+			//
+			// The wait ends only with ctx, and dispatch never hands this
+			// handler a ctx that ends by itself: ingest-class work is
+			// detached from its requester, and a gate's cancel or class
+			// deadline is settled as an abandonment, which replaces this
+			// answer. The refusal below is defensive (the wire shape a
+			// direct caller gets), not a reachable product answer.
 			releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
 			if slotErr != nil {
-				return nil, &rpcError{Code: ErrCodeBusy, Message: "ingest: " + svc + " not ingested — the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()}
+				return nil, handlerRefusal(ctx, &tenancy.Refusal{Code: tenancy.RefusalSlots, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String(), RetryAfter: 30 * time.Second,
+					Reason: "ingest of " + svc + " not started: the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()})
 			}
 			if p.Path != "" {
 				ingestErr = backend.(ingestAtBackend).IngestServiceAt(ctx, svc, p.Path)
@@ -740,6 +780,16 @@ func registerIngest(s *Server, backend QueryInterface) {
 				ingestErr = backend.IngestService(ctx, svc)
 			}
 			releaseSlot()
+		}
+		// GDEV-02: another live process's uncommitted ingest of the service
+		// refused this one before it read or wrote anything: a class-scoped
+		// refusal naming the owner, never a failure (no distress, no cache
+		// bust, no quarantine lift).
+		var cie *fusion.ConcurrentIngestError
+		if errors.As(ingestErr, &cie) {
+			return nil, handlerRefusal(ctx, &tenancy.Refusal{Code: tenancy.RefusalSlots, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String(), RetryAfter: 30 * time.Second,
+				Reason: fmt.Sprintf("ingest of %s refused: pid %d (alive) began an ingest of it at %s that has not committed — another process is ingesting it, or stopped partway; retry when it finishes",
+					svc, cie.PID, cie.StartedAt.UTC().Format(time.RFC3339))})
 		}
 		// RT-41 (§2.1): an ingest that failed writing the store with
 		// SQLITE_FULL or SQLITE_IOERR is store distress — the next ingest
@@ -833,6 +883,27 @@ func registerIngest(s *Server, backend QueryInterface) {
 				}
 				if st.Fallback != "" {
 					te["fallback"] = st.Fallback
+				}
+				// EW-83 (O1506): the run's skips, by reason with their
+				// first names, and the directories and nested modules no
+				// load covered. Never persisted, so a status replayed from
+				// the store omits them rather than read 0.
+				if !st.Persisted {
+					te["packages_skipped"] = st.PackagesSkipped
+					if len(st.Skips) > 0 {
+						skipped := make([]map[string]any, 0, len(st.Skips))
+						for _, s := range st.Skips {
+							skipped = append(skipped, map[string]any{"reason": s.Reason, "count": s.Count, "packages": s.Names})
+						}
+						te["skipped"] = skipped
+					}
+					if len(st.NotLoaded) > 0 {
+						notLoaded := make([]map[string]any, 0, len(st.NotLoaded))
+						for _, s := range st.NotLoaded {
+							notLoaded = append(notLoaded, map[string]any{"reason": s.Reason, "count": s.Count, "paths": s.Names})
+						}
+						te["not_loaded"] = notLoaded
+					}
 				}
 				// finding [4]/DG-10: see platform_tools.go's list_services block
 				// -- the SAME distinction (a store-replayed, pre-restart answer

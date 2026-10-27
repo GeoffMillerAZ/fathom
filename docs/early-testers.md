@@ -48,6 +48,14 @@ fathom version    # fathom v0.23.0 @ <commit>
 
 The binaries are **not signed or notarized**. A file downloaded through a macOS browser is
 quarantined; clear it with `xattr -d com.apple.quarantine fathom`. (`curl` does not set the flag.)
+
+Each archive and `checksums.txt` carries a build-provenance attestation, starting with the first release after v0.23.0. Verify a downloaded archive against this repository's release workflow:
+
+```sh
+gh attestation verify "fathom_${V}_${OS}_${ARCH}.tar.gz" --repo GeoffMillerAZ/fathom \
+  --signer-workflow GeoffMillerAZ/fathom/.github/workflows/release.yml
+```
+
 On Linux the binary is static. Put it on your `PATH`: `fathom init` writes the path of the
 binary that ran it into the hooks.
 
@@ -68,7 +76,7 @@ through the public proxy, with `go get` of `pkg/client` from a scratch module
 
 | Need | Version | Why |
 |---|---|---|
-| Go | go.mod's `toolchain` line, Go 1.27.3 | Go 1.21 or later fetches it for you through `proxy.golang.org` under `GOTOOLCHAIN=auto` (the default). A Go 1.26 build with `GOTOOLCHAIN=local` compiles but cannot type-load Go 1.27 sources |
+| Go (to build fathom) | go.mod's `toolchain` line, Go 1.27.3 | Building fathom only; fathom's own go commands run offline with `GOTOOLCHAIN=local`. Go 1.21 or later fetches it for you through `proxy.golang.org` under `GOTOOLCHAIN=auto` (the default). A Go 1.26 build with `GOTOOLCHAIN=local` compiles but cannot type-load Go 1.27 sources |
 | A C compiler and `CGO_ENABLED=1` | macOS only: Xcode Command Line Tools | the daemon's two memory readers use cgo; Linux builds pure Go with `CGO_ENABLED=0` and needs no C compiler (ADR-066) |
 | `MACOSX_DEPLOYMENT_TARGET=14.0` | macOS only | the binary's minimum macOS; unset, the cgo link stamps the build machine's version |
 | git | any recent | ingest and verification read git history |
@@ -206,8 +214,8 @@ repository is indexed and 2 when the wiring is done but the daemon is
 unreachable or the index is empty. It never runs the interactive MCP
 registration: it prints your harness's own `mcp add` line instead.
 
-`--skills` installs the ten shipped agent skills (fathom-activate, custodian,
-doctor, feedback, findings, impact, onboard, plan, rewire and verify):
+`--skills` installs the eleven shipped agent skills (fathom-activate, custodian,
+doctor, feedback, findings, impact, offload, onboard, plan, rewire and verify):
 
 | Value | Writes |
 |---|---|
@@ -499,8 +507,12 @@ open.
   and a Codex cloud task. What has been measured is an `ubuntu:24.04`
   container of the VM's shape, and the setup indexes only the fathom
   repository itself.
-- **The prebuilt binaries are not signed or notarized** (see
-  [Install](#1-download-a-release-archive) for the quarantine flag).
+- **The prebuilt binaries are not code-signed or notarized**; each archive carries a
+  build-provenance attestation (releases after v0.23.0). See
+  [Install](#1-download-a-release-archive) for the quarantine flag and the verify command.
+- **Go typed edges need the repository's modules in your module cache and a local Go at least
+  its `go` line**: run `go mod download` before ingest, or set `[ingest] go_network = true` in
+  `~/.fathom/config.toml`.
 - **Typed edges outside Go need a SCIP index** (see
   [Languages and tool formats](#languages-and-tool-formats)). Without one,
   callers and blast radius for that language are heuristic and labelled so.

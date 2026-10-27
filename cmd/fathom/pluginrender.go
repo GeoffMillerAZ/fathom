@@ -120,7 +120,7 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.20" (0.3.20: the egress guard's PreToolUse WebFetch|WebSearch hook, ADR-083; 0.3.19: activate preserves consumer-authored intent; 0.3.18: anchored spawn hook and completed-lookup observer; 0.3.16: the doctor skill names UNKNOWN and TIMEOUT; 0.3.15: the activate skill drops the removed intent render verb from step 6b; 0.3.14: settings.json holding subagentStatusLine alone; 0.3.13: the scout agent, agents/fathom-scout.md, rendered from the default surface; 0.3.12: INTENT.md retired from the activate and custodian skills, the plan skeleton opens with a Request line, ADR-074; release 0.10.0: the onboard, custodian and plan
+// for pluginVersion "0.3.20" (0.3.20 re-pinned for the doctor, onboard and rewire skills: daemon_bind, egress_guard and hook counts; 0.3.20: the egress guard's PreToolUse WebFetch|WebSearch hook, ADR-083; 0.3.19: activate preserves consumer-authored intent; 0.3.18: anchored spawn hook and completed-lookup observer; 0.3.16: the doctor skill names UNKNOWN and TIMEOUT; 0.3.15: the activate skill drops the removed intent render verb from step 6b; 0.3.14: settings.json holding subagentStatusLine alone; 0.3.13: the scout agent, agents/fathom-scout.md, rendered from the default surface; 0.3.12: INTENT.md retired from the activate and custodian skills, the plan skeleton opens with a Request line, ADR-074; release 0.10.0: the onboard, custodian and plan
 // skills carry cloud sessions, the import-only CLAUDE.md, ingest cost and
 // exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids;
 // 0.3.10: the onboard skill builds Linux pure Go, ADR-066; 0.3.11: the
@@ -131,7 +131,7 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "228194ef44226f90"
+const pluginTemplateDigestPin = "3a6fd2207d044132"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the

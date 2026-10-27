@@ -73,6 +73,11 @@ func writeRefusal(w http.ResponseWriter, ref *tenancy.Refusal) {
 	case tenancy.RefusalSlots, tenancy.RefusalDeadline, tenancy.RefusalCallerGone:
 		scope = hookguard.BusyScopeClass
 	}
+	// A refusal its code does not scope (a handler's store distress, GDEV-08)
+	// carries its scope itself.
+	if ref.ClassScoped() {
+		scope = hookguard.BusyScopeClass
+	}
 	w.Header().Set(hookguard.BusyScopeHeader, scope)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

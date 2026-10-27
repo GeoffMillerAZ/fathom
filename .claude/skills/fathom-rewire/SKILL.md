@@ -55,10 +55,12 @@ not the verb's.
    `binding_file` FAIL on `bindings: []` means a stale binary, since an
    explicit empty list is valid. Right after `fathom init`, the session
    line can report stale binary paths while `wiring_drift` passes: init
-   wrote an absolute path, and the line over-counts it.
+   wrote an absolute path, and the line over-counts it. After upgrading to
+   v0.24.0, a `daemon_bind` FAIL means run `fathom daemon install
+   --reconcile` from your own terminal.
 2. Compare `.claude/settings.json` (project AND user scope) with the
    current template, which `fathom harness hooks --harness claude-code`
-   prints (20 entries on 15 events). Reconcile at whichever ONE scope
+   prints (27 entries on 16 events). Reconcile at whichever ONE scope
    already has fathom hooks, and rewrite absolute `/…/fathom` commands to
    plain `fathom`. `fathom plugin render` emits the same template as
    `hooks/hooks.json` for the plugin install path.

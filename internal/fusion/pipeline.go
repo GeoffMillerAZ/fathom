@@ -193,6 +193,15 @@ type Report struct {
 	// (RT-104: no Go input changed since its last successful pass); the
 	// stored typed edges stand. "" when it ran (or the service has no Go).
 	TypedSkipped string
+	// TypedPackagesSkipped and TypedSkips are the run's packages the typed
+	// pass did not resolve, counted by reason (EW-81, O1506; this run's
+	// TypedEdgeReport, never persisted).
+	TypedPackagesSkipped int
+	TypedSkips           []TypedSkip
+	// TypedNotLoaded names, by reason, the discovered Go directories and
+	// nested modules no typed load covered (EW-82, O1506): this run's own
+	// TypedEdgeReport.NotLoaded, never persisted.
+	TypedNotLoaded []TypedSkip
 
 	// CUE typed-edge pass counters (ADR-041 decision 5 / SU-10; zero for
 	// services with no .cue sources or no cue.mod, or when

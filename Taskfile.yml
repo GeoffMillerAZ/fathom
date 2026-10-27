@@ -172,6 +172,9 @@ tasks:
     # time against a bound, and under -race that time is the race
     # detector's. It runs in its own `perfgate` step (no -race), a
     # validate:unleased dependency.
+    # Both runs go through scripts/temp-path-canary.sh, which sets TMPDIR to a
+    # symlink named with "_" and "." (temp-path assumptions fail on every
+    # platform, not only on the host that exposed them: issue 118).
     # The go test line stays literal in this task: the test-run hook
     # (cmd/fathom/testrunhook_declared.go) reads the declared test commands
     # from this Taskfile.
@@ -183,8 +186,8 @@ tasks:
         pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$' | grep -v '/internal/fusion/perfgate$' | grep -v /third_party/) || exit 1
         mkdir -p workspace/tmp
         shardout=$(mktemp workspace/tmp/test-shards-out.XXXXXX)
-        bash scripts/scratch-home.sh bash scripts/test-shards.sh >"$shardout" 2>&1 & shards=$!
-        bash scripts/scratch-home.sh {{.GO}} test -race -p 4 $pkgs || rc=$?
+        bash scripts/scratch-home.sh bash scripts/temp-path-canary.sh bash scripts/test-shards.sh >"$shardout" 2>&1 & shards=$!
+        bash scripts/scratch-home.sh bash scripts/temp-path-canary.sh {{.GO}} test -race -p 4 $pkgs || rc=$?
         wait $shards || rc=1
         cat "$shardout"; rm -f "$shardout"
         exit $rc

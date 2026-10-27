@@ -286,9 +286,10 @@ func RelatedTarget(roots []string, target string) (class, wt, root string) {
 		return "", "", ""
 	}
 	common := commonDir(wt)
+	cwt := canonical(wt) // roots are compared canonical; so is the target
 	for _, r := range roots {
 		base, _, yes := nearestWorkTree(canonical(r))
-		if !yes || base == wt {
+		if !yes || base == cwt {
 			continue
 		}
 		bc := commonDir(base)
