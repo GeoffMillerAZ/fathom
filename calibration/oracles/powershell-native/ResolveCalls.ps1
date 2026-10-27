@@ -77,6 +77,13 @@ $harnessSourceFiles = [Collections.Generic.HashSet[string]]::new([StringComparer
 $harnessInventory = @()
 $excludedNames = @{}
 $harnessNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$helperDefinitions = [Collections.Generic.List[object]]::new()
+function Register-OracleHelperDefinitions($Declaration, $Functions) {
+    foreach ($function in $Functions) {
+        if (-not $function.ScriptBlock) { continue }
+        $helperDefinitions.Add([ordered]@{ name = Get-OracleBare $function.Name; identity = $function.ScriptBlock.Id; declaration_id = $Declaration.id })
+    }
+}
 if ($Harness -ne 'none') {
     if (-not $Repository -or -not $TrackedJson) { throw 'whole-unit refusal: missing original repository inventory' }
     $repositoryRoot = [IO.Path]::GetFullPath($Repository).TrimEnd('/')
@@ -104,11 +111,23 @@ if ($Harness -ne 'none') {
             if (-not (Get-OracleDefinitionOnly $declaration.target)) {
                 $declaration.status = 'declared_not_loaded'; $declaration.reason = 'dot-sourced test/fixture has top-level executable statements; no test body executed for binder'; continue
             }
-            . $declaration.target
+            # Compile only the file's top-level native function bodies. Never
+            # execute a conditional preamble or any transitive support script.
+            $definitionAst = [Management.Automation.Language.Parser]::ParseFile($declaration.target, [ref]$null, [ref]$null)
+            foreach ($part in @($definitionAst.BeginBlock,$definitionAst.ProcessBlock,$definitionAst.EndBlock,$definitionAst.CleanBlock)) {
+                if (-not $part) { continue }
+                foreach ($statement in $part.Statements) {
+                    if ($statement -is [Management.Automation.Language.FunctionDefinitionAst]) {
+                        Set-Item -Path ('Function:script:' + (Get-OracleBare $statement.Name)) -Value $statement.Body.GetScriptBlock()
+                        Register-OracleHelperDefinitions $declaration @($ExecutionContext.InvokeCommand.GetCommand((Get-OracleBare $statement.Name), [Management.Automation.CommandTypes]::Function))
+                    }
+                }
+            }
             $null = $harnessSourceFiles.Add($declaration.target)
         } elseif ($declaration.kind -eq 'module') {
             try {
                 $provider = Import-Module -Name $declaration.target -DisableNameChecking -PassThru -ErrorAction Stop
+                Register-OracleHelperDefinitions $declaration @($provider.ExportedFunctions.Values)
                 foreach ($function in @($provider.ExportedFunctions.Values)) {
                     $null = $harnessNames.Add($function.Name)
                     if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
@@ -124,6 +143,7 @@ if ($Harness -ne 'none') {
             $dynamicModules += $provider
             $dynamicModuleHashes[$provider.GetHashCode()] = Get-OracleDeclarationId $declaration.block.Extent.Text
             $provider | Import-Module -DisableNameChecking
+            Register-OracleHelperDefinitions $declaration @($provider.ExportedFunctions.Values)
             foreach ($function in @($provider.ExportedFunctions.Values)) {
                 $null = $harnessNames.Add($function.Name)
                 if ($function.ScriptBlock.File) { $null = $harnessSourceFiles.Add($function.ScriptBlock.File) }
@@ -137,6 +157,9 @@ if ($Harness -ne 'none') {
         if ($owner.Count -ge 1 -and @($owner | Where-Object { $_.status -ne 'loaded' }).Count -eq 0) {
             $declaration.status = 'loaded'; $declaration.reason = 'loaded by original declared module block; not dot-sourced globally'
             $harnessInputs.Add([ordered]@{ name = $declaration.name; code_sha256 = $declaration.code_sha256; declaration_id = $declaration.id })
+            foreach ($provider in @(Get-Module -All | Where-Object { $_.Path -eq $declaration.target })) {
+                Register-OracleHelperDefinitions $declaration @($provider.ExportedFunctions.Values)
+            }
         } else { $declaration.status = 'declared_not_loaded'; $declaration.reason = 'enclosing module block is not an admitted driver-level declaration' }
     }
     foreach ($declaration in $harnessInventory) {
@@ -170,6 +193,17 @@ $definitionCache = @{}
 $definitionPathCache = @{}
 $privateHelperCache = @{}
 $sessionUnionNonlocalPrivateSites = 0
+$sessionUnionNonlocalHelperSites = 0
+$sessionUnionShadowedHelperSites = 0
+$closureMissingNameSites = 0
+$definitionDeclarationCache = @{}
+$definitionIdentityCache = @{}
+$runnerGlobalFiles = @()
+if ($Harness -eq 'pester') {
+    # These are the declared suite runner and its global before-container hook,
+    # not an allowlist of helper definitions.
+    $runnerGlobalFiles = @('test.ps1','tst/Pester.BeforeContainer.ps1' | ForEach-Object { Join-Path $repositoryRoot $_ } | Where-Object { [IO.File]::Exists($_) })
+}
 $fileHashCache = @{}
 $targetFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $targetIntrinsics = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -190,6 +224,7 @@ foreach ($relative in $files) {
     $unloadedForFile = @{}
     $unloadedModulesForFile = @{}
     $queryPath = [IO.Path]::GetFullPath((Join-Path $root $relative))
+    $declaringClosure = Get-OracleDeclaringClosure $queryPath $harnessInventory $runnerGlobalFiles $manifestPath
     foreach ($name in $excludedNames.Keys) {
         $matches = @($excludedNames[$name] | Where-Object { $_.target -eq $queryPath -or $_.declaring_files.Contains($queryPath) })
         if ($matches.Count) { $unloadedForFile[$name] = $matches }
@@ -236,6 +271,12 @@ foreach ($relative in $files) {
                 $lookupCache[$cacheKey] = if ($allowed) { Get-OracleBare $command.Name } else { $null }
                 $definitionCache[$cacheKey] = $null
                 $definitionPathCache[$cacheKey] = $null
+                $definitionIdentityCache[$cacheKey] = $null
+                $definitionDeclarationCache[$cacheKey] = @()
+                if ($allowed -and $command -is [Management.Automation.FunctionInfo]) {
+                    $definitionIdentityCache[$cacheKey] = $command.ScriptBlock.Id
+                    $definitionDeclarationCache[$cacheKey] = @($helperDefinitions | Where-Object { $_.name -eq $command.Name -and $_.identity -eq $command.ScriptBlock.Id } | ForEach-Object declaration_id | Sort-Object -Unique)
+                }
                 $privateHelperCache[$cacheKey] = $allowed -and ($command -is [Management.Automation.FunctionInfo]) -and -not $module.ExportedFunctions.ContainsKey($command.Name)
                 if ($isRuntimeIntrinsic) {
                     $definitionCache[$cacheKey] = @('pinned-runtime', $oracleInitialRuntimeFunctions[$command.Name].sha256, 'runtime-intrinsic')
@@ -252,6 +293,20 @@ foreach ($relative in $files) {
             $answer = $lookupCache[$cacheKey]
         }
         $nonlocalPrivateHelper = $false
+        $nonlocalHelper = $false
+        $shadowedHelperIds = @()
+        $originIds = @()
+        if ($isCommand -and $answer) {
+            $originIds = @($definitionDeclarationCache[$cacheKey])
+            $localOrigins = @($originIds | Where-Object { $declaringClosure.Contains($_) })
+            $ownedModuleDefinition = $scope -eq 'module' -and $definitionPathCache[$cacheKey] -and $moduleSources.Contains($definitionPathCache[$cacheKey])
+            if ($originIds.Count -and -not $localOrigins.Count -and -not $ownedModuleDefinition) {
+                $nonlocalHelper = $true; $sessionUnionNonlocalHelperSites++
+                $alternatives = @($helperDefinitions | Where-Object { $_.name -eq $answer -and $declaringClosure.Contains($_.declaration_id) -and $_.identity -ne $definitionIdentityCache[$cacheKey] })
+                $shadowedHelperIds = @($alternatives | ForEach-Object declaration_id | Sort-Object -Unique)
+                if ($shadowedHelperIds.Count) { $sessionUnionShadowedHelperSites++ } else { $closureMissingNameSites++ }
+            }
+        }
         if ($isCommand -and $answer -and $scope -eq 'global' -and $privateHelperCache[$cacheKey] -and $definitionPathCache[$cacheKey] -and $moduleSources.Contains($definitionPathCache[$cacheKey])) {
             $declaredHere = @($harnessInventory | Where-Object { $_.status -eq 'loaded' -and ($_.target -eq $definitionPathCache[$cacheKey] -or $_.kind -eq 'module-block') -and $_.declaring_files.Contains((Join-Path $root $relative)) })
             if (-not $declaredHere.Count) { $nonlocalPrivateHelper = $true; $sessionUnionNonlocalPrivateSites++ }
@@ -263,7 +318,7 @@ foreach ($relative in $files) {
             if ($isCommand -and $unresolvedClass -eq 'missing') {
                 if ($localFunctions.Contains((Get-OracleBare $written))) { $unresolvedClass = 'same_file_or_BeforeAll' }
                 for ($parent = $node.Parent; $null -ne $parent; $parent = $parent.Parent) {
-                    if ($parent -is [Management.Automation.Language.CommandAst] -and ($parent.GetCommandName() -in @('InModuleScope','InPesterModuleScope') -or ($parent.InvocationOperator -eq 'Ampersand' -and $parent.CommandElements[0] -is [Management.Automation.Language.VariableExpressionAst] -and $parent.CommandElements[0].VariablePath.UserPath -match '(?i)module$'))) { $unresolvedClass = 'private_module_scope'; break }
+                    if ($parent -is [Management.Automation.Language.CommandAst] -and ($parent.GetCommandName() -in @('InModuleScope','InPesterModuleScope') -or ($parent.InvocationOperator -in @('Ampersand','Dot') -and $parent.CommandElements.Count -ge 2 -and $parent.CommandElements[1] -is [Management.Automation.Language.ScriptBlockExpressionAst] -and ($parent.CommandElements[0] -is [Management.Automation.Language.VariableExpressionAst] -or $parent.CommandElements[0] -is [Management.Automation.Language.ParenExpressionAst])))) { $unresolvedClass = 'private_module_scope'; break }
                 }
             }
             $unresolvedClasses[$unresolvedClass]++
@@ -279,7 +334,9 @@ foreach ($relative in $files) {
             $definitionScopes[$definition[0]]++
         }
         $sites.Add([ordered]@{ path = $relative; line = $node.Extent.StartLineNumber; column = $node.Extent.StartColumnNumber;
-            from = $caller; written = $written; kind = $(if ($isCommand) { 'command' } else { 'member' }); resolved = $answer; session_union_nonlocal_private_helper = $nonlocalPrivateHelper; resolved_definition = $definition; unresolved_class = $unresolvedClass })
+            from = $caller; written = $written; kind = $(if ($isCommand) { 'command' } else { 'member' }); resolved = $answer; session_union_nonlocal_private_helper = $nonlocalPrivateHelper;
+            session_union_nonlocal_helper = $nonlocalHelper; resolved_declaration_ids = $originIds; shadowed_declared_helper_ids = $shadowedHelperIds;
+            resolved_definition = $definition; unresolved_class = $unresolvedClass })
         if ($sites.Count -gt $siteCap) { throw 'whole-unit refusal: site count cap' }
         if ($answer) {
             $key = "$relative`t$caller`t$answer"
@@ -305,6 +362,13 @@ $receipt = [ordered]@{
         load_identity_policy = 'unique module name/version/code hash, not instance counts; every declared block retains a separate declaration id';
         load_before = $before; load_after = @(Get-OracleModules); explicit_runtime_modules = $runtimeModules;
         session_union_nonlocal_private_helper_sites = $sessionUnionNonlocalPrivateSites;
+        session_union_nonlocal_helper_sites = $sessionUnionNonlocalHelperSites;
+        session_union_shadowed_declared_helper_sites = $sessionUnionShadowedHelperSites;
+        declaration_closure_missing_name_sites = $closureMissingNameSites;
+        declaration_closure_unresolved_sensitivity = $unknown + $closureMissingNameSites;
+        runner_global_declaring_files = [ordered]@{ count = $runnerGlobalFiles.Count; sha256 = Get-OracleDeclarationId ([string]::Join("`n", @($runnerGlobalFiles | ForEach-Object { $_.Substring($repositoryRoot.Length+1) } | Sort-Object))) };
+        helper_origin_policy = 'native function ScriptBlock identity links answers to loaded declaration ids; crossings compare every helper origin against transitive source-declaration closure plus explicit suite runners and root manifest; shadowed in-closure alternatives are counted; sensitivity removes union-only names, not a simulated isolated execution';
+        definition_loading_policy = 'only top-level FunctionDefinitionAst bodies compiled with original native source metadata; conditional preambles and transitive support commands never execute; executable test/fixture targets still refused';
         declared_harness_inputs = $harnessInputs.ToArray();
         declared_inventory = [ordered]@{ targets = $harnessInventory.Count; declarations = $declarationCount; loaded = @($harnessInventory | Where-Object status -eq 'loaded').Count; declared_not_loaded = @($harnessInventory | Where-Object status -eq 'declared_not_loaded' | ForEach-Object { [ordered]@{ declaration_id = $_.id; kind = $_.kind; reason = $_.reason; site_count = $_.site_count; code_sha256 = $_.code_sha256 } }); policy = 'native parser enumeration of all tracked test files and root loader; loaded plus named declaration-id refusals partition inventory; helper union is session-wide, including private product utility definitions' };  resolved_harness_sites = $resolvedHarness; unresolved_by_class = $unresolvedClasses;
         unresolvable_policy = 'all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context with session-wide declared-helper union, including per-file private utility preambles';

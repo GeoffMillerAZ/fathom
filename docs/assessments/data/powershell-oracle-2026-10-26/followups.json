@@ -1,0 +1,720 @@
+{
+  "binder": {
+    "benchmark_product_revision": "4e7eea67a24a48d2c9df46740560c7cb16b0344d",
+    "canonical_reading_changed": false,
+    "oracle_code_sha256": {
+      "DiscoverHarness.ps1": "96337e651c0fdd3a7de746824977d637cc61455c3cb99c631bb5401f442df91b",
+      "ResolveCalls.ps1": "c000068147215680c387c5fc1f06b42e7f8ee54e7b0a6a7cb28ad01293f64768",
+      "measure_binder.py": "84806d08c815e9be4f3173a562a29e20d4ddff25e55d549529298c8e4ffe79b4",
+      "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+    },
+    "ruling": "OL-R11",
+    "subjects": {
+      "pester": {
+        "files": 272,
+        "historical_reading_bytes": 2713762,
+        "historical_reading_files": 272,
+        "literal_population_sha256": "16f241518024529004f56de20b0706118dc363693d8f68339b0e97919de29e5d",
+        "literal_sites": 18842,
+        "native": {
+          "bytes": 2713762,
+          "command_sites": 16667,
+          "declaration_closure_missing_name_sites": 14,
+          "declaration_closure_unresolved_sensitivity": 3140,
+          "declared_harness_inputs": [
+            {
+              "code_sha256": "bc44734cdfc2bdadb1ab5a820357d5dcf96554d15266e269a1fd183bf69ab214",
+              "declaration_id": "b2bf9549100a601b16233dc2d9642c960767defdb8316c629f7855758f63786f",
+              "name": "Get-Planet"
+            },
+            {
+              "code_sha256": "58ed464a473f2c40182ce87ad5b77107814a1dec42baac28823a02aa6fc6f9b1",
+              "declaration_id": "259d32918fde1952f5d924d2919d54823b93412ec42c9c894bfe24f2816316df",
+              "name": "Format"
+            },
+            {
+              "code_sha256": "147e48bd86e53e727223a4463b858332e610309b93747716295b0b8f4f35a0ac",
+              "declaration_id": "7432ef82c2b27af0ccb7747a8c2ab4e470b80f7d3fdfa90eab9c0901a657cd72",
+              "name": "Pester.Utility"
+            },
+            {
+              "code_sha256": "f520873f5a33eb914d70214effbbcec041d91541314c523698af501798b22b0c",
+              "declaration_id": "7b822e3b3f9ce123cdb83f1c48921c6c2b2a4fe445d62fe758523ca7167d8618",
+              "name": "TypeClass"
+            },
+            {
+              "code_sha256": "8ee04634f9c100b900075ea94025570ea75f1d290e2a212e37d23c0d8390f8d9",
+              "declaration_id": "c456db91e5b7249e697235f56f14103af77ca6a46e856710d2fd4c48cd308895",
+              "name": "Verify-AssertionFailed"
+            },
+            {
+              "code_sha256": "d8c0272bbc84010e387ac1bb11a1f58aca6fa6fdb4fdea8c2cbc1f50b302b351",
+              "declaration_id": "d3b51504520d069d4875282e509ac49fabaed56801ff3e19f14b60e59c41157d",
+              "name": "Verify-Equal"
+            },
+            {
+              "code_sha256": "380fa578b3d7cbcd62bbbb2e66f993743f513ab50c4eee469db4942b2b500c1c",
+              "declaration_id": "d46ad9ce0eb366948f71e428e49fd1af6f7bf6ff255ea248e49be356d47864a5",
+              "name": "Verify-False"
+            },
+            {
+              "code_sha256": "8459d8fb5c28b274c1008d96ea0444bacf31c2581d442706ae0c9224d7911b7d",
+              "declaration_id": "b59c5830e6912ffc70a401c0eeb7e77b2c148b4c7e65a2e78e616cee10f3d520",
+              "name": "Verify-Like"
+            },
+            {
+              "code_sha256": "5004a839c38683a6d5de6a4d58aff1a274b8664705aec9659d656e6168c8a7bb",
+              "declaration_id": "45c28e6248500c145d64fb26bc1b96058b4fc6978a759f03d14e6185cf71b408",
+              "name": "Verify-NotNull"
+            },
+            {
+              "code_sha256": "2245d2144cf7a94431261902fbb45e95ab61f3b36ba28108d64143317e9fdc8f",
+              "declaration_id": "3818db38ae4f78037a6a77e36a0086f6b76e07ffee7effc35b11955f69a46dd4",
+              "name": "Verify-NotSame"
+            },
+            {
+              "code_sha256": "1ef90d4af636e6398c98c819739d24261cb47bca76faf42da0ddc7ecf0fddb7c",
+              "declaration_id": "862bc5bc80e40a93f11472beff733d3d89913229cdf235108f3e42bf3611704a",
+              "name": "Verify-Null"
+            },
+            {
+              "code_sha256": "c966bcfb0f6c78675a990f186d6643bd4025c2bc602a79105d189501db72e95c",
+              "declaration_id": "80f662aaae0195b42c885e04926343fb7e551116bb040f80fc77ce2ba9a994f2",
+              "name": "Verify-Same"
+            },
+            {
+              "code_sha256": "6f734c58683ed977f9bcdb4fdd7476031cdaeaa49e8c2dfdb6879355e17c9487",
+              "declaration_id": "91457f0895825dcfbe9d3431f365c3006ce4a7abdc790c164e604554246650e7",
+              "name": "Verify-Throw"
+            },
+            {
+              "code_sha256": "341b5282003cc9afc03e6878b8eaf3713ed098e54604fe8e40125adab4e758a8",
+              "declaration_id": "9817f6d3a99d79a41e8272291420672c43fd1d13d42d12bbc2f109bc337c0659",
+              "name": "Verify-True"
+            },
+            {
+              "code_sha256": "e0a0bece824c916d0cf5a26bd9cfadb42387337248ab7f9488126d8a36bd6360",
+              "declaration_id": "f2c316ed6c7369d308940ec01cb9e0ee5b2bd1e4691beab51381093465e2f550",
+              "name": "Verify-Type"
+            },
+            {
+              "code_sha256": "01c03ed9d465230e1804529ecd0ac9911355495c05bb83a09e5e8c9b9701db26",
+              "declaration_id": "f391d7ac5fad025ac803a8fdd91fdb7cc3d375a7db7fc280ee061ff7d2d57565",
+              "name": "TestHelpers"
+            },
+            {
+              "code_sha256": "663f5562f40f4b215a4b4b78372105f24d33044955b56ab946cf3e3c75370c03",
+              "declaration_id": "f74f2c842dd11bacd8289dff4585f795b6b428ad4dc636bcd6b78aba1f176ad3",
+              "name": "TestHelpers"
+            },
+            {
+              "code_sha256": "3e797527c09c92d9f84970920aaeea5c1dcee4053a68a0e27f9a918c1933e26a",
+              "declaration_id": "23c621996f0a92a96fca83aa83fae448ecd427637daef43db7f94ab2f0083850",
+              "name": "Pester.Runtime.Wrapper"
+            },
+            {
+              "code_sha256": "cc943cb22c64a323037f14cc1369d674cf27c6b3b65093e23f5e0d8e2753c34b",
+              "declaration_id": "82aeacd72b6af8f6451279cd4665e0cc089107833a77d78625466f7338cc39cc",
+              "name": "Pester.Runtime.Wrapper"
+            },
+            {
+              "code_sha256": "be5ddd63a67bc6f5373e26a0ad740de8dc2cd1ee3cd58f1b5d97ae82bc4938e2",
+              "declaration_id": "ef3b5e8ad51e8afa96b1225f207e2016ad4ab008cb60cd9e1280b6b59f953250",
+              "name": "Pester"
+            },
+            {
+              "code_sha256": "eb22c55fbf57edf3ca9a9220618cc4c8b2c43c2210492fc474e2b0ae90deb701",
+              "declaration_id": "78d09db2cf403c0b80355a207a218f12352a009eda24eb33fb711e45b22f3b53",
+              "name": "Axiom"
+            },
+            {
+              "code_sha256": "f654cb091a87f9f63a2e6fefa54f4c0e477c56e93483b5b4594510a9e530cc28",
+              "declaration_id": "8ba467a2fec7ebbbba52a43991853b6c0e14b0992fb6d5c287914db34a5b3e65",
+              "name": "p"
+            },
+            {
+              "code_sha256": "cb0143cdf82ecd3708905b872d6607b5bdf6f2575bee3af0e570e664938f7a80",
+              "declaration_id": "1c5d80dcc1ef94d47e3060fa6dcf3d0845a373dee7df80670212594202325f32",
+              "name": "PTestHelpers"
+            },
+            {
+              "code_sha256": "400f6510e295153940b705695c1daca33af7971e0f300752b688bbfc4eb2733a",
+              "declaration_id": "b409b001faa5f140cfca96e19e2c80d86dbbb4d929797e23454b1e5fbeeeb81e",
+              "name": "Pester.Runtime"
+            }
+          ],
+          "declared_inventory": {
+            "declarations": 115,
+            "declared_not_loaded": [
+              {
+                "code_sha256": "46436a56218a30bca8bdff1217217cb976fc62d8670bf0f4e4699ccec2bc68e1",
+                "declaration_id": "850f4001dc4e6e78605db0278e816e625a19bfca0cff3de0f4d7b80f34c3f76f",
+                "kind": "dot-source",
+                "reason": "dot-sourced test/fixture has top-level executable statements; no test body executed for binder",
+                "site_count": 3
+              },
+              {
+                "code_sha256": null,
+                "declaration_id": "27eb59e182ec28a8bace827244005e6254621142c306f4ae3bd37f52a65884a2",
+                "kind": "dot-source",
+                "reason": "relative literal path requires undeclared working directory",
+                "site_count": 0
+              },
+              {
+                "code_sha256": null,
+                "declaration_id": "95c16e772e91b57347ea675d814b715842d578a41758cfcfd3a21c7b21bfa044",
+                "kind": "module",
+                "reason": "relative literal path requires undeclared working directory",
+                "site_count": 0
+              },
+              {
+                "code_sha256": null,
+                "declaration_id": "63299cb3b72d42bb42b7e65da56ab57062bb9fca17a3e3d7c9091b5701daadd9",
+                "kind": "module",
+                "reason": "relative literal path requires undeclared working directory",
+                "site_count": 0
+              },
+              {
+                "code_sha256": null,
+                "declaration_id": "ca1831ccc5786f87c3b353e863fdd6f7413161c4805cfde3b795398c2a6df157",
+                "kind": "module",
+                "reason": "relative literal path requires undeclared working directory",
+                "site_count": 0
+              },
+              {
+                "code_sha256": null,
+                "declaration_id": "7ffc79810aaa2792e7178eecda2a7440e46260e1aefbc200299d051f593f8463",
+                "kind": "module",
+                "reason": "relative literal path requires undeclared working directory",
+                "site_count": 0
+              }
+            ],
+            "loaded": 24,
+            "policy": "native parser enumeration of all tracked test files and root loader; loaded plus named declaration-id refusals partition inventory; helper union is session-wide, including private product utility definitions",
+            "targets": 30
+          },
+          "definition_loading_policy": "only top-level FunctionDefinitionAst bodies compiled with original native source metadata; conditional preambles and transitive support commands never execute; executable test/fixture targets still refused",
+          "explicit_runtime_modules": [
+            "Microsoft.PowerShell.Archive",
+            "Microsoft.PowerShell.Host",
+            "Microsoft.PowerShell.Management",
+            "Microsoft.PowerShell.Security",
+            "Microsoft.PowerShell.ThreadJob",
+            "Microsoft.PowerShell.Utility"
+          ],
+          "files": 272,
+          "global_context_sites": 15181,
+          "helper_origin_policy": "native function ScriptBlock identity links answers to loaded declaration ids; crossings compare every helper origin against transitive source-declaration closure plus explicit suite runners and root manifest; shadowed in-closure alternatives are counted; sensitivity removes union-only names, not a simulated isolated execution",
+          "initial_runtime_intrinsic_functions": 10,
+          "initial_runtime_intrinsic_functions_sha256": "8c9a435f520e5674559d89fa6c8ec69b1bd295bce0ce42631c33d88c944e3d26",
+          "literal_sites": 18842,
+          "load_after": [
+            {
+              "code_sha256": "eb22c55fbf57edf3ca9a9220618cc4c8b2c43c2210492fc474e2b0ae90deb701",
+              "name": "Axiom",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "95e193e52b66e19c8acd007ab2958b5020b3fdff52227162b09c5110f01e2685",
+              "name": "Microsoft.PowerShell.Archive",
+              "version": "1.2.6"
+            },
+            {
+              "code_sha256": "dd74a582d8b51a43cff32e7cf8cc546705ff9eabf07fbbf3130dbea61384f9af",
+              "name": "Microsoft.PowerShell.Host",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "57f7e5bab619d62ac04a054ea193504ef7179637f4de2df6139907a6251e83f7",
+              "name": "Microsoft.PowerShell.Security",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "f89ab468ec1329474288fb0faad81600005be3da88dc2b8a2631cfbdd64f394a",
+              "name": "Microsoft.PowerShell.ThreadJob",
+              "version": "2.2.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "f654cb091a87f9f63a2e6fefa54f4c0e477c56e93483b5b4594510a9e530cc28",
+              "name": "p",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "d8359c5f2623ae3beffcd54ed3db2b530add70e2fb95ee4f2ccf83f53d5b4277",
+              "name": "Pester",
+              "version": "6.2.0"
+            },
+            {
+              "code_sha256": "556456ba66acbb84b888051d0d7306877bce24b9c56720bab82058022c5e73a1",
+              "name": "Pester.Runtime.Wrapper",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "cb0143cdf82ecd3708905b872d6607b5bdf6f2575bee3af0e570e664938f7a80",
+              "name": "PTestHelpers",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "8284284e798369c050b9c16f8cf7937a369532e7f009adf0314e6bf6141cc07e",
+              "name": "TestHelpers",
+              "version": "0.0"
+            }
+          ],
+          "load_before": [
+            {
+              "code_sha256": "95e193e52b66e19c8acd007ab2958b5020b3fdff52227162b09c5110f01e2685",
+              "name": "Microsoft.PowerShell.Archive",
+              "version": "1.2.6"
+            },
+            {
+              "code_sha256": "dd74a582d8b51a43cff32e7cf8cc546705ff9eabf07fbbf3130dbea61384f9af",
+              "name": "Microsoft.PowerShell.Host",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "57f7e5bab619d62ac04a054ea193504ef7179637f4de2df6139907a6251e83f7",
+              "name": "Microsoft.PowerShell.Security",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "f89ab468ec1329474288fb0faad81600005be3da88dc2b8a2631cfbdd64f394a",
+              "name": "Microsoft.PowerShell.ThreadJob",
+              "version": "2.2.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            }
+          ],
+          "load_identity_policy": "unique module name/version/code hash, not instance counts; every declared block retains a separate declaration id",
+          "manifest_sha256": "be5ddd63a67bc6f5373e26a0ad740de8dc2cd1ee3cd58f1b5d97ae82bc4938e2",
+          "member_sites": 2175,
+          "module_context_sites": 1486,
+          "module_loading_policy": "autoload disabled before preamble; explicit six-module pinned-runtime baseline asserted; matching subject manifest and original declared test harness only; profile disabled",
+          "native_module_source_files": 106,
+          "parse_error_files": 0,
+          "resolved_definition_file_contents": 117,
+          "resolved_definition_scope_sites": {
+            "original-subject": 13266,
+            "pinned-runtime": 2450
+          },
+          "resolved_definition_sources_sha256": "5790d653d28847f6c437b2b46081cc8e13481fe475dc7d970e34ab265ec0fb9f",
+          "resolved_harness_sites": 12422,
+          "resolved_intrinsic_definition_contents": 0,
+          "runner_global_declaring_files": {
+            "count": 2,
+            "sha256": "7bd847ec14e8d26a757b5831bbe7a36392ea9932d3f9162583401530fa704f8e"
+          },
+          "session_union_nonlocal_helper_sites": 17,
+          "session_union_nonlocal_private_helper_sites": 13,
+          "session_union_shadowed_declared_helper_sites": 3,
+          "subject_module": "Pester",
+          "subject_module_version": "6.2.0",
+          "unresolvable_policy": "all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context with session-wide declared-helper union, including per-file private utility preambles",
+          "unresolved_by_class": {
+            "declared_not_loaded": 3,
+            "external_application": 16,
+            "found_not_admitted": 0,
+            "harness": 0,
+            "member": 2175,
+            "missing": 57,
+            "private_module_scope": 490,
+            "same_file_or_BeforeAll": 385
+          },
+          "unresolved_sites": 3126
+        },
+        "native_oracle_sha256": "e0bf6e8fcf87fc92a636cc843c37753b95bc76470c21422ae83d5af16cc91d9b",
+        "native_pairs": 2749,
+        "new_generated_paths": 0,
+        "original_binary_classified_files": 0,
+        "original_scope": "frozen original Git-tracked eligible source; generated non-inline wrapper is load-state only, outside measurement membership",
+        "population": "all original tracked PowerShell source including UTF-16; no original file discarded",
+        "population_sha256": "f8a7f68e4b8c0a6c3c4f35e9140302a180906518bac4c9f3dd3155cf30ee706d",
+        "preexisting_untracked_or_ignored_paths": 21,
+        "resolved_site_fraction": 0.8340940452181297,
+        "resolved_sites": 15716,
+        "revision": "98e56d65da1642a7158992b50ded240c42a3ac18",
+        "subpath": ".",
+        "tracked_after": {
+          "bytes": 5724617,
+          "entries": 409,
+          "files": 409,
+          "gitlinks": 0,
+          "sha256": "c0ae6755def5de48b890d049d121fdab0ba0b6807426161cf4660eb3eb16180e",
+          "symlinks": 0
+        },
+        "tracked_before": {
+          "bytes": 5724617,
+          "entries": 409,
+          "files": 409,
+          "gitlinks": 0,
+          "sha256": "c0ae6755def5de48b890d049d121fdab0ba0b6807426161cf4660eb3eb16180e",
+          "symlinks": 0
+        },
+        "unique_written_pairs": 4218,
+        "unresolved_sites": 3126,
+        "written_name_pairs_without_equal_native_target": 1490
+      },
+      "psa": {
+        "files": 241,
+        "historical_reading_bytes": 775189,
+        "historical_reading_files": 224,
+        "literal_population_sha256": "65db3b48ed24d757894a8f794ff1cb0955dda4e5686f3a9c4210097ca39698b9",
+        "literal_sites": 5838,
+        "native": {
+          "bytes": 865136,
+          "command_sites": 5551,
+          "declaration_closure_missing_name_sites": 2,
+          "declaration_closure_unresolved_sensitivity": 582,
+          "declared_harness_inputs": [
+            {
+              "code_sha256": "49e9e839447703f7b6a6a320a3c65a6dd5a17f4e33372fe02c7d32ad26a2d3ca",
+              "name": "Pester"
+            },
+            {
+              "code_sha256": "54532a0391818bc03d9c2b82e48cfa45613978cc6c9fd71209886009c8f15566",
+              "declaration_id": "37258a7dfcea4bd524bc7c1033a10af183bf1c068d40075ab469746c3c7bd3f0",
+              "name": "build"
+            },
+            {
+              "code_sha256": "0b3b3b0d38b098f41531618f1d6ffa02de069c8e764e0c2c9a64fe4d96778dfb",
+              "declaration_id": "0eabcdc30baab2965bec157e6909e844665b9861631cb8c4ec818fc620b197fb",
+              "name": "PSScriptAnalyzerTestHelper"
+            },
+            {
+              "code_sha256": "44b99c8ee2623a6b9cd579a112958fc95056da4afdcd12bff8398d358f276354",
+              "declaration_id": "f286d02e57828b498dc2f5ad2b4023d9fe30040e5f52505e72a4be6c9043575e",
+              "name": "PSScriptAnalyzerTestHelper"
+            }
+          ],
+          "declared_inventory": {
+            "declarations": 33,
+            "declared_not_loaded": [
+              {
+                "code_sha256": "8486235631c5a9ac8362d2fa0dbaabd9e03d6fe5d14295b517a08ae9e445c8c5",
+                "declaration_id": "e6b4e64d247cbcbe2d38330a4195d6391e137b5f28d07998d74f815a29bc812c",
+                "kind": "dot-source",
+                "reason": "dot-sourced test/fixture has top-level executable statements; no test body executed for binder",
+                "site_count": 0
+              },
+              {
+                "code_sha256": "96500a6c3515fb5833687cde87962831624f2a14960476441397df51755a77a3",
+                "declaration_id": "c7ef04ee2dd9aa603cc707573edbb60ba98544dedf850ca9338959d5caac6012",
+                "kind": "dot-source",
+                "reason": "dot-sourced test/fixture has top-level executable statements; no test body executed for binder",
+                "site_count": 1
+              },
+              {
+                "code_sha256": "e5f373cd3340c4ffe38a56da56a27c6b5f2434cadd454f7ef1a659e073e1b975",
+                "declaration_id": "ef9189146e7ec4cabffffc6eab752117c7cf218b734eceb686d84e150962cdd6",
+                "kind": "dot-source",
+                "reason": "dot-sourced test/fixture has top-level executable statements; no test body executed for binder",
+                "site_count": 0
+              },
+              {
+                "code_sha256": null,
+                "declaration_id": "41d1542fd699aa931fe38b769241d82989b0eb029ef0e509bdca3142931e0cd3",
+                "kind": "module",
+                "reason": "declared target absent from original pinned repository",
+                "site_count": 7
+              }
+            ],
+            "loaded": 3,
+            "policy": "native parser enumeration of all tracked test files and root loader; loaded plus named declaration-id refusals partition inventory; helper union is session-wide, including private product utility definitions",
+            "targets": 7
+          },
+          "definition_loading_policy": "only top-level FunctionDefinitionAst bodies compiled with original native source metadata; conditional preambles and transitive support commands never execute; executable test/fixture targets still refused",
+          "explicit_runtime_modules": [
+            "Microsoft.PowerShell.Archive",
+            "Microsoft.PowerShell.Host",
+            "Microsoft.PowerShell.Management",
+            "Microsoft.PowerShell.Security",
+            "Microsoft.PowerShell.ThreadJob",
+            "Microsoft.PowerShell.Utility"
+          ],
+          "files": 241,
+          "global_context_sites": 5551,
+          "helper_origin_policy": "native function ScriptBlock identity links answers to loaded declaration ids; crossings compare every helper origin against transitive source-declaration closure plus explicit suite runners and root manifest; shadowed in-closure alternatives are counted; sensitivity removes union-only names, not a simulated isolated execution",
+          "initial_runtime_intrinsic_functions": 10,
+          "initial_runtime_intrinsic_functions_sha256": "8c9a435f520e5674559d89fa6c8ec69b1bd295bce0ce42631c33d88c944e3d26",
+          "literal_sites": 5838,
+          "load_after": [
+            {
+              "code_sha256": "54532a0391818bc03d9c2b82e48cfa45613978cc6c9fd71209886009c8f15566",
+              "name": "build",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "95e193e52b66e19c8acd007ab2958b5020b3fdff52227162b09c5110f01e2685",
+              "name": "Microsoft.PowerShell.Archive",
+              "version": "1.2.6"
+            },
+            {
+              "code_sha256": "dd74a582d8b51a43cff32e7cf8cc546705ff9eabf07fbbf3130dbea61384f9af",
+              "name": "Microsoft.PowerShell.Host",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "57f7e5bab619d62ac04a054ea193504ef7179637f4de2df6139907a6251e83f7",
+              "name": "Microsoft.PowerShell.Security",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "f89ab468ec1329474288fb0faad81600005be3da88dc2b8a2631cfbdd64f394a",
+              "name": "Microsoft.PowerShell.ThreadJob",
+              "version": "2.2.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "49e9e839447703f7b6a6a320a3c65a6dd5a17f4e33372fe02c7d32ad26a2d3ca",
+              "name": "Pester",
+              "version": "5.7.1"
+            },
+            {
+              "code_sha256": "b69773fc9080cfb958dc13c95e42a625553e9bca5dcbedc27231e5c183a4e869",
+              "name": "PSScriptAnalyzer",
+              "version": "1.25.0"
+            },
+            {
+              "code_sha256": "0b3b3b0d38b098f41531618f1d6ffa02de069c8e764e0c2c9a64fe4d96778dfb",
+              "name": "PSScriptAnalyzerTestHelper",
+              "version": "0.0"
+            },
+            {
+              "code_sha256": "44b99c8ee2623a6b9cd579a112958fc95056da4afdcd12bff8398d358f276354",
+              "name": "PSScriptAnalyzerTestHelper",
+              "version": "0.0"
+            }
+          ],
+          "load_before": [
+            {
+              "code_sha256": "95e193e52b66e19c8acd007ab2958b5020b3fdff52227162b09c5110f01e2685",
+              "name": "Microsoft.PowerShell.Archive",
+              "version": "1.2.6"
+            },
+            {
+              "code_sha256": "dd74a582d8b51a43cff32e7cf8cc546705ff9eabf07fbbf3130dbea61384f9af",
+              "name": "Microsoft.PowerShell.Host",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "7de24eb3d3653384abc3597288d08209632d5a774f09aa9459617afa628854d8",
+              "name": "Microsoft.PowerShell.Management",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "57f7e5bab619d62ac04a054ea193504ef7179637f4de2df6139907a6251e83f7",
+              "name": "Microsoft.PowerShell.Security",
+              "version": "7.0.0.0"
+            },
+            {
+              "code_sha256": "f89ab468ec1329474288fb0faad81600005be3da88dc2b8a2631cfbdd64f394a",
+              "name": "Microsoft.PowerShell.ThreadJob",
+              "version": "2.2.0"
+            },
+            {
+              "code_sha256": "e925002e23a57cfeedb9f732dcece161a7475dee0c2c0d38113eda0bac08f4b9",
+              "name": "Microsoft.PowerShell.Utility",
+              "version": "7.0.0.0"
+            }
+          ],
+          "load_identity_policy": "unique module name/version/code hash, not instance counts; every declared block retains a separate declaration id",
+          "manifest_sha256": "2b219f688bcdd67101040f845e530b22907d39bbf49089b4b5b2afaba7996791",
+          "member_sites": 287,
+          "module_context_sites": 0,
+          "module_loading_policy": "autoload disabled before preamble; explicit six-module pinned-runtime baseline asserted; matching subject manifest and original declared test harness only; profile disabled",
+          "native_module_source_files": 0,
+          "parse_error_files": 4,
+          "resolved_definition_file_contents": 9,
+          "resolved_definition_scope_sites": {
+            "declared-subject-module": 4112,
+            "original-subject": 86,
+            "pinned-runtime": 1060
+          },
+          "resolved_definition_sources_sha256": "1b93a9990e1056d4324a3e2481a354ecc582a7e74cefa3c8b281adbc76780b91",
+          "resolved_harness_sites": 3301,
+          "resolved_intrinsic_definition_contents": 1,
+          "runner_global_declaring_files": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "session_union_nonlocal_helper_sites": 4,
+          "session_union_nonlocal_private_helper_sites": 0,
+          "session_union_shadowed_declared_helper_sites": 2,
+          "subject_module": "PSScriptAnalyzer",
+          "subject_module_version": "1.25.0",
+          "unresolvable_policy": "all literal members, undeclared external commands/state and missing functions remain misses; no dot-sourcing of fixtures; native loader-owned source files use module context, ordinary test files use global context with session-wide declared-helper union, including per-file private utility preambles",
+          "unresolved_by_class": {
+            "declared_not_loaded": 8,
+            "external_application": 5,
+            "found_not_admitted": 0,
+            "harness": 0,
+            "member": 287,
+            "missing": 86,
+            "private_module_scope": 0,
+            "same_file_or_BeforeAll": 194
+          },
+          "unresolved_sites": 580
+        },
+        "native_oracle_sha256": "454df30c691073a2cf418252fc4f94e522437906c2e6cca19711242dd55fbe3e",
+        "native_pairs": 1168,
+        "new_generated_paths": 0,
+        "original_binary_classified_files": 17,
+        "original_scope": "frozen original Git-tracked eligible source; generated non-inline wrapper is load-state only, outside measurement membership",
+        "population": "all original tracked PowerShell source including UTF-16; no original file discarded",
+        "population_sha256": "b425968c4fe9975eb6155abd5c1b96c78d57ab8f9140a55bbc9a2d6b4528b310",
+        "preexisting_untracked_or_ignored_paths": 0,
+        "resolved_site_fraction": 0.9006509078451524,
+        "resolved_sites": 5258,
+        "revision": "f05704df81b2aca17dc027ee39b3fce106d418fc",
+        "subpath": "Tests",
+        "tracked_after": {
+          "bytes": 878391,
+          "entries": 250,
+          "files": 250,
+          "gitlinks": 0,
+          "sha256": "418da8434761da383351ef6a2f04034a1ae44707bc8b6fd861f32638e473c8af",
+          "symlinks": 0
+        },
+        "tracked_before": {
+          "bytes": 878391,
+          "entries": 250,
+          "files": 250,
+          "gitlinks": 0,
+          "sha256": "418da8434761da383351ef6a2f04034a1ae44707bc8b6fd861f32638e473c8af",
+          "symlinks": 0
+        },
+        "unique_written_pairs": 1489,
+        "unresolved_sites": 580,
+        "written_name_pairs_without_equal_native_target": 353
+      }
+    }
+  },
+  "canonical_reading_sha256": "21b988c90e7b26a5638e17128cfcca38bf16fc41e68e9779b56e0fc0fef300b8",
+  "current_code_sha256": {
+    "DiscoverHarness.ps1": "96337e651c0fdd3a7de746824977d637cc61455c3cb99c631bb5401f442df91b",
+    "ResolveCalls.ps1": "c000068147215680c387c5fc1f06b42e7f8ee54e7b0a6a7cb28ad01293f64768",
+    "followup_evidence.py": "470cadf1c3d88a4e9bafe633268eba47fc103e41263e4b38ed3235315926dcac",
+    "measure_binder.py": "84806d08c815e9be4f3173a562a29e20d4ddff25e55d549529298c8e4ffe79b4",
+    "prove_followups.py": "96a7875e50cb1084d02b49274a8df74749f881c60238811082accf7d22e88e27",
+    "prove_harness.py": "9f890e8d141ff84c92f72fc0f475ead74504e1434b229121ebb2d8b216a49c9a",
+    "prove_inventory.py": "d5915a7e2a8a6239e0b637657cca4ef74da02f6eaec56e3d08720a91cfa8486a",
+    "prove_mutations.py": "f13f1877d9ba62adc7fb407824ef68b3ebcf9295eb5b19942fdd015a4b514e95",
+    "tracked_set.py": "26b5bfca3744d2e37bd8e82eb3d9c37b2229ac0c6124b9e42370a49ce433aeb1"
+  },
+  "fixtures": {
+    "native_tests": 4,
+    "oracle_code_sha256": {
+      "DiscoverHarness.ps1": "96337e651c0fdd3a7de746824977d637cc61455c3cb99c631bb5401f442df91b",
+      "ResolveCalls.ps1": "c000068147215680c387c5fc1f06b42e7f8ee54e7b0a6a7cb28ad01293f64768",
+      "prove_followups.py": "96a7875e50cb1084d02b49274a8df74749f881c60238811082accf7d22e88e27"
+    },
+    "passed": true
+  },
+  "harness": {
+    "every_loaded_declaration_has_hashed_input": true,
+    "every_refused_declaration_named_with_reason": true,
+    "explicit_runtime_baseline_asserted": true,
+    "parser_inventory_partition_verified": true,
+    "psa_fresh_declared_probes": {
+      "shadowed_same_name_answers_with_original_origin": 2,
+      "union_only_answers_unresolved": 2
+    },
+    "unresolved_breakdown_complete": true
+  },
+  "historical_evidence_revision": "4e4dd054323143b7b7bba6826dde543fe7270ae5",
+  "historical_measurements_sha256": "a64e6007ac8983055cedd19dbb6b202a055fe8f1682f966250bd93fc956c129b",
+  "inventory": {
+    "all_declarations_partitioned": true,
+    "caps": [
+      {
+        "cap": "PWSH_ORACLE_HELPER_FILE_CAP",
+        "input_count": 8,
+        "limit": 7,
+        "whole_unit_refused": true
+      },
+      {
+        "cap": "PWSH_ORACLE_HELPER_BYTE_CAP",
+        "input_count": 1421,
+        "limit": 1420,
+        "whole_unit_refused": true
+      }
+    ],
+    "declared_not_loaded_targets": 2,
+    "executable_fixture_not_run": true,
+    "inventory_targets": 4,
+    "loaded_targets": 2,
+    "missing_helper_regression": true,
+    "module_variable_private_ancestor": true,
+    "native_declaration_discovery": true,
+    "oracle_code_sha256": {
+      "DiscoverHarness.ps1": "96337e651c0fdd3a7de746824977d637cc61455c3cb99c631bb5401f442df91b",
+      "ResolveCalls.ps1": "c000068147215680c387c5fc1f06b42e7f8ee54e7b0a6a7cb28ad01293f64768",
+      "prove_inventory.py": "d5915a7e2a8a6239e0b637657cca4ef74da02f6eaec56e3d08720a91cfa8486a"
+    }
+  },
+  "mutations": [
+    {
+      "FAIL": "FAIL: test_parenthesized_module_scope (__main__.FollowupTests)",
+      "file": "ResolveCalls.ps1",
+      "mutant": "omit-parenthesized-module-scope",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_definition_preamble_never_executes_transitive_support (__main__.FollowupTests)",
+      "file": "ResolveCalls.ps1",
+      "mutant": "execute-transitive-definition-preamble",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_all_helper_crossings_and_shadowed_origins (__main__.FollowupTests)",
+      "file": "ResolveCalls.ps1",
+      "mutant": "omit-test-helper-crossings",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_all_helper_crossings_and_shadowed_origins (__main__.FollowupTests)",
+      "file": "DiscoverHarness.ps1",
+      "mutant": "omit-transitive-declaring-closure",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_all_helper_crossings_and_shadowed_origins (__main__.FollowupTests)",
+      "file": "ResolveCalls.ps1",
+      "mutant": "omit-shadowed-declared-origin-count",
+      "restored": "GREEN"
+    },
+    {
+      "FAIL": "FAIL: test_declared_suite_runner_globals_are_explicit (__main__.FollowupTests)",
+      "file": "ResolveCalls.ps1",
+      "mutant": "omit-declared-suite-runner-global",
+      "restored": "GREEN"
+    }
+  ],
+  "policy": "Fresh full binder/fixture runs; unchanged original populations and native pair digests. Historical runtime, resolved-pair scores and 21-mutant proof remain at the recorded revision, not relabelled as current. No canonical regrade. Declaration-closure sensitivity is not a simulated isolated whole-suite run; four fresh PSA probes verify its two missing answers and two same-name shadowed origins."
+}

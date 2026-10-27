@@ -44,7 +44,7 @@ The screen verifies HEAD and a clean tracked tree, captures exact `git ls-files 
 
 ## Existing clang pipeline, following CUDA
 
-The design reuses [cuda-compdb.py](../scip-clang/cuda-compdb.py)'s synthesized-database pattern, [clang-calls](../clang-calls) for written spelling/expansion sites, [clang-ast-defs](../clang-ast-defs) for ranges and compiler-derived stand-ins, and [preproc](../scip-clang/preproc) for `active_lines`. Reconstructed inputs are **tier B**, including any future scip-clang consumer. The in-tree runner pins scip-clang 0.4.0; `-x cl` indexing remains an untried next probe.
+The design reuses [cuda-compdb.py](../scip-clang/cuda-compdb.py)'s synthesized-database pattern, [clang-calls](../clang-calls) for written spelling/expansion sites, [clang-ast-defs](../clang-ast-defs) for ranges and compiler-derived stand-ins, and [preproc](../scip-clang/preproc) for `active_lines`. Reconstructed inputs are **tier B**, including any future scip-clang consumer. The in-tree runner pins scip-clang 0.4.0; the stock probe refuses `.cl` inputs before indexing because its main-file allowlist omits the extension. Extension-patch and alias/remap routes remain untried; this is no semantic incompatibility claim.
 
 [compdb.py](compdb.py) verifies the pinned compiler, headers and complete tracked source tree, snapshots regular files and synthesizes one CL3.0/SPIR64 entry per tracked lowercase `.cl`. It parses no AST. Symlinks and gitlinks are counted and omitted from this isolated compile snapshot, not silently resolved. A future subject needing those includes must evidence them before grading. Only the two pinned OpenCL resource headers enter the minimal resource snapshot. Unsupported non-UTF-8 paths are refused explicitly. The baseline accepts no extra command flags.
 
@@ -62,7 +62,7 @@ The runner builds and invokes the three unmodified in-tree tools with `-tier B` 
 
 [sdk-contexts.json](sdk-contexts.json) records host-derived CL2.0/CL3.0 and define branches, plus reduce's appended generated helper source. The chosen no-define baseline does not cover every runtime variant. Implementation must filter **both truth and extractor sites** through the same `preproc.active_lines`. A future link-unit companion must follow [CUDA's build-derived grouping](../scip-clang/cuda-samples.sh), using evidenced OpenCL program source assembly, never one inferred program per file. No L3 grouping is claimed here.
 
-The Apple binary pin is historical and host-specific. [llvm-plan.json](llvm-plan.json) pins official upstream LLVM 21.1.8 archives for macOS ARM64 and Linux X64/ARM64. They have not been downloaded or run: implementation must verify the chosen archive and replay the oracle evidence before READY.
+The Apple binary pin is historical and host-specific. [llvm-plan.json](llvm-plan.json) pins official upstream LLVM 21.1.8 archives for macOS ARM64 and Linux X64/ARM64. Only macOS ARM64 has been downloaded, verified and replayed as documented below. Linux X64 and ARM64 remain unqualified.
 
 ## Historical throwaway capability probe
 
@@ -92,3 +92,235 @@ workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_replay
 ```
 
 The frozen eight-project native pool, whose rule was registered after seven outcomes and before PyOpenCL, fails at **138/386 (35.75%)** for the dedicated grammar and **380/386 (98.45%)** for C, with zero faults. Its 386 files and 382 distinct blobs are never deduplicated for the gate. [The counts receipt](../../../docs/assessments/data/opencl-c-pool-2026-10-26/pool-counts.json) separates primary and diagnostic counts. Use the committed `pool_audit.py --subject id=checkout` once for every primary ID in `pool-rule.json`, optionally adding `--diagnostic id=checkout=full-pin`, with `--out workspace/triage/opencl-r3/pool-counts.json`. The CLI requires every and only the frozen primary set, verifies source identities and emits counts plus the policy digest. All checkout paths and raw inventories remain private.
+
+## Explicit upstream LLVM replay
+
+The historical commands above still default to the unchanged Apple compiler pin.
+For implementation qualification, `--compiler-pins` selects an explicit
+`opencl-c-compiler-pins-v1` profile. It binds the compiler and exactly two OpenCL
+resource headers, records the pin-file digest plus platform/archive identity, and
+keeps the reconstructed database at tier B. The independent `--clang-sha256`
+assertion on `compdb.py` must still match the selected profile. A version label
+alone is never accepted in place of byte pins.
+
+[The macOS ARM64 profile](llvm-21.1.8-macos-arm64.json) was qualified from the
+official archive in `llvm-plan.json`: its SHA-256 was checked before extraction
+and again before recording compiler/header hashes. Only `bin/clang`, its
+`bin/clang-21` target and the two OpenCL headers were extracted. No global
+installation is required. Other planned platforms remain unqualified.
+
+```sh
+printf '%s  %s\n' \
+  b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669 \
+  workspace/tools/llvm-21.1.8/LLVM-21.1.8-macOS-ARM64.tar.xz | shasum -a 256 -c -
+compiler=workspace/tools/llvm-21.1.8/LLVM-21.1.8-macOS-ARM64/bin/clang
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/replay-sdk.py \
+  --sdk workspace/triage/opencl-r1/subjects/sdk \
+  --clang "$compiler" --resource-dir "$("$compiler" -print-resource-dir)" \
+  --compiler-pins calibration/oracles/opencl-c/llvm-21.1.8-macos-arm64.json \
+  --out workspace/oracle-llvm-sdk-reviewed/deep/replay
+```
+
+Use a fresh output directory and the same nice/load/cache controls as above. The
+[SDK receipt](../../../docs/assessments/data/opencl-c-implementation-2026-10-26/llvm-sdk.json)
+reports 10 units, zero errors/skips, 23 function ranges, 147 resolved written
+sites plus 26 declarations, and 89 active-line ranges covering 546 lines. These
+are actual upstream LLVM results, not inferred Apple/LLVM parity. The receipt's
+path-bound run hashes do not assert cross-host reproducibility. This proves a
+measurement instrument only, not a passing grammar gate or an OpenCL level.
+
+Public compiler identity omits fetch URLs, which can carry credentials, and records
+the canonical compiler archive member. The selected profile retains its source URL.
+
+## Reproduce the five-candidate native grammar gate
+
+This native-only screen requires `tree-sitter` CLI 0.26.11, native `clang`/`clang++`,
+and Python 3.13 with `tree-sitter==0.25.2`. Place the verified candidate archives under
+`workspace/opencl-c/archives/` using the filenames below. `build_native.py` checks every
+archive, licence and patch digest against `grammar-candidates.json`; it writes each build
+receipt beside the native library. Use fresh ignored output directories.
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate opencl-stock \
+  --archive workspace/opencl-c/archives/tree-sitter-opencl-8e1d24a5.tar.gz \
+  --out workspace/opencl-c/build/opencl-stock
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate c-stock \
+  --archive workspace/opencl-c/archives/tree-sitter-c-b780e47f.tar.gz \
+  --out workspace/opencl-c/build/c-stock
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate opencl-c-patched \
+  --archive workspace/opencl-c/archives/tree-sitter-c-b780e47f.tar.gz \
+  --tree-sitter tree-sitter \
+  --out workspace/opencl-c/build/opencl-c-patched
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate cpp-stock \
+  --archive workspace/opencl-c/archives/tree-sitter-cpp-v0.23.4.tar.gz \
+  --out workspace/opencl-c/build/cpp-stock
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate cpp-head \
+  --archive workspace/opencl-c/archives/tree-sitter-cpp-8b5b49eb.tar.gz \
+  --out workspace/opencl-c/build/cpp-head
+```
+
+The following macOS command screens every frozen primary subject against all five native
+grammars, uses `opencl-stock` as the transition baseline, and rechecks pristine dedicated
+and C builds on the required hashcat diagnostic. The `--subject` set must contain every and
+only the eight IDs fixed by `pool-rule.json`; each checkout must be at its recorded pin.
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/grammar_screen.py \
+  --subject sdk=workspace/opencl-c/subjects/sdk \
+  --subject darktable=workspace/opencl-c/subjects/darktable \
+  --subject opencv=workspace/opencl-c/subjects/opencv \
+  --subject arrayfire=workspace/opencl-c/subjects/arrayfire \
+  --subject clblas=workspace/opencl-c/subjects/clblas \
+  --subject rodinia=workspace/opencl-c/subjects/rodinia \
+  --subject shoc=workspace/opencl-c/subjects/shoc \
+  --subject pyopencl=workspace/opencl-c/subjects/pyopencl \
+  --grammar opencl-stock=tree_sitter_opencl=workspace/opencl-c/build/opencl-stock/native.dylib \
+  --grammar c-stock=tree_sitter_c=workspace/opencl-c/build/c-stock/native.dylib \
+  --grammar opencl-patched=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --grammar cpp-stock=tree_sitter_cpp=workspace/opencl-c/build/cpp-stock/native.dylib \
+  --grammar cpp-head=tree_sitter_cpp=workspace/opencl-c/build/cpp-head/native.dylib \
+  --baseline opencl-stock \
+  --hashcat workspace/opencl-c/subjects/hashcat \
+  --hashcat-grammar opencl=tree_sitter_opencl=workspace/opencl-c/build/opencl-stock/native.dylib \
+  --hashcat-grammar c=tree_sitter_c=workspace/opencl-c/build/c-stock/native.dylib \
+  --hashcat-build-receipt opencl=workspace/opencl-c/build/opencl-stock/build-receipt.json \
+  --hashcat-build-receipt c=workspace/opencl-c/build/c-stock/build-receipt.json \
+  --out workspace/opencl-c/screen
+```
+
+Reproduce the separate holdout from the selected repository and full commit in
+`holdout-rule.json`, using the raw-checkout procedure above. This invokes the same
+committed `triage.py` over all 53 files, independently of the primary-pool CLI:
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/triage.py \
+  --subject workspace/opencl-c/holdout/compute-samples \
+  --commit 1b2d5d2afff61cdc7370778849f848b76cee00a6 \
+  --grammar opencl-stock=tree_sitter_opencl=workspace/opencl-c/build/opencl-stock/native.dylib \
+  --grammar c-stock=tree_sitter_c=workspace/opencl-c/build/c-stock/native.dylib \
+  --grammar cpp-stock=tree_sitter_cpp=workspace/opencl-c/build/cpp-stock/native.dylib \
+  --grammar cpp-head=tree_sitter_cpp=workspace/opencl-c/build/cpp-head/native.dylib \
+  --grammar opencl-patched=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --out workspace/opencl-c/holdout-screen
+```
+
+`workspace/opencl-c/holdout-screen/summary.json` is the measured object under
+`holdout.json`'s `measurement` key. The surrounding receipt records the frozen
+selection rule, separate role and canonical-membership audit, not another parse.
+Never copy this holdout into a canonical corpus shard or aggregate.
+
+The public receipt targets are
+`docs/assessments/data/opencl-c-grammar-gate-2026-10-26/screen.json`, `builds.json` and
+`holdout.json`. The independently pinned 53-file Intel holdout measured 25/53 dedicated
+and 2/53 patched ERROR-or-MISSING files, with zero faults. Its result stays separate from
+the failing 386-file primary gate and never enters canonical aggregation. Raw inventories, diagnostic rows and local paths remain under the screen's
+`private/` directory.
+
+The native gate remains unmet: patched 63/386 (16.32%) versus dedicated 138/386,
+with 75 error-to-clean and zero clean-to-error/fault transitions. The 137-case
+corpus passes. These are calibration-only native results; no product WASM,
+dialect, reading or support level is shipped. The original candidate has 23
+non-clBLAS failures. That count does not prove all 23 require macro expansion. The statement-level
+semicolonless-macro route below measures 53/386 (13.73%), including 13 non-clBLAS
+failures, 10 error-to-clean and zero regressions or faults. The G-R6 intermediate
+trigger of at most 19 non-clBLAS failures has fired. It does not authorize a
+prepass. Any later prepass must be runtime product
+behavior supported by a convention in two independent projects, retain every
+file, and receive the owner ruling required by G-R6.
+
+Focused proof:
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_build_native.py
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_grammar_screen.py
+```
+
+## Binding review follow-up
+
+The original 63-file baseline is preserved in `screen.json`, `builds.json` and
+`residual-labels.json`; no later candidate silently replaces that evidence.
+The 63-row residual receipt includes only the failing subset's subject-relative
+paths, labels, first ERROR/MISSING kind and line, pins and content identities.
+These paths are explicitly authorized by the binding review. Labels are a manual
+classification, not a claim that a raw grammar cannot handle a class.
+
+Reproduce the original residual receipt after the five-candidate build/screen
+commands above, using a fresh native build with the same pinned parser source:
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/residual_audit.py \
+  --screen-dir workspace/opencl-c/screen \
+  --subjects-root workspace/opencl-c/subjects \
+  --grammar workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --build-receipt workspace/opencl-c/build/opencl-c-patched/build-receipt.json \
+  --out workspace/opencl-c/residual-reproduced.json
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/test_residual_audit.py
+```
+
+The generator verifies fresh screen population/policy/counts, subject pins,
+source Git blobs, the native hash and a build receipt with the same patch and
+parser source. Native linker identities may differ in a fresh build; a changed
+parser, source, count, pin or diagnostic subset is refused. Thus the command
+does not depend on the old ignored native binary.
+
+The separate `opencl-c-semicolonless` candidate adds an identifier-based macro
+statement only in statement/top-level positions, with an immediate physical
+newline and lower dynamic priority than a valid macro-typed declaration. Its
+corpus covers adjacent declarations/function heads, same- and split-line typed
+declarations, multiline arguments and malformed assignment/boundary negatives.
+A bare call followed by a newline is not semantically distinguishable from a
+macro invocation in raw syntax; no compiler-validity claim follows from accepting
+it. The final shared-identifier build passes 145 corpus cases. The new primary receipt
+measures 53/386, and the reused holdout remains 2/53. Because this route was tuned
+after the original holdout was read, its holdout result is diagnostic, not independent
+validation. The bounded five-project host-string convention search found no second
+independent match; GitHub code search returned 401, which proves no absence. No
+runtime prepass is implemented or authorized. See `template-convention-search.json`.
+
+Build the new candidate with the same pinned C archive and then remeasure the exact
+subject checkouts used above. All outputs are fresh and ignored:
+
+```sh
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/build_native.py \
+  --candidate opencl-c-semicolonless \
+  --archive workspace/opencl-c/archives/tree-sitter-c-b780e47f.tar.gz \
+  --tree-sitter tree-sitter \
+  --out workspace/opencl-c/build/opencl-c-semicolonless
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/grammar_screen.py \
+  --subject sdk=workspace/opencl-c/subjects/sdk \
+  --subject darktable=workspace/opencl-c/subjects/darktable \
+  --subject opencv=workspace/opencl-c/subjects/opencv \
+  --subject arrayfire=workspace/opencl-c/subjects/arrayfire \
+  --subject clblas=workspace/opencl-c/subjects/clblas \
+  --subject rodinia=workspace/opencl-c/subjects/rodinia \
+  --subject shoc=workspace/opencl-c/subjects/shoc \
+  --subject pyopencl=workspace/opencl-c/subjects/pyopencl \
+  --grammar opencl-patched=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --grammar opencl-semicolonless=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-semicolonless/native.dylib \
+  --baseline opencl-patched \
+  --hashcat workspace/opencl-c/subjects/hashcat \
+  --hashcat-grammar opencl=tree_sitter_opencl=workspace/opencl-c/build/opencl-stock/native.dylib \
+  --hashcat-grammar c=tree_sitter_c=workspace/opencl-c/build/c-stock/native.dylib \
+  --hashcat-build-receipt opencl=workspace/opencl-c/build/opencl-stock/build-receipt.json \
+  --hashcat-build-receipt c=workspace/opencl-c/build/c-stock/build-receipt.json \
+  --out workspace/opencl-c/semicolonless-screen
+workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/triage.py \
+  --subject workspace/opencl-c/holdout/compute-samples \
+  --commit 1b2d5d2afff61cdc7370778849f848b76cee00a6 \
+  --grammar opencl-patched=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-patched/native.dylib \
+  --grammar opencl-semicolonless=tree_sitter_opencl=workspace/opencl-c/build/opencl-c-semicolonless/native.dylib \
+  --out workspace/opencl-c/semicolonless-holdout
+```
+
+The patch-directory README marks both patches calibration-only and unregistered;
+no lock row or product grammar is added. The original eight X-R8 sites and exact
+public verification methods are in `xr8-sites.json` and `verification.json`.
+The two tag-API hashes use compact JSON serialization with preserved key order,
+default ASCII escaping and no trailing newline; they are not raw-wire hashes
+that every HTTP client must reproduce. OpenCLio source URLs consistently use
+`sniarchos/openclio`.

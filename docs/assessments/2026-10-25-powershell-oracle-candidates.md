@@ -44,15 +44,25 @@ private inventories retain paths.
 The binder uses a **session-wide union** of declared per-file helpers, including
 private product utility preambles. Native module-loader sources use that
 module's private session; ordinary files use global lookup with the helper
-union. This does not model isolated per-file loading. The union answers **13
-Pester sites outside their private helper's declaring files**: the 12 identified
-in review, plus one Format-Number site after Format.ps1 is loaded. Ten of the
-reviewed sites call utility functions; two sit inside `& $pesterModule { ... }`.
-The native diagnostic class now recognises that module-variable ancestor as
-private scope when an answer is absent. No blanket claim that private helpers
-cannot answer unrelated test files is made.
+union. This does not model isolated per-file loading. The follow-up census links
+each actual native function identity to its loading declarations, then compares
+all such answers with the query file's transitive declaring closure. The original
+test.ps1 runner and tst/Pester.BeforeContainer.ps1 hook are explicit Pester-global
+sources; the root manifest is implicit declared state. Own-module definitions
+remain legitimate in their native private context. This finds **17 Pester and
+four PSScriptAnalyzer nonlocal answers**, including three/two shadowed origins.
+The previous product-private-only counter remains 13/0 and is not the complete
+crossing census. Private-scope classification now recognises both variable and
+parenthesised module expressions with `&` or dot invocation and a scriptblock
+argument, including `& (Get-Module Pester) { ... }`; no variable-name convention
+is required. Twenty Pester sites change diagnostic class without changing truth.
 
-Executable test bodies are not dot-sourced. Refusals comprise one executable
+Admitted definition files are no longer dot-sourced wholesale. Only their
+top-level native FunctionDefinitionAst bodies are compiled, preserving original
+source metadata. Conditional preambles, their transitive support files and type
+statements are not executed by this function-only route. An authored two-hop
+support fixture proves that executable setup cannot run in collector scope.
+Executable test bodies remain refused. Refusals comprise one executable
 Pester coverage fixture (three unresolved references) and five undeclared CWD or
 PSDrive paths; PSScriptAnalyzer has three executable test-file dot-sources (one
 unresolved reference) and the absent DSC fixture module (seven module-qualified
@@ -88,7 +98,14 @@ Parser-derived helper loading resolves 40 / 12 additional sites over the
 previous session, with zero lost or retargeted answers and an unchanged literal
 population. These are measurement repairs, not producer improvements.
 PSScriptAnalyzer is **three sites below** its maximum integer unresolved count
-of 583. Pester remains above 10%; its 2,175 member sites alone exceed that share
+of 583 in the recorded session union (580), or **one below** after removing its
+two union-only helper answers (582). Its other two crossings have same-name
+alternatives in the file's own declared helper, with different definition hashes;
+the receipt records those shadowed origins. Four fresh declared-session probes
+verify the two missing and two retargeted-origin answers. This is a sensitivity
+check, not an isolated whole-suite execution. Pester's analogous count is 3,140
+(3,126 plus 14 union-only answers); three further crossings have shadowed
+in-closure alternatives. Pester remains above 10%; its 2,175 member sites alone exceed that share
 of 18,842. The each-subject condition therefore remains unsatisfied, and no
 excellent whole-population L2 grade is established.
 
@@ -105,7 +122,8 @@ resolved sites, counting the declared subject-module re-import in the union. No 
 
 Unresolved classes partition all original unknown sites; these are diagnostic
 source-context classes, not fabricated native targets. Private-scope means the
-site is inside an InModuleScope/InPesterModuleScope or module-variable invocation AST ancestor. Same-file means
+site is inside an InModuleScope/InPesterModuleScope or a module-expression
+invocation AST ancestor with a scriptblock argument. Same-file means
 a definition exists in that file, including BeforeAll-defined functions; it does
 not claim that the definition has executed or is visible in the clean session.
 Found-but-not-admitted records a native command rejected by the provenance
@@ -118,12 +136,12 @@ executed merely to make its static query succeed.
 |---|---:|---:|
 | Literal member | 2,175 | 287 |
 | Declared harness export | 0 | 0 |
-| Same-file / BeforeAll definition | 386 | 194 |
-| Private module scope | 470 | 0 |
+| Same-file / BeforeAll definition | 385 | 194 |
+| Private module scope | 490 | 0 |
 | Declared but not loaded | 3 | 8 |
 | External application (not admitted as a hit) | 16 | 5 |
 | Found but not admitted | 0 | 0 |
-| Missing in declared session | 76 | 86 |
+| Missing in declared session | 57 | 86 |
 | Total | 3,126 | 580 |
 
 The native population retains **17 original UTF-16/NUL-containing files** in
@@ -278,6 +296,14 @@ Primary source identities: [native engine release](https://github.com/PowerShell
 Searches are bounded and dated; none claims universal absence of a future producer.
 
 ## Scope, independence and failure proofs
+
+The [follow-up receipt](data/powershell-oracle-2026-10-26/followups.json) records a
+fresh complete binder census, four focused native regressions, six killed/restored
+mutants, the original inventory/cap proof and the four isolated PSA probes.
+Both native pair digests and original site-population hashes equal the historical
+measurement exactly. Original populations, targets and canonical grades therefore
+remain unchanged. Historical runtime/product/21-mutant proofs below retain their
+recorded revision; they are not claimed as rerun with the modified collector.
 
 Exact before/after tracked manifests agree. Pester: 409 regular tracked files /
 5,724,617 bytes, digest `c0ae6755def5de48b890d049d121fdab0ba0b6807426161cf4660eb3eb16180e`.

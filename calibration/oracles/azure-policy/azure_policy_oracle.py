@@ -4,7 +4,9 @@ LB-Q-azure-policy). Python standard library only.
 
     python azure_policy_oracle.py -subject <checkout> -out <file> [-files-out <file>] [-summary-out <file>]
 
-Tier C: no Azure tool evaluates a policy definition offline. The oracle is a
+Tier C: this independent walk does not execute native policy evaluation.
+The official extension has an unmeasured offline evaluator; see README.md.
+The oracle is a
 JSON walk written apart from the dialect: its own JSON reader (a small
 recursive-descent parser that records the line each value starts on and each
 container ends on; it shares nothing with fathom's decoder), then the

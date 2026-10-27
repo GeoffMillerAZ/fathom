@@ -1,0 +1,2614 @@
+diff --git a/grammar.js b/grammar.js
+--- a/grammar.js
++++ b/grammar.js
+@@ -33,9 +33,13 @@
+ };
+
+ module.exports = grammar({
+-  name: 'c',
++  name: 'opencl',
+
+   conflicts: $ => [
++    [$.preproc_if_in_function_definition_head, $._declarator],
++    [$.preproc_ifdef_in_function_definition_head, $._declarator],
++    [$._conditional_function_body_item, $._declaration_modifiers, $.attributed_statement],
++    [$.macro_declarator, $.type_specifier, $.macro_type_specifier],
+     [$.type_specifier, $._declarator],
+     [$.type_specifier, $._declarator, $.macro_type_specifier],
+     [$.type_specifier, $.expression],
+@@ -45,14 +49,23 @@
+     [$.sized_type_specifier],
+     [$.attributed_statement],
+     [$._declaration_modifiers, $.attributed_statement],
++    [$._block_item, $._declaration_modifiers, $.attributed_statement],
+     [$.enum_specifier],
+     [$.type_specifier, $._old_style_parameter_list],
+     [$.parameter_list, $._old_style_parameter_list],
++    [$.parameter_list],
++    [$.parameter_declaration],
++    [$.argument_list],
+     [$.function_declarator, $._function_declaration_declarator],
+     [$._block_item, $.statement],
+     [$._top_level_item, $._top_level_statement],
+     [$.type_specifier, $._top_level_expression_statement],
+     [$.type_qualifier, $.extension_expression],
++    [$.if_statement, $._preproc_if_statement_header],
++    [$.for_statement, $.preproc_statement_header],
++    [$.while_statement, $.preproc_statement_header],
++    [$.preproc_if, $.preproc_if_in_conditional_if_statement],
++    [$.preproc_ifdef, $.preproc_ifdef_in_conditional_if_statement],
+   ],
+
+   extras: $ => [
+@@ -61,6 +74,7 @@
+   ],
+
+   inline: $ => [
++    $._function_declarator_head,
+     $._type_identifier,
+     $._field_identifier,
+     $._statement_identifier,
+@@ -86,6 +100,7 @@
+
+     // Top level items are block items with the exception of the expression statement
+     _top_level_item: $ => choice(
++      $.conditional_function_definition,
+       $.function_definition,
+       alias($._old_style_function_definition, $.function_definition),
+       $.linkage_specification,
+@@ -109,6 +124,7 @@
+       $.declaration,
+       $.statement,
+       $.attributed_statement,
++      prec(-1, $.attribute_specifier),
+       $.type_definition,
+       $._empty_declaration,
+       $.preproc_if,
+@@ -157,12 +173,85 @@
+       token.immediate(/\r?\n/),
+     ),
+
+-    ...preprocIf('', $ => $._block_item),
++    preproc_pragma_statement: $ => seq(
++      field('directive', alias(preprocessor('pragma'), $.preproc_directive)),
++      field('argument', optional($.preproc_arg)),
++      token.immediate(/\r?\n/),
++      field('body', $.for_statement),
++    ),
++
++    preproc_conditional_statement: $ => prec.dynamic(1, seq(
++      repeat1(choice(
++        alias($.preproc_empty_if, $.preproc_if),
++        alias($.preproc_empty_ifdef, $.preproc_ifdef),
++      )),
++      field('body', $._control_statement),
++    )),
++
++    preproc_empty_if: $ => seq(
++      preprocessor('if'),
++      field('condition', $._preproc_expression),
++      '\n',
++      preprocessor('endif'),
++    ),
++
++    preproc_empty_ifdef: $ => seq(
++      choice(preprocessor('ifdef'), preprocessor('ifndef')),
++      field('name', $.identifier),
++      preprocessor('endif'),
++    ),
++
++    ...preprocIf('_in_control_body', $ => $._control_statement, 0, true, true),
++    ...preprocIf(
++      '_in_conditional_if_statement',
++      $ => alias($._preproc_if_statement_header, $.preproc_statement_header),
++      0,
++      false,
++      true,
++      true,
++    ),
++    ...preprocIf('', $ => choice(
++      $._block_item,
++      alias($._preproc_if_statement_header, $.preproc_statement_header),
++      $.preproc_statement_header,
++      $.else_clause,
++    )),
+     ...preprocIf('_in_field_declaration_list', $ => $._field_declaration_list_item),
+     ...preprocIf('_in_enumerator_list', $ => seq($.enumerator, ',')),
+     ...preprocIf('_in_enumerator_list_no_comma', $ => $.enumerator, -1),
+-
+-    preproc_arg: _ => token(prec(-1, /\S([^/\n]|\/[^*]|\\\r?\n)*/)),
++    ...preprocIf('_in_parameter_list', $ => seq(
++      optional(','),
++      commaSep1(choice($.parameter_declaration, $.variadic_parameter)),
++      optional(','),
++    ), -1, false),
++    ...preprocIf('_in_function_declarator', $ => $.macro_declarator, -1, false, true, true),
++    ...preprocIf('_in_function_definition_head', $ => seq(
++      optional($.ms_call_modifier),
++      $._declaration_specifiers,
++      optional($.ms_call_modifier),
++      field('declarator', $.function_declarator),
++      '{',
++    ), 0, false, true, true),
++    ...preprocIf('_in_argument_list_trailing_comma', $ => seq(
++      commaSep1(choice($.expression, $.compound_statement)),
++      ',',
++    ), -1, false),
++    ...preprocIf('_in_parenthesized_expression', $ => $.preproc_binary_suffix, -1, false),
++
++    preproc_arg: $ => repeat1(choice(
++      token(prec(-1, /\S([^\/"'\n]|\\\r?\n)*/)),
++      token(seq(
++        '"',
++        repeat(choice(/[^"\\\n]/, /\\(.|\r?\n)/)),
++        '"',
++      )),
++      token(seq(
++        "'",
++        repeat(choice(/[^'\\\n]/, /\\(.|\r?\n)/)),
++        "'",
++      )),
++      $.comment,
++    )),
+     preproc_directive: _ => /#[ \t]*[a-zA-Z0-9]\w*/,
+
+     _preproc_expression: $ => choice(
+@@ -245,6 +334,27 @@
+       field('body', $.compound_statement),
+     ),
+
++    conditional_function_definition: $ => seq(
++      field('head', choice(
++        alias($.preproc_if_in_function_definition_head, $.preproc_if),
++        alias($.preproc_ifdef_in_function_definition_head, $.preproc_ifdef),
++      )),
++      repeat($._conditional_function_body_item),
++      '}',
++    ),
++
++    _conditional_function_body_item: $ => choice(
++      $.declaration,
++      $.statement,
++      prec(-1, $.attribute_specifier),
++      $.type_definition,
++      $._empty_declaration,
++      $.preproc_include,
++      $.preproc_def,
++      $.preproc_function_def,
++      $.preproc_call,
++    ),
++
+     _old_style_function_definition: $ => seq(
+       optional($.ms_call_modifier),
+       $._declaration_specifiers,
+@@ -280,6 +390,9 @@
+     _declaration_modifiers: $ => choice(
+       $.storage_class_specifier,
+       $.type_qualifier,
++      $.function_qualifier,
++      $.access_qualifier,
++      $.pipe_qualifier,
+       $.attribute_specifier,
+       $.attribute_declaration,
+       $.ms_declspec_modifier,
+@@ -473,9 +586,20 @@
+       field('declarator', optional($._abstract_declarator)),
+     ))),
+
++    _function_declarator_head: $ => choice(
++      $._declarator,
++      alias($.preproc_if_in_function_declarator, $.preproc_if),
++      alias($.preproc_ifdef_in_function_declarator, $.preproc_ifdef),
++    ),
++
++    macro_declarator: $ => seq(
++      field('name', $.identifier),
++      field('arguments', $.argument_list),
++    ),
++
+     function_declarator: $ => prec.right(1,
+       seq(
+-        field('declarator', $._declarator),
++        field('declarator', $._function_declarator_head),
+         field('parameters', $.parameter_list),
+         optional($.gnu_asm_expression),
+         repeat(choice(
+@@ -488,7 +612,7 @@
+
+     _function_declaration_declarator: $ => prec.right(1,
+       seq(
+-        field('declarator', $._declarator),
++        field('declarator', $._function_declarator_head),
+         field('parameters', $.parameter_list),
+         optional($.gnu_asm_expression),
+         repeat($.attribute_specifier),
+@@ -568,8 +692,12 @@
+
+     type_qualifier: $ => choice(
+       'const',
++      '__const',
++      '__const__',
+       'constexpr',
+       'volatile',
++      '__volatile',
++      '__volatile__',
+       'restrict',
+       '__restrict__',
+       '__extension__',
+@@ -577,8 +705,35 @@
+       '_Noreturn',
+       'noreturn',
+       '_Nonnull',
++      $.address_space_qualifier,
+       $.alignas_qualifier,
+     ),
++
++    address_space_qualifier: _ => token(prec(1, choice(
++      'global',
++      '__global',
++      'local',
++      '__local',
++      'constant',
++      '__constant',
++      'private',
++      '__private',
++      'generic',
++      '__generic',
++    ))),
++
++    function_qualifier: _ => token(prec(1, choice('kernel', '__kernel'))),
++
++    access_qualifier: _ => token(prec(1, choice(
++      'read_only',
++      '__read_only',
++      'write_only',
++      '__write_only',
++      'read_write',
++      '__read_write',
++    ))),
++
++    pipe_qualifier: _ => token(prec(1, 'pipe')),
+
+     alignas_qualifier: $ => seq(
+       choice('alignas', '_Alignas'),
+@@ -751,10 +906,27 @@
+
+     variadic_parameter: _ => '...',
+
++    _parameter_list_preproc: $ => choice(
++      alias($.preproc_if_in_parameter_list, $.preproc_if),
++      alias($.preproc_ifdef_in_parameter_list, $.preproc_ifdef),
++    ),
++
+     parameter_list: $ => seq(
+       '(',
+       choice(
+         commaSep(choice($.parameter_declaration, $.variadic_parameter)),
++        seq(
++          repeat(seq(choice($.parameter_declaration, $.variadic_parameter), ',')),
++          optional(choice($.parameter_declaration, $.variadic_parameter)),
++          $._parameter_list_preproc,
++          repeat(choice(
++            seq(optional(','), choice(
++              alias($._parameter_declaration_after_preproc, $.parameter_declaration),
++              $.variadic_parameter,
++            )),
++            seq(optional(','), $._parameter_list_preproc),
++          )),
++        ),
+         $.compound_statement,
+       ),
+       ')',
+@@ -774,10 +946,19 @@
+       repeat($.attribute_specifier),
+     ),
+
++    _parameter_declaration_after_preproc: $ => prec.right(seq(
++      $._declaration_specifiers,
++      optional(field('declarator', choice(
++        $._declarator,
++        $._abstract_declarator,
++      ))),
++      repeat($.attribute_specifier),
++    )),
++
+     // Statements
+
+     attributed_statement: $ => seq(
+-      repeat1($.attribute_declaration),
++      repeat1(choice($.attribute_declaration, $.attribute_specifier)),
+       $.statement,
+     ),
+
+@@ -791,6 +972,9 @@
+       $.labeled_statement,
+       $.compound_statement,
+       $.expression_statement,
++      $.preproc_if,
++      $.preproc_ifdef,
++      $.preproc_conditional_if_statement,
+       $.if_statement,
+       $.switch_statement,
+       $.do_statement,
+@@ -811,6 +995,7 @@
+       $.compound_statement,
+       alias($._top_level_expression_statement, $.expression_statement),
+       $.if_statement,
++      $.preproc_conditional_if_statement,
+       $.switch_statement,
+       $.do_statement,
+       $.while_statement,
+@@ -844,11 +1029,57 @@
+     if_statement: $ => prec.right(seq(
+       'if',
+       field('condition', $.parenthesized_expression),
+-      field('consequence', $.statement),
++      field('consequence', $._control_body),
+       optional(field('alternative', $.else_clause)),
+     )),
+
+-    else_clause: $ => seq('else', $.statement),
++    preproc_conditional_if_statement: $ => prec.dynamic(1, prec.right(seq(
++      choice(
++        alias($.preproc_if_in_conditional_if_statement, $.preproc_if),
++        alias($.preproc_ifdef_in_conditional_if_statement, $.preproc_ifdef),
++      ),
++      field('consequence', $._control_body),
++      optional(field('alternative', $.else_clause)),
++    ))),
++
++    else_clause: $ => seq('else', $._control_body),
++
++    _control_body: $ => choice(
++      $.preproc_conditional_statement,
++      $._control_statement,
++    ),
++
++    _control_statement: $ => choice(
++      $.case_statement,
++      $.attributed_statement,
++      $.labeled_statement,
++      $.compound_statement,
++      $.expression_statement,
++      $.if_statement,
++      $.preproc_conditional_if_statement,
++      $.switch_statement,
++      $.do_statement,
++      $.while_statement,
++      $.for_statement,
++      $.return_statement,
++      $.break_statement,
++      $.continue_statement,
++      $.goto_statement,
++      $.seh_try_statement,
++      $.seh_leave_statement,
++      alias($.preproc_if_in_control_body, $.preproc_if),
++      alias($.preproc_ifdef_in_control_body, $.preproc_ifdef),
++    ),
++
++    _preproc_if_statement_header: $ => seq(
++      'if',
++      field('condition', $.parenthesized_expression),
++    ),
++
++    preproc_statement_header: $ => choice(
++      seq('for', '(', $._for_statement_body, ')'),
++      seq('while', field('condition', $.parenthesized_expression)),
++    ),
+
+     switch_statement: $ => seq(
+       'switch',
+@@ -872,12 +1103,12 @@
+     while_statement: $ => seq(
+       'while',
+       field('condition', $.parenthesized_expression),
+-      field('body', $.statement),
++      field('body', $._control_body),
+     ),
+
+     do_statement: $ => seq(
+       'do',
+-      field('body', $.statement),
++      field('body', $._control_body),
+       'while',
+       field('condition', $.parenthesized_expression),
+       ';',
+@@ -888,7 +1119,7 @@
+       '(',
+       $._for_statement_body,
+       ')',
+-      field('body', $.statement),
++      field('body', choice($._control_body, $.preproc_pragma_statement)),
+     ),
+     _for_statement_body: $ => seq(
+       choice(
+@@ -1196,8 +1427,28 @@
+
+     extension_expression: $ => seq('__extension__', $.expression),
+
++    _argument_list_preproc_trailing_comma: $ => choice(
++      alias($.preproc_if_in_argument_list_trailing_comma, $.preproc_if),
++      alias($.preproc_ifdef_in_argument_list_trailing_comma, $.preproc_ifdef),
++    ),
++
+     // The compound_statement is added to parse macros taking statements as arguments, e.g. MYFORLOOP(1, 10, i, { foo(i); bar(i); })
+-    argument_list: $ => seq('(', commaSep(choice($.expression, $.compound_statement)), ')'),
++    argument_list: $ => {
++      const argument = choice($.expression, $.compound_statement);
++      return seq(
++        '(',
++        choice(
++          commaSep(argument),
++          seq(
++            repeat(seq(argument, ',')),
++            $._argument_list_preproc_trailing_comma,
++            argument,
++            repeat(seq(',', argument)),
++          ),
++        ),
++        ')',
++      );
++    },
+
+     field_expression: $ => seq(
+       prec(PREC.FIELD, seq(
+@@ -1216,8 +1467,23 @@
+
+     parenthesized_expression: $ => seq(
+       '(',
+-      choice($.expression, $.comma_expression, $.compound_statement),
+-      ')',
++      choice(
++        $.expression,
++        $.comma_expression,
++        $.compound_statement,
++        seq($.expression, repeat1($._parenthesized_expression_preproc)),
++      ),
++      ')',
++    ),
++
++    _parenthesized_expression_preproc: $ => choice(
++      alias($.preproc_if_in_parenthesized_expression, $.preproc_if),
++      alias($.preproc_ifdef_in_parenthesized_expression, $.preproc_ifdef),
++    ),
++
++    preproc_binary_suffix: $ => seq(
++      field('operator', choice('&&', '||')),
++      field('right', $.expression),
+     ),
+
+     initializer_list: $ => seq(
+@@ -1281,7 +1547,7 @@
+             hexDigits,
+           )),
+         )),
+-        /[uUlLwWfFbBdD]*/,
++        /[uUlLwWfFbBdDhH]*/,
+       ));
+     },
+
+@@ -1345,6 +1611,7 @@
+     _field_identifier: $ => alias($.identifier, $.field_identifier),
+     _statement_identifier: $ => alias($.identifier, $.statement_identifier),
+
++
+     _empty_declaration: $ => seq(
+       $.type_specifier,
+       ';',
+@@ -1377,9 +1644,15 @@
+  *
+  * @param {number} precedence
+  *
++ * @param {boolean} repeatContent
++ *
++ * @param {boolean} requireContent
++ *
++ * @param {boolean} requireAlternative
++ *
+  * @returns {RuleBuilders<string, string>}
+  */
+-function preprocIf(suffix, content, precedence = 0) {
++function preprocIf(suffix, content, precedence = 0, repeatContent = true, requireContent = false, requireAlternative = false) {
+   /**
+    *
+    * @param {GrammarSymbols<string>} $
+@@ -1394,42 +1667,47 @@
+     );
+   }
+
++  function contentBlock($) {
++    if (requireContent) return repeatContent ? repeat1(content($)) : content($);
++    return repeatContent ? repeat(content($)) : optional(content($));
++  }
++
+   return {
+     ['preproc_if' + suffix]: $ => prec(precedence, seq(
+       preprocessor('if'),
+       field('condition', $._preproc_expression),
+       '\n',
+-      repeat(content($)),
+-      field('alternative', optional(alternativeBlock($))),
++      contentBlock($),
++      field('alternative', requireAlternative ? alternativeBlock($) : optional(alternativeBlock($))),
+       preprocessor('endif'),
+     )),
+
+     ['preproc_ifdef' + suffix]: $ => prec(precedence, seq(
+       choice(preprocessor('ifdef'), preprocessor('ifndef')),
+       field('name', $.identifier),
+-      repeat(content($)),
+-      field('alternative', optional(alternativeBlock($))),
++      contentBlock($),
++      field('alternative', requireAlternative ? alternativeBlock($) : optional(alternativeBlock($))),
+       preprocessor('endif'),
+     )),
+
+     ['preproc_else' + suffix]: $ => prec(precedence, seq(
+       preprocessor('else'),
+-      repeat(content($)),
++      contentBlock($),
+     )),
+
+     ['preproc_elif' + suffix]: $ => prec(precedence, seq(
+       preprocessor('elif'),
+       field('condition', $._preproc_expression),
+       '\n',
+-      repeat(content($)),
+-      field('alternative', optional(alternativeBlock($))),
++      contentBlock($),
++      field('alternative', requireAlternative ? alternativeBlock($) : optional(alternativeBlock($))),
+     )),
+
+     ['preproc_elifdef' + suffix]: $ => prec(precedence, seq(
+       choice(preprocessor('elifdef'), preprocessor('elifndef')),
+       field('name', $.identifier),
+-      repeat(content($)),
+-      field('alternative', optional(alternativeBlock($))),
++      contentBlock($),
++      field('alternative', requireAlternative ? alternativeBlock($) : optional(alternativeBlock($))),
+     )),
+   };
+ }
+diff --git a/test/corpus/preprocessor.txt b/test/corpus/preprocessor.txt
+--- a/test/corpus/preprocessor.txt
++++ b/test/corpus/preprocessor.txt
+@@ -75,8 +75,8 @@
+     value: (preproc_arg))
+   (preproc_def
+     name: (identifier)
+-    value: (preproc_arg)
+-    (comment))
++    value: (preproc_arg
++      (comment)))
+   (preproc_function_def
+     name: (identifier)
+     parameters: (preproc_params
+diff --git a/test/corpus/opencl.txt b/test/corpus/opencl.txt
+new file mode 100644
+--- /dev/null
++++ b/test/corpus/opencl.txt
+@@ -0,0 +1,2024 @@
++================================================================================
++Conditional function declarators
++================================================================================
++
++int
++#ifdef USE_FAST_NAME
++select_name(fast_path, item_type)
++#else
++select_name(safe_path, item_type)
++#endif
++(int value) {
++  return value;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (preproc_ifdef
++        (identifier)
++        (macro_declarator
++          (identifier)
++          (argument_list
++            (identifier)
++            (identifier)))
++        (preproc_else
++          (macro_declarator
++            (identifier)
++            (argument_list
++              (identifier)
++              (identifier)))))
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (return_statement
++        (identifier)))))
++
++================================================================================
++Conditional function declarators preserve elif branches
++================================================================================
++
++int
++#if USE_FAST_NAME
++select_name(fast_path, item_type)
++#elif USE_SAFE_NAME
++select_name(safe_path, item_type)
++#else
++select_name(fallback_path, item_type)
++#endif
++(int value) {
++  return value;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (preproc_if
++        (identifier)
++        (macro_declarator
++          (identifier)
++          (argument_list
++            (identifier)
++            (identifier)))
++        (preproc_elif
++          (identifier)
++          (macro_declarator
++            (identifier)
++            (argument_list
++              (identifier)
++              (identifier)))
++          (preproc_else
++            (macro_declarator
++              (identifier)
++              (argument_list
++                (identifier)
++                (identifier))))))
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (return_statement
++        (identifier)))))
++
++================================================================================
++Conditional function declaration declarators
++================================================================================
++
++int
++#ifdef USE_FAST_NAME
++select_name(fast_path, item_type)
++#else
++select_name(safe_path, item_type)
++#endif
++(int value);
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (declaration
++    (primitive_type)
++    (function_declarator
++      (preproc_ifdef
++        (identifier)
++        (macro_declarator
++          (identifier)
++          (argument_list
++            (identifier)
++            (identifier)))
++        (preproc_else
++          (macro_declarator
++            (identifier)
++            (argument_list
++              (identifier)
++              (identifier)))))
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))))
++
++================================================================================
++Conditional function-call arguments
++================================================================================
++
++void invoke(void) {
++  combine(first,
++#ifdef EXTRA_VALUE
++    second,
++#endif
++    third);
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (expression_statement
++        (call_expression
++          (identifier)
++          (argument_list
++            (identifier)
++            (preproc_ifdef
++              (identifier)
++              (identifier))
++            (identifier)))))))
++
++================================================================================
++Conditional function-call arguments preserve both branches
++================================================================================
++
++void select(void) {
++  merge(first,
++#if USE_SECOND
++    second,
++#else
++    alternate,
++#endif
++    final);
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (expression_statement
++        (call_expression
++          (identifier)
++          (argument_list
++            (identifier)
++            (preproc_if
++              (identifier)
++              (identifier)
++              (preproc_else
++                (identifier)))
++            (identifier)))))))
++
++================================================================================
++Conditional function-call arguments require valid separators in every branch
++================================================================================
++
++void validate(void) {
++  merge(first,
++#if USE_SECOND
++    second,
++#else
++    alternate
++#endif
++    final);
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit (function_definition (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type)))) (compound_statement (expression_statement (call_expression (identifier) (argument_list (identifier) (preproc_if (identifier) (identifier) (preproc_else) (ERROR (identifier))) (identifier)))))))
++
++================================================================================
++Empty conditionals do not consume an if body
++================================================================================
++
++void inspect(int ready) {
++  if (ready)
++#if 1
++#endif
++    work();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))))))
++
++================================================================================
++Empty conditionals preserve loop and else bodies
++================================================================================
++
++void inspect(int ready) {
++  if (ready) {}
++  else
++#if 1
++#endif
++    alternate();
++
++  while (ready)
++#if 1
++#endif
++    repeat();
++
++  for (;;)
++#if 1
++#endif
++    advance();
++
++  do
++#if 1
++#endif
++    finish();
++  while (ready);
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (compound_statement)
++        (else_clause
++          (preproc_conditional_statement
++            (preproc_if
++              (number_literal))
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list))))))
++      (while_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))))
++      (for_statement
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))))
++      (do_statement
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))
++        (parenthesized_expression
++          (identifier))))))
++
++================================================================================
++Empty conditional without a control body remains incomplete
++================================================================================
++
++void inspect(int ready) {
++  if (ready)
++#if 1
++#endif
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (expression_statement
++            (MISSING ";")))))))
++
++================================================================================
++Empty conditional wrappers preserve conditional control bodies
++================================================================================
++
++void inspect(int ready) {
++  while (ready)
++#if 1
++#endif
++#ifdef ENABLED
++    first();
++#else
++    second();
++#endif
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (while_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (preproc_ifdef
++            (identifier)
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))
++            (preproc_else
++              (expression_statement
++                (call_expression
++                  (identifier)
++                  (argument_list))))))))))
++
++================================================================================
++Empty ifdef wrappers preserve the following control body
++================================================================================
++
++void inspect(int ready) {
++  if (ready)
++#ifdef ENABLED
++#endif
++    work();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_statement
++          (preproc_ifdef
++            (identifier))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))))))
++
++================================================================================
++Empty conditional wrappers preserve dangling else association
++================================================================================
++
++void inspect(int outer, int inner) {
++  if (outer)
++#if 1
++#endif
++    if (inner)
++      first();
++    else
++      second();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_statement
++          (preproc_if
++            (number_literal))
++          (if_statement
++            (parenthesized_expression
++              (identifier))
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))
++            (else_clause
++              (expression_statement
++                (call_expression
++                  (identifier)
++                  (argument_list))))))))))
++
++================================================================================
++Conditional boolean-expression suffixes
++================================================================================
++
++void inspect(int left, int right) {
++  if (left
++#ifdef REQUIRE_RIGHT
++      && right
++#endif
++  ) {}
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier)
++          (preproc_ifdef
++            (identifier)
++            (preproc_binary_suffix
++              (identifier))))
++        (compound_statement)))))
++
++================================================================================
++Pragmas decorating loop bodies
++================================================================================
++
++void iterate(void) {
++  for (;;)
++#pragma unroll
++    for (;;) {}
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (for_statement
++        (preproc_pragma_statement
++          (preproc_directive)
++          (preproc_arg)
++          (for_statement
++            (compound_statement)))))))
++
++================================================================================
++Standalone pragmas remain block items
++================================================================================
++
++void configure(void) {
++#pragma feature enable
++  for (;;) {}
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (preproc_call
++        (preproc_directive)
++        (preproc_arg))
++      (for_statement
++        (compound_statement)))))
++
++================================================================================
++Preprocessor conditionals as statement bodies
++================================================================================
++
++void choose(int ready) {
++  if (ready)
++#ifdef FAST_PATH
++    first();
++#else
++    second();
++#endif
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_ifdef
++          (identifier)
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))
++          (preproc_else
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))))))
++
++================================================================================
++Conditional control headers with a shared body
++================================================================================
++
++void select(int ready, int fallback) {
++#ifdef PRIMARY_PATH
++  if (ready)
++#else
++  if (fallback)
++#endif
++  { run(); }
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (preproc_conditional_if_statement
++        (preproc_ifdef
++          (identifier)
++          (preproc_statement_header
++            (parenthesized_expression
++              (identifier)))
++          (preproc_else
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))))
++        (compound_statement
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))))))
++
++================================================================================
++Conditional if headers share a body and terminal else
++================================================================================
++
++void choose(int first, int second) {
++#if OPTION_A
++  if (first)
++#else
++  if (second)
++#endif
++  { work(); }
++  else { fallback(); }
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (preproc_conditional_if_statement
++        (preproc_if
++          (identifier)
++          (preproc_statement_header
++            (parenthesized_expression
++              (identifier)))
++          (preproc_else
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))))
++        (compound_statement
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))
++        (else_clause
++          (compound_statement
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))))))
++
++================================================================================
++Conditional ifdef headers share a body and terminal else
++================================================================================
++
++void route(int primary, int secondary) {
++#ifdef USE_PRIMARY
++  if (primary)
++#else
++  if (secondary)
++#endif
++  { work(); }
++  else { fallback(); }
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (preproc_conditional_if_statement
++        (preproc_ifdef
++          (identifier)
++          (preproc_statement_header
++            (parenthesized_expression
++              (identifier)))
++          (preproc_else
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))))
++        (compound_statement
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))
++        (else_clause
++          (compound_statement
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))))))
++
++================================================================================
++Conditional if headers preserve nested else association
++================================================================================
++
++void route(int primary, int secondary, int inner) {
++#if USE_PRIMARY
++  if (primary)
++#else
++  if (secondary)
++#endif
++  if (inner)
++    work();
++  else
++    recover();
++  else
++    fallback();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (preproc_conditional_if_statement
++        (preproc_if
++          (identifier)
++          (preproc_statement_header
++            (parenthesized_expression
++              (identifier)))
++          (preproc_else
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))))
++        (if_statement
++          (parenthesized_expression
++            (identifier))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))
++          (else_clause
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))
++        (else_clause
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))))))
++
++================================================================================
++Lone else after a nested if binds to the nested if
++================================================================================
++
++void choose(int primary, int secondary, int inner) {
++#if USE_PRIMARY
++  if (primary)
++#else
++  if (secondary)
++#endif
++  if (inner)
++    work();
++  else
++    recover();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (preproc_conditional_if_statement
++        (preproc_if
++          (identifier)
++          (preproc_statement_header
++            (parenthesized_expression
++              (identifier)))
++          (preproc_else
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))))
++        (if_statement
++          (parenthesized_expression
++            (identifier))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))
++          (else_clause
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))))))
++
++================================================================================
++Lone else binds to conditional-header wrapper inside outer if
++================================================================================
++
++void choose(int outer, int primary, int secondary) {
++  if (outer)
++#if USE_PRIMARY
++    if (primary)
++#else
++    if (secondary)
++#endif
++    work();
++  else
++    fallback();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (preproc_conditional_if_statement
++          (preproc_if
++            (identifier)
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))
++            (preproc_else
++              (preproc_statement_header
++                (parenthesized_expression
++                  (identifier)))))
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))
++          (else_clause
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))))))
++
++================================================================================
++Complete elif header branches share a body and terminal else
++================================================================================
++
++void choose(int first, int second, int third) {
++#if OPTION_A
++  if (first)
++#elif OPTION_B
++  if (second)
++#else
++  if (third)
++#endif
++  work();
++  else fallback();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (preproc_conditional_if_statement
++        (preproc_if
++          (identifier)
++          (preproc_statement_header
++            (parenthesized_expression
++              (identifier)))
++          (preproc_elif
++            (identifier)
++            (preproc_statement_header
++              (parenthesized_expression
++                (identifier)))
++            (preproc_else
++              (preproc_statement_header
++                (parenthesized_expression
++                  (identifier))))))
++        (expression_statement
++          (call_expression
++            (identifier)
++            (argument_list)))
++        (else_clause
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list))))))))
++
++================================================================================
++Incomplete elif header branches do not form a wrapper
++================================================================================
++
++#if OPTION_A
++if (first)
++#elif OPTION_B
++if (second)
++#endif
++{}
++else {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_if
++    (identifier)
++    (preproc_statement_header
++      (parenthesized_expression
++        (identifier)))
++    (preproc_elif
++      (identifier)
++      (preproc_statement_header
++        (parenthesized_expression
++          (identifier)))))
++  (compound_statement)
++  (expression_statement
++    (identifier)
++    (MISSING ";"))
++  (compound_statement))
++
++================================================================================
++Conditional for headers do not claim a terminal else
++================================================================================
++
++#if OPTION_A
++for (;;)
++#else
++for (;;)
++#endif
++{}
++else {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_if
++    (identifier)
++    (preproc_statement_header)
++    (preproc_else
++      (preproc_statement_header)))
++  (compound_statement)
++  (expression_statement
++    (identifier)
++    (MISSING ";"))
++  (compound_statement))
++
++================================================================================
++Conditional while headers do not claim a terminal else
++================================================================================
++
++#if OPTION_A
++while (first)
++#else
++while (second)
++#endif
++{}
++else {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_if
++    (identifier)
++    (preproc_statement_header
++      (parenthesized_expression
++        (identifier)))
++    (preproc_else
++      (preproc_statement_header
++        (parenthesized_expression
++          (identifier)))))
++  (compound_statement)
++  (expression_statement
++    (identifier)
++    (MISSING ";"))
++  (compound_statement))
++
++================================================================================
++Mixed conditional headers do not claim a terminal else
++================================================================================
++
++#if OPTION_A
++if (first)
++#else
++while (second)
++#endif
++{}
++else {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_if
++    (identifier)
++    (preproc_statement_header
++      (parenthesized_expression
++        (identifier)))
++    (preproc_else
++      (preproc_statement_header
++        (parenthesized_expression
++          (identifier)))))
++  (compound_statement)
++  (expression_statement
++    (identifier)
++    (MISSING ";"))
++  (compound_statement))
++
++================================================================================
++Else clauses inside preprocessor branches
++================================================================================
++
++void extend(int ready) {
++  if (ready) { first(); }
++#ifdef SECOND_PATH
++  else { second(); }
++#endif
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (if_statement
++        (parenthesized_expression
++          (identifier))
++        (compound_statement
++          (expression_statement
++            (call_expression
++              (identifier)
++              (argument_list)))))
++      (preproc_ifdef
++        (identifier)
++        (else_clause
++          (compound_statement
++            (expression_statement
++              (call_expression
++                (identifier)
++                (argument_list)))))))))
++
++================================================================================
++OpenCL function, address, access, and built-in type qualifiers
++================================================================================
++
++kernel void process(
++  global uint4 *values,
++  read_only image2d_t input,
++  write_only image2d_array_t output,
++  queue_t queue,
++  atomic_uint *counter
++) {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (type_identifier)
++          (pointer_declarator
++            (identifier)))
++        (parameter_declaration
++          (access_qualifier)
++          (type_identifier)
++          (identifier))
++        (parameter_declaration
++          (access_qualifier)
++          (type_identifier)
++          (identifier))
++        (parameter_declaration
++          (type_identifier)
++          (identifier))
++        (parameter_declaration
++          (type_identifier)
++          (pointer_declarator
++            (identifier)))))
++    (compound_statement)))
++
++================================================================================
++Complete functions in if branches remain ordinary definitions
++================================================================================
++
++#if USE_FIRST
++int first_choice(void) {
++  return 1;
++}
++#else
++int second_choice(void) {
++  return 2;
++}
++#endif
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_if
++    (identifier)
++    (function_definition
++      (primitive_type)
++      (function_declarator
++        (identifier)
++        (parameter_list
++          (parameter_declaration
++            (primitive_type))))
++      (compound_statement
++        (return_statement
++          (number_literal))))
++    (preproc_else
++      (function_definition
++        (primitive_type)
++        (function_declarator
++          (identifier)
++          (parameter_list
++            (parameter_declaration
++              (primitive_type))))
++        (compound_statement
++          (return_statement
++            (number_literal)))))))
++
++================================================================================
++Complete functions in ifdef branches remain ordinary definitions
++================================================================================
++
++#ifdef USE_FIRST
++int first_option(void) {
++  return 3;
++}
++#else
++int second_option(void) {
++  return 4;
++}
++#endif
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_ifdef
++    (identifier)
++    (function_definition
++      (primitive_type)
++      (function_declarator
++        (identifier)
++        (parameter_list
++          (parameter_declaration
++            (primitive_type))))
++      (compound_statement
++        (return_statement
++          (number_literal))))
++    (preproc_else
++      (function_definition
++        (primitive_type)
++        (function_declarator
++          (identifier)
++          (parameter_list
++            (parameter_declaration
++              (primitive_type))))
++        (compound_statement
++          (return_statement
++            (number_literal)))))))
++
++================================================================================
++Conditional function heads allow an empty shared body
++================================================================================
++
++#ifdef USE_FIRST
++void first_empty(void) {
++#else
++void second_empty(void) {
++#endif
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (conditional_function_definition
++    (preproc_ifdef
++      (identifier)
++      (primitive_type)
++      (function_declarator
++        (identifier)
++        (parameter_list
++          (parameter_declaration
++            (primitive_type))))
++      (preproc_else
++        (primitive_type)
++        (function_declarator
++          (identifier)
++          (parameter_list
++            (parameter_declaration
++              (primitive_type))))))))
++
++================================================================================
++Conditional function heads preserve elifdef alternatives
++================================================================================
++
++#if USE_PRIMARY
++void primary_chain(void) {
++#elifdef USE_SECONDARY
++void secondary_chain(void) {
++#else
++void fallback_chain(void) {
++#endif
++  complete();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (conditional_function_definition
++    (preproc_if
++      (identifier)
++      (primitive_type)
++      (function_declarator
++        (identifier)
++        (parameter_list
++          (parameter_declaration
++            (primitive_type))))
++      (preproc_elifdef
++        (identifier)
++        (primitive_type)
++        (function_declarator
++          (identifier)
++          (parameter_list
++            (parameter_declaration
++              (primitive_type))))
++        (preproc_else
++          (primitive_type)
++          (function_declarator
++            (identifier)
++            (parameter_list
++              (parameter_declaration
++                (primitive_type)))))))
++    (expression_statement
++      (call_expression
++        (identifier)
++        (argument_list)))))
++
++================================================================================
++Conditional function heads share one body
++================================================================================
++
++#ifdef USE_FAST
++int evaluate_fast(int value) {
++#else
++int evaluate_safe(int value) {
++#endif
++  return value;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (conditional_function_definition
++    (preproc_ifdef
++      (identifier)
++      (primitive_type)
++      (function_declarator
++        (identifier)
++        (parameter_list
++          (parameter_declaration
++            (primitive_type)
++            (identifier))))
++      (preproc_else
++        (primitive_type)
++        (function_declarator
++          (identifier)
++          (parameter_list
++            (parameter_declaration
++              (primitive_type)
++              (identifier))))))
++    (return_statement
++      (identifier))))
++
++================================================================================
++Conditional function heads preserve elif alternatives
++================================================================================
++
++#if USE_PRIMARY
++void dispatch_primary(void) {
++#elif USE_SECONDARY
++void dispatch_secondary(void) {
++#else
++void dispatch_fallback(void) {
++#endif
++  finish();
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (conditional_function_definition
++    (preproc_if
++      (identifier)
++      (primitive_type)
++      (function_declarator
++        (identifier)
++        (parameter_list
++          (parameter_declaration
++            (primitive_type))))
++      (preproc_elif
++        (identifier)
++        (primitive_type)
++        (function_declarator
++          (identifier)
++          (parameter_list
++            (parameter_declaration
++              (primitive_type))))
++        (preproc_else
++          (primitive_type)
++          (function_declarator
++            (identifier)
++            (parameter_list
++              (parameter_declaration
++                (primitive_type)))))))
++    (expression_statement
++      (call_expression
++        (identifier)
++        (argument_list)))))
++
++================================================================================
++Conditional function heads require a terminal else
++================================================================================
++
++#ifdef ONLY_VARIANT
++int only_variant(int value) {
++#endif
++  return value;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit (preproc_ifdef (identifier) (function_definition (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (compound_statement (preproc_call (preproc_directive)) (return_statement (identifier)))) (MISSING "#endif")))
++
++================================================================================
++Conditional function heads reject empty branches
++================================================================================
++
++#ifdef OMIT_PRIMARY
++#else
++int present_variant(int value) {
++#endif
++  return value;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit (preproc_ifdef (identifier) (preproc_else (function_definition (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (compound_statement (preproc_call (preproc_directive)) (return_statement (identifier))))) (MISSING "#endif")))
++
++================================================================================
++Conditional function heads reject two heads in one branch
++================================================================================
++
++#ifdef DUPLICATE_HEAD
++int first_variant(int value) {
++int second_variant(int value) {
++#else
++int fallback_variant(int value) {
++#endif
++  return value;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit (ERROR (identifier) (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (preproc_call (preproc_directive)) (function_definition (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (compound_statement (preproc_call (preproc_directive)) (return_statement (identifier))))))
++
++================================================================================
++Conditional object heads do not use the function rule
++================================================================================
++
++#ifdef FIRST_OBJECT
++int first_value = {
++#else
++int second_value = {
++#endif
++  1
++};
++
++--------------------------------------------------------------------------------
++
++(translation_unit (preproc_ifdef (identifier) (ERROR (primitive_type) (identifier)) (preproc_else (declaration (primitive_type) (init_declarator (identifier) (initializer_list (ERROR (preproc_directive)) (number_literal))))) (MISSING "#endif")))
++
++================================================================================
++Semicolonless macro invocations are not function heads
++================================================================================
++
++#ifdef FIRST_ATTRIBUTE
++DECLARE_VARIANT(first)
++#else
++DECLARE_VARIANT(second)
++#endif
++int value;
++
++--------------------------------------------------------------------------------
++
++(translation_unit (preproc_ifdef (identifier) (expression_statement (call_expression (identifier) (argument_list (identifier))) (MISSING ";")) (preproc_else (expression_statement (call_expression (identifier) (argument_list (identifier))) (MISSING ";")))) (declaration (primitive_type) (identifier)))
++
++================================================================================
++Conditional function bodies reject nested ordinary functions
++================================================================================
++
++#ifdef USE_OUTER
++int outer_fast(int value) {
++#else
++int outer_safe(int value) {
++#endif
++  int nested(int inner) {
++    return inner;
++  }
++  return nested(value);
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit (ERROR (identifier) (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (preproc_call (preproc_directive)) (function_definition (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (compound_statement (preproc_call (preproc_directive)) (function_definition (primitive_type) (function_declarator (identifier) (parameter_list (parameter_declaration (primitive_type) (identifier)))) (compound_statement (return_statement (identifier)))) (return_statement (call_expression (identifier) (argument_list (identifier))))))))
++
++================================================================================
++Block comments in macro replacement lists
++================================================================================
++
++#define OFFSET(x) ((x) /* adjustment */ + 1)
++int after_offset;
++
++#define BODY(x) do { \
++  consume(x); /* retain value \
++                 adjustment */ \
++} while (0)
++int after_body;
++
++#define COMMENT_ONLY /* marker */
++int after_comment_only;
++
++#define VALUE x /* first line
++second line */ y
++int after_multiline;
++
++#define LINE_VALUE x // explanation
++int after_line_comment;
++
++#define TEXT "/* not comment */ // text"
++int after_quoted_delimiters;
++
++#define CHARACTERS '/', '*', '\\', '\''
++int after_character_literals;
++
++#define CONTINUED_TEXT "first /* \
++second */ // text"
++int after_continued_string;
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (preproc_function_def
++    (identifier)
++    (preproc_params
++      (identifier))
++    (preproc_arg
++      (comment)))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_function_def
++    (identifier)
++    (preproc_params
++      (identifier))
++    (preproc_arg
++      (comment)))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_def
++    (identifier)
++    (preproc_arg
++      (comment)))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_def
++    (identifier)
++    (preproc_arg
++      (comment)))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_def
++    (identifier)
++    (preproc_arg
++      (comment)))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_def
++    (identifier)
++    (preproc_arg))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_def
++    (identifier)
++    (preproc_arg))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (preproc_def
++    (identifier)
++    (preproc_arg))
++  (declaration
++    (primitive_type)
++    (identifier)))
++
++================================================================================
++Conditional parameters with branch-leading commas
++================================================================================
++
++kernel void extend(
++  int base
++#if FEATURE
++  , global float *extra
++#endif
++) {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (preproc_if
++          (identifier)
++          (parameter_declaration
++            (type_qualifier
++              (address_space_qualifier))
++            (primitive_type)
++            (pointer_declarator
++              (identifier))))))
++    (compound_statement)))
++
++================================================================================
++GNU spelling variants for C qualifiers
++================================================================================
++
++kernel void qualify(
++  __global __const float *first,
++  __global __const__ float *second,
++  __global __volatile float *third,
++  __global __volatile__ float *fourth
++) {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (type_qualifier)
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (type_qualifier)
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (type_qualifier)
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (type_qualifier)
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))))
++    (compound_statement)))
++
++================================================================================
++Half-precision floating-point suffixes
++================================================================================
++
++void half_values(void) {
++  half first = 1.0h;
++  half second = 1.H;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (declaration
++        (type_identifier)
++        (init_declarator
++          (identifier)
++          (number_literal)))
++      (declaration
++        (type_identifier)
++        (init_declarator
++          (identifier)
++          (number_literal))))))
++
++================================================================================
++Conditional parameter groups with trailing branch commas
++================================================================================
++
++kernel void configure(
++  int first,
++#if FEATURE
++  global float *values, int stride,
++#else
++  global int *values, int stride,
++#endif
++  int count
++) {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))
++        (preproc_if
++          (identifier)
++          (parameter_declaration
++            (type_qualifier
++              (address_space_qualifier))
++            (primitive_type)
++            (pointer_declarator
++              (identifier)))
++          (parameter_declaration
++            (primitive_type)
++            (identifier))
++          (preproc_else
++            (parameter_declaration
++              (type_qualifier
++                (address_space_qualifier))
++              (primitive_type)
++              (pointer_declarator
++                (identifier)))
++            (parameter_declaration
++              (primitive_type)
++              (identifier))))
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement)))
++
++================================================================================
++Conditionally compiled GNU statement attributes
++================================================================================
++
++void visit(void) {
++#if FEATURE
++  __attribute__((opencl_unroll_hint))
++#endif
++  for (;;) {}
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (preproc_if
++        (identifier)
++        (attribute_specifier
++          (argument_list
++            (identifier))))
++      (for_statement
++        (compound_statement)))))
++
++================================================================================
++Function qualifiers are rejected in cast type descriptors
++================================================================================
++
++kernel void inspect(global int *items) {
++  (kernel int *)items;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))))
++    (compound_statement
++      (expression_statement
++        (cast_expression
++          (type_descriptor
++            (type_identifier)
++            (ERROR
++              (identifier))
++            (abstract_pointer_declarator))
++          (identifier))))))
++
++================================================================================
++OpenCL built-in scalar, vector, image, event, and atomic types
++================================================================================
++
++uchar scalar_value;
++half8 vector_value;
++image2d_msaa_t color_samples;
++image2d_array_msaa_depth_t depth_samples;
++clk_event_t clock_event;
++event_t async_event;
++reserve_id_t reservation;
++ndrange_t range;
++cl_mem_fence_flags fences;
++atomic_ptrdiff_t delta;
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier))
++  (declaration
++    (type_identifier)
++    (identifier)))
++
++================================================================================
++Address-space-qualified typedefs and casts
++================================================================================
++
++typedef constant float *table_ptr;
++
++kernel void apply(global int *items, table_ptr table) {
++  (__global int *)items;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (type_definition
++    (type_qualifier
++      (address_space_qualifier))
++    (primitive_type)
++    (pointer_declarator
++      (type_identifier)))
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))
++        (parameter_declaration
++          (type_identifier)
++          (identifier))))
++    (compound_statement
++      (expression_statement
++        (cast_expression
++          (type_descriptor
++            (type_qualifier
++              (address_space_qualifier))
++            (primitive_type)
++            (abstract_pointer_declarator))
++          (identifier))))))
++
++================================================================================
++GNU OpenCL statement attributes
++================================================================================
++
++kernel void apply(global int *items) {
++  __attribute__((opencl_unroll_hint))
++  for (;;) {}
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (type_qualifier
++            (address_space_qualifier))
++          (primitive_type)
++          (pointer_declarator
++            (identifier)))))
++    (compound_statement
++      (attributed_statement
++        (attribute_specifier
++          (argument_list
++            (identifier)))
++        (for_statement
++          (compound_statement))))))
++
++================================================================================
++Conditional OpenCL kernel parameters
++================================================================================
++
++kernel void select(
++#if USE_WIDE
++  global long *items
++#else
++  global int *items
++#endif
++) {}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (function_qualifier)
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (preproc_if
++          (identifier)
++          (parameter_declaration
++            (type_qualifier
++              (address_space_qualifier))
++            (sized_type_specifier)
++            (pointer_declarator
++              (identifier)))
++          (preproc_else
++            (parameter_declaration
++              (type_qualifier
++                (address_space_qualifier))
++              (primitive_type)
++              (pointer_declarator
++                (identifier)))))))
++    (compound_statement)))

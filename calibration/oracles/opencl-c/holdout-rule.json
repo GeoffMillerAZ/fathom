@@ -1,0 +1,30 @@
+{
+  "schema": "opencl-c-holdout-rule-v1",
+  "role": "separate holdout; never canonical corpus or canonical aggregation",
+  "frozen_before": "any implementation grammar patch or holdout parse/compile/grade",
+  "selection_rule": "Select the first nonempty tracked regular lowercase .cl population, with OSI root license, from the ordered official project list KhronosGroup/OpenCL-CTS then intel/compute-samples. Use the whole pinned repository population. No parse, compiler, coverage, content or duplicate filter. Never change membership in response to results.",
+  "candidates": [
+    {
+      "repository": "https://github.com/KhronosGroup/OpenCL-CTS",
+      "commit": "16b197d191903abad0047e6bcb113167b589ecb4",
+      "tree": "bc80169a06cb8e8f6cd1be0415eaae9c39de7c0b",
+      "tracked_cl_files": 0,
+      "disposition": "ineligible: no standalone .cl population; no parse or compile attempted",
+      "license_file": "LICENSE.txt",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "repository": "https://github.com/intel/compute-samples",
+      "commit": "1b2d5d2afff61cdc7370778849f848b76cee00a6",
+      "tree": "6cd42082a749a17674212cc07918759097ef140f",
+      "tracked_cl_files": 53,
+      "path_git_blob_manifest_sha256": "3f033714ba3f4cd610dfa07800d6611c6f6f7048127636e461be5b6093486910",
+      "disposition": "selected by metadata-only rule before measurement",
+      "license": "MIT",
+      "license_file": "LICENSE",
+      "license_sha256": "8957213f2afb80df76b5aeeb7ba99cf1b8d7e70f44df8e610f4322809721f81b"
+    }
+  ],
+  "population": "Every tracked regular lowercase .cl, including fragments and duplicate blobs; symlinks and gitlinks counted separately; submodule contents uncovered. Retain every file regardless of parse or compiler result.",
+  "interpretation": "Git-tree metadata is a prospective count, not a filesystem manifest or parser result. Confirm raw Git identities and capture exact before/after tracked-set receipts in the holdout checkout."
+}

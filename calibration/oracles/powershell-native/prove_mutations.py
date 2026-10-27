@@ -13,6 +13,7 @@ def main():
     ap.add_argument('--tools',type=Path,required=True)
     ap.add_argument('--indexbench',type=Path,required=True)
     ap.add_argument('--out',type=Path,required=True)
+    ap.add_argument('--followups-only',action='store_true',help='run only the deferred-minor native regressions')
     args=ap.parse_args()
     here=Path(__file__).resolve().parent
     out=args.out.resolve()
@@ -50,6 +51,20 @@ def main():
         finally:path.write_text(original)
         subprocess.run(restored,env=env,cwd=here,check=True)
         receipt.append({'file':filename,'mutant':name,'FAIL':fail,'restored':'GREEN'})
+    followups=[
+        ('ResolveCalls.ps1', '-or $parent.CommandElements[0] -is [Management.Automation.Language.ParenExpressionAst]', '-or $false', 'omit-parenthesized-module-scope'),
+        ('ResolveCalls.ps1', '$definitionAst = [Management.Automation.Language.Parser]::ParseFile($declaration.target, [ref]$null, [ref]$null)', '. $declaration.target; $definitionAst = [Management.Automation.Language.Parser]::ParseFile($declaration.target, [ref]$null, [ref]$null)', 'execute-transitive-definition-preamble'),
+        ('ResolveCalls.ps1', 'if ($originIds.Count -and -not $localOrigins.Count -and -not $ownedModuleDefinition)', 'if ($false)', 'omit-test-helper-crossings'),
+        ('DiscoverHarness.ps1', '} while ($changed)', '} while ($false)', 'omit-transitive-declaring-closure'),
+        ('ResolveCalls.ps1', 'if ($shadowedHelperIds.Count)', 'if ($false)', 'omit-shadowed-declared-origin-count'),
+        ('ResolveCalls.ps1', "@('test.ps1','tst/Pester.BeforeContainer.ps1'", "@('tst/Pester.BeforeContainer.ps1'", 'omit-declared-suite-runner-global'),
+    ]
+    common=[sys.executable,'-B',str(here/'prove_followups.py'),'--tools',str(args.tools.resolve())]
+    for filename,old,new,name in followups:
+        run_mutant(filename,old,new,name,common+['--out',str(out/(name+'-mutant'))],common+['--out',str(out/(name+'-restored'))])
+    if args.followups_only:
+        (out/'mutations.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+        return
     for old,new,test in decoder:
         command=[sys.executable,'-B','-m','unittest','test_trace_decode.NativeFunctionTests.'+test]
         run_mutant('trace_decode.py',old,new,test,command,command)
@@ -65,7 +80,7 @@ def main():
     common=[sys.executable,'-B',str(here/'prove_inventory.py'),'--tools',str(args.tools.resolve())]
     inventory_mutants=[
         ('DiscoverHarness.ps1', '@($declarations.Values | Sort-Object { $_.kind + ":" + $_.target })', '@($declarations.Values | Where-Object { $_.kind -ne "module" } | Sort-Object { $_.kind + ":" + $_.target })', 'drop-parser-enumerated-module'),
-        ('ResolveCalls.ps1', "$parent.InvocationOperator -eq 'Ampersand'", "$parent.InvocationOperator -eq 'Unknown'", 'omit-module-variable-private-ancestor'),
+        ('ResolveCalls.ps1', "$parent.InvocationOperator -in @('Ampersand','Dot')", "$parent.InvocationOperator -eq 'Unknown'", 'omit-module-variable-private-ancestor'),
         ('ResolveCalls.ps1', "$matches = @($excludedNames[$name] | Where-Object { $_.target -eq $queryPath -or $_.declaring_files.Contains($queryPath) })", "$matches = @($excludedNames[$name])", 'leak-refused-helper-class-across-files'),
     ]
     inventory_mutants.append(('DiscoverHarness.ps1', "} else { $null }\n                    $declarations[$identity]", "} else { 'fabricated-code-hash' }\n                    $declarations[$identity]", 'invent-code-hash-for-absent-target'))
