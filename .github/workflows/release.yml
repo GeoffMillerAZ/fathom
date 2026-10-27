@@ -4,7 +4,10 @@
 # the archives and checksums.txt to that release; the notes `gh release
 # create` wrote are kept (release.mode: keep-existing). workflow_dispatch
 # re-runs a tag whose first attempt failed. The only credential is the
-# workflow's GITHUB_TOKEN; nothing is signed or notarized.
+# workflow's GITHUB_TOKEN. Nothing is signed or notarized, but the archives and
+# checksums.txt carry a build-provenance attestation (SLSA, via GitHub's
+# Sigstore): `gh attestation verify <archive> --repo GeoffMillerAZ/fathom`.
+# Permissions are none at the workflow level and granted per job.
 name: release
 
 on:
@@ -17,8 +20,7 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency:
   group: release-${{ github.event.release.tag_name || inputs.tag }}
@@ -29,15 +31,19 @@ jobs:
     name: GoReleaser (darwin + linux)
     runs-on: macos-14
     timeout-minutes: 60
+    permissions:
+      contents: write # upload assets to the existing release
+      id-token: write # keyless signing of the attestation
+      attestations: write # store the attestation
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ env.TAG }}
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
 
@@ -49,3 +55,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ env.TAG }}
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/checksums.txt
+            dist/fathom_*.tar.gz
