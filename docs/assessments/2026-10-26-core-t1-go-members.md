@@ -166,9 +166,13 @@ against main 440a94365 or the R-D19 merged source.
 The spent Gin reading remains L4 excellent and L3 good, with file-edge precision
 .9235, recall .6255 and median extraction 16.29 MB/CPU-s. Its file-edge
 denominators, 170 and 251, exceed D19's floor; its six in-repo imports do not.
-Import resolution therefore supplies thin L3 evidence and caps the grade at
-good, without changing Gin's earlier grade or the failed L3-excellent criterion.
+L3 has two independent caps: file_edge_precision .9235 < .95, and
+import_resolution has 6 in-repo imports, under D19's 20. Neither changes
+Gin's earlier grade or the failed L3-excellent criterion.
 No new holdout exposure, tuning, oracle change or producer run occurred.
+The receipt's published hashes identify the original 276f2d233 reading bytes;
+C-R15 restores the disposition and corrects the Gin cap note without changing
+any measured value.
 
 
 ## Go field deletion coverage

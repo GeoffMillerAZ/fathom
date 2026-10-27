@@ -208,8 +208,9 @@ Canonical and independent readings still agree on every count, metric and grade:
 L4 good (.9345 definition mapping, .9889 typed recall), L1-L3 excellent, with
 median extraction 20.93/20.38 MB/CPU-s. D19's 20-reference floor is met by
 Go's L3 denominators 3,158/4,472/359. The spent Gin reading remains L3 good
-and L4 excellent, at 16.29 MB/CPU-s; its 170/251 file-edge denominators pass,
-but six in-repo imports are thin and cap L3 at good. The failed Gin
+and L4 excellent, at 16.29 MB/CPU-s. L3 has two independent caps:
+file_edge_precision .9235 < .95, and import_resolution has 6 in-repo imports,
+under D19's 20. Its 170/251 file-edge denominators pass the floor. The failed Gin
 L3-excellent criterion remains failed. GoField accounts for the L4 lift;
 same-oracle main controls show no field-caused call or file-edge change. O1237's
 L2 dispatch shift predates this pass, while historical file-edge differences
@@ -217,10 +218,11 @@ are prior remeasurement context. Field scope and issue #17 classification are
 unchanged.
 
 Reproduction uses the committed `lang-oracle` and `lang-retime` recipe in
-`calibration/oracles/scip-go/README.md`. On a clean checkout of 78d38fbaa,
+`calibration/oracles/scip-go/README.md`. The original replay used 78d38fbaa.
+For a replay with the corrected note generator, use the committed checkout being tested,
 build `cmd/indexbench` and grade cli/cli and spf13/cobra into fresh outputs with their matching frozen
 SCIP index, `-dialect go`, `-subject-name`, the pinned ctags binary,
-`-commit 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca`, and `-date 2026-10-27`.
+`-commit "$FATHOM_COMMIT"` (that checkout's HEAD), and `-date 2026-10-27`.
 Run the same two commands with the independent indexes into a separate fresh output;
 grade the spent Gin subject once from its frozen index. Then run `lang-retime
 -runs 3 -write` on each output, passing every recorded subject as
@@ -228,7 +230,7 @@ grade the spent Gin subject once from its frozen index. Then run `lang-retime
 input hashes, counts, metrics and grades to the R-D19 receipt. Its raw output
 hashes bind the original timed replay; a later retime need not match them.
 Only after raw replay,
-preserve historical notes from a1c7109fa, qualify the legacy field diagnostic,
+preserve historical notes and the disposition from a1c7109fa,
 and append the dated R-D19 notes before publishing. This replay does not launch
 scip-go.
 
@@ -238,13 +240,14 @@ pointing to the pinned checkouts and frozen files named by the receipt, the
 committed commands are:
 
 ```sh
+FATHOM_COMMIT=$(git rev-parse HEAD)
 mkdir -p workspace/tmp/go-rd19
 test ! -e workspace/tmp/go-rd19/canonical.json
 test ! -e workspace/tmp/go-rd19/independent.json
 test ! -e workspace/tmp/go-rd19/gin.json
 go build -trimpath -buildvcs=false -o workspace/tmp/go-rd19/indexbench ./cmd/indexbench
 grade() {
-  workspace/tmp/go-rd19/indexbench lang-oracle -dialect go -subject "$1" -subject-name "$2" -ctags "$CTAGS_BINARY" -scip "$3" -out "$4" -commit 78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca -date 2026-10-27
+  workspace/tmp/go-rd19/indexbench lang-oracle -dialect go -subject "$1" -subject-name "$2" -ctags "$CTAGS_BINARY" -scip "$3" -out "$4" -commit "$FATHOM_COMMIT" -date 2026-10-27
 }
 grade "$CLI_ROOT" cli/cli "$CLI_SCIP" workspace/tmp/go-rd19/canonical.json
 grade "$COBRA_ROOT" spf13/cobra "$COBRA_SCIP" workspace/tmp/go-rd19/canonical.json
