@@ -292,6 +292,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			risk := reviewDiffReceipt(graph, nodes, in, v, hops, table)
 			riskPayload := riskReceiptPayload(risk)
 			for _, hint := range riskPayload["link_hints"].([]*reviewLinkLocation) {
+				if ctx.Err() != nil {
+					break // GDEV-03: the check below names the cancellation
+				}
 				if file := citationPath(hint.Citation); file != "" {
 					bindCitation(ctx, backend, p.Service, file, func(status *core.CitationStatus) { hint.CitationStatus = status })
 				}

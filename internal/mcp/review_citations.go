@@ -26,6 +26,11 @@ func citationPath(ref string) string {
 // and commit-anchored receipt exports have their own current/commit identity.
 func markReviewLocations(ctx context.Context, b QueryInterface, service string, v *review.Verdict, payload map[string]any, gap *impact.TestGapResult) {
 	bind := func(file string, status **core.CitationStatus, m map[string]any) {
+		// GDEV-03: a cancelled review binds no further file; the handler
+		// names the cancellation at its next phase boundary.
+		if ctx.Err() != nil {
+			return
+		}
 		bindCitation(ctx, b, service, file, func(s *core.CitationStatus) {
 			*status = s
 			if s != nil {
