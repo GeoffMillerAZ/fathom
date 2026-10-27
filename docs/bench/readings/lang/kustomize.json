@@ -2,18 +2,56 @@
   "dialect": "kustomize",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
-    "L1": "excellent",
+    "L1": "good",
     "L2": "excellent",
-    "L3": "unmet",
-    "L4": "not-applicable",
-    "L3_reason": "evidence: 13 references, under 20"
+    "L3": "excellent",
+    "L4": "not-applicable"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "fa240083",
+  "measured_at": "2026-10-26",
+  "fathom_commit": "6db920e72898abb20bf86c22652b401902e34598",
   "extractor": "dialect",
   "subjects": [
+    {
+      "name": "GoogleCloudPlatform/microservices-demo",
+      "sha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
+      "files": 12,
+      "bytes": 16894,
+      "counts": {
+        "fathom_defs": 66,
+        "kind_equal": 66,
+        "matched": 66,
+        "oracle_defs": 66,
+        "ref_fathom": 54,
+        "ref_fathom_in_truth": 54,
+        "ref_truth": 54,
+        "ref_truth_found": 54,
+        "xref_fathom": 16,
+        "xref_fathom_in_truth": 16,
+        "xref_truth": 16,
+        "xref_truth_found": 16
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "data_source",
+        "package",
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.96,
+        "extract_cpu_ms": 0.9650000000000001,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
     {
       "name": "argoproj/argocd-example-apps",
       "sha": "8088f4c0d970abb09e250248cc97e35623447cb5",
@@ -46,8 +84,86 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.098,
-        "extract_cpu_ms": 0.099,
+        "extract_ms": 0.137,
+        "extract_cpu_ms": 0.136,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fluxcd/flux2-kustomize-helm-example",
+      "sha": "4f1a5b1051b469108d1bdf0ebec6c814427e3834",
+      "files": 7,
+      "bytes": 1761,
+      "counts": {
+        "fathom_defs": 22,
+        "kind_equal": 18,
+        "matched": 18,
+        "oracle_defs": 18,
+        "ref_fathom": 11,
+        "ref_fathom_in_truth": 11,
+        "ref_truth": 11,
+        "ref_truth_found": 11,
+        "xref_fathom": 2,
+        "xref_fathom_in_truth": 2,
+        "xref_truth": 2,
+        "xref_truth_found": 2
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "data_source",
+        "package",
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.189,
+        "extract_cpu_ms": 0.192,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fluxcd/flux2-multi-tenancy",
+      "sha": "16752eb2929feb1d0e7de6ad4fa0a2e1972825ac",
+      "files": 8,
+      "bytes": 3091,
+      "counts": {
+        "fathom_defs": 25,
+        "kind_equal": 21,
+        "matched": 21,
+        "oracle_defs": 21,
+        "ref_fathom": 13,
+        "ref_fathom_in_truth": 13,
+        "ref_truth": 13,
+        "ref_truth_found": 13,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "data_source",
+        "package",
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.24399999999999994,
+        "extract_cpu_ms": 0.24799999999999994,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -85,8 +201,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.21799999999999997,
-        "extract_cpu_ms": 0.238,
+        "extract_ms": 0.3650000000000001,
+        "extract_cpu_ms": 0.3700000000000001,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -96,14 +212,14 @@
   "oracles": [
     {
       "tier": "A",
-      "tool": "kustomize (kubectl-embedded)",
+      "tool": "kustomize",
       "version": "v5.8.1"
     }
   ],
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.9604,
     "sym_recall": 1,
     "xref_precision": 1,
     "xref_recall": 1
@@ -127,44 +243,56 @@
     "resource"
   ],
   "counts": {
-    "fathom_defs": 89,
-    "kind_equal": 89,
-    "matched": 89,
-    "oracle_defs": 89,
-    "ref_fathom": 70,
-    "ref_fathom_in_truth": 70,
-    "ref_truth": 70,
-    "ref_truth_found": 70,
-    "xref_fathom": 13,
-    "xref_fathom_in_truth": 13,
-    "xref_truth": 13,
-    "xref_truth_found": 13
+    "fathom_defs": 202,
+    "kind_equal": 194,
+    "matched": 194,
+    "oracle_defs": 194,
+    "ref_fathom": 148,
+    "ref_fathom_in_truth": 148,
+    "ref_truth": 148,
+    "ref_truth_found": 148,
+    "xref_fathom": 35,
+    "xref_fathom_in_truth": 35,
+    "xref_truth": 35,
+    "xref_truth_found": 35
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 8.66,
+    "throughput_mb_s": 12.91,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 9.23,
+    "wall_throughput_mb_s": 13.02,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "a directory reference resolves to the one doc file in it (design §4): a base holds one, its kustomization, while an ingest dispatches manifests to the incumbent Kubernetes extractor, so the 13 resolve at ingest as in the harness; when the kubernetes dialect is dispatched every base that holds a manifest stops resolving unless fusion.ResolveDocXrefs prefers the referring dialect's own file (LB-Q-kustomize-rest; internal/fusion/docxref.go was not this item's to edit)",
-    "a patch is signed by its target's name and an image by its newName (else newTag, else digest): the doc engine has no concatenation (§4), so the incumbent's Kind/name and newName:newTag are not reproduced",
-    "a small measure: 19 files, 70 entries (all 70 evidenced by the tool: removing each changes the build), 13 kustomization-to-kustomization edges (12 on the kustomize examples, 1 on argocd-example-apps; every one is a directory named by a resource or a base)",
+    "CPU throughput runs 11.06, 12.92, 12.91 MB/CPU-s; median 12.91. Settings: nice 10, GOFLAGS=-p=2, GOMAXPROCS=2, GOTOOLCHAIN=go1.27.3, GOWORK=off; launch loads are in the public receipt. Wall throughput is not comparable across machines.",
+    "Fathom/native definitions 202/194; matched 194. Measured grade: L1 good, L2 excellent, L3 excellent, L4 not-applicable; references 148/148 and cross-file references 35/35.",
+    "Frozen pre-D19 leave-one-subject-out diagnostics, in frozen pin order: pin 1: xref 23/23, symbol precision 0.9467, level_met none; pin 2: xref 34/34, symbol precision 0.9515, level_met L3; pin 3: xref 33/33, symbol precision 0.9778, level_met L3; pin 4: xref 31/31, symbol precision 0.9774, level_met L3; pin 5: xref 19/19, symbol precision 0.9412, level_met none. The assessment identifies the subjects and limits.",
+    "GoogleCloudPlatform/microservices-demo: 38 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "GoogleCloudPlatform/microservices-demo: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "GoogleCloudPlatform/microservices-demo: restricted to kubernetes-manifests/kustomization.yaml, kustomize/base/kustomization.yaml, kustomize/components/cymbal-branding/kustomization.yaml, kustomize/components/google-cloud-operations/kustomization.yaml, kustomize/components/memorystore/kustomization.yaml, kustomize/components/network-policies/kustomization.yaml, kustomize/components/service-mesh-istio/kustomization.yaml, kustomize/components/spanner/kustomization.yaml, kustomize/kustomization.yaml, kustomize/tests/memorystore-with-all-components/kustomization.yaml, kustomize/tests/service-mesh-istio-with-all-components/kustomization.yaml, kustomize/tests/spanner-with-all-components/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "Measured files: native built-file scope via -only, 46 of 58 recognized; 12 excluded with reasons in the assessment. Real Component contexts: 12 valid / 12 tried, 17 effective entries; 9 without valid context.",
+    "Native provenance: official Kustomize v5.8.1 binary SHA256 bc77e3505fbd414551cf7b15d1e772a288bc5afd97e31e49655b10524d1888e9; platform archive checksums are pinned in pins.json; typed API and kyaml v0.21.1; fixed 5-subject selection followed private exploration, so it is not a blind holdout.",
+    "Native truth has 144 raw cross-file references; the unchanged dialect scores 35 after file/target scope. Native cross-file references include 109 YAML-target references outside dialect file scope (manifests and patches). Manifest-target edges resolve to nothing at ingest until the kubernetes dialect is dispatched.",
+    "Product engine unchanged at clean source commit 6db920e72898abb20bf86c22652b401902e34598; existing directory-preference test green. Public counts/hash evidence: docs/assessments/2026-10-26-kustomize-d19-evidence.md and docs/assessments/data/2026-10-26-kustomize-r1.json.",
+    "R-D19 at 440a94365: relative to lane e9bff6a67, harness-rule non-note field changes: none; notes record D19 provenance; all frozen measurements preserved. Relative to main, lane evidence changes: counts.fathom_defs, counts.kind_equal, counts.matched, counts.oracle_defs, counts.ref_fathom, counts.ref_fathom_in_truth, counts.ref_truth, counts.ref_truth_found, counts.xref_fathom, counts.xref_fathom_in_truth, counts.xref_truth, counts.xref_truth_found, fathom_commit, grade.L1, grade.L3, grade.L3_reason, level_met, measured_at, metrics.sym_precision, oracles, subjects, tenancy.throughput_mb_s, tenancy.wall_throughput_mb_s. Own L3 denominators are xref_fathom=35 (precision) and xref_truth=35 (recall), each requiring at least 20; grade L3=excellent. Manifest l3_evidence bar: none; no subject minimum applies. One-subject count-floor dependence remains: GoogleCloudPlatform/microservices-demo removed leaves 19/19, below 20. Selection remains privately preselected, not broad or holdout evidence.",
     "argoproj/argocd-example-apps: 33 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "argoproj/argocd-example-apps: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
     "argoproj/argocd-example-apps: restricted to kustomize-guestbook/kustomization.yaml, pre-post-sync/kustomization.yaml, sock-shop/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "fluxcd/flux2-kustomize-helm-example: 9 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "fluxcd/flux2-kustomize-helm-example: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "fluxcd/flux2-kustomize-helm-example: restricted to apps/base/podinfo/kustomization.yaml, apps/production/kustomization.yaml, apps/staging/kustomization.yaml, clusters/production/flux-system/kustomization.yaml, clusters/staging/flux-system/kustomization.yaml, infrastructure/configs/kustomization.yaml, infrastructure/controllers/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "fluxcd/flux2-multi-tenancy: 9 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "fluxcd/flux2-multi-tenancy: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "fluxcd/flux2-multi-tenancy: restricted to clusters/production/flux-system/kustomization.yaml, clusters/staging/flux-system/kustomization.yaml, policies/base/kustomization.yaml, policies/production/kustomization.yaml, policies/staging/kustomization.yaml, tenants/base/dev-team/kustomization.yaml, tenants/production/kustomization.yaml, tenants/staging/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
     "kubernetes-sigs/kustomize: 20 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
-    "kubernetes-sigs/kustomize: restricted to examples/helloWorld/kustomization.yaml, examples/ldap/base/kustomization.yaml, examples/ldap/overlays/production/kustomization.yaml, examples/ldap/overlays/staging/kustomization.yaml, examples/multibases/base/kustomization.yaml, examples/multibases/dev/kustomization.yaml, examples/multibases/kustomization.yaml, examples/multibases/production/kustomization.yaml, examples/multibases/staging/kustomization.yaml, examples/springboot/base/kustomization.yaml, examples/springboot/overlays/production/kustomization.yaml, examples/springboot/overlays/staging/kustomization.yaml, examples/transformerconfigs/crd/kustomization.yaml, examples/wordpress/kustomization.yaml, examples/wordpress/mysql/kustomization.yaml, examples/wordpress/wordpress/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
-    "lang-parity against kustomizeextract (copies of the subjects without the 3 excluded files): MERGE, sym_recall .7416 to 1 and sym_precision 1 to 1, kinds gained Kustomization and KustomizeConfigMap, none lost",
-    "oracle exclusions: 3 of the subjects' 22 kustomizations are left out of the measured files (-only) because the tool cannot build them: kubernetes-sigs/kustomize examples/loadHttp (a remote base and a remote patch, cross-repository and never fetched) and examples/transformerconfigs/images (kustomizeconfig/mykind.yaml is written by the tool's documentation, not in the checkout), and argoproj/argocd-example-apps plugins/kustomized-helm (all.yaml is written by helm at render time); a kind: Component is not a root the tool builds either (none in the subjects)",
+    "kubernetes-sigs/kustomize: Native built-file scope; unsupported native basename counted separately; three serialized full-pool runs",
+    "kubernetes-sigs/kustomize: restricted to helloWorld/kustomization.yaml, ldap/base/kustomization.yaml, ldap/overlays/production/kustomization.yaml, ldap/overlays/staging/kustomization.yaml, multibases/base/kustomization.yaml, multibases/dev/kustomization.yaml, multibases/kustomization.yaml, multibases/production/kustomization.yaml, multibases/staging/kustomization.yaml, springboot/base/kustomization.yaml, springboot/overlays/production/kustomization.yaml, springboot/overlays/staging/kustomization.yaml, transformerconfigs/crd/kustomization.yaml, wordpress/kustomization.yaml, wordpress/mysql/kustomization.yaml, wordpress/wordpress/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at fa240083)",
-    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at fa240083)",
-    "the 53 oracle edges from a resource, base or patch entry to a Kubernetes manifest are out of scope (§1.4, the count above): the dialect records them, the harness scores only edges between files the dialect owns, and an ingest resolves none of them until the kubernetes dialect is dispatched (a manifest has no root entity in the store before); a scratch ingest of both subjects on 2026-09-29 stored the same 13 edges the reading scores and no other"
+    "regraded at 440a94365 from the recorded subject counts (harness rules only; extraction as measured at 6db920e72898abb20bf86c22652b401902e34598)"
   ],
   "disposition": null
 }

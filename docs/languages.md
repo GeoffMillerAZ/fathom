@@ -132,7 +132,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T1 | language | 41 | 0 | 4 | 13 | 10 | 1 | 5 | 0 | 8 | 24 | 10 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 32 | 0 | 11 | 12 | 0 | 1 | 0 | 0 | 8 | 17 | 12 |
-| T3 | tool format | 18 | 0 | 6 | 11 | 0 | 0 | 0 | 0 | 1 | 15 | 5 |
+| T3 | tool format | 18 | 0 | 5 | 12 | 0 | 0 | 0 | 0 | 1 | 16 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 4 | 2 | 0 | 0 | 0 | 0 | 1 | 6 | 5 |
 | T5 | tool format | 8 | 0 | 5 | 3 | 0 | 0 | 0 | 0 | 0 | 5 | 3 |
@@ -140,7 +140,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 2 |
 | **Total** | language | 45 | 0 | 4 | 15 | 10 | 1 | 5 | 0 | 10 | 25 | 10 |
-| **Total** | tool format | 74 | 0 | 31 | 32 | 0 | 1 | 0 | 0 | 10 | 51 | 29 |
+| **Total** | tool format | 74 | 0 | 30 | 33 | 0 | 1 | 0 | 0 | 10 | 52 | 29 |
 
 ### T1
 
@@ -233,14 +233,14 @@ item's target; the last column also needs every level up to the target graded ex
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Kubernetes manifests (incl. CRDs) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
-| Kustomize (kustomization.yaml) | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 13 references, under 20) | L3 not met: evidence: 13 references, under 20 |
+| Kustomize (kustomization.yaml) | tool format | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: sym_precision 0.9604 < 0.98 |
 | Argo CD Applications and Argo Workflows | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Ansible playbooks, roles and inventories | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | AWS CloudFormation / SAM templates | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | Terragrunt (terragrunt.hcl, root.hcl, a .hcl by content sniff) | tool format | L3 | L3 (L1 good, L2 good, L3 excellent) | L1 good: oracle tier C caps at good |
 | HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, docker-bake.hcl) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
 | Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
-| Crossplane compositions and XRDs | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
+| Crossplane compositions and XRDs | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Jsonnet (.jsonnet .libsonnet) | tool format | L3 | unsupported | no dialect (LB-Q-jsonnet) |
 | Serverless Framework (serverless.yml) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Azure Bicep (.bicep, .bicepparam) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
@@ -307,8 +307,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 10; tool formats at target 59)
-Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 10/10; tool formats at target 59/30
+Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 10; tool formats at target 60)
+Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 10/10; tool formats at target 60/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -352,7 +352,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | L2 (L1 good, L2 excellent; L3 unmet, evidence: 19 references, under 20) | A tailwindcss 4.3.2 | — | 2026-10-20 | at target (LB-Q-tailwind) |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | refused | — | — | — | re-plan (LB-Q-less-rest refused) |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
-| Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 13 references, under 20) | A kustomize (kubectl-embedded) v5.8.1 | syntax | 2026-09-29 | LB-Q-kustomize |
+| Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A kustomize v5.8.1 | syntax | 2026-10-26 | at target (LB-Q-kustomize) |
 | Assembly (.s .S .asm) | language | tags | RubixDev/tree-sitter-asm (MIT) | L1 | refused | — | — | — | re-plan (LB-Q-assembly-rest refused) |
 | Argo CD Applications and Argo Workflows | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A argo lint --offline (acceptance, reference ablation) + argo-workflows v1alpha1 types, strict (definitions); lines: gopkg.in/yaml.v3 argo: v4.1.4+b5b4d66.dirty; github.com/argoproj/argo-workflows/v4 v4.1.4 | — | 2026-10-02 | at target (LB-Q-argo) |
 | R (.R .r) | language | tags | r-lib/tree-sitter-r (MIT) | L2 | L2 (L1 excellent, L2 good) | C tree-sitter-tags:r-tags.scm py-tree-sitter 0.25.2, tree-sitter-r 1.3.0; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-r) |
@@ -406,7 +406,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | Tekton pipelines and tasks | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-tekton |
 | Haskell (.hs) | language | tags | tree-sitter-grammars/tree-sitter-haskell (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-haskell |
 | Julia (.jl) | language | tags | tree-sitter-grammars/tree-sitter-julia (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-julia |
-| Crossplane compositions and XRDs | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A crossplane resource validate, offline, against crossplane's own CRDs (cluster/crds at the subject's tag); lines: gopkg.in/yaml.v3 Client Version: v2.5.0; C crossplane-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-crossplane) |
+| Crossplane compositions and XRDs | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C crossplane-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-26 | at target (LB-Q-crossplane) |
 | Clojure (.clj .cljs .cljc .edn) | language | tags | sogaiu/tree-sitter-clojure (CC0-1.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-clojure |
 | Common Lisp (.lisp .lsp .asd) | language | tags | tree-sitter-grammars/tree-sitter-commonlisp (MIT) | L1 | L1 (L1 good) | B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-commonlisp) |
 | Skaffold (skaffold.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-skaffold |

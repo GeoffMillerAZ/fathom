@@ -33,10 +33,11 @@
 //     A composite resource or claim naming its XRD (a user-defined group) stays
 //     Kubernetes and is not read.
 //
-// With -tier-a (wave ox, LB-F157, tiera.go) the definitions are tier A:
+// With the legacy -tier-a flag (wave ox, LB-F157, tiera.go),
 // `crossplane resource validate`, offline against crossplane's own CRDs,
-// decides which files count; the references and cross_references stay this
-// walk's, tier C, in -refs-out.
+// decides which files count. Definitions remain the authored walk's tier C
+// because native validation does not enumerate nested definitions. The
+// references and cross_references also stay tier C in -refs-out.
 //
 //	go run . -subject <checkout> -tier-a -crossplane <bin> -crds <cluster/crds> -scratch <dir> -refs-out <refs.json> [-files-out <txt>] > <defs.json>
 //
@@ -159,7 +160,7 @@ type object struct {
 
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
-	tierAFlag := flag.Bool("tier-a", false, "tier-A definitions from crossplane resource validate (tiera.go); requires -crossplane, -crds, -scratch, -refs-out")
+	tierAFlag := flag.Bool("tier-a", false, "legacy flag: tier-C yaml-walk definitions filtered by crossplane resource validate; requires -crossplane, -crds, -scratch, -refs-out")
 	xpBin := flag.String("crossplane", "", "with -tier-a: the crossplane CLI")
 	crds := flag.String("crds", "", "with -tier-a: crossplane's own cluster/crds at the subject's tag")
 	scratch := flag.String("scratch", "", "with -tier-a: scratch directory (validate's cache)")
