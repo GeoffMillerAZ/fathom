@@ -21,7 +21,7 @@
     "asset": "protoc-34.1-osx-aarch_64.zip",
     "url": "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-osx-aarch_64.zip",
     "sha256": "2c7e92b8b578916937df132b3032e2e8e6c170862ecf7a8333094a6f3d03650c",
-    "projection": "existing main.go source_code_info/descriptor population and existing file/from/to-file scoring unit; no Fathom-selected native truth"
+    "projection": "Owner descriptors/source_code_info, including imported descriptor locations per individual compiler invocation; keep root-file declaration projection and existing file/from/to-file scoring unit. No Fathom-selected native truth."
   },
   "population": [
     {
@@ -92,5 +92,14 @@
     "Per-subject/pooled numerators, denominators and tier caps; source-set reconciliation; strict Reading serialization",
     "X-R2/X-R3/X-R5 and X-R10 scratch strict verification of lexical consumers before READY"
   ],
-  "resources": "One nice10 heavy job; load<=6/free>=20GiB checked first; private caches/TMP; no Docker/global install/paid call; prune measured subjects/builds"
+  "resources": "One nice10 heavy job; load<=6/free>=20GiB checked first; private caches/TMP; no Docker/global install/paid call; prune measured subjects/builds",
+  "instrument_amendment": {
+    "date": "2026-10-27",
+    "stage": "after preliminary replay, before corrected full replay",
+    "reason": "Joint compilation exposed independently valid duplicate qualified type names. An authored four-file control proved the old global type-location map cross-bound a caller to an unimported file. Resolve from each successful compiler invocation including import descriptors and native root precedence; image mode retains its joint-image lookup.",
+    "population_unchanged": true,
+    "grading_thresholds_unchanged": true,
+    "product_engine_unchanged": true,
+    "required": "Freeze instrument correction, demonstrate context/root-order mutants RED then GREEN, rebuild and rerun all three native populations before fresh Fathom comparisons; preliminary reading is not final evidence."
+  }
 }

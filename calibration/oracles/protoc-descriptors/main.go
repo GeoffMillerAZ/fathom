@@ -129,8 +129,15 @@ func main() {
 		roots = bufRoots(root)
 	}
 	sort.SliceStable(roots, func(i, j int) bool { return len(roots[i]) > len(roots[j]) })
+	fileSet := map[string]bool{}
+	for _, f := range files {
+		fileSet[f] = true
+	}
 
 	var set []*descriptorpb.FileDescriptorProto
+	var contexts map[string]map[string][2]string
+	sourceFiles := map[*descriptorpb.FileDescriptorProto]string{}
+	compilerRoots := map[string][]string{}
 	tool, version := "protoc", ""
 	if *image != "" {
 		tool, version = "buf build", "(image)"
@@ -144,6 +151,7 @@ func main() {
 		}
 		set = fds.File
 	} else {
+		contexts = map[string]map[string][2]string{}
 		out, err := exec.Command(*protoc, "--version").Output()
 		if err != nil {
 			fail(err)
@@ -157,9 +165,11 @@ func main() {
 		rejected := 0
 		for i, f := range files {
 			own := rootOf(f, roots)
-			args := []string{"--include_source_info", "--descriptor_set_out=" + filepath.Join(tmp, fmt.Sprintf("%d.pb", i)), "-I", filepath.Join(root, own)}
+			search := []string{own}
+			args := []string{"--include_source_info", "--include_imports", "--descriptor_set_out=" + filepath.Join(tmp, fmt.Sprintf("%d.pb", i)), "-I", filepath.Join(root, own)}
 			for _, r := range roots {
 				if r != own {
+					search = append(search, r)
 					args = append(args, "-I", filepath.Join(root, r))
 				}
 			}
@@ -180,24 +190,31 @@ func main() {
 			if err := proto.Unmarshal(b, &fds); err != nil {
 				fail(err)
 			}
-			set = append(set, fds.File...)
+			contexts[f] = descriptorLocations(fds.File, search, fileSet)
+			compilerRoots[f] = search
+			virtual := f
+			if own != "" {
+				virtual = strings.TrimPrefix(f, own+"/")
+			}
+			found := false
+			for _, fd := range fds.File {
+				if fd.GetName() == virtual {
+					set = append(set, fd)
+					sourceFiles[fd] = f
+					found = true
+				}
+			}
+			if !found {
+				fail(fmt.Errorf("compiler omitted root descriptor"))
+			}
 		}
 		fmt.Fprintf(os.Stderr, "protoc: %d files, %d compiled, %d rejected; roots %q\n", len(files), len(files)-rejected, rejected, roots)
 	}
 
-	fileSet := map[string]bool{}
-	for _, f := range files {
-		fileSet[f] = true
-	}
 	// repoPath maps a descriptor's virtual name to the subject file it is:
 	// the first root (longest first) holding a file of that name.
 	repoPath := func(name string) (string, bool) {
-		for _, r := range roots {
-			if p := joinRel(r, name); fileSet[p] {
-				return p, true
-			}
-		}
-		return "", false
+		return descriptorFile(name, roots, fileSet)
 	}
 	res := output{Tool: tool, Version: version, Tier: "A", Definitions: []def{}, References: []ref{}, Imports: []imp{}, CrossReferences: []xref{}}
 	// Every definition protoc resolved, by full name, for cross_references.
@@ -209,6 +226,9 @@ func main() {
 	seen := map[string]bool{}
 	for _, fd := range set {
 		file, ok := repoPath(fd.GetName())
+		if contexts != nil {
+			file, ok = sourceFiles[fd]
+		}
 		if !ok || seen[file] {
 			continue
 		}
@@ -277,6 +297,9 @@ func main() {
 		}
 		for j, dep := range fd.GetDependency() {
 			to, ok := repoPath(dep)
+			if contexts != nil {
+				to, ok = descriptorFile(dep, compilerRoots[file], fileSet)
+			}
 			if !ok {
 				continue
 			}
@@ -287,7 +310,7 @@ func main() {
 	for _, r := range refs {
 		name := r.typeName[strings.LastIndex(r.typeName, ".")+1:]
 		res.References = append(res.References, ref{Path: r.file, From: r.from, To: name})
-		if w, ok := where[r.typeName]; ok && w[0] != r.file {
+		if w, ok := referenceDestination(r.file, r.typeName, contexts, where); ok && w[0] != r.file {
 			res.CrossReferences = append(res.CrossReferences, xref{Path: r.file, From: r.from, ToPath: w[0], To: w[1]})
 		}
 	}
@@ -297,6 +320,62 @@ func main() {
 	if err := enc.Encode(res); err != nil {
 		fail(err)
 	}
+}
+
+// referenceDestination never lets an independently compiled unit borrow a
+// same-named declaration from another unit. A buf image is already joint.
+func referenceDestination(file, name string, contexts map[string]map[string][2]string, fallback map[string][2]string) ([2]string, bool) {
+	if contexts != nil {
+		value, ok := contexts[file][name]
+		return value, ok
+	}
+	value, ok := fallback[name]
+	return value, ok
+}
+
+func descriptorFile(name string, roots []string, files map[string]bool) (string, bool) {
+	for _, root := range roots {
+		if file := joinRel(root, name); files[file] {
+			return file, true
+		}
+	}
+	return "", false
+}
+
+// descriptorLocations reads declarations from one successful compiler unit,
+// including imports, in the same root precedence that invocation used.
+func descriptorLocations(set []*descriptorpb.FileDescriptorProto, roots []string, files map[string]bool) map[string][2]string {
+	out := map[string][2]string{}
+	for _, fd := range set {
+		file, ok := descriptorFile(fd.GetName(), roots, files)
+		if !ok {
+			continue
+		}
+		pkg := ""
+		if fd.GetPackage() != "" {
+			pkg = "." + fd.GetPackage()
+		}
+		var message func(string, *descriptorpb.DescriptorProto)
+		message = func(scope string, m *descriptorpb.DescriptorProto) {
+			full := scope + "." + m.GetName()
+			if !m.GetOptions().GetMapEntry() {
+				out[full] = [2]string{file, m.GetName()}
+			}
+			for _, nested := range m.GetNestedType() {
+				message(full, nested)
+			}
+			for _, e := range m.GetEnumType() {
+				out[full+"."+e.GetName()] = [2]string{file, e.GetName()}
+			}
+		}
+		for _, m := range fd.GetMessageType() {
+			message(pkg, m)
+		}
+		for _, e := range fd.GetEnumType() {
+			out[pkg+"."+e.GetName()] = [2]string{file, e.GetName()}
+		}
+	}
+	return out
 }
 
 // spans maps a source_code_info path to its span.
