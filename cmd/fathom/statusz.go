@@ -37,14 +37,23 @@ type StatuszBuildInfo struct {
 	BinaryCommit string `json:"binary_commit"`
 	BinaryDirty  bool   `json:"binary_dirty"`
 	BuiltAt      string `json:"built_at,omitempty"`
+	// ModuleVersion and ModuleSum identify a binary built without VCS
+	// stamping (`go install pkg@version`); omitted when absent.
+	ModuleVersion string `json:"module_version,omitempty"`
+	ModuleSum     string `json:"module_sum,omitempty"`
 }
+
+// statuszStamp reads the binary's build identity; a variable so tests can
+// supply a fake stamp.
+var statuszStamp = buildinfo.Read
 
 // statuszBuildInfo reads the running daemon binary's VCS stamp from
 // internal/buildinfo. An unstamped binary (built without -buildvcs) yields
 // an empty commit, which readers treat as "unknown", never as fresh.
 func statuszBuildInfo() StatuszBuildInfo {
-	st := buildinfo.Read()
-	return StatuszBuildInfo{BinaryCommit: st.Revision, BinaryDirty: st.Dirty, BuiltAt: st.BuiltAt}
+	st := statuszStamp()
+	return StatuszBuildInfo{BinaryCommit: st.Revision, BinaryDirty: st.Dirty, BuiltAt: st.BuiltAt,
+		ModuleVersion: st.ModuleVersion, ModuleSum: st.ModuleSum}
 }
 
 // StatuszTypedEdges is one service's typed Go call-edge pass outcome as of
@@ -233,6 +242,12 @@ func statuszTypedEdgesAbsence(root string) statuszTypedAbsence {
 // (short), "-dirty" when built from a modified tree, or "unstamped".
 func statuszBinaryLabel(b StatuszBuildInfo) string {
 	if b.BinaryCommit == "" {
+		switch {
+		case b.ModuleVersion != "" && b.ModuleSum != "":
+			return "unstamped (module " + b.ModuleVersion + ", sum " + b.ModuleSum + ")"
+		case b.ModuleVersion != "":
+			return "unstamped (module " + b.ModuleVersion + ")"
+		}
 		return "unstamped (built without -buildvcs)"
 	}
 	label := b.BinaryCommit

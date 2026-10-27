@@ -54,7 +54,15 @@ mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local
 export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.23.0 @ <commit>
 ```
 
-The binaries are not signed or notarized. A macOS browser download carries a quarantine
+The binaries are not signed or notarized, but each archive and `checksums.txt` carries a
+build-provenance attestation, starting with the first release after v0.23.0. Verify a downloaded archive against this repository's release workflow:
+
+```sh
+gh attestation verify "fathom_${V}_${OS}_${ARCH}.tar.gz" --repo GeoffMillerAZ/fathom \
+  --signer-workflow GeoffMillerAZ/fathom/.github/workflows/release.yml
+```
+
+A macOS browser download carries a quarantine
 flag (`curl` does not set it); clear it with `xattr -d com.apple.quarantine fathom`.
 
 *Or `go install github.com/geoffmilleraz/fathom/cmd/fathom@latest`* (macOS needs the Xcode
