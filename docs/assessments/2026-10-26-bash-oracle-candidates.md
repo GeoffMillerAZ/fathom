@@ -96,7 +96,10 @@ product-discovery misses, rather than non-Bash noise. The scope rule accepts
 `.sh`/`.bash`, then tries a shebang only when Go-style `filepath.Ext` is empty;
 a descriptive basename containing another dot therefore never reaches shebang
 dispatch. The pinned tree contains 30 such dotted-name `#!/bin/sh` files, of which
-17 contributed these executed pairs. The unchanged eligible-file population is
+17 contributed these executed pairs. The 17 and 30 file counts are
+operator-attested from the raw capture/source inventory at `0140aae`, not
+recomputed by the committed checker; 32 is checked against the recorded native
+pair population. The unchanged eligible-file population is
 457 / 248, with 450 / 225 found. NVM's all-in-root recall bound is at most
 **450/489 (.9202)**, beside **450/457 (.9847)** on eligible callers. No broader
 full-population grade is inferred from either number.
@@ -280,7 +283,9 @@ bash scripts/check-merge-debris.sh --staged
 ```
 
 The README gives the historical native and 31-unit-mutation proof commands,
-including every input flag. The canonical reading bytes, holdout sets and generated
+including every input flag. This branch does not edit the canonical reading;
+main's inherited notes-only refresh is checked field by field, excluding only
+`notes`, against hash `aa7aa8e1` at `0140aae`. Holdout sets and the generated
 board are unchanged. The controller retains full integration validation.
 
 Binding review disposition: Major 1 is corrected by a native-only denominator
@@ -296,6 +301,8 @@ artifacts were reused after digest checks; no new subject test pass is claimed.
 first rule in `internal/fusion/shebangdispatch.go` and the independent original
 scope in `calibration/oracles/bash-source/bash_source_dump.py` both skip the 30
 dotted-name `#!/bin/sh` scripts above; 17 yielded 32 native executed identities.
+The 17 and 30 file counts are operator-attested from the raw capture/source
+inventory at `0140aae`, rather than verified by the receipt checker.
 This is a discovery gap, not an oracle inability. A separate controller-serialized
 ENGINE change must decide whether an unrecognised extension may fall through to
 shebang dispatch, then regrade affected languages. This lane records the draft
@@ -308,7 +315,32 @@ original location first. The new authored regression runs a miniature capture
 through the actual decoder: relocation refuses with a clear path/coverage message
 and no output, while replay at the original root succeeds with the same bytes.
 This uses the reviewer's documented-precondition option; it adds no rebasing or
-new source execution. The current 45-regression suite passes, including the new
+new source execution. The current 53-regression suite passes, including the new
 relocation diagnostic. The receipt pins historical replay/decoder hashes to the
-reviewed revision and checks current code separately. Native counts and canonical
-reading bytes stay unchanged.
+reviewed revision and checks current code separately. Native counts stay
+unchanged. This branch does not edit the canonical reading; main's inherited
+notes-only refresh is checked field by field, excluding only `notes`, against
+hash `aa7aa8e1` at `0140aae`. The receipt's `canonical_reading_changed: false`
+means no edit by this lane, not byte equality across inherited history.
+
+OL-R15 hardens that guard: a differing current reading hash requires `followup`,
+and `historical_replay_revision` must identify a committed receipt whose
+`canonical_reading_sha256` equals `followup.historical_canonical_reading_sha256`.
+The revision is validated as 40 lowercase hexadecimal digits before Git runs;
+historical Git reads use the repository root regardless of caller directory.
+The guard-deletion and coordinated-revision-swap regressions first failed on
+the reviewed code, then passed after the fix. Notes-only refreshes and an
+unchanged historical reading remain accepted; metric changes stay refused.
+
+Current guard mutation proof uses
+`python3 -B -m unittest discover -s calibration/oracles/bash-trace -p 'test_evidence.py'`.
+Each mutant below was applied separately, killed, then restored; the full
+53-test suite passed after restoration. These four current guard mutants are
+separate from the 31 historical native/replay mutants.
+
+| File | Mutation | Refusing regression/result |
+|---|---|---|
+| `evidence.py` | Remove the required-`followup` assertion | `FAIL: test_metric_change_cannot_delete_followup_guard` |
+| `evidence.py` | Remove the historical receipt hash equality | `FAIL: test_revision_swap_must_match_receipt_recorded_at_that_revision` |
+| `redecode.py` | Remove `cwd=REPO` from historical Git reads | `FAIL: test_check_and_historical_hash_work_outside_repo` |
+| `redecode.py` | Remove 40-hex revision validation | `ERROR: test_revision_is_validated_before_git` (unexpected unvalidated Git result) |

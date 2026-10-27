@@ -2,7 +2,7 @@
 """Export counts/hashes only, or verify the committed supplementary Bash receipt."""
 import argparse,hashlib,json,re
 from pathlib import Path
-from redecode import historical_hash
+from redecode import historical_bytes,historical_hash
 
 HERE=Path(__file__).resolve().parent
 REPO=HERE.parents[2]
@@ -16,6 +16,15 @@ def check(data,verify_code=True):
     assert data['canonical_reading_changed'] is False
     assert data['canonical_reading_sha256']==sha(REPO/'docs/bench/readings/lang/bash.json')
     runtime,scip,lookup=(data[k] for k in ['runtime','scip','lookup'])
+    revision=(data['followup']['historical_replay_revision'] if 'followup' in data else
+              runtime.get('code_revision') or data.get('historical_capture_revision'))
+    if revision is not None or 'followup' in data:
+        old_reading=historical_bytes(revision,'docs/bench/readings/lang/bash.json')
+        historical_reading_sha256=hashlib.sha256(old_reading).hexdigest()
+        historical_receipt=json.loads(historical_bytes(revision,'docs/assessments/data/bash-oracle-2026-10-26/evidence.json'))
+        if (data['canonical_reading_sha256']!=historical_reading_sha256 or
+                data['canonical_reading_sha256']!=historical_receipt['canonical_reading_sha256']):
+            assert 'followup' in data,'followup required when reading differs from historical bytes'
     assert lookup['tier']=='C' and scip['scoring_tier'].startswith('C ')
     assert len(data['mutations'])==(31 if 'historical_capture_revision' in data else 32)
     assert all(r['FAIL'].startswith('FAIL:') and r['restored']=='GREEN' for r in data['mutations'])
@@ -51,15 +60,13 @@ def check(data,verify_code=True):
     assert control['only_observed_failed_tests']+control['shared_failed_tests']==control['observed']['failed']
     assert control['only_control_failed_tests']+control['shared_failed_tests']==control['control']['failed']
     if 'followup' in data:
-        import subprocess
         followup=data['followup'];row=runtime['subjects']['nvm']
         assert followup['excluded_executed_pairs']==row['native_pairs_outside_original_caller_scope']==32
-        assert followup['excluded_executed_files']==17 and followup['dotted_shebang_files']==30
         assert followup['all_in_root_recall_bound']==row['executed_pairs_found']/row['executed_native_pairs']
         assert runtime['code_revision']==followup['historical_replay_revision']
         assert all(r['decoder_code_revision']==followup['historical_replay_revision'] for r in runtime['subjects'].values())
-        old_reading=subprocess.check_output(['git','show',followup['historical_replay_revision']+':docs/bench/readings/lang/bash.json'])
-        assert hashlib.sha256(old_reading).hexdigest()==followup['historical_canonical_reading_sha256']
+        assert historical_receipt['canonical_reading_sha256']==followup['historical_canonical_reading_sha256'],'historical receipt reading hash does not match followup'
+        assert historical_reading_sha256==followup['historical_canonical_reading_sha256']
         before,after=json.loads(old_reading),json.loads((REPO/'docs/bench/readings/lang/bash.json').read_text())
         before.pop('notes');after.pop('notes')
         assert before==after,'canonical reading changed beyond inherited notes'
@@ -137,9 +144,7 @@ def main():
     p.add_argument('--bats-folder',default='bats-final-v4')
     a=p.parse_args()
     if a.followup_base:
-        import subprocess
-        historical_hash(a.followup_base,'redecode.py')  # validate the revision before invoking git
-        data=json.loads(subprocess.check_output(['git','show',a.followup_base+':docs/assessments/data/bash-oracle-2026-10-26/evidence.json']))
+        data=json.loads(historical_bytes(a.followup_base,'docs/assessments/data/bash-oracle-2026-10-26/evidence.json'))
         data['runtime']['code_revision']=a.followup_base
         for row in data['runtime']['subjects'].values():row['decoder_code_revision']=a.followup_base
         data['current_code_sha256']={p.name:sha(p) for p in HERE.iterdir() if p.is_file()}
@@ -148,9 +153,11 @@ def main():
             excluded_executed_files=17,dotted_shebang_files=30,
             historical_canonical_reading_sha256=data['canonical_reading_sha256'],
             all_in_root_recall_bound=nvm['executed_pairs_found']/nvm['executed_native_pairs'],
+            file_counts_basis='17 executed files and 30 dotted-shebang files are operator-attested from raw capture/source inventory at '+a.followup_base+'; not recomputed by --check.',
             scope_basis='Binding round-2 review: excluded pairs are executed dotted-basename shebang scripts skipped by the shared extension-first discovery rule; counts, not file lists.',
             replay_precondition='Raw captures must stay at their recorded absolute path. A relocated archive is refused with a coverage/path diagnostic; no frame rebasing is implemented.',
             policy='Disclosure/diagnostic follow-up only. Native executions, offline re-score and 31 mutants remain at historical_replay_revision; current authored regression/check code is separately hashed. No new subject execution or grade.')
+        data['canonical_reading_change_basis']='canonical_reading_changed means edited by this lane, not byte equality with historical measurements. Inherited notes-only changes are checked against the historical receipt and every non-notes reading field.'
         data['canonical_reading_sha256']=sha(REPO/'docs/bench/readings/lang/bash.json')
         check(data)
         a.out.parent.mkdir(parents=True,exist_ok=True)
@@ -161,8 +168,7 @@ def main():
         assert a.tools,'--tools required for capture'
         def read(folder,filename='summary.json'):return json.loads((a.capture/folder/filename).read_text())
         if a.historical_base:
-            import subprocess
-            data=json.loads(subprocess.check_output(['git','show',a.historical_base+':docs/assessments/data/bash-oracle-2026-10-26/evidence.json']))
+            data=json.loads(historical_bytes(a.historical_base,'docs/assessments/data/bash-oracle-2026-10-26/evidence.json'))
             data['historical_capture_revision']=a.historical_base
             data['historical_mutations']=data['mutations']
             data['mutations']=read(a.mutations_folder,'mutations.json')
@@ -200,7 +206,7 @@ def main():
         print('PASS: exported sanitized supplementary receipt')
     else:
         check(json.loads((a.check or DEFAULT).read_text()))
-        print('PASS: scope, denominators, tiers, independence, mutations and committed code hashes')
+        print('PASS: scope, denominators, tiers, independence, mutations and committed code hashes; follow-up file counts are operator-attested, not recomputed')
 
 
 if __name__=='__main__':main()

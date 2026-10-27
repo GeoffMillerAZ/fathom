@@ -236,6 +236,10 @@ extension other than `.sh` or `.bash` prevents shebang dispatch. Across all
 489 in-root identities the recall bound is at most 450/489 (.9202), beside the
 450/457 (.9847) eligible-caller result. The assessment records the discovery gap
 as an observation draft; repairing the shared engine requires a separate lane.
+The 17 executed files and 30 dotted-name shebang files are operator-attested
+from the raw capture/source inventory at `0140aae`; the committed checker does
+not recompute those file counts. It checks 32 against the recorded native pair
+population. No subject filenames are committed.
 shfmt still attests only 496/9,147 and 254/1,423 written sites. Certified NVM
 site-unpaired rows are 24,926; rejected phase rows are 22,071, reported separately.
 
@@ -269,7 +273,7 @@ code hashes validate the modified decoder and receipt reader.
 
 The deferred-minor update retains the native/replay/31-mutant measurements at
 their recorded review revision. Only the relocation diagnostic, its authored
-regression, 45-test authored suite, scope disclosure and receipt checks are current; no new native
+regression, 53-test authored suite, scope disclosure and receipt checks are current; no new native
 execution or re-score is claimed. Main's inherited reading refresh changed only
 notes; the receipt retains its historical reading hash and asserts equality of
 every other JSON field before pinning the current reading bytes. This branch
@@ -279,3 +283,14 @@ does not edit that reading. Refresh/check the metadata with:
 python3 -B calibration/oracles/bash-trace/evidence.py --followup-base 0140aae9d0753df26b2f254d5e84b56cbbfea2a0
 python3 -B calibration/oracles/bash-trace/evidence.py --check docs/assessments/data/bash-oracle-2026-10-26/evidence.json
 ```
+
+`canonical_reading_changed` means **edited by this lane**, not byte equality
+with the historical reading. Main's inherited notes-only refresh is checked
+field by field, excluding only `notes`, against reading hash `aa7aa8e1` at
+`0140aae`. The historical revision must be 40 lowercase hexadecimal digits,
+and its committed receipt must record the same historical reading hash.
+`followup` is required whenever the current hash differs from the historical
+reading or receipt. Every historical Git read runs from the repository root,
+including when the checker is launched from another working directory.
+The authored regressions refuse guard deletion and coordinated revision swaps,
+allow notes-only refreshes, and exercise a foreign Git working directory.

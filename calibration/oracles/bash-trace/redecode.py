@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """Verify historical capture bytes, then decode native pairs without syntax selection."""
-import argparse,copy,hashlib,importlib.util,json,subprocess
+import argparse,copy,hashlib,importlib.util,json,re,subprocess
 from pathlib import Path
 from call_sites import collect
 from collect import merge_function_phase
 from function_decode import decode
 
 HERE=Path(__file__).resolve().parent
+REPO=HERE.parents[2]
 
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def historical_bytes(revision,path):
+    assert isinstance(revision,str) and re.fullmatch(r'[0-9a-f]{40}',revision),'expected a lowercase 40-hex historical revision'
+    return subprocess.check_output(['git','show',revision+':'+path],cwd=REPO)
+
+
 def historical_hash(revision,name):
-    assert len(revision)==40 and all(c in '0123456789abcdef' for c in revision)
     assert Path(name).name==name
-    return hashlib.sha256(subprocess.check_output(['git','show',revision+':calibration/oracles/bash-trace/'+name])).hexdigest()
+    return hashlib.sha256(historical_bytes(revision,'calibration/oracles/bash-trace/'+name)).hexdigest()
 
 
 def main():
