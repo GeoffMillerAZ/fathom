@@ -1,0 +1,114 @@
+// Calibration control: perturb only the Crossplane product document specification.
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+)
+
+func sha(b []byte) string {
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:])
+}
+
+func count(nodes []core.SymbolNode) map[string]int {
+	out := map[string]int{}
+	for _, node := range nodes {
+		out[string(node.Kind)]++
+	}
+	return out
+}
+
+func main() {
+	subject := flag.String("subject-file", "", "unchanged pinned subject CrossplaneResource file")
+	specPath := flag.String("spec", "internal/extractor/dialects/crossplane/doc.json", "product Crossplane document spec")
+	flag.Parse()
+	if *subject == "" {
+		panic("-subject-file is required")
+	}
+	src, err := os.ReadFile(*subject)
+	if err != nil {
+		panic(err)
+	}
+	beforeHash := sha(src)
+	baseline, err := extractor.NewDocDialectExtractor("crossplane")
+	if err != nil {
+		panic(err)
+	}
+	baseNodes, err := baseline.Extract("proof", "composition.yaml", src)
+	if err != nil {
+		panic(err)
+	}
+	b, err := os.ReadFile(*specPath)
+	if err != nil {
+		panic(err)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(b, &raw); err != nil {
+		panic(err)
+	}
+	// Remove only pipeline-step entities and their references from the product
+	// specification. Subject bytes and native schema validation are untouched.
+	for _, family := range []string{"entities", "references", "cross_file"} {
+		rows, ok := raw[family].([]any)
+		if !ok {
+			panic("missing product spec family: " + family)
+		}
+		filtered := make([]any, 0, len(rows))
+		removed := 0
+		for _, row := range rows {
+			object := row.(map[string]any)
+			if object["source_kind"] == "CrossplaneStep" || object["from"] == "CrossplaneStep" {
+				removed++
+				continue
+			}
+			filtered = append(filtered, row)
+		}
+		if removed != 1 {
+			panic(fmt.Sprintf("expected one pipeline-step selector in %s, found %d", family, removed))
+		}
+		raw[family] = filtered
+	}
+	mutatedJSON, err := json.Marshal(raw)
+	if err != nil {
+		panic(err)
+	}
+	mutatedSpec, err := extractor.ParseDocSpec(mutatedJSON)
+	if err != nil {
+		panic(err)
+	}
+	mutant, err := extractor.NewDocExtractor(mutatedSpec)
+	if err != nil {
+		panic(err)
+	}
+	mutantNodes, err := mutant.Extract("proof", "composition.yaml", src)
+	if err != nil {
+		panic(err)
+	}
+	after, err := os.ReadFile(*subject)
+	if err != nil {
+		panic(err)
+	}
+	if sha(after) != beforeHash {
+		panic("subject changed during product control")
+	}
+	baseCount, mutantCount := count(baseNodes), count(mutantNodes)
+	if baseCount["CrossplaneStep"] < 1 || mutantCount["CrossplaneStep"] != 0 ||
+		baseCount["CrossplaneResource"] != mutantCount["CrossplaneResource"] {
+		panic(fmt.Sprintf("product perturbation failed: baseline=%v mutant=%v", baseCount, mutantCount))
+	}
+	result := map[string]any{"subject_sha256": beforeHash, "product_spec_sha256": sha(b),
+		"mutated_spec_sha256": sha(mutatedJSON), "baseline_counts": baseCount,
+		"mutant_counts": mutantCount, "product_output_changed": true,
+		"subject_unchanged": true}
+	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		panic(err)
+	}
+}
