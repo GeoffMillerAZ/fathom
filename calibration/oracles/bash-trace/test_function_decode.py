@@ -67,6 +67,34 @@ class NativeFunctionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'field byte cap'):
             decode(self.trace,self.root,self.population,max_field_bytes=largest-1)
 
+    def test_relocated_capture_names_original_absolute_path_requirement(self):
+        import hashlib,json,shutil
+        from unittest.mock import patch
+        import redecode
+        original=self.root/'capture';phase=original/'phases/0';phase.mkdir(parents=True)
+        self.fields[1]=str(original/'child/native.sh')
+        self.fields[5]=str(original/'child/definitions.sh');self.save()
+        shutil.copyfile(self.trace,phase/'functions.trace')
+        summary=dict(instrument_sha256={},source_sha256={'native.sh':hashlib.sha256(self.caller.read_bytes()).hexdigest()},
+            function_population_sha256=hashlib.sha256(json.dumps(self.population,sort_keys=True).encode()).hexdigest(),
+            function_attested_sites=1,function_pairs=[dict(path='native.sh',**{'from':'driver','to':'resolved_target'})],
+            runs=[dict(phase='phases/0',raw_sha256={'functions.trace':hashlib.sha256(self.trace.read_bytes()).hexdigest()},
+                       changed_source=False,timeout=False,exit=0)])
+        (original/'summary.json').write_text(json.dumps(summary))
+        moved=self.root/'restored';shutil.copytree(original,moved)
+        command=['redecode.py','--subject',str(self.root),'--shfmt','unused-fixture-parser',
+                 '--capture-revision','0'*40]
+        with patch.object(redecode,'collect',return_value=self.population):
+            with patch('sys.argv',command+['--native',str(moved),'--out',str(self.root/'refused')]):
+                with self.assertRaisesRegex(AssertionError,'recorded absolute path'):
+                    redecode.main()
+            self.assertFalse((self.root/'refused').exists())
+            with patch('sys.argv',command+['--native',str(original),'--out',str(self.root/'accepted')]):
+                redecode.main()
+        accepted=json.loads((self.root/'accepted/summary.json').read_text())
+        self.assertEqual(accepted['function_pairs'],summary['function_pairs'])
+        self.assertEqual((moved/'phases/0/functions.trace').read_bytes(),self.trace.read_bytes())
+
 
 
 class CertifiedPhaseTests(unittest.TestCase):
