@@ -113,6 +113,8 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [terragrunt-triage](2026-10-26-terragrunt-triage.md), [data](data/terragrunt-triage-2026-10-26/receipt.json) | Owner stack/DAG/language-server candidates; content-based cache inventory, native attempts need owner approval | Feeds IAC-20/GAP1-37; does not satisfy them |
 | 2026-10-26 | [aws-cdk-triage](2026-10-26-aws-cdk-triage.md), [data](data/aws-cdk-triage-2026-10-26/receipt.json) | Owner synth/tree/trace and ordinary language candidates; content-based path-free cache inventory | Feeds IAC-20/GAP1-37; does not satisfy them |
 
+| 2026-10-26 | [tools Jenkins native audit](2026-10-26-tools-jenkins-native.md) | Owner Declarative ModelAST accepts all 23 inputs; a complete unit comparator remains unmeasured and the absent-evaluator premise is withdrawn | LB-Q-jenkinsfile-rest, ADR-048/054/067, P-T1 |
+
 ## Companion pages
 
 The owner keeps private companion pages for several of these readings; they are not linked here

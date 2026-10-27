@@ -2634,7 +2634,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067)",
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067); 2026-10-26 L1/L2 native audit: pinned owner Declarative Converter accepts all 23 canonical inputs (753 model nodes, 747 positioned); no absent-offline-evaluator ceiling. Full dialect definition/range/pair mapping remains unbuilt; existing 163 definitions and 133 pairs stay C, no new tier or L3 change. See calibration/oracles/jenkinsfile/NATIVE.md and the dated tools-jenkins-native assessment",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (@Library shared-library and load file edges); oracle gains the Jenkins declarative linter (tier A, ruling W4, a local controller in the measuring harness only)"
   },
   {
