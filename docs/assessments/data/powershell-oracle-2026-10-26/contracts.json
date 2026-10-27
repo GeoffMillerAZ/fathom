@@ -1,0 +1,18 @@
+{
+  "pwsh": "7.6.9",
+  "command_discovery_provider": true,
+  "provider_count": 24,
+  "member_related_providers": [
+    "MemberResolution",
+    "TypeConversion"
+  ],
+  "native_lookup_events_emitted": true,
+  "member_resolution_events_emitted": true,
+  "native_static_reflection_overloads": 8,
+  "native_static_reflection_method_names": [
+    "Abs"
+  ],
+  "member_trace_sha256": "3ec5fe2d1544ac16d8765c85ae27d94e7f84d6fa39715998dc19bff540e74262",
+  "trace_sha256": "9ff831f1a283c02a3a3dad8280f3dcc7e3e7192e2eb66cbff1ac4112d6d5504d",
+  "limitation": "CommandDiscovery emits lookup/selection text, without a structured caller-file/line/column reference table. Set-PSDebug emits execution/variable diagnostics, not independently resolved targets. Neither alone pairs full written references."
+}

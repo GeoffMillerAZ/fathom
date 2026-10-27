@@ -1,0 +1,144 @@
+{
+  "schema": "opencl-c-sdk-contexts-v1",
+  "date": "2026-10-26",
+  "status": "design-evidence-only",
+  "subject": {
+    "id": "sdk",
+    "commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
+    "tracked_lowercase_cl": {
+      "files": 10,
+      "bytes": 29468,
+      "manifest_sha256": "40659f9fbe54c3e03f1b42fecd015de3907e1630e1ecf9a9a2619b0a58f883e8",
+      "manifest_algorithm": "SHA-256 over sorted records path NUL git-blob-id NUL"
+    }
+  },
+  "selected_context": {
+    "oracle_tier": "B",
+    "policy": "one deterministic reconstructed context for every tracked lowercase .cl file",
+    "command_flags": [
+      "--no-default-config",
+      "-x",
+      "cl",
+      "--target=spir64-unknown-unknown",
+      "-cl-std=CL3.0",
+      "-Xclang",
+      "-finclude-default-header"
+    ],
+    "defines": [],
+    "active_line_filter": {
+      "tool": "calibration/oracles/scip-clang/preproc",
+      "field": "active_lines",
+      "apply_to": [
+        "oracle_truth_sites",
+        "extractor_sites"
+      ],
+      "rule": "score only tracked-file sites active in this exact compilation-database entry"
+    }
+  },
+  "host_context_summary": {
+    "compile_roots": 10,
+    "roots_with_runtime_selected_cl_std": 3,
+    "roots_with_runtime_selected_defines": 2,
+    "roots_with_no_explicit_build_options": 7,
+    "runtime_cl_std_options_observed": [
+      "-cl-std=CL2.0",
+      "-cl-std=CL3.0"
+    ],
+    "runtime_define_options_observed": [
+      "-D USE_SUBGROUP_EXCHANGE",
+      "-D USE_SUBGROUP_EXCHANGE_RELATIVE",
+      "-D USE_SUB_GROUP_REDUCE",
+      "-D USE_WORK_GROUP_REDUCE"
+    ]
+  },
+  "context_exceptions": [
+    {
+      "id": "reduce",
+      "runtime_branching": [
+        "OpenCL C major version",
+        "platform major version",
+        "work-group collective support and feature",
+        "sub-group extension support",
+        "requested reduction operation"
+      ],
+      "observed_options": [
+        "-cl-std=CL2.0",
+        "-cl-std=CL3.0",
+        "-D USE_SUB_GROUP_REDUCE",
+        "-D USE_WORK_GROUP_REDUCE"
+      ],
+      "source_assembly": {
+        "tracked_kernel_files": 1,
+        "generated_fragments_appended": 1,
+        "generated_fragment_variants": 6,
+        "variant_dimensions": [
+          "operation: min or sum",
+          "helper route: fallback, work-group, or sub-group"
+        ],
+        "selected_context_treatment": "exclude generated fragment sites from tracked-file truth; record the source assembly without reconstructing it"
+      },
+      "references": [
+        "samples/core/reduce/main.cpp:98",
+        "samples/core/reduce/main.cpp:132",
+        "samples/core/reduce/main.cpp:157",
+        "samples/core/reduce/reduce.cl:57"
+      ]
+    },
+    {
+      "id": "blur",
+      "runtime_branching": [
+        "OpenCL C major version",
+        "local-memory availability",
+        "sub-group shuffle extension support",
+        "sub-group relative-shuffle extension support",
+        "requested blur operation"
+      ],
+      "observed_options": [
+        "-cl-std=CL2.0",
+        "-cl-std=CL3.0",
+        "-D USE_SUBGROUP_EXCHANGE",
+        "-D USE_SUBGROUP_EXCHANGE_RELATIVE"
+      ],
+      "references": [
+        "samples/core/blur/blur.cpp:494",
+        "samples/core/blur/blur.cpp:562",
+        "samples/core/blur/main.cpp:60",
+        "samples/core/blur/blur.cl:304"
+      ]
+    },
+    {
+      "id": "multi-device",
+      "runtime_branching": [
+        "OpenCL C major version"
+      ],
+      "observed_options": [
+        "-cl-std=CL2.0",
+        "-cl-std=CL3.0"
+      ],
+      "references": [
+        "samples/core/multi-device/main.cpp:220"
+      ]
+    }
+  ],
+  "targeted_evidence": {
+    "files": 6,
+    "references": 9,
+    "bytes": 87342,
+    "manifest_sha256": "3626e46092ccb3e3ceb0b7c71d81a13b62e8063f1a45de20e9b459296cd38021",
+    "manifest_algorithm": "SHA-256 over sorted records path TAB content-sha256 TAB line-count TAB byte-count LF",
+    "file_sha256": {
+      "samples/core/blur/blur.cl": "532d02d6fc08141cc8bf3ae2dbffba24f7e39f0b8489600269d43037bf784862",
+      "samples/core/blur/blur.cpp": "ca79db8af61287a24961979eb01376c3e3b91768936a14d9ada0a113b62a9b5b",
+      "samples/core/blur/main.cpp": "33dd3299f1b6d784958544c11420243191c8762fde705cbf89889f603529b8ff",
+      "samples/core/multi-device/main.cpp": "ed33701ec230d75a32380488fd22ac05a84ebe1b90a282c99f16b25d34581215",
+      "samples/core/reduce/main.cpp": "bc99a752824fff146b56cbc0742df6b9cdf03506cce67ff04b8e4c9072c5804e",
+      "samples/core/reduce/reduce.cl": "54b7342dfdf3736a06839531cbb8b5e8ecf8ce849336eec0653278aa11f74aff"
+    }
+  },
+  "limits": [
+    "This record does not activate grading or select a grammar.",
+    "The selected context does not claim coverage of every runtime device, feature, option, or generated-source variant.",
+    "The selected context does not claim runtime program grouping or link-unit truth.",
+    "Host evidence explains known divergence from the deterministic baseline; it does not raise the reconstructed tier above B."
+  ]
+}

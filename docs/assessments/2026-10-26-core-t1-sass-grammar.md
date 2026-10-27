@@ -19,9 +19,9 @@ vuetify v2.7.2's declared source subpath is included. No file was removed after 
 
 An independent first-party syntax cross-check, sass-parser 0.4.57's `sass.parse`, accepts 213
 files. The candidate errors in 117 of those (54.93%). Thus the reference parser's six rejected
-files do not account for the refusal. They remain in the original census. The receipt carries
-both subject SHAs, all error-file paths and locations, the archive SHA256, ABI and runtime,
-plus the reference parser's accepted/rejected counts. One zero-width node has an error flag
+files do not account for the refusal. They remain in the original census. The scratch receipt carries
+both subject SHAs, raw error-file paths and locations, the archive SHA256, ABI and runtime,
+plus the reference parser's accepted/rejected counts. The committed receipt carries counts and hashes only, produced by `publish.py`; raw per-file paths and compiler messages remain in scratch artifacts. One zero-width node has an error flag
 without a visible ERROR or missing child; its location and diagnostic limitation are recorded.
 
 Reproduction: fetch the candidate archive at the recorded commit, read its LICENSE, compile
@@ -55,3 +55,26 @@ The scripts and full setup commands now live in
 `calibration/oracles/sass-grammar/README.md`, `gate.py`, and `reference.cjs`.
 They check the frozen subject commits, clean trees and all 219 source files. No holdout was
 used: both subjects are syntax-gate calibration, never an excellent/support claim.
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / compiler | [Dart Sass 1.106.1](https://registry.npmjs.org/sass/latest) and [sass-parser 0.5.1](https://registry.npmjs.org/sass-parser/latest) are newer first-party parser/compile hits. No new grammar was parse-gated; a reference-parser version does not make fb280c41 pass. |
+| SCIP / LSIF | Shared catalogs and [GitHub `scip-sass` search](https://github.com/search?q=scip-sass&type=repositories) yielded no measured indented-Sass indexer. |
+| Language server | [VS Code CSS/SCSS service](https://github.com/microsoft/vscode-css-languageservice) does not document indented `.sass` grammar admission. [`some-sass-language-server` 2.3.8](https://www.npmjs.com/package/some-sass-language-server) describes LSP support for SCSS and indented Sass, including `@use`/`@forward`; it is third-party tier C and **LIVE UNMEASURED**. |
+| Registry AST | [sass_api 18.1.0](https://pub.dev/api/packages/sass_api) parses Sass/SCSS AST with spans. [`findDependencies`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/findDependencies.html) supplies static URLs and [`ImportCache.canonicalize`](https://pub.dev/documentation/sass_api/18.1.0/sass_api/ImportCache/canonicalize.html) resolves their file targets natively. Neither is a production Tree-sitter grammar, so neither repairs this grammar refusal. **LIVE UNMEASURED** as a future first-party oracle only. |
+| Runtime/load tracing | [Sass compile/load API](https://sass-lang.com/documentation/js-api/) can report successful loads, not repair the candidate’s 123/219 source syntax errors. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.
+
+X-R3 publication follow-up: the committed receipt is a sanitized counts/hash
+summary produced by `calibration/oracles/sass-grammar/publish.py`; the scratch receipt contains raw errors.
+The 219/123 native and 213/117 reference-crosscheck measurements are unchanged.
+Raw per-file diagnostics and compiler messages remain scratch artifacts; the
+public receipt retains their hashes and aggregate diagnostic kinds. This is a
+publication correction, not a new corpus reading or grammar result.
+
+C-R10 (2026-10-26): the controller accepts the already published diagnostic history from Wave A. Those public subject names contain no private data and passed that wave's org-name gate. Main is not rewritten. This sanitized tip and all new tips remain subject to X-R3.

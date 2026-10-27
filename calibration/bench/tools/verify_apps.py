@@ -3,18 +3,73 @@ import sys
 sys.dont_write_bytecode = True
 import argparse
 from collections import Counter
-import getpass
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
-import socket
 import tarfile
 from recount import product_path
 
 
+def check_privacy(data, label):
+    # Fixed shapes make the scan independent of the verifier's machine.
+    assert not re.search(rb'/(?:Users)/|(?<![\w/])/(?:home)/[^/\s"\']+', data), 'home path in ' + label
+    emails = re.findall(rb'[A-Za-z0-9_.+%-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}', data)
+    for email in emails:
+        domain = email.rsplit(b'@', 1)[1].lower()
+        if re.fullmatch(rb'(?:[0-9]+\.)+tgz', domain):
+            continue  # Package-version archive notation, rather than an address.
+        assert any(domain == d or domain.endswith(b'.' + d)
+                   for d in [b'example.com', b'example.org', b'example.net', b'example.test', b'example.invalid']), 'email in ' + label
+
+
+def reading_tables(path, receipt):
+    source = path.read_text()
+    subjects = receipt['subjects']
+    assert f"SHA-256 `{receipt['archive']['sha256']}`" in source, 'reading archive hash'
+    tables = []
+    for line in source.splitlines():
+        if line.startswith('|'):
+            tables.append([cell.strip().replace('`', '') for cell in line.strip('|').split('|')])
+    def row(first):
+        found = [r for r in tables if r[0] == first and len(r) == 7 and r[1].isdigit()]
+        assert len(found) == 1, ('reading row', first)
+        return found[0]
+    for subject in subjects:
+        r = [r for r in tables if len(r) == 7 and r[1] == subject['name'] + ' / ' + subject['sha']]
+        assert len(r) == 1, ('reading screen row', subject['id'])
+        r = r[0]
+        assert r[0] == subject['language']
+        assert r[2] == f"{subject['primary_lines']:,} / {subject['band']}"
+        assert [int(x) for x in r[3:6]] == [subject['product_directories'], subject['primary_fix_co_changes'], subject['c6_qualifying_symbols']]
+        assert r[6] == ('kept for preparation' if subject['status'] == 'kept' else '; '.join(subject['refusals']))
+        suite = subject.get('suite')
+        r = [r for r in tables if len(r) == 4 and r[0] == subject['name']]
+        assert len(r) == 1, ('reading suite row', subject['id'])
+        r = r[0]
+        def phase(value):
+            return 'unrun' if not value else f"{value['seconds']} / {value['exit_code']}"
+        assert r[1:] == [phase(suite.get('setup') if suite else None), phase(suite.get('warmup') if suite else None),
+                          ', '.join(phase(x) for x in suite['runs']) if suite and suite['runs'] else 'unrun']
+        r = [r for r in tables if len(r) == 5 and r[0] == subject['name']]
+        assert len(r) == 1
+        r = r[0]
+        meta = subject['metadata']
+        assert r[1:4] == [meta['created_at'], meta['latest_commit_at'], f"{meta['stars']:,}"]
+        assert r[4] == f"{len(subject['c7_hits'])}: {subject['c7_hit_classification']}"
+    for language, carried in [('Go', 0), ('Python', 1), ('TypeScript', 1)]:
+        rows = [s for s in subjects if s['language'] == language]
+        kept = sum(s['status'] == 'kept' for s in rows)
+        dev = sum(s['status'] == 'kept' and bool(s['prior_reads']) for s in rows)
+        r = row(language)
+        assert r[1:] == [str(kept), str(len(rows)-kept), str(dev), str(carried+kept), str(6-carried-kept), '3 / 3']
+    hashes = {r[0]: r[1] for r in tables if len(r) == 2 and r[0].startswith('logs/')}
+    assert hashes == {k: v for k, v in receipt['archive']['members'].items() if k.startswith('logs/')}, 'reading log hashes'
+
+
 def verify(receipt_path):
     receipt = json.loads(receipt_path.read_text())
+    reading_tables(receipt_path.with_suffix('.md'), receipt)
     subjects = receipt['subjects']
     assert Counter(x['language'] for x in subjects) == {'Go': 5, 'Python': 5, 'TypeScript': 5}
     assert len({x['id'] for x in subjects}) == 15
@@ -26,10 +81,6 @@ def verify(receipt_path):
     assert hashlib.sha256(archive_path.read_bytes()).hexdigest() == receipt['archive']['sha256']
     expected = receipt['archive']['members']
     assert all(re.fullmatch('[0-9a-f]{64}', h) for h in expected.values())
-    # Inspect local identity without a reverse-DNS lookup.
-    tokens = {getpass.getuser(), socket.gethostname()}
-    tokens = {x.encode() for x in tokens if len(x) >= 4}
-    home_path = re.compile(rb'(?<![/\w])/(?:Users|home)/[^/\s"\']+')
     contents = {}
     with tarfile.open(archive_path, 'r:gz') as archive:
         members = archive.getmembers()
@@ -43,14 +94,12 @@ def verify(receipt_path):
             data = archive.extractfile(member).read()
             contents[member.name] = data
             assert hashlib.sha256(data).hexdigest() == expected[member.name], member.name
-            assert not home_path.search(data), 'home path in ' + member.name
-            assert not any(re.search(rb'(?<![\w])' + re.escape(t) + rb'(?![\w])', data, re.I)
-                           for t in tokens), 'local identity in ' + member.name
+            check_privacy(data, member.name)
     for path, digest in receipt['instruments'].items():
         data = contents['preparation/remeasure-executed.py'] if path.endswith('/remeasure.py') else Path(path).read_bytes()
         assert hashlib.sha256(data).hexdigest() == digest, path
     for path, digest in receipt['post_measurement_instruments'].items():
-        assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == digest, path
+        assert hashlib.sha256(contents['preparation/' + Path(path).stem + '-corrected.py']).hexdigest() == digest, path
     for subject in subjects:
         assert subject['full_history'] is True
         assert subject['c5_window'] == ['2024-10-25T00:00:00Z', '2026-10-26T00:00:00Z']
@@ -80,7 +129,7 @@ def verify(receipt_path):
         suite = subject.get('suite')
         if suite is not None:
             assert suite['sha'] == subject['sha'] and suite['cpus'] == 4
-            assert suite['platform'] == 'linux/arm64'
+            assert suite == json.loads(contents['receipts/' + subject['id'] + '-suite.json']), 'archived suite differs: ' + subject['id']
             assert suite['tracked_diff'] == []
             for stage in [suite['setup']] + [suite[k] for k in ['network_probe', 'warmup'] if k in suite] + suite['runs']:
                 assert expected['logs/' + stage['log']] == stage['log_sha256']
@@ -99,14 +148,14 @@ def verify(receipt_path):
                    for r in suite['runs'])
         assert subject['lock_sha256'] == subject['staged_lock_sha256']
         manifest = Path(subject['manifest'])
-        assert manifest.is_file(), str(manifest)
-        assert hashlib.sha256(manifest.read_bytes()).hexdigest() == subject['manifest_sha256']
-        data = json.loads(manifest.read_text())
+        manifest_bytes = contents['manifests/' + manifest.name]
+        assert hashlib.sha256(manifest_bytes).hexdigest() == subject['manifest_sha256']
+        data = json.loads(manifest_bytes)
         assert data['sha'] == subject['sha'] and data['licence'] in {x['spdx'] for x in subject['licences']}
         assert data['bench']['flake_runs'] == 3
         assert data['bench']['toolchain']['lockfile_sha256'] == subject['lock_sha256']
         assert 'split' not in data['bench'], 'Q2/controller assignment remains pending'
-    print('PASS: 15 subjects; archive membership, hashes, local-identity scan, D26 counts and kept-screen receipts')
+    print('PASS: 15 subjects; archive membership, hashes, fixed-shape privacy scan, D26 counts and kept-screen receipts')
 
 
 if __name__ == '__main__':

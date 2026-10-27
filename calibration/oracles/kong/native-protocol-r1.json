@@ -1,0 +1,17 @@
+{
+  "candidate": "Kong decK v1.68.0 / go-database-reconciler v1.42.4 native typed loader and resolver",
+  "source_identity": "native-source-pins-r1.json",
+  "population": "All original canonical scoped Kong inputs and required named entity/reference families; no holdout or new corpus member",
+  "rules": [
+    "Build a separate bench-only native probe, never a product dependency. Use the exact vendor library/version and decK replacement dependencies with private Go caches, GOTOOLCHAIN=local, one serial nice10 job, load<=6 and df/free>=20GiB.",
+    "GetContentFromReader provides native typed Content before rendering. Enumerate every typed service, route, plugin and relevant foreign-key field before comparison. The existing independent YAML walk never selects the denominator or supplies missing native relationships.",
+    "Native FService custom decoding normalizes URL into Host and loses written-field presence. A read-only observer before copyFromService records the native decoded name/ID/Host/URL fields. Preserve original native parser decisions, control flow, arguments and return values; source identity and restoration must verify.",
+    "Keep explicit foreign fields distinct from nested implicit containment. Resolve targets using the native owner state builder and lookups, not an independent name map as the asserted authority. Enumerate all outcomes, including unresolved, unnamed, external and unsupported cases; never silently drop them.",
+    "First use authored unused/nested/explicit/URL-vs-host/duplicate-name/invalid-target controls with the exact native probe and cross-check a few against offline decK. No A metric before complete-population controls pass.",
+    "Run entirely offline: clean private environment, disabled analytics, fail-closed HTTP transport and no Kong/Azure/backend connection, Docker, global install or paid service. Do not execute subject code or tasks.",
+    "Whole-input caps: source1MiB, 10000 native entities/relationships, output8MiB, 30-second per-input timeout. Cap+1 refuses the entire input, never truncates truth.",
+    "Keep L1 source ranges separately classified: independent YAML line/end values are not claimed as native evaluated fields. The existing L1 authority needs audit; do not relabel it or regrade canonical L3 before D19.",
+    "Freeze the exact original tracked sets before/after. Record per-subject counts/ratios, model exclusions, full native outcome counts, independence/input sensitivity, native pairing/scope mutation FAIL\u2192GREEN and cap refusals.",
+    "Commit counts/hashes/repo-relative source summaries only; no subject people, usernames, content or wholesale file inventories. Before READY X-R2/X-R3/X-R5 apply; prune completed SDK/source builds/downloads and measured subjects immediately. This is open native work, not an oracle-availability ceiling."
+  ]
+}

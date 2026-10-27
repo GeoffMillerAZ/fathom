@@ -44,10 +44,10 @@ func fixture(t *testing.T, name string) (cue.Value, map[string]any) {
 // Validate the same concrete values cue-vet discovers, with both split values
 // and with the optional corpus subpath omitted.
 func TestBenchSchemaValid(t *testing.T) {
-	for _, name := range []string{"subject", "prereg"} {
+	for _, name := range []string{"subject", "prereg", "exclusionSubject"} {
 		t.Run(name, func(t *testing.T) {
 			def, data := fixture(t, name)
-			if name == "subject" {
+			if name != "prereg" {
 				delete(data, "subpath")
 				data["bench"].(map[string]any)["split"] = "held-out"
 				data["bench"].(map[string]any)["setup"] = []any{}

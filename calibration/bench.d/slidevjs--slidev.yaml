@@ -5,7 +5,7 @@
   "sha": "a42aff28dd75f26eb5abbf3d616ea022c3d08924",
   "licence": "MIT",
   "subpath": ".",
-  "notes": "Application-round preparation candidate; linux/arm64 image node@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0; --cpus 4; native macOS C3, C4, replayed C5 and live-fleet C7 remain unmeasured. No held-out assignment.",
+  "notes": "Round-2 preparation only; native linux/arm64, --user 1000:1000, --cpus 4, pinned image node@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0. Mount /subject:ro, /work:rw and /bench-inputs:ro; synthetic uid-1000 passwd/group files are mounted read-only at /etc/passwd and /etc/group; executable tmpfs /work/tmp has mode 1777 and uid/gid 1000. Native macOS C3, twelve-core timing, C4, C5 replay and live-fleet C7 remain unmeasured. Drop tasks naming any excluded or platform-skipped test.",
   "bench": {
     "toolchain": {
       "versions": {
@@ -16,24 +16,32 @@
       "lockfile_sha256": "3677652d422e4ad5990a7a964a45a14f32cb86c805b29dd89292ed2a532b9884"
     },
     "setup": [
-      "set -e; export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/subject/.git GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/work/source PIP_CACHE_DIR=/work/pip-cache GOPATH=/work/gopath GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TZ=UTC COREPACK_ENABLE_NETWORK=1 npm_config_offline=false PNPM_CONFIG_OFFLINE=false HTTP_PROXY='' HTTPS_PROXY='' ALL_PROXY=''; set -e; corepack enable && ( (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar --touch --no-same-owner -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && ( export npm_config_devdir=/work/tmp/node-gyp; export GIT_AUTHOR_NAME=bench-fixture GIT_AUTHOR_EMAIL=fixture@example.invalid GIT_COMMITTER_NAME=bench-fixture GIT_COMMITTER_EMAIL=fixture@example.invalid; export HOME=/work/home TMPDIR=/work/tmp XDG_CACHE_HOME=/work/xdg-cache XDG_DATA_HOME=/work/xdg-data COREPACK_HOME=/work/corepack npm_config_cache=/work/npm-cache PNPM_HOME=/work/pnpm CI=true HUSKY=0; export CYPRESS_INSTALL_BINARY=0 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 YARN_CACHE_FOLDER=/work/yarn-cache YARN_ENABLE_GLOBAL_CACHE=false; mkdir -p \"$HOME\"; node --version; corepack --version; pnpm install --frozen-lockfile --ignore-scripts --store-dir /work/pnpm-store && pnpm build ) )"
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/subject/.git GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/work/source PIP_CACHE_DIR=/work/pip-cache GOPATH=/work/gopath GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 HOME=/work/home TZ=UTC PATH=/work/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HTTP_PROXY='' HTTPS_PROXY='' ALL_PROXY='' COREPACK_ENABLE_NETWORK=1 npm_config_offline=false PNPM_CONFIG_OFFLINE=false; printf 'BENCH_UNAME_M='; uname -m; printf 'BENCH_UID='; id -u; set -e; mkdir -p /work/bin && export PATH=/work/bin:$PATH && corepack enable --install-directory /work/bin && ( (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar --touch --no-same-owner -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && ( export npm_config_devdir=/work/tmp/node-gyp; export GIT_AUTHOR_NAME=bench-fixture GIT_AUTHOR_EMAIL=fixture@example.invalid GIT_COMMITTER_NAME=bench-fixture GIT_COMMITTER_EMAIL=fixture@example.invalid; export HOME=/work/home TMPDIR=/work/tmp XDG_CACHE_HOME=/work/xdg-cache XDG_DATA_HOME=/work/xdg-data COREPACK_HOME=/work/corepack npm_config_cache=/work/npm-cache PNPM_HOME=/work/pnpm CI=true HUSKY=0; export CYPRESS_INSTALL_BINARY=0 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 YARN_CACHE_FOLDER=/work/yarn-cache YARN_ENABLE_GLOBAL_CACHE=false; mkdir -p \"$HOME\"; node --version; corepack --version; pnpm install --frozen-lockfile --ignore-scripts --store-dir /work/pnpm-store && pnpm build ) )"
     ],
     "test": [
-      "set -e; export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/subject/.git GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/work/source PIP_CACHE_DIR=/work/pip-cache GOPATH=/work/gopath GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TZ=UTC COREPACK_ENABLE_NETWORK=0 npm_config_offline=true PNPM_CONFIG_OFFLINE=true HTTP_PROXY='' HTTPS_PROXY='' ALL_PROXY='' GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 pnpm_config_verify_deps_before_run=warn; set -e; corepack enable && ( cd /work/source && ( export GIT_AUTHOR_NAME=bench-fixture GIT_AUTHOR_EMAIL=fixture@example.invalid GIT_COMMITTER_NAME=bench-fixture GIT_COMMITTER_EMAIL=fixture@example.invalid; export HOME=/work/home TMPDIR=/work/tmp XDG_CACHE_HOME=/work/xdg-cache XDG_DATA_HOME=/work/xdg-data COREPACK_HOME=/work/corepack npm_config_cache=/work/npm-cache PNPM_HOME=/work/pnpm CI=true HUSKY=0; export CYPRESS_INSTALL_BINARY=0 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 YARN_CACHE_FOLDER=/work/yarn-cache YARN_ENABLE_GLOBAL_CACHE=false; export npm_config_offline=true PNPM_CONFIG_OFFLINE=true COREPACK_ENABLE_NETWORK=0 YARN_ENABLE_NETWORK=0; pnpm test run ) )"
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/subject/.git GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/work/source PIP_CACHE_DIR=/work/pip-cache GOPATH=/work/gopath GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 HOME=/work/home TZ=UTC PATH=/work/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HTTP_PROXY='' HTTPS_PROXY='' ALL_PROXY='' GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0; export BENCH_PHASE=trial; printf 'BENCH_UNAME_M='; uname -m; printf 'BENCH_UID='; id -u; set -e; mkdir -p /work/bin && export PATH=/work/bin:$PATH && corepack enable --install-directory /work/bin && ( cd /work/source && ( export GIT_AUTHOR_NAME=bench-fixture GIT_AUTHOR_EMAIL=fixture@example.invalid GIT_COMMITTER_NAME=bench-fixture GIT_COMMITTER_EMAIL=fixture@example.invalid; export HOME=/work/home TMPDIR=/work/tmp XDG_CACHE_HOME=/work/xdg-cache XDG_DATA_HOME=/work/xdg-data COREPACK_HOME=/work/corepack npm_config_cache=/work/npm-cache PNPM_HOME=/work/pnpm CI=true HUSKY=0; export CYPRESS_INSTALL_BINARY=0 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PUPPETEER_SKIP_DOWNLOAD=1 YARN_CACHE_FOLDER=/work/yarn-cache YARN_ENABLE_GLOBAL_CACHE=false; export npm_config_offline=true PNPM_CONFIG_OFFLINE=true COREPACK_ENABLE_NETWORK=0 YARN_ENABLE_NETWORK=0; pnpm test run --reporter=json --outputFile=/work/vitest-${BENCH_PHASE}.json ) )"
     ],
-    "suite_seconds": 6.791,
+    "suite_seconds": 13.276,
+    "suite_tests": 379,
     "flake_runs": 3,
-    "l0_reading": "unmeasured: C4 awaits controller L0 runs",
+    "l0_reading": "unmeasured: controller C4 L0 runs pending",
     "task_sources": [
       {
-        "dataset": "upstream-git-history (candidate source; no admitted tasks)",
+        "dataset": "upstream-git-history (candidate source; zero replayed or admitted tasks)",
         "revision": "a42aff28dd75f26eb5abbf3d616ea022c3d08924",
         "licence": "MIT"
       }
     ],
     "contamination": {
-      "age": 2011,
-      "popularity_band": "high"
-    }
+      "age": 2010,
+      "popularity_band": "high",
+      "prior_reads": [
+        "calibration/bench.d/slidevjs--slidev.yaml",
+        "docs/bench/readings/bench-prep/apps-r1.json",
+        "docs/bench/readings/bench-prep/apps-r1.md"
+      ]
+    },
+    "split": "dev",
+    "excluded": []
   }
 }
