@@ -62,6 +62,10 @@
     {
       "candidate": "radiantearth/stac-spec",
       "result": "Apache-2.0 checked from pinned LICENSE; complete three schema scopes selected before any new oracle/accuracy result. No result yet."
+    },
+    {
+      "candidate": "oasis-open/cti-stix2-json-schemas",
+      "result": "BSD-3-Clause from owner repository metadata; complete schemas tree selected before any new native/Fathom result. README calls these non-normative STIX schemas; this measures JSON Schema file references, not STIX validity. No oracle run yet."
     }
   ]
 }

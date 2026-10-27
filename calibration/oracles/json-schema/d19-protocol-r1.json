@@ -67,6 +67,15 @@
         "collection-spec/json-schema"
       ],
       "role": "new canonical candidate, not a holdout"
+    },
+    {
+      "repository": "oasis-open/cti-stix2-json-schemas",
+      "sha": "9af1db41b7b86c06324f899649ae83480134f66e",
+      "license": "BSD-3-Clause",
+      "scopes": [
+        "schemas"
+      ],
+      "role": "new canonical candidate, not a holdout"
     }
   ],
   "selection": "All tracked JSON within each complete pinned scope. Keep every file, native refusal, zero-reference input and extractor mismatch. STAC membership never depends on Fathom accuracy or reaching 20. No renaming, generated cross-file examples, URL rewrites, duplicate references or input edits to pad evidence. No holdout enters canonical corpus.",
@@ -75,7 +84,7 @@
     "Exact design 13.3.1 tracked-set manifests before/after; raw manifests private, counts/hashes public",
     "Authored reference input changes native target; perturb independent Fathom output without changing native truth",
     "Tier/scope/unit mutants fail then restore green; reject downgraded truth populations",
-    "Fresh same-commit measurements of all three subjects, retained C authority across L1/L2/L3; never type grades by hand",
+    "Fresh same-commit measurements of all four subjects, retained C authority across L1/L2/L3; never type grades by hand",
     "D19 denominator and per-subject numerator/denominator beside pooled reading; no throughput claim without measurement",
     "Strict Reading round-trip and canonical serialization checks; X-R10 strict scratch verification for every affected lexical plan"
   ],
@@ -86,5 +95,6 @@
     "oracle_artifact_bytes": 67108864,
     "subject_timeout_seconds": 300
   },
-  "execution": "Private SDK/cache/subjects under ignored workspace or own cache; serial nice10, load<=6/free>=20GiB before each heavy step; no Docker/global install/paid calls; prune measured sources/builds. Existing oracle exclusions remain explicit."
+  "execution": "Private SDK/cache/subjects under ignored workspace or own cache; serial nice10, load<=6/free>=20GiB before each heavy step; no Docker/global install/paid calls; prune measured sources/builds. Existing oracle exclusions remain explicit.",
+  "source_only_amendment": "Before any new native/Fathom measurement, add the complete BSD-3-Clause STIX schema tree as a second genuine modular corpus. SDK and the first three source checkouts alone were prepared; no reference denominator, accuracy result or native oracle output was observed. Keep both new candidates regardless of accuracy or denominator."
 }
