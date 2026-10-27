@@ -108,6 +108,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [bash-oracle-candidates](2026-10-26-bash-oracle-candidates.md), [receipt](data/bash-oracle-2026-10-26/evidence.json) | Released SCIP leaves literal command coverage below the bar; native namespace and executed-call probes disclose their scope and observer limits | LB-Q-bash-rest, P-T1, X-R4 |
 | 2026-10-26 | [slang-triage](2026-10-26-slang-triage.md) | G-R10 bounded search, 466 dispositions; prospective 2,752-file primary and separate 461-file holdout with overlap disclosed, unmeasured | G-R1; NP-Q5 gates implementation |
 | 2026-10-26 | [iac-provider-schema-feasibility](2026-10-26-iac-provider-schema-feasibility.md), [native data](data/2026-10-26-provider-schema-native-probe.json), [size data](data/2026-10-26-provider-schema-export-sizes.json) | Three offline native schema exports, 12 authored traversals and 12 attributable field refusals; dependency-plane policy, anchors and store costs remain open | IAC-2, IAC-7, IAC-12, IAC-16, SG-36, SG-37 |
+| 2026-10-26 | [terragrunt-triage](2026-10-26-terragrunt-triage.md), [data](data/terragrunt-triage-2026-10-26/receipt.json) | Owner stack/DAG/language-server candidates; content-based cache inventory, native attempts need owner approval | Feeds IAC-20/GAP1-37; does not satisfy them |
 
 ## Companion pages
 
