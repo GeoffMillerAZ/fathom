@@ -347,7 +347,7 @@ var daemonGoEnvKeys = []string{"GOPATH", "GOCACHE", "GOMODCACHE"}
 // daemonGoEnv resolves absolute values for daemonGoEnvKeys from THIS
 // shell's environment, falling back to `go env` and then to home-relative
 // defaults — the same repair ladder the typed-edge loader itself walks
-// (internal/fusion.TypedEdgeEnv), applied once at install time so the
+// (internal/fusion.ToolchainPathEnv), applied once at install time so the
 // daemon never has to.
 //
 // Returns "KEY=VALUE" entries for every key that resolved, in
@@ -355,7 +355,7 @@ var daemonGoEnvKeys = []string{"GOPATH", "GOCACHE", "GOMODCACHE"}
 // than written empty: an empty GOPATH in the plist is exactly the state
 // this row exists to prevent.
 func daemonGoEnv() []string {
-	env := fusion.TypedEdgeEnv()
+	env := fusion.ToolchainPathEnv()
 	resolved := map[string]string{}
 	for _, kv := range env {
 		if k, v, ok := strings.Cut(kv, "="); ok {

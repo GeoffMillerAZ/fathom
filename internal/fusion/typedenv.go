@@ -103,6 +103,14 @@ func TypedEdgeEnv() []string {
 	return append(backgroundToolchainEnv(goenv.Apply(repairedGoEnv("GOWORK=off", "GOPACKAGESDRIVER=off"))), goToolchainLocal)
 }
 
+// ToolchainPathEnv is the environment with GOPATH, GOCACHE and GOMODCACHE
+// repaired to absolute paths (TypedEdgeEnv's repair ladder) and nothing else
+// added: no offline overrides, no caps, and so no `go env GOFLAGS` query. A
+// caller that reads only those three paths (daemon install) runs no go
+// command that needs GOFLAGS, which under a fake HOME would write the go
+// telemetry counters there.
+func ToolchainPathEnv() []string { return repairedGoEnv() }
+
 // goToolchainLocal pins the go command to the toolchain on PATH (K22): no
 // automatic invocation switches to, or downloads, a toolchain a
 // repository's go.mod names.

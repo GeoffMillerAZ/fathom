@@ -37,6 +37,7 @@ func TestDaemonInstallDefaultsToLoopback(t *testing.T) {
 	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	seedGoTelemetryOff(t, home)
 	calls := stubLaunchctl(t)
 	bin := filepath.Join(t.TempDir(), "fathom")
 	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
@@ -375,5 +376,50 @@ func TestDoctorDaemonBindReadsThisMachine(t *testing.T) {
 				t.Fatalf("a fathom plist labelInstalled skips must WARN naming it and %q: %+v", c.why, got)
 			}
 		})
+	}
+}
+
+// goConfigDirUnder is os.UserConfigDir()'s "go" directory for a fake home:
+// where the go command keeps its telemetry counters.
+func goConfigDirUnder(home string) string {
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(home, "Library", "Application Support", "go")
+	}
+	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
+		return filepath.Join(x, "go")
+	}
+	return filepath.Join(home, ".config", "go")
+}
+
+// A `daemon install` under a fake HOME runs no go command that writes the go
+// telemetry counters there: a detached telemetry child outlives the test and
+// races t.TempDir's cleanup ("directory not empty", issue 130). The install
+// needs only GOPATH/GOCACHE/GOMODCACHE, never the GOFLAGS query.
+func TestDaemonInstallRunsNoTelemetryUnderAFakeHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	stubLaunchctl(t)
+	bin := filepath.Join(t.TempDir(), "fathom")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	cmdDaemonInstall([]string{"--label", "com.example.telemetry", "--bin", bin, "--direct", "--store", filepath.Join(home, "s.sqlite")}, &out, &errb)
+	if _, err := os.Stat(goConfigDirUnder(home)); !os.IsNotExist(err) {
+		t.Fatalf("daemon install ran a go command under the fake home: %s exists (err=%v)", goConfigDirUnder(home), err)
+	}
+}
+
+// seedGoTelemetryOff writes telemetry mode "off" into a fake home's go config
+// dir, so a go command run under that HOME writes no counters there.
+func seedGoTelemetryOff(t *testing.T, home string) {
+	t.Helper()
+	dir := filepath.Join(goConfigDirUnder(home), "telemetry")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "mode"), []byte("off"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
