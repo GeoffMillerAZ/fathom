@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -144,6 +145,24 @@ func ingestCancelled(stdout, stderr io.Writer, jsonOut bool, service string, rep
 		renderIngestCancelledJSON(stdout, service, report, name, code, msg)
 	}
 	return code
+}
+
+// ingestBusy names an ingest refused beside another live process's
+// uncommitted ingest of the service (GDEV-02). It names the row, not a
+// certainty: a running ingest and one that stopped after a write (RT-109
+// leaves in_progress under its owner's live pid) read the same, and
+// telling them apart needs state the store does not keep. Nothing was
+// read or written; the exit is 1.
+func ingestBusy(stdout, stderr io.Writer, jsonOut bool, service string, e *fusion.ConcurrentIngestError) int {
+	at := e.StartedAt.UTC().Format(time.RFC3339)
+	msg := fmt.Sprintf("ingest of %s refused: pid %d (alive) began an ingest of %s at %s that has not committed: it is still running or stopped partway", service, e.PID, service, at)
+	hint := "if that pid is a fathom daemon, run the ingest through the daemon's ingest tool (it runs in the owning process) or restart the daemon; otherwise retry when that ingest finishes"
+	fmt.Fprintf(stderr, "error: %s\n", msg)
+	fmt.Fprintf(stderr, "hint: %s\n", hint)
+	if jsonOut {
+		renderIngestBusyJSON(stdout, service, e.PID, at, msg, hint)
+	}
+	return 1
 }
 
 // docElidedShown caps how many budget-elided doc units the summary names
@@ -311,6 +330,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	} else {
 		defer undo()
 	}
+	// GDEV-02: an ingest beside another live process's uncommitted ingest
+	// of the service (a daemon's, or another CLI's) is refused by name.
+	defer fusion.InstallIngestOwnerProbe(newIngestOwnerProbe())()
 	// GDEV-02: SIGINT or SIGTERM stops the ingest and every step after it
 	// by name (ingestCancelled), never a death by signal mid-write.
 	ctx, stop := watchIngestSignals(fusion.WithPassClock(context.Background(), ingestPassClock))
@@ -327,6 +349,10 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	}
 	if code, ok := cancelled(); ok {
 		return code
+	}
+	var busy *fusion.ConcurrentIngestError
+	if errors.As(err, &busy) {
+		return ingestBusy(stdout, stderr, *jsonOut, *service, busy)
 	}
 	// Ingest honesty (docs/plans/instrument-truth.md IT-14 / IT-15, O16): a
 	// *client.ReadFailuresError arrives beside a COMPLETE report — every

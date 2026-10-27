@@ -505,6 +505,12 @@ func ingestGateRefusal(svc, why string, now time.Time) *tenancy.Refusal {
 	return ref
 }
 
+// isConcurrentIngest reports a fusion.ConcurrentIngestError in err's chain.
+func isConcurrentIngest(err error) bool {
+	var cie *fusion.ConcurrentIngestError
+	return errors.As(err, &cie)
+}
+
 func registerIngest(s *Server, backend QueryInterface) {
 	// Ingest honesty (docs/plans/instrument-truth.md IT-15, O16): the
 	// pipeline's refusal to replace a populated index with a wedged
@@ -742,7 +748,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 			if st.State == refresh.StateRefused {
 				return nil, handlerRefusal(ctx, ingestGateRefusal(svc, st.Refused, time.Now()))
 			}
-			if st.Done && errors.Is(st.Err, refresh.ErrRefused) {
+			if st.Done && errors.Is(st.Err, refresh.ErrRefused) && !isConcurrentIngest(st.Err) {
 				return nil, handlerRefusal(ctx, ingestGateRefusal(svc, st.Err.Error(), time.Now()))
 			}
 			if !st.Done && budgetSpent {
@@ -774,6 +780,16 @@ func registerIngest(s *Server, backend QueryInterface) {
 				ingestErr = backend.IngestService(ctx, svc)
 			}
 			releaseSlot()
+		}
+		// GDEV-02: another live process's uncommitted ingest of the service
+		// refused this one before it read or wrote anything: a class-scoped
+		// refusal naming the owner, never a failure (no distress, no cache
+		// bust, no quarantine lift).
+		var cie *fusion.ConcurrentIngestError
+		if errors.As(ingestErr, &cie) {
+			return nil, handlerRefusal(ctx, &tenancy.Refusal{Code: tenancy.RefusalSlots, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String(), RetryAfter: 30 * time.Second,
+				Reason: fmt.Sprintf("ingest of %s refused: pid %d (alive) began an ingest of it at %s that has not committed — another process is ingesting it, or stopped partway; retry when it finishes",
+					svc, cie.PID, cie.StartedAt.UTC().Format(time.RFC3339))})
 		}
 		// RT-41 (§2.1): an ingest that failed writing the store with
 		// SQLITE_FULL or SQLITE_IOERR is store distress — the next ingest

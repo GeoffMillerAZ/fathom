@@ -46,3 +46,12 @@ func ingestOwnerProbe(ops daemonOps) func(pid int, started time.Time) bool {
 		return alive
 	}
 }
+
+// newIngestOwnerProbe is the probe every process that ingests installs
+// (fusion.InstallIngestOwnerProbe, GDEV-02: an ingest beside another live
+// process's uncommitted ingest of the service is refused by name) and
+// serve-http and serve-mcp also give mcp.SetIngestOwnerProbe. A package
+// variable so a test answers liveness without a real process.
+var newIngestOwnerProbe = func() func(pid int, started time.Time) bool {
+	return ingestOwnerProbe(realDaemonOps{})
+}

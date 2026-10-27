@@ -126,14 +126,20 @@ type ingestPassTimeJSON struct {
 // ingestJSON is the `fathom ingest --json` envelope.
 type ingestJSON struct {
 	Service string `json:"service"`
-	// Outcome is ok | degraded | refused | incomplete | cancelled. degraded:
+	// Outcome is ok | degraded | refused | incomplete | cancelled | busy. degraded:
 	// every readable file was indexed and read_failed > 0; refused: nothing
 	// was written (O16 guard); incomplete: every file failed with no index
 	// to protect — nothing was written and the ingest was not recorded
 	// complete (F2); cancelled: SIGINT or SIGTERM stopped it (signal names
-	// which; exit_code 130 or 143), and no step after it ran (GDEV-02).
+	// which; exit_code 130 or 143), and no step after it ran (GDEV-02);
+	// busy: another live process holds an uncommitted ingest of the service
+	// (owner_pid, owner_started_at), and nothing was read or written.
 	Outcome  string `json:"outcome"`
 	ExitCode int    `json:"exit_code"`
+	// OwnerPID and OwnerStartedAt name the other process whose uncommitted
+	// ingest of the service refused this one (outcome busy, GDEV-02).
+	OwnerPID       int    `json:"owner_pid,omitempty"`
+	OwnerStartedAt string `json:"owner_started_at,omitempty"`
 	// Signal names the signal that stopped a cancelled ingest (SIGINT,
 	// SIGTERM); omitted otherwise.
 	Signal     string `json:"signal,omitempty"`
@@ -229,6 +235,16 @@ func renderIngestCancelledJSON(w io.Writer, service string, report client.Report
 	for _, f := range report.ReadFailures {
 		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
 	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+}
+
+// renderIngestBusyJSON writes the envelope of an ingest refused beside
+// another live process's uncommitted ingest of the service.
+func renderIngestBusyJSON(w io.Writer, service string, pid int, startedAt, msg, hint string) {
+	out := ingestJSON{Service: service, Outcome: "busy", ExitCode: 1, OwnerPID: pid, OwnerStartedAt: startedAt,
+		ReadFailures: []ingestReadFailureJSON{}, Error: msg, Hint: hint}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(out)

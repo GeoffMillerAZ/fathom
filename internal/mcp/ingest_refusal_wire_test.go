@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -47,6 +48,15 @@ func (f *statsSignalFake) IngestStats() (int64, int64) {
 	default:
 	}
 	return 0, 0
+}
+
+// concurrentIngestFake refuses every ingest as fusion does beside another
+// live process's uncommitted ingest of the service.
+type concurrentIngestFake struct{ refreshFake }
+
+func (f *concurrentIngestFake) IngestService(context.Context, string) error {
+	f.ingests++
+	return &fusion.ConcurrentIngestError{Service: "adm-svc", PID: 4242, StartedAt: time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)}
 }
 
 // ingestRefusalRig is a server over backend with an observing gate (the
@@ -249,6 +259,48 @@ func TestIngestToolRefusalsUseTheAdmissionWireFormat(t *testing.T) {
 		}
 		noLeak(t, r)
 	})
+
+	for _, queued := range []bool{false, true} {
+		name := "concurrent ingest, inside the call"
+		if queued {
+			name = "concurrent ingest, on the refresh queue"
+		}
+		t.Run(name, func(t *testing.T) {
+			// GDEV-02: another live process's uncommitted ingest of the
+			// service refuses this one (fusion's ConcurrentIngestError); the
+			// ingest tool answers it class-scoped, names the owner, and
+			// neither lifts a quarantine nor counts it as a failure.
+			tenancy.SetQuarantined([]tenancy.Quarantine{{Service: "adm-svc", Reason: "test"}})
+			defer tenancy.SetQuarantined(nil)
+			f := &concurrentIngestFake{refreshFake: refreshFake{path: "/repo", indexed: "old"}}
+			r := newIngestRefusalRig(t, f, tenancy.ModeObserve)
+			var q *refresh.Queue
+			if queued {
+				q = newTestRefreshQueue(t, f)
+				r.srv.SetRefreshQueue(q)
+			}
+			got, ref := r.call(t, context.Background(), "adm-svc")
+			assertBusy(t, got, ref, tenancy.RefusalSlots, false, "30")
+			if reason, _ := got.Error.Data["reason"].(string); !strings.Contains(reason, "pid 4242 (alive)") {
+				t.Fatalf("the reason must name the owner: %q", reason)
+			}
+			if !tenancy.IsQuarantined("adm-svc") {
+				t.Fatal("a refused ingest lifted the quarantine")
+			}
+			if _, on := tenancy.StoreDistressNow(time.Now()); on {
+				t.Fatal("a refused ingest was noted as store distress")
+			}
+			if q != nil {
+				if _, failed := q.LastFailure("adm-svc"); failed {
+					t.Fatal("the queue recorded a refusal as a failed refresh")
+				}
+			}
+			if o := r.lastOutcome(t); o != "refused" {
+				t.Fatalf("call-log outcome %q, want refused", o)
+			}
+			noLeak(t, r)
+		})
+	}
 
 	t.Run("ingest slot wait", func(t *testing.T) {
 		// The wait ends only when the call's context does, and dispatch
