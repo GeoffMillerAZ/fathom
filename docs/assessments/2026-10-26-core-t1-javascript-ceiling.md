@@ -12,3 +12,17 @@ Measured baseline: [javascript reading](../bench/readings/lang/javascript.json).
 Ruling C-R3 (#20) retains the current ceiling. Retry only the existing rule/cost trigger on fresh independent validation.
 
 Governing row: `LB-Q-javascript-rest`. No extractor, reading, corpus, holdout, epoch, or generated board changes.
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / parser | [TypeScript compiler API](https://github.com/microsoft/TypeScript-wiki/blob/main/Using-the-Compiler-API.md) and [scip-typescript JS inferred config](https://github.com/sourcegraph/scip-typescript) were searched. They do not change C-R3 denominator/cost rules. |
+| SCIP / LSIF | [scip-typescript 0.5.2](https://registry.npmjs.org/@sourcegraph/scip-typescript/latest), [Git head ad3ca370](https://github.com/sourcegraph/scip-typescript/commit/ad3ca370efb05d305714c4bc859237ea701e40a4), postdates the measured 0.4.0 lane; property/kind and legacy-range behavior is **LIVE UNMEASURED** on unchanged OpenLayers/express/axios scopes. [Kythe TypeScript indexer at 69141f02](https://github.com/kythe/kythe/tree/69141f022689a611e8a4a1d9b08a3783a2e8a9ed/kythe/typescript), repository updated 2026-09-18, is another maintained route, **LIVE UNMEASURED**. [lsif-node](https://github.com/sourcegraph/lsif-node) is historical, not a fresh indexer. |
+| Language server | [TypeScript service in JavaScript mode](https://github.com/microsoft/TypeScript/wiki/Using-the-Language-Service-API) exposes reference requests. **LIVE UNMEASURED** against the same object-property and untyped receiver denominators. |
+| Registry AST / static call graph | [TypeScript 7.0.2](https://registry.npmjs.org/typescript/latest) names the current parser/typechecker, not an extractor fix. [Jelly 0.13.0](https://www.npmjs.com/package/@cs-au-dk/jelly) is a purpose-built analyzer for untyped JavaScript. [CodeQL CLI 2.27.3](https://codeql.github.com/docs/codeql-overview/codeql-changelog/codeql-cli-2.27.3/) supports [JavaScript analysis](https://codeql.github.com/docs/codeql-language-guides/codeql-for-javascript/), including call-graph queries. Both analyzer routes are tier C under P-T1 and **LIVE UNMEASURED** against the existing oracle-blind CommonJS receiver denominator; neither changes the measured reading or governing row. |
+| Runtime tracing | [Node diagnostics](https://nodejs.org/api/diagnostics_channel.html) and module loading see executed CommonJS paths only; no complete static receiver truth. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.

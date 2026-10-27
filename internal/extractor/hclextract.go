@@ -57,7 +57,10 @@ type hclRef struct {
 type hclDef struct {
 	refs   []hclRef
 	source string
-	inputs []hclInput
+	// sourcePresent distinguishes an omitted override source from an explicit
+	// nonlocal or unevaluable one. Extract never reads sibling files.
+	sourcePresent bool
+	inputs        []hclInput
 	// identities are the identity references a resource makes (LB-F371): an
 	// alarm's metric, a log group named /aws/lambda/<name>.
 	identities []tfIdentityRef
@@ -168,6 +171,7 @@ func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.Symb
 			d := &hclDef{refs: collectRefs(b.Body, "providers")}
 			if b.Body != nil {
 				if attr, ok := b.Body.Attributes["source"]; ok {
+					d.sourcePresent = true
 					if v, diags := attr.Expr.Value(nil); !diags.HasErrors() && v.Type() == cty.String {
 						sig = fmt.Sprintf("module %q { source = %q }", mName, v.AsString())
 						d.source = v.AsString()
@@ -543,6 +547,13 @@ const hclAddressLabel = "terraform.address"
 // address label names one.
 const hclModuleLabel = "terraform.module"
 
+// hclLocalSourceDirLabel records only a bounded, literal local module source.
+const hclLocalSourceDirLabel = "terraform.local_source_dir"
+
+// hclSourcePresentLabel records that the block explicitly sets source, even
+// when its value does not identify a bounded local directory.
+const hclSourcePresentLabel = "terraform.source_present"
+
 // Edges of the terraform dialect's cross-file references.
 const (
 	hclEdgeReferences   = "references"
@@ -560,12 +571,12 @@ const (
 //     own module directory (a same-file reference is a Call and nothing
 //     more: the join would only find the file itself);
 //   - a module block with a local source ("./…", "../…"): each input argument
-//     `a = …` to var.a in the called directory, and each module.m.o this file
-//     reads to output.o there.
+//     `a = …` to var.a in the called directory;
+//   - every module.m.o traversal records a caller-scoped output intent, joined
+//     through the labelled module call to output.o by fusion.
 //
 // A registry or remote module source names nothing in the repository, and
-// module.m.o read in a file that does not declare module "m" resolves to the
-// call alone (which directory m names is another file's to say).
+// An invalid or nonlocal source leaves that output intent unresolved.
 func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
 	nodes, defs, err := h.extract(service, relPath, src)
 	if err != nil {
@@ -587,11 +598,20 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 			}
 		}
 	}
-	for _, n := range nodes {
+	for i, n := range nodes {
 		if n.Kind == core.KindTerraformProvider || n.Kind == KindTerraformMetric || n.Kind == KindTelemetryIdentity {
 			continue // a provider and an identity are no address a reference names
 		}
-		res.Labels = append(res.Labels, DocLabelSet{Entity: n.Name, Scope: scope, Labels: map[string]string{hclAddressLabel: n.Name, hclModuleLabel: dir}, Line: n.Line})
+		labels := map[string]string{hclAddressLabel: n.Name, hclModuleLabel: dir}
+		if n.Kind == core.KindTerraformModule {
+			if d := defs[i]; d != nil && d.sourcePresent {
+				labels[hclSourcePresentLabel] = "true"
+			}
+			if c, ok := childDir[n.Name]; ok {
+				labels[hclLocalSourceDirLabel] = c
+			}
+		}
+		res.Labels = append(res.Labels, DocLabelSet{Entity: n.Name, Scope: scope, Labels: labels, Line: n.Line})
 	}
 	for i, n := range nodes {
 		d := defs[i]
@@ -615,9 +635,6 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 			if !declared[r.key] {
 				ref(hclEdgeReferences, r.key, scope, r.key, r.line)
 			}
-			if c, ok := childDir[r.key]; ok && r.output != "" {
-				ref(hclEdgeModuleOutput, r.key+"."+r.output, "terraform:"+c, "output."+r.output, r.line)
-			}
 		}
 		if c, ok := childDir[n.Name]; ok {
 			for _, in := range d.inputs {
@@ -627,6 +644,7 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		for _, c := range refs {
 			res.CrossFile = append(res.CrossFile, c)
 		}
+		res.CrossFile = append(res.CrossFile, terraformModuleOutputIntents(n.Name, scope, d.refs)...)
 		for _, id := range d.identities {
 			res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: n.Name, Edge: id.edge, Raw: id.value, Target: id.value, Strategy: "identity", Line: id.line})
 		}
@@ -648,6 +666,38 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		return a.Target < b.Target
 	})
 	return res, nil
+}
+
+// terraformModuleOutputIntents carries module-output traversals through a
+// sibling file without reading that file or inferring a source from signatures.
+// Duplicate traversals of one output produce one intent at their first line.
+func terraformModuleOutputIntents(from, scope string, refs []hclRef) []DocCrossFileRef {
+	first := map[[2]string]int{}
+	for _, r := range refs {
+		if r.output == "" || !strings.HasPrefix(r.key, "module.") {
+			continue
+		}
+		k := [2]string{r.key, r.output}
+		if line, ok := first[k]; !ok || r.line < line {
+			first[k] = r.line
+		}
+	}
+	out := make([]DocCrossFileRef, 0, len(first))
+	for k, line := range first {
+		output := "output." + k[1]
+		out = append(out, DocCrossFileRef{
+			From: from, Edge: hclEdgeModuleOutput, Raw: k[0] + "." + k[1],
+			Target: output, Strategy: "terraform-module-output", Line: line,
+			Scope: scope, Labels: map[string]string{"terraform.module_call": k[0], "terraform.output": output},
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Line != out[j].Line {
+			return out[i].Line < out[j].Line
+		}
+		return out[i].Raw < out[j].Raw
+	})
+	return out
 }
 
 // localModuleDir is the repository directory a module source names when it

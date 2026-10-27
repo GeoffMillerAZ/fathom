@@ -11,3 +11,17 @@ Measured baseline: [cue reading](../bench/readings/lang/cue.json). No new readin
 Retain the written per-file-target and LSP-writer triggers. No change to shared package identity or the committed reading is proposed.
 
 Governing row: `LB-Q-cue-rest`. No extractor, reading, corpus, holdout, epoch, or generated board changes.
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / compiler | [CUE LSP documentation](https://github.com/cue-lang/cue/wiki/LSP%3A-Getting-started) describes package/import analysis; registry [cuelang.org/go v0.17.1](https://proxy.golang.org/cuelang.org/go/@latest) is newer than the measured v0.16.1. New version alone does not repair package-key identity. |
+| SCIP / LSIF | Shared catalogs and [GitHub `scip-cue` search](https://github.com/search?q=scip-cue&type=repositories) yielded no measured writer. The existing LSP-to-SCIP writer route remains engineering work. |
+| Language server | [Official CUE LSP](https://github.com/cue-lang/cue/wiki/LSP%3A-Getting-started) exposes navigation, with documented dynamic-field/evaluation limits. **LIVE UNMEASURED** for the shared per-file key repair, not absent semantic data. |
+| Registry AST | [CUE `ast.Ident.Node`](https://pkg.go.dev/cuelang.org/go/cue/ast) is a resolved-node hook; no evidence it alone produces independent package-file targets. |
+| Runtime tracing | [cue eval/vet](https://cuelang.org/docs/) evaluates configurations, not a complete static cross-file reference inventory. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.

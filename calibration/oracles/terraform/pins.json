@@ -1,0 +1,138 @@
+{
+  "opentofu": {
+    "archive_sha256": "6e03dc4d12df57c0f7da38cb963f28e8d0418eb6f0762a2fc5eb3988da6b396d",
+    "platform": "darwin_arm64",
+    "version": "1.13.0"
+  },
+  "providers": {
+    "aws": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "7b3376ccf7bb6b5a35a65ae254f09ce7296a920c9c2a49db5d44f9f2504654c8",
+      "sha256": "25afdd7ee3235adec8c96ee2b12b9abecc00b56a1b8505acc6f2889798240d04",
+      "url": "https://github.com/opentofu/terraform-provider-aws/releases/download/v6.67.0/terraform-provider-aws_6.67.0_darwin_arm64.zip",
+      "version": "6.67.0"
+    },
+    "cloudinit": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "0789f9ccee5528880e99ad34eb19139a7ecea285d67dcd71beefc67982eb8629",
+      "sha256": "491020b29c7efdb2288b61babdbd8467315cf3b4e9cf903335cf6f6095d80898",
+      "url": "https://github.com/opentofu/terraform-provider-cloudinit/releases/download/v2.4.1/terraform-provider-cloudinit_2.4.1_darwin_arm64.zip",
+      "version": "2.4.1"
+    },
+    "helm": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "5129295811ac1bc1c2d87b6e6f7224aabb4464523a0c07652a00e41098b44549",
+      "sha256": "95c9c38088148054bf3e9c7771e4a40f03e1c384084462489170a34fdfab398f",
+      "url": "https://github.com/opentofu/terraform-provider-helm/releases/download/v3.3.0/terraform-provider-helm_3.3.0_darwin_arm64.zip",
+      "version": "3.3.0"
+    },
+    "http": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "c3403cc72c83b2c1a8ab7050066820f2089512d0dbab4a7ff268412e4c42c567",
+      "sha256": "0cf6173a426f65a85e8baf4f9a7808dc94d0e02a82b34bc903555fda1eb45d7a",
+      "url": "https://github.com/opentofu/terraform-provider-http/releases/download/v3.6.2/terraform-provider-http_3.6.2_darwin_arm64.zip",
+      "version": "3.6.2"
+    },
+    "local": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "c67f5b243e184f8529f86c360422e593c348ce7a7148fba60aba9c3060cda419",
+      "sha256": "73e545dec5d7360ae56a16296e7958fd38f41548393ed225c40800859a448f9c",
+      "url": "https://github.com/opentofu/terraform-provider-local/releases/download/v2.9.1/terraform-provider-local_2.9.1_darwin_arm64.zip",
+      "version": "2.9.1"
+    },
+    "null": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "65fb6a1d51414815e58e719aa39d7455a2abb7d4274db23bfe24f984fde420fc",
+      "sha256": "71d64453bdc795667e9841d7c90e3fef6ff157e0598d51dac4bb1e4583b85407",
+      "url": "https://github.com/opentofu/terraform-provider-null/releases/download/v3.3.2/terraform-provider-null_3.3.2_darwin_arm64.zip",
+      "version": "3.3.2"
+    },
+    "time": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "465b12a70872605c2b7cf932e7fa87cad01ef25f8c7ac63151c6a5070b8325df",
+      "sha256": "53f1ca144377f8c42a1fc71cff22e6c3ad5e2ae9d9eaaf0a95cbe70c896b30cb",
+      "url": "https://github.com/opentofu/terraform-provider-time/releases/download/v0.14.2/terraform-provider-time_0.14.2_darwin_arm64.zip",
+      "version": "0.14.2"
+    },
+    "tls": {
+      "platform": "darwin_arm64",
+      "registry_metadata_sha256": "de613383a1bd65445f6805d5901ffeaae0aa40f9d7ed3ba208441656976247f6",
+      "sha256": "141fa1c208a6da9bac474d2f2019cbaa24e1dafa8d834f246b02276e48091657",
+      "url": "https://github.com/opentofu/terraform-provider-tls/releases/download/v4.4.1/terraform-provider-tls_4.4.1_darwin_arm64.zip",
+      "version": "4.4.1"
+    }
+  },
+  "registry_modules": {
+    "cloudwatch@5.7.3": {
+      "registry_metadata_sha256": "de51d1a2b4e065569b1fd73d229c36d54add932aeef73814d9e473dd6019b50d",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-cloudwatch?ref=82e5143738712a283ab7a8cb4110e7a3e708a834",
+      "version": "5.7.3"
+    },
+    "eks-pod-identity@1.12.1": {
+      "registry_metadata_sha256": "30e9b9cdf9e91024a761b3641bbae72acf4abf53296c0abd30446c5ccd2613e8",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-eks-pod-identity?ref=9478c492d293927d658503fc26b0fec5a30e92bd",
+      "version": "1.12.1"
+    },
+    "eks@21.29.0": {
+      "registry_metadata_sha256": "9b52f3010207fde11b83c822a26c0c7a24b79cebd77cd4b14a5bef7af0ed74fb",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-eks?ref=91f11ea01656c26b8e6b8eb1b74f19863f60056c",
+      "version": "21.29.0"
+    },
+    "iam@6.8.2": {
+      "registry_metadata_sha256": "78e08a44f11ad5cb3443bc3ef46abfd1f9dc1e4d252a46225b7aa0ddd0dc3682",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-iam?ref=55514b7873c411040395e024a422684998da77c2",
+      "version": "6.8.2"
+    },
+    "key-pair@2.1.1": {
+      "registry_metadata_sha256": "17f4dba5a45a21f5fabe1aef97f5ac6aafa3667121c58089dad17a4b97a7d3b2",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-key-pair?ref=74df1fc9e582f82a5fcaf54b450b1f888c328403",
+      "version": "2.1.1"
+    },
+    "kms@4.0.0": {
+      "registry_metadata_sha256": "4077d790fd11e30d26d9dd06f513f01af6144d7a22a59c051df6776638c9a6bd",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-kms?ref=28846a0d9ba83629f006847f25f0e69bd05116b1",
+      "version": "4.0.0"
+    },
+    "kms@4.2.2": {
+      "registry_metadata_sha256": "d85515c9861618d37d306c32361a8cee64409d9494b135e45f094f3dea15f369",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-kms?ref=d25e459bd43d8d0bdff7c250ba6b237a12be7381",
+      "version": "4.2.2"
+    },
+    "s3-bucket@5.16.2": {
+      "registry_metadata_sha256": "157a9cc2ddbda746ba190b6038d2bd32b612bd0a9c5d2fceebf9024488333eea",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket?ref=cafb64d5ffb68d9d69af973d7b0c0e537fd8c599",
+      "version": "5.16.2"
+    },
+    "security-group@6.0.0": {
+      "registry_metadata_sha256": "a56fffb064cf5450023b07e2f248e3445c797d71963f01ed7733e5327ecdc414",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-security-group?ref=58d8e895915f5573767081142d063b7caf7a2b47",
+      "version": "6.0.0"
+    },
+    "vpc@6.7.3": {
+      "registry_metadata_sha256": "eb12c1045de2ec9b6f1a74e71f57643208a02f27b9dcb24e2f555b73c82ff6ab",
+      "source": "git::https://github.com/terraform-aws-modules/terraform-aws-vpc?ref=b3abd6df2ecf052451a361ed55b8f06f8742a795",
+      "version": "6.7.3"
+    }
+  },
+  "selection": "Provider versions satisfy the subjects and were fixed before native rerun; ancillary versions are not proven to match the 2026-10-10 mirror. Registry module selections are fixed by full Git commit SHA, including both KMS 4.0.0 (an exact source constraint) and 4.2.2 (a compatible range selection).",
+  "subjects": [
+    {
+      "archive_bytes": 373983,
+      "archive_sha256": "56242940c29eb6eeccf2cfd2b24654c8da06ae6e481b1fce5286f4473c8941c1",
+      "repository": "terraform-aws-modules/terraform-aws-eks",
+      "sha": "323c633629b8e4306d94eb1392d7400a80143621",
+      "xref_truth_floor": 866
+    },
+    {
+      "archive_bytes": 130590,
+      "archive_sha256": "d0404d99e1d2fb585c44b0eb099b8bd3396cdc647611579b40bc83424a91db6d",
+      "repository": "terraform-aws-modules/terraform-aws-vpc",
+      "sha": "b3abd6df2ecf052451a361ed55b8f06f8742a795",
+      "xref_truth_floor": 2662
+    }
+  ],
+  "xref_truth_floors": {
+    "terraform-aws-modules/terraform-aws-eks": 866,
+    "terraform-aws-modules/terraform-aws-vpc": 2662
+  }
+}

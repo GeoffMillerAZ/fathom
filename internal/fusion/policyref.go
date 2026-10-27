@@ -60,7 +60,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"gopkg.in/yaml.v3"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
@@ -748,7 +747,7 @@ func tfPhysicalNames(relPath string, content []byte) []extractor.DocLabelSet {
 // (indexbench lang-policies): ingest's gates, dispatch and policy reading
 // on one file of a subject, so the bench scores exactly what ingest stores.
 func (p *Pipeline) PolicyFileForBench(serviceID string, refs []core.SourceRef, relPath string, content []byte) (DocFile, bool) {
-	if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(relPath, content).excluded != "" {
+	if len(content) > MaxExtractSize || binaryExcluded(relPath, content) || gateDialectFile(relPath, content).excluded != "" {
 		return DocFile{}, false
 	}
 	p.mu.Lock()
@@ -797,7 +796,7 @@ func (p *Pipeline) enrichPolicyRefEdges(ctx context.Context, svc core.ServiceRef
 			}
 			continue
 		}
-		if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
+		if len(content) > MaxExtractSize || binaryExcluded(r.Path, content) || gateDialectFile(r.Path, content).excluded != "" {
 			continue
 		}
 		if f, ok := p.policyFile(svc.ID, idx, r.Path, content); ok {

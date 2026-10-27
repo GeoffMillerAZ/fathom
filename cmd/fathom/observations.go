@@ -92,22 +92,50 @@ func observationsDir(root string) string {
 // unreadable entry file is NAMED in it — never skipped and folded into a
 // smaller total (I38).
 func readObservations(root string) (content string, ok bool, err error) {
+	sources, err := readObservationSources(root)
+	if err != nil {
+		return "", false, err
+	}
 	var b strings.Builder
+	for _, src := range sources {
+		ok = true
+		if src.PerEntry {
+			b.WriteString("\n")
+		}
+		b.WriteString(src.Text)
+	}
+	return b.String(), ok, nil
+}
+
+// observationSource is one file of the merged observation record.
+type observationSource struct {
+	// Text is the file's content.
+	Text string
+	// PerEntry is true for an O<n>.md file and false for the legacy log.
+	PerEntry bool
+}
+
+// readObservationSources is readObservations' file walk, kept apart so a
+// caller that must tell the legacy log from a per-entry file (a per-entry
+// file wins on a duplicate id) reads the same files in the same order: the
+// legacy log when present, then every O<n>.md in id order. An unreadable
+// entry file is named in the error (I38).
+func readObservationSources(root string) ([]observationSource, error) {
+	var out []observationSource
 	data, err := os.ReadFile(observationsPath(root))
 	switch {
 	case err == nil:
-		ok = true
-		b.Write(data)
+		out = append(out, observationSource{Text: string(data)})
 	case !os.IsNotExist(err):
-		return "", false, err
+		return nil, err
 	}
 	dir := observationsDir(root)
 	des, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return b.String(), ok, nil
+			return out, nil
 		}
-		return "", false, err
+		return nil, err
 	}
 	type entry struct {
 		id   int
@@ -134,13 +162,11 @@ func readObservations(root string) (content string, ok bool, err error) {
 	for _, e := range entries {
 		ed, rerr := os.ReadFile(filepath.Join(dir, e.name))
 		if rerr != nil {
-			return "", false, fmt.Errorf("observation entry %s unreadable: %w", filepath.Join(dir, e.name), rerr)
+			return nil, fmt.Errorf("observation entry %s unreadable: %w", filepath.Join(dir, e.name), rerr)
 		}
-		ok = true
-		b.WriteString("\n")
-		b.Write(ed)
+		out = append(out, observationSource{Text: string(ed), PerEntry: true})
 	}
-	return b.String(), ok, nil
+	return out, nil
 }
 
 // serviceOpenObservations reads one service root's open-observation count

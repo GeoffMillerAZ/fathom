@@ -39,3 +39,17 @@ handler binding even when route discovery is unchanged; re-read them to confirm.
 Retry when a scoped ENGINE wave can perform those measurements under unchanged rules,
 K17/K26 cost gates and independent validation. This is an owner-deferred repair, not an
 upstream refusal. There is no new corpus, holdout, extractor epoch or generated-board edit.
+
+## X-R4 five-source audit
+
+Search date: 2026-10-26 UTC. The [Sourcegraph precise-navigation list](https://sourcegraph.com/docs/code-navigation/precise-code-navigation), [SCIP indexer catalog](https://github.com/scip-code/scip#readme), legacy LSIF repository searches ([TS/JS example](https://github.com/sourcegraph/lsif-node), [Go example](https://github.com/sourcegraph/lsif-go)), and GitHub repository searches for `scip-<language>` were checked. These are bounded catalogs, not evidence that an indexer cannot exist. Runtime traces cover executed paths only and cannot substitute for complete static source truth. No new subject or oracle was run here.
+
+| Source class | Searched source and disposition |
+|---|---|
+| Own toolchain / parser | [Astro compiler registry](https://registry.npmjs.org/@astrojs/compiler/latest) reports **4.0.0**, already the measured compiler pin; it does not repair the shared TypeScript query. |
+| SCIP / LSIF | The shared catalog searches and [GitHub `scip-astro` query](https://github.com/search?q=scip-astro&type=repositories) produced no subject-validated Astro indexer. This is a search limit. |
+| Language server | [Astro LSP registry](https://registry.npmjs.org/@astrojs/language-server/latest) reports **2.17.3**; [changelog](https://github.com/withastro/astro/blob/main/packages/language-tools/language-server/CHANGELOG.md) records a 2.17.3 patch after the 2.17.0 `astro2tsx` update. **LIVE UNMEASURED**: public reference requests must prove complete original-source component positions; the patch is not that proof. |
+| Registry AST / scope analysis | [Compiler package](https://registry.npmjs.org/@astrojs/compiler/latest) parses and maps Astro syntax but the frozen defaulted-props miss is extractor-side. [astro-eslint-parser 3.2.0](https://www.npmjs.com/package/astro-eslint-parser) provides scope references and variables, **LIVE UNMEASURED**, tier C under P-T1; it does not change C-R4's extractor-side miss. |
+| Runtime tracing | [Astro dev toolbar](https://docs.astro.build/en/guides/dev-toolbar/) observes rendered pages, not all component definitions or references. |
+
+The measured reading and governing row above are unchanged; a registry or catalog hit alone changes no grade.

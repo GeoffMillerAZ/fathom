@@ -1,0 +1,39 @@
+# Preregister before the first source read. Independent SCSS holdout, never a
+# canonical calibration shard. The earlier Spectre pin remains spent elsewhere.
+id: core-t1-scss-resolver-primary051-holdout
+holdout:
+  - name: thoughtbot/bourbon
+    url: https://github.com/thoughtbot/bourbon
+    ref: v7.3.0
+    tag_object_sha: 0087b08902d61219072855c68c61bf5260a1ad53
+    sha: c3551e46f41738681216a7f957bc88bc79155b16
+    licence: MIT
+    licence_path: LICENSE.md
+    licence_sha256: a319c0f308378daee9d0e79260b86624f763a7b9308a2b080826b6ba56e5ad77
+    idioms:
+      - 'library mixins, functions, variables, and cross-file Sass imports'
+    notes: >
+      GitHub API tag object was peeled to this commit and its 1120-byte MIT
+      LICENSE.md was hashed before any source read. Freeze the complete
+      sass-parser 0.5.1 primary, native resolver, indexbench, toolchain,
+      canonical Bootstrap/Primer readings and three-run retime before clone or
+      first source inspection. Run once on the complete unchanged tracked SCSS
+      inventory, without -only, filters, preamble, load paths, or source edits.
+      Use the registered strict native composition: a missing positioned
+      primary @use/@forward/@import statement fails closed; native URL sets
+      never invent source positions. No oracle, source, or rule tuning follows
+      the first read. Success requires L1, L2 and L3 excellent. The primary
+      sass-parser may reject at most 5% of eligible tracked SCSS files, and
+      Fathom's grammar may produce ERROR or MISSING on at most 5% of those
+      eligible files. Require at most 0.1% faulting files, median of three
+      throughput runs at least 1 MB per CPU-second, and no file over 2 s.
+      Report every per-subject numerator, denominator, tier cap and coverage
+      gap. A miss is a measured refusal, not a reason to narrow tenancy.
+# SPENT: First source read followed freeze commit 5599fcb40e72d301745a94eb6cf6f344634a8eeb.
+# First reading: docs/bench/readings/lang/holdout/scss-bourbon-native.json.
+# Counts/hash receipt: docs/assessments/data/2026-10-26-core-t1-scss-bourbon-native.json.
+# All preregistered gates passed. This holdout cannot be reused for fresh validation.
+# Scope correction after review: the frozen no-load-path run inherited all 45
+# graded pairs from primary compiles; native-only gain was 0. The subject runner
+# resolves 40 additional in-repo imports with -I . and its fixture-directory
+# load path. Fresh native-only validation remains open on a new preregistration.
