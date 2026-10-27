@@ -146,3 +146,28 @@ func TestReadinessInstalledPythonWrapper(t *testing.T) {
 		t.Fatalf("unrelated Python wrapper: %+v", got)
 	}
 }
+
+// F1: a spawned command whose own cause is found inside a Python file obeys
+// the file's mention rule. A file that never mentions fathom cannot hide a
+// missing hook, so it stays a definite FAIL (P7).
+func TestDoctorPythonSpawnedCauseObeysMentionRule(t *testing.T) {
+	spawns := map[string]string{
+		"uv run":     `["uv", "run", "ruff", "format"]`,
+		"python -c":  `["python3", "-c", "print(1)"]`,
+		"poetry run": `["poetry", "run", "pytest"]`,
+	}
+	for name, argv := range spawns {
+		body := "import subprocess\nsubprocess.run(" + argv + ")\n"
+		t.Run("hook "+name, func(t *testing.T) {
+			root := doctorHookFixture(t, "python3 .claude/hooks/fmt.py")
+			doctorWriteFixture(t, root, ".claude/hooks/fmt.py", body)
+			got := checkHooksInstalled(root, "claude")
+			if got.Status != doctorFail || !strings.Contains(got.Remedy, "fathom init") {
+				t.Fatalf("got %+v", got)
+			}
+		})
+		t.Run("gate "+name, func(t *testing.T) {
+			pyWant(t, pyGate(t, "python3 scripts/lint.py", map[string]string{"scripts/lint.py": body}), doctorFail)
+		})
+	}
+}

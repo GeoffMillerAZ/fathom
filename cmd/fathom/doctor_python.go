@@ -292,6 +292,7 @@ func (r *doctorWrapperReader) pythonStep(step doctorPyStep, words []string, sub 
 			r.depthCuts = append(r.depthCuts, doctorWrapperDepthCut{target: rel})
 		case r.matches == nil && strings.Contains(line, "fathom"):
 			acc.unknown = true
+			acc.forced = true
 			if acc.cause == "" {
 				acc.cause = rel + " is beyond the depth limit"
 			}
@@ -310,6 +311,7 @@ func (r *doctorWrapperReader) pythonStep(step doctorPyStep, words []string, sub 
 			why = "the 64 KiB read budget ran out"
 		}
 		acc.unknown = true
+		acc.forced = true
 		if acc.cause == "" {
 			acc.cause = rel + " could not be read: " + why
 		}
@@ -351,6 +353,7 @@ func (r *doctorWrapperReader) pythonStep(step doctorPyStep, words []string, sub 
 	}
 	if mention || v.forced {
 		acc.unknown = true
+		acc.forced = true
 		if acc.cause == "" {
 			acc.cause = v.cause
 		}
@@ -1323,8 +1326,8 @@ func (f *doctorPyFile) result(line int, name string, ev doctorWiringEvidence) {
 		why := name + ": the command it runs could not be settled"
 		if ev.cause != "" {
 			why += " (" + ev.cause + ")"
-			f.v.forced = true
 		}
+		f.v.forced = f.v.forced || ev.forced
 		f.uncertain(line, why)
 	}
 	if f.v.missingScript == "" {

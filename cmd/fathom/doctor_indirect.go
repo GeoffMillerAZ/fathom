@@ -21,8 +21,11 @@ const doctorWrapperLevels = 2
 
 type doctorWiringEvidence struct {
 	found, indirect, unknown bool
-	missingScript            string
-	file                     string
+	// forced marks an unknown a nested Python file settled by its own mention
+	// rule (or an unreadable file), so an enclosing file may not drop it.
+	forced        bool
+	missingScript string
+	file          string
 	// opaque names the last project file the walk followed into that is not
 	// a shell script (a node, ruby or perl script): it may hold the step, but
 	// this reader cannot read it. cause names what stopped a Python step the
@@ -424,6 +427,7 @@ func (r *doctorWrapperReader) unit(words []string, sub string, depth int, acc *d
 		return ev
 	}
 	acc.unknown = acc.unknown || ev.unknown
+	acc.forced = acc.forced || ev.forced
 	if acc.missingScript == "" {
 		acc.missingScript = ev.missingScript
 	}
