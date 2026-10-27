@@ -1,0 +1,303 @@
+{
+  "candidate_dispositions": {
+    "Pulumi local-backend preview": "out of scope / needs-owner-approval; preview forbidden",
+    "Pulumi mocks": "out of scope / needs-owner-approval; executes programs",
+    "scip-go/gopls": "untried; cloud SDK modules absent in scoped cache, no version pin",
+    "scip-python/pyright": "untried; no SDK probe or version pin",
+    "tsc/scip-typescript": "tried; static authored control only"
+  },
+  "checks": {
+    "helper_race_tests": 1,
+    "merge_debris": "pass",
+    "org_name_test": "pass",
+    "privacy_review": "no issues",
+    "release_notes": "pass",
+    "root_independent_native_results": "pass",
+    "unit_tests": 10
+  },
+  "completion_contract_audit": {
+    "instrument": "internal/verify.ParseMarkdownPlan + VerifyPlan from main01ea58c6b; snapshot file evidence, no daemon",
+    "rows": {
+      "GAP1-36": {
+        "Claimed": false,
+        "ID": "GAP1-36",
+        "Label": "path-absent",
+        "Path": "docs/assessments/2026-10-26-pulumi-probe.md",
+        "Plan": "docs/plans/language-breadth.gap1.md",
+        "Ref": "WORKTREE",
+        "Skipped": false,
+        "Status": "fail"
+      },
+      "IAC-4": {
+        "Claimed": false,
+        "ID": "IAC-4",
+        "Label": "path-absent",
+        "Path": "docs/assessments/2026-10-26-pulumi-probe.md",
+        "Plan": "docs/plans/iac-provider-schemas.md",
+        "Ref": "WORKTREE",
+        "Skipped": false,
+        "Status": "fail"
+      }
+    }
+  },
+  "completion_contracts": {
+    "GAP1-36": "fail: required full-assessment path absent",
+    "IAC-4": "fail: required full-assessment path absent",
+    "canonical_path": "docs/assessments/2026-10-26-pulumi-probe.md",
+    "partial_path": "docs/assessments/2026-10-26-pulumi-sdk-triage.md"
+  },
+  "date": "2026-10-26",
+  "engine_commit": "01ea58c6b",
+  "grade_claimed": false,
+  "library_import": {
+    "documents": 1,
+    "extracted_nodes": 2,
+    "full_ingest_measured": false,
+    "index_normalization": "Metadata.project_root=file:///subject; deterministic protobuf encoding",
+    "library_import_index_only": true,
+    "normalized_index_sha256": "94079d00bcb91d190f39149cf4d413a8fb7767bffb9f9bac066a9a86f3b93bf0",
+    "report": {
+      "Direct": 0,
+      "Documents": 1,
+      "Edges": 12,
+      "EnclosingFallback": 0,
+      "Language": "",
+      "Producer": {
+        "Name": "scip-typescript",
+        "Version": "0.4.0"
+      },
+      "ResolvedViaFallback": 0,
+      "Skipped": {
+        "local-target": 3
+      },
+      "SkippedByClass": null,
+      "Unmapped": 7,
+      "Unresolved": 12
+    },
+    "sdks": {
+      "aws": {
+        "direct_edges": 0,
+        "native_occurrences": 4,
+        "unresolved_edges": 4
+      },
+      "azure-native": {
+        "direct_edges": 0,
+        "native_occurrences": 3,
+        "unresolved_edges": 3
+      },
+      "gcp": {
+        "direct_edges": 0,
+        "native_occurrences": 5,
+        "unresolved_edges": 5
+      }
+    },
+    "source_sha256": "5dcbe7491847e62c2142c33377fe8a7ccd48057a401336d296297d82f7fac9fc"
+  },
+  "library_probe": {
+    "GOPROXY": "off",
+    "GOSUMDB": "off",
+    "build_launch": {
+      "actual_nice_at_launch": 10,
+      "load_at_launch": 7.01806640625
+    },
+    "dialect": "typescript",
+    "entry_point": "scip.ImportIndex",
+    "full_ingest": false,
+    "go_toolchain": "go1.27.3",
+    "helper_path": "calibration/oracles/pulumi-sdk-triage/importer.go.txt",
+    "helper_sha256": "2b9e39469b0dae5d34ddba6621ec1f337aa063488bd9b6e6bbba9dadb63cc8bf",
+    "primary_import_launch": {
+      "actual_nice_at_launch": 10,
+      "load_at_launch": 6.39990234375
+    },
+    "root_variation_import_launch": {
+      "actual_nice_at_launch": 10,
+      "load_at_launch": 6.02392578125
+    },
+    "trimpath": true
+  },
+  "limitations": [
+    "skipLibCheck true: SDK declaration diagnostics are skipped",
+    "No full service ingest, public population, typed-edge grade, source-anchor or store-cost measurement",
+    "Installed SDK version and lock integrity metadata are not registry archive byte authentication",
+    "No provider-specific defect isolated beyond ordinary external dependency targets"
+  ],
+  "manifest_recovery": {
+    "dependency_identity_graph_unchanged": true,
+    "lock_path": "calibration/oracles/pulumi-sdk-triage/fixture/package-lock.json",
+    "redundant_registry_sha1_fields_omitted": 6,
+    "removed_optional_fields": {
+      "deprecated": 5,
+      "funding": 47
+    }
+  },
+  "native": {
+    "full_ingest_measured": false,
+    "go_sdk": "untried/not inventoried; no ceiling",
+    "index_created": true,
+    "inputs_sha256": {
+      "index.ts": "5dcbe7491847e62c2142c33377fe8a7ccd48057a401336d296297d82f7fac9fc",
+      "node_modules/@sourcegraph/scip-typescript/dist/src/main.js": "22104bf4323e7667ff0d6f38606937c467af2d6e1fda171203c2065d9b757979",
+      "node_modules/typescript/bin/tsc": "8d5fa5bd883fec0979fc2004f1fe1d99aef40570155d550eadc0b03b55513bf0",
+      "package-lock.json": "7fbb4fa42cff9f079eefec8183a5cf1a5606302b997c646587841d2b6b7b6ac3",
+      "package.json": "9f669b599182f593061569e6937d3f9b2e94aa7ed2f67f8251a0d9d1a221ea41",
+      "pins-before-install.json": "b7aaf6bb88e844434f5f181f73a62cdb600b4c9a9a1df9bcd97eebf4d95465cb",
+      "tsconfig.json": "55c9d21d0236f323cf26768e38e70f89b06d43a48718cffd6599c957be2e13d2"
+    },
+    "library_import_index_only": true,
+    "network_control": {
+      "launch": {
+        "actual_nice_at_launch": 10,
+        "exit": 0,
+        "load_at_launch": 6.6962890625,
+        "sandbox_policy": "deny network*; deny writes to staged cache and resolved installed SDK tree",
+        "seconds": 0.116
+      },
+      "sandbox_denial": "EPERM",
+      "unsandboxed_connect": true
+    },
+    "node_modules_after": {
+      "counts": {
+        "directories": 2107,
+        "files": 30453,
+        "symlinks": 25
+      },
+      "sha256": "2188a1defdfa8d24b4c95d0b08f1831461bd9c699b9aac717b150855e2b3326b"
+    },
+    "node_modules_before": {
+      "counts": {
+        "directories": 2107,
+        "files": 30453,
+        "symlinks": 25
+      },
+      "sha256": "2188a1defdfa8d24b4c95d0b08f1831461bd9c699b9aac717b150855e2b3326b"
+    },
+    "node_sha256": "4d9aea129d56f18e6b3b48792aa5ba13f17dfc8c84d3a37841d14f54d59e1d1a",
+    "pins": {
+      "@pulumi/aws": "7.0.0",
+      "@pulumi/azure-native": "3.0.0",
+      "@pulumi/gcp": "9.0.0",
+      "@pulumi/pulumi": "3.180.0",
+      "@sourcegraph/scip-typescript": "0.4.0",
+      "typescript": "5.9.3"
+    },
+    "pulumi_program_executed": false,
+    "python_sdk": "untried/not inventoried; no ceiling",
+    "scip_typescript": {
+      "actual_nice_at_launch": 10,
+      "exit": 0,
+      "load_at_launch": 6.39990234375,
+      "sandbox_policy": "deny network*; deny writes to staged cache and resolved installed SDK tree",
+      "seconds": 1.488
+    },
+    "scope": "TypeScript static SDK imports only",
+    "sdk_pin_evidence": "installed package versions plus lock/registry integrity metadata; tree hash checks local bytes stayed unchanged, not registry tarball identity",
+    "tsc": {
+      "actual_nice_at_launch": 10,
+      "exit": 0,
+      "load_at_launch": 6.39990234375,
+      "sandbox_policy": "deny network*; deny writes to staged cache and resolved installed SDK tree",
+      "seconds": 1.137
+    }
+  },
+  "native_root_variation": {
+    "full_ingest_measured": false,
+    "go_sdk": "untried/not inventoried; no ceiling",
+    "index_created": true,
+    "inputs_sha256": {
+      "index.ts": "5dcbe7491847e62c2142c33377fe8a7ccd48057a401336d296297d82f7fac9fc",
+      "node_modules/@sourcegraph/scip-typescript/dist/src/main.js": "22104bf4323e7667ff0d6f38606937c467af2d6e1fda171203c2065d9b757979",
+      "node_modules/typescript/bin/tsc": "8d5fa5bd883fec0979fc2004f1fe1d99aef40570155d550eadc0b03b55513bf0",
+      "package-lock.json": "7fbb4fa42cff9f079eefec8183a5cf1a5606302b997c646587841d2b6b7b6ac3",
+      "package.json": "9f669b599182f593061569e6937d3f9b2e94aa7ed2f67f8251a0d9d1a221ea41",
+      "pins-before-install.json": "b7aaf6bb88e844434f5f181f73a62cdb600b4c9a9a1df9bcd97eebf4d95465cb",
+      "tsconfig.json": "55c9d21d0236f323cf26768e38e70f89b06d43a48718cffd6599c957be2e13d2"
+    },
+    "library_import_index_only": true,
+    "network_control": {
+      "launch": {
+        "actual_nice_at_launch": 10,
+        "exit": 0,
+        "load_at_launch": 6.28759765625,
+        "sandbox_policy": "deny network*; deny writes to staged cache and resolved installed SDK tree",
+        "seconds": 0.119
+      },
+      "sandbox_denial": "EPERM",
+      "unsandboxed_connect": true
+    },
+    "node_modules_after": {
+      "counts": {
+        "directories": 2107,
+        "files": 30453,
+        "symlinks": 25
+      },
+      "sha256": "2188a1defdfa8d24b4c95d0b08f1831461bd9c699b9aac717b150855e2b3326b"
+    },
+    "node_modules_before": {
+      "counts": {
+        "directories": 2107,
+        "files": 30453,
+        "symlinks": 25
+      },
+      "sha256": "2188a1defdfa8d24b4c95d0b08f1831461bd9c699b9aac717b150855e2b3326b"
+    },
+    "node_sha256": "4d9aea129d56f18e6b3b48792aa5ba13f17dfc8c84d3a37841d14f54d59e1d1a",
+    "pins": {
+      "@pulumi/aws": "7.0.0",
+      "@pulumi/azure-native": "3.0.0",
+      "@pulumi/gcp": "9.0.0",
+      "@pulumi/pulumi": "3.180.0",
+      "@sourcegraph/scip-typescript": "0.4.0",
+      "typescript": "5.9.3"
+    },
+    "pulumi_program_executed": false,
+    "python_sdk": "untried/not inventoried; no ceiling",
+    "scip_typescript": {
+      "actual_nice_at_launch": 10,
+      "exit": 0,
+      "load_at_launch": 6.28759765625,
+      "sandbox_policy": "deny network*; deny writes to staged cache and resolved installed SDK tree",
+      "seconds": 1.454
+    },
+    "scope": "TypeScript static SDK imports only",
+    "sdk_pin_evidence": "installed package versions plus lock/registry integrity metadata; tree hash checks local bytes stayed unchanged, not registry tarball identity",
+    "tsc": {
+      "actual_nice_at_launch": 10,
+      "exit": 0,
+      "load_at_launch": 6.28759765625,
+      "sandbox_policy": "deny network*; deny writes to staged cache and resolved installed SDK tree",
+      "seconds": 1.079
+    }
+  },
+  "privacy": {
+    "evidence_paths": "Repo-relative source paths and root roles only; no concrete sandbox-profile hash",
+    "index": "Only deterministic protobuf digest after Metadata.project_root=file:///subject; original bytes imported",
+    "local_artifacts": "No helper-binary or build/import-log digest published; helper built with -trimpath",
+    "sdk_tree": "Only relative symlink targets enter conservation digest; absolute targets refuse before hashing",
+    "stream_output": "No stdout/stderr byte lengths or digests published"
+  },
+  "protocol_commit": "ca92a09bd",
+  "root_independence": {
+    "different_scratch_root_lengths": true,
+    "fresh_native_runs": 2,
+    "go_importer_receipt_test": "root-only protobuf change gives identical public JSON; document-language change gives different normalized index digest",
+    "normalization": "Metadata.project_root=file:///subject; deterministic protobuf encoding",
+    "normalized_index_sha256": "94079d00bcb91d190f39149cf4d413a8fb7767bffb9f9bac066a9a86f3b93bf0",
+    "public_importer_json_byte_equal": true,
+    "python_command_echo_test": "real child cwd echoes on stdout and stderr; clock/load fixed independently; public launch records identical",
+    "regressions": "cwd output, raw-index root and absolute-symlink tests were observed failing before each fix",
+    "scheduling_measurements": "Elapsed time and load are operational observations and naturally vary; they are not part of the public result comparison",
+    "tests": {
+      "absolute_symlink_refusal": true,
+      "go_race": 1,
+      "python": 10
+    }
+  },
+  "schema": "pulumi-sdk-cheap-triage-v2",
+  "scope": "Partial TypeScript control; completion contracts remain unproven",
+  "selection": "previously explored authored TypeScript fixture; not a public subject or holdout",
+  "untried": {
+    "go": "No SDK probe run; core SDK present but AWS/Azure Native/GCP cloud SDK module manifests absent from scoped lane module cache",
+    "python": "No language compiler/indexer or SDK probe run"
+  }
+}
