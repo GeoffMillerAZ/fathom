@@ -27,14 +27,14 @@
   "unmatched_sha256": "18414f0e8f62443933558819d7f0efb70f45b1097951c37e8424885f4fcb3c05",
   "population_sha256": "9237874685db878b79aaafd82955e73e5ee3e28299c0f6bd16c21e10bebd3208",
   "source_sha256": "3617bf4ae5aed0e957aea80d548b6ebd11bd185b1f13aa2f7b769a2923b4dafb",
-  "product_revision": "a3374ac40aeca2d527e4c79637809bbf419885fa",
-  "product_binary_sha256": "8bb02c4cefac08fe29b1b8fdfc58978d1649e611c5a202ae4ad0ab4b798a376d",
+  "product_revision": "2cfc7626c943a320a390faae4ac92819929ba89a",
+  "product_binary_sha256": "e0813ff6fc3d1036fb15c63565667a67d0f83570f280a07f4ff210cf666f3f85",
   "grammar_blob_sha256": "613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df",
   "grammar_entry_point": "tree_sitter_cpp",
   "audit_grammar_version": "920e9810cc64a47fa05cfcf30c7caecb85b5f2c3",
   "audit_runtime_version": "0.26.11",
   "audit_grammar_archive_sha256": "285ad7c2969a03254ed7a77068e0effca26cb8f014bc5b9d300bd4415ec0b17b",
-  "audit_runtime_archive_sha256": "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971",
+  "audit_runtime_archive_sha256": "fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e",
   "preprocess": true,
   "preprocess_selected": 36
 }

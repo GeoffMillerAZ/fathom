@@ -1,6 +1,6 @@
 {
   "budget_sha256": "85789d1809c3b536fc06200e1f25a4233d06b9887d3a13e19e88ee456a7b2d84",
-  "builder_sha256": "cb1bfd0f4c67eb7945792ec36dcc41905313a708795ca17916c71728e3c8f95c",
+  "builder_sha256": "19a069297e4f6a6ae10ce7822e23c4f3a584f1fff0a93755066f02acfda223a9",
   "grammar": {
     "archive_bytes": 1740811,
     "archive_sha256": "6c6efaf024f5c02fee0403e4e2373346eeadc40828587bcfad9351df2f0a7986",
@@ -20,8 +20,8 @@
     "sha256": "fde7035227a488422e95cc1a408fecbbc5b3440dceebf109e42d483d31270ed2"
   },
   "runtime": {
-    "archive_bytes": 920828,
-    "archive_sha256": "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971",
+    "archive_bytes": 920896,
+    "archive_sha256": "fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e",
     "crate": "tree-sitter/tree-sitter",
     "entries": 673,
     "extracted_bytes": 3922532,

@@ -73,7 +73,7 @@ func TestRetimeWorkspaceRootUsesCheckoutAndIgnoreRule(t *testing.T) {
 	}
 }
 
-func TestRetimeBoundedReadingRejectsOversize(t *testing.T) {
+func TestRetimeBoundedReadingCap(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
 	dir, err := os.MkdirTemp("workspace", "retime-reading-")
 	if err != nil {
@@ -81,18 +81,19 @@ func TestRetimeBoundedReadingRejectsOversize(t *testing.T) {
 	}
 	t.Cleanup(func() { os.RemoveAll(dir) })
 	path := filepath.Join(dir, "reading.json")
-	f, err := os.Create(path)
-	if err != nil {
+	data := bytes.Repeat([]byte(" "), retimeReadingCap)
+	copy(data, []byte("{}"))
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Truncate(retimeReadingCap + 1); err != nil {
+	if _, hash, err := retimeBoundedReading(path); err != nil || hash != retimeSHA(data) {
+		t.Fatalf("exact cap hash/parse: %q, %v", hash, err)
+	}
+	if err := os.WriteFile(path, append(data, ' '), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := retimeBoundedReading(path); err == nil {
-		t.Fatal("accepted reading above size bound")
+	if _, _, err := retimeBoundedReading(path); err == nil || !strings.Contains(err.Error(), "reading exceeds") {
+		t.Fatalf("valid JSON above cap: got %v, want size refusal", err)
 	}
 }
 

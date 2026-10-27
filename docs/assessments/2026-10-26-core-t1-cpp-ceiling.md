@@ -23,7 +23,7 @@ Legacy means **legacy file scope / full compiler database**, not an exact histor
 
 Numeric grades are diagnostic: legacy computes L1/L2 excellent, L3 good and L4 unmet; full computes L1 good, L2 excellent and L3/L4 unmet. These do not override parser admission. Historical CPU medians are 1.15/1.13 MB/CPU-s for legacy and 1.09/1.11 for full (0.4.0/0.4.1), with unrecorded per-run loads. Fresh load-logged repeats below replace their use for timing comparisons. Full fault rate 1/679 exceeds the 0.1% ceiling independently of syntax admission. L1/range metrics remain tier B because Ctags enumerates their population. Native AST ranges do not raise that population to tier A.
 
-The [sanitized summary](../bench/readings/cpp-audit-2026-10-26/summary.json) is produced by committed `cpp-report.py`, with SHA-256 `4410dd80598ef5ea9e64c7e3327dfdc70957b7c29b31d21795a5ab0795f2eb78`. It binds all six raw indexes, nine native files, four readings and six original screen receipts, plus the exact baseline screen binary and producer source. Both SCIP versions have the following per-subject numerators/denominators (ratios rounded to four decimals). No source content, subject file lists or fault paths are published.
+The [sanitized summary](../bench/readings/cpp-audit-2026-10-26/summary.json) is produced by committed `cpp-report.py`, with SHA-256 `1489dbc4bea8e87e27f996ba92ef5b67c56e6489ac0638f0d8fcff9ac6fd6246`. It binds all six raw indexes, nine native files, four readings and six original screen receipts, plus the exact baseline screen binary and producer source. Both SCIP versions have the following per-subject numerators/denominators (ratios rounded to four decimals). No source content, subject file lists or fault paths are published.
 
 **Legacy population**
 
@@ -115,7 +115,7 @@ The parser sources checked include the [official grammar](https://github.com/tre
 
 The experimental `O1504` in `1922c8606` is a withdrawn draft unrelated to main's `O1504` (graph-cache eviction). The initial replacement O1508 allocation checked main only and collided with PR #97. It is withdrawn. O1509 is absent from main `01ea58c6b` and all 19 open PR heads in the round-2 allocation snapshot, checked with `gh pr list` and `git grep` as required by M3. No history is rewritten.
 
-ENGINE-history note (M1): `95c59df54` and `b9d22930d` are experiment-only product-swap commits, each reverted immediately by `1283b60ed` and `807922cf4`. They must never be cherry-picked or treated as shipping product states. The current product lock/blob remain byte-exact. All 18 candidate receipts now come from isolated audit-tag replays at `a3374ac40aeca2d527e4c79637809bbf419885fa`, where the shipped grammar is the incumbent. Their syntax counts and population/input identities match the earlier trials, including failed/partial cases. No new production swap is permitted.
+ENGINE-history note (M1): `95c59df54` and `b9d22930d` are experiment-only product-swap commits, each reverted immediately by `1283b60ed` and `807922cf4`. They must never be cherry-picked or treated as shipping product states. The current product lock/blob remain byte-exact. All 18 candidate receipts now come from isolated audit-tag replays at `2cfc7626c943a320a390faae4ac92819929ba89a`, where the shipped grammar is the incumbent. Their syntax counts and subject population, reading and unmatched-input identities match the earlier trials, including failed/partial cases. No new production swap is permitted.
 
 ## Controls and reproducible commands
 
@@ -146,7 +146,7 @@ python3 calibration/oracles/scip-clang/cpp-audit.py native --subjects-root "$SUB
 python3 calibration/oracles/scip-clang/cpp-audit.py grade --subjects-root "$SUBJECTS" --builds-root "$BUILDS" --work-dir "$WORK" --lock-dir "$LOCK" --indexes-dir "$INDEXES" --readings-dir "$READINGS" --indexbench "$INDEXBENCH" --ctags "$CTAGS" --clang "$CLANG"
 ```
 
-All current candidate screens, timings and summary use the clean measurement source `a3374ac40aeca2d527e4c79637809bbf419885fa`. The old WillBooster-only measurement source was `8f90d5e59`; current receipts supersede it. Run report replay from the pinned measurement source too, since it requires the live clean source to match the timing binary. A later documentation tip is not that measured source revision. Fmt/json/spdlog each run with each frozen legacy/full reading; `UNMATCHED` is that subject's v0.4.1 grade receipt. The exact command is:
+All current candidate screens, timings and summary use the clean measurement source `2cfc7626c943a320a390faae4ac92819929ba89a`. The old WillBooster-only measurement source was `8f90d5e59`; current receipts supersede it. Run report replay from the pinned measurement source too, since it requires the live clean source to match the timing binary. A later documentation tip is not that measured source revision. Fmt/json/spdlog each run with each frozen legacy/full reading; `UNMATCHED` is that subject's v0.4.1 grade receipt. The exact command is:
 
 ```sh
 bash scripts/fathom-go.sh build -tags=fathom_grammar_audit -o "$SCREEN" ./calibration/oracles/scip-clang/cpp-screen
@@ -185,14 +185,14 @@ M1 and M2 plus m1 through m9 are tracked explicitly. The canonical reading and p
 
 ## Fresh timing conditions (m2)
 
-Measured from the clean source above on darwin/arm64, with GOMAXPROCS=2, one heavy command at a time, and nice 10 for each measuring command. The command-level load gate is at most 9. Each internal run records its actual before/after load; the last full-scope command spans a load rise, and its third internal run starts at 12.45. This deviation is disclosed rather than called a passing per-run load gate. Parser admission fails independently of these throughput figures. No support promotion or timing-floor refusal is adopted.
+Measured from the clean R2 source above on darwin/arm64, with GOMAXPROCS=2, one heavy command at a time, and verified nice 10 for each measuring command. The command-level load gate is at most 9. Each internal run records its actual before/after load; this is observation, not a per-run gate. The superseded R1 full-scope run started its third internal run at 12.45; that disclosed diagnostic remains in Git history. Parser admission fails independently of these throughput figures. No support promotion or timing-floor refusal is adopted.
 
 | Reading | Run rates MB/CPU-s | 1-minute load before -> after each run | Median |
 |---|---|---|---:|
-| cpp-full-v0.4.0.json | 1.14, 1.14, 1.13 | 2.77 -> 2.80; 2.80 -> 2.57; 2.57 -> 2.50 | 1.14 |
-| cpp-full-v0.4.1.json | 1.13, 1.10, 1.12 | 2.50 -> 5.78; 5.78 -> 12.45; 12.45 -> 13.19 | 1.12 |
-| cpp-legacy-v0.4.0.json | 1.15, 1.15, 1.15 | 3.56 -> 3.43; 3.43 -> 3.21; 3.21 -> 3.08 | 1.15 |
-| cpp-legacy-v0.4.1.json | 1.14, 1.14, 1.12 | 3.08 -> 2.84; 2.84 -> 2.72; 2.72 -> 2.77 | 1.14 |
+| cpp-full-v0.4.0.json | 1.14, 1.13, 1.06 | 4.12 -> 4.57; 4.57 -> 3.98; 3.98 -> 9.18 | 1.13 |
+| cpp-full-v0.4.1.json | 1.13, 1.13, 1.13 | 7.89 -> 5.75; 5.75 -> 4.13; 4.13 -> 3.66 | 1.13 |
+| cpp-legacy-v0.4.0.json | 1.15, 1.14, 1.12 | 6.08 -> 6.18; 6.18 -> 5.62; 5.62 -> 5.30 | 1.14 |
+| cpp-legacy-v0.4.1.json | 1.14, 1.15, 1.14 | 5.30 -> 4.78; 4.78 -> 4.51; 4.51 -> 4.12 | 1.14 |
 
 The [load logs](../bench/readings/cpp-audit-2026-10-26/timing/) bind both reading hashes, the clean measuring-binary revision/hash, and all run boundaries. The summary retains old unrecorded conditions under `historical_timing`, checks exact aggregate numerators/denominators plus tiers, and binds 48 inputs. Timed full readings stay private because their existing notes carry subject paths; only counts/hashes and load logs are published.
 
@@ -204,11 +204,11 @@ nice -n 10 "$INDEXBENCH" lang-retime -reading "$TIMING_DIR/$READING_NAME" -runs 
 ```
 
 
-## Final review verification
+## R1 verification history
 
-The fresh three-candidate build batch passed in 138.877 seconds at launch load 4.51. All 18 isolated screens, four load-logged median-of-three timings and the committed report replay completed in 506.575 seconds at launch load 4.15. Failed parser screens were retained as expected measurement outcomes. The candidate population hashes and syntax counts match the earlier trials. The canonical reading, production lock/blob and proven LB-F473 line remain byte-exact to the landing base.
+The R1 three-candidate build batch passed in 138.877 seconds at launch load 4.51. All 18 isolated screens, four load-logged median-of-three timings and the committed report replay completed in 506.575 seconds at launch load 4.15. Failed parser screens were retained as expected measurement outcomes. The candidate population hashes and syntax counts match the earlier trials. The canonical reading, production lock/blob and proven LB-F473 line remain byte-exact to the landing base.
 
-Final checks passed in 308.743 seconds at launch load 8.95, with one heavy command at a time and nice 10: tagged tsengine race (171.821 seconds), tagged screen race (6.322 seconds), indexbench race (118.811 seconds), 23 collector tests, 22 report tests, four WillBooster builder tests, one official/Unreal builder confinement test, tagged vet, release-note format, merge-debris and the ADR-011 org-name check. `TestCmdLangTracker` was explicitly excluded for the controller-owned generated board, as in prior lane checks. No generated board was changed. `task --dry test` confirms normal CI compiles both optional packages via tagged vet. Both corpus/pin YAML files and Taskfile parse, staged diff/debris checks pass, and the staged gitleaks scan reports zero findings. Receipt data contains no personal identities.
+R1 checks passed in 308.743 seconds at launch load 8.95, with one heavy command at a time and nice 10: tagged tsengine race (171.821 seconds), tagged screen race (6.322 seconds), indexbench race (118.811 seconds), 23 collector tests, 22 report tests, four WillBooster builder tests, one official/Unreal builder confinement test, tagged vet, release-note format, merge-debris and the ADR-011 org-name check. `TestCmdLangTracker` was explicitly excluded for the controller-owned generated board, as in prior lane checks. No generated board was changed. `task --dry test` confirms normal CI compiles both optional packages via tagged vet. Both corpus/pin YAML files and Taskfile parse, staged diff/debris checks pass, and the staged gitleaks scan reports zero findings. Receipt data contains no personal identities.
 
 ```sh
 bash scripts/fathom-go.sh test -race -count=1 -tags=fathom_grammar_audit ./internal/extractor/tsengine ./calibration/oracles/scip-clang/cpp-screen
@@ -227,12 +227,12 @@ bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom
 
 ## Binding review R2
 
-The default grammar and canonical readings were accepted byte-exact in round 2. M3 and n1 through n7 are repaired below; measurements from clean source a3374ac40 remain historical until the fresh R2 replay is published.
+The default grammar and canonical readings were accepted byte-exact in round 2. M3 and n1 through n7 are repaired below. Fresh R2 measurements from clean source 2cfc7626c943a320a390faae4ac92819929ba89a supersede R1; the R1 evidence at a3374ac40 remains in Git history.
 
 | ID | Repair / verification |
 |---|---|
 | M3 | O1508 withdrawn after collision with PR #97. O1509 is absent from main 01ea58c6b and all 19 open PR heads, checked by gh pr list and git grep. No controller assignment is claimed. |
-| n1 | Screen README now names a3374ac40 for the published R1 WillBooster screens. |
+| n1 | Screen README now names 2cfc7626c for the current WillBooster screens; R1 a3374ac40 remains historical. |
 | n2 | Grade outputs must use ignored workspace paths; every phase pins HEAD through cleanliness checks and publication. |
 | n3 | Command-level load tests interleave actual measured clocks; exact binary hash cap accepts equality and refuses cap+1. |
 | n4 | Retime hashes and parses one bounded reading buffer; log output resolves the Git root and checks ignore status. The report requires and hashes the actual timing binary before and after publication. |
@@ -240,4 +240,25 @@ The default grammar and canonical readings were accepted byte-exact in round 2. 
 | n6 | Both compiler/optimizer calls assert confined cwd and both Zig cache variables; corrupt archives exit with a path-free error. |
 | n7 | The allowlist is explicitly frozen to this audit; the unused holdout path is removed. Receipt-prefix acceptance and near-miss refusals are tested. |
 
-Allocation snapshot: main 01ea58c6bc0f5d7753d51a6be00c46fe2659fffc and PRs #73, #76, #77, #86, #87, #88, #89, #90, #91, #92, #93, #95, #96, #97, #98, #105 and #106, #107 and #108. Their fetched heads matched the gh listing before `git grep -I -l -w O1509` returned no matches across all 20 refs. Only PR numbers and commit identities are relevant; no author data was retained. This is a checked snapshot, not a reservation against future concurrent allocations.
+Allocation snapshot: main 01ea58c6bc0f5d7753d51a6be00c46fe2659fffc and PRs #73, #76, #77, #86, #87, #88, #89, #90, #91, #92, #93, #95, #96, #97, #98, #105, #106, #107 and #108. Their fetched heads matched the gh listing before `git grep -I -l -w O1509` returned no matches across all 20 refs. Only PR numbers and commit identities are relevant; no author data was retained. This is a checked snapshot, not a reservation against future concurrent allocations.
+
+
+R2 replay: all three newly built modules match the pinned module hashes byte for byte. All 18 fresh screens match the prior subject population, reading and unmatched-input hashes and syntax counts, retaining four expected partial parser failures. Four new timing logs bind the clean source and actual timing binary, and the committed report replays successfully with `--timing-binary`. Before/after subject manifest hashes agree. No canonical reading, product grammar or holdout membership changed.
+
+
+R2 final verification: the five build commands (two tools and three modules) passed in 66.518 execution seconds, with launch loads 3.01 to 7.21. The 18 screens, four median-of-three timings and report replay passed in 355.306 execution seconds, with launch loads 3.66 to 8.29, excluding the recorded load wait. Each heavy child checked its background priority before execution. The new runtime archive changes the two official/Unreal archive identities, while their modules remain byte-identical. The executable sources remain byte-identical to the clean measurement revision; later edits only publish evidence, update documents and strengthen a test fixture.
+
+The complete `bash scripts/fathom-go.sh test -race -count=1 ./cmd/indexbench` suite passed in 114.818 test seconds (117.946 command seconds), including `TestCmdLangTracker`, with no exclusions. All 56 Python controls passed (25 collector, 24 report, four WillBooster and three official/Unreal builder tests). Tagged/default screen race, focused `TestGrammarAudit` race and tagged vet passed before replay. Release-note format, merge-debris and `TestNoOrgSpecificNames` passed again after publication. Independent read-only review matched every published receipt/lock/load log and source/tool hash to the actual files; it did not repeat the heavy replay. The 33 JSON records parse, contain no personal identities or host paths, and all five accepted product/reading blobs remain byte-exact.
+
+Mutation: removing the reading-size refusal from `retimeBoundedReading` made `bash scripts/fathom-go.sh test -race -count=1 -run '^TestRetimeBoundedReadingCap$' ./cmd/indexbench` fail with `valid JSON above cap: got <nil>, want size refusal`. The test uses valid JSON at the exact cap and cap+1, so parse failure cannot mask a missing size check. Production bytes were restored before the complete green race suite.
+
+The final O1509 recheck refreshed all 19 open PR heads, including PR #98's moved head, matched them to `gh pr list`, and found no `git grep -I -l -w O1509` match on any of those heads or main 01ea58c6b. No main merge or other READY branch change occurred.
+
+```sh
+bash scripts/fathom-go.sh test -race -count=1 ./cmd/indexbench
+python3 calibration/oracles/scip-clang/cpp-report_test.py
+bash scripts/fathom-go.sh run ./third_party/agentic-kit/cmd/release-notes -check
+bash scripts/check-merge-debris.sh
+bash scripts/check-merge-debris.sh --staged
+bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom
+```
