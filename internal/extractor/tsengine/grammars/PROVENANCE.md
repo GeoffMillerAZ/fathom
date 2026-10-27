@@ -44,6 +44,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `dockerfile` | camdencheek/tree-sitter-dockerfile | v0.2.0 | `868e44ce378deb68aac902a9db68ff82d2299dd0` | MIT | `tree_sitter_dockerfile` | `8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818` |
 | `elisp` | Wilfred/tree-sitter-elisp | 1.7.2 | `c0417c751a3dcc8724d1f2f6d1437a99dee1e090` | MIT | `tree_sitter_elisp` | `6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670` |
 | `elixir` | elixir-lang/tree-sitter-elixir | v0.3.5 | `e2d9e6e0e76b0c436fa48a0b8c32a031d0cbdf49` | Apache-2.0 | `tree_sitter_elixir` | `7d8bf37949e2bea75a19d38491d7680ed1c9f0f5a41a5235832d718ec174c7c4` |
+| `glsl` | tree-sitter-grammars/tree-sitter-glsl | v0.2.0 | `e47b8b62b59d0e3529f1c31b03e025d6bd475044` | MIT | `tree_sitter_glsl` | `65d098362f9ffd47e9bf5916133ed24ccf934b01027debdaeeb46ff3ec41caf0` |
 | `gotemplate` | ngalaiko/tree-sitter-go-template | aa71f63de226c5592dfbfc1f29949522d7c95fac | `aa71f63de226c5592dfbfc1f29949522d7c95fac` | MIT | `tree_sitter_helm` | `86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458` |
 | `graphql` | bkegley/tree-sitter-graphql | 5e66e961eee421786bdda8495ed1db045e06b5fe | `5e66e961eee421786bdda8495ed1db045e06b5fe` | MIT | `tree_sitter_graphql` | `ff542fddb51b1f1c110bb36fa16703d2212eeae0c0d12a2e1bf813c5f5db9507` |
 | `groovy` | murtaza64/tree-sitter-groovy | 2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c | `2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c` | MIT | `tree_sitter_groovy` | `00320c650fdf683337d8a1fffd2f2f36fd4606f26d77f154d3f0fb7b268a5892` |
@@ -88,6 +89,8 @@ lock does not describe (I55). The tables below are rendered from the lock by
 
 | Blob | Order | Patch | sha256 |
 |---|--:|---|---|
+| `glsl` (patched) | 1 | `patches/glsl/0001-glsl-syntax.patch` | `8647feaff6f6217269902cab7c333715ac295c9c249d9a9da083537ce95d403f` |
+| `glsl` (patched) | 2 | `patches/glsl/0002-pin-inherited-c-grammar.patch` | `9fe569b9e16912319522f2911d4ed0c92bf976ddfe3a9545e2dd83f80bdfe960` |
 | `jinja2` (patched) | 1 | `patches/jinja2/optional-else.patch` | `ac3e0825cd149da56ed02cac14ea2e7f96b92d8b8f10c1c0a3cc9e9f4410be86` |
 
 ### Committed blobs
@@ -109,6 +112,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `dockerfile` | (root) | yes | 14 | 171,375 | 69,325 | `81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac` |
 | `elisp` | (root) | no | 15 | 176,723 | 62,982 | `f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397` |
 | `elixir` | (root) | yes | 14 | 1,365,700 | 229,991 | `77398b69666daf0227d9209a70b172374880f191b78031697027cd3a8caafc01` |
+| `glsl` | (root) | no | 15 | 698,675 | 160,436 | `678ef71680ed0224d732400e55685ca16eba32b126382449497d193e048fcba6` |
 | `gotemplate` | dialects/helm | no | 15 | 189,463 | 68,230 | `b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f` |
 | `graphql` | (root) | no | 13 | 178,965 | 66,018 | `2562a48542af5bdffed0ba53aa178e883828c124aca5b082b9be47f3aca83017` |
 | `groovy` | (root) | no | 15 | 761,792 | 171,362 | `9bfe78467984483569fd59a44dc85fba0f0115d1bb6a6466b32ab7106ece6bc3` |

@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -492,7 +491,7 @@ func (p *Pipeline) enrichUnityAssemblies(ctx context.Context, svc core.ServiceRe
 				f.fault = err.Error()
 			} else if len(b) > MaxExtractSize {
 				f.fault = "exceeds extraction size limit"
-			} else if connector.IsBinary(b) {
+			} else if binaryExcluded(ref.Path, b) {
 				f.fault = "binary assembly metadata"
 			} else {
 				f.content = b

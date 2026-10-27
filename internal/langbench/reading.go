@@ -241,6 +241,43 @@ type Reading struct {
 	ExcludedByKind   map[string]int      `json:"excluded_by_kind"`
 	Notes            []string            `json:"notes"`
 	Disposition      *string             `json:"disposition"`
+	// L3Evidence is the manifest's minimum-evidence bar for L3 (owner ruling S-R6, scoped
+	// to the dialect that sets it): nil for every reading whose manifest sets none.
+	L3Evidence *EvidenceBar `json:"l3_evidence,omitempty"`
+}
+
+// EvidenceBar is a dialect manifest's minimum evidence for L3: its cross-file metric's
+// denominator (xref_truth for a tool format, file_edges_truth for a language) holds at
+// least MinReferences resolvable references across at least MinSubjects subjects, else L3
+// grades unmet whatever its metrics read.
+type EvidenceBar struct {
+	MinReferences int `json:"min_references"`
+	MinSubjects   int `json:"min_subjects"`
+}
+
+// l3EvidenceCount is the count an EvidenceBar reads: the L3 recall metric's denominator.
+func l3EvidenceCount(kind string) string {
+	if kind == "tooling" {
+		return "xref_truth"
+	}
+	return "file_edges_truth"
+}
+
+// l3EvidenceHolds reports whether r carries the evidence its bar asks for (true with none).
+func l3EvidenceHolds(r Reading) bool {
+	b := r.L3Evidence
+	if b == nil {
+		return true
+	}
+	k := l3EvidenceCount(r.Kind)
+	refs, subjects := 0, 0
+	for _, s := range r.Subjects {
+		if n := s.Counts[k]; n > 0 {
+			refs += n
+			subjects++
+		}
+	}
+	return refs >= b.MinReferences && subjects >= b.MinSubjects
 }
 
 // MinL3Evidence is owner ruling D19's minimum evidence for L3 (E1, E2): a graded L3 metric
@@ -320,7 +357,8 @@ func tenancyHolds(r Reading) bool {
 // LevelMet computes a reading's level and per-level grade from its metrics,
 // the §1.2 thresholds and the §1.3 tiers alone. A level is met when its own
 // metrics grade good or better, every level below it is met, and the
-// tenancy floor holds; an L3 metric under MinL3Evidence counts as not measured.
+// tenancy floor holds; an L3 metric under MinL3Evidence counts as not measured (D19),
+// and L3 also needs the manifest's evidence bar, if it sets one.
 func LevelMet(r Reading) (string, Grade) {
 	th := thresholdsFor(r.Kind)
 	var g Grade
@@ -336,6 +374,9 @@ func LevelMet(r Reading) (string, Grade) {
 		grade, thin, allThin := gradeLevel(r, level, ts)
 		if allThin {
 			g.L3Reason = fmt.Sprintf("evidence: %d references, under %d", thin, MinL3Evidence)
+		}
+		if level == "L3" && grade != GradeNotAttempted && !l3EvidenceHolds(r) {
+			grade = GradeUnmet
 		}
 		g.set(level, grade)
 		if chain && (grade == GradeExcellent || grade == GradeGood) {
@@ -473,6 +514,9 @@ func (r Reading) Validate() error {
 	}
 	if len(r.Subjects) == 0 {
 		return fmt.Errorf("reading %s: no subjects", r.Dialect)
+	}
+	if b := r.L3Evidence; b != nil && (b.MinReferences < 1 || b.MinSubjects < 1) {
+		return fmt.Errorf("reading %s: l3_evidence %+v needs both counts at least 1", r.Dialect, *b)
 	}
 	for _, o := range r.Oracles {
 		if o.Source != "" && (!RevisionPattern.MatchString(o.Revision) || strings.TrimSpace(o.Licence) == "" || o.Tier != "C") {

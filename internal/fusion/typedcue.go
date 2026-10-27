@@ -128,12 +128,18 @@ func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs
 			return rep, hErr
 		}
 	case rep.PackagesFailed > 0:
-		fmt.Fprintf(os.Stderr, "fusion: CUE typed-edge pass %q: %d/%d package(s) failed typed loading\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+		fmt.Fprint(os.Stderr, cueFailedPackagesWarning(svc.ID, rep))
 		p.commitPartialPassState(ctx, svc.ID, cuePassStateKey) // RT-105: gates like a clean pass
 	default:
 		p.commitPassState(ctx, svc.ID, cuePassStateKey)
 	}
 	return rep, nil
+}
+
+// cueFailedPackagesWarning renders the partial-failure warning, naming the
+// failed packages and their causes the way the Go pass does.
+func cueFailedPackagesWarning(svcID string, rep TypedEdgeReport) string {
+	return fmt.Sprintf("fusion: CUE typed-edge pass %q: %d/%d package(s) failed typed loading%s\n", svcID, rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages))
 }
 
 // CUEPassTotal returns the process-lifetime count of CUE passes this
@@ -180,17 +186,7 @@ func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath str
 		return report, fmt.Errorf("fusion: CUE typed-edge load %q: no cue.mod/module.cue", repoPath)
 	}
 
-	cfg := &load.Config{
-		Dir:     repoPath,
-		Package: "*", // every package; files with no package clause -> "_"
-		// Hermetic: this pass never needs a registry lookup (first-party
-		// intra-module imports and stdlib-only builtin packages are
-		// resolved locally); an inline-empty registry keeps a broken or
-		// slow $CUE_REGISTRY in the caller's real environment from ever
-		// reaching this load, mirroring TypedEdgeEnv's GOWORK=off posture.
-		Env: []string{"CUE_REGISTRY=inline:{}"},
-	}
-	insts := load.Instances([]string{"./..."}, cfg)
+	insts := load.Instances([]string{"./..."}, cueTypedLoadConfig(repoPath))
 	report.PackagesTotal = len(insts)
 	if len(insts) == 0 {
 		report.Duration = time.Since(start)
@@ -244,6 +240,9 @@ func EnrichCUEEdges(ctx context.Context, st store.Store, serviceID, repoPath str
 
 		if inst.Err != nil {
 			report.PackagesFailed++
+			if len(report.FailedPackages) < 5 {
+				report.FailedPackages = append(report.FailedPackages, FailedTypedPackage{PkgID: inst.ImportPath, Err: inst.Err.Error()})
+			}
 			continue
 		}
 

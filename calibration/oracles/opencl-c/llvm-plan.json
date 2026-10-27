@@ -1,0 +1,26 @@
+{
+  "version": "21.1.8",
+  "source_tag": "llvmorg-21.1.8",
+  "purpose": "Implementation toolchain plan only, not downloaded or run in this triage. Current Apple-Clang capability evidence remains historical and host-specific.",
+  "license": "Apache-2.0 WITH LLVM-exception",
+  "license_source": "https://github.com/llvm/llvm-project/blob/llvmorg-21.1.8/LICENSE.TXT",
+  "metadata_source": "https://api.github.com/repos/llvm/llvm-project/releases/tags/llvmorg-21.1.8",
+  "verification": "Download the selected official archive, verify its SHA-256 before extraction, then record compiler/resource-header hashes and replay all oracle evidence before implementation READY. Do not substitute the Apple binary pin or infer parity from version numbers.",
+  "archives": [
+    {
+      "name": "LLVM-21.1.8-macOS-ARM64.tar.xz",
+      "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-macOS-ARM64.tar.xz",
+      "sha256": "b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669"
+    },
+    {
+      "name": "LLVM-21.1.8-Linux-X64.tar.xz",
+      "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-X64.tar.xz",
+      "sha256": "b3b7f2801d15d50736acea3c73982994d025b01c2f035b91ae3b49d1b575732b"
+    },
+    {
+      "name": "LLVM-21.1.8-Linux-ARM64.tar.xz",
+      "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-ARM64.tar.xz",
+      "sha256": "65ce0b329514e5643407db2d02a5bd34bf33d159055dafa82825c8385bd01993"
+    }
+  ]
+}

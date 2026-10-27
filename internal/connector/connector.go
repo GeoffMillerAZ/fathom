@@ -440,6 +440,25 @@ var extClassMap = map[string]classification{
 	// include-yy/tree-sitter-wgsl.
 	".wgsl": {core.SourceKind("WgslFunction"), "wgsl"},
 
+	// GLSL (LB-Q-glsl): stage extensions; .fs is claimed only by content sniff.
+	".glsl":  {core.SourceKind("GlslFunc"), "glsl"},
+	".vert":  {core.SourceKind("GlslFunc"), "glsl"},
+	".frag":  {core.SourceKind("GlslFunc"), "glsl"},
+	".comp":  {core.SourceKind("GlslFunc"), "glsl"},
+	".geom":  {core.SourceKind("GlslFunc"), "glsl"},
+	".tesc":  {core.SourceKind("GlslFunc"), "glsl"},
+	".tese":  {core.SourceKind("GlslFunc"), "glsl"},
+	".rgen":  {core.SourceKind("GlslFunc"), "glsl"},
+	".rchit": {core.SourceKind("GlslFunc"), "glsl"},
+	".rmiss": {core.SourceKind("GlslFunc"), "glsl"},
+	".rahit": {core.SourceKind("GlslFunc"), "glsl"},
+	".rint":  {core.SourceKind("GlslFunc"), "glsl"},
+	".rcall": {core.SourceKind("GlslFunc"), "glsl"},
+	".mesh":  {core.SourceKind("GlslFunc"), "glsl"},
+	".task":  {core.SourceKind("GlslFunc"), "glsl"},
+	".vsh":   {core.SourceKind("GlslFunc"), "glsl"},
+	".fsh":   {core.SourceKind("GlslFunc"), "glsl"},
+
 	// R (LB-Q-r, wave lang3): function assignments on r-lib/tree-sitter-r. Perl (LB-Q-perl): .pm by
 	// extension, .pl and .t by content sniff (the dialect's match.sniff), so only .pm is listed here.
 	".r":  {core.SourceKind("RFunction"), "r"},
@@ -449,6 +468,11 @@ var extClassMap = map[string]classification{
 	// Jupyter notebooks (LB-Q-jupyter, language-breadth: new, a native dialect:
 	// encoding/json over the notebook and the python dialect over its code cells).
 	".ipynb": {core.SourceKind("JupyterFunc"), "jupyter"},
+
+	// Simulink models (LB-Q-simulink): a .slx OPC zip (read past the binary sniff only
+	// because the dialect's match.container claims it) and a classic .mdl.
+	".slx": {core.SourceKind("SimulinkBlock"), "simulink"},
+	".mdl": {core.SourceKind("SimulinkBlock"), "simulink"},
 
 	// Elixir (LB-Q-elixir, wave lang3): a new tree-sitter dialect, no incumbent.
 	".ex":  {core.SourceKind("ElixirModule"), "elixir"},

@@ -1,0 +1,88 @@
+{
+  "symbols": [
+    {
+      "name": "SCALE",
+      "kind": "GlslMacro",
+      "package": "shapes",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "MAX_LIGHTS",
+      "kind": "GlslMacro",
+      "package": "shapes",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "VertexData",
+      "kind": "GlslStruct",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "inPosition",
+      "kind": "GlslVariable",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "inNormal",
+      "kind": "GlslVariable",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "outColor",
+      "kind": "GlslVariable",
+      "package": "shapes",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Scene",
+      "kind": "GlslInterfaceBlock",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "diffuse",
+      "kind": "GlslFunc",
+      "package": "shapes",
+      "line": 19,
+      "end_line": 24,
+      "signature": "float diffuse( vec3 normal, vec3 lightDirection )",
+      "calls": [
+        "dot",
+        "max",
+        "normalize"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "GlslFunc",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 30,
+      "signature": "void main()",
+      "calls": [
+        "diffuse",
+        "vec3",
+        "vec4"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -98,6 +98,7 @@ var terraformXrefWant = []string{
 	"stack/main.tf:module.net -references-> stack/variables.tf:var.create",
 	"stack/main.tf:module.net -references-> stack/variables.tf:var.name",
 	"stack/main.tf:module.remote -references-> stack/variables.tf:var.name",
+	"stack/outputs.tf:output.gateway_id -module-output-> modules/net/outputs.tf:output.gateway_id",
 	"stack/outputs.tf:output.gateway_id -references-> stack/main.tf:module.net",
 	"stack/outputs.tf:output.vpc_id -references-> stack/main.tf:aws_vpc.this",
 }

@@ -1,0 +1,72 @@
+{
+  "kind": "authored prototype controls only; no calibration or metric/tier claim",
+  "native_binary_sha256": "eab75801aeac775a43f8fec5ea648d2b72828f1352eb9c25fc9fbd218305be35",
+  "native_test_source_sha256": "ee4acc2de3bea38ac197afafe802a88aa18e990e3769cc018c431e6a603a02b0",
+  "control_script_sha256": "f87fa62ab576eeac28e1a7c34f33d0aeffe4f305d937f6d52c1480d973347b5a",
+  "official_deck_binary_sha256": "fa560e40045a63987968d18807af38ffe26476aa38b1fd8a6d7d1e1e479e8cc2",
+  "race_tests": 14,
+  "skips": 0,
+  "mutations": [
+    {
+      "mutant": "drop raw native Host observation",
+      "file": "instrument_native.py",
+      "failure_line": "--- FAIL: TestURLDerivedHostDoesNotBecomeWrittenHost (0.04s)",
+      "restored_green": true
+    },
+    {
+      "mutant": "omit native consumer/group plugin populations",
+      "file": "native/main.go",
+      "failure_line": "--- FAIL: TestNativePluginScopesUnderConsumerAndGroupAreEnumerated (0.02s)",
+      "restored_green": true
+    }
+  ],
+  "fathom_nodes_before": 8,
+  "fathom_nodes_after": 0,
+  "output_removal_interpretation": "future hidden-read tripwire; not proof by construction",
+  "native_truth_before_sha256": "8f230f74c47e2391b81e2991b6838c220537d42259c9d98d5882c99678a5ceb3",
+  "native_truth_after_output_removal_sha256": "8f230f74c47e2391b81e2991b6838c220537d42259c9d98d5882c99678a5ceb3",
+  "native_truth_after_input_change_sha256": "c5e4b904a88a4e286ed28ed4d0a09b2d65e8395af92d5afb569b73d7c7b1076b",
+  "native_entities": 8,
+  "native_written_fields": 4,
+  "native_resolved_fields": 3,
+  "native_http_requests": 0,
+  "official_cli_network_denied": true,
+  "cli_cross_checks": [
+    {
+      "control": 0,
+      "official_render_accepted": true,
+      "native_fields": 4,
+      "native_entities": 8,
+      "native_http_requests": 0,
+      "evaluated_projection_sha256": "852d9c21d9c5aa1cae370a2499ff4a35d7ea5dbc08902e74827dad428f9c7e6e",
+      "interpretation": "owner evaluated host/bindings agree"
+    },
+    {
+      "control": 1,
+      "official_render_accepted": true,
+      "native_fields": 0,
+      "native_entities": 2,
+      "native_http_requests": 0,
+      "evaluated_projection_sha256": "b75130d5b4e924f85d64ed406165464a1bc65fe79deae4c7f7de84fc061c3759",
+      "interpretation": "URL-only native written-host population empty despite owner-rendered host"
+    },
+    {
+      "control": 2,
+      "official_render_accepted": true,
+      "native_fields": 1,
+      "native_entities": 2,
+      "native_http_requests": 0,
+      "evaluated_projection_sha256": "b75130d5b4e924f85d64ed406165464a1bc65fe79deae4c7f7de84fc061c3759",
+      "interpretation": "owner evaluated host/bindings agree"
+    }
+  ],
+  "caps": {
+    "source_bytes": 1048576,
+    "source_refusal_input": 1048577,
+    "native_entities_and_fields": 10000,
+    "population_refusal_input": 10001,
+    "output_bytes": 8388608,
+    "output_refusal_input": 8388609,
+    "whole_input_or_output_refused": true
+  }
+}

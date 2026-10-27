@@ -96,10 +96,13 @@ func TestCommittedReadingsAreCanonical(t *testing.T) {
 	root := filepath.Join("..", "..", "docs", "bench", "readings", "lang")
 	seen := 0
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err // an unreadable root hands d nil: name the path, never touch d
+		}
 		if d.IsDir() && d.Name() == "parity" {
 			return fs.SkipDir // a parity reading is langparity's own shape, not a Reading
 		}
-		if err != nil || d.IsDir() || filepath.Ext(path) != ".json" {
+		if d.IsDir() || filepath.Ext(path) != ".json" {
 			return err
 		}
 		raw, err := os.ReadFile(path)
