@@ -147,6 +147,15 @@ gc`'s dry run: reclaimable bytes by class and the largest classes, what it only 
 and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
 hooks line reads the same latency log, the CPU medians included.
 
+`daemon_bind` (ADR-083) reads the installed plist, the same census and the user config:
+it FAILs when the plist passes a non-loopback `--addr` or a running serve-http listens
+beyond loopback, because the daemon has no authentication. The remedy is `fathom daemon
+install --reconcile` for the plist, a kickstart for the managed daemon, or `kill <pid>`
+for a scratch one. It WARNs when the user config's `[daemon].addr` is not loopback
+(serve-http binds `127.0.0.1` on that port in its place) and when it cannot read the
+installed plist, a `LaunchAgents` plist whose file name names fathom, or the user config,
+naming the error.
+
 Exit `0` no confirmed failure (including runs with `unknown`, `timeout`, `warn` or
 `skipped` rows); `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the

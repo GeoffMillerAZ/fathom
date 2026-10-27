@@ -1,7 +1,7 @@
 ### `daemon` — install, inspect, stop and remove the serve-http agent
 
 ```sh
-fathom daemon install [--label dev.fathom.serve-http] [--store PATH] [--addr :7575] [--bin PATH] [--force]
+fathom daemon install [--label dev.fathom.serve-http] [--store PATH] [--addr 127.0.0.1:7575] [--bin PATH] [--force]
 fathom daemon install --reconcile [--label NAME] [--adopt]
 fathom daemon status  [--url http://localhost:7575] [--json]
 fathom daemon stop    [--for 2h] [--reason TEXT] [--url URL] [--label NAME]
@@ -13,6 +13,15 @@ fathom daemon ps   [--json]
 fathom daemon reap [--apply] [--grace 5s]
 fathom daemon deploy-intent [--label NAME] [--binary PATH]
 ```
+
+**Loopback only (ADR-083).** The daemon has no authentication, so `install`
+writes `--addr 127.0.0.1:7575` by default and refuses (exit 2) a non-loopback
+`--addr`: remote serving needs token auth, which fathom does not have yet (open
+question Q5). A plist written before this (`--addr :7575`) keeps serving, on
+loopback: serve-http binds `127.0.0.1` on the same port in its place and warns.
+`install --reconcile` rewrites such an `--addr` to `127.0.0.1` on the same port,
+and doctor's `daemon_bind` row FAILs on such a plist or on any running serve-http
+that listens beyond loopback.
 
 `deploy-intent` appends a `deploy` row (the running pid from the daemon
 record, the new binary's hash) to the label's lifecycle ledger; `task deploy`

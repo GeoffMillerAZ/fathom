@@ -274,7 +274,7 @@ exist for them.
     <string>/Users/you/.local/libexec/fathom/fathom</string>
     <string>serve-http</string>
     <string>--store</string><string>/Users/you/.fathom/db/fathom.sqlite</string>
-    <string>--addr</string><string>:7575</string>
+    <string>--addr</string><string>127.0.0.1:7575</string>
     <string>--call-log</string><string>/Users/you/.fathom/logs/mcp-calls.jsonl</string>
   </array>
   <key>EnvironmentVariables</key><dict>
@@ -293,7 +293,7 @@ curl -s http://127.0.0.1:7575/healthz   # ok
 ```
 </details>
 
-No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr :7575 &` works
+No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr 127.0.0.1:7575 &` works
 for a session but dies with the shell — use a systemd unit or process
 supervisor for anything persistent.
 
