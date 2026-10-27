@@ -1,0 +1,5 @@
+### Fixed
+
+- A panic between admission and settle (the citation reads, the collector, the refresh notes) no longer leaks the call's admission slot, in-flight entry and running count for the life of serve-http, nor kills serve-mcp's stdio loop: it answers the same named `internal error: <tool> panicked` a panicking handler does.
+- The `ingest` tool's refresh-gate refusals (store distress, the refuse rung, including a queued job the gate drops) answer the §3.4 admission wire format: JSON-RPC -32050 with `reason`, `class`, `level`, `retry_after_ms`, `in_flight` and `outcome: "refused"`, HTTP 503 with Retry-After, and `X-Fathom-Busy-Scope` `class` for distress and `daemon` for the rung, where they answered -32600 with HTTP 200 (a dropped job answered -32603 and re-armed store distress). The code moves toward the documented format; whether that is Breaking is the release's call.
+- The lifecycle gate's refusal body (safe mode, drain, store distress, the warm-up slot, store unavailable) gains `in_flight` (the refused class's tools in flight, sorted) and `outcome: "refused"`, matching the admission path's.
