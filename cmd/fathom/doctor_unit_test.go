@@ -60,3 +60,24 @@ func TestDoctorShellLineAndArgvAgree(t *testing.T) {
 		})
 	}
 }
+
+// A depth cut names where the walk stopped and the target it did not read.
+func TestDoctorDepthCutNamesStopAndTarget(t *testing.T) {
+	for _, tc := range []struct{ name, tasks, want string }{
+		{"script", "  validate:\n    cmds: [sh scripts/gate.sh]\n", "at scripts/gate.sh, before scripts/verify.sh"},
+		{"task", "  validate:\n    cmds: [task ci]\n  ci:\n    cmds: [task gate]\n  gate:\n    cmds: [fathom verify --strict]\n", "at Taskfile.yml (task ci), before Taskfile.yml (task gate)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			gitRepo(t, root)
+			doctorWriteFixture(t, root, ".git/hooks/pre-push", "#!/bin/sh\ntask validate\n")
+			doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n"+tc.tasks)
+			doctorWriteFixture(t, root, "scripts/gate.sh", "sh scripts/verify.sh\n")
+			doctorWriteFixture(t, root, "scripts/verify.sh", "fathom verify --strict\n")
+			got := checkLefthookGates(root)
+			if got.Status != doctorUnknown || !strings.Contains(got.Reason, tc.want) {
+				t.Fatalf("got %+v, want a reason naming %q", got, tc.want)
+			}
+		})
+	}
+}

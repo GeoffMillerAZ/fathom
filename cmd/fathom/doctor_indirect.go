@@ -86,11 +86,15 @@ func (r *doctorWrapperReader) labelDepthCuts(start int, at string) {
 	}
 }
 
-// Decide only after the walk: a shallower visit can follow a cut.
+// Decide only after the walk: a shallower visit can follow a cut. The
+// result names where the walk stopped and the target it never read.
 func (r *doctorWrapperReader) depthCutAt() string {
 	for _, cut := range r.depthCuts {
 		if !r.walked[r.walkKey(cut.target)] {
-			return cut.at
+			if cut.at == "" {
+				return cut.target
+			}
+			return cut.at + ", before " + cut.target
 		}
 	}
 	return ""

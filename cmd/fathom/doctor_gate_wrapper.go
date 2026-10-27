@@ -152,7 +152,7 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the 64 KiB read budget ran out before the walk found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
 	}
 	if validate.found && !verify.found && verifyDepthCutStrict != "" && (native || !verifyAny.found) {
-		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the depth limit stopped the walk at %s before it found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source, verifyDepthCutStrict), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the depth limit stopped the walk at %s, without finding a strict fathom verify step, so whether it runs one is unknown", notInstalled, source, verifyDepthCutStrict), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
 	}
 	if native && validate.found && !verify.found && verify.opaque != "" {
 		// The hook provably reaches task validate; the strict verify step may
