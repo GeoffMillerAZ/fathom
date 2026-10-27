@@ -68,7 +68,9 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// ── Pass 1: Filter ──────────────────────────────────────────────────────
 	refs, err := p.conn.Discover(ctx, svc)
 	if err != nil {
-		p.abandonIngestState(ctx, run) // before the first write
+		// Before the first write; under WithoutCancel, so a cancel during
+		// the walk (a CLI's Ctrl-C) still puts the row back (GDEV-02).
+		p.abandonIngestState(context.WithoutCancel(ctx), run)
 		return Report{}, fmt.Errorf("fusion: discover %q: %w", svc.ID, err)
 	}
 

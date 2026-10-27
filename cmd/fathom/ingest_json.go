@@ -126,13 +126,17 @@ type ingestPassTimeJSON struct {
 // ingestJSON is the `fathom ingest --json` envelope.
 type ingestJSON struct {
 	Service string `json:"service"`
-	// Outcome is ok | degraded | refused | incomplete. degraded: every
-	// readable file was indexed and read_failed > 0; refused: nothing was
-	// written (O16 guard); incomplete: every file failed with no index to
-	// protect — nothing was written and the ingest was not recorded
-	// complete (F2).
-	Outcome    string `json:"outcome"`
-	ExitCode   int    `json:"exit_code"`
+	// Outcome is ok | degraded | refused | incomplete | cancelled. degraded:
+	// every readable file was indexed and read_failed > 0; refused: nothing
+	// was written (O16 guard); incomplete: every file failed with no index
+	// to protect — nothing was written and the ingest was not recorded
+	// complete (F2); cancelled: SIGINT or SIGTERM stopped it (signal names
+	// which; exit_code 130 or 143), and no step after it ran (GDEV-02).
+	Outcome  string `json:"outcome"`
+	ExitCode int    `json:"exit_code"`
+	// Signal names the signal that stopped a cancelled ingest (SIGINT,
+	// SIGTERM); omitted otherwise.
+	Signal     string `json:"signal,omitempty"`
 	Discovered int    `json:"discovered"`
 	Extracted  int    `json:"extracted"`
 	Skipped    int    `json:"skipped"`
@@ -201,6 +205,35 @@ func errnoClass(errText string) string {
 // 0/1 the text path returns). scipResults carries every --scip (or
 // auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
 // nil when none ran.
+// renderIngestCancelledJSON writes the envelope of an ingest a signal
+// stopped: the counts the Report carries for how far it got, outcome
+// "cancelled", the signal and its exit code, and the error named.
+func renderIngestCancelledJSON(w io.Writer, service string, report client.Report, signal string, code int, msg string) {
+	out := ingestJSON{
+		Service:            service,
+		Outcome:            "cancelled",
+		ExitCode:           code,
+		Signal:             signal,
+		Discovered:         report.Discovered,
+		Extracted:          report.Extracted,
+		Skipped:            report.Skipped,
+		StatSkipped:        report.StatSkipped,
+		PeakInflightBytes:  report.PeakInflightBytes,
+		Symbols:            report.Symbols,
+		ReadFailed:         report.ReadFailed,
+		ReadFailures:       []ingestReadFailureJSON{},
+		DefaultIgnoredDirs: report.DefaultIgnoredDirs,
+		Error:              msg,
+		Hint:               "a stop before the first write leaves the store as it was; one after it leaves ingest_state in_progress, and the next ingest redoes the service (RT-109)",
+	}
+	for _, f := range report.ReadFailures {
+		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+}
+
 func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) int {
 	out := ingestJSON{
 		Service:           service,
