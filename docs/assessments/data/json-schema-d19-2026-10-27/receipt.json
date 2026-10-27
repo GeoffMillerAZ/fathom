@@ -1,0 +1,337 @@
+{
+  "native": {
+    "protocol_sha256": "15865e8130a49a061607bcbde5ef08e5a0b04b8f687cb359528f2dfc7feeb5d9",
+    "oracle_sha256": "d0ee6ebf4ff965804cd5973aa70fd4c51b73a845e4f97b1d9d1f3b7cbf8f749d",
+    "controls_sha256": "a77918b59b2b52ea5960019b73d4d8ac1855d391633271dbf60c7d2c495e1908",
+    "subjects": [
+      {
+        "subject": 0,
+        "repository": "SchemaStore/schemastore",
+        "sha": "bf7c6745505ccace5568dc0d7f4ae29647e9b41a",
+        "inputs": {
+          "files": 1001,
+          "bytes": 75198609
+        },
+        "stats": {
+          "files": 1001,
+          "schemas": 983,
+          "not_schemas": 18,
+          "rejected": 0,
+          "definitions": 39790,
+          "refs_internal": 142098,
+          "refs_internal_in_truth": 142051,
+          "refs_internal_unresolved": 47,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 637,
+          "refs_file": 437,
+          "refs_file_in_subject": 3,
+          "refs_file_unresolved": 434,
+          "refs_url": 134,
+          "resolve_errors": 0,
+          "cross_references": 0
+        },
+        "definitions_sha256": "dd9c57801a59aeee963fbbbf4c45a34ced6fd1dbab7d59e1aebf26e272567f4e",
+        "cross_references_sha256": null
+      },
+      {
+        "subject": 1,
+        "repository": "json-schema-org/JSON-Schema-Test-Suite",
+        "sha": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+        "inputs": {
+          "files": 79,
+          "bytes": 17269
+        },
+        "stats": {
+          "files": 79,
+          "schemas": 52,
+          "not_schemas": 27,
+          "rejected": 0,
+          "definitions": 97,
+          "refs_internal": 3,
+          "refs_internal_in_truth": 3,
+          "refs_internal_unresolved": 0,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 15,
+          "refs_file": 3,
+          "refs_file_in_subject": 3,
+          "refs_file_unresolved": 0,
+          "refs_url": 12,
+          "resolve_errors": 0,
+          "cross_references": 3
+        },
+        "definitions_sha256": "2fb7d5f701e4d8b43b3c21bc88118331dc998b819a3ce27ee1918ab825ea4ee8",
+        "cross_references_sha256": "0742483b00935153625c9182fd8954780c9a296be522e279baa3f1b484461a9d"
+      },
+      {
+        "subject": 2,
+        "repository": "radiantearth/stac-spec",
+        "sha": "0fa147589ac5a6c92d8e8856bc81eb9c73779aff",
+        "inputs": {
+          "files": 11,
+          "bytes": 24804
+        },
+        "stats": {
+          "files": 11,
+          "schemas": 11,
+          "not_schemas": 0,
+          "rejected": 0,
+          "definitions": 40,
+          "refs_internal": 5,
+          "refs_internal_in_truth": 5,
+          "refs_internal_unresolved": 0,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 12,
+          "refs_file": 18,
+          "refs_file_in_subject": 0,
+          "refs_file_unresolved": 18,
+          "refs_url": 3,
+          "resolve_errors": 0,
+          "cross_references": 0
+        },
+        "definitions_sha256": "841ea1088360bc12d4164c2da5c39ff6016644d323b6bcc490ba52de6944d970",
+        "cross_references_sha256": null
+      },
+      {
+        "subject": 3,
+        "repository": "oasis-open/cti-stix2-json-schemas",
+        "sha": "9af1db41b7b86c06324f899649ae83480134f66e",
+        "inputs": {
+          "files": 57,
+          "bytes": 188583
+        },
+        "stats": {
+          "files": 57,
+          "schemas": 57,
+          "not_schemas": 0,
+          "rejected": 0,
+          "definitions": 142,
+          "refs_internal": 5,
+          "refs_internal_in_truth": 5,
+          "refs_internal_unresolved": 0,
+          "refs_not_in_section": 0,
+          "refs_outside_entities": 155,
+          "refs_file": 236,
+          "refs_file_in_subject": 0,
+          "refs_file_unresolved": 236,
+          "refs_url": 0,
+          "resolve_errors": 0,
+          "cross_references": 0
+        },
+        "definitions_sha256": "486118f59e2d2b2039a549be2435fd1b854714fb2cd47e5724c8a2ce79e4ae8c",
+        "cross_references_sha256": null
+      }
+    ]
+  },
+  "reading_sha256": "8ad789c8edffbeba3f520218cc380b0d5ad3e960cd7c9a1f07ef84617949251c",
+  "indexbench_sha256": "a2610ef0b45af35d3cb2b21bb38d54fe673403a3c2996637e9cb8e33a351337b",
+  "fathom_commit": "736146e5d",
+  "extractor_tree": "a6ae8eafbd2a3668cb31c8df7ee24c044d6f761b",
+  "manifests": [
+    {
+      "subject": 0,
+      "scope": 0,
+      "summary": {
+        "bytes": 75198609,
+        "entries": 1001,
+        "files": 1001,
+        "gitlinks": 0,
+        "sha256": "2470d07fc7f94b9868f3ccdea031544601601b1a69a8796f6afb0c96437eddd7",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 1,
+      "scope": 0,
+      "summary": {
+        "bytes": 17269,
+        "entries": 79,
+        "files": 79,
+        "gitlinks": 0,
+        "sha256": "4649aa0805b86fc9706bb527907f5c001a1d28bc3eda647b67183c6d45e4a0f8",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": 0,
+      "summary": {
+        "bytes": 16809,
+        "entries": 9,
+        "files": 9,
+        "gitlinks": 0,
+        "sha256": "73f329994072b8998146ec8f068e50626944133ae63d2f69ea3ac47068d3a555",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": 1,
+      "summary": {
+        "bytes": 1473,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "7f7fda54ff213a39b89096d0c2783dfc499511a011f33df478cf7c99482dad72",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": 2,
+      "summary": {
+        "bytes": 6522,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "fd876480f55b03e1ce8688ff9d9fcaa4a9140ab8fc1550a2a1da26aa9511bd1c",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 3,
+      "scope": 0,
+      "summary": {
+        "bytes": 188583,
+        "entries": 57,
+        "files": 57,
+        "gitlinks": 0,
+        "sha256": "6f046333d8e55f5ec0c53e5830866c69c98dceede036ef45f4078eb1d3a28fee",
+        "symlinks": 0
+      }
+    }
+  ],
+  "subject_changes": [
+    {
+      "subject": 0,
+      "modified_untracked_ignored": 0
+    },
+    {
+      "subject": 1,
+      "modified_untracked_ignored": 0
+    },
+    {
+      "subject": 2,
+      "modified_untracked_ignored": 0
+    },
+    {
+      "subject": 3,
+      "modified_untracked_ignored": 0
+    }
+  ],
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "unmet",
+    "L4": "not-applicable",
+    "L3_reason": "evidence: 3 references, under 20"
+  },
+  "counts": {
+    "fathom_defs": 36227,
+    "kind_equal": 36227,
+    "matched": 36227,
+    "oracle_defs": 36227,
+    "ref_fathom": 40921,
+    "ref_fathom_in_truth": 40893,
+    "ref_truth": 40893,
+    "ref_truth_found": 40893,
+    "xref_fathom": 3,
+    "xref_fathom_in_truth": 3,
+    "xref_truth": 3,
+    "xref_truth_found": 3
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "subjects": [
+    {
+      "name": "SchemaStore/schemastore",
+      "sha": "bf7c6745505ccace5568dc0d7f4ae29647e9b41a",
+      "files": 977,
+      "bytes": 36424833,
+      "counts": {
+        "fathom_defs": 35948,
+        "kind_equal": 35948,
+        "matched": 35948,
+        "oracle_defs": 35948,
+        "ref_fathom": 40908,
+        "ref_fathom_in_truth": 40880,
+        "ref_truth": 40880,
+        "ref_truth_found": 40880
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      }
+    },
+    {
+      "name": "json-schema-org/JSON-Schema-Test-Suite",
+      "sha": "55719286c33ae0d1823bfb65fea10338a19bc37c",
+      "files": 52,
+      "bytes": 13036,
+      "counts": {
+        "fathom_defs": 97,
+        "kind_equal": 97,
+        "matched": 97,
+        "oracle_defs": 97,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      }
+    },
+    {
+      "name": "oasis-open/cti-stix2-json-schemas",
+      "sha": "9af1db41b7b86c06324f899649ae83480134f66e",
+      "files": 57,
+      "bytes": 188583,
+      "counts": {
+        "fathom_defs": 142,
+        "kind_equal": 142,
+        "matched": 142,
+        "oracle_defs": 142,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      }
+    },
+    {
+      "name": "radiantearth/stac-spec",
+      "sha": "0fa147589ac5a6c92d8e8856bc81eb9c73779aff",
+      "files": 11,
+      "bytes": 24804,
+      "counts": {
+        "fathom_defs": 40,
+        "kind_equal": 40,
+        "matched": 40,
+        "oracle_defs": 40,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      }
+    }
+  ]
+}

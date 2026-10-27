@@ -110,6 +110,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [iac-provider-schema-feasibility](2026-10-26-iac-provider-schema-feasibility.md), [native data](data/2026-10-26-provider-schema-native-probe.json), [size data](data/2026-10-26-provider-schema-export-sizes.json) | Three offline native schema exports, 12 authored traversals and 12 attributable field refusals; dependency-plane policy, anchors and store costs remain open | IAC-2, IAC-7, IAC-12, IAC-16, SG-36, SG-37 |
 | 2026-10-26 | [terragrunt-triage](2026-10-26-terragrunt-triage.md), [data](data/terragrunt-triage-2026-10-26/receipt.json) | Owner stack/DAG/language-server candidates; content-based cache inventory, native attempts need owner approval | Feeds IAC-20/GAP1-37; does not satisfy them |
 | 2026-10-26 | [aws-cdk-triage](2026-10-26-aws-cdk-triage.md), [data](data/aws-cdk-triage-2026-10-26/receipt.json) | Owner synth/tree/trace and ordinary language candidates; content-based path-free cache inventory | Feeds IAC-20/GAP1-37; does not satisfy them |
+| 2026-10-27 | [tools-json-schema-d19](2026-10-27-tools-json-schema-d19.md), [data](data/json-schema-d19-2026-10-27/receipt.json) | Four complete scopes retain L3 unmet at 3/3; P-T1 corrects L1/L2 to C good; 254 URI-scoped sites remain explicitly unscored | LB-Q-json-schema-rest, D19, P-T1 |
 
 ## Companion pages
 
