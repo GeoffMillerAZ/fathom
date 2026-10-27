@@ -1,0 +1,65 @@
+{
+  "phase": "withdrawn precontext replay; counts only, not final truth",
+  "subjects": [
+    {
+      "subject": 0,
+      "native_pairs": 0,
+      "eligible_pairs": 0,
+      "xref_truth": 0,
+      "xref_found": 0,
+      "xref_fathom": 0,
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "not-attempted",
+        "L4": "not-applicable"
+      }
+    },
+    {
+      "subject": 1,
+      "native_pairs": 13,
+      "eligible_pairs": 11,
+      "xref_truth": 11,
+      "xref_found": 11,
+      "xref_fathom": 11,
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "unmet",
+        "L4": "not-applicable",
+        "L3_reason": "evidence: 11 references, under 20"
+      }
+    },
+    {
+      "subject": 2,
+      "native_pairs": 106,
+      "eligible_pairs": 105,
+      "xref_truth": 105,
+      "xref_found": 96,
+      "xref_fathom": 96,
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "not-applicable"
+      }
+    }
+  ],
+  "pooled": {
+    "native_pairs": 119,
+    "eligible_pairs": 116,
+    "xref_truth": 116,
+    "xref_found": 107,
+    "xref_fathom": 107,
+    "grade": {
+      "L1": "excellent",
+      "L2": "excellent",
+      "L3": "excellent",
+      "L4": "not-applicable"
+    }
+  },
+  "scored_counts_unchanged_after_amendment": true,
+  "pooled_grade_unchanged_after_amendment": true,
+  "withdrawn_oracle_source_sha256": "b84b451e1369266dc6344adb28deac4741170dce152ff50dfbb252abc79d8b9d",
+  "current_oracle_source_sha256": "5d173243b6618d2f2be947fd4474834b7439104393c573a37bbed6c7a6119e92"
+}

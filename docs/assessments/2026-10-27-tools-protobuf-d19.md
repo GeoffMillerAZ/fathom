@@ -53,7 +53,10 @@ and 96/105 (0.9143) on official source; defined precision is 1. D19 has no
 subject minimum. Six extra definitions all originate in the two new files
 the compiler refuses because a fixture dependency lies outside the fixed
 source scope. They remain precision errors; no adjudication removes them.
-The nine missed file pairs remain misses and are not repaired here.
+The nine missed file pairs remain misses: eight targets reached through public
+import re-exports that the resolver does not follow, and one qualified target whose
+declared package differs from its source directory. The current type-path rule
+infers packages from directories. No ENGINE fix or adjudication is made here.
 
 ## Source and exclusion reconciliation
 
@@ -71,7 +74,7 @@ no source bytes; tracked manifests stay relative to the actual clone root.
 private `tenancy_files` list, never a replacement discovery implementation.
 All 261 tracked proto inputs are accounted for: grpc-go excludes three
 `testdata` files; the pre-existing protovalidate restriction excludes 38 (30
-with missing external dependencies and eight compiling files in the same
+with native compiler refusals and eight compiling files in the same
 excluded fixture family); official source excludes one `testdata` file. Measured
 file counts and byte sums match exactly. Native distinct pairs remain 11→11 on
 protovalidate and fall 106→105 on official source under those rules, before matching.
@@ -80,7 +83,7 @@ two old subjects exactly reproduce the committed reading's definitions, local
 pairs, file pairs, files and bytes.
 
 The harness records zero faults, zero files with syntax errors, maximum file
-14 ms, 297 peak module pages and 8.94 MB/CPU-s in this replay. This is one timing
+14 ms, 297 peak module pages and 9.00 MB/CPU-s in this disclosure replay. This is one timing
 capture at nice10/load below6/free above20GiB, not a new median-of-three speed
 claim. No daemon participates in measurement.
 
@@ -186,3 +189,62 @@ bash scripts/fathom-go.sh build -o workspace/artifacts/protobuf-d19-r1/bin/fatho
 FATHOM_TENANCY_BUDGET=4GiB workspace/artifacts/protobuf-d19-r1/bin/fathom ingest --service fathom --path . --store workspace/artifacts/protobuf-d19-r1/verify-clean.sqlite --json
 workspace/artifacts/protobuf-d19-r1/bin/fathom verify --strict --since origin/main --service fathom --store workspace/artifacts/protobuf-d19-r1/verify-clean.sqlite --ledger workspace/artifacts/protobuf-d19-r1/verify-ledger.jsonl --plan docs/plans/language-breadth.md --quiet
 ```
+
+## T-R17 critic follow-up
+
+[Precontext counts](data/protobuf-d19-2026-10-27/precontext-counts.json) now preserve
+the withdrawn replay per numbered subject, with no names or paths. It had 119
+native pairs and the same 116/107 scored population and grades; the final native
+population is 117. The correction removes two already excluded false pairs, so
+the instrument amendment is grade-neutral. The rest row's stale119 is corrected.
+
+The required [unrestricted diagnostic](data/protobuf-d19-2026-10-27/unrestricted-sensitivity.json)
+measured all156 protovalidate files once without the inherited restriction. The
+38 excluded files contain **56 Fathom definitions and zero Fathom file pairs**.
+They add18 native matched definitions and38 extra Fathom definitions. Standalone
+protovalidate L1 would fall from excellent to **good**, precision1164/1202=.9684.
+Combining that actual harness result with the other two subjects gives pooled
+precision2184/2228=.9803: **pooled L1 remains excellent**, close to its .98 floor.
+Pooled L3 also remains excellent at107/116 recall and107/107 precision. This is
+measured sensitivity, not a deferral. The canonical preregistered restriction
+is retained; it does hide38 definition extras, explicitly disclosed here.
+
+Refusal causes were checked from native first-line diagnostics: protovalidate's
+30 are25 missing external validation dependencies,1 missing external address
+dependency,3 unknown native options and1 duplicate native option. The official
+source's2 refusals share one fixture dependency outside its fixed scope. Both
+sets' counts and causes, all9 misses and all6 extras now appear in the canonical
+reading via replay.py compare -note values. The prior blanket missing-dependency
+description is superseded by these native classifications. No reading is hand
+edited. The reading also states single-final-capture conditions: nice10,load<=6,
+free>=20GiB,private caches,no daemon; this is not median-of-three throughput.
+
+[Miss causes](data/protobuf-d19-2026-10-27/miss-causes.json) come from the measured
+dialect and the same ResolveFileEdges pass. Its105 truth,96 found/predicted and
+980 definitions match the harness. Eight misses have a native import path via
+public re-export; one direct qualified target uses a declared package inconsistent
+with its directory. The trigger is authorization for a general resolver change
+covering both mechanisms, followed by the full unchanged native population; the
+dispatch/signature triggers remain.
+
+A real sleeping-parent/child timeout test first failed because valid-looking
+partial JSON remained after group termination. run() now removes that output on
+timeout or nonzero exit. The test verifies SIGKILL to the process group, reaps the
+parent, checks that the sleeping child cannot write its marker, and proves the
+partial artifact cannot be admitted. All raw paths/logs remain private.
+
+Additional reproduction for the follow-up (same private prepared tree):
+
+```sh
+bash scripts/fathom-go.sh build -o workspace/artifacts/protobuf-d19-r1/bin/inspect-pairs ./calibration/bench/tools/protobuf-d19
+workspace/artifacts/protobuf-d19-r1/bin/indexbench lang-oracle -dialect protobuf -subject workspace/artifacts/protobuf-d19-r1/subject-1 -subject-name bufbuild/protovalidate -subject-sha 4baed765070e580226a0a30bf2a357cc027dc1f7 -tool-oracle workspace/artifacts/protobuf-d19-r1/replay/1.json -out workspace/artifacts/protobuf-d19-r1/replay/unrestricted-reading.json -unmatched workspace/artifacts/protobuf-d19-r1/replay/unrestricted-unmatched.json -note 'T-R17 diagnostic without inherited -only; not canonical population'
+workspace/artifacts/protobuf-d19-r1/bin/inspect-pairs -subject workspace/artifacts/protobuf-d19-r1/subject-1 -membership workspace/artifacts/protobuf-d19-r1/replay/unrestricted-unmatched.json -baseline-membership workspace/artifacts/protobuf-d19-r1/replay/unmatched-1.json -oracle workspace/artifacts/protobuf-d19-r1/replay/1.json
+workspace/artifacts/protobuf-d19-r1/bin/inspect-pairs -subject workspace/artifacts/protobuf-d19-r1/subject-2/src -membership workspace/artifacts/protobuf-d19-r1/replay/unmatched-2.json -oracle workspace/artifacts/protobuf-d19-r1/replay/2.json
+python3 -B -m unittest discover -s calibration/oracles/protoc-descriptors/d19 -p 'test_*.py'
+```
+
+The inspector's --reading mode derives per-subject grades from retained harness
+subjects via langbench.Regrade; public precontext evidence drops names and paths.
+The pooled unrestricted diagnostic starts with the actual one-subject unrestricted
+harness output and adds the other two unchanged subjects through lang-oracle.
+No diagnostic or canonical grade is hand typed.

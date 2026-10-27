@@ -1,6 +1,5 @@
 {
-  "source_commit": "9184d3d0b",
-  "python_tests": 5,
+  "python_tests": 6,
   "compiler_context_regressions": 2,
   "compiler_context_mutants": 2,
   "all_mutants_restored_green": true,
@@ -54,7 +53,7 @@
     },
     {
       "path": "calibration/oracles/protoc-descriptors/d19/replay.py",
-      "sha256": "2e40851598a1119acb18a7e94a6416123d643c4251d46b4d12e6b8ddcd4fc3bd"
+      "sha256": "489df1198ccd75bc61a0bccb3cd203b5f1ce85724b62dd30a54a59f6d2a598f5"
     },
     {
       "path": "calibration/oracles/protoc-descriptors/d19/test_prepare.py",
@@ -62,7 +61,7 @@
     },
     {
       "path": "calibration/oracles/protoc-descriptors/d19/test_replay.py",
-      "sha256": "ffd48d1e587b59de084b266816b4d38a20695c28e10826529752f0dcf6f086b9"
+      "sha256": "7df9e8e8f17c90b9b2da5452ea6a58b286422b449d8d211fe1e7c98ceecde2cf"
     },
     {
       "path": "calibration/oracles/protoc-descriptors/d19/protocol-r1.json",
@@ -74,7 +73,13 @@
     },
     {
       "path": "docs/bench/readings/lang/protobuf.json",
-      "sha256": "06fac5b783255bd5ae582612667528399ef7b2750ef84de9c56a660c2979cfcf"
+      "sha256": "6203c959dc601e780db48ea9a7e58539d95bd1e29a644fc220dc5f155d78e74e"
+    },
+    {
+      "path": "calibration/bench/tools/protobuf-d19/main.go",
+      "sha256": "78c75c1b1b3a97c86ef88f7f315822b31e058f7ccb4226d76336feefb8185812"
     }
-  ]
+  ],
+  "measured_extractor_commit": "a6137cd1c",
+  "followup": "T-R17 all six findings; strict final-head result required before READY and recorded in STATUS/LOG"
 }

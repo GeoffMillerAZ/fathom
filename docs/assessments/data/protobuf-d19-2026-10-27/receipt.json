@@ -138,8 +138,8 @@
     }
   ],
   "modified_untracked_ignored": 0,
-  "indexbench_sha256": "1061ec368b163bb55e4e22ac934819079e4d1b40a06a9b727361a331502d6ea0",
-  "reading_sha256": "06fac5b783255bd5ae582612667528399ef7b2750ef84de9c56a660c2979cfcf",
+  "indexbench_sha256": "010792f006740f1cc2c79cc907b09fd874e31d362c08174d3701b84c9bc82803",
+  "reading_sha256": "6203c959dc601e780db48ea9a7e58539d95bd1e29a644fc220dc5f155d78e74e",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",

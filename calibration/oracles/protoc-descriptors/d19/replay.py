@@ -33,8 +33,11 @@ def run(command,target,timeout,cap):
    try:os.killpg(process.pid,signal.SIGKILL)
    except ProcessLookupError:pass
    process.wait()
+   target.with_suffix('.json').unlink(missing_ok=True)
    raise
-  if code:raise ValueError('subprocess refused')
+  if code:
+   target.with_suffix('.json').unlink(missing_ok=True)
+   raise ValueError('subprocess refused')
 
 
 def oracle_command(out,subject):
@@ -92,6 +95,12 @@ def compare(out):
   floor(out);truth=target/(str(index)+'.json')
   if digest(truth)!=native['subjects'][index]['oracle_sha256']:raise ValueError('native truth changed')
   command=[str(out/'bin'/'indexbench'),'lang-oracle','-dialect','protobuf','-subject',str(out/f'subject-{index}'/row['subpath']),'-subject-name',row['repository'],'-subject-sha',row['sha'],'-tool-oracle',str(truth),'-out',str(reading),'-unmatched',str(target/f'unmatched-{index}.json'),'-note','D19 full preregistered replay; owner protoc34.1 A; no dispatch/signature/ENGINE changes']
+  notes=[
+   'No compiler refusals on all 13 inputs; no missed cross-file pairs or extra definitions.',
+   'Owner compiler refuses 30/156 inputs: 25 missing external validation dependency, 1 missing external address dependency, 3 unknown native option and 1 duplicate option. The inherited -only omits 38 files; unrestricted diagnostic measures 56 Fathom definitions and zero Fathom cross-file pairs on them. Standalone L1 becomes good; pooled L1 and L3 remain excellent.',
+   'Owner compiler refuses 2/92 inputs for one dependency outside the fixed source scope. Their 6 extra Fathom definitions (4 messages,2 enums) remain precision errors. All 9 missed eligible file pairs remain: 8 transitive public-import targets not followed,1 qualified package differs from its directory.'
+  ]
+  command+=['-note',notes[index],'-note','Cross-reference unit: distinct source file/referring definition/target file from owner descriptors; target symbol name dropped; public-import and package-directory misses are retained, not adjudicated.','-note','Timing is a single final capture per subject at nice10,load<=6,free>=20GiB,private caches,no daemon; not a median of three or a speedup claim.']
   if row['only']:command+=['-only',row['only']]
   run(command,target/f'compare-{index}',protocol['limits']['subject_timeout_seconds'],cap)
  after=manifests(out,'after');before=json.loads((out/'prepare-receipt.json').read_text())['manifests']

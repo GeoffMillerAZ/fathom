@@ -1899,7 +1899,7 @@
     "plan_row": "LB-Q-protobuf",
     "worker_model": "sonnet",
     "port_of": "protoextract.go (pure Go)",
-    "notes": "messages, enums, services, rpcs; field type references; import edges; D19 replay 2026-10-27: same two canonical pins plus complete official v34.1 src proto scope; dialect L3 excellent at A, recall107/116 and precision107/107. Incumbent dispatch and rpc Signature contract remain unchanged; see docs/assessments/2026-10-27-tools-protobuf-d19.md."
+    "notes": "messages, enums, services, rpcs; field type references; import edges; D19 replay 2026-10-27: same two canonical pins plus complete official v34.1 src proto scope; dialect L3 excellent at A, recall107/116 and precision107/107. Incumbent dispatch and rpc Signature contract remain unchanged; see docs/assessments/2026-10-27-tools-protobuf-d19.md. T-R17:117 native pairs,116 eligible;9 misses are8 public-import re-export paths and1 package-directory mismatch. Unrestricted diagnostic on the inherited38 excluded files adds56 Fathom definitions and0 file pairs: standalone L1good, pooled L1/L3excellent unchanged. Refusal causes and single-capture conditions are generated in the reading notes."
   },
   {
     "id": "gdscript",

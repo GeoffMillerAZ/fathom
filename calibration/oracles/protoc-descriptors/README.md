@@ -63,3 +63,14 @@ conflate duplicate names in independent fixtures. A four-file native control, tw
 Go regression tests and two FAIL→GREEN mutants prove this correction. All three
 fixed subject populations were replayed from that corrected instrument; no source
 file, existing exclusion or metric threshold changed.
+
+T-R17 disclosure follow-up: the current 30 protovalidate refusals are25 missing
+external validation dependencies,1 missing address dependency,3 unknown options
+and1 duplicate option; the blanket migration-dependency description in the older
+run notes is superseded for this replay. The2 official-source refusals share an
+out-of-scope fixture dependency. An unrestricted diagnostic measures all38 files
+the inherited restriction excludes:56 Fathom definitions,0 file pairs. Standalone
+L1 is good; pooled L1 remains excellent at2184/2228 and L3 is unchanged. The9
+misses are8 public-import re-export paths and1 package-directory mismatch. These
+disclosures and single-capture conditions are generated in the reading by the
+compare driver's notes, not hand edits.
