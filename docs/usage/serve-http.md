@@ -89,7 +89,9 @@ cancels its read and a caller already gone is never run (an ingest runs
 detached). `[tenancy].admission` defaults to
 `observe` (every would-refuse logged and counted, nothing refused); `enforce`
 answers HTTP 503 + `Retry-After` + JSON-RPC `-32050`; `off` is the escape
-hatch. Every route requires a loopback `Host` (and a same-origin `Origin`);
+hatch. Every route requires a loopback `Host`, a loopback peer address (a
+network peer that sends `Host: 127.0.0.1` is refused 403 by its address,
+ADR-083) and a same-origin `Origin`;
 the managed daemon answers a
 test binary (`X-Fathom-Caller … test=1`) 409. See
 [configuration.md](../configuration.md#the-budget-tenancy-user-scope-only).

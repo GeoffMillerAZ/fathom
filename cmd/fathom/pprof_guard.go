@@ -68,12 +68,19 @@ func guardPprof(next http.Handler) http.Handler {
 }
 
 // debugRefusal is why a /debug request is refused ("" when it is served):
-// the Host must be loopback and so must the peer. A peer address that is
-// not host:port (a unix-socket connection) is this machine.
+// the Host must be loopback and so must the peer.
 func debugRefusal(r *http.Request) string {
 	if !hostIsLoopback(r.Host) {
 		return fmt.Sprintf("Host %q is not loopback", r.Host)
 	}
+	return peerRefusal(r)
+}
+
+// peerRefusal is why r's peer is refused ("" when it is this machine): the
+// Host header is the client's to choose, the peer address is not (ADR-083).
+// A peer address that is not host:port (a unix-socket connection) is this
+// machine.
+func peerRefusal(r *http.Request) string {
 	if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		if ip := net.ParseIP(strings.Trim(h, "[]")); ip == nil || !ip.IsLoopback() {
 			return fmt.Sprintf("peer %s is not loopback", h)
