@@ -36,7 +36,8 @@ import (
 // Anchors name the service's indexed commit; a symbol with no callers is an
 // absence fact carrying the index's read set. --require-clean writes the
 // receipt, then exits 1 when an anchor is not committed. A Go struct field's
-// callers receipt is refused: field references are not indexed.
+// callers and references receipts are refused: field references are not
+// indexed.
 func cmdExportReceipt(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("export receipt", stderr)
 	service := fs.String("service", "", "service ID (required)")
@@ -142,10 +143,10 @@ func exportReceiptInput(ctx context.Context, c *client.Client, st store.Store, s
 	if err != nil {
 		return receipt.ExportInput{}, err
 	}
-	if kind == core.ReceiptKindCallers && def.Kind == core.KindGoField {
-		// The delete check's rule: no caller set and no absence is
+	if (kind == core.ReceiptKindCallers || kind == core.ReceiptKindReferences) && def.Kind == core.KindGoField {
+		// The delete check's rule: no caller set, file set or absence is
 		// provable over references the index never records.
-		return receipt.ExportInput{}, fmt.Errorf("%s is a Go struct field and field references are not indexed: a callers receipt is withheld (export its definition with --kind %s)", def.Name, core.ReceiptKindSymbolLocation)
+		return receipt.ExportInput{}, fmt.Errorf("%s is a Go struct field and field references are not indexed: a %s receipt is withheld (export its definition with --kind %s)", def.Name, kind, core.ReceiptKindSymbolLocation)
 	}
 	exp, _, err := serviceExporter(ctx, c, st, service)
 	if err != nil {

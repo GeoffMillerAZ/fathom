@@ -38,6 +38,16 @@ func Hello() string {
 func Lonely() {}
 `
 
+// exportReceiptFixtureBSrc is pkg/b.go: a struct field and a use of it.
+const exportReceiptFixtureBSrc = `package pkg
+
+// Config carries a field.
+type Config struct{ N int }
+
+// Size reads Config.N.
+func Size(c Config) int { return c.N }
+`
+
 // exportReceiptFixtureTestSrc reaches Hello and, through it, Greet.
 const exportReceiptFixtureTestSrc = `package pkg
 
@@ -56,6 +66,7 @@ func exportReceiptFixture(t *testing.T) (root, storePath string) {
 	repo := newSelfSkipGitRepo(t)
 	repo.writePlan("go.mod", "module example.invalid/rcpt\n\ngo 1.22\n")
 	repo.writePlan("pkg/a.go", exportReceiptFixtureSrc)
+	repo.writePlan("pkg/b.go", exportReceiptFixtureBSrc)
 	repo.writePlan("pkg/a_test.go", exportReceiptFixtureTestSrc)
 	repo.commitAll("a")
 	storePath = filepath.Join(t.TempDir(), "s.sqlite")
@@ -142,6 +153,27 @@ func TestCmdExportReceipt(t *testing.T) {
 	errBuf.Reset()
 	if code := run([]string{"receipt", "verify", "--repo", root, path}, &out, &errBuf); code != 0 {
 		t.Errorf("receipt verify of an exported receipt exit %d: %s%s", code, out.String(), errBuf.String())
+	}
+}
+
+// TestExportReceiptWithholdsGoFieldReferences: field references are not
+// indexed, so neither a callers nor a references receipt is exported for
+// a Go struct field; its definition still is.
+func TestExportReceiptWithholdsGoFieldReferences(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	for _, kind := range []string{"callers", "references"} {
+		t.Run(kind, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "N", "--kind", kind}, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			if want := "a " + kind + " receipt is withheld"; !strings.Contains(errBuf.String(), want) {
+				t.Errorf("refusal = %q, want %q", errBuf.String(), want)
+			}
+		})
+	}
+	if def, _ := exportReceipt(t, storePath, "--symbol", "N"); def.File != "pkg/b.go" {
+		t.Errorf("field definition file = %q, want pkg/b.go", def.File)
 	}
 }
 
