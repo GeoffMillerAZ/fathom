@@ -18,7 +18,7 @@ func labsFixtureProjects(t *testing.T, lines ...string) string {
 	t.Helper()
 	root := t.TempDir()
 	repo := labsFixtureRepo(t)
-	encoded := strings.ReplaceAll(filepath.ToSlash(repo), "/", "-")
+	encoded := labsEncodeProject(repo)
 	dir := filepath.Join(root, encoded)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
