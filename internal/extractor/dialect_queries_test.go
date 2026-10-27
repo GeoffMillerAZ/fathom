@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
@@ -18,6 +19,13 @@ func TestDialectQueriesCompile(t *testing.T) {
 	if _, err := tsRegistry(); err != nil {
 		t.Fatal(err)
 	}
+	// The product backstop (20s wall clock) reads CPU starvation on a shared
+	// runner as a stuck guest: every dialect runs here beside the whole
+	// tsengine package. Widen it for this test only; the parallel subtests
+	// finish before this Cleanup, and tsengine's own tests pin the default.
+	savedBackstop := tsengine.ParseHardBackstop
+	tsengine.ParseHardBackstop = 15 * time.Minute
+	t.Cleanup(func() { tsengine.ParseHardBackstop = savedBackstop })
 	var active atomic.Int32
 	slots := make(chan struct{}, 4)
 	for _, id := range TagsDialects() {

@@ -331,6 +331,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if report.ClassifiedZero > 0 {
 		fmt.Fprintf(stdout, "classified-but-zero-symbols: %d\n", report.ClassifiedZero)
 	}
+	if report.ModelsRefused > 0 {
+		fmt.Fprintf(stdout, "models-refused: %d\n", report.ModelsRefused)
+	}
 	// LB-F9/LB-F10 (language-breadth §5): the dialect gate's counts, only
 	// when non-zero.
 	if report.SkippedGenerated > 0 {

@@ -133,6 +133,8 @@ func TestLoadDialectsRefuses(t *testing.T) {
 		"whole_bindings off list": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"include-path","whole_bindings":"all"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.whole_bindings"},
 		"type_wildcard off list":  {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"namespace-dir","type_wildcard":"fields"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.type_wildcard"},
 		"required undeclared":     {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
+		"container format":        {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"tar","extensions":[".a"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.format"},
+		"container unclaimed":     {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"container":{"format":"opc-zip","extensions":[".z"]}`, 1), "dialects/a/tags.scm": ""}, "match.container.extensions"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
