@@ -54,6 +54,9 @@ Release impact: major (pre-1.0: breaking bumps minor)
 - A language or tool format's L3 now needs at least 20 references in the denominator of each graded cross-file metric; a thinner metric caps L3, and the reason shows in `docs/languages.md` (`grade.L3_reason`). Eight tool formats now read L2 instead of L3 on thin evidence (JSON Schema, OpenTelemetry Collector, Protocol Buffers, Kong, Kustomize, nginx, Taskfile and HAProxy), with their extraction unchanged.
 - `fathom version` on a binary built without a VCS revision (`go install`) reports `(module vX, sum h1:...)` instead of `(revision unknown)`. `version --json` and `/statusz` build info gain `module_version` and `module_sum`.
 - Correct Bash oracle evidence with a released SCIP producer and native runtime and namespace probes, preserving measured tiers and disclosing incomplete coverage and observer effects.
+- Crossplane L1 reads good instead of excellent because its definitions are graded at tier C; the full 244-file scope remeasures at 428/428 definitions, 86/86 references and 33/33 cross-file references, and L3 stays good.
+- Kustomize reads L1 excellent to good on the wider native population (eight no-op definitions) and L3 unmet to excellent, measured on 35 cross-file references across five pinned repositories under the 20-reference L3 evidence rule.
+- The HLSL call reading is regraded after the paired Linux replay: explicitly scoped zero-call files add 39 false positives, lowering call precision from 0.9656 to 0.956, with recall, L3 and scope unchanged.
 
 ### Fixed
 
