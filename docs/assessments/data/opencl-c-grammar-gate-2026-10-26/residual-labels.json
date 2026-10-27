@@ -1,0 +1,781 @@
+{
+  "baseline_public_screen_sha256": "47758b96e6ca8232dec1067220317454d38d460b2f37d6974c34e104694d838c",
+  "build_receipt_sha256": "ef19394d600fd49281e275d2219004f4004d1b30b66b9dc5c0ea5a3783c0515a",
+  "candidate": "opencl-patched",
+  "class_counts": {
+    "conditional_branch_fragment": 2,
+    "conditional_cpp_linkage": 1,
+    "host_string_template": 40,
+    "macro_generated_syntax": 2,
+    "macro_parameter_fragment": 7,
+    "raw_missing_semicolon": 1,
+    "semicolonless_macro_invocation": 10
+  },
+  "count": 63,
+  "label_basis": "First observed syntax site; labels do not claim that macro expansion is required.",
+  "native_grammar_sha256": "f6157f5c7caf4b37f962ff66dcf7de9e51784239cd7c84b9297375d8f75e82be",
+  "parser_c_sha256": "36b98273c162efea7a74188fe2395f60b3dd1a96ff987655aea3424089a243f5",
+  "pool_rule_sha256": "2e6ebd4c74fb0d579c72b235d0c20ba12d290fd4ae32330235cd694fed83e108",
+  "private_screen_sha256": "223579d3c15d64866e7f00378de42b3884c7e83d586a85eb91386e438c2e91d5",
+  "public_screen_sha256": "47758b96e6ca8232dec1067220317454d38d460b2f37d6974c34e104694d838c",
+  "reproduce": "workspace/tools/python/bin/python -I -B calibration/oracles/opencl-c/residual_audit.py --screen-dir workspace/opencl-c/screen --subjects-root workspace/opencl-c/subjects --grammar workspace/opencl-c/build/opencl-c-patched/native.dylib --build-receipt workspace/opencl-c/build/opencl-c-patched/build-receipt.json --out workspace/opencl-c/residual-reproduced.json",
+  "rows": [
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 17
+      },
+      "git_blob": "f525660ed367ebf6a547c42600f4dd9b32537419",
+      "path": "src/library/blas/gens/clTemplates/asum.cl",
+      "source_sha256": "7d3a7fd019f2aa269a34f30d96e5d137ae52b01b3579ba31e030486224f15c03",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 18
+      },
+      "git_blob": "68f05f758536e53f26536c27789ec87a1478fee2",
+      "path": "src/library/blas/gens/clTemplates/axpy.cl",
+      "source_sha256": "a23b3a6d601b524b0abcef4f1c26d6dc2250ee029bad3008f519ed5ba7d29df6",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "51957b6417dae3e72ad8a9fc40b45484972f2ab8",
+      "path": "src/library/blas/gens/clTemplates/copy.cl",
+      "source_sha256": "b876f5618e6961b9ac13026f834151386d5ba3be9a69a228ef936a31d9660001",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "MISSING \"",
+        "line": 2
+      },
+      "git_blob": "f5703ce31c2be8761c35167ff1dd4ab721c936cb",
+      "path": "src/library/blas/gens/clTemplates/dgemm_NT_MN48.cl",
+      "source_sha256": "bf39fbd0cf0b4b59e926eab8f7fc3020e3932ce230a3941a08f81768773e868b",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 55
+      },
+      "git_blob": "de61415c6adae387962418b585739671a3f141a6",
+      "path": "src/library/blas/gens/clTemplates/dgemm_gcn_SmallMatrices.cl",
+      "source_sha256": "6e0a70e4bafd603e2448876be750569fa9daedd52b324558103fde1dfc1b245a",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "MISSING \"",
+        "line": 51
+      },
+      "git_blob": "9fc7832a8d75319c8be866f57eb4917fde5736db",
+      "path": "src/library/blas/gens/clTemplates/dgemm_hawai.cl",
+      "source_sha256": "74f074548ae4800df3a3de311b8afc07f310fc4668f6f5320d209ff609003c8b",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "MISSING \"",
+        "line": 1
+      },
+      "git_blob": "53cf18093a513181965b2944b1d906c7b676631d",
+      "path": "src/library/blas/gens/clTemplates/dgemm_hawaiiChannelConfilct.cl",
+      "source_sha256": "03a78b4642f4c759a48ac37c9831663816fa9aa13bd3335471a647fb5f9ee8f6",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "MISSING \"",
+        "line": 2
+      },
+      "git_blob": "9cd28d4c12b700c0b0e8eabc44dd820e26405aa4",
+      "path": "src/library/blas/gens/clTemplates/dgemm_hawaiiSplitKernel.cl",
+      "source_sha256": "64576f4d83d9e4807296d5cc8e9478c2a880d2e650386840dd93333429f76fe9",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "5c181429f655948c77d70fd82bb776e2345f9545",
+      "path": "src/library/blas/gens/clTemplates/dot.cl",
+      "source_sha256": "d8c8e1e2c59f6e450cb1319b88300f1dc21d66d790b13bdc571393dd937b61f1",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 2
+      },
+      "git_blob": "ab2218ddfda748fddee739483fca05a6773b817d",
+      "path": "src/library/blas/gens/clTemplates/dtrsm_gpu.cl",
+      "source_sha256": "eeae73bd3f2255be63eacdd84d8e822c38b343ab48bcb85dd3c912a0545042cc",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 1
+      },
+      "git_blob": "551f64ba13cc230247186905df604e65f4ff71e2",
+      "path": "src/library/blas/gens/clTemplates/dtrsm_gpu192.cl",
+      "source_sha256": "f1fe12d6a9d8b91329a2d577785736fd9f5633bcc09ee864ba9ecf6806882bb5",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "3cdadae712d29e900240f58cff53460cf039febd",
+      "path": "src/library/blas/gens/clTemplates/gbmv.cl",
+      "source_sha256": "4daa4b9fe6975ff3daee48700d877a155df0134ab7aaab4240d22beca68e8b68",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 52
+      },
+      "git_blob": "70fe092d592c01ac8a325b27564ebca9690f4f58",
+      "path": "src/library/blas/gens/clTemplates/gemm.cl",
+      "source_sha256": "a370f4b3a3517d0457a4ea3c02ce91c30d027a9daf00318417bc000d50a33319",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "MISSING \"",
+        "line": 17
+      },
+      "git_blob": "0c8c3e9dfedcc26d085e67ddd6b97e57e16c381b",
+      "path": "src/library/blas/gens/clTemplates/gemm_helper.cl",
+      "source_sha256": "dd1833b085d6fda43749555743aeda87c99ce38114f032181d8e64a1015d213b",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 20
+      },
+      "git_blob": "99bbcbd4fa6858d37e21eb65ec9b38fb37599166",
+      "path": "src/library/blas/gens/clTemplates/ger.cl",
+      "source_sha256": "fc67a85094b0f3a6093df426d3629b6e94b007571b4d8cca398f19c4ac040b73",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 23
+      },
+      "git_blob": "87e9747248e9747acb6a2299bfcf03780bd9b631",
+      "path": "src/library/blas/gens/clTemplates/her.cl",
+      "source_sha256": "7030afc08ac30ad4342f9b050a9b792e6f6a0baf47590d933490a961f2e15c13",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 22
+      },
+      "git_blob": "a0520987a7fa8c810ec09535ee33b3767839b67b",
+      "path": "src/library/blas/gens/clTemplates/her2.cl",
+      "source_sha256": "4fe2c829b99cb62d59a5af55a23887c880945915b49655df3a162d1e02be5f0d",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 17
+      },
+      "git_blob": "9152ccb108eb9310c4957745727c673a94005220",
+      "path": "src/library/blas/gens/clTemplates/iamax.cl",
+      "source_sha256": "15e8f91ee554cf1ffe4a4c5acfd1248be124c5b709e016152812d9ac7ffc0e2d",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 18
+      },
+      "git_blob": "e866233f1969497aae3b7e3dca9d660dab7d96b1",
+      "path": "src/library/blas/gens/clTemplates/nrm2.cl",
+      "source_sha256": "452959dab11a988b805ec3d6bbf590e0afa4f2511903a69cc922e723f6e29a4a",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "5a79f1fcaa7453eda2a2a98bbccd7ff865767579",
+      "path": "src/library/blas/gens/clTemplates/reduction.cl",
+      "source_sha256": "90562c59ac50d432dcd11d7e84d4988599ae02bcaba3b8f1f4360e2cbce2b4af",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "701fe9df50f2852640310f793aeb52c288d11fe2",
+      "path": "src/library/blas/gens/clTemplates/rotg.cl",
+      "source_sha256": "401b9cb10bdc6b8be34e09a8ccb1cf745ef31e36f16c1fef2e34991c47cf2686",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "04fb34b453b1a3f678f36e487ca1a2c9fc089f96",
+      "path": "src/library/blas/gens/clTemplates/rotm.cl",
+      "source_sha256": "ba0f687d1fba236aa28dde8beaa72b27e6f3d48ce5f2ef4355bbe2f34d567ff8",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "13bb0a77b72f55fda4b73e401023bf93d6f332e1",
+      "path": "src/library/blas/gens/clTemplates/rotmg.cl",
+      "source_sha256": "8c57161c4cd017f144d5ca054e7cf2ed0f92abdbc47d9ee724d193a0f0e500e9",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "19348fdb90441180e157d55175e7168e4be77688",
+      "path": "src/library/blas/gens/clTemplates/scal.cl",
+      "source_sha256": "3a270cac16a7f5c1f1b98d7bcf62f9c4295587282d58f45efaf5bc39c0dbc5e8",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 1
+      },
+      "git_blob": "d569b13a275d11ce9bc88b2e874895048ccb93f3",
+      "path": "src/library/blas/gens/clTemplates/sgemm_gcn.cl",
+      "source_sha256": "f7f65024cb5b49abae6e7eed7dcbcd18af976c7e95b40c36ff7d50acd4c38144",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 1
+      },
+      "git_blob": "137cb3a0a67ec970396eef46b888f838b7ab37eb",
+      "path": "src/library/blas/gens/clTemplates/sgemm_gcn_SmallMatrices.cl",
+      "source_sha256": "296b946525809ed807982348681912e0b98b815908cbcd4752884d0c04c348d1",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 1
+      },
+      "git_blob": "5c696da81aad4f8fed18e6e0ab6083ea57062383",
+      "path": "src/library/blas/gens/clTemplates/sgemm_gcn_bigMatrices.cl",
+      "source_sha256": "bef5b08daf2330260a886f505e7b991043194a906090b8624693df421e359701",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 5
+      },
+      "git_blob": "fb4083478cf36b120734a736048c25108e57ab7e",
+      "path": "src/library/blas/gens/clTemplates/sgemm_hawaiiSplit64_32.cl",
+      "source_sha256": "02d6b97b55276c3d2f593d0d6ea544ad0061646c2e0b0209bcfc2db2e2bb1597",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 1
+      },
+      "git_blob": "8eb6749cbf06774c4bf347d179dfc6034d352100",
+      "path": "src/library/blas/gens/clTemplates/sgemm_hawaiiSplitKernel.cl",
+      "source_sha256": "800e5f153858a3ca2b26f09209acc78e6e7869090d259e0d47d14831ef873493",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "91c86c63b6bd5357b5c0e4aeff7e3c4756315700",
+      "path": "src/library/blas/gens/clTemplates/swap.cl",
+      "source_sha256": "e36c4388a3f2d7cb63391f684cf90bcafa1c0b149e99d92b0c1031537936ab19",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 29
+      },
+      "git_blob": "75849182c3c8ec4fc745cb5e9feb06b1b7d6daad",
+      "path": "src/library/blas/gens/clTemplates/symm.cl",
+      "source_sha256": "537bd60dc5fc7ffdccf262a9bceef392457a03515259505e95b269a792c95929",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 17
+      },
+      "git_blob": "909787b9e8c90e3a7d6dfb97b835bf53c34a79cb",
+      "path": "src/library/blas/gens/clTemplates/symm_helper.cl",
+      "source_sha256": "702646908fabd17a9c072a5b690a55afa949b7fb5329152b9949dd4f8b9cf270",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 22
+      },
+      "git_blob": "6593ab108e8154bd01d528dc9ecf9e73daf16bb2",
+      "path": "src/library/blas/gens/clTemplates/syr.cl",
+      "source_sha256": "b614ab15ef6a2ef0d331af962f0f54723bb4bd28f5d29516ff9e1dba1343f583",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 22
+      },
+      "git_blob": "4f86b2a3f735c8182d75c837a3a63602d18bdd12",
+      "path": "src/library/blas/gens/clTemplates/syr2.cl",
+      "source_sha256": "5a4de6de97e82953feb481ddadc4c985a771c5f95ea8e084984b8db2f89946d7",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 18
+      },
+      "git_blob": "fcb328015634bbe988ef81ac93ca6be8615c368d",
+      "path": "src/library/blas/gens/clTemplates/syr2_her2.cl",
+      "source_sha256": "00544476b16d8b46471f559f792f61f2efe3e09bf6dec57c333d7e2937cb1ac1",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 18
+      },
+      "git_blob": "f58e468c908d7479e2e9dd86f23b072041050d12",
+      "path": "src/library/blas/gens/clTemplates/syr_her.cl",
+      "source_sha256": "b709c036193e9da12ec508f04fa744370be4f270ec28b674da929a78f51508df",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 20
+      },
+      "git_blob": "807ae69a90a90811c504878d2b480f0937a7c438",
+      "path": "src/library/blas/gens/clTemplates/trmv.cl",
+      "source_sha256": "2eed74be1acb2cb2ed4883b9b5e020f3f64e31d65908ec90a9809ff482d1db0c",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 21
+      },
+      "git_blob": "56da9c8614d011a20bd44b41df7c364dc64da580",
+      "path": "src/library/blas/gens/clTemplates/trsv.cl",
+      "source_sha256": "09e7083b01687d7bfef835a514e254f1d8ba8dbae490883319d365bf3a0cba55",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 19
+      },
+      "git_blob": "f1f6cd4fe393bbef081efad3adbe3a60353bf878",
+      "path": "src/library/blas/gens/clTemplates/trsv_gemv.cl",
+      "source_sha256": "afa87e09ec4de5b99577cd5e4f324a6040266bfaf11da804f3c5da714fdc405d",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "host_string_template",
+      "first": {
+        "kind": "ERROR",
+        "line": 7
+      },
+      "git_blob": "ad04525f63c18228ccc6142c5e4e793add688649",
+      "path": "src/library/blas/gens/clTemplates/zgemm_gcn.cl",
+      "source_sha256": "9a0fa46f0b8edef084105a82a7ec3bd352b332a80c72c6248f6fcc5f0446c2d3",
+      "subject": "clblas",
+      "subject_pin": "cf9113982fdfc994297d372785ce76eb80911af2"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 50
+      },
+      "git_blob": "4cc143d282d25f186af933570ec4dbb6650d3730",
+      "path": "data/kernels/bilinear.cl",
+      "source_sha256": "1b57fb4f629784ac3ae17a53e6e5755db425772b1f60fbb1517c26bc39ca4a1c",
+      "subject": "darktable",
+      "subject_pin": "891e46cd57b64d67dbde183d5d3c0e430edd11d6"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 309
+      },
+      "git_blob": "15b57bb953381a1186b3f50f2c196c1aae8db7c4",
+      "path": "data/kernels/toneequal.cl",
+      "source_sha256": "60be250367096f2f5e588b4998d50ff991700778a3402942f01a106b5810c059",
+      "subject": "darktable",
+      "subject_pin": "891e46cd57b64d67dbde183d5d3c0e430edd11d6"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "ERROR",
+        "line": 491
+      },
+      "git_blob": "bbf3b83c2c4a5c1c21d860ec26319bc1684a64ef",
+      "path": "modules/core/src/opencl/arithm.cl",
+      "source_sha256": "12c8061b456546c12f04ab42681bd4d00b2fd396e8acf9207745eea6378b179b",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 121
+      },
+      "git_blob": "a78285e382474cd21157f22ccf2218bf00cbb83a",
+      "path": "modules/core/src/opencl/copymakeborder.cl",
+      "source_sha256": "df626765a36614f4d018543f0373a5795dd806ab3ed370a6e4660648a9b50513",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "ERROR",
+        "line": 46
+      },
+      "git_blob": "fc050547be43df7dd95d8fcbb0a697f6f412e4c6",
+      "path": "modules/core/src/opencl/gemm.cl",
+      "source_sha256": "799e10e5dd3a38a54d6e6b53c8c758a7e8446bec90bb2da2ea0df29418a3b5b7",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "conditional_branch_fragment",
+      "first": {
+        "kind": "MISSING )",
+        "line": 85
+      },
+      "git_blob": "a5efd38bcf522a0729d8d48afb8473bc1a87be37",
+      "path": "modules/core/src/opencl/inrange.cl",
+      "source_sha256": "3c8b77e8891f2c9a61a7b9381ae786877c41d958fcf98db18493748ec27f5126",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "conditional_branch_fragment",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 128
+      },
+      "git_blob": "cabc720596923314682cfb9e96c8e26d633880fe",
+      "path": "modules/core/src/opencl/minmaxloc.cl",
+      "source_sha256": "a06bb721144f4bd2a5c6d4c3488da6863fc62c0aa29adff1d14d1362318b0bbf",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "MISSING ,",
+        "line": 58
+      },
+      "git_blob": "095b44a665c991656d76cef16ff3eac817cf083e",
+      "path": "modules/core/src/opencl/mixchannels.cl",
+      "source_sha256": "4897f5007db4f372ccd905cdc133a7fbf41a47fa537a478cb4c88638eee7ea48",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "ERROR",
+        "line": 564
+      },
+      "git_blob": "933aebcaff470e5bbfa619fd9511c1fa6da3d000",
+      "path": "modules/core/src/opencl/reduce.cl",
+      "source_sha256": "866a32aad797db9cc1a28982e7cdfaa9fb60e940634b988c328bac898436d9bb",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "ERROR",
+        "line": 54
+      },
+      "git_blob": "907580f609a42c44a7342db70e3b6d14829e5a49",
+      "path": "modules/core/src/opencl/split_merge.cl",
+      "source_sha256": "216104fc00b651fb8eba671fa2b9fb028bd679a22d063923f9a704f6f0deb8d8",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "MISSING ,",
+        "line": 142
+      },
+      "git_blob": "0ac074b26bf0df06e2109fa233bf1bfdfa1300a2",
+      "path": "modules/dnn/src/opencl/conv_layer_spatial.cl",
+      "source_sha256": "9dde62b17d3731fd2937cd82959acead4e705988677efd6c504dcde48893d5d2",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 349
+      },
+      "git_blob": "f6e0020d82c4184285234d9f7d5d71a4acdd79ca",
+      "path": "modules/dnn/src/opencl/gemm_image.cl",
+      "source_sha256": "619e056c050b0935456cb40049fc579b92f667c5ed6333e264effee877e98648",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "raw_missing_semicolon",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 180
+      },
+      "git_blob": "053749b483feab6cce591bedb7bef72a4c7cd687",
+      "path": "modules/dnn/src/opencl/mvn.cl",
+      "source_sha256": "cc0d515a853424b0f9748bfdc5cdb501b42089ca5c97922eb29f62f9d0ca12b5",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 86
+      },
+      "git_blob": "f32d66a9ca7da2be970d22752914e9f4d5187c74",
+      "path": "modules/dnn/src/opencl/slice.cl",
+      "source_sha256": "318372dd3c5da386dbc8f59f2ef7c408eebd80623d5bd25f5d1cb38ade987de3",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 140
+      },
+      "git_blob": "e1c2e407dcfa15ef7c65bd5ca2a218092054a431",
+      "path": "modules/imgproc/src/opencl/corner.cl",
+      "source_sha256": "c22f84f66595567aa3ed9ca0d5ba4c023428356add1145d9cd222fa542e36f78",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 99
+      },
+      "git_blob": "8f67d8ffe7fd47719033532abe1a05132fa9489b",
+      "path": "modules/imgproc/src/opencl/covardata.cl",
+      "source_sha256": "5c7daf42af2d771a0a0cce42f88b5d9a2a817044e3d81f69a14d05fce8c24aec",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "ERROR",
+        "line": 116
+      },
+      "git_blob": "f3d64ca57412a58bca85703a9a47f4cfc73bb3c7",
+      "path": "modules/imgproc/src/opencl/morph.cl",
+      "source_sha256": "7378708b4423569dde613c56f124bc4406d0353ccd62ac2e1803b0fd23ed6196",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_parameter_fragment",
+      "first": {
+        "kind": "ERROR",
+        "line": 32
+      },
+      "git_blob": "3dde505167b6c3161fab15985a7cf10a6ac62226",
+      "path": "modules/imgproc/src/opencl/morph3x3.cl",
+      "source_sha256": "7e43a9ce74e3fb12a2291b4cd546ace0bfc8d05496c7d8ab1f22545da51f57ed",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 155
+      },
+      "git_blob": "22b1472b3e53b31a2d1f97132bab69f48a6afa13",
+      "path": "modules/imgproc/src/opencl/pyr_down.cl",
+      "source_sha256": "6b590c3bac071057b8b050df3265eab479be855885bcf40ef4435ebb51645900",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "semicolonless_macro_invocation",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 271
+      },
+      "git_blob": "9c6f3878a1702f8e6970cd78059110973cb7a664",
+      "path": "modules/imgproc/src/opencl/remap.cl",
+      "source_sha256": "29d5ade2e1fb55c754cdbc953b1002f9ca76e885dcf29a7daa0b1db11371dfdc",
+      "subject": "opencv",
+      "subject_pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd"
+    },
+    {
+      "class": "macro_generated_syntax",
+      "first": {
+        "kind": "MISSING ;",
+        "line": 176
+      },
+      "git_blob": "c6fe4464bf17cc3b20cb346e77d9ac73ae650275",
+      "path": "pyopencl/cl/pyopencl-random123/philox.cl",
+      "source_sha256": "bd87101fb570d77437aa45b9361cb51d35036d62c62a896813560fd155a4eaf5",
+      "subject": "pyopencl",
+      "subject_pin": "0c46357ef31474b1dfd2ec4000b4421fcf71193a"
+    },
+    {
+      "class": "macro_generated_syntax",
+      "first": {
+        "kind": "ERROR",
+        "line": 158
+      },
+      "git_blob": "1a83ddc1d32b05376a2278ad625ba2c5bc14bedb",
+      "path": "pyopencl/cl/pyopencl-random123/threefry.cl",
+      "source_sha256": "d969901b1c7980f4afdb650bf7f3255efd1e32e83dd64ddb0bee7fc90e309672",
+      "subject": "pyopencl",
+      "subject_pin": "0c46357ef31474b1dfd2ec4000b4421fcf71193a"
+    },
+    {
+      "class": "conditional_cpp_linkage",
+      "first": {
+        "kind": "MISSING #endif",
+        "line": 287
+      },
+      "git_blob": "80ba0f9831162df3c0496951e48faf612168a0e9",
+      "path": "opencl/lavaMD/kernel/kernel_gpu_opencl.cl",
+      "source_sha256": "11e58012c5369827b16675dc3df156efb61e614dda975e56a2d6cf72a9f8412a",
+      "subject": "rodinia",
+      "subject_pin": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4"
+    }
+  ],
+  "schema": "opencl-c-residual-subset-v1"
+}
