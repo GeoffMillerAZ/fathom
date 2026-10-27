@@ -56,7 +56,8 @@ func Speak(g Greeter) string { return g.Say() }
 `
 
 // exportReceiptFixtureCSrc is pkg/c.go: an interface and its one
-// implementer, whose Say no static call in pkg/b.go names.
+// implementer, whose Say no static call in pkg/b.go names, and a constant
+// and a variable.
 const exportReceiptFixtureCSrc = `package pkg
 
 // Greeter says something.
@@ -67,6 +68,12 @@ type En struct{}
 
 // Say answers in English.
 func (En) Say() string { return "hello" }
+
+// Limit is a constant.
+const Limit = 3
+
+// Spare is a package variable.
+var Spare = Limit
 `
 
 // exportReceiptFixtureTestSrc reaches Hello and, through it, Greet, and
@@ -208,6 +215,27 @@ func TestExportReceiptWithholdsGoFieldReferences(t *testing.T) {
 	}
 	if def, _ := exportReceipt(t, storePath, "--symbol", "N"); def.File != "pkg/b.go" {
 		t.Errorf("field definition file = %q, want pkg/b.go", def.File)
+	}
+}
+
+// TestExportReceiptWithholdsNonFunctionReferences: receipt verify's
+// go/types oracle declares and counts uses of functions and methods only,
+// so a references receipt for a type, a constant or a variable is
+// withheld rather than exported to fail verify.
+func TestExportReceiptWithholdsNonFunctionReferences(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	for _, symbol := range []string{"Config", "Limit", "Spare"} {
+		t.Run(symbol, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", symbol, "--kind", "references"}, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			for _, want := range []string{"not a Go function or method", "a references receipt is withheld"} {
+				if !strings.Contains(errBuf.String(), want) {
+					t.Errorf("refusal = %q, want %q", errBuf.String(), want)
+				}
+			}
+		})
 	}
 }
 

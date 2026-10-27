@@ -148,6 +148,11 @@ func exportReceiptInput(ctx context.Context, c *client.Client, st store.Store, s
 		// provable over references the index never records.
 		return receipt.ExportInput{}, fmt.Errorf("%s is a Go struct field and field references are not indexed: a %s receipt is withheld (export its definition with --kind %s)", def.Name, kind, core.ReceiptKindSymbolLocation)
 	}
+	if kind == core.ReceiptKindReferences && def.Kind != core.KindGoFunc && def.Kind != core.KindGoMethod {
+		// Receipt verify's go/types oracle declares and counts uses of
+		// functions and methods alone: any other file set is refuted.
+		return receipt.ExportInput{}, fmt.Errorf("%s is a %s, not a Go function or method, and receipt verify re-derives references for those alone: a references receipt is withheld", def.Name, def.Kind)
+	}
 	exp, _, err := serviceExporter(ctx, c, st, service)
 	if err != nil {
 		return receipt.ExportInput{}, err
