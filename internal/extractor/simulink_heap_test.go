@@ -61,6 +61,12 @@ func TestReadSimulinkModelHeapBound(t *testing.T) {
 	root := "simulink/systems/system_root.xml"
 	slx := func(part string) []byte { return slxPackage(t, root, part) }
 	name16k := strings.Repeat("n", 16<<10)
+	// The .slx path-cap shapes name blocks in pseudo-random letters: a copy of a 16 KiB name
+	// lies past 16 KiB back, 13 extra bits a 258-byte match in any deflate stream, so the
+	// part stays under 140:1 whatever compressor built it. A run of one letter does not: the
+	// 200-deep run of "n" is 865:1 from go1.26's compress/flate, 153:1 from go1.27's.
+	letters16k := simulinkLetters(16<<10, 5)
+	bombRaw, bomb := slxDeflateRun(t, 16_000, false, nil) // 4.1 MB of spaces, about 1,000:1
 	name2k := strings.Repeat("n", 2500)
 	parent16k := simulinkLetters(16_000, 3)
 	var wide strings.Builder // 2,040 children of a 16,000-byte name: the path bytes at their cap
@@ -128,7 +134,8 @@ func TestReadSimulinkModelHeapBound(t *testing.T) {
 		{"attribute flood slx", slx("<System><Block" + strings.TrimSuffix(strings.TrimPrefix(slxNoise((SimulinkMaxInflated-64)/8, ` %s="1"`, false), "<System>"), "</System>") + "/></System>"), "a start tag carries past", true},
 		{"attributes at the cap slx", slx(slxNoise(15_000, `<Block Name="%s"`+strings.Repeat(` a="1"`, SimulinkMaxAttrs-1)+`/>`, false)), "", false},
 		// F2: 200 nested blocks, each named by the one 16 KiB name: the second's path is past it.
-		{"deep long names past the path cap slx", slx(simulinkNested(200, name16k, "")), pathCap, false},
+		{"deep long names past the path cap slx", slx(simulinkNested(200, letters16k, "")), pathCap, false},
+		{"repetitive part past the ratio cap slx", slxRawPackage(t, root, bombRaw, bomb), "inflates past 200:1 (32768 bytes from ", false},
 		{"long names at the cap slx", slx("<System>" + wide.String() + "</System>"), "", false},
 		{"endpoint fan-out slx", slx(simulinkNested(6, name2k, fanSLX.String())), "", false},
 		// S4-R1 (F1): 700 children of a long-named parent, every pair joined; at 32 children

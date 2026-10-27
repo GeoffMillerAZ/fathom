@@ -59,7 +59,8 @@ const (
 	// SimulinkMaxInflated is the most bytes the parts read may inflate to, together.
 	SimulinkMaxInflated = 32 << 20
 	// SimulinkMaxRatio is the most a part may inflate per compressed byte the inflater reads,
-	// counted as it reads. The most a calibration part inflates is 24.7:1.
+	// counted as it reads and checked every 32 KiB inflated and at the part's end. The most a
+	// calibration part inflates is 24.7:1.
 	SimulinkMaxRatio = 200
 	// SimulinkMaxDepth is the deepest a model's elements (or .mdl brace nodes) may nest, a
 	// spliced system's counted from the model. The deepest calibration model nests 38.
@@ -568,8 +569,9 @@ func newSimulinkDecoder(b []byte) *xml.Decoder {
 // slxParts reads the parts the model's blocks and references come from, under the caps.
 // The sizes a package declares are not trusted: a part is inflated from its raw bytes, the
 // compressed bytes the inflater consumes counted as it reads, and the read stops with
-// ErrSimulinkCap once the bytes out pass SimulinkMaxRatio per byte in, the inflated budget,
-// or one byte past the part's declared size. A name listed twice is refused.
+// ErrSimulinkCap once the bytes out pass the inflated budget, one byte past the part's
+// declared size, or SimulinkMaxRatio per byte in, checked in that order every 32 KiB out and
+// at the part's end. A name listed twice is refused.
 func slxParts(src []byte) (map[string][]byte, error) {
 	zr, err := zip.NewReader(bytes.NewReader(src), int64(len(src)))
 	if err != nil {
@@ -628,9 +630,18 @@ func slxInflate(f *zip.File, limit int64) ([]byte, error) {
 	}
 	var out bytes.Buffer
 	sum := crc32.NewIEEE()
+	// The caps are checked at fixed offsets of the inflated bytes, every 32 KiB (the deflate
+	// window, where the inflater stops on its own) and the part's end, never wherever a Read
+	// returns (a sync flush returns early), so a verdict and the cap that gives it are the
+	// part's bytes alone. Not io.ReadFull: it would read a truncated stream as a short end.
 	chunk := make([]byte, 32<<10)
 	for {
-		n, err := r.Read(chunk)
+		n, err := 0, error(nil)
+		for n < len(chunk) && err == nil {
+			var k int
+			k, err = r.Read(chunk[n:])
+			n += k
+		}
 		out.Write(chunk[:n])
 		sum.Write(chunk[:n])
 		if int64(out.Len()) > limit {

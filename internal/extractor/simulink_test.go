@@ -3,7 +3,10 @@ package extractor
 import (
 	"archive/zip"
 	"bytes"
+	"compress/flate"
 	"errors"
+	"hash/crc32"
+	"io"
 	"strings"
 	"testing"
 	"unsafe"
@@ -632,6 +635,121 @@ func slxDeclareCompressed(t *testing.T, src []byte, name string, size uint32) []
 	}
 	t.Fatalf("no central-directory entry %s", name)
 	return nil
+}
+
+// slxDeflateRun is a raw deflate stream written bit by bit, so its bytes are the test's and
+// never a compressor's: how far a part compresses is the toolchain's compress/flate's choice
+// (go1.26's and go1.27's differ fivefold on one text). One dynamic-Huffman block holds a
+// space and runs copies of 258 spaces at distance 1, two bits a copy (about 1,000:1); when
+// flush, an empty stored block follows it (a sync flush, where the inflater returns what it
+// holds), then stored, in a final stored block when it is not empty. It returns the stream
+// and the bytes it inflates to, the stream checked against compress/flate's inflater.
+func slxDeflateRun(t *testing.T, runs int, flush bool, stored []byte) (raw, plain []byte) {
+	t.Helper()
+	var acc uint64
+	var n uint
+	bits := func(v uint64, k uint) { // deflate packs bits from each byte's low end
+		acc |= v << n
+		for n += k; n >= 8; n -= 8 {
+			raw, acc = append(raw, byte(acc)), acc>>8
+		}
+	}
+	align := func() {
+		if n > 0 {
+			raw, acc, n = append(raw, byte(acc)), 0, 0
+		}
+	}
+	if len(stored) > 0xffff || flush && len(stored) == 0 {
+		t.Fatalf("%d stored bytes: want 1 to 65,535 after a flush, at most 65,535 else", len(stored))
+	}
+	final := uint64(0)
+	if len(stored) == 0 {
+		final = 1
+	}
+	bits(final, 1)
+	bits(2, 2)                               // a dynamic-Huffman block
+	bits(29, 5)                              // 286 literal/length codes
+	bits(0, 5)                               // one distance code: distance 1
+	bits(14, 4)                              // 18 code-length codes, in the format's order: 16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1
+	clen := map[int]uint64{0: 1, 1: 2, 2: 2} // code lengths 0, 1 and 2 coded 0, 10 and 11
+	for _, sym := range []int{16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1} {
+		bits(clen[sym], 3)
+	}
+	code := map[int]uint64{0: 0, 1: 1, 2: 3} // a code length's code, bits reversed to pack
+	for sym := 0; sym < 286; sym++ {
+		k := 0
+		switch sym {
+		case ' ', 256: // a space and end-of-block: 10 and 11
+			k = 2
+		case 285: // length 258: 0
+			k = 1
+		}
+		bits(code[k], uint(1+min(k, 1)))
+	}
+	bits(code[1], 2) // distance 1: 0, one bit
+	bits(1, 2)       // a space
+	for i := 0; i < runs; i++ {
+		bits(0, 2) // length 258, distance 1
+	}
+	bits(3, 2) // end of block
+	if flush {
+		bits(0, 3)
+		align()
+		raw = append(raw, 0, 0, 0xff, 0xff)
+	}
+	if len(stored) > 0 {
+		bits(1, 3)
+		align()
+		raw = append(raw, byte(len(stored)), byte(len(stored)>>8), ^byte(len(stored)), ^byte(len(stored)>>8))
+		raw = append(raw, stored...)
+	}
+	align()
+	plain = append(bytes.Repeat([]byte(" "), 1+258*runs), stored...)
+	if got, err := io.ReadAll(flate.NewReader(bytes.NewReader(raw))); err != nil || !bytes.Equal(got, plain) {
+		t.Fatalf("the hand-written stream inflates to %d bytes (%v), want %d", len(got), err, len(plain))
+	}
+	return raw, plain
+}
+
+// slxRawPackage is an OPC zip of the one part name, deflated as raw (slxDeflateRun's stream).
+func slxRawPackage(t *testing.T, name string, raw, plain []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	f, err := w.CreateRaw(&zip.FileHeader{Name: name, Method: zip.Deflate, CRC32: crc32.ChecksumIEEE(plain),
+		CompressedSize64: uint64(len(raw)), UncompressedSize64: uint64(len(plain))})
+	if err == nil {
+		_, err = f.Write(raw)
+	}
+	if err == nil {
+		err = w.Close()
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// TestSlxInflateRatioAtFixedOffsets: the ratio cap is checked at fixed offsets of a part's
+// inflated bytes (every 32 KiB and the part's end), never wherever the inflater returns, so
+// the verdict and which cap gives it are the bytes' alone. 30,961 spaces at about 400:1, then
+// 60,000 stored letters, read the same whether a sync flush (where the inflater returns)
+// follows the spaces or not: past 200:1 only before the first 32 KiB. A run past 200:1 at the
+// first 32 KiB is refused there, from the same bytes whatever compressor the toolchain has.
+func TestSlxInflateRatioAtFixedOffsets(t *testing.T) {
+	root := "simulink/systems/system_root.xml"
+	letters := []byte(simulinkLetters(60_000, 5))
+	for _, flush := range []bool{false, true} {
+		raw, plain := slxDeflateRun(t, 120, flush, letters)
+		if _, err := slxParts(slxRawPackage(t, root, raw, plain)); err != nil {
+			t.Errorf("sync flush %v: %v; want the part read, its first 32 KiB inside %d:1", flush, err, SimulinkMaxRatio)
+		}
+	}
+	raw, plain := slxDeflateRun(t, 16_000, false, nil)
+	_, err := slxParts(slxRawPackage(t, root, raw, plain))
+	if want := "inflates past 200:1 (32768 bytes from "; !errors.Is(err, ErrSimulinkCap) || !strings.Contains(err.Error(), want) {
+		t.Errorf("err = %v, want the ratio cap at the first 32 KiB (%q)", err, want)
+	}
 }
 
 // TestReadSimulinkModelRealRatio is S-R3: the ratio cap counts the compressed bytes the
