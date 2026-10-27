@@ -1,3 +1,4 @@
+from pathlib import Path
 """Tests for azure_policy_oracle.py: `python -m unittest test_azure_policy_oracle` from this directory."""
 
 import json
@@ -30,7 +31,7 @@ class OracleTest(unittest.TestCase):
                     f.write(body)
             out = os.path.join(d, "out.json")
             ao.main(["-subject", d, "-out", out])
-            got = json.load(open(out))
+            got = json.loads(Path(out).read_text())
         defs = {(x["path"], x["name"], x["kind"]): (x["line"], x["end"]) for x in got["definitions"]}
         self.assertEqual(defs[("d.json", "d.json", "policy")], (2, 8))
         self.assertEqual(defs[("d.json", "effect", "variable_decl")], (3, 3))

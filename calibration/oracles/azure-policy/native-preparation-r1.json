@@ -1,0 +1,12 @@
+{
+  "files": 455,
+  "bytes": 129976447,
+  "manifest_sha256": "313c7eff0ff667f4529db42a832d6a83e9aa5f9a714f24599dbf8ae5b15d706e",
+  "apphost_sha256": "3efab825453d8d8cbcf23b9b7ceb8fd9828090782fb28a891afb7aefda64ff9e",
+  "version": "AzurePolicy.azurepolicyextension/0.2.6",
+  "archive_directory_sha256": "46a40f189c8ae634b8841a5cc84a46dfe23ffd1f3b68017dd91fef35f1c9cd0d",
+  "fetched_native_ranges": 2,
+  "fetched_native_bytes": 49619819,
+  "kind": "native preparation only; not executed",
+  "native_executed": false
+}
