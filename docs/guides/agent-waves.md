@@ -99,6 +99,17 @@ reaches a changed symbol (one that reaches it only through `error.Error`, `fmt.S
   push nor widens the range.
 - EW-12 makes this gate the wave's contract; it was proven on 2026-09-29, once EW-0 landed the
   integration line.
+- Before merging, the integrator checks for stacked work. For each branch, it tests every other
+  open pull request's head with `git merge-base --is-ancestor <other-head> <branch-head>`, and stops
+  if a branch carries a pull request that is held or unreviewed. On 2026-10-26 a held change
+  reached main inside another pull request's history, because the wave checked only first-parent
+  merges.
+- A change to shared extraction, fusion or harness code that other readings pass through lands
+  alone in its wave, with a regrade of every reading it can move.
+- Each merge commit's `Verified:` line says what happened: `clean merge`, or the files whose
+  conflicts were resolved.
+- A cross-controller push hold is posted on the lane-protocol issue before the gate starts, and
+  the "landed" note follows with the new sha. A local gate takes `scripts/gate-lease.sh`.
 
 ## Ids and messages
 
@@ -107,6 +118,9 @@ reaches a changed symbol (one that reaches it only through `error.Error`, `fmt.S
   the unused ones; two workers once minted the same ids on 2026-09-29.
 - The orchestrator never messages a running workflow agent. A correction goes into a later brief or
   a follow-up worker.
+- A review is relayed to its worker by the report's own finding count, naming every finding id. It
+  is never relayed by grepping headings: on 2026-10-26 a heading grep dropped a blocker that left
+  seven tests red against main.
 
 ## Wave maps (XM-7, XM-9, XM-14)
 

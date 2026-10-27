@@ -60,9 +60,63 @@ result: #Result & {
 	quality: [{instrument: "indexbench L0", reading: "definition recall"}]
 	pass_k: 1
 	pins: {plugin_digest: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", stanza_sha: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", description_sha: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}
+	replay: {corpus_sha: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", fathom_commit: "0123456789ab"}
 	prereg_sha:  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	spend_usd:   0
 	spend_label: "labs-replay"
+	attributes: {"gen_ai.tool.name": "find_symbol"}
+}
+
+// A priced arm pins what it ran: the plugin digest, stanza and
+// description shas RecordArmPins stamps.
+resultPlugin: #Result & {
+	run_id:  "find-symbol-v1"
+	task_id: "find-definition"
+	arm:     "plugin-minus-find-symbol"
+	trials:  3
+	evaluation: {criterion_id: "firing", verdict: "indeterminate", reason: "counts only"}
+	surface_unused: false
+	lab:            "lab-find-symbol"
+	feature:        "F-01"
+	stages: {
+		eligible: {value: 1, interval: [0.4385, 1], n: 3}
+		fired: {value: 1, interval: [0.4385, 1], n: 3}
+		delivered: "not measured: transcript unavailable"
+		acted:     "not measured: no acted-on instrument"
+		helped:    "not measured: one arm only"
+	}
+	quality: [{instrument: "indexbench L0", reading: "definition recall"}]
+	pass_k: 1
+	pins: {plugin_digest: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", stanza_sha: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", description_sha: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}
+	prereg_sha:  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	spend_usd:   0
+	spend_label: "labs-replay"
+	attributes: {"gen_ai.tool.name": "find_symbol"}
+}
+
+// A replay row names what replay can prove instead of pins it cannot
+// know: the corpus it decoded and the fathom commit that read it.
+resultReplay: #Result & {
+	run_id:  "find-symbol-v2"
+	task_id: "mcp:find_symbol"
+	arm:     "replay"
+	trials:  0
+	evaluation: {criterion_id: "firing", verdict: "indeterminate", reason: "counts only"}
+	lab:     "lab-find-symbol"
+	feature: "F-01"
+	stages: {
+		eligible: "not measured: every point is unclassified in v0"
+		fired: {value: 1, interval: [0.4385, 1], n: 3}
+		delivered: {value: 1, interval: [0.4385, 1], n: 3}
+		acted:  "not measured: AD-21/RO-M4 not built"
+		helped: "not measured: replay has no arm"
+	}
+	quality: []
+	pass_k:  0
+	replay: {corpus_sha: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", fathom_commit: "0123456789ab"}
+	prereg_sha:  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	spend_usd:   0
+	spend_label: "replay"
 	attributes: {"gen_ai.tool.name": "find_symbol"}
 }
 

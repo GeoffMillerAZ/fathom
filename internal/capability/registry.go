@@ -397,6 +397,25 @@ func Default() Registry {
 			Remedy: func(Probe) Remedy { return Remedy{Cmd: "fathom init --guards"} },
 		},
 		{
+			// ADR-083: the egress guard. Recommended by default (warn), so it
+			// is on; the user decides, and a repository may switch it on,
+			// never off. [guards] egress is its config.toml switch.
+			ID:         "egress-guard",
+			Switchable: true,
+			Seam:       SeamGuards,
+			Summary:    "Before a shell command or a web tool call that sends data off this machine (curl or wget uploads, nc/socat, scp/rsync/sftp/ssh, git push to an unlisted host, gh gist create, cloud uploads, WebFetch, WebSearch), one advisory line names the rule and how to allow it; [guards] egress = \"enforce\" denies instead. String matching is a tripwire, not data-loss prevention, and on Codex only Bash is checked: Codex web search and MCP calls are not intercepted.",
+			Default:    true,
+			Scopes:     ScopeUserGoverns,
+			Cost:       "one local argv read per shell or web tool call; a git push reads its remote's URL with git; no daemon call",
+			Detect: func(p Probe) State {
+				if !p.HooksReferenced {
+					return State{Reason: "no hook is wired to run it"}
+				}
+				return State{Operating: true, Detail: "hooks wired"}
+			},
+			Remedy: func(Probe) Remedy { return Remedy{Cmd: "fathom init"} },
+		},
+		{
 			// FD-20: the tech packs a repository's own dependency pins put
 			// on disk (docs/design/fathom-dir.md section 7.2). On by
 			// default when discovered (section 13 question 1: adoption is

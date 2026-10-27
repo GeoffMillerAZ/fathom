@@ -3,9 +3,11 @@
 ## Verdict
 
 **Measured:** the five fixed subjects grade L1 good and L2/L3 excellent under
-the current grader. Cross-file precision and recall are both 35/35; this clears
+main's D19 harness at `440a94365`. Cross-file precision and recall are both 35/35; this clears
 the lane's D19 count guard through one privately preselected subject, not broad
-evidence. D19 (#7) is not on main; L3 remains held for its lang-regrade. All three
+evidence. Both metric-own denominators are 35, above D19's 20-reference
+minimum. Removing microservices-demo leaves 19/19, so one-subject count-floor
+dependence remains. No manifest-specific subject bar applies. All three
 pooled runs agree. Native truth, built-file lists,
 receipts and tracked sources match before and after byte for byte. The eight
 native resource no-ops remain in Fathom's definition precision denominator.
@@ -122,8 +124,9 @@ Pooled counts are 194 matched / 202 Fathom / 194 native definitions,
 is 0.9604 and recall is 1. Reference precision/recall and cross-reference
 precision/recall are each 1. D19's **metric-own** L3 denominators are
 `xref_fathom=35` for precision and `xref_truth=35` for recall. The unchanged
-reader reports L1 good, L2 excellent and L3 excellent; the public reading
-copies the selected median without changing any measured field.
+reader reports L1 good, L2 excellent and L3 excellent; the frozen extraction snapshot
+copies the selected median. The current public reading is main-harness D19
+output, with the measurements conserved and provenance notes regenerated.
 
 Removing one subject at a time and recomputing the pooled counts under the
 current harness rules gives:
@@ -234,6 +237,27 @@ only Kustomize changes, 186 files and all 31 frozen/parity files remain byte-ide
 and all 156
 eligible readings preserve required kinds. No metric key is removed. The X-R5
 scan finds only benign syntax, package names and guard patterns; no subject
-identities, name/email shapes or local home paths. Counts and log digests are in
+identities, name/email shapes or local home paths. Commands, exit statuses and counts are in
 the [controls receipt](data/2026-10-26-kustomize-r1-controls.json). The controller owns full merged-head `task validate`, verification,
 queue/board/runtime regeneration and push. No plan box is changed.
+
+## R-D19 reconciliation with main
+
+Main `440a94365` is merged once. The frozen five-subject reading is regenerated
+with that exact clean main `indexbench lang-regrade`; extraction, native truth,
+all subject counts, oracle tiers, timings, required kinds and extraction identity
+are conserved. D19 changes no non-note value relative to the lane parent because
+both cross-reference denominators already hold 35. Relative to main's old
+13/13 population, this lane supplies 35/35, removes the thin-evidence L3 reason,
+and gives L3 excellent / level_met L3. L1 remains good because all eight native
+no-op precision costs remain. The reading note and
+[regrade receipt](data/2026-10-26-kustomize-d19-regrade.json) enumerate changed
+fields against both parents separately. Each leave-one-subject-out count is
+recorded; only removing microservices-demo drops either D19 denominator below 20.
+
+The earlier local untrimmed indexbench digest and historical raw-log digests
+are withdrawn from the public receipts because they can encode private paths.
+Source revision/clean-state provenance and execution commands/status remain.
+The historical extraction receipt stays a pre-D19 snapshot; current reading
+bytes are exactly the new main-harness output. No extraction or native-truth measurement was
+rerun for this harness-only regrade; focused native tests were rerun. No cloud call was made.

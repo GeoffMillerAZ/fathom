@@ -249,6 +249,15 @@ var claudeCode = Descriptor{
 			Input: withKey(withKey(withKey(claudeToolIn, "agent_id", "agent_id"), "tool_input", "tool_input"), "tool_response", "tool_response"),
 			Note:  "record completed agent lookups with the harness session and agent identity; local range hashes only, no daemon request or injection",
 		},
+		// ADR-083's egress guard on the harness's own web tools, appended
+		// after ADR-080's rows so nothing above moves. Not opt-in: the
+		// guard warns by default and [guards] egress = "off" silences it.
+		{
+			Capability: CapGuardPreWeb, Event: EventPreTool, Harness: "PreToolUse", Matcher: "WebFetch|WebSearch", Verb: "edit-hook --pre", Marker: "fathom edit-hook --pre", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(claudeToolIn, "url", "tool_input.url"), "allowed_domains", "tool_input.allowed_domains"),
+			Output: claudeContextOut,
+			Note:   "the egress guard: WebFetch's URL host, or WebSearch's allowed_domains, checked against [guards] egress_allow; warn (the default) injects one line, enforce denies while guard enforcement is on; a tripwire, not data-loss prevention — permissions.deny and the sandbox network allowlist are the boundary",
+		},
 	},
 	// The full event surface of Claude Code 2.1.270, as the hooks
 	// reference lists it (fetched 2026-09-12). Every row fathom does not
@@ -260,6 +269,7 @@ var claudeCode = Descriptor{
 		"Edit": ToolFileEdit, "Write": ToolFileEdit, "MultiEdit": ToolFileEdit,
 		"Bash": ToolShell,
 		"Read": ToolDiscoveryRead, "Grep": ToolDiscoveryGrep, "Glob": ToolDiscoveryGlob,
+		"WebFetch": ToolWeb, "WebSearch": ToolWeb,
 	},
 	Vehicles: map[Capability]Vehicle{
 		CapPrime:                VehicleHookInject,
@@ -289,6 +299,7 @@ var claudeCode = Descriptor{
 		CapReadout:              VehicleHookSilent,
 		CapClaimCheck:           VehicleHookInject,
 		CapReadOutlineHint:      VehicleHookInject,
+		CapGuardPreWeb:          VehicleHookInject,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -311,6 +322,7 @@ var claudeCode = Descriptor{
 		CapReadout:              "opt-in ([readouts] mode, user scope): PostToolUse and PostToolUseFailure on Bash; observe computes the readout of the output and writes one hook-log row (sizes, rule, hashes, never text); emits nothing in this build",
 		CapClaimCheck:           "opt-in ([hooks] claim_check): Stop and SubagentStop check a test or gate claim in the final message (last_assistant_message) against the session's test-run rows; one advisory line when a run contradicts it or none backs it, at most once per stop chain; reads the hook log only",
 		CapReadOutlineHint:      "opt-in ([hooks] read_outline_hint): PreToolUse on Read; a whole read of a source file over 200 lines the session has not edited gets one line, its top-level symbols with line ranges from fathom's own extractors over the file on disk (150 ms, else nothing) and the offset and limit recipe; the read runs unchanged",
+		CapGuardPreWeb:          "PreToolUse on WebFetch|WebSearch: the egress guard checks the URL host (or the search's allowed_domains) against [guards] egress_allow; warn by default, enforce denies; a tripwire — Claude Code's permissions.deny and sandbox network allowlist are the boundary",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open",
@@ -457,12 +469,13 @@ var codex = Descriptor{
 		CapReadout:              VehicleAbsent,
 		CapClaimCheck:           VehicleAbsent,
 		CapReadOutlineHint:      VehicleAbsent,
+		CapGuardPreWeb:          VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install",
 		CapObligationsPostEdit:  "PostToolUse on apply_patch (first file of the patch); MEASURED firing 2026-09-12 on a real patch. The `obligations` MCP tool is the fallback until the hook is trusted",
 		CapGuardPreEdit:         "PreToolUse on apply_patch, inject-only (no permissionDecision); MEASURED firing 2026-09-12",
-		CapGuardPreShell:        "PreToolUse on Bash (shell and exec_command), inject-only",
+		CapGuardPreShell:        "PreToolUse on Bash (shell and exec_command), inject-only; the egress guard's command checks ride it",
 		CapDiscoveryObserve:     "Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved",
 		CapStopVerify:           "advisory; `--block` renders {\"decision\":\"block\"} — the pre-push verify gate is the backstop",
 		CapDepositSessionEnd:    "SessionEnd reason is always \"other\", which the verb does not deposit on — `fathom thread note` before ending a session",
@@ -483,6 +496,7 @@ var codex = Descriptor{
 		CapReadout:              "not ported to Codex yet — the readout hook reads Claude Code's Bash envelope only",
 		CapClaimCheck:           "not ported to Codex yet — the claim check reads Claude Code's last_assistant_message and the test-run rows, which Codex does not write",
 		CapReadOutlineHint:      "not ported to Codex yet — the hint reads Claude Code's Read tool envelope (file_path, offset, limit) only",
+		CapGuardPreWeb:          "fathom's Codex hooks see Bash and apply_patch only: the egress guard checks shell commands, and Codex web search and MCP calls are not intercepted — Codex's own sandbox network setting is the control there",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
 	GatePosture: "advisory, fail-open; the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
@@ -626,6 +640,7 @@ var geminiCLI = Descriptor{
 		CapReadout:              VehicleAbsent,
 		CapClaimCheck:           VehicleAbsent,
 		CapReadOutlineHint:      VehicleAbsent,
+		CapGuardPreWeb:          VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapSubagentPrime:        geminiWave3Note,
@@ -639,6 +654,7 @@ var geminiCLI = Descriptor{
 		CapReadout:              "not ported to Gemini CLI yet",
 		CapClaimCheck:           "not ported to Gemini CLI yet",
 		CapReadOutlineHint:      "not ported to Gemini CLI yet",
+		CapGuardPreWeb:          "not ported to Gemini CLI yet",
 		CapPrime:                "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
 		CapObligationsPostEdit:  "AfterTool on write_file|replace via additionalContext; the `obligations` MCP tool is the fallback until the hook is accepted",
 		CapGuardPreEdit:         "BeforeTool on write_file|replace as systemMessage (terminal, not model context) — additionalContext on BeforeTool is UNSHOWN",
@@ -756,6 +772,7 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapReadout:              VehicleAbsent,
 		CapClaimCheck:           VehicleAbsent,
 		CapReadOutlineHint:      VehicleAbsent,
+		CapGuardPreWeb:          VehicleAbsent,
 	}
 }
 

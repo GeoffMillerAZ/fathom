@@ -69,7 +69,6 @@ exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the g
 exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/daemon_census.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/daemon_census.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/intentbaseline.go	one-shot CLI verb with no request context; the git/child call ends with the process

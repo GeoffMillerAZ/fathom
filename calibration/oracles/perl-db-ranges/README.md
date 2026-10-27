@@ -209,6 +209,41 @@ For a future fresh subject, the same collector requires its full source pin,
 subject name and `--coverage-floor .95`; the floor is checked against all
 tracked Perl units and all independent named tags before a passing receipt.
 
+`holdout.py` is the committed one-shot orchestration for that future subject.
+Freeze its source commit, remote, license and clean instrument commit in the
+protocol before invoking it. The runner refuses an existing scratch directory,
+writes a source-commit spend register under the Git common directory shared by
+all worktrees and
+`holdout-spent.json` before clone, and records full source/instrument
+commits on every phase plus the built binary hash on build, grade and retime.
+It uses the pinned Perl/PPI/Ctags inputs, installs only the subject's own
+tracked CPAN declaration into an isolated prefix when one exists, then runs
+the unchanged PPI primary, native range companion, fresh indexbench build,
+grade and three retimings. Compiler network and write restrictions remain in
+`runner.py`. It calls `holdout_receipt.py` after a completed run or a
+post-spend failure. A failed phase still exits nonzero after publishing its
+count/hash receipt with false acceptance and unknown counts left null.
+Load waiting and execution each have an independent bounded budget; the phase
+row names load, launch, contract and interrupt failures even if no child exits.
+Before build and collection, the runner rechecks the instrument commit and
+cleanliness. Collection executes committed instrument files copied into scratch.
+Identity or consistency mismatches still refuse publication. Retime records
+bind the immutable source, oracle, binary and reading digest before launch;
+a missed coverage or population gate also remains a false criterion.
+No replacement subject has been selected or run by this instrument addition.
+Before running, commit exactly one `## Next holdout pin` fenced JSON block in
+`PROTOCOL.md` with string fields `subject`, `source_commit`, `remote`, `license`,
+and `dependency_declaration` (`none` or the tracked CPAN declaration). The
+runner reads that block from the instrument commit and requires exact argument
+matches. A fresh clone has no spend register, so the committed pin and the
+measured-commit denylist must be updated after a real spend before using a
+fresh clone. An old frozen commit alone cannot know about a later spend.
+
+```sh
+python3 calibration/oracles/perl-db-ranges/holdout.py --self-test
+python3 calibration/oracles/perl-db-ranges/holdout.py --instrument-repo . --instrument-commit "$FROZEN_INSTRUMENT_COMMIT" --subject "$FROZEN_SUBJECT" --source-commit "$FROZEN_SOURCE_COMMIT" --remote "$FROZEN_REMOTE" --scratch "$FRESH_HOLDOUT_SCRATCH" --perl "$PERL_BINARY" --ctags "$CTAGS_BINARY" --cpanm "$CPANM_BINARY" --cpanm-archive "$CPANM_ARCHIVE"
+```
+
 The harness-only repeat requires a clean full-commit checkout and configured
 `TMPDIR`, `GOTMPDIR` and `GOCACHE` directories outside it. Set
 `PERL_GRADE_RESULTS` to a fresh path under this checkout's `workspace/` or

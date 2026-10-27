@@ -7,6 +7,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import math
 from pathlib import Path
 import re
 import statistics
@@ -20,6 +21,8 @@ SHA = re.compile(r"^[0-9a-f]{64}$")
 PHASES = ("clone-once", "checkout-pin", "ppi-primary", "compiler-ranges",
           "build-indexbench", "grade-holdout", "retime-three")
 FROZEN_FILES = ("runner.py", "dependencies.py", "FathomPerlCompileGuard.pm")
+PHASE_FAILURES = {"load_wait_exceeded", "prelaunch_deadline", "launch_failed",
+                  "contract_failed", "interrupted", "terminated"}
 
 
 def need(ok, message):
@@ -47,6 +50,26 @@ def load(path):
     return json.loads(Path(path).read_text())
 
 
+def phase_row_shape(row):
+    def number(value):
+        return type(value) in (int, float) and math.isfinite(value) and value >= 0
+
+    failure = row.get("failure") if isinstance(row, dict) else None
+    return (isinstance(row, dict) and isinstance(row.get("phase"), str) and
+            (failure is None or failure in PHASE_FAILURES) and
+            (type(row.get("exit")) is int or
+             (row.get("exit") is None and failure in PHASE_FAILURES)) and
+            isinstance(row.get("timed_out"), bool) and
+            (number(row.get("launch_load")) or
+             (row.get("launch_load") is None and failure in PHASE_FAILURES)) and
+            number(row.get("seconds")) and
+            ("load_wait_seconds" not in row or number(row["load_wait_seconds"])))
+
+
+def phase_failed(row):
+    return row["exit"] != 0 or row["timed_out"] or bool(row.get("failure"))
+
+
 def artifact_shape(key, value):
     required = {
         "spent": ("instrument_commit", "source_commit", "spent_before", "spent_at_utc"),
@@ -58,12 +81,7 @@ def artifact_shape(key, value):
         "primary": ("tool", "version", "tier"),
     }
     if key == "phases":
-        return isinstance(value, list) and all(isinstance(row, dict) and
-            isinstance(row.get("phase"), str) and
-            type(row.get("exit")) is int and isinstance(row.get("timed_out"), bool) and
-            type(row.get("launch_load")) in (int, float) and
-            type(row.get("seconds")) in (int, float)
-            for row in value)
+        return isinstance(value, list) and all(phase_row_shape(row) for row in value)
     if not isinstance(value, dict) or not all(field in value for field in required[key]):
         return False
     if key == "meta":
@@ -215,9 +233,9 @@ def phase_labels(phases, installed, instrument=None, source_commit=None,
     labels = [row["phase"] for row in phases]
     retime_recovery = labels == expected + ["retime-three"]
     need((retime_recovery or labels == (expected if complete else expected[:len(labels)])) and
-         all(isinstance(row["exit"], int) and isinstance(row["timed_out"], bool) and
-             isinstance(row["launch_load"], (int, float)) and row["launch_load"] >= 0
-             for row in phases), "phase sequence/shape mismatch")
+         all(phase_row_shape(row) for row in phases), "phase sequence/shape mismatch")
+    need(not any(phase_failed(row) for row in phases[:-1]),
+         "phase after terminal failure")
     if retime_recovery:
         first, second = phases[-2:]
         need(first["exit"] == 0 and not first["timed_out"] and first["launch_load"] > 9 and
@@ -240,18 +258,21 @@ def phase_labels(phases, installed, instrument=None, source_commit=None,
         need(phases[-2]["retime_input_sha256"] == retime_input_sha256,
              "retime recovery digest differs from actual frozen inputs")
     effective = phases[:-2] + phases[-1:] if retime_recovery else phases
-    return all(row["exit"] == 0 and not row["timed_out"] and row["launch_load"] <= 9
+    return all(not phase_failed(row) and row["launch_load"] is not None and
+               row["launch_load"] <= 9
                for row in effective)
 
 
 def public_phases(phases):
     return [{"phase": row["phase"], "exit": row["exit"],
-             "timed_out": row["timed_out"], "launch_load": row["launch_load"]}
+             "timed_out": row["timed_out"], "launch_load": row["launch_load"],
+             **{key: row[key] for key in ("failure", "load_wait_seconds") if key in row}}
             for row in phases]
 
 
 def public_shape(value):
-    allowed = {"Perl holdout count/hash receipt", *PHASES,
+    allowed = {"Perl holdout count/hash receipt", *PHASES, *PHASE_FAILURES,
+               "artifact_consistency",
                "install-declared-dependencies",
                "spent", "meta", "ranges", "reading", "phases", "measured",
                "primary", "retime", "lock", "archive_state",
@@ -499,6 +520,8 @@ def partial_receipt(private, paths, scratch, runner, instrument, subject,
         units = len(entries)
         compiled, unresolved = meta["compiled_files"], meta["unresolved_files"]
         need(compiled + unresolved == units and len(meta["failures"]) == unresolved and
+             sum(row.get("compiler_status") == "ok" for row in
+                 meta["joining"]["files"]) == compiled and
              len(meta["joining"]["files"]) == units, "partial native unit mismatch")
         network = meta["network_policy"]["control"]
         need(network["denial"] == "EPERM" and
@@ -590,8 +613,8 @@ def partial_receipt(private, paths, scratch, runner, instrument, subject,
     }
 
 
-def collect(scratch, repo, instrument, subject="Dancer2", source_commit=PIN,
-            coverage_floor=None):
+def _collect_strict(scratch, repo, instrument, subject="Dancer2", source_commit=PIN,
+                    coverage_floor=None):
     spec = importlib.util.spec_from_file_location(
         "perl_holdout_runner", repo / "calibration/oracles/perl-db-ranges/runner.py")
     need(spec and spec.loader, "range runner unavailable")
@@ -715,8 +738,116 @@ def collect(scratch, repo, instrument, subject="Dancer2", source_commit=PIN,
     return result
 
 
+def failed_phase_evidence(scratch, instrument, source_commit):
+    """Validate the two records that remain authoritative after a failed run."""
+    spent_path, phases_path = scratch / "holdout-spent.json", scratch / "phases.json"
+    need(spent_path.is_file() and phases_path.is_file(), "failed run lacks spend or phases")
+    try:
+        spent, phases = load(spent_path), load(phases_path)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ValueError("failed run spend/phases malformed") from exc
+    need(artifact_shape("spent", spent) and artifact_shape("phases", phases),
+         "failed run spend/phases malformed")
+    need(HEX.fullmatch(instrument or "") and HEX.fullmatch(source_commit or "") and
+         spent["instrument_commit"] == instrument and
+         spent["source_commit"] == source_commit and
+         spent["spent_before"] == "clone-once" and spent["spent_at_utc"],
+         "failed run spend identity mismatch")
+    need(phases and phase_failed(phases[-1]), "failed run lacks terminal failing phase")
+    installed = any(row["phase"] == "install-declared-dependencies" for row in phases)
+    binary_hashes = {row.get("binary_sha256") for row in phases if row["phase"] in
+                     ("build-indexbench", "grade-holdout", "retime-three") and
+                     row.get("binary_sha256") is not None}
+    need(len(binary_hashes) <= 1 and
+         all(SHA.fullmatch(value or "") for value in binary_hashes),
+         "failed run phase binary identity drift")
+    binary_hash = next(iter(binary_hashes), None)
+    need(all(row.get("binary_sha256") for row in phases if
+             row["phase"] == "build-indexbench" and row["exit"] == 0),
+         "successful build lacks binary provenance")
+    phase_labels(phases, installed, instrument, source_commit, binary_hash,
+                 legacy=False, complete=False)
+    public_shape({"spent_at_utc": spent["spent_at_utc"],
+                  "phase_outcomes": public_phases(phases)})
+    return spent, phases
+
+
+def failed_artifacts(scratch, subject, instrument, source_commit):
+    """Report only fixed artifact names; never expose rejected artifact data."""
+    paths = {"meta": scratch / (subject + ".ranges.meta.json"),
+             "ranges": scratch / (subject + ".ranges.json"),
+             "reading": scratch / "reading.json",
+             "measured": scratch / "measured.private.json",
+             "primary": scratch / (subject + ".json")}
+    invalid = []
+    for key, path in paths.items():
+        if not path.is_file():
+            continue
+        try:
+            value = load(path)
+            available_identity(key, value, instrument, source_commit, subject)
+            need(artifact_shape(key, value), "artifact malformed")
+        except (ValueError, UnicodeDecodeError, OSError, TypeError):
+            invalid.append(key)
+    return invalid
+
+
+def failure_only_receipt(scratch, repo, instrument, subject, source_commit,
+                         coverage_floor, spent, phases):
+    invalid = set(failed_artifacts(scratch, subject, instrument, source_commit))
+    invalid.add("artifact_consistency")
+    paths = {"spent": scratch / "holdout-spent.json",
+             "meta": scratch / (subject + ".ranges.meta.json"),
+             "ranges": scratch / (subject + ".ranges.json"),
+             "reading": scratch / "reading.json", "phases": scratch / "phases.json",
+             "measured": scratch / "measured.private.json",
+             "primary": scratch / (subject + ".json"),
+             "retime": scratch / "retime-three.log", "indexbench": scratch / "indexbench",
+             "dependency-lock": scratch / "dependency-lock.json",
+             "dependency-archives": scratch / "dependency-archives.private.json"}
+    result = {
+        "tool": "Perl holdout count/hash receipt", "partial": True,
+        "source_commit": source_commit, "instrument_commit": instrument,
+        "spent_before": "clone-once", "spent_at_utc": spent["spent_at_utc"],
+        "source_manifest_sha256": None, "units": None, "harness_files": None,
+        "native_minus_harness_files": None, "compiled": None, "unresolved": None,
+        "named_tags": None, "paired": None, "ctags_unknown_files": None,
+        "failure_reason_counts": None, "range_eligible": None, "range_ok": None,
+        "indexbench_binary_sha256": None, "dependency_lock_sha256": None,
+        "local_library_sha256": None, "phase_identity_bound": True,
+        "phase_outcomes": public_phases(phases),
+        "artifact_failure_count": len(invalid), "invalid_artifacts": sorted(invalid),
+        "criteria": {"phase_execution_and_load_pass": False,
+                     "coverage_floors_preregistered": False,
+                     "coverage_and_existing_gates_pass": False},
+        "collector_sha256": digest(__file__),
+        "frozen_instrument_file_sha256": frozen_file_hashes(repo, instrument),
+        "input_sha256": {key + ".sha256": digest(path) for key, path in paths.items()
+                         if path.is_file()},
+    }
+    public_shape(result)
+    return result
+
+
+def collect(scratch, repo, instrument, subject="Dancer2", source_commit=PIN,
+            coverage_floor=None, failed_run=False):
+    if not failed_run:
+        return _collect_strict(scratch, repo, instrument, subject, source_commit,
+                               coverage_floor)
+    spent, phases = failed_phase_evidence(scratch, instrument, source_commit)
+    try:
+        result = _collect_strict(scratch, repo, instrument, subject, source_commit,
+                                 coverage_floor)
+    except (ValueError, TypeError, KeyError, IndexError, subprocess.CalledProcessError):
+        return failure_only_receipt(scratch, repo, instrument, subject,
+                                    source_commit, coverage_floor, spent, phases)
+    need(result["criteria"]["coverage_and_existing_gates_pass"] is False,
+         "failed run unexpectedly passed all gates")
+    return result
+
+
 def self_test():
-    # Exercise the privacy boundary and a real consistency refusal without a source checkout.
+    # Exercise the privacy boundary and a real consistency refusal with a local fixture.
     private = {"name": "Author Person", "path": "private/source.pm",
                "native": [{"name": "Private::Method", "path": "private/source.pm"}]}
     projected = {"native_count": len(private["native"]), "private_sha256":
@@ -727,6 +858,22 @@ def self_test():
                "seconds": 1}
               for label in PHASES]
     phase_labels(phases, False, legacy=True)
+    impossible = [dict(row) for row in phases[:4]]
+    impossible[1]["exit"] = 1
+    try:
+        phase_labels(impossible, False, legacy=True, complete=False)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("phase after a terminal failure accepted")
+    for label in ("load_wait_exceeded", "prelaunch_deadline", "launch_failed",
+                  "contract_failed", "interrupted", "terminated"):
+        exceptional = [{**phases[0], "exit": None, "launch_load": None,
+                        "failure": label, "load_wait_seconds": 1.0}]
+        need(artifact_shape("phases", exceptional), "exception phase shape rejected")
+        need(not phase_labels(exceptional, False, legacy=True, complete=False),
+             "exception phase passed execution gate")
+        public_shape(public_phases(exceptional))
     try:
         phase_labels(phases[:1] + phases[:1] + phases[2:], False, legacy=True)
     except ValueError:
@@ -762,9 +909,10 @@ def self_test():
     for index, changes in ((5, {"exit": 2}),
                            (3, {"exit": -15, "timed_out": True}),
                            (6, {"launch_load": 10})):
-        failed = [dict(row) for row in future]
+        failed = [dict(row) for row in future[:index + 1]]
         failed[index].update(changes)
-        need(not phase_labels(failed, False, "a" * 40, "b" * 40, "c" * 64),
+        need(not phase_labels(failed, False, "a" * 40, "b" * 40, "c" * 64,
+                              complete=index == 6),
              "failed phase accepted as passing")
         public_shape({"phase_outcomes": public_phases(failed),
                       "criteria": {"phase_execution_and_load_pass": False,
@@ -810,42 +958,114 @@ def self_test():
     workspace_tmp.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=workspace_tmp) as directory:
         scratch = Path(directory)
+        source_dir = scratch / "Synthetic-source"
+        source_dir.mkdir()
+        (source_dir / "sample.pm").write_text("package Sample; sub ping { 1 }\n1;\n")
+        subprocess.run(["git", "-C", str(source_dir), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(source_dir), "add", "sample.pm"], check=True)
+        subprocess.run(["git", "-C", str(source_dir), "-c", "user.name=Fixture",
+                        "-c", "user.email=fixture@example.invalid", "commit", "-qm",
+                        "synthetic fixture"], check=True)
+        source_commit = subprocess.check_output(
+            ["git", "-C", str(source_dir), "rev-parse", "HEAD"], text=True).strip()
+        spec = importlib.util.spec_from_file_location(
+            "perl_holdout_selftest_runner",
+            Path(__file__).resolve().with_name("runner.py"))
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        snapshot = runner.snapshot(source_dir)
         (scratch / "holdout-spent.json").write_text(json.dumps({
-            "instrument_commit": "a" * 40, "source_commit": "b" * 40,
+            "instrument_commit": "a" * 40, "source_commit": source_commit,
             "spent_before": "clone-once", "spent_at_utc": "2026-10-26T00:00:00+00:00"}))
         failed_grade = [dict(row) for row in future[:6]]
-        failed_grade[1]["exit"] = 1  # no checkout snapshot available
+        for row in failed_grade:
+            row["source_commit"] = source_commit
         failed_grade[-1]["exit"] = 2
-        failed_grade[-2].pop("binary_sha256", None)
-        failed_grade[-1].pop("binary_sha256", None)
+        (scratch / "indexbench").write_bytes(b"synthetic binary")
+        for row in failed_grade[-2:]:
+            row["binary_sha256"] = digest(scratch / "indexbench")
         (scratch / "phases.json").write_text(json.dumps(failed_grade))
         (scratch / "reading.json").write_text('{"truncated":')
-        (scratch / "Synthetic-source").mkdir()  # Clone exists; checkout failed.
+        meta = {"subject": "Synthetic", "source_manifest": snapshot,
+                "compiled_files": 1, "unresolved_files": 0, "failures": [],
+                "joining": {"files": [{"compiler_status": "ok", "ctags_status": "ok"}],
+                            "tag_total": 1, "paired": 1, "ctags_unknown_files": 0,
+                            "compiler_unknown_files": 0, "tag_unpaired": 0},
+                "network_policy": {"control": {
+                    "denial": "EPERM", "destination": "127.0.0.1:1/tcp",
+                    "profile": "(version 1) (allow default) (deny network*)"}},
+                "dependency_context": {"local_lib_perl5_fingerprint_before": None,
+                                       "local_lib_perl5_fingerprint_after": None,
+                                       "lock_sha256": None},
+                "ctags": {"version": "Universal Ctags 6.2.1, fixture",
+                           "binary_sha256": "d" * 64},
+                "perl_binary_sha256": "e" * 64}
+        (scratch / "Synthetic.ranges.meta.json").write_text(json.dumps(meta))
+        ranges = {"tool": "perl-DB-sub-compile", "version": "v5.34.1", "tier": "A",
+                  "units": 1, "errored": 0, "ranges": [{}]}
+        (scratch / "Synthetic.ranges.json").write_text(json.dumps(ranges))
+        primary = {"tool": "ppi-calls", "version": "PPI 1.270", "tier": "C"}
+        (scratch / "Synthetic.json").write_text(json.dumps(primary))
         saved = globals()["frozen_file_hashes"]
         globals()["frozen_file_hashes"] = lambda _repo, _commit: {}
         try:
             receipt = collect(scratch, Path(__file__).resolve().parents[3],
-                              "a" * 40, "Synthetic", "b" * 40, .95)
+                              "a" * 40, "Synthetic", source_commit, .95)
             need(receipt["artifact_failure_count"] == 1 and
                  receipt["input_sha256"]["reading.sha256"] == digest(scratch / "reading.json") and
                  receipt["range_ok"] is None and
+                 receipt["units"] == 1 and receipt["compiled"] == 1 and
+                 receipt["phase_outcomes"][-1]["exit"] == 2 and
                  receipt["criteria"]["coverage_and_existing_gates_pass"] is False,
                  "failed grade with truncated reading was not published")
-            compiler_timeout = [dict(row) for row in future[:4]]
-            compiler_timeout[1]["exit"] = 1
+            inconsistent = copy.deepcopy(meta)
+            inconsistent["joining"]["files"][0]["compiler_status"] = "unknown"
+            (scratch / "Synthetic.ranges.meta.json").write_text(json.dumps(inconsistent))
+            try:
+                collect(scratch, Path(__file__).resolve().parents[3],
+                        "a" * 40, "Synthetic", source_commit, .95)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("inconsistent partial compiler counts accepted")
+            rejected_counts = collect(scratch, Path(__file__).resolve().parents[3],
+                                      "a" * 40, "Synthetic", source_commit, .95,
+                                      failed_run=True)
+            need(rejected_counts["compiled"] is None and
+                 rejected_counts["criteria"]["coverage_and_existing_gates_pass"] is False,
+                 "inconsistent partial counts escaped failure-only receipt")
+            (scratch / "Synthetic.ranges.meta.json").write_text(json.dumps(meta))
+            compiler_timeout = [dict(row) for row in failed_grade[:4]]
             compiler_timeout[-1].update(exit=-15, timed_out=True)
             (scratch / "phases.json").write_text(json.dumps(compiler_timeout))
             receipt = collect(scratch, Path(__file__).resolve().parents[3],
-                              "a" * 40, "Synthetic", "b" * 40, .95)
+                              "a" * 40, "Synthetic", source_commit, .95)
             need(receipt["phase_outcomes"][-1]["timed_out"] is True and
-                 receipt["compiled"] is None and
                  receipt["criteria"]["coverage_and_existing_gates_pass"] is False,
                  "compiler timeout was not published")
             (scratch / "phases.json").write_text(json.dumps(failed_grade))
+            (scratch / "Synthetic.json").write_text(json.dumps({**primary, "tool": "wrong"}))
+            try:
+                collect(scratch, Path(__file__).resolve().parents[3],
+                        "a" * 40, "Synthetic", source_commit, .95)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("strict primary contract mismatch accepted")
+            receipt = collect(scratch, Path(__file__).resolve().parents[3],
+                              "a" * 40, "Synthetic", source_commit, .95,
+                              failed_run=True)
+            need(receipt["units"] is None and receipt["compiled"] is None and
+                 receipt["range_ok"] is None and "primary" in receipt["invalid_artifacts"] and
+                 receipt["phase_outcomes"][-1]["exit"] == 2 and
+                 receipt["criteria"]["coverage_and_existing_gates_pass"] is False,
+                 "failed contract did not produce failure-only receipt")
+            (scratch / "Synthetic.json").write_text(json.dumps(primary))
             (scratch / "reading.json").write_text(json.dumps({"fathom_commit": "f" * 40}))
             try:
                 collect(scratch, Path(__file__).resolve().parents[3],
-                        "a" * 40, "Synthetic", "b" * 40, .95)
+                        "a" * 40, "Synthetic", source_commit, .95)
             except ValueError:
                 pass
             else:
@@ -854,36 +1074,72 @@ def self_test():
                 "subjects": [{"name": "Synthetic", "sha": "f" * 40}]}))
             try:
                 collect(scratch, Path(__file__).resolve().parents[3],
-                        "a" * 40, "Synthetic", "b" * 40, .95)
+                        "a" * 40, "Synthetic", source_commit, .95)
             except ValueError:
                 pass
             else:
                 raise AssertionError("readable nested source drift accepted")
             (scratch / "reading.json").write_text('{"truncated":')
             (scratch / "Synthetic.ranges.meta.json").write_text('{"truncated":')
-            (scratch / "Synthetic.ranges.json").write_text(json.dumps({
-                "tool": "perl-DB-sub-compile", "version": "v5.34.1", "tier": "A",
-                "units": 1, "errored": 1, "ranges": []}))
             receipt = collect(scratch, Path(__file__).resolve().parents[3],
-                              "a" * 40, "Synthetic", "b" * 40, .95)
+                              "a" * 40, "Synthetic", source_commit, .95)
             need(receipt["artifact_failure_count"] == 2 and receipt["compiled"] is None,
                  "readable ranges with truncated meta failed publication")
             failed_grade[0]["source_commit"] = "f" * 40
             (scratch / "phases.json").write_text(json.dumps(failed_grade))
             try:
                 collect(scratch, Path(__file__).resolve().parents[3],
-                        "a" * 40, "Synthetic", "b" * 40, .95)
+                        "a" * 40, "Synthetic", source_commit, .95)
             except ValueError:
                 pass
             else:
                 raise AssertionError("parseable wrong source identity accepted")
             (scratch / "phases.json").write_text('{"truncated":')
             receipt = collect(scratch, Path(__file__).resolve().parents[3],
-                              "a" * 40, "Synthetic", "b" * 40, .95)
+                              "a" * 40, "Synthetic", source_commit, .95)
             need(receipt["phase_identity_bound"] is False and
-                 receipt["source_manifest_sha256"] is None and
+                 receipt["source_manifest_sha256"] == snapshot["digest"] and
                  receipt["artifact_failure_count"] == 3,
                  "malformed phases falsely claimed provenance")
+            failed_grade[0]["source_commit"] = source_commit
+            for failure in ("load_wait_exceeded", "launch_failed"):
+                exceptional = [dict(row) for row in failed_grade[:3]]
+                exceptional[-1].update(exit=None, launch_load=None,
+                                       failure=failure, load_wait_seconds=1.0)
+                (scratch / "phases.json").write_text(json.dumps(exceptional))
+                receipt = collect(scratch, Path(__file__).resolve().parents[3],
+                                  "a" * 40, "Synthetic", source_commit, .95,
+                                  failed_run=True)
+                need(receipt["phase_outcomes"][-1]["failure"] == failure and
+                     receipt["criteria"]["phase_execution_and_load_pass"] is False,
+                     "exceptional failure phase was not published")
+            (scratch / "phases.json").write_text(json.dumps(failed_grade))
+            failed_grade[0]["source_commit"] = source_commit
+            for invalid_phases in (failed_grade[:-1],
+                                   [{**failed_grade[0], "exit": 1}] + failed_grade[1:],
+                                   failed_grade[:-1] +
+                                   [{**failed_grade[-1], "binary_sha256": "f" * 64}]):
+                (scratch / "phases.json").write_text(json.dumps(invalid_phases))
+                try:
+                    collect(scratch, Path(__file__).resolve().parents[3],
+                            "a" * 40, "Synthetic", source_commit, .95,
+                            failed_run=True)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError("failed mode accepted missing/late failure")
+            (scratch / "phases.json").write_text(json.dumps(failed_grade))
+            (scratch / "holdout-spent.json").write_text(json.dumps({
+                "instrument_commit": "a" * 40, "source_commit": "f" * 40,
+                "spent_before": "clone-once", "spent_at_utc": "2026-10-26T00:00:00+00:00"}))
+            try:
+                collect(scratch, Path(__file__).resolve().parents[3],
+                        "a" * 40, "Synthetic", source_commit, .95,
+                        failed_run=True)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("failed mode accepted wrong spend identity")
         finally:
             globals()["frozen_file_hashes"] = saved
     for key, index, bad in (("instrument_commit", 0, "d" * 40),
@@ -912,6 +1168,7 @@ def main():
     parser.add_argument("--subject", default="Dancer2")
     parser.add_argument("--source-commit", default=PIN)
     parser.add_argument("--coverage-floor", type=float)
+    parser.add_argument("--failed-run", action="store_true")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
@@ -930,7 +1187,8 @@ def main():
     need(not args.output.exists(), "output must be a new file")
     result = collect(args.scratch.resolve(strict=True),
                      args.instrument_repo.resolve(strict=True), args.instrument_commit,
-                     args.subject, args.source_commit, args.coverage_floor)
+                     args.subject, args.source_commit, args.coverage_floor,
+                     failed_run=args.failed_run)
     args.output.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n")
     print(json.dumps({"receipt_sha256": digest(args.output), "units": result["units"]},
                      sort_keys=True))

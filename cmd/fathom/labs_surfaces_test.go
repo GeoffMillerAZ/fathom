@@ -29,6 +29,7 @@ func TestShippedLabSurfaces(t *testing.T) {
 		"mcp:find_symbol", "skill:fathom-plan", "agent:fathom-scout",
 		"hook:edit-hook --pre [pre-tool/subagent-prime PreToolUse matcher=^(Agent|Task)$]",
 		"hook:readout-hook --event pre-read [pre-tool/read-outline-hint PreToolUse matcher=Read]",
+		"hook:edit-hook --pre [pre-tool/guard-pre-web PreToolUse matcher=WebFetch|WebSearch]",
 		"stanza:agents-md", "decide:route",
 	} {
 		if !seen[key] {
@@ -44,8 +45,8 @@ func TestShippedLabSurfaces(t *testing.T) {
 			}
 		}
 	}
-	if claudeHooks != 26 || allHooks != 54 {
-		t.Fatalf("hook bindings: Claude=%d all=%d, want 26 and 54", claudeHooks, allHooks)
+	if claudeHooks != 27 || allHooks != 55 {
+		t.Fatalf("hook bindings: Claude=%d all=%d, want 27 and 55", claudeHooks, allHooks)
 	}
 }
 

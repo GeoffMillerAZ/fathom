@@ -1,0 +1,274 @@
+diff --git a/grammar.js b/grammar.js
+--- a/grammar.js
++++ b/grammar.js
+@@ -36,6 +36,8 @@
+   name: 'opencl',
+
+   conflicts: $ => [
++    [$.macro_invocation_statement, $.expression],
++    [$.type_specifier, $.macro_invocation_statement, $.expression, $.macro_type_specifier],
+     [$.preproc_if_in_function_definition_head, $._declarator],
+     [$.preproc_ifdef_in_function_definition_head, $._declarator],
+     [$._conditional_function_body_item, $._declaration_modifiers, $.attributed_statement],
+@@ -971,6 +973,7 @@
+       $.attributed_statement,
+       $.labeled_statement,
+       $.compound_statement,
++      $.macro_invocation_statement,
+       $.expression_statement,
+       $.preproc_if,
+       $.preproc_ifdef,
+@@ -993,6 +996,7 @@
+       $.attributed_statement,
+       $.labeled_statement,
+       $.compound_statement,
++      $.macro_invocation_statement,
+       alias($._top_level_expression_statement, $.expression_statement),
+       $.if_statement,
+       $.preproc_conditional_if_statement,
+@@ -1025,6 +1029,14 @@
+       )),
+       ';',
+     ),
++
++    // A macro call can expand to a complete item. The physical line break
++    // bounds this path, and low precedence preserves valid declarations.
++    macro_invocation_statement: $ => prec.dynamic(-2, seq(
++      field('name', $.identifier),
++      field('arguments', $.argument_list),
++      token.immediate(/[ \t]*\r?\n/),
++    )),
+
+     if_statement: $ => prec.right(seq(
+       'if',
+diff --git a/test/corpus/opencl.txt b/test/corpus/opencl.txt
+--- a/test/corpus/opencl.txt
++++ b/test/corpus/opencl.txt
+@@ -1516,7 +1516,21 @@
+
+ --------------------------------------------------------------------------------
+
+-(translation_unit (preproc_ifdef (identifier) (expression_statement (call_expression (identifier) (argument_list (identifier))) (MISSING ";")) (preproc_else (expression_statement (call_expression (identifier) (argument_list (identifier))) (MISSING ";")))) (declaration (primitive_type) (identifier)))
++(translation_unit
++  (preproc_ifdef
++    (identifier)
++    (macro_invocation_statement
++      (identifier)
++      (argument_list
++        (identifier)))
++    (preproc_else
++      (macro_invocation_statement
++        (identifier)
++        (argument_list
++          (identifier)))))
++  (declaration
++    (primitive_type)
++    (identifier)))
+
+ ================================================================================
+ Conditional function bodies reject nested ordinary functions
+diff --git a/test/corpus/semicolonless_macros.txt b/test/corpus/semicolonless_macros.txt
+new file mode 100644
+--- /dev/null
++++ b/test/corpus/semicolonless_macros.txt
+@@ -0,0 +1,200 @@
++================================================================================
++Semicolonless macro item before declarations and a function head
++================================================================================
++
++EMIT_TILE(1, 0)
++int result;
++int compute(int value) { return value; }
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (macro_invocation_statement
++    (identifier)
++    (argument_list
++      (number_literal)
++      (number_literal)))
++  (declaration
++    (primitive_type)
++    (identifier))
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (return_statement
++        (identifier)))))
++
++================================================================================
++Semicolonless macro statement in a function
++================================================================================
++
++void process_value(void) {
++  ADVANCE_TILE(4)
++  int offset = 1;
++  return;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (macro_invocation_statement
++        (identifier)
++        (argument_list
++          (number_literal)))
++      (declaration
++        (primitive_type)
++        (init_declarator
++          (identifier)
++          (number_literal)))
++      (return_statement))))
++
++================================================================================
++Multiline semicolonless macro with a physical line break after close
++================================================================================
++
++BUILD_TILE(
++  1,
++  value
++)
++int result;
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (macro_invocation_statement
++    (identifier)
++    (argument_list
++      (number_literal)
++      (identifier)))
++  (declaration
++    (primitive_type)
++    (identifier)))
++
++================================================================================
++Macro typed declaration on one line stays a declaration
++================================================================================
++
++FOO(a) x;
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (declaration
++    (macro_type_specifier
++      (identifier)
++      (type_descriptor
++        (type_identifier)))
++    (identifier)))
++
++================================================================================
++Macro typed declaration across lines stays a declaration
++================================================================================
++
++FOO(a)
++x;
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (declaration
++    (macro_type_specifier
++      (identifier)
++      (type_descriptor
++        (type_identifier)))
++    (identifier)))
++
++================================================================================
++Ordinary missing semicolon is still an error
++================================================================================
++
++void process_value(void) {
++  value = helper(value)
++  return;
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (expression_statement
++        (assignment_expression
++          (identifier)
++          (call_expression
++            (identifier)
++            (argument_list
++              (identifier))))
++        (ERROR
++          (identifier))))))
++
++================================================================================
++Same line following block reports a missing newline boundary
++================================================================================
++
++void process_value(void) {
++  EMIT_TILE(2) { return; }
++}
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type))))
++    (compound_statement
++      (macro_invocation_statement
++        (identifier)
++        (argument_list
++          (number_literal))
++        (MISSING "macro_invocation_statement_token1"))
++      (compound_statement
++        (return_statement)))))
++
++================================================================================
++Same line following function head reports a missing newline boundary
++================================================================================
++
++EMIT_TILE(2) int compute(int value) { return value; }
++
++--------------------------------------------------------------------------------
++
++(translation_unit
++  (macro_invocation_statement
++    (identifier)
++    (argument_list
++      (number_literal))
++    (MISSING "macro_invocation_statement_token1"))
++  (function_definition
++    (primitive_type)
++    (function_declarator
++      (identifier)
++      (parameter_list
++        (parameter_declaration
++          (primitive_type)
++          (identifier))))
++    (compound_statement
++      (return_statement
++        (identifier)))))

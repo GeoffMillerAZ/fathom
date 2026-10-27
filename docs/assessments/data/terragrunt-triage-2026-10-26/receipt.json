@@ -1,0 +1,120 @@
+{
+  "HCL_tool_configs": {
+    "Packer_plugins": "needs separate controller approval; no install or run",
+    "owner": "IaC lane under issue #55 / IAC-20 / GAP1-37",
+    "state": "open; outside the current I-R5 three-item pass"
+  },
+  "candidates": [
+    {
+      "disposition": "already-used; no new attempt",
+      "route": "existing render/find oracle"
+    },
+    {
+      "disposition": "needs-owner-approval; untried",
+      "route": "owner stack generate",
+      "url": "https://docs.terragrunt.com/reference/cli/commands/stack/generate/"
+    },
+    {
+      "disposition": "needs-owner-approval; untried in this triage",
+      "route": "owner find/list DAG",
+      "url": "https://docs.terragrunt.com/reference/cli/commands/find/"
+    },
+    {
+      "disposition": "needs-owner-approval; untried",
+      "route": "terragrunt-ls",
+      "url": "https://github.com/gruntwork-io/terragrunt-ls/releases/tag/v0.0.6",
+      "version": "0.0.6"
+    }
+  ],
+  "canonical_combined_assessment": {
+    "path": "docs/assessments/2026-10-26-iac-oracle-first-triage.md",
+    "present": false
+  },
+  "completion_contract_audit": [
+    {
+      "Claimed": false,
+      "ID": "IAC-20",
+      "Label": "path-absent",
+      "Path": "docs/assessments/2026-10-26-iac-oracle-first-triage.md",
+      "Plan": "docs/plans/iac-provider-schemas.md",
+      "Ref": "WORKTREE",
+      "Skipped": false,
+      "Status": "fail"
+    },
+    {
+      "Claimed": false,
+      "ID": "GAP1-37",
+      "Label": "path-absent",
+      "Path": "docs/assessments/2026-10-26-iac-oracle-first-triage.md",
+      "Plan": "docs/plans/language-breadth.gap1.md",
+      "Ref": "WORKTREE",
+      "Skipped": false,
+      "Status": "fail"
+    }
+  ],
+  "disposition": "needs-owner-approval",
+  "existing_oracle": {
+    "owner_commands": [
+      "render --json --with-metadata",
+      "find --json --include"
+    ],
+    "parser": "python-hcl2==8.1.4",
+    "path": "calibration/oracles/terragrunt/terragrunt_oracle.py"
+  },
+  "feeds": [
+    "IAC-20",
+    "GAP1-37"
+  ],
+  "inventory": {
+    "counts": {
+      "generated_stack_directories": 0,
+      "subject_roots_with_terragrunt_content": 0,
+      "terragrunt_hcl_files_in_subject_roots": 0,
+      "terragrunt_on_path": 0,
+      "terragrunt_stack_hcl_files_in_subject_roots": 0,
+      "versioned_executable_candidates_in_tools": 0
+    },
+    "missing_roots": [],
+    "root_roles": [
+      "git_subjects",
+      "subjects",
+      "tools",
+      "workspace"
+    ],
+    "schema": "terragrunt-readonly-inventory-v2",
+    "script": "calibration/oracles/terragrunt-triage/inventory.py",
+    "script_sha256": "b6278bdf55c23cd871a17996f5563d21a6f47c0bf0afb4b78e323e5f21a92332"
+  },
+  "inventory_scope": "Exact lane-cache tools and direct subject roots plus workspace; hidden and ignored directories included; role names and aggregate counts only; no global absence claim",
+  "main_commit": "01ea58c6b",
+  "native_runs": 0,
+  "other_open_scope": "HCL tool configs and Packer remain open with controller/lane owner under issue #55; outside three current triage items",
+  "owner_tool": {
+    "docs": "https://docs.terragrunt.com/reference/cli/commands/stack/generate/",
+    "name": "Terragrunt",
+    "proposed_command": "stack generate",
+    "release": "https://github.com/gruntwork-io/terragrunt/releases/tag/v1.1.6",
+    "version": "1.1.6"
+  },
+  "result": "No stack generate attempt, failure, ceiling, or grade claim",
+  "satisfies": [],
+  "source_protocol_sha256": {
+    "calibration/corpus.d/terragrunt.yaml": "1cd595b6800871b5e1c257e0837ae32dd23bbeb71c454637875ef808a932be20",
+    "calibration/oracles/terragrunt/terragrunt_attest.py": "cd9414c599075cf8eeed403a011bc8595832301fbd7bf4cfaee883908fa38e30",
+    "calibration/oracles/terragrunt/terragrunt_oracle.py": "0edbb3f65daae7019732f66baf22eeb74d0ea2113b6ae3a4e1de6edd910ae7a0"
+  },
+  "sources": [
+    {
+      "repo": "gruntwork-io/terragrunt-infrastructure-live-example",
+      "sha": "d106b47ad1e22cae3a841cd495eae48e9bbe3a03",
+      "url": "https://github.com/gruntwork-io/terragrunt-infrastructure-live-example"
+    },
+    {
+      "repo": "gruntwork-io/terragrunt",
+      "scope": "test/fixtures",
+      "sha": "f7104acfa1f7108f2d9f9740ddcc5bd8c60e62a1",
+      "url": "https://github.com/gruntwork-io/terragrunt"
+    }
+  ],
+  "status": "needs-owner-approval; native stack/DAG/LS probes untried"
+}

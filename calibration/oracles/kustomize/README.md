@@ -42,11 +42,9 @@ python3 calibration/oracles/kustomize/publish_reading.py --cache "$KUST_CACHE" -
 
 The `rev-parse` command must print the fixed full commit; `status` must be
 empty. `go version -m` must report that same `vcs.revision` and
-`vcs.modified=false`. The public `indexbench_local_artifact_sha256` records the
-binary used in this run, not a portable source identity: this build omits
-`-trimpath`, so the checkout's absolute path can change its hash. A rebuild
-must match the `go version -m` revision and clean state; its binary hash need
-not match the recorded local artifact. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
+`vcs.modified=false`. The public receipt records only the clean source identity. Its earlier
+untrimmed local binary digest was withdrawn because build paths can affect it.
+Historical raw-log digests are also withdrawn; execution status remains. For a fresh cache, run `prepare.py --cache "$KUST_CACHE"
 --step tool --step subjects` before the shown sequence. Use one heavy job at a
 time and niceness 10. Both
 drivers wait and recheck while one-minute load exceeds 9 before each subject.
@@ -124,3 +122,34 @@ limits. Add `--check`
 to validate and print its receipt without writing the reading. The directory
 preference test log must be green; the writer does not infer that product
 behavior from the native oracle.
+
+## R-D19: regenerate the current reading after the main merge
+
+The commands above reproduce the frozen extraction snapshot. For the current
+canonical reading, use a clean main `440a94365` indexbench built with `-trimpath`.
+The wrapper reads the frozen lane and main parents through Git, generates
+reason-separated notes, invokes main's `lang-regrade`, checks frozen measurements
+and copies its exact canonical bytes. It does not merge reading fields by hand.
+Set `D19_INDEXBENCH` to that local executable and run at actual nice>=10 and
+load<=9:
+
+```sh
+D19_CHECKOUT="$PWD/workspace/tmp/kustomize-d19-main"
+D19_INDEXBENCH="$KUST_CACHE/tools/indexbench-kustomize-d19"
+git worktree add --detach "$D19_CHECKOUT" 440a94365
+python3 - "$D19_CHECKOUT" "$D19_INDEXBENCH" <<'PY_BUILD'
+import runpy, subprocess, sys
+runpy.run_path('calibration/oracles/kustomize/regrade_d19.py')['admit_launch']()
+subprocess.run(['go', '-C', sys.argv[1], 'build', '-trimpath', '-o', sys.argv[2], './cmd/indexbench'], check=True)
+PY_BUILD
+python3 calibration/oracles/kustomize/regrade_d19.py --indexbench "$D19_INDEXBENCH" --lane-commit e9bff6a67 --main-commit 440a94365 --receipt docs/assessments/data/2026-10-26-kustomize-d19-regrade.json
+```
+
+Precision and recall denominators are each 35. Removing microservices-demo
+leaves 19/19, below 20; the count-floor dependence remains. D19 has no general
+subject minimum, and this manifest adds no evidence bar. Private selection
+limits remain; this regrade does not turn these subjects into a blind holdout.
+
+The regrade wrapper enforces actual nice>=10 and waits for load<=9 before each
+Go metadata/harness launch. Raw command output stays private and is not hashed
+into the regrade receipt.

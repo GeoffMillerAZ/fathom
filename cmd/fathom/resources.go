@@ -205,6 +205,9 @@ type resourcesScratch struct {
 	Leaked    int      `json:"leaked"`
 	Stale     int      `json:"stale_records"`
 	Rows      []string `json:"rows,omitempty"`
+	// rows is the census itself, for doctor's daemon_bind row (never
+	// rendered: the projection's JSON is unchanged).
+	rows []censusRow
 }
 
 type resourcesDisk struct {
@@ -533,6 +536,7 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 		if err != nil {
 			rep.Scratch.Error = err.Error()
 		}
+		rep.Scratch.rows = rows
 		for _, r := range rows {
 			switch {
 			case r.Record == "stale":

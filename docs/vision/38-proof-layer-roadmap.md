@@ -415,6 +415,21 @@ Feature labs (`docs/design/feature-labs.md`, plan `docs/plans/feature-labs.md`, 
 
 `docs/design/platform-engineering.md`, plan `docs/plans/platform-engineering.md` (PLT-): the fathom side of an adopting platform team's review-kit readings, readiness inventory and change-risk tiers, extending vision 44 and WAE- with no parallel program and no question map. P0 (the use-case guide, the platform prereg, the census and baseline readings, and a CLI-only concern-delta file over stored Kubernetes facts) runs now as fillers. P1 (a per-subject fact receipt with a commit basis, two skills, a feature-labs card) rides lf8 beside WAE wave 2. Measurement rides bench prep (9.13) and feature labs (9.14), which merge first; G37 is widened rather than a new goal opened. The two-wave limit and the swap-volume rule of section 9.4 still apply.
 
+### 9.16 Amended 2026-10-26 (owner's ask, owner-architect): land, make the bench honest in code, then prove
+
+The owner asked for every finished piece of work to be landed and released, and for a plan that proves fathom's
+contribution. The plan is in `docs/assessments/2026-10-26-next-phase-plan.md`. It sets the order below and adds no
+program.
+- First, the accepted P0 work: GDEV-01 to GDEV-08 with the deadline-abandon fixes (ADR-079 d2; O1014, O1446), and the
+  open drafts. Before that fix, every measurement would measure the bug.
+- Second, bench prep's honesty rows, moved from prose into code (9.13's BX- rows, cited by id).
+- Third, a capped set of preregistered experiments: OP-1 (G2), the LAB-37 shakedown, XM-M2 after AD-M2 reads, and K3.
+  Each prediction is written down in the plan before its first cell.
+
+Development fan-out stays outside fathom (ADR-078). The plan's owner questions NP-Q1 to NP-Q6 decide the RT-M1 bar,
+the OP-1 amendment, labelling, the language-lane count and goals G44 and G45. The two-wave limit and the swap-volume
+rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,

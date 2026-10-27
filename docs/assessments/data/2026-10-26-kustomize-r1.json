@@ -32,7 +32,6 @@
     "L3": "excellent",
     "L4": "not-applicable"
   },
-  "indexbench_local_artifact_sha256": "468adb446cafaa3f771a0691ee066f1825256bb5c49c7f72696ec405acd45f16",
   "indexbench_source_identity": {
     "vcs_modified": false,
     "vcs_revision": "6db920e72898abb20bf86c22652b401902e34598"
@@ -269,6 +268,7 @@
       }
     ]
   ],
+  "local_artifact_privacy": "Untrimmed local indexbench binary digest withdrawn; clean VCS source identity retained",
   "median_reading_sha256": "77777f83a0829457fb4e8efaad7920e952ec83ce9af036beb05fdb55f591a882",
   "median_run": 3,
   "metric_tiers": {

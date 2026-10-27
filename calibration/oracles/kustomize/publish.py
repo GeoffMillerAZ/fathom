@@ -200,7 +200,6 @@ def main():
               "pins_sha256": digest(PINS_PATH),
               "oracle_bin_sha256": before["oracle_bin_sha256"],
               "native_bin_sha256": before["native_bin_sha256"],
-              "indexbench_local_artifact_sha256": scored["indexbench_sha256"],
               "indexbench_source_identity": {"vcs_revision": fixed["base_commit"],
                                              "vcs_modified": False},
               "median_reading_sha256": scored["reading_sha256"],

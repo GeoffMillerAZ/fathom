@@ -74,9 +74,6 @@ def verify(median_path, public_path, current_path, cache):
     require(public["indexbench_source_identity"] ==
             {"vcs_revision": frozen["base_commit"], "vcs_modified": False},
             "indexbench clean source identity differs")
-    require(public["indexbench_local_artifact_sha256"] ==
-            read(cache / "kustomize-r1" / "grade" / "summary.json")["indexbench_sha256"],
-            "indexbench local artifact hash differs from grade summary")
     require(median["dialect"] == current["dialect"] == "kustomize", "dialect differs")
     for key in ("kind", "target_level", "required_kinds"):
         require(median[key] == current[key], "existing reading contract changed: " + key)
@@ -150,7 +147,7 @@ def notes(public):
     elif public["D19_xref_thin"]:
         disposition = "thin; lane held"
     else:
-        disposition = "clears the lane's count guard; L3 held pending D19 lang-regrade"
+        disposition = "clears the frozen count guard; apply main lang-regrade before current publication"
     omitted = []
     for index, row in enumerate(public["leave_one_subject_out"], 1):
         measured = row["counts"]
@@ -171,7 +168,7 @@ def notes(public):
         f"Native cross-file references include {yaml_targets} YAML-target references outside "
         "dialect file scope (manifests and patches). Manifest-target edges resolve to nothing "
         "at ingest until the kubernetes dialect is dispatched. "
-        f"D19 (#7) is not on main: precision denominator {d19['precision']}, recall denominator {d19['recall']}; "
+        f"Frozen metric counts for D19: precision denominator {d19['precision']}, recall denominator {d19['recall']}; "
         f"{disposition}.",
         "Leave-one-subject-out under current harness rules, in frozen pin order: "
         + "; ".join(omitted) + ". The assessment identifies the subjects and limits.",

@@ -1,0 +1,99 @@
+{
+  "schema": "opencl-c-semicolonless-holdout-v1",
+  "role": "reused diagnostic after grammar tuning; not independent validation and not part of the 386-file primary gate",
+  "holdout_rule": "calibration/oracles/opencl-c/holdout-rule.json",
+  "canonical_membership_audit": {
+    "aggregate_files_checked": 1,
+    "documentation_files_checked": 1,
+    "new_shards": 0,
+    "shards_checked": 145,
+    "subject_or_pin_matches": 0
+  },
+  "license_sha256": "8957213f2afb80df76b5aeeb7ba99cf1b8d7e70f44df8e610f4322809721f81b",
+  "distinct_blobs": 53,
+  "measurement": {
+    "checkout_unchanged": true,
+    "eligible": {
+      "bytes": 177237,
+      "files": 53
+    },
+    "expected_commit": "1b2d5d2afff61cdc7370778849f848b76cee00a6",
+    "grammars": [
+      {
+        "abi_version": 15,
+        "both_count": 0,
+        "clean_count": 51,
+        "clean_rate": 0.9622641509433962,
+        "error_only_count": 2,
+        "error_or_missing_count": 2,
+        "fault_count": 0,
+        "id": "opencl-patched",
+        "library_sha256": "97c90f43aad80b459173db745d8c60e1b3ef1044c4e86cb60fe16d6567e24f3c",
+        "missing_only_count": 0,
+        "parsed_count": 53,
+        "population_count": 53
+      },
+      {
+        "abi_version": 15,
+        "both_count": 0,
+        "clean_count": 51,
+        "clean_rate": 0.9622641509433962,
+        "error_only_count": 2,
+        "error_or_missing_count": 2,
+        "fault_count": 0,
+        "id": "opencl-semicolonless",
+        "library_sha256": "877cd69ac1b3dc9b398fc594b5f943d6a180b0d0f3567bdb8d6913e19b5fc67f",
+        "missing_only_count": 0,
+        "parsed_count": 53,
+        "population_count": 53
+      }
+    ],
+    "schema": "opencl-c-native-triage-v1",
+    "scope": "native grammar parse triage only",
+    "tracked": {
+      "after": {
+        "bytes": 36605289,
+        "entries": 409,
+        "gitlinks": 0,
+        "manifest_sha256": "1c93cee0b426d459b237830150565e5348ef3a8cd0e5408d1e1d3ee8ee0ad4be",
+        "regular_bytes": 36605289,
+        "regular_files": 409,
+        "stage_bytes": 45861,
+        "stage_sha256": "adf8098d01d164cc0681ef6ac1b0b86d2e9e8a1b455f8b41074a38feb47726b8",
+        "symlink_target_bytes": 0,
+        "symlinks": 0
+      },
+      "before": {
+        "bytes": 36605289,
+        "entries": 409,
+        "gitlinks": 0,
+        "manifest_sha256": "1c93cee0b426d459b237830150565e5348ef3a8cd0e5408d1e1d3ee8ee0ad4be",
+        "regular_bytes": 36605289,
+        "regular_files": 409,
+        "stage_bytes": 45861,
+        "stage_sha256": "adf8098d01d164cc0681ef6ac1b0b86d2e9e8a1b455f8b41074a38feb47726b8",
+        "symlink_target_bytes": 0,
+        "symlinks": 0
+      },
+      "unchanged": true
+    },
+    "tree_sitter": "0.25.2",
+    "untracked": {
+      "after": {
+        "files": 0,
+        "ignored_files": 0,
+        "path_bytes": 0,
+        "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unignored_files": 0
+      },
+      "before": {
+        "files": 0,
+        "ignored_files": 0,
+        "path_bytes": 0,
+        "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unignored_files": 0
+      },
+      "unchanged": true
+    }
+  }
+}

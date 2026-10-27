@@ -1,0 +1,14 @@
+# Historical SPENT validation pin, moved after LB-F473/LB-F474. Never canonical input.
+# Original pin/criterion: calibration/corpus.d/cpp.yaml at 6db920e72.
+# No new validation or subject read is performed by this move.
+status: spent
+criterion:
+  file_edge_recall_min: 0.50
+  file_edge_precision_min: 0.95
+reading: docs/bench/readings/lang/holdout/cpp.json
+holdout:
+  - name: jbeder/yaml-cpp
+    url: https://github.com/jbeder/yaml-cpp
+    ref: yaml-cpp-0.9.0
+    sha: 56e3bb550c91fd7005566f19c079cb7a503223cf
+    licence: MIT

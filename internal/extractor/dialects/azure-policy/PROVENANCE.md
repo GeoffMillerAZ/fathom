@@ -54,7 +54,9 @@ Earlier signals win exactly as for the other cloud-policy dialects.
 
 `calibration/oracles/azure-policy/azure_policy_oracle.py` (bench-only), tier C, Python standard
 library: a JSON walk with its own line-tracking JSON reader, written apart from the dialect, over
-the structure the definition schema names. No Azure tool evaluates a definition offline (the
-Azure Resource Graph and Policy services are online), and the JSON schema validates shape, not
-the entities. Tier C caps every metric at **good**. Subject: Azure/azure-policy at
+the structure the definition schema names. The former no-offline-Azure-tool premise is
+withdrawn: the owner's extension 0.2.6 includes a native offline evaluator. The staged Linux
+x64 authored probe awaits execution; no whole-population binding or position metric has yet
+been established through it. JSON schema validates shape, not entities. The current independent
+walk remains C, capping its metrics at **good**. Subject: Azure/azure-policy at
 7b0fa25ac055d8c3001d5205cd009cd119a289a5 (MIT), `calibration/corpus.d/azure-policy.yaml`.

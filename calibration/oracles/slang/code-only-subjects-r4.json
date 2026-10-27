@@ -1,0 +1,2763 @@
+{
+  "schema": "slang-code-only-subjects-r4",
+  "searched_on": "2026-10-26",
+  "status": "code-only repository metadata dispositions; no pool freeze or measurement",
+  "input": {
+    "code_union_private_path": "workspace/tmp/slang-code-r3a/code-hit-repositories.json",
+    "code_union_sha256": "1947f069fb418f314934746b411610867bca51711bb10e048e837eb32ad11ad0",
+    "new_code_repository_metadata_private_path": "workspace/tmp/slang-code-r3a/new-code-repository-metadata.json",
+    "new_code_repository_metadata_sha256": "cf636a5a480c96d2e061fac47b2c1ae86691a0a2f8923c6ced564962b6d4a7be"
+  },
+  "scope": "115 code-search public repository identities absent from r2, seven review seeds, r3 additional subjects, and 103 r4 README/topic repository hits. Exact source query extension:slang ParameterBlock. Stars >=100 reach boundary inherited unchanged.",
+  "method": "Public GitHub repository metadata for all 115, plus latest release else full default-branch HEAD pin, complete recursive tree, pinned root license and primary README/build metadata for the two above reach. Only metadata/docs were fetched, no shader bodies or executable workloads.",
+  "counts": {
+    "total": 115,
+    "excluded_below_100_stars": 113,
+    "above_reach": 2,
+    "candidate_metadata_eligible_per_file_pending": 2,
+    "excluded_vendored_toolchain_only": 0,
+    "private_repositories": 0,
+    "metadata_request_failures": 0
+  },
+  "repositories": [
+    {
+      "repository_id": 1023892093,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e743a9b734ffc983925109890872e7bd92bd170ca96d9528297f666b45114936",
+          "bytes": 5024,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:29+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1426760211,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "dd64cb4ba91fc51d856d1b71e7e13ccddbcf999b6b552347e0ad416e4db24a2a",
+          "bytes": 4966,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:40+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1364827476,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e6437cabfdef5f4014f07249c36068fa33aa5935778d9c900f50492e400ec760",
+          "bytes": 4968,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:40+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 918864423,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "af9d273292ad8a7f2926036667e22d6d058a79e01af5efc11c06ddb82f88b65e",
+          "bytes": 5820,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:25+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1094577642,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0c442ededd3cae9b7eddaae05102c23da2f89602dee7cfc8db74fc381d329efa",
+          "bytes": 5342,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:34+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1015063252,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 7,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c6464f51a0b8b5bbf33a5864405c78ffa20246bfa0f0d471c0fab1c356349b53",
+          "bytes": 6312,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:29+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1041686704,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "6b73d672e9c1615970f91453792b48cc43638ac26e8c7f55fee83cee63a6a507",
+          "bytes": 4982,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:30+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 936966855,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "1fb0e769d0d5b1d4870c5af1ff88b9fd78b950fec5e4c0007ba3998853e4a5ba",
+          "bytes": 5607,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:26+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1049522181,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "8aa69c0f3257d6d2ddeb9862b3ac23352c2de6388065f767ca1252e7a518ed01",
+          "bytes": 5006,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:30+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1193162597,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e5ccad6b0b679aa87910a786a2e511d3641835a9d2bab189ff1f25f3f9910503",
+          "bytes": 4771,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:36+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1220170102,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 4,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "f56acbf87108ae0de56d713622a3b1e5c03696853fe2f55c82158e3bbcc71264",
+          "bytes": 5072,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:36+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 894459638,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "5f99cc27b9686538e7916fec1b97a413937e4a36a65fa8df8087625811087e0c",
+          "bytes": 5498,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:25+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 840275078,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "b32c9122632a42feeffca210666f1772262b0debae75e457a6d8f5d9904257e7",
+          "bytes": 5614,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:25+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1082569165,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "d47302795db3d9b84434d9fed75025580a2550eeb325df696e0b376d4f957937",
+          "bytes": 5199,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:32+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 469509126,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 9,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "38c5a9977b6e3f97430ba6602ae53993ed0597f81e33fbb186d0d53e0d5b8cfe",
+          "bytes": 5552,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:21+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 475181625,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "9f7c7ba790186976e93fbc7e92a3f733230803a175e959d2b605a5502d34bcd0",
+          "bytes": 5992,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:21+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 692719156,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 16,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "157d8275c82e8eec48cb9cb19992969f576833d8cecb60f2514e8422904ba9db",
+          "bytes": 5609,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:22+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 494182139,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "ad7c3dceb50adac4374174a88dab06c701b721044e34ddf5c73d24f1b330551e",
+          "bytes": 5090,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:21+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 585526731,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "11d9724261e15f67b8463091eb88a8932408cdce57042414fe4d457af76b8551",
+          "bytes": 5109,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:22+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1131909875,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "23ea848508ccd2e7634cb7053fb884a00d745cbfe7252e02f4ee18f13c2a6d06",
+          "bytes": 5644,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:34+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 792922444,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "cb15e33591f7036f92c520dfbe61e822628049b3705888409f7515812ad08acc",
+          "bytes": 5489,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:24+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 814226063,
+      "repository": "electronicarts/gigi",
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "stars_at_metadata": 1230,
+      "is_fork": false,
+      "default_branch": "main",
+      "repository_metadata_receipt": {
+        "url": "https://api.github.com/repos/electronicarts/gigi",
+        "http_status": 200,
+        "requested_at_utc": "2026-10-26T23:23:24+00:00",
+        "sha256": "338f9c7d266168201315a507526846fdb85c0398a282dc2dda4dc90017d70ceb",
+        "bytes": 6504
+      },
+      "primary_source": "https://github.com/electronicarts/gigi",
+      "pin": {
+        "kind": "latest_release",
+        "tag": "v1.01.11",
+        "commit": "fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6",
+        "resolved_on": "2026-10-26"
+      },
+      "receipts": {
+        "release_lookup": {
+          "url": "https://api.github.com/repos/electronicarts/gigi/releases/latest",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:24:54+00:00",
+          "sha256": "a393ac2c24df1face81f2218e67325bdbe9b8bea8bb450de26d55dd9c0bba2f5",
+          "bytes": 5267
+        },
+        "pin_lookup": {
+          "url": "https://api.github.com/repos/electronicarts/gigi/commits/v1.01.11",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:24:58+00:00",
+          "sha256": "44fb4bd46dfac23189bf815fd773bd53070257fcce5d2b26fb88ca97c911f474",
+          "bytes": 748060
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/electronicarts/gigi/git/trees/fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6?recursive=1",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:25:00+00:00",
+          "sha256": "001de01feb390c3b6984ad3c6b25330e165c32a31126d6f13f3cd19a82f0d710",
+          "bytes": 3779575
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/electronicarts/gigi/license?ref=fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:25:01+00:00",
+          "sha256": "ffbf793d148d14fcb826aba6a5e1fce4657449eafa1e4e9c0155914bf12ed428",
+          "bytes": 3678
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/electronicarts/gigi/readme?ref=fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:25:01+00:00",
+          "sha256": "d7f966eed6a125a45f9d2385fe4613132109157c5f8c86d791f8a5b2f3701b05",
+          "bytes": 10309
+        },
+        "pinned_identity_docs": [
+          {
+            "pinned_path": "external/slang/README.md",
+            "url": "https://github.com/electronicarts/gigi/blob/fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6/external/slang/README.md",
+            "receipt": {
+              "url": "https://api.github.com/repos/electronicarts/gigi/contents/external/slang/README.md?ref=fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6",
+              "http_status": 200,
+              "requested_at_utc": "2026-10-26T23:33:32+00:00",
+              "sha256": "3cd69f8cdec9a3c829f4f48bd4334e2d0635e196d9526826fe35176a588f211d",
+              "bytes": 17034
+            },
+            "blob_sha256": "556db47a26a13317bda47924423364acf2b3f0f96d4870790697f089405bff84"
+          }
+        ]
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 11768,
+        "regular_file_bytes": 1710572300,
+        "selected": {
+          "files": 2,
+          "bytes": 72541,
+          "slang_files": 2,
+          "slangh_files": 0,
+          "distinct_git_blobs": 2
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license": {
+        "root_path": "LICENSE.txt",
+        "github_spdx_id": "NOASSERTION",
+        "root_git_blob_sha": "1c5b867d4bfee3b422c76e79182fc950ac18de5c",
+        "root_blob_sha256": "4f3477eb513fb8d5415fc10ef2409e09d1b2b0d11f4e30313b0ddac157fbd253",
+        "root_blob_bytes": 1890,
+        "per_file_terms": "unverified; admission check before measurement",
+        "manual_root_assessment": "Conditions 1-3 provide the standard BSD-3-Clause source-code redistribution grant. Condition 4 restricts EA/SEED marks and logos as separate assets; it does not add a condition to redistribution or modification of source code. GitHub SPDX reports NOASSERTION for the combined document. The code grant is OSI-approved BSD-3-Clause; selected vendored files still need per-file terms checked before admission.",
+        "osi_approved_root_grant": true
+      },
+      "readme_blob_sha256": "2a42d5449e7d82ede431af627c6bae206c3e04f1238907de3e14338ad6b2a02c",
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "paraphrase": "The pinned external/slang README identifies Slang as a GPU shading language and compiler. The complete pinned tree has two exact-suffix .slang files, both in the vendored external/slang/bin toolchain. Registered whole-project selection retains both; origin is disclosed, not filtered.",
+        "selected_suffix_paths": [
+          "external/slang/bin/gfx.slang",
+          "external/slang/bin/slang.slang"
+        ],
+        "pinned_primary_doc_url": "https://github.com/electronicarts/gigi/blob/fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6/external/slang/README.md"
+      },
+      "status": "candidate-metadata-eligible-per-file-terms-pending",
+      "all_exclusion_reasons": [],
+      "admission_limit": "OSI-approved BSD-3-Clause source-code root grant and GPU Slang identity established from pinned metadata. Both selected files are vendored and retained. Their per-file terms require review before admission."
+    },
+    {
+      "repository_id": 1078676301,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "5634fb172a3a8eb0bd562df9e752df411c4cba7dba595e4e1d3533ed5e760e3e",
+          "bytes": 5496,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:32+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1281825385,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "7aa8cb502f4fb1aa2dda759a0c028dc7e37f97cf65f189056b03b489508019d3",
+          "bytes": 5401,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:38+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1156682856,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "dd557d508715874c4f491b1e4adfda83f1b4ccff549180db57c84efd81d0a834",
+          "bytes": 5049,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:35+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1000593579,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "27fdac227136d443231accc25f9d57f2e697d010691f14f908af1e68b3d39663",
+          "bytes": 5289,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:28+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1190112240,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 2,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0b7bbac11ba790c5f3121011cd1ea9536877441c3a0c9134f765ebcadef39d63",
+          "bytes": 5474,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:35+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1145516699,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e84c059c3ba3d9b55af3f9dda4f354f5309bbcbf2dda981a353d543efe4423e4",
+          "bytes": 5783,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:35+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 223867882,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 76,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "bc8d3f8bd5978697366ea0eb1da92c2c93c4f0741a5472e103951fac75924c84",
+          "bytes": 5764,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:19+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 797096117,
+      "repository": "guiqi134/Area-ReSTIR",
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "stars_at_metadata": 190,
+      "is_fork": false,
+      "default_branch": "master",
+      "repository_metadata_receipt": {
+        "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR",
+        "http_status": 200,
+        "requested_at_utc": "2026-10-26T23:23:24+00:00",
+        "sha256": "240fc6f25320178575ad6f11da36a34e6207ed3f97b3bd37afcd79c3fc8e6549",
+        "bytes": 5410
+      },
+      "primary_source": "https://github.com/guiqi134/Area-ReSTIR",
+      "pin": {
+        "kind": "default_branch_snapshot",
+        "ref": "master",
+        "commit": "c705a82bfc805d8451e0aa93999f0156d5dbd952",
+        "resolved_on": "2026-10-26"
+      },
+      "receipts": {
+        "release_lookup": {
+          "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/releases/latest",
+          "http_status": 404,
+          "requested_at_utc": "2026-10-26T23:24:51+00:00",
+          "sha256": "d9e37600354c1839f6b22cebde497e9d14750d2401a06c9a51b1619baf991613",
+          "bytes": 130
+        },
+        "pin_lookup": {
+          "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/commits/master",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:24:52+00:00",
+          "sha256": "7a0400b151046fd8be92346b5dbc58f77a314ea7edd2812edb8e8c4d5bdf8ef0",
+          "bytes": 7222
+        },
+        "tree_recursive": {
+          "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/git/trees/c705a82bfc805d8451e0aa93999f0156d5dbd952?recursive=1",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:24:53+00:00",
+          "sha256": "25957887e99d61ea2a90e168bc9385946dddf7a597d627725462833b35af8694",
+          "bytes": 783225
+        },
+        "root_license": {
+          "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/license?ref=c705a82bfc805d8451e0aa93999f0156d5dbd952",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:24:53+00:00",
+          "sha256": "48280835637c8e8acccfc1d2309f73ac1cbd52c396d9ea74b2b14f2ba1b7cc92",
+          "bytes": 3762
+        },
+        "pinned_readme": {
+          "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/readme?ref=c705a82bfc805d8451e0aa93999f0156d5dbd952",
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:24:54+00:00",
+          "sha256": "4d8c5391426e5eddf27db632bd08e163d163576bad938608bc133c08ed3c45c3",
+          "bytes": 7300
+        },
+        "pinned_identity_docs": [
+          {
+            "pinned_path": "README_Falcor.md",
+            "url": "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/README_Falcor.md",
+            "receipt": {
+              "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/contents/README_Falcor.md?ref=c705a82bfc805d8451e0aa93999f0156d5dbd952",
+              "http_status": 200,
+              "requested_at_utc": "2026-10-26T23:25:35+00:00",
+              "sha256": "9465a6c99b016364a185ea48e59eb3dd00fe68b0b929b702c23032cfcbd3a283",
+              "bytes": 11485
+            },
+            "blob_sha256": "a90d7ae30f790ff2e899d456978aed16f526bb1e11f3b5fd6dbf5892d74874b0"
+          },
+          {
+            "pinned_path": "CMakeLists.txt",
+            "url": "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/CMakeLists.txt",
+            "receipt": {
+              "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/contents/CMakeLists.txt?ref=c705a82bfc805d8451e0aa93999f0156d5dbd952",
+              "http_status": 200,
+              "requested_at_utc": "2026-10-26T23:25:36+00:00",
+              "sha256": "f1f5bfe837a8bb6b9869e5ca5cbe2eb0c031081f328a00b3b1cfd990b5ca6b12",
+              "bytes": 26394
+            },
+            "blob_sha256": "0651d6470035ddfa4c388df5cffed61841ae1267c5c4ba0e0997c3cec81a58c7"
+          },
+          {
+            "pinned_path": "Source/Falcor/CMakeLists.txt",
+            "url": "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/Source/Falcor/CMakeLists.txt",
+            "receipt": {
+              "url": "https://api.github.com/repos/guiqi134/Area-ReSTIR/contents/Source/Falcor/CMakeLists.txt?ref=c705a82bfc805d8451e0aa93999f0156d5dbd952",
+              "http_status": 200,
+              "requested_at_utc": "2026-10-26T23:25:36+00:00",
+              "sha256": "394391760cfc8b7dd59906286c455113f8dd86443b32173f456e753c008842ab",
+              "bytes": 52728
+            },
+            "blob_sha256": "80d53f6e25355404463025bd047e9311cea767861b514b18fb11befed76355d7"
+          }
+        ]
+      },
+      "tree": {
+        "truncated": false,
+        "walked_after_truncated_recursive": false,
+        "regular_files": 2748,
+        "regular_file_bytes": 78824228,
+        "selected": {
+          "files": 440,
+          "bytes": 2703708,
+          "slang_files": 426,
+          "slangh_files": 14,
+          "distinct_git_blobs": 440
+        },
+        "symlinks": 0,
+        "gitlinks": 0
+      },
+      "license": {
+        "root_path": "LICENSE.md",
+        "github_spdx_id": "NOASSERTION",
+        "root_git_blob_sha": "af9caafb4d9f96180b15e5d019e77089cfc3af3e",
+        "root_blob_sha256": "9cb6eb6cfd0c5acee041a465f211e9416402f7a504487210a1a41b51d3393d1f",
+        "root_blob_bytes": 1950,
+        "per_file_terms": "unverified; admission check before measurement",
+        "manual_root_assessment": "The first three source-code redistribution conditions are the standard BSD-3-Clause grant. The appended notice identifies DLSS, RTXGI, RTXDI, and NRD as separately licensed components; their terms and selected-file terms remain pending. GitHub SPDX reports NOASSERTION for this composite document.",
+        "osi_approved_root_grant": true
+      },
+      "readme_blob_sha256": "b7a54a915bcda0d93ae121542c4617dec770e08871b8e6931e3cd45c01fc994b",
+      "language_evidence": {
+        "status": "verified-gpu-shader-slang",
+        "paraphrase": "Pinned project README identifies its AreaReSTIR rendering module in Falcor 7.0. Pinned Falcor README identifies Slang as its shading language and compiler. Pinned top-level and Falcor CMake files register .slang/.slangh as shader inputs and enumerate the module source tree.",
+        "pinned_primary_docs": [
+          "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/README_Falcor.md",
+          "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/CMakeLists.txt",
+          "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/Source/Falcor/CMakeLists.txt",
+          "https://github.com/guiqi134/Area-ReSTIR/blob/c705a82bfc805d8451e0aa93999f0156d5dbd952/README.md"
+        ]
+      },
+      "status": "candidate-metadata-eligible-per-file-terms-pending",
+      "all_exclusion_reasons": [],
+      "admission_limit": "Root grant and GPU Slang identity established from pinned metadata; per-file terms and overlap/dedup still require downstream review before measurement."
+    },
+    {
+      "repository_id": 1097668930,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 2,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c9620ac33fc1d8aa0101d6780b3204c2f13c7208253e09cff12aede213ed70bb",
+          "bytes": 6058,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:34+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1243449965,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "b5752785029ff86ea83640bb8fd8fbf2ad4b55d67b01b11a01b80c6abb08ca92",
+          "bytes": 5656,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:37+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 422160612,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 9,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c8e3db07cb6fb46f58bc39106cfa41834cc2a4fe71b91fb79eae424c8a7da948",
+          "bytes": 5123,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:21+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1228078203,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 26,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "489e37f4956f81096d97e5ece465f21e8b960d353b5a5a3957346c6dd82fe219",
+          "bytes": 5186,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:36+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1368822416,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "8dd18252198a2bf604b8376fe1a8c40e011ef5883103355c46754644b45c326f",
+          "bytes": 5149,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:40+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 953967652,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0488e4ab2ded43256c8e06d33cda96c389468079dcae1d8a120d0627aa0af9c9",
+          "bytes": 5888,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:26+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1074675520,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "20cd5c8b8339e4496760d349f2c7fe06c58cbb421a468c74f0bfbdcd08557694",
+          "bytes": 5051,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:32+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1007172265,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "cbb76f30f97e299aabadcd7b010b8d8efe7aa2540eda184d322f4ae4c0313433",
+          "bytes": 4976,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:29+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1055821920,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "11ea4b582df62e483735389ad2c4636b87073deb086e9878b220099740dcd0cd",
+          "bytes": 5872,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:31+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1260246140,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "46612adbc0da4eb6d125e6eec62e22f7eb32a6bb571ae74031b16359905281b2",
+          "bytes": 5546,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:37+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1092463360,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "39a709c4c0ec4a649e19c94402f7e1ced71bded0cea647765c3622c776411787",
+          "bytes": 4994,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:33+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1022287604,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 52,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "3c6fb47c08a02416acf3986658650e647872ae3167b3f8612dee2ed24029166c",
+          "bytes": 5628,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:29+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 189872131,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "19062a93d5327100cab29f6ec08e9b315555989fac6d6ea1022560a5325a281c",
+          "bytes": 5810,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:19+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 791260873,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 7,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "3fabc0289c023b429782321c371eb36d4b06abf315d3e32eaf11b744e2fe68b9",
+          "bytes": 5392,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:23+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1052545628,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "92b1292272bf0cf24eacfc0a297ba741f53b0d698a34bda7bf10189ef45ef450",
+          "bytes": 5408,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:31+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1116286262,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e04bd8d77c39f489a15858bb432404e5f9b97ab9b1fdf08f033bbaff8ffcaad6",
+          "bytes": 11201,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:34+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 925296632,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "44dfbc8e29be4369f6358176e8a1ed543d1fffd41b835d3086ae099565715555",
+          "bytes": 5791,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:26+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1100005366,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "28fe9d6ed2007fb52ad99c9dfb26f84bdce4953d82f4b3e24208220ff9cd0599",
+          "bytes": 5326,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:34+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1007747495,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "aac2f1b785d4046f2033dae6b188b489df806da191eecd90d6ba1455be7c88ab",
+          "bytes": 5395,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:29+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 919018290,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 14,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "013457aefafaafa93f8d2d9667176b8d82f5f537a0ec4c5ff2391f3931261052",
+          "bytes": 4946,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:26+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1093859145,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "4bd4adeed64a1d57fe62bb093c5a105bfc7f78cd6e6eb44c2a3fcb147ce7bf6e",
+          "bytes": 5020,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:33+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 977281002,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 4,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "31ce15879ee4fbd568c6d6f36064d14df1b902cc310061fe5cf8f75a174ad388",
+          "bytes": 5174,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:27+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1131355172,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 11,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "cd8c50414a3127196d2171adeb394d0f03e93ed7bd5fb66bbd7bf2b94dd2de90",
+          "bytes": 4998,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:34+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1093976470,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "6732275bc0357b22adc88967a03168b4032294b00eb91536d8c184861fe74174",
+          "bytes": 5420,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:33+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1203437970,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 35,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "7acfcb68a43c268dd2f7167355fe7a1f3321c5ee235e606b5e825948b99b5f33",
+          "bytes": 5780,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:36+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 631391673,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0264aff4f4637801954aeee3b649caa65b3387010de3859febe0679fc9b78a6e",
+          "bytes": 5211,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:22+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 314141663,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 58,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "af3e2579cfaf559003fa46894548b5187923a1770617f81da556edd022dd107b",
+          "bytes": 5466,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:20+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1022439339,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "7fdc418eb7e5e014380d78a80c91b23492c1369977fe60eacdfe5be85708b57a",
+          "bytes": 4999,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:29+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 967002419,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "44d441952b25f912c1d12b31867d2b13b1350ca0ea9405516f7605cfe1bf77b5",
+          "bytes": 5602,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:27+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 764334712,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "874b17faeda04100d0fcdabd514bd3e72aaf55e942040a0c6b9798e2e6e1a6e1",
+          "bytes": 5445,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:23+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 519011133,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 7,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0c6408b2948f00c1059d300dcc9667db31c40dba71b717a627106e23b500da0c",
+          "bytes": 4991,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:21+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 471733131,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c5a45edfffb5cd5bf85b82f5e9747c3d8a5e91a35f3cf743a6bb0c00ee5b259a",
+          "bytes": 5123,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:21+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1027473180,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 20,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "3bab50705e9123cf94d619e59f9b387e942709de76993e0dea4270975351c7b3",
+          "bytes": 5339,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:30+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1004542352,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "5d0e0a7b15bd60eb3eeba29f2b0d58cec50efd666e6d09298cb06e3bfbfa0b4a",
+          "bytes": 4883,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:28+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1157318347,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 30,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "6fbdc57af85f1789197a4467c400e7adbdcc71c08557b8c1aa13b2146dd31b4c",
+          "bytes": 6428,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:35+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1270095674,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 32,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "a785776b393c56c3ea2f50bb6e1c86aea7a8b875827b476918fa91c2b3c5515a",
+          "bytes": 6121,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:37+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 920866041,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "70d64246fbfa766400cf8fd1fa9cc5b01f2305ab63be47aae694ccfd08ac5e97",
+          "bytes": 5260,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:26+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1073881815,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 4,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "59eb91cc3a839ef3a47c43d4fe00adcfe7dc340b9020fc8a645ed51490dc9eda",
+          "bytes": 6231,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:31+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1072535005,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "9b1c3f129606a8a88a26076e452fb5fca7c520403b7cd06d701066a8e8714da8",
+          "bytes": 6297,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:31+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 981341974,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "95faad1a4545f07b772136b184c1ee01990344d2bd2cda8ffd0cd8f36ead0f0d",
+          "bytes": 5256,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:28+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1090322974,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "d1ac219bff82c9615d0283ce52d5eec8b27f3c6b33f604d341711547507f657f",
+          "bytes": 5239,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:32+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 278921700,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 2,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "8fbe0b461a017556325c552fbf71424091cfe9e9a335905bace2024faafffa48",
+          "bytes": 5651,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:20+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1351044635,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "1944618739f0798cbf30d6ba44255cc5c4983c2c07cc4cab955b11d5078ca16e",
+          "bytes": 4925,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:40+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 359891353,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 18,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c29091d20ee152c6900eed0f0889c11b7a28063d1973a0a2f201f7aecc9e8bf6",
+          "bytes": 5491,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:20+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1335999890,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "df8fc9cacdbca7720446fe96ed14d2c8829c768d58656af53712d4101590088f",
+          "bytes": 5156,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:39+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 718375341,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 5,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0475f42e23ff51a3c44a738e90a4b23541d18fcb5f029cda2d7dd9aff344d68b",
+          "bytes": 5145,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:22+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1076497610,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "3c1bc95a04efdec990d2d09915b051c073cc0f41232de9f65ad02f888a6a64db",
+          "bytes": 5355,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:32+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1280463432,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 5,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "ce187002e8694826e8a15c1ae6978f96ef85100990986ba230418e81ba8fdb17",
+          "bytes": 5157,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:38+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 888406567,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "f5e4a48b5125b06bd36fde6a0378b0ab6c48f6d95fb738f0702b72d5731e3026",
+          "bytes": 5239,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:25+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1300780763,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 33,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "5a0dfbf6d2d61409f4a4ab7f770f99986b8e320f70d126dac0700e7dd08decfd",
+          "bytes": 6937,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:38+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1412679835,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c6436a56ce7cf88b0b6ae796959b95ab6c97c7c8039ac807dbfbb1fd697de02f",
+          "bytes": 5498,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:40+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 887749857,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 26,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "82edddbf208cf80ca7e94503ff6d37e4ee38b8d496d0389db7b0807fdd2c7b4d",
+          "bytes": 5221,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:25+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 852468053,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "68bab7af14c93180f326bc8aa26c7cce1b1a4ddd4ddfc2307d1fbe997615318b",
+          "bytes": 5477,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:25+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 959050430,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 4,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "89380583ccd5d1380208b487b7193833da270e55902d7985994d8413749e76f8",
+          "bytes": 4979,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:27+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1144589857,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "16fcd884b9d77f6893add7c7b4aaf52fb75f3de3e986d647fee7955444aee34a",
+          "bytes": 4839,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:35+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 739228574,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "2a1c1ffb3e8858e17ca0e94fd2b4789c234d3ecfd49931ea3670180eaa4d7d84",
+          "bytes": 5933,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:23+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1133956735,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 7,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "0285f5873ef7ec8b027d662f0db8fc5339dc98863dd39bfa418d3d191162520a",
+          "bytes": 5135,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:35+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1004121357,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 11,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "47ebd1ca9ef79a491344284ee1da1ff87c70b74d31fddc0550339b682faa590c",
+          "bytes": 5301,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:28+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 394640058,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 10,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "67ed8762940e999bc6540b4f9a7953cae66fa7b4fd61005938517a2600cef218",
+          "bytes": 5495,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:20+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1342285164,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "48d21ac74d97b9c980784f673e0326de3713d7bf152c278168e2a66cddbbc464",
+          "bytes": 5047,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:40+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 817640079,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "78c877476f6dd8bd1121a4fb8ba7b64b1c4ff8320faad04d4b5ffd96ee28a452",
+          "bytes": 5521,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:24+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 828625623,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "78e493489c61a6a57a2aa96c5226512cabcb1caa080ecfbb0969c31ecf651d99",
+          "bytes": 5623,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:24+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 556474220,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "4f3799adc256377a641e171ab2a346124bbc2080ea62b92acbe423937717834e",
+          "bytes": 5638,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:22+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1311168273,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "ac169e01e0d6b987533996fdef12eae407cad5378304db23b8745e1dfe733910",
+          "bytes": 5773,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:39+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1069130348,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "6d4dae2056ca640a4dcc0dba509432d6103e8d9f971d20eeb9835799288f841f",
+          "bytes": 5651,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:31+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1262900701,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 6,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "461e86b45e4fa51a5441ad1ba0f493c74213c29db62db491d20595cea1d478cb",
+          "bytes": 7733,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:37+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 990505156,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 5,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "a1588a6f27693ad3da8c53358dcaf486542c6c911797c48b138ebf7b80d8d2d3",
+          "bytes": 8031,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:28+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 814093255,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 14,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e22db3deaf6be8a18d3ffdadb14b9e0e4d3537ffbc8acbaf09615bbc2d1b8a18",
+          "bytes": 8161,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:24+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 994910365,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 4,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "e0a5d6c7257a221f3a35bb98c07698736da4a45026b12d430adb029b490b4d16",
+          "bytes": 7770,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:28+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1284518554,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "ba3a2850a6ea25bd065186b73ed7af0d22c38da46a9c149fd005a00721452ba3",
+          "bytes": 5363,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:38+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 692445478,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "1a0f9347ed42dad1826f70f9140f5939a192ed70165ee09eb7967782ac025c5e",
+          "bytes": 5586,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:22+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1087866982,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 2,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "4082cf469cfcc2b923be5349519e04a212365ac6f5cb9eaefa7a86edeb1c356b",
+          "bytes": 6937,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:32+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1024088954,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 26,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "c1544fac5e8eb6e855ebf195db7d2bbf719a6cc969aa71c545c09283dd3c91c3",
+          "bytes": 7256,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:30+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 960176380,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "9f3361e9268f78805f7696d838919481098b8a15cdd4b3421753654ca518fdb4",
+          "bytes": 4889,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:27+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1039399297,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "676593562af70e415d44515821a59ead6fbf48fe456c519b0036e629f6467511",
+          "bytes": 5102,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:30+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1027361243,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "fdc19ea92cc3fc73001453ff427effab0906aa49c95b221a3538fa8ffb17883a",
+          "bytes": 5251,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:30+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 407170707,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 4,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "25c30716ea3782fd7b57c0fc6ecf13d66df69881e3ca7df231b58bcf166af6f9",
+          "bytes": 5046,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:20+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1240291263,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 2,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "317632694f2b7f194c5c3a7bcf87efdfd8440d1b1ab34f4ef6a6a539439f7039",
+          "bytes": 5022,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:37+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1069610443,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 8,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "467225d060cbd53880f0f674d3e6ce452b1b81b7fca90a99b61e7546c071a037",
+          "bytes": 5177,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:31+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 242717644,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 21,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "8a341843f316bbe841510c20c73c296a6cf4971bcbf9e35491c01bff53ed26ff",
+          "bytes": 5192,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:19+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 736905741,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 1,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "5669b04c367dc55213e990921eb3980aa03842e03205d9822bf5e06f483fbd9b",
+          "bytes": 5267,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:23+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 759798152,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 0,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "dff724e8ddf078a872c3e9e0eb9948209a2db6c5c38e48017867aa7abd629d5e",
+          "bytes": 5517,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:23+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 1331056947,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 2,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "18d85080b4da52e170c1628289e58c1b03a70b1d7e18af26906f5069caa7e22d",
+          "bytes": 6211,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:39+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 730612719,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 3,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "abc06765d682ab863874744cde0850bfc6e58788e3430dfa06a8c699a4b1526c",
+          "bytes": 5582,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:23+00:00"
+        }
+      ]
+    },
+    {
+      "repository_id": 313460908,
+      "disposition": "below-reach",
+      "status": "excluded-below-100-stars",
+      "stars_at_metadata": 69,
+      "is_fork": false,
+      "source_query_ids": [
+        "code-parameterblock"
+      ],
+      "all_exclusion_reasons": [
+        "stars-below-preregistered-100-reach-bound"
+      ],
+      "evidence_receipts": [
+        {
+          "kind": "repository_metadata_receipt",
+          "sha256": "dbf5cbb0359c84283fd2378237afd21ed1a36972931ce91b99cde371f40689f1",
+          "bytes": 5928,
+          "http_status": 200,
+          "requested_at_utc": "2026-10-26T23:23:20+00:00"
+        }
+      ]
+    }
+  ],
+  "admission_limit": "Both above-reach projects retain every exact-suffix file in the complete whole-project tree, including vendored files. Per-file terms, existing-pool overlap, and final role/gate decisions are downstream. No parser/compiler/native run or measured score.",
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private."
+}

@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -144,5 +148,104 @@ func TestAddGraph(t *testing.T) {
 	}
 	if c.defs[entity{"stack", "local.name"}] != "variable" {
 		t.Errorf("local.name is not a definition: %v", c.defs)
+	}
+}
+
+func TestCheckCompleteness(t *testing.T) {
+	for _, tc := range []struct {
+		name                   string
+		roots, failed, missing int
+		wantError              bool
+	}{
+		{"complete nested modules", 19, 0, 0, false},
+		{"no roots", 0, 0, 0, true},
+		{"one nested root failed", 19, 1, 0, true},
+		{"nested definition unlocated", 19, 0, 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkCompleteness(tc.roots, tc.failed, tc.missing)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("checkCompleteness(%d, %d, %d) error = %v, wantError %t", tc.roots, tc.failed, tc.missing, err, tc.wantError)
+			}
+		})
+	}
+}
+
+func TestModuleDirsNestedAndExternal(t *testing.T) {
+	base := t.TempDir()
+	src := filepath.Join(base, "src")
+	wd := filepath.Join(src, "examples", "demo")
+	manifest := filepath.Join(base, "modules.json")
+	if err := os.MkdirAll(wd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"Modules":[{"Key":"","Dir":"."},{"Key":"net","Dir":"../../modules/net"},{"Key":"net.child","Dir":"../../modules/net/child"},{"Key":"remote","Dir":"../../../external/remote"}]}`
+	if err := os.WriteFile(manifest, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := moduleDirs(manifest, src, wd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"": "examples/demo", "net": "modules/net", "net.child": "modules/net/child", "remote": ""}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("nested module paths = %#v, want %#v", got, want)
+	}
+}
+
+func TestTofuEnvIsolated(t *testing.T) {
+	for name, value := range map[string]string{
+		"HOME": "/personal-home", "AWS_ACCESS_KEY_ID": "secret-aws", "AWS_PROFILE": "personal",
+		"ARM_CLIENT_SECRET": "secret-azure", "GOOGLE_APPLICATION_CREDENTIALS": "/personal-key.json",
+		"TF_TOKEN_registry_opentofu_org": "secret-token", "HTTPS_PROXY": "http://live-proxy:8080",
+		"PATH": "/personal-bin", "CUSTOM_SECRET": "secret-custom",
+	} {
+		t.Setenv(name, value)
+	}
+	scratch := t.TempDir()
+	env := tofuEnv(filepath.Join(scratch, "tofurc"), filepath.Join(scratch, "data"))
+	values := map[string]string{}
+	for _, entry := range env {
+		name, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			t.Fatalf("invalid environment entry: %q", entry)
+		}
+		if _, exists := values[name]; exists {
+			t.Fatalf("duplicate environment key: %s", name)
+		}
+		values[name] = value
+	}
+	for _, name := range []string{"AWS_ACCESS_KEY_ID", "AWS_PROFILE", "ARM_CLIENT_SECRET",
+		"GOOGLE_APPLICATION_CREDENTIALS", "TF_TOKEN_registry_opentofu_org", "CUSTOM_SECRET"} {
+		if _, exists := values[name]; exists {
+			t.Fatalf("inherited %s", name)
+		}
+	}
+	if values["HOME"] != filepath.Join(scratch, "home") || values["TMPDIR"] != filepath.Join(scratch, "tmp") {
+		t.Fatalf("HOME/TMPDIR are not scratch-owned: %v", values)
+	}
+	for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"} {
+		if values[name] != "http://localhost:9" {
+			t.Fatalf("%s = %q, want dead proxy", name, values[name])
+		}
+	}
+	if values["PATH"] != "/usr/bin:/bin:/usr/sbin:/sbin" || values["TF_INPUT"] != "0" {
+		t.Fatalf("unsafe tool environment: %v", values)
+	}
+}
+
+func TestRunOnceReceivesOnlyIsolatedEnv(t *testing.T) {
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "canary-secret")
+	dir := t.TempDir()
+	env := tofuEnv(filepath.Join(dir, "tofurc"), filepath.Join(dir, "data"))
+	stdout, err := runOnce(context.Background(), "/usr/bin/env", dir, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(stdout), "AWS_SECRET_ACCESS_KEY") || strings.Contains(string(stdout), "canary-secret") {
+		t.Fatal("subprocess inherited cloud credential")
+	}
+	if !strings.Contains(string(stdout), "HOME="+filepath.Join(dir, "home")) {
+		t.Fatal("subprocess lacked scratch-owned HOME")
 	}
 }

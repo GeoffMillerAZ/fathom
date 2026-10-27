@@ -38,6 +38,7 @@ func TestEverySwitchableCapabilityHasAnEnforcementCase(t *testing.T) {
 		"test-run-hook": true, // TestSwitchOffStopsConfigSwitchHooks
 		"pin-check":     true, // TestSwitchOffStopsConfigSwitchHooks
 		"guard-enforce": true, // TestSwitchOffStopsConfigSwitchHooks
+		"egress-guard":  true, // TestSwitchOffStopsEgressGuard (egress_test.go)
 		"tech-packs":    true, // TestCapabilityTechPacksAndExcludePacks (internal/techpack)
 	}
 	for _, c := range capability.Default().All() {

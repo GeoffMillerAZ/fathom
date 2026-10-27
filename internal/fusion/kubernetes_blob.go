@@ -19,7 +19,7 @@ func (p *Pipeline) ExtractKubernetesBlob(serviceID string, refs []core.SourceRef
 	if len(content) > connector.MaxFetchSize {
 		return BenchExtraction{Skipped: "oversize"}, nil
 	}
-	if connector.IsBinary(content) {
+	if binaryExcluded(relPath, content) {
 		return BenchExtraction{Skipped: "binary"}, nil
 	}
 	switch gateDialectFile(relPath, content).excluded {

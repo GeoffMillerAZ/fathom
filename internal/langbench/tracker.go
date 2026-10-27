@@ -174,7 +174,8 @@ func cell(s string) string {
 	return strings.ReplaceAll(s, "|", "\\|")
 }
 
-// levelCell renders a reading's level with every met level's grade.
+// levelCell renders a reading's level with every met level's grade, and an L3 left
+// unmet by thin evidence with its stated reason (owner ruling D19, E3).
 func levelCell(r Reading) string {
 	if r.LevelMet == LevelNone {
 		return "none (measured)"
@@ -183,7 +184,11 @@ func levelCell(r Reading) string {
 	for _, l := range Levels[:levelIndex(r.LevelMet)+1] {
 		grades = append(grades, l+" "+r.GradeAt(l))
 	}
-	return fmt.Sprintf("%s (%s)", r.LevelMet, strings.Join(grades, ", "))
+	thin := ""
+	if r.Grade.L3Reason != "" && levelIndex(r.LevelMet) == levelIndex("L3")-1 {
+		thin = "; L3 unmet, " + r.Grade.L3Reason
+	}
+	return fmt.Sprintf("%s (%s%s)", r.LevelMet, strings.Join(grades, ", "), thin)
 }
 
 // RenderTracker renders docs/languages.md: the template with the generated

@@ -1,0 +1,40 @@
+{
+  "control_script_sha256": "d4b5463d0ff7889e54046c98dcfe85992d3d5fb5ab8731543a91054def6bcc8f",
+  "grade_source_sha256": "7eeddd97eb3b867d3593c300ad76a61a3ad3baf1431bf63dedcd66349e9cb0a0",
+  "python_test_sources": [
+    {
+      "path": "test_native_projection.py",
+      "sha256": "d3d439d2ceead4d894d739f47fc8e89a8c587e45887918615861aba7ed9165b3"
+    },
+    {
+      "path": "test_native_population.py",
+      "sha256": "be1855d9ddd4e4b4c67f988be4156f67d46fd555a0bab720b99f84f58df1e787"
+    },
+    {
+      "path": "test_native_scope.py",
+      "sha256": "cfec82b2e5d3413f81cdb3d27767cb6ea0af8e871fc5309d4b0433e426859431"
+    }
+  ],
+  "mutations": [
+    {
+      "mutant": "filter native definition multiset by independent locator candidates",
+      "failure_line": "FAIL: test_locator_omission_extra_and_tier_change_refuse_whole_input (test_native_projection.NativeProjectionTest)",
+      "restored_green": true
+    },
+    {
+      "mutant": "grant tier-A recall from product-selected subset",
+      "failure_line": "FAIL: test_product_selected_subset_never_grants_a_tier_or_support_grade (test_native_population.NativePopulationTest)",
+      "restored_green": true
+    },
+    {
+      "mutant": "count repeated reference sites as distinct pairs",
+      "failure_line": "FAIL: test_site_and_pair_counts_keep_unowned_fields_and_empty_host_family (test_native_population.NativePopulationTest)",
+      "restored_green": true
+    }
+  ],
+  "tests": 10,
+  "skips": 0,
+  "mutant": "filter native definition multiset by independent locator candidates",
+  "failure_line": "FAIL: test_locator_omission_extra_and_tier_change_refuse_whole_input (test_native_projection.NativeProjectionTest)",
+  "restored_green": true
+}
