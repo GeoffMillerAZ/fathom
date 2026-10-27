@@ -24,9 +24,11 @@ type doctorWiringEvidence struct {
 	missingScript            string
 	file                     string
 	// opaque names the last project file the walk followed into that is not
-	// a shell script (an interpreter's script): it may hold the step, but
-	// this reader cannot read it.
-	opaque string
+	// a shell script (a node, ruby or perl script): it may hold the step, but
+	// this reader cannot read it. cause names what stopped a Python step the
+	// walk read or tried to read (file:line and why), and settled the first
+	// Python file it read to a definite not-found (GDEV-06).
+	opaque, cause, settled string
 }
 
 type doctorWrapperReader struct {
@@ -231,7 +233,7 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 			}
 		}
 	}
-	return doctorWiringEvidence{unknown: acc.unknown, missingScript: acc.missingScript, opaque: acc.opaque}
+	return acc
 }
 
 // argv judges one command's words that no shell splits, such as a Python
@@ -244,7 +246,7 @@ func (r *doctorWrapperReader) argv(words []string, sub string, depth int) doctor
 	if ev := r.unit(words, sub, depth, &acc); ev.found {
 		return ev
 	}
-	return doctorWiringEvidence{unknown: acc.unknown, missingScript: acc.missingScript, opaque: acc.opaque}
+	return acc
 }
 
 // unit judges one command (its words after quote removal and redirections):
@@ -274,6 +276,9 @@ func (r *doctorWrapperReader) unit(words []string, sub string, depth int, acc *d
 	// even if its basename happens to be a supported task runner.
 	if doctorForeignProgram(r.root, words[0]) {
 		return doctorWiringEvidence{}
+	}
+	if step, ok := r.pythonUnit(words); ok {
+		return r.pythonStep(step, words, sub, depth, acc)
 	}
 	shellScript := false
 	if bin == "sh" || bin == "bash" || bin == "zsh" {
@@ -381,13 +386,20 @@ func (r *doctorWrapperReader) unit(words []string, sub string, depth int, acc *d
 	if acc.opaque == "" {
 		acc.opaque = ev.opaque
 	}
+	if acc.cause == "" {
+		acc.cause = ev.cause
+	}
+	if acc.settled == "" {
+		acc.settled = ev.settled
+	}
 	return doctorWiringEvidence{}
 }
 
 // opaqueScript returns the repository-relative path of a project script that
-// an interpreter (python, node, ruby, perl) or a .py/.js/.rb/.pl executable
-// word runs, when that file exists inside the repository. Such a script is
-// outside this deliberately small shell reader: it is named, never read.
+// an interpreter (node, ruby, perl, or a python* that is not python, python3
+// or python3.N) or a .js/.rb/.pl executable word runs, when that file exists
+// inside the repository. Such a script is outside this deliberately small
+// reader: it is named, never read. Python steps go to pythonStep first.
 func (r *doctorWrapperReader) opaqueScript(words []string) string {
 	if len(words) == 0 {
 		return ""
