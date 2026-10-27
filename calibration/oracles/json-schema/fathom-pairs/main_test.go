@@ -38,3 +38,35 @@ func TestCountRefusesUnmeasuredOrDuplicatePaths(t *testing.T) {
 		}
 	}
 }
+
+// TestCountAcceptsARootReachedThroughASymlink (issue 120): a symlinked
+// parent of root is not a symlinked input file, so a root spelled through a
+// symlink (a symlinked TMPDIR) still counts; an input that is itself a
+// symlink is still refused.
+func TestCountAcceptsARootReachedThroughASymlink(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(real, "one.schema.json"), []byte(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"a":{"$ref":"two.schema.json"}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(real, "two.schema.json"), []byte(`{"$schema":"https://json-schema.org/draft/2020-12/schema"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	n, err := count(link, []string{"one.schema.json", "two.schema.json"})
+	if err != nil || n != 1 {
+		t.Fatalf("count(root through a symlink) = %d, %v; want 1, nil", n, err)
+	}
+	if err := os.Symlink(filepath.Join(real, "two.schema.json"), filepath.Join(real, "alias.schema.json")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := count(link, []string{"alias.schema.json"}); err == nil || err.Error() != "symlink input" {
+		t.Fatalf("a symlinked input file must still be refused, got %v", err)
+	}
+}

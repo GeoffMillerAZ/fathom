@@ -25,6 +25,11 @@ func count(root string, files []string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	// A symlinked parent of root is not a symlinked input, so root is
+	// resolved once and each input must then equal its own resolved path.
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		root = r
+	}
 	var docs []fusion.DocFile
 	total := int64(0)
 	seen := map[string]bool{}
