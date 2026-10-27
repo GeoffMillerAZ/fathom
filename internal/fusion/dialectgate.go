@@ -52,6 +52,9 @@ func dialectRules() []connector.DialectRule {
 			if s := d.Match.Sniff; s != nil {
 				r.Sniff = &connector.DialectSniffRule{Extensions: s.Extensions, Pattern: s.Pattern, Priority: s.Priority, ScanBytes: s.ScanBytes}
 			}
+			if c := d.Match.Container; c != nil {
+				r.Containers = c.Extensions // ADR-021 (1), amended 2026-10-24: binaryExcluded's exemption
+			}
 			dialectRulesAll = append(dialectRulesAll, r)
 		}
 	})
