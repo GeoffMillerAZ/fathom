@@ -3,9 +3,12 @@
 # whose name holds both "_" and "." (fathom_tmp.d.XXXXXX -> a real sibling
 # directory), so every test that assumes something about the temp path runs
 # under it: a symlinked prefix (macOS /var/folders, issue 118) and a name
-# with "_" and "." (CI's /home/runner/work/_temp). The base is the caller's
-# TMPDIR (else /tmp); both entries are removed afterwards and CMD's exit
-# status passes through. Never inside the module tree.
+# with "_" and "." (CI's /home/runner/work/_temp). GOTMPDIR is set to the
+# same symlink, since a Go test's t.TempDir reads GOTMPDIR before TMPDIR: a
+# caller's own GOTMPDIR would otherwise bypass the canary (issue 120). The
+# base is the caller's TMPDIR (else /tmp); both entries are removed
+# afterwards and CMD's exit status passes through. Never inside the module
+# tree.
 
 set -euo pipefail
 
@@ -27,4 +30,4 @@ link="$base/fathom_tmp.d.$(basename "$real" | sed 's/.*\.//')"
 trap 'rm -rf "$link" "$real"' EXIT
 ln -s "$real" "$link"
 
-TMPDIR="$link" "$@"
+TMPDIR="$link" GOTMPDIR="$link" "$@"
