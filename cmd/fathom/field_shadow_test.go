@@ -70,6 +70,14 @@ func TestGoFieldNeverShadowsFuncInOneTargetLookups(t *testing.T) {
 		}
 	})
 
+	t.Run("export receipt withholds callers for a field", func(t *testing.T) {
+		var out, errBuf bytes.Buffer
+		code := run([]string{"export", "receipt", "--service", "fshadow", "--store", storePath, "--symbol", "Config.Wave", "--kind", "callers"}, &out, &errBuf)
+		if code == 0 || !strings.Contains(errBuf.String(), "field references are not indexed") || strings.Contains(out.String(), "caller(s)") {
+			t.Fatalf("callers receipt for the field Config.Wave: exit %d, stdout %q, stderr %q; want it withheld, naming that field references are not indexed", code, out.String(), errBuf.String())
+		}
+	})
+
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)

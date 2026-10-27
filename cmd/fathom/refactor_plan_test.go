@@ -38,6 +38,7 @@ func (fakeGoneEvidence) CorpusFiles(paths []string) []verify.CorpusFile {
 func (fakeGoneEvidence) TypedCallers(symbol, pkg string) (nonTest, test []verify.GoneReferent) {
 	return nil, nil
 }
+func (fakeGoneEvidence) CallersUnindexed(symbol, pkg string) string { return "" }
 
 // newRefactorFixtureRepo builds a throwaway two-package Go module: oldpkg
 // declares OldFunc, caller imports it and calls it once — a genuine

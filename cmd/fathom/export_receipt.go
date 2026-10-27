@@ -26,7 +26,8 @@ import (
 // cmdExportReceipt implements `fathom export receipt --service S --symbol
 // NAME [--kind symbol_location|callers] [--store PATH] [--no-excerpts]
 // [--keep-service] [-o FILE]`. Anchors name the service's indexed commit; a symbol with no
-// callers is an absence fact carrying the index's read set.
+// callers is an absence fact carrying the index's read set. A Go struct
+// field's callers receipt is refused: field references are not indexed.
 func cmdExportReceipt(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("export receipt", stderr)
 	service := fs.String("service", "", "service ID (required)")
@@ -103,6 +104,11 @@ func exportReceiptInput(ctx context.Context, c *client.Client, st store.Store, s
 	def, err := oneDefinition(ctx, c, service, symbol)
 	if err != nil {
 		return receipt.ExportInput{}, err
+	}
+	if kind == core.ReceiptKindCallers && def.Kind == core.KindGoField {
+		// The delete check's rule: no caller set and no absence is
+		// provable over references the index never records.
+		return receipt.ExportInput{}, fmt.Errorf("%s is a Go struct field and field references are not indexed: a callers receipt is withheld (export its definition with --kind %s)", def.Name, core.ReceiptKindSymbolLocation)
 	}
 	nodes, err := c.ListAllSymbols(ctx, service)
 	if err != nil {

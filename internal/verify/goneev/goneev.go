@@ -299,28 +299,11 @@ func (e *Evidence) CorpusFiles(paths []string) []verify.CorpusFile {
 // not resolve to exactly one canonical key never reads as a proven zero:
 // one unlocated referent is reported, so the row fails loud.
 func (e *Evidence) TypedCallers(symbol, pkg string) (nonTest, test []verify.GoneReferent) {
-	var matches []core.SymbolNode
-	if e.cfg.FindSymbol != nil {
-		matches = e.cfg.FindSymbol(symbol)
-	}
-	var under []core.SymbolNode
-	for _, n := range matches {
-		if pkg == "" || path.Dir(n.FilePath) == pkg {
-			under = append(under, n)
-		}
-	}
-	// A same-named struct field never shadows the symbol the row names.
-	keys := map[string]bool{}
-	for _, n := range core.WithoutShadowingFields(under, symbol) {
-		keys[n.Key()] = true
-	}
-	if len(keys) != 1 || e.cfg.Graph == nil {
+	target, ok := e.callersTarget(symbol, pkg)
+	if !ok || e.cfg.Graph == nil {
 		return []verify.GoneReferent{{File: symbol, Line: 0}}, nil
 	}
-	var key string
-	for k := range keys {
-		key = k
-	}
+	key := target.Key()
 	for _, ci := range callgraph.CallersDetail(e.cfg.Graph, key) {
 		if ci.Kind == "" || ci.Kind == core.EdgeUnresolved || ci.Kind == core.EdgeFileResolved {
 			continue
@@ -339,6 +322,42 @@ func (e *Evidence) TypedCallers(symbol, pkg string) (nonTest, test []verify.Gone
 	sortReferents(nonTest)
 	sortReferents(test)
 	return nonTest, test
+}
+
+// CallersUnindexed implements verify.GoneEvidence: a callers row whose one
+// target is a Go struct field proves nothing from an empty referent set,
+// because field references are not indexed (the delete check's rule).
+func (e *Evidence) CallersUnindexed(symbol, pkg string) string {
+	if target, ok := e.callersTarget(symbol, pkg); ok && target.Kind == core.KindGoField {
+		return fmt.Sprintf("%s is a Go struct field and field references are not indexed: no referent set proves it unreferenced", symbol)
+	}
+	return ""
+}
+
+// callersTarget resolves the callers form's symbol to its one definition
+// under pkg (the way `package:` narrows a symbol row); a same-named struct
+// field never shadows the symbol the row names. ok is false unless exactly
+// one canonical key remains.
+func (e *Evidence) callersTarget(symbol, pkg string) (core.SymbolNode, bool) {
+	var matches []core.SymbolNode
+	if e.cfg.FindSymbol != nil {
+		matches = e.cfg.FindSymbol(symbol)
+	}
+	var under []core.SymbolNode
+	for _, n := range matches {
+		if pkg == "" || path.Dir(n.FilePath) == pkg {
+			under = append(under, n)
+		}
+	}
+	var target core.SymbolNode
+	keys := map[string]bool{}
+	for _, n := range core.WithoutShadowingFields(under, symbol) {
+		if !keys[n.Key()] {
+			keys[n.Key()] = true
+			target = n
+		}
+	}
+	return target, len(keys) == 1
 }
 
 // GoneReadFailures implements verify.GoneReadEvidence: every corpus read
