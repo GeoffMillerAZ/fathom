@@ -811,7 +811,7 @@ ingest that stops before its first write (Discover or fetch failure, IT-15 refus
 previous row back.
 
 New ingests beside a live owner (2026-10-26, GDEV-02). The live-owner rule above also
-governs a new ingest, in the daemon and in the CLI. Before it writes its own row, an ingest
+governs a new ingest by `fathom ingest`, serve-http or serve-mcp. Before it writes its own row, an ingest
 whose service has an `in_progress` row owned by another process that the installed probe
 reads alive (the pid-reuse-safe check above, cmd/fathom's `ingestOwnerProbe`, installed by
 `fathom ingest`, serve-http and serve-mcp through `fusion.InstallIngestOwnerProbe`) is
@@ -820,7 +820,8 @@ read or write; and `ensure` defers a drift beside such a row (`deferred (another
 is ingesting <svc>: pid N since T)`) instead of queueing a second ingest. The queue counts
 the refusal as a refusal (no failure, no backoff, no distress), the `ingest` tool answers
 it class-scoped in §3.4's format, and `fathom ingest` exits 1 with `outcome: "busy"`. A
-library caller with no probe installed is unchanged. Known limits: two processes that start
+library caller with no probe installed is unchanged, and so, for now, are `fathom watch`,
+`ingest-diff` and `platform-ingest`, which install none. Known limits: two processes that start
 in the same instant can both pass the check before either writes its row (closing it needs
 a conditional store write); and a row an ingest left `in_progress` after a write reads the
 same as a running ingest while its owner lives, so a long-lived owner (the daemon,

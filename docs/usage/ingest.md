@@ -18,7 +18,7 @@ fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 | `--stats` | off | With `--dry-run`: the discovery statistics (what `--dry-run` prints) |
 | `--respect-gitignore` | off | With `--dry-run`: discover a git work tree through `git ls-files -co --exclude-standard`, as `[connector] respect_gitignore = true` would (RT-68); `--json` adds `git` and `gitignored`. Run with and without it to measure the delta (RT-M11) |
 | `--rehash` | off | Read and hash every file (RT-102). Without it an ingest reads only files whose size, mtime or inode moved since the last ingest the same process (the daemon) ran, or the store's recorded stats once `file_stats` exists; a one-shot CLI ingest reads everything today |
-| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused|incomplete|cancelled|busy, exit_code, signal?, owner_pid?, owner_started_at?, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"zig": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused|incomplete|cancelled|busy, exit_code, signal?, counts_partial?, owner_pid?, owner_started_at?, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"zig": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
 
 Outcomes and exit codes: `ok` exits 0; `degraded` (every readable file indexed, some unreadable),
 `refused` (nothing written: the store already held evidence and this run could read nothing) and
@@ -26,12 +26,17 @@ Outcomes and exit codes: `ok` exits 0; `degraded` (every readable file indexed, 
 `cancelled`: SIGINT or SIGTERM stopped the ingest (GDEV-02). stderr says `error: ingest cancelled
 (SIGINT)` with how far it got (discovered, extracted, skipped), `--json` carries `signal`, and the
 exit is 130 for SIGINT and 143 for SIGTERM (128 + the signal, as a shell reports a death by it; a
-Go parent's `ExitCode()` reads that, where it read -1 before). No SCIP import, `[tests]` pickup or
-certify step runs after the stop. A stop before the first write leaves the store as it was; one
-after it leaves `ingest_state` `in_progress`, and the next ingest redoes the service (RT-109). A
-second signal takes the default action at once. SIGINT is not armed when the process ignores it.
+Go parent's `ExitCode()` reads that, where it read -1 before). stderr also names what the store
+holds, read from the service's `ingest_state` after the stop, never assumed: the ingest committed
+before the stop; or it stopped after it began writing (`in_progress`, and the next ingest redoes
+the service, RT-109); or it stopped before its first write (the store as it was). A stop during the
+ingest runs no SCIP import, `[tests]` pickup or certify step; a stop during one of those names it,
+it may be partial, and no step after it runs (`scip_imports` keeps the imports that completed).
+`--json` adds `counts_partial: true` when the ingest had not committed: its counts are as far as it
+got, not totals (`symbols` is counted only at the end). A second signal takes the default action
+at once. SIGINT is not armed when the process ignores it.
 `busy`: another live process (a daemon's ingest, or another CLI's) holds an uncommitted ingest of
-the service in this store, so nothing was read or written; exit 1, `--json` carries `owner_pid`
+the service in this store (`fathom watch`, `ingest-diff` and `platform-ingest` do not check yet), so nothing was read or written; exit 1, `--json` carries `owner_pid`
 and `owner_started_at`, and stderr names the row, not a certainty: that owner is still ingesting
 or stopped partway. When the owner is a fathom daemon, run the ingest through its `ingest` tool
 (it runs in the owning process) or restart the daemon. Known limits

@@ -59,17 +59,28 @@ func (c *signalConn) Fetch(ctx context.Context, ref core.SourceRef) ([]byte, err
 
 func (c *signalConn) Watermark(context.Context, core.ServiceRef) (string, error) { return "", nil }
 
-// firstWriteStore, when conn is set, lets the ingest's first observation
-// write land and then delivers conn's signal from inside it: the stop
-// comes after a write.
+// firstWriteStore, when conn is set, delivers conn's signal from inside a
+// store write and waits for the cancel: at the first observation write
+// (after it lands: the stop comes after a write), or, with atCommit, at the
+// commit's ingest_state = complete (after it lands: the stop comes after the
+// commit, before any post-ingest step).
 type firstWriteStore struct {
 	*store.SQLiteStore
-	conn *signalConn
-	once sync.Once
+	conn     *signalConn
+	atCommit bool
+	once     sync.Once
+}
+
+func (s *firstWriteStore) SetIngestState(ctx context.Context, st store.IngestState) error {
+	if err := s.SQLiteStore.SetIngestState(ctx, st); err != nil || s.conn == nil || !s.atCommit || st.State != store.IngestComplete {
+		return err
+	}
+	s.once.Do(func() { _ = s.conn.deliver(ctx) })
+	return nil
 }
 
 func (s *firstWriteStore) PutObservations(ctx context.Context, obs []core.Observation) error {
-	if err := s.SQLiteStore.PutObservations(ctx, obs); err != nil || s.conn == nil {
+	if err := s.SQLiteStore.PutObservations(ctx, obs); err != nil || s.conn == nil || s.atCommit {
 		return err
 	}
 	var err error
@@ -78,9 +89,10 @@ func (s *firstWriteStore) PutObservations(ctx context.Context, obs []core.Observ
 }
 
 // useSignalIngest routes cmdIngest through conn (over a firstWriteStore at
-// the --store path, signalling at the first write when afterWrite) and the
-// signal seam through conn's channel, counting the seam's stops.
-func useSignalIngest(t *testing.T, conn *signalConn, afterWrite bool) {
+// the --store path, signalling at the first write when at is "write", at
+// the commit when it is "commit") and the signal seam through conn's
+// channel, counting the seam's stops.
+func useSignalIngest(t *testing.T, conn *signalConn, at string) {
 	t.Helper()
 	origFactory, origSignals, origIdent := newIngestClient, ingestSignals, hookcache.IdentDir
 	newIngestClient = func(_ client.Mode, storePath string) (*client.Client, error) {
@@ -88,8 +100,8 @@ func useSignalIngest(t *testing.T, conn *signalConn, afterWrite bool) {
 		if err != nil {
 			return nil, err
 		}
-		fw := &firstWriteStore{SQLiteStore: st.(*store.SQLiteStore)}
-		if afterWrite {
+		fw := &firstWriteStore{SQLiteStore: st.(*store.SQLiteStore), atCommit: at == "commit"}
+		if at != "" {
 			fw.conn = conn
 		}
 		return client.New(conn, fw), nil
@@ -126,9 +138,9 @@ func readIngestState(t *testing.T, storePath, svc string) (store.IngestState, bo
 // back when the stop came before the first write, in_progress after one.
 func TestCmdIngestNamesCancellation(t *testing.T) {
 	content := map[string][]byte{"a.go": []byte(honestyGoSrc), "b.go": []byte("package p\n\nfunc Other() int { return 2 }\n")}
-	run := func(t *testing.T, conn *signalConn, afterWrite bool, args ...string) (int, string, string) {
+	run := func(t *testing.T, conn *signalConn, at string, args ...string) (int, string, string) {
 		t.Helper()
-		useSignalIngest(t, conn, afterWrite)
+		useSignalIngest(t, conn, at)
 		var out, errb bytes.Buffer
 		code := cmdIngest(args, &out, &errb)
 		return code, out.String(), errb.String()
@@ -146,7 +158,7 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 			t.Fatal(err)
 		}
 		// Seed: one ingest that completes, so a previous row exists.
-		if code, _, errText := run(t, newConn("", nil), false, "--service", "svc", "--path", root, "--store", storePath); code != 0 {
+		if code, _, errText := run(t, newConn("", nil), "", "--service", "svc", "--path", root, "--store", storePath); code != 0 {
 			t.Fatalf("seed ingest: exit %d: %s", code, errText)
 		}
 		return root, storePath, scip
@@ -154,7 +166,7 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 
 	t.Run("control: the trap fires without a signal", func(t *testing.T) {
 		root, storePath, scip := setup(t)
-		code, _, errText := run(t, newConn("", nil), false, "--service", "svc", "--path", root, "--store", storePath, "--scip", scip)
+		code, _, errText := run(t, newConn("", nil), "", "--service", "svc", "--path", root, "--store", storePath, "--scip", scip)
 		if code != 0 || !strings.Contains(errText, "warning: scip import") {
 			t.Fatalf("the post-ingest SCIP import must run and warn on an ordinary ingest: exit %d: %s", code, errText)
 		}
@@ -168,15 +180,20 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 		}
 		before := observationCount(t, storePath, "svc")
 		conn := newConn("a.go", os.Interrupt)
-		code, out, errText := run(t, conn, false, "--service", "svc", "--path", root, "--store", storePath, "--scip", scip)
+		code, out, errText := run(t, conn, "", "--service", "svc", "--path", root, "--store", storePath, "--scip", scip)
 		if code != 130 {
 			t.Fatalf("exit %d, want 130: %s", code, errText)
 		}
 		if !strings.Contains(errText, "error: ingest cancelled (SIGINT)") || !strings.Contains(errText, "discovered 2") {
 			t.Fatalf("stderr must name the cancel and how far it got: %q", errText)
 		}
-		if strings.Contains(errText, "warning:") || strings.Contains(out, "tests:") || strings.Contains(out, "certify:") {
-			t.Fatalf("a post-ingest step ran after the cancel: stdout %q stderr %q", out, errText)
+		// The SCIP index is the trap (the control shows an ordinary run
+		// warns on it): the run returned before any post-ingest step.
+		if strings.Contains(errText, "warning: scip import") || strings.Contains(out, "service:") {
+			t.Fatalf("a post-ingest step or the summary ran after the cancel: stdout %q stderr %q", out, errText)
+		}
+		if !strings.Contains(errText, "stopped before its first write") {
+			t.Fatalf("stderr must say what the store holds: %q", errText)
 		}
 		if !conn.disarmedFirst.Load() {
 			t.Fatal("the signal seam must be stopped before the cancel, so a second signal exits at once")
@@ -195,11 +212,11 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 		// Changed content: the hash gate would otherwise skip both files and
 		// the ingest would write nothing.
 		conn.content = map[string][]byte{"a.go": []byte("package p\n\nfunc Changed() int { return 3 }\n"), "b.go": content["b.go"]}
-		code, _, errText := run(t, conn, true, "--service", "svc", "--path", root, "--store", storePath, "--scip", scip)
+		code, _, errText := run(t, conn, "write", "--service", "svc", "--path", root, "--store", storePath, "--scip", scip)
 		if code != 143 {
 			t.Fatalf("exit %d, want 143: %s", code, errText)
 		}
-		if !strings.Contains(errText, "error: ingest cancelled (SIGTERM)") || strings.Contains(errText, "warning:") {
+		if !strings.Contains(errText, "error: ingest cancelled (SIGTERM)") || !strings.Contains(errText, "ingest_state stays in_progress") || strings.Contains(errText, "warning: scip import") {
 			t.Fatalf("stderr: %q", errText)
 		}
 		row, found := readIngestState(t, storePath, "svc")
@@ -211,7 +228,7 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		root, storePath, scip := setup(t)
 		conn := newConn("a.go", os.Interrupt)
-		code, out, errText := run(t, conn, false, "--service", "svc", "--path", root, "--store", storePath, "--scip", scip, "--json")
+		code, out, errText := run(t, conn, "", "--service", "svc", "--path", root, "--store", storePath, "--scip", scip, "--json")
 		if code != 130 {
 			t.Fatalf("exit %d, want 130: %s", code, errText)
 		}
@@ -222,8 +239,31 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 		if env.Outcome != "cancelled" || env.ExitCode != 130 || env.Signal != "SIGINT" || env.Discovered != 2 || env.Error == "" {
 			t.Fatalf("envelope: %+v", env)
 		}
-		if len(env.ScipImports) != 0 {
-			t.Fatalf("a SCIP import ran after the cancel: %+v", env.ScipImports)
+		if len(env.ScipImports) != 0 || strings.Contains(errText, "warning: scip import") || !env.CountsPartial {
+			t.Fatalf("a SCIP import ran after the cancel, or the counts were not marked partial: %+v %q", env, errText)
+		}
+	})
+
+	t.Run("SIGINT after the commit", func(t *testing.T) {
+		root, storePath, scip := setup(t)
+		conn := newConn("", os.Interrupt)
+		conn.content = map[string][]byte{"a.go": []byte("package p\n\nfunc Committed() int { return 4 }\n"), "b.go": content["b.go"]}
+		code, out, errText := run(t, conn, "commit", "--service", "svc", "--path", root, "--store", storePath, "--scip", scip, "--json")
+		if code != 130 {
+			t.Fatalf("exit %d, want 130: %s", code, errText)
+		}
+		if !strings.Contains(errText, "the ingest committed before the stop") || strings.Contains(errText, "in_progress") || strings.Contains(errText, "warning: scip import") {
+			t.Fatalf("a stop after the commit must say so, and run no SCIP import: %q", errText)
+		}
+		var env ingestJSON
+		if err := json.Unmarshal([]byte(out), &env); err != nil {
+			t.Fatalf("%v: %q", err, out)
+		}
+		if env.Outcome != "cancelled" || env.CountsPartial || env.Symbols == 0 {
+			t.Fatalf("a committed ingest's counts are totals: %+v", env)
+		}
+		if row, found := readIngestState(t, storePath, "svc"); !found || row.State != store.IngestComplete || row.PID != os.Getpid() {
+			t.Fatalf("ingest_state = %+v, want complete under this pid", row)
 		}
 	})
 }

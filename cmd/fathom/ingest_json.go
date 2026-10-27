@@ -140,6 +140,10 @@ type ingestJSON struct {
 	// ingest of the service refused this one (outcome busy, GDEV-02).
 	OwnerPID       int    `json:"owner_pid,omitempty"`
 	OwnerStartedAt string `json:"owner_started_at,omitempty"`
+	// CountsPartial marks a cancelled ingest that stopped before it
+	// committed: its counts are as far as it got (symbols is counted only
+	// at the end), never totals.
+	CountsPartial bool `json:"counts_partial,omitempty"`
 	// Signal names the signal that stopped a cancelled ingest (SIGINT,
 	// SIGTERM); omitted otherwise.
 	Signal     string `json:"signal,omitempty"`
@@ -211,30 +215,15 @@ func errnoClass(errText string) string {
 // 0/1 the text path returns). scipResults carries every --scip (or
 // auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
 // nil when none ran.
-// renderIngestCancelledJSON writes the envelope of an ingest a signal
-// stopped: the counts the Report carries for how far it got, outcome
-// "cancelled", the signal and its exit code, and the error named.
-func renderIngestCancelledJSON(w io.Writer, service string, report client.Report, signal string, code int, msg string) {
-	out := ingestJSON{
-		Service:            service,
-		Outcome:            "cancelled",
-		ExitCode:           code,
-		Signal:             signal,
-		Discovered:         report.Discovered,
-		Extracted:          report.Extracted,
-		Skipped:            report.Skipped,
-		StatSkipped:        report.StatSkipped,
-		PeakInflightBytes:  report.PeakInflightBytes,
-		Symbols:            report.Symbols,
-		ReadFailed:         report.ReadFailed,
-		ReadFailures:       []ingestReadFailureJSON{},
-		DefaultIgnoredDirs: report.DefaultIgnoredDirs,
-		Error:              msg,
-		Hint:               "a stop before the first write leaves the store as it was; one after it leaves ingest_state in_progress, and the next ingest redoes the service (RT-109)",
-	}
-	for _, f := range report.ReadFailures {
-		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
-	}
+// renderIngestCancelledJSON writes the envelope of a run a signal stopped:
+// the finished envelope's counts and SCIP imports (counts_partial when the
+// ingest itself did not commit, so its counts are as far as it got, not
+// totals), outcome "cancelled", the signal, its exit code, and the error and
+// hint ingestCancelled names.
+func renderIngestCancelledJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult, committed bool, signal string, code int, msg, hint string) {
+	out := ingestJSONOf(service, svcPath, report, readErr, scipResults)
+	out.Outcome, out.ExitCode, out.Signal, out.Error, out.Hint = "cancelled", code, signal, msg, hint
+	out.CountsPartial = !committed
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(out)
@@ -251,6 +240,17 @@ func renderIngestBusyJSON(w io.Writer, service string, pid int, startedAt, msg, 
 }
 
 func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) int {
+	out := ingestJSONOf(service, svcPath, report, readErr, scipResults)
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+	return out.ExitCode
+}
+
+// ingestJSONOf is the envelope of a finished ingest: every count the Report
+// carries, the SCIP imports, and the outcome its read failures and typed
+// pass give.
+func ingestJSONOf(service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) ingestJSON {
 	out := ingestJSON{
 		Service:           service,
 		Outcome:           "ok",
@@ -353,8 +353,5 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		out.ExitCode = 1
 		out.Error = "typed-edge pass failed: " + report.TypedFailReason
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	_ = enc.Encode(out)
-	return out.ExitCode
+	return out
 }
