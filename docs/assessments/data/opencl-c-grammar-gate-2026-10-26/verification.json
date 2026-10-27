@@ -233,9 +233,6 @@
   "m5_followup": {
     "base_main": "440a94365",
     "date": "2026-10-27",
-    "authenticated_queries": 7,
-    "http_200": 7,
-    "complete_single_page_results": 7,
     "scoped_zero_hit_queries": 4,
     "global_hits": [
       32,
@@ -245,7 +242,7 @@
     "matching_repository_ids": 4,
     "independent_conventions_beyond_clblas": 0,
     "non_subject_identity_policy": "X-R9 numeric IDs only",
-    "receipt_sha256": "6b53d6900137052261418e6effde8121a979cc4fc23ce9eb34e7ce7fdae9fc04",
+    "receipt_sha256": "bbdb303f63d9627513304d4023998cc977a70275824c9fb5a68db122d09e3952",
     "language_or_grammar_measurements": 0,
     "checks": {
       "json": "pass: three changed JSON files",
@@ -263,6 +260,39 @@
       "plan_lexical_path_declarations_inspected": 1061,
       "affected_plan_paths": [],
       "scratch_strict_verify": "not applicable: no changed file is read by a plan lexical path contract"
+    },
+    "authenticated_exact_token_queries": 7,
+    "exact_token_http_200": 7,
+    "complete_exact_token_single_page_results": 7
+  },
+  "m5_review_fixes": {
+    "parent": "b67ecf356",
+    "F1": "Per-row lineage distinguishes the pinned reference, two 25/25 indexed-hit copies, and one 22/25 derived tree with three differing blobs.",
+    "F2": "Renamed hit counts explicitly; pinned reference has 40 .cl template blobs. No full derived-directory count is asserted.",
+    "F3": {
+      "positive_control_counts": [
+        3,
+        21,
+        37,
+        28
+      ],
+      "positive_controls": 4,
+      "scope": "Some indexed results, not a complete-index guarantee.",
+      "authenticated_queries_total": 11,
+      "exact_token_queries": 7,
+      "positive_control_queries": 4,
+      "positive_control_http_200": 4
+    },
+    "F4": "Original pinned samples are acknowledged as already public at main 440a94365; current receipt retains numeric IDs under X-R9 and exact historical row pointers/findings. Owner question restored without granting prepass permission.",
+    "checks": {
+      "json": "pass: two changed JSON files",
+      "release_notes": "pass",
+      "merge_debris": "pass: full and staged",
+      "org_agnostic": "pass: TestNoOrgSpecificNames, 2.377s",
+      "privacy": "pass: no added @, Author, email, host-path or raw-person-key matches; non-subjects retain numeric IDs",
+      "scanner": "zero findings without baseline",
+      "x_r10": "No Go changes and no affected lexical plan readers among 1,061 path declarations; tenancy lint and scratch plan verification not applicable.",
+      "independent_review": "pass, no findings; per-row lineage, reference 40-file count, four positive-control responses, public v1 provenance/indices/findings and restored owner question checked"
     }
   }
 }
