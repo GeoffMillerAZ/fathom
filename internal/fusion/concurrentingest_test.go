@@ -97,3 +97,41 @@ func TestIngestRefusesLiveConcurrentIngestByName(t *testing.T) {
 		})
 	}
 }
+
+// ctxStateStore is a memory store whose ingest-state read fails once the
+// context is cancelled, as the SQLite store's does.
+type ctxStateStore struct{ *store.MemoryStore }
+
+func (s ctxStateStore) GetIngestState(ctx context.Context, id string) (store.IngestState, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return store.IngestState{}, false, err
+	}
+	return s.MemoryStore.GetIngestState(ctx, id)
+}
+
+// TestIngestCancelledBeforeCheckLeavesLiveOwnerRow (GDEV-02, review F2): a
+// run signalled before the concurrent-ingest check stops there. A read that
+// failed on the cancelled context must not count as "no owner", since
+// beginIngestState writes under WithoutCancel and would overwrite a live
+// owner's in_progress row.
+func TestIngestCancelledBeforeCheckLeavesLiveOwnerRow(t *testing.T) {
+	svc := core.ServiceRef{ID: "svc", Path: "/repo"}
+	started := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+	foreign := os.Getpid() + 1
+	live := store.IngestState{ServiceID: "svc", State: store.IngestInProgress, PID: foreign, StartedAt: started.UnixNano(), TargetCommit: "t", Path: "/repo"}
+	t.Cleanup(fusion.InstallIngestOwnerProbe(func(pid int, at time.Time) bool { return pid == foreign && at.Equal(started) }))
+
+	mem := ctxStateStore{store.NewMemoryStore()}
+	_ = mem.SetIngestState(context.Background(), live)
+	p := fusion.New(discoverFailConn{}, mem, fusion.Config{Concurrency: 1})
+	p.WithGitHead(func(string) string { return "new" })
+	p.WithGitLog(func(string) string { return "" })
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := p.Ingest(ctx, svc); !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancelled run must stop at the check with context.Canceled, got %v", err)
+	}
+	if got, found, _ := mem.MemoryStore.GetIngestState(context.Background(), "svc"); !found || got != live {
+		t.Fatalf("ingest_state = %+v found=%v, want the live owner's row untouched", got, found)
+	}
+}

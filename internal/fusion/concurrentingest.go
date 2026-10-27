@@ -61,6 +61,12 @@ func (e *ConcurrentIngestError) Error() string {
 // processes that start in the same instant can both pass before either
 // writes its row: closing that needs a conditional store write.
 func (p *Pipeline) refuseConcurrentIngest(ctx context.Context, svc core.ServiceRef) error {
+	// A run whose context is already cancelled must not pass on a failed
+	// read: beginIngestState writes under WithoutCancel and would overwrite
+	// a live owner's row.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	probe := ingestOwnerProbe.Load()
 	if probe == nil {
 		return nil
