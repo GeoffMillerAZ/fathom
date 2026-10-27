@@ -10,7 +10,19 @@
   "release_notes_check_passed": true,
   "merge_debris_check_passed": true,
   "adr011_check_passed": true,
-  "strict_scratch_verification": "pending clean committed head",
+  "strict_scratch_verification": {
+    "commit": "8e29e92cc",
+    "ingest_exit": 0,
+    "verify_exit": 0,
+    "total": 797,
+    "claimed": 569,
+    "verified": 569,
+    "failing": 0,
+    "plan": "docs/plans/language-breadth.md",
+    "strict": true,
+    "since": "origin/main",
+    "main": "3118be853"
+  },
   "engine_changes": false,
   "epoch_changes": false,
   "before": {

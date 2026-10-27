@@ -24,8 +24,8 @@ What it writes, every line from `source_code_info` spans (first line, last line)
   member, map value (attributed to the message holding the map, not to the synthetic entry) and extension field declared
   inside a message, and an rpc's request and response. A group field (the group declares its type in place), a map
   field's own entry type, a file-level extension (nothing encloses it) and an `extend`'s target are not references.
-- `imports`: every import statement whose path protoc resolved to a file of the subject, at the statement's line; a
-  well-known (`google/protobuf/*`) or external import is not written.
+- `imports`: every import statement whose path protoc resolved to a file of the subject, at the statement's line; an import outside the subject is not written, including an external well-known
+  (`google/protobuf/*`) dependency. Well-known files inside the fixed subject scope are eligible.
 - `cross_references`: a reference whose type protoc resolved to a definition in another file of the subject.
 
 First runs (2026-09-29, libprotoc 34.1, buf 1.70.0): grpc/grpc-go v1.84.0, 13 files compiled (10 measured: discovery

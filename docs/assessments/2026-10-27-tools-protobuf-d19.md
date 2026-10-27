@@ -174,3 +174,15 @@ lexical consumers require a clean scratch ingest and strict language-breadth
 verification before READY. Build the committed CLI into the same private bin
 directory and run it with `--store` and a private `--ledger`; no global index or
 ledger is used. No plan box is flipped by this lane.
+
+Clean-head X-R10 proof at `8e29e92cc`: scratch ingest exit0, strict verification
+exit0, all 569 claimed rows verified (797 total; zero claimed failures). The
+tenancy lint passed for the two changed bench Go files. Release-note, merge
+debris, ADR-011, focused race and recursive reading serialization checks passed.
+The final docs-only proof record is re-ingested and verified before READY.
+
+```sh
+bash scripts/fathom-go.sh build -o workspace/artifacts/protobuf-d19-r1/bin/fathom ./cmd/fathom
+FATHOM_TENANCY_BUDGET=4GiB workspace/artifacts/protobuf-d19-r1/bin/fathom ingest --service fathom --path . --store workspace/artifacts/protobuf-d19-r1/verify-clean.sqlite --json
+workspace/artifacts/protobuf-d19-r1/bin/fathom verify --strict --since origin/main --service fathom --store workspace/artifacts/protobuf-d19-r1/verify-clean.sqlite --ledger workspace/artifacts/protobuf-d19-r1/verify-ledger.jsonl --plan docs/plans/language-breadth.md --quiet
+```
