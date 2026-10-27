@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<System>
+  <Block BlockType="Sum" Name="Error" SID="12">
+    <P Name="Inputs">+-</P>
+  </Block>
+  <Block BlockType="Gain" Name="Kp" SID="13"/>
+</System>

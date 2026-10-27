@@ -84,6 +84,15 @@ type goModule struct {
 	skip string
 }
 
+// dir is the module root's absolute directory under the absolute
+// repoPath.
+func (m goModule) dir(repoPath string) string {
+	if !m.nested() {
+		return repoPath
+	}
+	return filepath.Join(repoPath, filepath.FromSlash(m.rel))
+}
+
 // Why a nested module is not loaded, as the skipped line names it.
 const (
 	skipNotOwn   = "module path not the repository's"

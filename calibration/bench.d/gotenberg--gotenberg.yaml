@@ -1,0 +1,39 @@
+{
+  "name": "gotenberg--gotenberg",
+  "url": "https://github.com/gotenberg/gotenberg.git",
+  "ref": "main",
+  "sha": "764c7f2c256af9100787d40d2306c2bd0d7b2990",
+  "licence": "MIT",
+  "subpath": ".",
+  "notes": "Round-2 preparation only; native linux/arm64, --user 1000:1000, --cpus 4, pinned image golang@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5. Mount /subject:ro, /work:rw and /bench-inputs:ro; synthetic uid-1000 passwd/group files are mounted read-only at /etc/passwd and /etc/group; executable tmpfs /work/tmp has mode 1777 and uid/gid 1000. Native macOS C3, twelve-core timing, C4, C5 replay and live-fleet C7 remain unmeasured. Drop tasks naming any excluded or platform-skipped test.",
+  "bench": {
+    "toolchain": {
+      "versions": {
+        "go": "1.27.3"
+      },
+      "lockfile_sha256": "6a44424477e8885d939f07690ededae27953d13bb96ea6fbb70293041ddb4978"
+    },
+    "setup": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/subject/.git GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/work/source PIP_CACHE_DIR=/work/pip-cache GOPATH=/work/gopath GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 HOME=/work/home TZ=UTC PATH=/usr/local/go/bin:/work/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HTTP_PROXY='' HTTPS_PROXY='' ALL_PROXY='' GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache COREPACK_ENABLE_NETWORK=1 npm_config_offline=false PNPM_CONFIG_OFFLINE=false; printf 'BENCH_UNAME_M='; uname -m; printf 'BENCH_UID='; id -u; set -e; (test -d /work/source/.git || ( mkdir -p /work/source && git -C /subject ls-files -z > /work/tracked-files && tar -C /subject --null -T /work/tracked-files -cf /work/source.tar && tar --touch --no-same-owner -C /work/source -xf /work/source.tar && cp -R /subject/.git /work/source/.git )) && cd /work/source && ( export HOME=/work/home TMPDIR=/work/tmp GOPATH=/work/gopath GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 TZ=UTC; mkdir -p \"$HOME\"; go version; go mod download )"
+    ],
+    "test": [
+      "export TMPDIR=/work/tmp COREPACK_HOME=/work/corepack UV_PROJECT_ENVIRONMENT=/work/venv UV_CACHE_DIR=/work/uv-cache UV_PYTHON_DOWNLOADS=never GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/subject GIT_CONFIG_KEY_1=safe.directory GIT_CONFIG_VALUE_1=/subject/.git GIT_CONFIG_KEY_2=safe.directory GIT_CONFIG_VALUE_2=/work/source PIP_CACHE_DIR=/work/pip-cache GOPATH=/work/gopath GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 HOME=/work/home TZ=UTC PATH=/usr/local/go/bin:/work/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HTTP_PROXY='' HTTPS_PROXY='' ALL_PROXY='' GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOPROXY=off PIP_NO_INDEX=1 UV_OFFLINE=1 npm_config_offline=true PNPM_CONFIG_OFFLINE=true pnpm_config_verify_deps_before_run=warn COREPACK_ENABLE_NETWORK=0; printf 'BENCH_UNAME_M='; uname -m; printf 'BENCH_UID='; id -u; set -e; cd /work/source && ( export HOME=/work/home TMPDIR=/work/tmp GOPATH=/work/gopath GOMODCACHE=/work/gomodcache GOCACHE=/work/gocache GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMAXPROCS=4 TZ=UTC; mkdir -p \"$HOME\"; export GOPROXY=off GOSUMDB=off; go test -json -count=1 ./... )"
+    ],
+    "suite_seconds": 44.535,
+    "suite_tests": 1044,
+    "flake_runs": 3,
+    "l0_reading": "unmeasured: controller C4 L0 runs pending",
+    "task_sources": [
+      {
+        "dataset": "upstream-git-history (candidate source; zero replayed or admitted tasks)",
+        "revision": "764c7f2c256af9100787d40d2306c2bd0d7b2990",
+        "licence": "MIT"
+      }
+    ],
+    "contamination": {
+      "age": 3138,
+      "popularity_band": "high"
+    },
+    "excluded": []
+  }
+}

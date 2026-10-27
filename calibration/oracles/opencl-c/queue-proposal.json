@@ -1,0 +1,89 @@
+{
+  "status": "implementation native grammar-gate refusal proposal under G-R6; canonical disposition is controller-owned",
+  "item": {
+    "id": "opencl",
+    "name": "OpenCL C (.cl)",
+    "kind": "language",
+    "tier": "T3",
+    "target_level": "L2",
+    "grammar_source": "Experimental semicolonless OpenCL C patch over tree-sitter-c v0.24.2, hashes in grammar-candidates.json. Fixed pool remains 53/386 ERROR-or-MISSING (13.73%), zero faults; no product blob registered.",
+    "licence": "MIT",
+    "oracle": [
+      "synthesized OpenCL compile database following cuda-compdb.py -> existing clang-calls + clang-ast-defs + scip-clang/preproc active_lines, tier B"
+    ],
+    "calibration_subjects": [
+      "KhronosGroup/OpenCL-SDK@6090378a113db8dab20ae278c8fa57ab10b92300",
+      "darktable-org/darktable@891e46cd57b64d67dbde183d5d3c0e430edd11d6",
+      "opencv/opencv@4d7924ebb501ae31d69820039d92a0d5fe7ee7dd",
+      "arrayfire/arrayfire@ab4a5063c92512dd65ab2b418cf81e4b3c46299b",
+      "clMathLibraries/clBLAS@cf9113982fdfc994297d372785ce76eb80911af2",
+      "yuhc/gpu-rodinia@9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "vetter/shoc@00b25e2751dde4f1d7c595cadbb7fdb0873257b0",
+      "inducer/pyopencl@0c46357ef31474b1dfd2ec4000b4421fcf71193a"
+    ],
+    "depends_on": [
+      "LB-Q-glsl"
+    ],
+    "engine": "tags",
+    "plan_row": "LB-Q-opencl",
+    "worker_model": "sonnet",
+    "notes": "Initial .cl-only proposal, no support claim. Membership is fixed by pool-rule.json using licence, whole-project pin, predeclared roles and the named hashcat structural exception. Hashcat's diagnostic role was assigned after its round-1 screen because computed includes and qualifier macros require a compiler-evidenced context; review accepted the exception. The historical inclusive pool would fail at 1,482/1,735 (85.42%). The seven previously screened OSI primary populations fail natively: dedicated 133/378 = 35.19%. PyOpenCL enters under that same rule before its screen. HandsOn CC-BY-3.0 is diagnostic-only and cannot calibrate under design \u00a713.3 step 16. Preserve every .cl including fragments and duplicates in tenancy. Positive C/OpenCL sniff, Lisp/Cool negatives, ambiguous refusal, tier-B reconstructed CL3.0/SPIR64 context and shared active_lines filtering remain required. No L3/L4 claim. The full frozen eight-project pool now fails at 138/386 = 35.75%, including PyOpenCL at 5/8; none of those results changes membership. After G-R1 opened implementation, all five named native grammar candidates still fail admission. The patched candidate improves dedicated 138/386 to 63/386 with zero regressions/faults. The separate pre-tuning holdout improves 25/53 to 2/53 and never enters the primary gate. No language level is claimed. The original other23 failures exceed19/386, but that count does not prove a raw grammar cannot repair them. The general semicolonless-macro route measures 53/386, including 13 non-clBLAS failures, with 10 improvements and zero regressions or faults. The intermediate G-R6 trigger has fired, but no prepass is authorized. The reused post-tuning holdout stays 2/53 and is diagnostic, not independent validation."
+  },
+  "ordering": "GLSL landed; OpenCL C native admission is proposed for refusal. Controller review and canonical disposition precede Slang under G-R1.",
+  "activation": "The controller adds/proves the queue and plan rows; this file does not alter the canonical queue.",
+  "diagnostic_subjects": [
+    "hashcat/hashcat",
+    "pocl/pocl",
+    "HandsOnOpenCL/Exercises-Solutions",
+    "sschaetz/nvidia-opencl-examples"
+  ],
+  "implementation_gates": [
+    "MET: GLSL PR61 landed on main 6db920e72 before OpenCL implementation.",
+    "UNMET: Semicolonless general grammar repair measured 53/386 ERROR-or-MISSING on the unchanged eight-project pool versus original patched 63/386 and dedicated 138/386, zero faults or regressions. The 13 non-clBLAS failures fire the intermediate G-R6 trigger, but whole-pool native admission fails, no product WASM was attempted, and no prepass is authorized. Hashcat dedicated/C remain 1344/1349 under the reviewed diagnostic exception.",
+    "MET ON macOS ARM64 ONLY: Official LLVM 21.1.8 archive, compiler and two resource-header pins verified; SDK replay through the existing clang pipeline passed. Linux X64/ARM64 remain unqualified; no cross-platform parity claimed.",
+    "FUTURE AFTER NATIVE ADMISSION: Reconstruct and evidence each primary subject compiler context and meet per-subject oracle coverage without removing any file from tenancy. HandsOn and unresolved-EULA subjects are ineligible for calibration. Membership cannot change after patch results.",
+    "FUTURE AFTER NATIVE ADMISSION: Reuse written-site mapping, compiler-derived stand-ins and active_lines in existing clang tools; prove oracle independence and explicit zero-call scope before L2. Tier B caps good.",
+    "PROBED: Stock scip-clang v0.4.0 with -x cl refuses all ten SDK .cl entries at its extension allowlist, before semantic analysis. Extension-patch and alias/remap routes remain untried; v0.4.1 is not silently substituted.",
+    "For link-unit truth, use evidenced clCreateProgramWithSource/clBuildProgram source assembly as CUDA uses build link lines. Never infer one program per file. No L3 claim.",
+    "Any hashcat prepass requires independently reconstructed compiler context and proof it removes nothing graded. No such prepass is authorized or claimed here."
+  ],
+  "pool_rule": "calibration/oracles/opencl-c/pool-rule.json",
+  "grammar_gate_disposition": {
+    "status": "proposed refusal; no support registration",
+    "assessment": "docs/assessments/2026-10-26-opencl-c-grammar-gate.md",
+    "primary_files": 386,
+    "faults": 0,
+    "maximum_errors_at_five_percent": 19,
+    "classes": {
+      "host_string_templates": 40,
+      "semicolonless_macro_invocation": 10,
+      "macro_parameter_fragment": 7,
+      "conditional_branch_fragment": 2,
+      "macro_generated_syntax": 2,
+      "raw_missing_semicolon": 1,
+      "conditional_cpp_linkage": 1
+    },
+    "retry_trigger": "Native admission requires a licensed general grammar or independently validated product-context route at no more than 19/386 ERROR-or-MISSING across the whole unchanged pool, plus product WASM gates. A clBLAS prepass additionally requires a matching convention in two independent projects, runtime product behavior preserving every file, and the owner ruling under G-R6. The 13 non-clBLAS intermediate trigger has fired but does not satisfy these requirements.",
+    "classes_scope": "classes is the original 63-file baseline; current_classes is the later 53-file screen. Original residual-labels.json is unchanged.",
+    "general_grammar_route": {
+      "candidate": "opencl-c-semicolonless",
+      "status": "fresh-build 145/145 corpus pass; whole-pool 53/386 with 10 error-to-clean and zero regressions/faults; reused post-tuning holdout 2/53 diagnostic only",
+      "scope": "identifier-based statement/top-level-only macro invocation, immediate newline, declaration priority; no preprocessing"
+    },
+    "historical_error_or_missing_files": 63,
+    "current_error_or_missing_files": 53,
+    "current_error_rate_percent": 13.73,
+    "current_non_clblas_errors": 13,
+    "intermediate_trigger": "FIRED: 13 non-clBLAS ERROR-or-MISSING files is at most 19; this reopens only the G-R6 prepass question. No prepass is implemented or authorized.",
+    "current_classes": {
+      "host_string_templates": 40,
+      "macro_parameter_fragment": 7,
+      "semicolonless_macro_invocation": 1,
+      "conditional_branch_fragment": 2,
+      "macro_generated_syntax": 1,
+      "raw_missing_semicolon": 1,
+      "conditional_cpp_linkage": 1
+    },
+    "convention_search": "Bounded five-project search found no second independent exact clBLAS host-string convention. Four GitHub code-search requests returned 401 and provide no absence proof. See template-convention-search.json."
+  }
+}

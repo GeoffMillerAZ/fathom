@@ -93,3 +93,11 @@ prereg: #Prereg & {
 	exclusions: ["A0 hit@3 in at least two of three trials"]
 	deviation_log: []
 }
+
+// D28 counts leaf tests; one exclusion is exactly two percent of fifty.
+exclusionSubject: subject & {
+	bench: {
+		suite_tests: 50
+		excluded: [{test: "TestService/offline", reason: "missing host service", log: "dial tcp: connection refused"}]
+	}
+}

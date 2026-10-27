@@ -1,0 +1,128 @@
+[
+  {
+    "FAIL": "FAIL: test_native_names_do_not_come_from_parser_pair (test_trace_decode.NativeFunctionTests.test_native_names_do_not_come_from_parser_pair)",
+    "file": "trace_decode.py",
+    "mutant": "test_native_names_do_not_come_from_parser_pair",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_alias_target_is_not_written_alias (test_trace_decode.NativeFunctionTests.test_native_alias_target_is_not_written_alias)",
+    "file": "trace_decode.py",
+    "mutant": "test_native_alias_target_is_not_written_alias",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_implicit_callback_is_unattested (test_trace_decode.NativeFunctionTests.test_implicit_callback_is_unattested)",
+    "file": "trace_decode.py",
+    "mutant": "test_implicit_callback_is_unattested",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_bytes_cap_plus_one (test_trace_decode.NativeFunctionTests.test_bytes_cap_plus_one)",
+    "file": "trace_decode.py",
+    "mutant": "test_bytes_cap_plus_one",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_both_original_phases_retained (test_combine_runtime.PhaseCombinationTests.test_both_original_phases_retained)",
+    "file": "combine_runtime.py",
+    "mutant": "drop-second-phase",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_zero_exit_does_not_hide_stopped_default_phase (test_driver_outcome.DriverOutcomeTests.test_zero_exit_does_not_hide_stopped_default_phase)",
+    "file": "driver_outcome.py",
+    "mutant": "stopped-phase-is-success",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_generated_mock_requires_actual_written_capture (test_analyze_misses.MissAttributionTests.test_generated_mock_requires_actual_written_capture)",
+    "file": "analyze_misses.py",
+    "mutant": "mock-without-written-capture",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "tier",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "reject-initial-runtime-intrinsic",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "hide-found-rejected-command",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "reject-baseline-root-cmdlets",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "autoload",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "explicit-runtime-baseline",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "privacy",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "site-cap",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_native_scope_alias_truth_and_caps (__main__.OwnerToolTests.test_native_scope_alias_truth_and_caps)",
+    "file": "TraceFunctions.ps1",
+    "mutant": "script-qualified-breakpoint",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "DiscoverHarness.ps1",
+    "mutant": "drop-parser-enumerated-module",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "omit-module-variable-private-ancestor",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "ResolveCalls.ps1",
+    "mutant": "leak-refused-helper-class-across-files",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_every_declared_helper_is_loaded_or_named (__main__.InventoryTests.test_every_declared_helper_is_loaded_or_named)",
+    "file": "DiscoverHarness.ps1",
+    "mutant": "invent-code-hash-for-absent-target",
+    "restored": "GREEN"
+  },
+  {
+    "FAIL": "FAIL: test_declared_dependencies_and_complete_breakdown (__main__.DeclaredHarnessTests.test_declared_dependencies_and_complete_breakdown)",
+    "file": "measure_binder.py",
+    "mutant": "omit-declared-harness",
+    "restored": "GREEN"
+  }
+]

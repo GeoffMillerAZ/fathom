@@ -118,6 +118,13 @@ type HookInput struct {
 	ReadRange  bool
 	ReadOffset int
 	ReadLimit  int
+	// URL is a web fetch's target (Claude Code: WebFetch tool_input.url)
+	// and WebDomains a web search's allowed domains (WebSearch
+	// tool_input.allowed_domains, one per line so HookInput stays
+	// comparable), read on PreToolUse for the egress guard (ADR-083);
+	// empty on every other tool.
+	URL        string
+	WebDomains string
 }
 
 // ShellOutput is a shell tool call's result with its streams apart (Claude
@@ -241,6 +248,10 @@ type claudeToolInput struct {
 	// so a present key and an absent one differ.
 	Offset json.RawMessage `json:"offset"`
 	Limit  json.RawMessage `json:"limit"`
+	// URL is WebFetch's target and AllowedDomains WebSearch's result
+	// filter (ADR-083's egress guard).
+	URL            string   `json:"url"`
+	AllowedDomains []string `json:"allowed_domains"`
 }
 
 // claudeEnvelope is the union of every stdin field fathom's hook verbs
@@ -379,6 +390,10 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		_ = json.Unmarshal(env.ToolInput.Limit, &in.ReadLimit)
 		in.ReadRange = claudeRawSet(env.ToolInput.Offset) || claudeRawSet(env.ToolInput.Limit)
 		in.ToolUseID = env.ToolUseID
+		if in.Tool == ToolWeb {
+			in.URL = env.ToolInput.URL
+			in.WebDomains = strings.Join(env.ToolInput.AllowedDomains, "\n")
+		}
 	}
 	return in, nil
 }

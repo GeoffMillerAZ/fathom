@@ -169,6 +169,16 @@
           }
         ],
         "matcher": "^(Agent|Task)$"
+      },
+      {
+        "hooks": [
+          {
+            "command": "command -v /tools/fathom >/dev/null 2>&1 || exit 0; /tools/fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "WebFetch|WebSearch"
       }
     ],
     "SessionEnd": [

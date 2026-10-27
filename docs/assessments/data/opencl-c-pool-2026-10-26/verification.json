@@ -1,0 +1,64 @@
+{
+  "base_main": "6db920e72898abb20bf86c22652b401902e34598",
+  "baseline_policy_unchanged_through_measurement": true,
+  "checks": {
+    "TestNoOrgSpecificNames": "pass 2.348s",
+    "X-R5": "47 changed/new OpenCL files inspected; 13 lexical hits are 8 repository/pin identifiers, 3 synthetic email fixtures and 2 scan-description lines. No subject people or private paths in evidence.",
+    "merge_debris_full": "pass",
+    "merge_debris_staged": "pass",
+    "php_assessment_exact_main_bytes": "pass; normal unbaselined scanner has zero findings",
+    "release_notes": "pass",
+    "scope_compatibility_race_after_main_merge": "historical pass 3.760s; unchanged Python/docs delta"
+  },
+  "conditions": {
+    "GOFLAGS": "-p=2",
+    "GOMAXPROCS": 2,
+    "GOWORK": "off",
+    "nice": 10,
+    "phase_start_load_one_max": 9
+  },
+  "current_policy_commit": "f8e934190391ae7f2e41ee9102217bcafb478a36",
+  "current_policy_sha256": "2e6ebd4c74fb0d579c72b235d0c20ba12d290fd4ae32330235cd694fed83e108",
+  "limits": [
+    "Historical seven-project screens precede the pool rule and are not relabelled as prospective measurements.",
+    "Original PyOpenCL screen followed the original committed rule. Future patch measurements follow the amended bytes and must also report hashcat dedicated/C rates; no member changes.",
+    "The native 35.75% baseline failure requires grammar repair; no passing gate or support level is claimed.",
+    "No new subject-based ceiling or licence exception."
+  ],
+  "policy_commit": "3e56917af5cce16bdd545f57c874c0e12a0fd33f",
+  "policy_note": "policy_commit and policy_sha256 identify the original baseline receipts. current_policy_* identify the later hashcat-disclosure amendment; primary membership is unchanged. Earlier receipts are not retroactively rewritten.",
+  "policy_sha256": "75b1c6a9c13fc32d204201e23f1e1d4f2afe90a02d9567d978d672fc1a9772eb",
+  "receipt_sha256": {
+    "native-clinfo.json": "c85c1a75419694509a6f925315a633266ebd92de121e539b4e8a4267485aeef4",
+    "native-pool.json": "9f418064eb0aed8c820edc517d422cc32efdcaa3c9edb4a135ad1a9d3105cf60",
+    "native-pyopencl.json": "6ac6256cdf18c299bb4d66312f098afc32e946addc3f5bb1089bd861fc080cf5",
+    "pipeline-sdk.json": "8ea5fe993307b769d8592ef7bd8e4a3373103bf3659658ba40ed2212fa67ad19",
+    "pool-counts.json": "c88d8722e2e8afee001d101fbd4d0179d0cb56686b3851c7cf61bf7f5f8cfbfd"
+  },
+  "regressions": {
+    "fresh_checkout_replay_test": "RED: 8 tests with FileNotFoundError when workspace is absent; GREEN: 8 tests after test-parent creation",
+    "isolated_pool_cli": "RED ModuleNotFoundError, GREEN exact isolated CLI and 11-test suite",
+    "nested_replay_output": "RED FileNotFoundError before parents=True, GREEN entrypoint and real SDK replay"
+  },
+  "scope": "Historical round-4 triage snapshot at verification_source_commit. Its source hashes and 45-test results describe that triage revision, not later implementation extensions. Original baseline receipt policy identities remain separate from the later policy amendment. No product support level.",
+  "source_sha256": {
+    "calibration/oracles/opencl-c/compdb.py": "2933410a9f6eefa873388e6e750bd0a431ea8f5bfe877c6cb1a952342dbc0777",
+    "calibration/oracles/opencl-c/compiler_probe.py": "55bca097457253311e1dce32bfa427ef0344e438550527534ccdaaa820890edb",
+    "calibration/oracles/opencl-c/pool_audit.py": "91c1161c38faf82532b0ed1c6f707aa6eaf37d3e41655ebdb3de9ec7d5fccaa6",
+    "calibration/oracles/opencl-c/replay-sdk.py": "c88e5db7e71e4bebb0447c33f046411d0b00f8ea79fcd504d70c2e9744a97d87",
+    "calibration/oracles/opencl-c/test_compdb.py": "1e5cd5f9d696d7b1754d7d4160e14b5369dd92ad92edd2c179ae58854b95c0ff",
+    "calibration/oracles/opencl-c/test_compiler_probe.py": "6b59c762242582820ef7829cfa4c7ade3c196a398d15e65119afbf0ee2dac3ec",
+    "calibration/oracles/opencl-c/test_pool_audit.py": "26cb39533eaaa58e1b490e942719d252b017ffec8e75d50ee6b6971bd454e376",
+    "calibration/oracles/opencl-c/test_replay_sdk.py": "4e26ec2e10030b00ae63aea0c3242b536d5b28af2205c5ebb79c63ec5337bfd6",
+    "calibration/oracles/opencl-c/test_triage.py": "a584815c766d4be6e3bd28cde22056a6c0f40fec69d368e320978306cb42d239",
+    "calibration/oracles/opencl-c/triage.py": "3e43fbd6cc7c9cd8cdbab9de969d7da00b997091bc01dd928aec6f34a83b542a"
+  },
+  "tests": {
+    "test_compdb.py": 10,
+    "test_compiler_probe.py": 4,
+    "test_pool_audit.py": 11,
+    "test_replay_sdk.py": 8,
+    "test_triage.py": 12
+  },
+  "verification_source_commit": "2e37242431cd3aae8d2efde4ac9f93b6b28f0bf9"
+}

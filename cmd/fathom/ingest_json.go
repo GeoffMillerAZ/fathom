@@ -147,6 +147,7 @@ type ingestJSON struct {
 	Unclassified      int                     `json:"unclassified"`
 	Oversize          int                     `json:"oversize"`
 	ClassifiedZero    int                     `json:"classified_zero"`
+	ModelsRefused     int                     `json:"models_refused,omitempty"`
 	// SkippedGenerated, ClassifiedBySniff and AmbiguousUnclassified are the
 	// dialect gate's counts (LB-F9, LB-F10); omitted when zero.
 	SkippedGenerated      int `json:"skipped_generated,omitempty"`
@@ -215,6 +216,7 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		Unclassified:      report.Unclassified,
 		Oversize:          report.Oversize,
 		ClassifiedZero:    report.ClassifiedZero,
+		ModelsRefused:     report.ModelsRefused,
 
 		SkippedGenerated:      report.SkippedGenerated,
 		ClassifiedBySniff:     report.ClassifiedBySniff,

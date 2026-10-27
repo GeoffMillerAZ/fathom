@@ -1,0 +1,14 @@
+diff --git a/cmd/indexbench/langoracle.go b/cmd/indexbench/langoracle.go
+--- a/cmd/indexbench/langoracle.go
++++ b/cmd/indexbench/langoracle.go
+@@ -1467 +1467 @@
+-	if len(tf.Calls) > 0 || len(tf.Scope) > 0 {
++	if len(tf.Calls) > 0 {
+@@ -1473,7 +1473,0 @@
+-		if len(tf.Scope) > 0 {
+-			// Explicit scope covers files with zero oracle calls. Legacy
+-			// nonempty calls without scope cover only their named files.
+-			for f := range inScope {
+-				files[f] = true
+-			}
+-		}

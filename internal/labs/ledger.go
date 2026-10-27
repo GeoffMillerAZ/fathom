@@ -32,25 +32,31 @@ type labResultKey struct {
 // so later #Result changes cannot invalidate historical non-key payloads.
 // Future callers fathom labs fire --write and labbench do not exist yet.
 func AppendLabResult(path string, row any) error {
-	data, err := json.Marshal(row)
-	if err != nil {
-		return fmt.Errorf("encode lab result: %w", err)
+	return AppendLabResults(path, []any{row})
+}
+
+// AppendLabResults appends every row or none: each row is validated and
+// ordered, and the batch's keys are checked against each other and the
+// ledger, before the first byte is written. A refused batch leaves the
+// ledger as it was.
+func AppendLabResults(path string, rows []any) error {
+	if len(rows) == 0 {
+		return nil
 	}
-	def := labDefinition("#Result")
-	if err := def.Unify(def.Context().CompileBytes(data)).Validate(cue.Concrete(true)); err != nil {
-		return fmt.Errorf("lab result: %s", errors.Details(err, nil))
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	var key labResultKey
-	if err := json.Unmarshal(data, &key); err != nil {
-		return err
-	}
-	line, err := orderedLabResult(fields)
-	if err != nil {
-		return err
+	keys := make([]labResultKey, 0, len(rows))
+	var lines [][]byte
+	seen := map[labResultKey]bool{}
+	for _, row := range rows {
+		key, line, err := prepareLabResult(row)
+		if err != nil {
+			return err
+		}
+		if seen[key] {
+			return fmt.Errorf("duplicate lab result (%s, %s, %s)", key.RunID, key.TaskID, key.Arm)
+		}
+		seen[key] = true
+		keys = append(keys, key)
+		lines = append(lines, line)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
@@ -82,24 +88,50 @@ func AppendLabResult(path string, row any) error {
 			if strings.TrimSpace(existing.RunID) == "" || strings.TrimSpace(existing.TaskID) == "" || strings.TrimSpace(existing.Arm) == "" {
 				return fmt.Errorf("labs ledger line %d: missing run_id, task_id or arm", n)
 			}
-			if existing == key {
-				return fmt.Errorf("duplicate lab result (%s, %s, %s)", key.RunID, key.TaskID, key.Arm)
+			if seen[existing] {
+				return fmt.Errorf("duplicate lab result (%s, %s, %s)", existing.RunID, existing.TaskID, existing.Arm)
 			}
 		}
 		if err == io.EOF {
 			break
 		}
 	}
+	var batch []byte
 	if needsNewline {
-		line = append([]byte{'\n'}, line...)
+		batch = append(batch, '\n')
 	}
-	line = append(line, '\n')
-	if n, err := f.Write(line); err != nil {
+	for _, line := range lines {
+		batch = append(append(batch, line...), '\n')
+	}
+	if n, err := f.Write(batch); err != nil {
 		return err
-	} else if n != len(line) {
+	} else if n != len(batch) {
 		return io.ErrShortWrite
 	}
 	return f.Sync()
+}
+
+// prepareLabResult validates row against #Result and returns its ledger
+// key and its ordered JSONL line.
+func prepareLabResult(row any) (labResultKey, []byte, error) {
+	var key labResultKey
+	data, err := json.Marshal(row)
+	if err != nil {
+		return key, nil, fmt.Errorf("encode lab result: %w", err)
+	}
+	def := labDefinition("#Result")
+	if err := def.Unify(def.Context().CompileBytes(data)).Validate(cue.Concrete(true)); err != nil {
+		return key, nil, fmt.Errorf("lab result: %s", errors.Details(err, nil))
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return key, nil, err
+	}
+	if err := json.Unmarshal(data, &key); err != nil {
+		return key, nil, err
+	}
+	line, err := orderedLabResult(fields)
+	return key, line, err
 }
 
 func orderedLabResult(fields map[string]json.RawMessage) ([]byte, error) {

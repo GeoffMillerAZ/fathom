@@ -1,0 +1,131 @@
+{
+  "collector_sha256": "3deea14683e351f14bdac12ed7186f7885af4a76b5929f386f4beb7c49b52f63",
+  "counts": {
+    "call_fathom": 54,
+    "call_fathom_in_truth": 54,
+    "call_pairs_excluded_fathom": 73,
+    "call_truth": 54,
+    "call_truth_found": 54,
+    "callables": 44,
+    "callables_signed": 44,
+    "fathom_defs": 318,
+    "file_edges_agree": 45,
+    "file_edges_fathom": 45,
+    "file_edges_truth": 85,
+    "import_edges_agree": 45,
+    "import_edges_fathom": 45,
+    "import_edges_truth": 85,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 85,
+    "imports_in_repo": 85,
+    "imports_resolved_agree": 45,
+    "imports_unresolved": 40,
+    "kind_equal": 318,
+    "matched": 318,
+    "oracle_defs": 318,
+    "range_eligible": 318,
+    "range_ok": 318
+  },
+  "fathom_commit": "9029a10d7da6515522c0d7886e8e801eff9fe2b1",
+  "format": "scss-spent-runner-posthoc-v1",
+  "fresh_validation": false,
+  "frozen_primary_native_counts": {
+    "declared_dependencies": 85,
+    "inherited_primary_attestations": 45,
+    "load_paths": 2,
+    "native_only_resolved_pairs": 40,
+    "parse_failures": 0,
+    "resolved_dependencies": 85,
+    "source_files": 86,
+    "unresolved_dependencies": 0
+  },
+  "grades": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "not-attempted"
+  },
+  "inputs_sha256": {
+    "composite.private.json": "7d7ed605dd99db6676f6d4d117195200d230f5ccf413f4c2a58ac218627b8ce3",
+    "composite.private.json.provenance.json": "1ac4af0bb0b7d7e982eeb64a91a9a4cbde8820afee066f6507667cc3dbe3bfdc",
+    "frozen-primary.private.json": "52cf7094418bb2b9b6eaaa85501ad50f757a170d1e1daba6ba6e6682ec76a07c",
+    "indexbench": "de548f4572c79d059908ae2b97b299975eeb2774233ab9da92e71661d04b4131",
+    "native-metadata.private.json": "0ad04df42ba79b67e3cb45e6b5d7a7ee3e96f8e4088dc18f3fb34482660808d6",
+    "runner-composite.private.json": "7d7ed605dd99db6676f6d4d117195200d230f5ccf413f4c2a58ac218627b8ce3",
+    "runner-native-metadata.private.json": "0ad04df42ba79b67e3cb45e6b5d7a7ee3e96f8e4088dc18f3fb34482660808d6",
+    "runner-primary.private.json": "52cf7094418bb2b9b6eaaa85501ad50f757a170d1e1daba6ba6e6682ec76a07c"
+  },
+  "median_mb_per_cpu_second": 2.4,
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 0.5294,
+    "import_resolution": 0.5294,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "phases": [
+    {
+      "exit": 0,
+      "launch_load": 8.712890625,
+      "phase": "native-full-population",
+      "seconds": 4.436
+    },
+    {
+      "exit": 0,
+      "launch_load": 8.1982421875,
+      "phase": "primary-subject-runner",
+      "seconds": 0.879
+    },
+    {
+      "exit": 0,
+      "launch_load": 8.1982421875,
+      "phase": "native-after-runner-primary",
+      "seconds": 4.209
+    },
+    {
+      "exit": 0,
+      "launch_load": 7.94189453125,
+      "phase": "build-indexbench",
+      "seconds": 7.859
+    },
+    {
+      "exit": 0,
+      "launch_load": 7.48291015625,
+      "phase": "grade-full-population",
+      "seconds": 1.143
+    },
+    {
+      "exit": 0,
+      "launch_load": 7.48291015625,
+      "phase": "retime-three",
+      "seconds": 0.9
+    }
+  ],
+  "post_hoc": true,
+  "reading_annotated_sha256": "c0de66b8f038335f624beb29b57cf8c3fe34aaa13f1ad0ddb5e788566b069b8a",
+  "reading_raw_sha256": "d08d9526d7cf9430a7546754eb78dc3dc32551eb40dbb9e2b8f5b2b3f9fb20ac",
+  "runner_primary_native_counts": {
+    "declared_dependencies": 85,
+    "inherited_primary_attestations": 45,
+    "load_paths": 2,
+    "native_only_resolved_pairs": 40,
+    "parse_failures": 0,
+    "resolved_dependencies": 85,
+    "source_files": 86,
+    "unresolved_dependencies": 0
+  },
+  "source_commit": "c3551e46f41738681216a7f957bc88bc79155b16",
+  "three_runs_mb_per_cpu_second": [
+    2.43,
+    2.4,
+    2.4
+  ]
+}

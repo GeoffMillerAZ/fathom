@@ -203,14 +203,16 @@
   },
   "excluded_by_kind": {},
   "notes": [
+    "10 INI inventories (mac-dev-playbook, ansible-for-devops) are not YAML and no dialect decodes them: unread; no YAML inventory is among the subjects, so ansible-inventory --list was run on none",
+    "71 collection roles (geerlingguy.mac.homebrew) and 3 templated include paths resolve to nothing; 19 includes name a file no signal claims (a vars file outside the vars directories)",
+    "ansible-playbook 2.21.4 (tier A, offline, no play run, never scored): --syntax-check accepts 27 of 63 playbooks and rejects 36 (roles and collections the subjects never install); --list-tasks names 294 plays and tasks, 289 of the 292 that are not templates are definitions of the walk",
     "geerlingguy/ansible-role-docker: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "geerlingguy/ansible-role-docker: 4 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "ansible-playbook 2.21.4 (tier A, offline, no play run, never scored): --syntax-check accepts 27 of 63 playbooks and rejects 36 (roles and collections the subjects never install); --list-tasks names 294 plays and tasks, 289 of the 292 that are not templates are definitions of the walk",
-    "10 INI inventories (mac-dev-playbook, ansible-for-devops) are not YAML and no dialect decodes them: unread; no YAML inventory is among the subjects, so ansible-inventory --list was run on none",
-    "71 collection roles (geerlingguy.mac.homebrew) and 3 templated include paths resolve to nothing; 19 includes name a file no signal claims (a vars file outside the vars directories)",
-    "universal-ctags 6.2.1's AnsiblePlaybook subparser (one kind, play) tags nothing on the subjects' playbooks, so no tier-B reading; entities, references and edges are tier C",
-    "the classifier signals beyond the brief's roles/ layout (a standalone role's directories, tasks/ and handlers/ sequences) are what reads ansible-role-docker and the task files a playbook imports"
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 14e400e9)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 14e400e9)",
+    "the classifier signals beyond the brief's roles/ layout (a standalone role's directories, tasks/ and handlers/ sequences) are what reads ansible-role-docker and the task files a playbook imports",
+    "universal-ctags 6.2.1's AnsiblePlaybook subparser (one kind, play) tags nothing on the subjects' playbooks, so no tier-B reading; entities, references and edges are tier C"
   ],
   "disposition": null
 }

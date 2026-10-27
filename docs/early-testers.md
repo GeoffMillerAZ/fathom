@@ -23,6 +23,8 @@ It is not yet for gating other people's work in production, for a
 fleet you cannot rebuild from source, or for anyone who needs signed or
 notarized binaries.
 
+Security posture (loopback daemon, no authentication yet, every egress path): [security.md](security.md).
+
 ## Install
 
 Three ways, in this order.
@@ -41,7 +43,7 @@ OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/a
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
 mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
-fathom version    # fathom v0.22.0 @ <commit>
+fathom version    # fathom v0.23.0 @ <commit>
 ```
 
 The binaries are **not signed or notarized**. A file downloaded through a macOS browser is

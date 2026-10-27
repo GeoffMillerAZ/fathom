@@ -1,0 +1,192 @@
+{
+  "schema": "opencl-r2-subject-search-v1",
+  "researched_at": "2026-10-26",
+  "scope": "Metadata-only subject search. No clone, archive, build, parser, compiler, oracle, or corpus file retrieval was run.",
+  "population_rule": "For every new subject, freeze every tracked regular file whose path ends exactly in lowercase .cl at the recorded full commit before any parse. Do not sample, cap, prune, or select files from parse outcomes.",
+  "candidates": [
+    {
+      "name": "darktable-org/darktable",
+      "role": "production photography application",
+      "repository": "https://github.com/darktable-org/darktable",
+      "head_branch": "master",
+      "pin": "891e46cd57b64d67dbde183d5d3c0e430edd11d6",
+      "head_source": "https://api.github.com/repos/darktable-org/darktable/commits/master",
+      "archive": "https://github.com/darktable-org/darktable/archive/891e46cd57b64d67dbde183d5d3c0e430edd11d6.tar.gz",
+      "license": "GPL-3.0",
+      "license_source": "https://github.com/darktable-org/darktable/blob/891e46cd57b64d67dbde183d5d3c0e430edd11d6/LICENSE",
+      "cl_population": {
+        "blob_count": 46,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/darktable-org/darktable/git/trees/891e46cd57b64d67dbde183d5d3c0e430edd11d6?recursive=1",
+        "truncated": false
+      },
+      "population_role": "candidate whole project"
+    },
+    {
+      "name": "opencv/opencv",
+      "role": "production computer-vision library",
+      "repository": "https://github.com/opencv/opencv",
+      "head_branch": "5.x",
+      "pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd",
+      "head_source": "https://api.github.com/repos/opencv/opencv/commits/5.x",
+      "archive": "https://github.com/opencv/opencv/archive/4d7924ebb501ae31d69820039d92a0d5fe7ee7dd.tar.gz",
+      "license": "Apache-2.0",
+      "license_source": "https://github.com/opencv/opencv/blob/4d7924ebb501ae31d69820039d92a0d5fe7ee7dd/LICENSE",
+      "cl_population": {
+        "blob_count": 110,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/opencv/opencv/git/trees/4d7924ebb501ae31d69820039d92a0d5fe7ee7dd?recursive=1",
+        "truncated": false
+      },
+      "population_role": "candidate whole project"
+    },
+    {
+      "name": "arrayfire/arrayfire",
+      "role": "production numerical-computing library",
+      "repository": "https://github.com/arrayfire/arrayfire",
+      "head_branch": "master",
+      "pin": "ab4a5063c92512dd65ab2b418cf81e4b3c46299b",
+      "head_source": "https://api.github.com/repos/arrayfire/arrayfire/commits/master",
+      "archive": "https://github.com/arrayfire/arrayfire/archive/ab4a5063c92512dd65ab2b418cf81e4b3c46299b.tar.gz",
+      "license": "BSD-3-Clause",
+      "license_source": "https://github.com/arrayfire/arrayfire/blob/ab4a5063c92512dd65ab2b418cf81e4b3c46299b/LICENSE",
+      "cl_population": {
+        "blob_count": 103,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/arrayfire/arrayfire/git/trees/ab4a5063c92512dd65ab2b418cf81e4b3c46299b?recursive=1",
+        "truncated": false
+      },
+      "population_role": "candidate whole project"
+    },
+    {
+      "name": "clMathLibraries/clBLAS",
+      "role": "OpenCL BLAS library found through the clBLAS repository query",
+      "repository": "https://github.com/clMathLibraries/clBLAS",
+      "head_branch": "master",
+      "pin": "cf9113982fdfc994297d372785ce76eb80911af2",
+      "head_source": "https://api.github.com/repos/clMathLibraries/clBLAS/commits/master",
+      "archive": "https://github.com/clMathLibraries/clBLAS/archive/cf9113982fdfc994297d372785ce76eb80911af2.tar.gz",
+      "license": "Apache-2.0",
+      "license_source": "https://github.com/clMathLibraries/clBLAS/blob/cf9113982fdfc994297d372785ce76eb80911af2/LICENSE",
+      "cl_population": {
+        "blob_count": 40,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/clMathLibraries/clBLAS/git/trees/cf9113982fdfc994297d372785ce76eb80911af2?recursive=1",
+        "truncated": false
+      },
+      "population_role": "candidate whole project"
+    },
+    {
+      "name": "yuhc/gpu-rodinia",
+      "role": "heterogeneous-computing benchmark suite",
+      "repository": "https://github.com/yuhc/gpu-rodinia",
+      "head_branch": "master",
+      "pin": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "head_source": "https://api.github.com/repos/yuhc/gpu-rodinia/commits/master",
+      "archive": "https://github.com/yuhc/gpu-rodinia/archive/9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4.tar.gz",
+      "license": "custom permissive three-clause license; GitHub SPDX NOASSERTION",
+      "license_source": "https://github.com/yuhc/gpu-rodinia/blob/9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4/LICENSE",
+      "cl_population": {
+        "blob_count": 31,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/yuhc/gpu-rodinia/git/trees/9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4?recursive=1",
+        "truncated": false
+      },
+      "population_role": "candidate whole project"
+    },
+    {
+      "name": "pocl/pocl",
+      "role": "OpenCL implementation and toolchain-owned test population",
+      "repository": "https://github.com/pocl/pocl",
+      "head_branch": "main",
+      "pin": "de1ef97242387b6e07d64633edb1573d7156bfee",
+      "head_source": "https://api.github.com/repos/pocl/pocl/commits/main",
+      "archive": "https://github.com/pocl/pocl/archive/de1ef97242387b6e07d64633edb1573d7156bfee.tar.gz",
+      "license": "MIT repository license; bundled components may differ; GitHub SPDX NOASSERTION",
+      "license_source": "https://github.com/pocl/pocl/blob/de1ef97242387b6e07d64633edb1573d7156bfee/LICENSE",
+      "cl_population": {
+        "blob_count": 1016,
+        "non_lowercase_cl_suffix_count": 0,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/pocl/pocl/git/trees/de1ef97242387b6e07d64633edb1573d7156bfee?recursive=1",
+        "truncated": false
+      },
+      "population_role": "diagnostic only",
+      "population_note": "Frozen mixed toolchain, builtin, generated, and negative-test population. Diagnostic-only regardless of results; do not remove files after parsing."
+    }
+  ],
+  "prior_search_outcomes": [
+    {
+      "name": "KhronosGroup/OpenCL-SDK",
+      "pin": "6090378a113db8dab20ae278c8fa57ab10b92300",
+      "head_verified": true,
+      "license": "Apache-2.0 repository metadata; per-file REUSE terms still apply",
+      "grammar_outcome": "failed in prior triage",
+      "disposition": "Retain as a failed-grammar search outcome; do not infer a quality ceiling.",
+      "cl_population": {
+        "blob_count": 10,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/KhronosGroup/OpenCL-SDK/git/trees/6090378a113db8dab20ae278c8fa57ab10b92300?recursive=1",
+        "truncated": false
+      }
+    },
+    {
+      "name": "hashcat/hashcat",
+      "pin": "6a7e3b5a96abcd6373c2e4112bc358abb24dc538",
+      "head_verified": true,
+      "license": "MIT",
+      "license_source": "https://github.com/hashcat/hashcat/blob/6a7e3b5a96abcd6373c2e4112bc358abb24dc538/docs/license.txt",
+      "grammar_outcome": "failed in prior triage",
+      "disposition": "Stress-only proposal. Report separately so its macro/include-heavy volume cannot dominate other subjects; do not infer a quality ceiling.",
+      "cl_population": {
+        "blob_count": 1349,
+        "count_rule": "tracked regular file; path suffix exactly lowercase .cl",
+        "tree_source": "https://api.github.com/repos/hashcat/hashcat/git/trees/6a7e3b5a96abcd6373c2e4112bc358abb24dc538?recursive=1",
+        "truncated": false
+      }
+    }
+  ],
+  "search_receipts": [
+    {
+      "source": "GitHub repository search API",
+      "query": "topic:opencl archived:false sort:stars desc per_page:10",
+      "url": "https://api.github.com/search/repositories?q=topic:opencl+archived:false&sort=stars&order=desc&per_page=10",
+      "result": "Returned hashcat and arrayfire among the top ten; hashcat remains stress-only."
+    },
+    {
+      "source": "GitHub repository search API",
+      "query": "clBLAS in:name sort:stars desc per_page:10",
+      "url": "https://api.github.com/search/repositories?q=clBLAS+in:name&sort=stars&order=desc&per_page=10",
+      "result": "Returned CNugteren/CLBlast and clMathLibraries/clBLAS. clBLAS has 40 external .cl blobs; CLBlast HEAD 9a28b432b96a8b9c55a05f0e063f56b9c11b6f24 has zero, truncated=false."
+    },
+    {
+      "source": "GitHub repository search API",
+      "query": "Rodinia OpenCL in:name,description sort:stars desc per_page:10",
+      "url": "https://api.github.com/search/repositories?q=Rodinia+OpenCL+in:name,description&sort=stars&order=desc&per_page=10",
+      "result": "Returned Rodinia variants and the yuhc/gpu-rodinia mirror lineage; the canonical named repository was then checked directly."
+    },
+    {
+      "source": "GitHub repository search API",
+      "query": "ViennaCL in:name per_page:10",
+      "url": "https://api.github.com/search/repositories?q=ViennaCL+in:name&per_page=10",
+      "result": "Found viennacl/viennacl-dev. HEAD dc552a8d4bba2bb028a346dc611deea0c67e3eed has zero external .cl blobs, truncated=false, so it supplies no population under the frozen rule."
+    },
+    {
+      "source": "Direct repository metadata and recursive-tree check",
+      "query": "boostorg/compute default HEAD external .cl population",
+      "url": "https://api.github.com/repos/boostorg/compute/git/trees/763f995ed15661701a6ade23159c31747711ed31?recursive=1",
+      "result": "Two external .cl blobs, truncated=false, both test fixtures and one intentionally invalid. Retained as a search outcome; no parse was run."
+    },
+    {
+      "source": "GitHub code search API",
+      "query": "extension:cl \"__kernel\" per_page:10",
+      "url": "https://api.github.com/search/code?q=extension%3Acl+%22__kernel%22&per_page=10",
+      "result": "HTTP 401 for anonymous access; no candidates or negative inference taken from this miss."
+    }
+  ]
+}

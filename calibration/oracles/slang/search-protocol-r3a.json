@@ -1,0 +1,20 @@
+{
+  "schema": "slang-search-protocol-r3a",
+  "registered_on": "2026-10-26",
+  "extends": {
+    "path": "search-rule-r3.json",
+    "sha256": "bafa9b8cdf6c4485a28084fa1bf347cb1f91890aa5fd410f3a1d05b3b7911ad8",
+    "commit_prefix": "4c606debf"
+  },
+  "reason": "The ParameterBlock size1024..2047 leaf changed reported totals across all three complete pagination attempts (628 to693,693 to760,760 to780). Stable cross-page counts cannot be certified from these responses. The shader-attribute root also reports39040 hits. Preserve these attempts as incomplete evidence; do not derive a frozen union from them.",
+  "change": "Tighten the leaf limit from1000 to100 so every certified nonempty leaf is returned in one API response. Queries, integer size domain, star boundary, public-only scope, whole-project membership, license/size rules and separate primary/holdout gates remain unchanged. This changes collection granularity, never candidate eligibility.",
+  "algorithm": [
+    "For each of the same two token queries start with inclusive size0..2147483647 and request page1 at per_page100.",
+    "If total_count>100, split at floor((lo+hi)/2) and recurse lower half first, then upper half. Prior probe responses may be retained as historical subdivision hints, but certified leaves must be requested after this amendment commit.",
+    "A leaf is certified only when incomplete_results=false, total_count<=100, len(items)==total_count and every item is from a public repository. It has exactly one page, avoiding cross-page index drift. An empty leaf also requires these checks.",
+    "On request/rate/index errors, retain the failure and retry the identical request after reset, at most three attempts. If a one-byte size still has more than100 hits or a leaf cannot pass these checks, stop incomplete; no silent truncation, alternate eligibility rule or READY claim.",
+    "De-duplicate repository IDs across certified leaves and both tokens. Also retain every public repository observed in the prior r3 attempts as an explicitly historical discovery source, so collection retries cannot remove a known candidate. Apply stars>=100 to code-only discoveries and retain prior named seeds/r2 members under the inherited rule.",
+    "Record every request/range/time/status/hash/count, all candidate dispositions, and separate probe counts from certified leaf totals. The API index evolves during enumeration; leaf snapshots are checkable but no atomic global snapshot or reach-complete universe is claimed."
+  ],
+  "freeze_order": "Commit this dated operational amendment before issuing its leaf requests. Both token routes must certify every disjoint size leaf before re-freezing the population. No shader bodies, compiler/parser execution or implementation is authorized; NP-Q5 remains binding."
+}

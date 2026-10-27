@@ -1,0 +1,142 @@
+{
+  "canonical_membership_audit": {
+    "aggregate_files_checked": 1,
+    "documentation_files_checked": 1,
+    "new_shards": 0,
+    "shards_checked": 145,
+    "subject_or_pin_matches": 0
+  },
+  "distinct_blobs": 53,
+  "license_sha256": "8957213f2afb80df76b5aeeb7ba99cf1b8d7e70f44df8e610f4322809721f81b",
+  "measurement": {
+    "checkout_unchanged": true,
+    "eligible": {
+      "bytes": 177237,
+      "files": 53
+    },
+    "expected_commit": "1b2d5d2afff61cdc7370778849f848b76cee00a6",
+    "grammars": [
+      {
+        "abi_version": 14,
+        "both_count": 4,
+        "clean_count": 28,
+        "clean_rate": 0.5283018867924528,
+        "error_only_count": 21,
+        "error_or_missing_count": 25,
+        "fault_count": 0,
+        "id": "opencl-stock",
+        "library_sha256": "a8fae629b0030649dfe0d6bb26677179b2df6108dd120f109496d557317e2e6f",
+        "missing_only_count": 0,
+        "parsed_count": 53,
+        "population_count": 53
+      },
+      {
+        "abi_version": 15,
+        "both_count": 1,
+        "clean_count": 3,
+        "clean_rate": 0.05660377358490566,
+        "error_only_count": 49,
+        "error_or_missing_count": 50,
+        "fault_count": 0,
+        "id": "c-stock",
+        "library_sha256": "7554fed9ab2c67ff6d558e0bc3a310a96c6ee223b88a33d656dde23ace2e9354",
+        "missing_only_count": 0,
+        "parsed_count": 53,
+        "population_count": 53
+      },
+      {
+        "abi_version": 14,
+        "both_count": 3,
+        "clean_count": 3,
+        "clean_rate": 0.05660377358490566,
+        "error_only_count": 46,
+        "error_or_missing_count": 50,
+        "fault_count": 0,
+        "id": "cpp-stock",
+        "library_sha256": "edf1ff76e83b36bcdbe6d588d19f675d3bf210402659decf838225076d2c7445",
+        "missing_only_count": 1,
+        "parsed_count": 53,
+        "population_count": 53
+      },
+      {
+        "abi_version": 15,
+        "both_count": 3,
+        "clean_count": 3,
+        "clean_rate": 0.05660377358490566,
+        "error_only_count": 46,
+        "error_or_missing_count": 50,
+        "fault_count": 0,
+        "id": "cpp-head",
+        "library_sha256": "b9aff9b3ff8ae59a6996e1e1d0b4b2e46577e9df25677c361217343bfa07a8fe",
+        "missing_only_count": 1,
+        "parsed_count": 53,
+        "population_count": 53
+      },
+      {
+        "abi_version": 15,
+        "both_count": 0,
+        "clean_count": 51,
+        "clean_rate": 0.9622641509433962,
+        "error_only_count": 2,
+        "error_or_missing_count": 2,
+        "fault_count": 0,
+        "id": "opencl-patched",
+        "library_sha256": "f6157f5c7caf4b37f962ff66dcf7de9e51784239cd7c84b9297375d8f75e82be",
+        "missing_only_count": 0,
+        "parsed_count": 53,
+        "population_count": 53
+      }
+    ],
+    "schema": "opencl-c-native-triage-v1",
+    "scope": "native grammar parse triage only",
+    "tracked": {
+      "after": {
+        "bytes": 36605289,
+        "entries": 409,
+        "gitlinks": 0,
+        "manifest_sha256": "1c93cee0b426d459b237830150565e5348ef3a8cd0e5408d1e1d3ee8ee0ad4be",
+        "regular_bytes": 36605289,
+        "regular_files": 409,
+        "stage_bytes": 45861,
+        "stage_sha256": "adf8098d01d164cc0681ef6ac1b0b86d2e9e8a1b455f8b41074a38feb47726b8",
+        "symlink_target_bytes": 0,
+        "symlinks": 0
+      },
+      "before": {
+        "bytes": 36605289,
+        "entries": 409,
+        "gitlinks": 0,
+        "manifest_sha256": "1c93cee0b426d459b237830150565e5348ef3a8cd0e5408d1e1d3ee8ee0ad4be",
+        "regular_bytes": 36605289,
+        "regular_files": 409,
+        "stage_bytes": 45861,
+        "stage_sha256": "adf8098d01d164cc0681ef6ac1b0b86d2e9e8a1b455f8b41074a38feb47726b8",
+        "symlink_target_bytes": 0,
+        "symlinks": 0
+      },
+      "unchanged": true
+    },
+    "tree_sitter": "0.25.2",
+    "untracked": {
+      "after": {
+        "files": 0,
+        "ignored_files": 0,
+        "path_bytes": 0,
+        "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unignored_files": 0
+      },
+      "before": {
+        "files": 0,
+        "ignored_files": 0,
+        "path_bytes": 0,
+        "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unignored_files": 0
+      },
+      "unchanged": true
+    }
+  },
+  "policy_sha256": "96b9e14e045f78708afbb5d2246edb403067a0397d38fbd0932f0822c272121f",
+  "role": "separate pre-tuning holdout; excluded from canonical aggregation",
+  "schema": "opencl-c-native-holdout-v1",
+  "selection_commit": "9713a46f8"
+}

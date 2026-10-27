@@ -1,0 +1,79 @@
+# C++ parser population screen
+
+`cpp-screen` measures syntax nodes for the exact file population named by an
+`indexbench` C++ reading and its private `-unmatched` receipt. It is a parser
+diagnostic, not an oracle or an accuracy grade. Run from the repository root
+with a clean binary whose Go VCS revision matches the reading's full
+`fathom_commit` and the live checkout. The reading's full subject SHA must
+match the subject checkout HEAD:
+
+```sh
+bash scripts/fathom-go.sh run ./calibration/oracles/scip-clang/cpp-screen \
+  -subject workspace/calibration/subject \
+  -subject-name public/repository \
+  -reading workspace/artifacts/private-reading.json \
+  -unmatched workspace/artifacts/private-unmatched.json \
+  -out workspace/artifacts/cpp-screen.json
+```
+
+The receipt contains counts and hashes, never file paths, source text, or
+per-file results. `written` counts the original tree; `selected` counts the
+tree chosen by the pinned product's C++ preparse. Each has ERROR-containing,
+MISSING-containing, both, each exclusive part, union, and faults. A failed
+receipt has `counts_complete: false`; its partial counters are diagnostic and
+must not be used as population rates. The command exits nonzero on any
+failure. The source hash binds the probe-time bytes; compare it with the
+grade-time source identity separately.
+The embedded grammar lock binds the grammar blob hash and upstream commit to
+the compiled product revision. A reading's optional grammar fields must agree
+with that lock when present; fresh `indexbench` readings omit them.
+
+`-candidate` is an audit-only diagnostic for a clean, newly compiled C++
+grammar candidate measured against an older reading. Its receipt says
+`candidate-diagnostic` and records the baseline reading revision separately
+from the candidate product revision. The flag waives only those revisions'
+equality and the reading's optional grammar equality. It still checks the
+subject pin, exact population and bytes, caps, paths, hashes, and output
+confinement. The Git diff from baseline to candidate admits only the listed audit
+helpers, their measurement metadata/tests and (in embedded mode) the C++
+grammar lock row, blob and provenance;
+all non-C++ lock rows and product parsing/routing code must stay unchanged.
+Helper-only diffs are admitted for diagnostic reproduction. A
+candidate receipt cannot establish accuracy, adoption, or a new reading.
+Parser faults print phase, 1-based file ordinal, peak WASM pages, and safe
+engine error text to private stderr without a source path or source text.
+
+For isolated official-head/Unreal experiments, use
+`calibration/oracles/scip-clang/build-cpp-candidates.py --candidate official-head`
+(or `--candidate unreal`) with fresh `--work-dir` and `--out-dir` paths.
+The same tagged screen flags load those exact pinned modules. The product
+lock and blob must remain unchanged.
+
+For the isolated WillBooster experiment, build a private module with
+`calibration/oracles/scip-clang/build-willbooster.py --work-dir <fresh-ignored-workspace-dir> --out-dir <fresh-ignored-workspace-dir>`.
+Compile `cpp-screen` with `-tags=fathom_grammar_audit`, then add `-candidate`
+and both `-candidate-lock <out-dir>/grammars.lock.json` and
+`-candidate-module <out-dir>/cpp.wasm` to the screen command. Both inputs must
+be regular files below an ignored workspace with no symlink in the path. The
+module is capped at 32 MiB and the lock at 1 MiB. The lock pins the exact
+module hash, size, entry point, foreign ABI, immutable grammar and runtime
+crate hashes, MIT licence hashes, builder/budget source hashes, and tool hashes.
+The tagged parser compiles this blob in isolation. The receipt says
+`external-candidate-diagnostic` and reports module and source archive hashes
+without assigning the published crates a Git commit identity. The ordinary
+binary rejects these flags; the embedded parser and grammar lock are unchanged.
+This diagnostic does not establish accuracy, adoption, or a support level.
+`task test` also vets both tagged packages, so default CI detects drift in the
+optional loader even though ordinary product builds exclude it.
+
+The recorded WillBooster measurement used the tagged tool source frozen at
+`2cfc7626c`. Reproduce that measurement from the pinned revision before
+using it as evidence.
+
+Inputs are bounded at 256 MiB per JSON, 20,000 files, 16 MiB per source,
+and 512 MiB total source. JSON traversal also stops at depth 64 or two
+million tokens. Equality is accepted; cap + 1 fails the whole run.
+Output must be under an ignored workspace of the main checkout or this
+worktree, and cannot overlap an input. Source population paths must be sorted,
+unique, relative, and free of symlinks. An existing output file is never
+replaced.

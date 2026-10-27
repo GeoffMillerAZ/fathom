@@ -1,0 +1,1023 @@
+{
+  "audit_inputs_sha256": {
+    "indexes/candidate-indexes.json": "77da8d59282b222cb65d34a5af3d0844409560733660a89db4fb0052081733c3",
+    "indexes/fmt-v0.4.0.scip": "845d007ee6386d314b2c6596212a0685b63a7821db1459758ae8654f82d5f241",
+    "indexes/fmt-v0.4.1.scip": "d4fce024ad25adfa3fad4de0180b2d2efaf7bb4c747bfc1c48fdb93fc93f095a",
+    "indexes/json-v0.4.0.scip": "163179d314c4016f6561b9fbd81b59aab6ffe9fc6fbd550aed9a07c3904e76de",
+    "indexes/json-v0.4.1.scip": "f63e66c939f3a98c5807352dc1ad517e59ed7fc3b7b7445619b230f5862aa84c",
+    "indexes/spdlog-v0.4.0.scip": "b74a39d7f70291fad8cf289e075563e068d949107093f2f2206252e3fa943e71",
+    "indexes/spdlog-v0.4.1.scip": "26212240823bc15586cfc94224ea271b8a023120709435cabdfc7036c37c31e2",
+    "readings/cpp-audit-receipt.json": "dae9e402c004732dd3692b2c4176ba5b4a1b57db2e428a741e504e747dca0c28",
+    "readings/cpp-full-v0.4.0.json": "a0bca60bd9d54fdd517c5acb704558c93a8aa6033b7945f3b342cd4526376fc5",
+    "readings/cpp-full-v0.4.1.json": "b1f1ce9594f90810dad5eb944e38b0645fd1bb1e974c02d18e14ff97f49e5e39",
+    "readings/cpp-legacy-v0.4.0.json": "b573b513a53b0aa06418127f998969f04433c2fdecc2db78b61e50387a9a1d7b",
+    "readings/cpp-legacy-v0.4.1.json": "92121b35cdf738f519aedb8906dba4b7d9e1b0f99055f040adf86715b49744fc",
+    "screens/full-fmt.json": "a5ff1ea2a72ea38ac822a34d1cae13d15ed2667f12b0e28a24e4d1850eca1401",
+    "screens/full-json.json": "38ceabadd1cee745d3baf8793024cd1fe2475932ec5511062319f2b1ca2caaed",
+    "screens/full-spdlog.json": "91fe39402eca5eacba66add758ab5b2140db6dc5bf1a1e71e2836c273d846bc8",
+    "screens/legacy-fmt.json": "80cc563fa4babf9af8cd9b2d8df0d8641616c8c22e4c95db3eca0fd1af292712",
+    "screens/legacy-json.json": "d641b27bc1bb41f91fed6a78dbb169c439d16df5e807e05feffa369efe92bd32",
+    "screens/legacy-spdlog.json": "fad6675eccad6c28f985d16687c1964f494951d43e68fc886f34f1db4fa1353c",
+    "timing/cpp-full-v0.4.0.json": "b905a7f0c92f85341a199207e900be115a5d029883f18e7519eb8b616aa73fb8",
+    "timing/cpp-full-v0.4.0.json.loads.json": "4d4e2fa9d17fdda0bc226376041ea6dcef89c2d77ee2edfe221984acb713f8aa",
+    "timing/cpp-full-v0.4.1.json": "5b6aec1603ab4885f3882e7a72682c0b920f8e56329976ab269d3dbe967778e2",
+    "timing/cpp-full-v0.4.1.json.loads.json": "fd32c2f63d0fe486b4701d54ee841acf8751a53610b67bc80a3f89ea4cf4cd35",
+    "timing/cpp-legacy-v0.4.0.json": "4df4b98b74a80d35e0906bde93b2c139b36cae1fd96750417f474934805e897d",
+    "timing/cpp-legacy-v0.4.0.json.loads.json": "40235a1cca906c8265107655fa1211b4bb681d58b163d47eb4011a1d7576a662",
+    "timing/cpp-legacy-v0.4.1.json": "413a0ffb0877e25b44265c7cb738b87fee1c07624b9519fb874c280c61663da3",
+    "timing/cpp-legacy-v0.4.1.json.loads.json": "7d2a819a5fc79b58142d430367b6fb208ca78af7df18b878063d9525f288d209",
+    "work/grade/cpp-full-v0.4.0/fmt/unmatched.json": "5e202f5907f0a2e429dbe6ef64ee5a4c9d28dd10e5efcdfa4e15c7ee03baf2ea",
+    "work/grade/cpp-full-v0.4.0/json/unmatched.json": "78711875dbb39d6d103ee1bbf05091b555b6983f45a03ab8fc32e953b99e8617",
+    "work/grade/cpp-full-v0.4.0/spdlog/unmatched.json": "18414f0e8f62443933558819d7f0efb70f45b1097951c37e8424885f4fcb3c05",
+    "work/grade/cpp-full-v0.4.1/fmt/unmatched.json": "5e202f5907f0a2e429dbe6ef64ee5a4c9d28dd10e5efcdfa4e15c7ee03baf2ea",
+    "work/grade/cpp-full-v0.4.1/json/unmatched.json": "78711875dbb39d6d103ee1bbf05091b555b6983f45a03ab8fc32e953b99e8617",
+    "work/grade/cpp-full-v0.4.1/spdlog/unmatched.json": "18414f0e8f62443933558819d7f0efb70f45b1097951c37e8424885f4fcb3c05",
+    "work/grade/cpp-legacy-v0.4.0/fmt/unmatched.json": "a63d152772617a465aa11536af16a0252e5f0bdc58b4e82653a53b82003d4c44",
+    "work/grade/cpp-legacy-v0.4.0/json/unmatched.json": "618a2e8e1230b8bb2fa1195acdee2310d5fe88b5235de104ec46ddfff47847a5",
+    "work/grade/cpp-legacy-v0.4.0/spdlog/unmatched.json": "d0c397ee1ecb2cfde89334b50ee1ce2fe2cb559d58d27ccb04f0100cf82647f2",
+    "work/grade/cpp-legacy-v0.4.1/fmt/unmatched.json": "a63d152772617a465aa11536af16a0252e5f0bdc58b4e82653a53b82003d4c44",
+    "work/grade/cpp-legacy-v0.4.1/json/unmatched.json": "618a2e8e1230b8bb2fa1195acdee2310d5fe88b5235de104ec46ddfff47847a5",
+    "work/grade/cpp-legacy-v0.4.1/spdlog/unmatched.json": "d0c397ee1ecb2cfde89334b50ee1ce2fe2cb559d58d27ccb04f0100cf82647f2",
+    "work/native/fmt/calls.json": "82e7f8b0ed548e5fd77dc14bebfa901c9127e97f04a9daa77dc22445b6d7ba98",
+    "work/native/fmt/preproc.json": "32ae918ea6a50fda9d863d8b600812d3cb28347b3acbebc9d613cb9fae35ee83",
+    "work/native/fmt/preproc.ranges.json": "9909853714c5933bfdab8d752ddf8d131e9e850b8c68fbdc4c464383582c6ff3",
+    "work/native/json/calls.json": "15889ccb953b99d502f3d4941d7149982d31c32d28de64bfe097d2110ac3b222",
+    "work/native/json/preproc.json": "f7b46d2928329d8144cbd0d0551c149a0057e3d60e1a3ce1e860d337b27ac1c9",
+    "work/native/json/preproc.ranges.json": "b6c64476f126dbeb2319f742f6cab13a8ebb5d0c4ae77eddac67fd4bc35e2fd0",
+    "work/native/receipt.json": "2dfce1ac07bf43a35f7d673341d3211cf764f496282497f874dc487812b02c20",
+    "work/native/spdlog/calls.json": "47a4be183aec955fdc9b51bc6119ecdc049abc9cc61126e7a3cd33a2956f0aef",
+    "work/native/spdlog/preproc.json": "ae70961191857754faf760bf10d7259757b8df6132c5aaaae629dc27f7f814d7",
+    "work/native/spdlog/preproc.ranges.json": "73b3bf326b809fb2ba9a2f97ada31fb2540701897369113a00a7d2ca6ae25071"
+  },
+  "clang_sha256": "1590ac950a3d627817d09ade5cb60b2115f17a72182a3141e010b4bcc482a0c9",
+  "commit": "0deba117abaadee0343a58a1645f9232a92b6167",
+  "ctags_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+  "current_audit_helper_sha256": "41fd8953a9b125c4b40b68ab1d2a167a682929f2f955f0285a6e50b5687ab186",
+  "diagnostic_changes": {
+    "fmt": {
+      "full": {
+        "scip_edges_macro_generated": [
+          10104,
+          10117
+        ],
+        "scip_file_edges_every_definer": [
+          196,
+          198
+        ]
+      },
+      "legacy": {
+        "scip_file_edges_every_definer": [
+          196,
+          198
+        ]
+      }
+    },
+    "json": {
+      "full": {
+        "scip_edges_macro_generated": [
+          50567,
+          50569
+        ]
+      },
+      "legacy": {}
+    },
+    "spdlog": {
+      "full": {
+        "scip_edges_macro_generated": [
+          17465,
+          17461
+        ]
+      },
+      "legacy": {
+        "scip_edges_macro_generated": [
+          16877,
+          16874
+        ]
+      }
+    }
+  },
+  "dialect": "cpp",
+  "driver_sha256": "baf94aaa397277fff0bd78cfefa7a384142aefba0665c08ea187ebafda348461",
+  "indexbench_sha256": "c377570c1e67464c8f23ee8f7ea4477e82ad28e17820ba6e1278dcb43f18e62d",
+  "indexes": {
+    "fmt": {
+      "v0.4.0": {
+        "full": {
+          "document_records": 60,
+          "outside_tenancy": 2,
+          "tenancy_files": 69,
+          "tenancy_intersection": 52,
+          "unattested_tenancy": 17,
+          "unique_document_paths": 54
+        },
+        "legacy": {
+          "document_records": 60,
+          "outside_tenancy": 6,
+          "tenancy_files": 60,
+          "tenancy_intersection": 48,
+          "unattested_tenancy": 12,
+          "unique_document_paths": 54
+        }
+      },
+      "v0.4.1": {
+        "full": {
+          "document_records": 60,
+          "outside_tenancy": 2,
+          "tenancy_files": 69,
+          "tenancy_intersection": 52,
+          "unattested_tenancy": 17,
+          "unique_document_paths": 54
+        },
+        "legacy": {
+          "document_records": 60,
+          "outside_tenancy": 6,
+          "tenancy_files": 60,
+          "tenancy_intersection": 48,
+          "unattested_tenancy": 12,
+          "unique_document_paths": 54
+        }
+      }
+    },
+    "json": {
+      "v0.4.0": {
+        "full": {
+          "document_records": 132,
+          "outside_tenancy": 0,
+          "tenancy_files": 475,
+          "tenancy_intersection": 132,
+          "unattested_tenancy": 343,
+          "unique_document_paths": 132
+        },
+        "legacy": {
+          "document_records": 132,
+          "outside_tenancy": 86,
+          "tenancy_files": 46,
+          "tenancy_intersection": 46,
+          "unattested_tenancy": 0,
+          "unique_document_paths": 132
+        }
+      },
+      "v0.4.1": {
+        "full": {
+          "document_records": 132,
+          "outside_tenancy": 0,
+          "tenancy_files": 475,
+          "tenancy_intersection": 132,
+          "unattested_tenancy": 343,
+          "unique_document_paths": 132
+        },
+        "legacy": {
+          "document_records": 132,
+          "outside_tenancy": 86,
+          "tenancy_files": 46,
+          "tenancy_intersection": 46,
+          "unattested_tenancy": 0,
+          "unique_document_paths": 132
+        }
+      }
+    },
+    "spdlog": {
+      "v0.4.0": {
+        "full": {
+          "document_records": 115,
+          "outside_tenancy": 7,
+          "tenancy_files": 135,
+          "tenancy_intersection": 108,
+          "unattested_tenancy": 27,
+          "unique_document_paths": 115
+        },
+        "legacy": {
+          "document_records": 115,
+          "outside_tenancy": 14,
+          "tenancy_files": 116,
+          "tenancy_intersection": 101,
+          "unattested_tenancy": 15,
+          "unique_document_paths": 115
+        }
+      },
+      "v0.4.1": {
+        "full": {
+          "document_records": 115,
+          "outside_tenancy": 7,
+          "tenancy_files": 135,
+          "tenancy_intersection": 108,
+          "unattested_tenancy": 27,
+          "unique_document_paths": 115
+        },
+        "legacy": {
+          "document_records": 115,
+          "outside_tenancy": 14,
+          "tenancy_files": 116,
+          "tenancy_intersection": 101,
+          "unattested_tenancy": 15,
+          "unique_document_paths": 115
+        }
+      }
+    }
+  },
+  "producer_sha256": "e87dad75caaf2db756f62c0a55ad4b497db2327e05c87ed59f4a51ebe8a9815d",
+  "readings": {
+    "cpp-full-v0.4.0.json": {
+      "historical_timing": {
+        "load_condition": "unrecorded",
+        "median_run": 3,
+        "run_loads_1m": null,
+        "run_rates_mb_cpu_s": [
+          1.09,
+          1.11,
+          1.09
+        ],
+        "sha256": "a0bca60bd9d54fdd517c5acb704558c93a8aa6033b7945f3b342cd4526376fc5",
+        "throughput_mb_cpu_s": 1.09
+      },
+      "load_condition": "observed",
+      "median_run": 2,
+      "run_loads_1m": [
+        {
+          "after": 4.57,
+          "before": 4.12
+        },
+        {
+          "after": 3.98,
+          "before": 4.57
+        },
+        {
+          "after": 9.18,
+          "before": 3.98
+        }
+      ],
+      "run_rates_mb_cpu_s": [
+        1.14,
+        1.13,
+        1.06
+      ],
+      "sha256": "b905a7f0c92f85341a199207e900be115a5d029883f18e7519eb8b616aa73fb8",
+      "throughput_mb_cpu_s": 1.13
+    },
+    "cpp-full-v0.4.1.json": {
+      "historical_timing": {
+        "load_condition": "unrecorded",
+        "median_run": 1,
+        "run_loads_1m": null,
+        "run_rates_mb_cpu_s": [
+          1.11,
+          1.06,
+          1.11
+        ],
+        "sha256": "b1f1ce9594f90810dad5eb944e38b0645fd1bb1e974c02d18e14ff97f49e5e39",
+        "throughput_mb_cpu_s": 1.11
+      },
+      "load_condition": "observed",
+      "median_run": 2,
+      "run_loads_1m": [
+        {
+          "after": 5.75,
+          "before": 7.89
+        },
+        {
+          "after": 4.13,
+          "before": 5.75
+        },
+        {
+          "after": 3.66,
+          "before": 4.13
+        }
+      ],
+      "run_rates_mb_cpu_s": [
+        1.13,
+        1.13,
+        1.13
+      ],
+      "sha256": "5b6aec1603ab4885f3882e7a72682c0b920f8e56329976ab269d3dbe967778e2",
+      "throughput_mb_cpu_s": 1.13
+    },
+    "cpp-legacy-v0.4.0.json": {
+      "historical_timing": {
+        "load_condition": "unrecorded",
+        "median_run": 2,
+        "run_loads_1m": null,
+        "run_rates_mb_cpu_s": [
+          1.14,
+          1.15,
+          1.15
+        ],
+        "sha256": "b573b513a53b0aa06418127f998969f04433c2fdecc2db78b61e50387a9a1d7b",
+        "throughput_mb_cpu_s": 1.15
+      },
+      "load_condition": "observed",
+      "median_run": 2,
+      "run_loads_1m": [
+        {
+          "after": 6.18,
+          "before": 6.08
+        },
+        {
+          "after": 5.62,
+          "before": 6.18
+        },
+        {
+          "after": 5.3,
+          "before": 5.62
+        }
+      ],
+      "run_rates_mb_cpu_s": [
+        1.15,
+        1.14,
+        1.12
+      ],
+      "sha256": "4df4b98b74a80d35e0906bde93b2c139b36cae1fd96750417f474934805e897d",
+      "throughput_mb_cpu_s": 1.14
+    },
+    "cpp-legacy-v0.4.1.json": {
+      "historical_timing": {
+        "load_condition": "unrecorded",
+        "median_run": 1,
+        "run_loads_1m": null,
+        "run_rates_mb_cpu_s": [
+          1.13,
+          1.13,
+          1.12
+        ],
+        "sha256": "92121b35cdf738f519aedb8906dba4b7d9e1b0f99055f040adf86715b49744fc",
+        "throughput_mb_cpu_s": 1.13
+      },
+      "load_condition": "observed",
+      "median_run": 3,
+      "run_loads_1m": [
+        {
+          "after": 4.78,
+          "before": 5.3
+        },
+        {
+          "after": 4.51,
+          "before": 4.78
+        },
+        {
+          "after": 4.12,
+          "before": 4.51
+        }
+      ],
+      "run_rates_mb_cpu_s": [
+        1.14,
+        1.15,
+        1.14
+      ],
+      "sha256": "413a0ffb0877e25b44265c7cb738b87fee1c07624b9519fb874c280c61663da3",
+      "throughput_mb_cpu_s": 1.14
+    }
+  },
+  "scip_clang_sha256": {
+    "v0.4.0": "ff042fbc8a029f09f4b69fc7692e290e21c52923593207ee52d4e7439473ec64",
+    "v0.4.1": "34a2eb7a5ef9bbe9849cded59f4eb22a2331bd5b64a5cec2b17ee09b8aa515de"
+  },
+  "screen_binary_sha256": "f7c4c351006b4b59cd76eedef27f03ba093e0ec4eae088f15e8b972fb496cdd4",
+  "status": "complete",
+  "subjects": {
+    "fmt": {
+      "full": {
+        "bytes": 2505227,
+        "faulting_files": 0,
+        "faults": 0,
+        "files": 69,
+        "files_with_error": 20,
+        "metrics": {
+          "call_precision": {
+            "denominator": 5060,
+            "numerator": 4794,
+            "ratio": 0.9474308300395257,
+            "tier": "A"
+          },
+          "call_recall": {
+            "denominator": 5363,
+            "numerator": 4794,
+            "ratio": 0.8939026664180496,
+            "tier": "A"
+          },
+          "def_mapping": {
+            "denominator": 8347,
+            "numerator": 7215,
+            "ratio": 0.8643824128429376,
+            "tier": "A"
+          },
+          "file_edge_precision": {
+            "denominator": 199,
+            "numerator": 198,
+            "ratio": 0.9949748743718593,
+            "tier": "A"
+          },
+          "file_edge_recall": {
+            "denominator": 536,
+            "numerator": 198,
+            "ratio": 0.3694029850746269,
+            "tier": "A"
+          },
+          "import_resolution": {
+            "denominator": 109,
+            "numerator": 109,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "kind_agreement": {
+            "denominator": 7267,
+            "numerator": 7267,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "range_agreement": {
+            "denominator": 6756,
+            "numerator": 6730,
+            "ratio": 0.9961515689757253,
+            "tier": "B"
+          },
+          "signature_coverage": {
+            "denominator": 4522,
+            "numerator": 4522,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "sym_precision": {
+            "denominator": 7418,
+            "numerator": 7267,
+            "ratio": 0.9796441089242384,
+            "tier": "B"
+          },
+          "sym_recall": {
+            "denominator": 7634,
+            "numerator": 7267,
+            "ratio": 0.951925596017815,
+            "tier": "B"
+          },
+          "typed_recall": {
+            "denominator": 130825,
+            "numerator": 118900,
+            "ratio": 0.9088476973055608,
+            "tier": "A"
+          }
+        }
+      },
+      "legacy": {
+        "bytes": 1032410,
+        "faulting_files": 0,
+        "faults": 0,
+        "files": 60,
+        "files_with_error": 17,
+        "metrics": {
+          "call_precision": {
+            "denominator": 2588,
+            "numerator": 2493,
+            "ratio": 0.9632921174652241,
+            "tier": "A"
+          },
+          "call_recall": {
+            "denominator": 2700,
+            "numerator": 2493,
+            "ratio": 0.9233333333333333,
+            "tier": "A"
+          },
+          "def_mapping": {
+            "denominator": 3916,
+            "numerator": 3381,
+            "ratio": 0.8633810010214504,
+            "tier": "A"
+          },
+          "file_edge_precision": {
+            "denominator": 157,
+            "numerator": 157,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "file_edge_recall": {
+            "denominator": 458,
+            "numerator": 157,
+            "ratio": 0.34279475982532753,
+            "tier": "A"
+          },
+          "import_resolution": {
+            "denominator": 89,
+            "numerator": 89,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "kind_agreement": {
+            "denominator": 3581,
+            "numerator": 3581,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "range_agreement": {
+            "denominator": 3326,
+            "numerator": 3314,
+            "ratio": 0.9963920625375827,
+            "tier": "B"
+          },
+          "signature_coverage": {
+            "denominator": 2363,
+            "numerator": 2363,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "sym_precision": {
+            "denominator": 3629,
+            "numerator": 3581,
+            "ratio": 0.9867732157619179,
+            "tier": "B"
+          },
+          "sym_recall": {
+            "denominator": 3716,
+            "numerator": 3581,
+            "ratio": 0.9636706135629709,
+            "tier": "B"
+          },
+          "typed_recall": {
+            "denominator": 34701,
+            "numerator": 33403,
+            "ratio": 0.9625947379038068,
+            "tier": "A"
+          }
+        }
+      }
+    },
+    "json": {
+      "full": {
+        "bytes": 5481832,
+        "faulting_files": 1,
+        "faults": 1,
+        "files": 475,
+        "files_with_error": 101,
+        "metrics": {
+          "call_precision": {
+            "denominator": 2748,
+            "numerator": 2616,
+            "ratio": 0.9519650655021834,
+            "tier": "A"
+          },
+          "call_recall": {
+            "denominator": 2825,
+            "numerator": 2616,
+            "ratio": 0.9260176991150443,
+            "tier": "A"
+          },
+          "def_mapping": {
+            "denominator": 8184,
+            "numerator": 5807,
+            "ratio": 0.7095552297165201,
+            "tier": "A"
+          },
+          "file_edge_precision": {
+            "denominator": 597,
+            "numerator": 569,
+            "ratio": 0.9530988274706867,
+            "tier": "A"
+          },
+          "file_edge_recall": {
+            "denominator": 5074,
+            "numerator": 569,
+            "ratio": 0.11214032321639732,
+            "tier": "A"
+          },
+          "import_resolution": {
+            "denominator": 229,
+            "numerator": 229,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "kind_agreement": {
+            "denominator": 7263,
+            "numerator": 7263,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "range_agreement": {
+            "denominator": 6054,
+            "numerator": 6005,
+            "ratio": 0.9919061777337298,
+            "tier": "B"
+          },
+          "signature_coverage": {
+            "denominator": 3781,
+            "numerator": 3781,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "sym_precision": {
+            "denominator": 7876,
+            "numerator": 7263,
+            "ratio": 0.9221686135093956,
+            "tier": "B"
+          },
+          "sym_recall": {
+            "denominator": 8210,
+            "numerator": 7263,
+            "ratio": 0.884652862362972,
+            "tier": "B"
+          },
+          "typed_recall": {
+            "denominator": 67665,
+            "numerator": 39812,
+            "ratio": 0.5883691716544742,
+            "tier": "A"
+          }
+        }
+      },
+      "legacy": {
+        "bytes": 953214,
+        "faulting_files": 0,
+        "faults": 0,
+        "files": 46,
+        "files_with_error": 14,
+        "metrics": {
+          "call_precision": {
+            "denominator": 1076,
+            "numerator": 1036,
+            "ratio": 0.9628252788104089,
+            "tier": "A"
+          },
+          "call_recall": {
+            "denominator": 1115,
+            "numerator": 1036,
+            "ratio": 0.9291479820627803,
+            "tier": "A"
+          },
+          "def_mapping": {
+            "denominator": 4115,
+            "numerator": 2756,
+            "ratio": 0.6697448359659781,
+            "tier": "A"
+          },
+          "file_edge_precision": {
+            "denominator": 214,
+            "numerator": 211,
+            "ratio": 0.985981308411215,
+            "tier": "A"
+          },
+          "file_edge_recall": {
+            "denominator": 233,
+            "numerator": 211,
+            "ratio": 0.9055793991416309,
+            "tier": "A"
+          },
+          "import_resolution": {
+            "denominator": 50,
+            "numerator": 50,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "kind_agreement": {
+            "denominator": 1729,
+            "numerator": 1729,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "range_agreement": {
+            "denominator": 1436,
+            "numerator": 1428,
+            "ratio": 0.9944289693593314,
+            "tier": "B"
+          },
+          "signature_coverage": {
+            "denominator": 789,
+            "numerator": 789,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "sym_precision": {
+            "denominator": 1851,
+            "numerator": 1729,
+            "ratio": 0.9340896812533765,
+            "tier": "B"
+          },
+          "sym_recall": {
+            "denominator": 1798,
+            "numerator": 1729,
+            "ratio": 0.9616240266963293,
+            "tier": "B"
+          },
+          "typed_recall": {
+            "denominator": 22352,
+            "numerator": 19122,
+            "ratio": 0.8554939155332856,
+            "tier": "A"
+          }
+        }
+      }
+    },
+    "spdlog": {
+      "full": {
+        "bytes": 1105400,
+        "faulting_files": 0,
+        "faults": 0,
+        "files": 135,
+        "files_with_error": 42,
+        "metrics": {
+          "call_precision": {
+            "denominator": 2345,
+            "numerator": 2286,
+            "ratio": 0.9748400852878465,
+            "tier": "A"
+          },
+          "call_recall": {
+            "denominator": 2470,
+            "numerator": 2286,
+            "ratio": 0.9255060728744939,
+            "tier": "A"
+          },
+          "def_mapping": {
+            "denominator": 3409,
+            "numerator": 3079,
+            "ratio": 0.9031974185978293,
+            "tier": "A"
+          },
+          "file_edge_precision": {
+            "denominator": 528,
+            "numerator": 501,
+            "ratio": 0.9488636363636364,
+            "tier": "A"
+          },
+          "file_edge_recall": {
+            "denominator": 1198,
+            "numerator": 501,
+            "ratio": 0.41819699499165275,
+            "tier": "A"
+          },
+          "import_resolution": {
+            "denominator": 124,
+            "numerator": 124,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "kind_agreement": {
+            "denominator": 3376,
+            "numerator": 3376,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "range_agreement": {
+            "denominator": 3059,
+            "numerator": 3051,
+            "ratio": 0.9973847662634848,
+            "tier": "B"
+          },
+          "signature_coverage": {
+            "denominator": 2070,
+            "numerator": 2070,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "sym_precision": {
+            "denominator": 3416,
+            "numerator": 3376,
+            "ratio": 0.9882903981264637,
+            "tier": "B"
+          },
+          "sym_recall": {
+            "denominator": 3467,
+            "numerator": 3376,
+            "ratio": 0.9737525237957889,
+            "tier": "B"
+          },
+          "typed_recall": {
+            "denominator": 19019,
+            "numerator": 18415,
+            "ratio": 0.9682422840317577,
+            "tier": "A"
+          }
+        }
+      },
+      "legacy": {
+        "bytes": 489588,
+        "faulting_files": 0,
+        "faults": 0,
+        "files": 116,
+        "files_with_error": 34,
+        "metrics": {
+          "call_precision": {
+            "denominator": 982,
+            "numerator": 977,
+            "ratio": 0.994908350305499,
+            "tier": "A"
+          },
+          "call_recall": {
+            "denominator": 1077,
+            "numerator": 977,
+            "ratio": 0.9071494893221913,
+            "tier": "A"
+          },
+          "def_mapping": {
+            "denominator": 1329,
+            "numerator": 1179,
+            "ratio": 0.8871331828442438,
+            "tier": "A"
+          },
+          "file_edge_precision": {
+            "denominator": 492,
+            "numerator": 474,
+            "ratio": 0.9634146341463414,
+            "tier": "A"
+          },
+          "file_edge_recall": {
+            "denominator": 1085,
+            "numerator": 474,
+            "ratio": 0.4368663594470046,
+            "tier": "A"
+          },
+          "import_resolution": {
+            "denominator": 118,
+            "numerator": 118,
+            "ratio": 1.0,
+            "tier": "A"
+          },
+          "kind_agreement": {
+            "denominator": 1270,
+            "numerator": 1270,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "range_agreement": {
+            "denominator": 1190,
+            "numerator": 1190,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "signature_coverage": {
+            "denominator": 758,
+            "numerator": 758,
+            "ratio": 1.0,
+            "tier": "B"
+          },
+          "sym_precision": {
+            "denominator": 1279,
+            "numerator": 1270,
+            "ratio": 0.9929632525410477,
+            "tier": "B"
+          },
+          "sym_recall": {
+            "denominator": 1277,
+            "numerator": 1270,
+            "ratio": 0.9945184025058731,
+            "tier": "B"
+          },
+          "typed_recall": {
+            "denominator": 6804,
+            "numerator": 6659,
+            "ratio": 0.9786890064667843,
+            "tier": "A"
+          }
+        }
+      }
+    }
+  },
+  "syntax": {
+    "fmt": {
+      "full": {
+        "counts_complete": true,
+        "files_screened": 69,
+        "files_total": 69,
+        "selected": {
+          "both": 15,
+          "error_containing": 18,
+          "error_only": 3,
+          "faults": 0,
+          "missing_containing": 17,
+          "missing_only": 2,
+          "union": 20
+        },
+        "status": "complete",
+        "written": {
+          "both": 26,
+          "error_containing": 34,
+          "error_only": 8,
+          "faults": 0,
+          "missing_containing": 28,
+          "missing_only": 2,
+          "union": 36
+        }
+      },
+      "legacy": {
+        "counts_complete": true,
+        "files_screened": 60,
+        "files_total": 60,
+        "selected": {
+          "both": 12,
+          "error_containing": 15,
+          "error_only": 3,
+          "faults": 0,
+          "missing_containing": 14,
+          "missing_only": 2,
+          "union": 17
+        },
+        "status": "complete",
+        "written": {
+          "both": 22,
+          "error_containing": 30,
+          "error_only": 8,
+          "faults": 0,
+          "missing_containing": 24,
+          "missing_only": 2,
+          "union": 32
+        }
+      }
+    },
+    "json": {
+      "full": {
+        "counts_complete": false,
+        "files_screened": 344,
+        "files_total": 475,
+        "status": "failed"
+      },
+      "legacy": {
+        "counts_complete": true,
+        "files_screened": 46,
+        "files_total": 46,
+        "selected": {
+          "both": 10,
+          "error_containing": 14,
+          "error_only": 4,
+          "faults": 0,
+          "missing_containing": 10,
+          "missing_only": 0,
+          "union": 14
+        },
+        "status": "complete",
+        "written": {
+          "both": 37,
+          "error_containing": 42,
+          "error_only": 5,
+          "faults": 0,
+          "missing_containing": 39,
+          "missing_only": 2,
+          "union": 44
+        }
+      }
+    },
+    "spdlog": {
+      "full": {
+        "counts_complete": true,
+        "files_screened": 135,
+        "files_total": 135,
+        "selected": {
+          "both": 9,
+          "error_containing": 14,
+          "error_only": 5,
+          "faults": 0,
+          "missing_containing": 37,
+          "missing_only": 28,
+          "union": 42
+        },
+        "status": "complete",
+        "written": {
+          "both": 42,
+          "error_containing": 60,
+          "error_only": 18,
+          "faults": 0,
+          "missing_containing": 71,
+          "missing_only": 29,
+          "union": 89
+        }
+      },
+      "legacy": {
+        "counts_complete": true,
+        "files_screened": 116,
+        "files_total": 116,
+        "selected": {
+          "both": 2,
+          "error_containing": 6,
+          "error_only": 4,
+          "faults": 0,
+          "missing_containing": 30,
+          "missing_only": 28,
+          "union": 34
+        },
+        "status": "complete",
+        "written": {
+          "both": 29,
+          "error_containing": 46,
+          "error_only": 17,
+          "faults": 0,
+          "missing_containing": 58,
+          "missing_only": 29,
+          "union": 75
+        }
+      }
+    }
+  },
+  "timing_inputs": {
+    "cpp-full-v0.4.0.json": {
+      "load_log_sha256": "4d4e2fa9d17fdda0bc226376041ea6dcef89c2d77ee2edfe221984acb713f8aa",
+      "reading_sha256": "b905a7f0c92f85341a199207e900be115a5d029883f18e7519eb8b616aa73fb8"
+    },
+    "cpp-full-v0.4.1.json": {
+      "load_log_sha256": "fd32c2f63d0fe486b4701d54ee841acf8751a53610b67bc80a3f89ea4cf4cd35",
+      "reading_sha256": "5b6aec1603ab4885f3882e7a72682c0b920f8e56329976ab269d3dbe967778e2"
+    },
+    "cpp-legacy-v0.4.0.json": {
+      "load_log_sha256": "40235a1cca906c8265107655fa1211b4bb681d58b163d47eb4011a1d7576a662",
+      "reading_sha256": "4df4b98b74a80d35e0906bde93b2c139b36cae1fd96750417f474934805e897d"
+    },
+    "cpp-legacy-v0.4.1.json": {
+      "load_log_sha256": "7d2a819a5fc79b58142d430367b6fb208ca78af7df18b878063d9525f288d209",
+      "reading_sha256": "413a0ffb0877e25b44265c7cb738b87fee1c07624b9519fb874c280c61663da3"
+    }
+  },
+  "timing_product_binary_sha256": "584c149602aae7800ab639b89a9935c8edb9689318baf943d6e917d76b29156f",
+  "timing_product_revision": "2cfc7626c943a320a390faae4ac92819929ba89a"
+}

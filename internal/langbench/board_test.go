@@ -34,7 +34,7 @@ func m(kv ...any) map[string]*float64 {
 func boardReading(id, kind, target, oracleTier string, metrics map[string]*float64) Reading {
 	r := Reading{
 		Dialect: id, Kind: kind, TargetLevel: target, MeasuredAt: "2026-10-02",
-		Subjects:         []Subject{{Name: "o/r", Files: 10, Bytes: 1 << 20}},
+		Subjects:         []Subject{{Name: "o/r", Files: 10, Bytes: 1 << 20, Counts: ampleL3Evidence()}},
 		Oracles:          []OracleRun{{Tier: oracleTier, Tool: "oracle-" + id, Version: "1"}},
 		RequiredKinds:    []string{"class"},
 		KindIntersection: []string{"class"},
@@ -43,6 +43,16 @@ func boardReading(id, kind, target, oracleTier string, metrics map[string]*float
 	r.MetricTiers = tiers(oracleTier, metrics)
 	r.Finalize()
 	return r
+}
+
+// ampleL3Evidence holds every L3 denominator well over MinL3Evidence, so a fixture's L3
+// grades on its metrics alone.
+func ampleL3Evidence() map[string]int {
+	out := map[string]int{}
+	for _, k := range l3Denominator {
+		out[k] = 100
+	}
+	return out
 }
 
 func langL1(v float64) map[string]*float64 { return l1Metrics(v) }
@@ -151,5 +161,25 @@ func TestRenderBoardBuckets(t *testing.T) {
 	doc := RenderTracker(boardFixture())
 	if i, j := strings.Index(doc, "## Excellence board (generated)"), strings.Index(doc, "## Support levels (generated)"); i < 0 || j < i {
 		t.Errorf("the board must precede the support levels: %d, %d", i, j)
+	}
+}
+
+// TestThinEvidenceRendered (owner ruling D19, E3): a thin L3 reads as thin evidence in the
+// tracker's level cell and the board's gap, never as a metric failure, and a metric capped
+// at good by thin evidence names it.
+func TestThinEvidenceRendered(t *testing.T) {
+	r := boardReading("thin", "tooling", "L3", "A", merge(m(MSymRecall, 1., MSymPrecision, 1., MRefRecall, 1., MRefPrecision, 1., MXrefPrecision, 1., MXrefRecall, 1.)))
+	r.Subjects[0].Counts = map[string]int{CntXrefTruth: 13, CntXrefFathom: 12}
+	r.Finalize()
+	if got, want := levelCell(r), "L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 13 references, under 20)"; got != want {
+		t.Errorf("levelCell = %q, want %q", got, want)
+	}
+	if got, want := nextGap(r, "L3"), "L3 not met: evidence: 13 references, under 20"; got != want {
+		t.Errorf("nextGap = %q, want %q", got, want)
+	}
+	r.Subjects[0].Counts = map[string]int{CntXrefTruth: 40, CntXrefFathom: 12}
+	r.Finalize()
+	if got, want := nextGap(r, "L3"), "L3 good: xref_precision evidence 12 < 20"; got != want {
+		t.Errorf("nextGap = %q, want %q", got, want)
 	}
 }

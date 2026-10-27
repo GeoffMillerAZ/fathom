@@ -1,0 +1,506 @@
+{
+  "schema": "slang-triage-population-rule-r4-gr10",
+  "status": "metadata-only prospective population; per-file terms and raw checkout identity pending before measurement",
+  "authority": "G-R10 bounded Slang triage; no semantic ceiling or level measured",
+  "search_rule": "search-rule-r4.json",
+  "search_rule_sha256": "0b475fa273babfe964220b76da97c62c371b05a9cc26549b9a676b72f4e34b9f",
+  "source_inventory": "subject-search-r4.json",
+  "source_inventory_sha256": "57c79feacaf3f221ec1654d2a74e829a27a31a116a48a86d50527dca67593a88",
+  "reach_boundary": "Complete ParameterBlock and four README/topic repository queries, earlier primary-language/name/description matches, seeds and all historical discoveries. The shader-attribute route is incomplete: one distinct page (page 1, 100 of 39,040 reported file hits from 51 repositories), requested five times with narrowing size ranges that returned byte-identical responses. GitHub allowed 10 code requests per minute. No r3a shader-attribute requests followed. The reported total is search output, not a verified count of real attributes. This bounded discovery is neither reach-complete nor an atomic snapshot.",
+  "population": "At each frozen full commit, select every tracked regular file with an exact lowercase .slang or .slangh suffix across the whole repository. Preserve duplicate file and Git-blob occurrences; count symlinks and gitlinks without following them. Root OSI grant is a metadata gate; per-file terms remain pending before measurement.",
+  "pin_rule": "Latest published release resolved to its full commit if available, else full recorded default-branch commit; preserve prior frozen pins.",
+  "role_rule": "From metadata-eligible whole projects, reserve the project with the most selected files as holdout; tie by case-insensitive repository identity.",
+  "size_rule": "Require 1 to 5000 selected files and at most 50000000 selected blob bytes per whole project; never trim to a subpath.",
+  "license_gate": "Root OSI-approved source grant required. Check every selected file for conflicting terms before measurement.",
+  "admission_conflict_policy": "On any per-file license conflict or unresolved term in a selected whole project, stop and report it before measurement; do not silently remove a file, subpath, or project from the frozen prospective pool.",
+  "inventory_counts": {
+    "below-reach": 339,
+    "diagnostic-role": 1,
+    "eligible-metadata": 48,
+    "license-excluded": 6,
+    "wrong-language": 8,
+    "zero-population": 64
+  },
+  "primary": [
+    {
+      "repository": "AlDanial/cloc",
+      "commit": "eb5cef64db2b2d4380f501568cc584b7cab4ba50",
+      "files": 1,
+      "bytes": 400,
+      "repository_id": 42029482
+    },
+    {
+      "repository": "compute-toys/compute.toys",
+      "commit": "6c62642b145a48147fa195cdfe560b16f28c5908",
+      "files": 5,
+      "bytes": 49154,
+      "repository_id": 625826870
+    },
+    {
+      "repository": "crossgl/crosstl",
+      "commit": "e7211e0281f7fc1992c7cac4751fa53525745852",
+      "files": 5,
+      "bytes": 3537,
+      "repository_id": 795144462
+    },
+    {
+      "repository": "DQLin/ReSTIR_PT",
+      "commit": "8d12332228eb64bc234e27c6f7e0913a926285ab",
+      "files": 298,
+      "bytes": 1966316,
+      "repository_id": 487472436
+    },
+    {
+      "repository": "DQLin/VolumetricReSTIRRelease",
+      "commit": "9c65b2f48d87b6e02b1de2e67b42ee37b8d42525",
+      "files": 220,
+      "bytes": 1308457,
+      "repository_id": 455492657
+    },
+    {
+      "repository": "dust-engine/dust",
+      "commit": "fee26fd6d8cb4e0f5a60229cebcf62fabbab2cb5",
+      "files": 22,
+      "bytes": 161052,
+      "repository_id": 345777856
+    },
+    {
+      "repository": "electronicarts/gigi",
+      "commit": "fd6fbaf1a11cbbc723e5a651bf0e25b898a6afe6",
+      "files": 2,
+      "bytes": 72541,
+      "repository_id": 814226063
+    },
+    {
+      "repository": "floatymonkey/slang-rs",
+      "commit": "f9c9eece467aa84f3be1aa1137426f59591095fc",
+      "files": 1,
+      "bytes": 272,
+      "repository_id": 765405407
+    },
+    {
+      "repository": "gameknife/gkNextEngine",
+      "commit": "2b7e7828bc7685141cd1d2e04b1160d89144469a",
+      "files": 91,
+      "bytes": 518941,
+      "repository_id": 809302876
+    },
+    {
+      "repository": "gan74/Yave",
+      "commit": "611bcb87e433ffdd3814c162a9adeedef773bdac",
+      "files": 53,
+      "bytes": 188680,
+      "repository_id": 59200808
+    },
+    {
+      "repository": "google/slang-gaussian-rasterization",
+      "commit": "8f8498e14af84eb2e50e45a5ce9409eed71213fb",
+      "files": 5,
+      "bytes": 33205,
+      "repository_id": 841890294
+    },
+    {
+      "repository": "guiqi134/Area-ReSTIR",
+      "commit": "c705a82bfc805d8451e0aa93999f0156d5dbd952",
+      "files": 440,
+      "bytes": 2703708,
+      "repository_id": 797096117
+    },
+    {
+      "repository": "harry7557558/vksplat",
+      "commit": "b3ad2b048918496616e0e9346e35c606d813ab55",
+      "files": 18,
+      "bytes": 161334,
+      "repository_id": 1202978679
+    },
+    {
+      "repository": "Hekbas/Luth",
+      "commit": "86fa154a2ff672ee409a8fd3533de01cf747a435",
+      "files": 96,
+      "bytes": 317282,
+      "repository_id": 931158872
+    },
+    {
+      "repository": "Ipotrick/Daxa",
+      "commit": "00761e80c1dd6d1972d5f4569ce49620a7b4d384",
+      "files": 7,
+      "bytes": 34955,
+      "repository_id": 351141577
+    },
+    {
+      "repository": "khronosgroup/vulkan-samples",
+      "commit": "69622af06f7652c7fc9b9a9180e7142046315cbc",
+      "files": 158,
+      "bytes": 270943,
+      "repository_id": 218329478
+    },
+    {
+      "repository": "KohakuBlueleaf/PixelOE",
+      "commit": "1d45ba0b5c51c3d998b19043a168366a8f170eaa",
+      "files": 27,
+      "bytes": 83964,
+      "repository_id": 778816697
+    },
+    {
+      "repository": "kovidgoyal/kitty",
+      "commit": "b2cb871254fbdac19a085188813c8dfb258b95cd",
+      "files": 37,
+      "bytes": 159207,
+      "repository_id": 71056775
+    },
+    {
+      "repository": "leotmp/no_gfx_api",
+      "commit": "fcbfd5fc802c10810ef6eb2b6805e09131a4db56",
+      "files": 14,
+      "bytes": 32707,
+      "repository_id": 1118353567
+    },
+    {
+      "repository": "m-schuetz/CuRast",
+      "commit": "55c9a26b2563ee32c5b84480fe112a4d7e38d37b",
+      "files": 4,
+      "bytes": 23296,
+      "repository_id": 1218117255
+    },
+    {
+      "repository": "MichaelMoroz/slang-splat",
+      "commit": "0deaa8d73c66e5ad7f422c2e30581fed660dac0b",
+      "files": 37,
+      "bytes": 339557,
+      "repository_id": 1153231724
+    },
+    {
+      "repository": "moonlovelj/Nyx",
+      "commit": "7ab5d73dfb77db900f7201a697899d4b38fbffa6",
+      "files": 72,
+      "bytes": 622187,
+      "repository_id": 1029628188
+    },
+    {
+      "repository": "MrDrElliot/LuminaEngine",
+      "commit": "67b225649c41ab99d787d9aa1f00336c71ba75b1",
+      "files": 83,
+      "bytes": 377561,
+      "repository_id": 888666476
+    },
+    {
+      "repository": "nv-tlabs/wosx",
+      "commit": "2716c27175bb6b5795749c539393d547fb3a6c2b",
+      "files": 37,
+      "bytes": 329758,
+      "repository_id": 1257589810
+    },
+    {
+      "repository": "nvpro-samples/nvpro_core2",
+      "commit": "7cfe3ca9dc53ab23aeb8b55787fa676f1ff6c3d0",
+      "files": 35,
+      "bytes": 341251,
+      "repository_id": 1012491846
+    },
+    {
+      "repository": "nvpro-samples/vk_gaussian_splatting",
+      "commit": "d0a3befe1d5b2620cb646bde5369186e835a930a",
+      "files": 49,
+      "bytes": 436422,
+      "repository_id": 945894128
+    },
+    {
+      "repository": "nvpro-samples/vk_gltf_renderer",
+      "commit": "174625d5c621c088bf3610377999f9dbdcf5c3b5",
+      "files": 36,
+      "bytes": 409191,
+      "repository_id": 225621170
+    },
+    {
+      "repository": "nvpro-samples/vk_mini_samples",
+      "commit": "af5c0a6b63095bb7b84b59dd4f88b718c28206a8",
+      "files": 37,
+      "bytes": 211175,
+      "repository_id": 423511757
+    },
+    {
+      "repository": "nvpro-samples/vk_minimal_latest",
+      "commit": "14f31142bc2faf71e19a5bf00c59a3d0c3c60c26",
+      "files": 2,
+      "bytes": 9544,
+      "repository_id": 895517676
+    },
+    {
+      "repository": "nvpro-samples/vk_raytracing_tutorial_KHR",
+      "commit": "952a1a8e8b85f25781db7014d4d2bda124435e79",
+      "files": 34,
+      "bytes": 293673,
+      "repository_id": 251647550
+    },
+    {
+      "repository": "oxylusengine/Oxylus",
+      "commit": "f2aaaf0fbe06c7cf008da88592f056d0e8cb425b",
+      "files": 151,
+      "bytes": 660230,
+      "repository_id": 505900706
+    },
+    {
+      "repository": "PaoloMazzon/Vulkan2D",
+      "commit": "250455d04e36138bba48ad33b5659957d68a38c1",
+      "files": 1,
+      "bytes": 1364,
+      "repository_id": 286360560
+    },
+    {
+      "repository": "qian-o/Zenith.NET",
+      "commit": "1ff4e01a74fb2170e9550468bb3c160aed8c4a47",
+      "files": 22,
+      "bytes": 152331,
+      "repository_id": 1008779288
+    },
+    {
+      "repository": "rohan-sawhney/fcpw",
+      "commit": "724f2dbef090b1bfe73b9c4f1ff6be8479ec880e",
+      "files": 11,
+      "bytes": 69974,
+      "repository_id": 239527374
+    },
+    {
+      "repository": "saschawillems/vulkan",
+      "commit": "6e1cc299c22eaf2b1771944b3adb7b8258f84ff9",
+      "files": 176,
+      "bytes": 295081,
+      "repository_id": 37821236
+    },
+    {
+      "repository": "sebbbi/NoGraphicsAPI",
+      "commit": "ffd9f2ab6b7442dcfbe0cb0051d84d0edb078d89",
+      "files": 14,
+      "bytes": 15611,
+      "repository_id": 1352493419
+    },
+    {
+      "repository": "shader-slang/neural-shading-s25",
+      "commit": "6e4afe7de13d04dbccc88b553baa4af9541d0094",
+      "files": 27,
+      "bytes": 65554,
+      "repository_id": 1017479079
+    },
+    {
+      "repository": "shader-slang/slang-rhi",
+      "commit": "5a1d9da17ecd8235d85988916de1c7d62b39bcf8",
+      "files": 87,
+      "bytes": 207038,
+      "repository_id": 846627057
+    },
+    {
+      "repository": "shader-slang/slang-torch",
+      "commit": "7f1ea3a20c0951a48a9fc1f58fb7da19095fd202",
+      "files": 23,
+      "bytes": 50241,
+      "repository_id": 784553841
+    },
+    {
+      "repository": "shader-slang/slangpy",
+      "commit": "2f6c4625fdd2b3bd812ca6cd2802cf98bd89b248",
+      "files": 96,
+      "bytes": 388501,
+      "repository_id": 912798934
+    },
+    {
+      "repository": "shader-slang/slangpy-samples",
+      "commit": "822c61262a50b7b5ccd5e12f28d70adf7c5cbfd8",
+      "files": 87,
+      "bytes": 466283,
+      "repository_id": 838988254
+    },
+    {
+      "repository": "tatran5/Reservoir-Spatio-Temporal-Importance-Resampling-ReSTIR",
+      "commit": "06ca139740777695fea7a6e8b65c3ae67c669079",
+      "files": 46,
+      "bytes": 206083,
+      "repository_id": 310694610
+    },
+    {
+      "repository": "wrapperup/rivet-engine",
+      "commit": "140235e4f730fb30739f88a3d4f7826eef03114d",
+      "files": 46,
+      "bytes": 147467,
+      "repository_id": 1061090880
+    },
+    {
+      "repository": "WSAL-Evan/ScuffedMinecraft",
+      "commit": "fb57575af3fdcdd495849d43bbbc780b9e89325f",
+      "files": 1,
+      "bytes": 718,
+      "repository_id": 851155753
+    },
+    {
+      "repository": "z3y/glim",
+      "commit": "21faeb05a76f8409c7fc5950dafce57c585e274f",
+      "files": 20,
+      "bytes": 93931,
+      "repository_id": 1204932116
+    },
+    {
+      "repository": "zeux/meshoptimizer",
+      "commit": "9e1f07b159d3cb777f1c67ed31fc11fd117986f4",
+      "files": 1,
+      "bytes": 7281,
+      "repository_id": 67768325
+    },
+    {
+      "repository": "Zydak/Vulkan-Path-Tracer",
+      "commit": "86903a5044eeb4d439982e17ebef4ea193ca02bc",
+      "files": 17,
+      "bytes": 129261,
+      "repository_id": 773820341
+    }
+  ],
+  "primary_prospective_totals": {
+    "projects": 47,
+    "files": 2752,
+    "bytes": 14417219,
+    "distinct_git_blobs": 2712,
+    "duplicate_blob_occurrences": 40
+  },
+  "holdout": {
+    "repository": "nvidiagameworks/falcor",
+    "commit": "759aad033ff610fb0d82c74f7e0a508d0096d5f2",
+    "files": 461,
+    "bytes": 2951994,
+    "distinct_git_blobs": 461,
+    "overlap_with_primary_distinct_git_blobs": 240,
+    "whole_project": true,
+    "repository_id": 98350667
+  },
+  "holdout_prospective_share": {
+    "of_eligible_files_percent": 14.348,
+    "of_eligible_selected_bytes_percent": 16.9956
+  },
+  "holdout_policy": "Keep the whole pinned holdout outside canonical shards and primary aggregation. Admit and measure it on the same frozen grammar revision as primary before diagnostic tuning.",
+  "overlap_audit": {
+    "complete_tree_pairs_compared": 8001,
+    "shared_blob_pairs": [
+      {
+        "repositories": [
+          "crossgl/crosstl",
+          93882897
+        ],
+        "shared_git_blobs": 1
+      },
+      {
+        "repositories": [
+          "DQLin/ReSTIR_PT",
+          "guiqi134/Area-ReSTIR"
+        ],
+        "shared_git_blobs": 19
+      },
+      {
+        "repositories": [
+          "DQLin/ReSTIR_PT",
+          "nvidiagameworks/falcor"
+        ],
+        "shared_git_blobs": 17
+      },
+      {
+        "repositories": [
+          "DQLin/ReSTIR_PT",
+          690813987
+        ],
+        "shared_git_blobs": 94
+      },
+      {
+        "repositories": [
+          "guiqi134/Area-ReSTIR",
+          "nvidiagameworks/falcor"
+        ],
+        "shared_git_blobs": 239
+      },
+      {
+        "repositories": [
+          "guiqi134/Area-ReSTIR",
+          690813987
+        ],
+        "shared_git_blobs": 91
+      },
+      {
+        "repositories": [
+          "guiqi134/Area-ReSTIR",
+          93882897
+        ],
+        "shared_git_blobs": 1
+      },
+      {
+        "repositories": [
+          "moonlovelj/Nyx",
+          93882897
+        ],
+        "shared_git_blobs": 19
+      },
+      {
+        "repositories": [
+          "nvidiagameworks/falcor",
+          690813987
+        ],
+        "shared_git_blobs": 64
+      },
+      {
+        "repositories": [
+          "rohan-sawhney/fcpw",
+          93882897
+        ],
+        "shared_git_blobs": 8
+      },
+      {
+        "repositories": [
+          "shader-slang/neural-shading-s25",
+          93882897
+        ],
+        "shared_git_blobs": 2
+      },
+      {
+        "repositories": [
+          93882897,
+          "shader-slang/slang-rhi"
+        ],
+        "shared_git_blobs": 7
+      }
+    ],
+    "disclosure": "Shared Git blobs are counted and disclosed across whole projects; no selected file or project is deduplicated. Independence is not inferred.",
+    "independence_claim": "None; Falcor shares 17 Git blobs with DQLin/ReSTIR_PT and 239 with guiqi134/Area-ReSTIR, among other recorded overlaps. Pair counts may include the same blobs and must not be summed as unique overlap.",
+    "path_lineage": {
+      "method": "Count selected regular .slang/.slangh files with an exact Falcor directory component in each pinned complete tree; no source-body comparison or fuzzy similarity measurement.",
+      "projects": [
+        {
+          "repository": "DQLin/ReSTIR_PT",
+          "selected_files_in_project": 298,
+          "selected_files_under_falcor_path_component": 166,
+          "tree_response_sha256": "61ed681a347892bea7935744c82c047007c1268e888b186edd6f641bd0d12945"
+        },
+        {
+          "repository": "DQLin/VolumetricReSTIRRelease",
+          "selected_files_in_project": 220,
+          "selected_files_under_falcor_path_component": 120,
+          "tree_response_sha256": "18635e9299dced471c223e03062a2051c3780756627f2b405eada0c8340a0a50"
+        },
+        {
+          "repository": "tatran5/Reservoir-Spatio-Temporal-Importance-Resampling-ReSTIR",
+          "selected_files_in_project": 46,
+          "selected_files_under_falcor_path_component": 46,
+          "tree_response_sha256": "1c148c91dd0391a1c4e6c21e2071334b96595de40d3d9b32e8168f12e043c76d"
+        },
+        {
+          "repository": "guiqi134/Area-ReSTIR",
+          "selected_files_in_project": 440,
+          "selected_files_under_falcor_path_component": 255,
+          "tree_response_sha256": "25957887e99d61ea2a90e168bc9385946dddf7a597d627725462833b35af8694"
+        }
+      ],
+      "primary_selected_files_under_falcor_trees": 587,
+      "primary_files_percent": 21.3299,
+      "selected_files_in_four_whole_projects": 1004,
+      "primary_files_without_four_whole_projects": 1748,
+      "disclosure": "Four primary projects carry 587 selected files under vendored Falcor trees. This lineage extends beyond exact Git-blob overlap. No file or project is removed."
+    }
+  },
+  "future_gate": "Only after per-file admission and same frozen grammar revision measurement: at most 5% ERROR-or-MISSING files and at most 0.1% faults on the whole primary pool and separately on the whole holdout. Report both rates and per-project counts. The weaker primary/holdout result caps any future Slang level and changelog claim. No gate result exists in this metadata triage.",
+  "future_ceiling_scope": "No Slang level or ceiling is measured. Any future ceiling must state this search boundary plainly. The shader-attribute route is incomplete: one distinct page (page 1, 100 of 39,040 reported file hits from 51 repositories), requested five times with narrowing size ranges that returned byte-identical responses. GitHub allowed 10 code requests per minute. No r3a shader-attribute requests followed. The reported total is search output, not a verified count of real attributes. This bounded discovery is neither reach-complete nor an atomic snapshot.",
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private.",
+  "future_lineage_sensitivity": "Report the holdout rate beside primary rates both with all 47 projects (2,752 files) and without the four whole Falcor-lineage projects (1,748 files). Report counts, ERROR-or-MISSING rates and faults on the same frozen grammar. This is a diagnostic sensitivity comparison, not pool trimming: whole-primary and whole-holdout gates still govern every claim."
+}

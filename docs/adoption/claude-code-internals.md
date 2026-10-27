@@ -274,7 +274,7 @@ exist for them.
     <string>/Users/you/.local/libexec/fathom/fathom</string>
     <string>serve-http</string>
     <string>--store</string><string>/Users/you/.fathom/db/fathom.sqlite</string>
-    <string>--addr</string><string>:7575</string>
+    <string>--addr</string><string>127.0.0.1:7575</string>
     <string>--call-log</string><string>/Users/you/.fathom/logs/mcp-calls.jsonl</string>
   </array>
   <key>EnvironmentVariables</key><dict>
@@ -293,7 +293,7 @@ curl -s http://127.0.0.1:7575/healthz   # ok
 ```
 </details>
 
-No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr :7575 &` works
+No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr 127.0.0.1:7575 &` works
 for a session but dies with the shell — use a systemd unit or process
 supervisor for anything persistent.
 
@@ -816,6 +816,13 @@ doctor write and expect it only while `[hooks] read_outline_hint = true` (see `d
 | Event | Matcher | Command | Injects? | What it does |
 |---|---|---|---|---|
 | `PreToolUse` | `Read` | `fathom readout-hook --event pre-read` | yes | before a Read with no offset or limit of a source file over 200 lines the session has not edited, one line: its top-level symbols with line ranges from the file on disk and the offset and limit recipe; `additionalContext` only, so the read runs unchanged |
+
+The egress guard (ADR-083) adds one row of its own, appended after ADR-080's rows. It is on by default
+(`[guards] egress = "warn"`; `off` silences it at the verb, so the entry stays wired):
+
+| Event | Matcher | Command | Injects? | What it does |
+|---|---|---|---|---|
+| `PreToolUse` | `WebFetch\|WebSearch` | `fathom edit-hook --pre` | yes | checks `WebFetch`'s URL host, or `WebSearch`'s `allowed_domains`, against `[guards] egress_allow`; one advisory line under `warn`, a deny under `enforce` while guard enforcement is on. A tripwire, not data-loss prevention: MCP fetch and browser tools are not intercepted, and `permissions.deny` and the sandbox network allowlist are the boundary |
 
 ---
 

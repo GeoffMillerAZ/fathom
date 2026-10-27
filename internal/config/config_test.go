@@ -1336,3 +1336,54 @@ func TestLoad_GuardsGitSafety(t *testing.T) {
 		t.Errorf("git_safety scope = %v, %v; want project behaviour", class, ok)
 	}
 }
+
+// TestLoad_GuardsEgress pins the egress guard's scope rule (ADR-083): the
+// user layer sets the mode, warn when unset; a repository layer may only
+// tighten it (off < warn < enforce), never loosen it; egress_allow is
+// user-only, so a cloned repository cannot widen what the guard lets through.
+func TestLoad_GuardsEgress(t *testing.T) {
+	dir := t.TempDir()
+	userPath, projectPath := filepath.Join(dir, "user.toml"), filepath.Join(dir, "project.toml")
+	load := func(user, project string) Loaded {
+		t.Helper()
+		writeTOML(t, userPath, user)
+		writeTOML(t, projectPath, project)
+		loaded, err := Load(userPath, projectPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return loaded
+	}
+	for _, tc := range []struct {
+		name, user, project, want string
+		source                    Source
+	}{
+		{"unset defaults to warn", "", "", "warn", ""},
+		{"user off", "[guards]\negress = \"off\"\n", "", "off", SourceUser},
+		{"repository cannot loosen the user's enforce", "[guards]\negress = \"enforce\"\n", "[guards]\negress = \"off\"\n", "enforce", SourceUser},
+		{"repository cannot loosen the default", "", "[guards]\negress = \"off\"\n", "warn", ""},
+		{"repository tightens the user's off", "[guards]\negress = \"off\"\n", "[guards]\negress = \"warn\"\n", "warn", SourceProject},
+		{"repository tightens to enforce", "", "[guards]\negress = \"enforce\"\n", "enforce", SourceProject},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := load(tc.user, tc.project).Config.Guards
+			if got := g.EgressMode(); got != tc.want || g.EgressSource != tc.source {
+				t.Errorf("EgressMode = %q from %q, want %q from %q", got, g.EgressSource, tc.want, tc.source)
+			}
+		})
+	}
+
+	loaded := load("[guards]\negress_allow = [\"docs.example.com\"]\n", "[guards]\negress_allow = [\"attacker.example\"]\n")
+	if got := loaded.Config.Guards.EgressAllow; len(got) != 1 || got[0] != "docs.example.com" {
+		t.Errorf("EgressAllow = %v, want only the user's host", got)
+	}
+	if len(loaded.IgnoredKeySources) != 1 || loaded.IgnoredKeySources[0].Field != "guards.egress_allow" {
+		t.Errorf("IgnoredKeySources = %+v, want the repository's guards.egress_allow named", loaded.IgnoredKeySources)
+	}
+	if class, ok := ScopeOf("guards.egress_allow"); !ok || class.Class != ScopeUserOnly {
+		t.Errorf("egress_allow scope = %v, %v; want user-only", class, ok)
+	}
+	if class, ok := ScopeOf("guards.egress"); !ok || class.Class != ScopeBehaviour {
+		t.Errorf("egress scope = %v, %v; want behaviour", class, ok)
+	}
+}

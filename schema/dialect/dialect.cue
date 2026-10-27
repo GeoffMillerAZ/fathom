@@ -231,6 +231,14 @@ import "struct"
 	}
 
 	target_level: #Level
+	// l3_evidence (owner ruling S-R6, scoped to the manifest by the 2026-10-25 ruling S3-R4):
+	// L3 counts only when its cross-file metric's denominator (xref_truth for a tool format,
+	// file_edges_truth for a language) holds at least min_references resolvable references
+	// across at least min_subjects subjects. Omitted: no bar beyond §1.2's thresholds.
+	l3_evidence?: {
+		min_references: int & >=1
+		min_subjects:   int & >=1
+	}
 	// queue_id equals id: the dialect is its queue entry's (§2.2).
 	queue_id: id
 }
@@ -245,6 +253,15 @@ import "struct"
 	globs: [...(string & !="")] | *[]
 	shebangs: [...(string & !="")] | *[]
 	sniff: null | #Sniff | *null
+	// container (ADR-021 (1), amended 2026-10-24): the extensions whose files are an
+	// OPC zip model container (a Simulink .slx) the dialect reads despite the binary
+	// sniff; each must be one of extensions (checked at load).
+	container?: #Container
+}
+
+#Container: {
+	format: "opc-zip"
+	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
 }
 
 // #Sniff splits an extension more than one dialect claims (§5): a regex

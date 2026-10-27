@@ -256,6 +256,11 @@ type Report struct {
 	// a .fathomignore entry or a deeper engine fix.
 	TSEngineFaults int
 
+	// ModelsRefused is the number of files this ingest whose model the reader refused at a
+	// cap (extractor.ErrModelRefused, a Simulink package over a read cap). Each stored no
+	// symbols, was fingerprinted, and emitted one stderr line naming the file and the cap.
+	ModelsRefused int
+
 	// DocIndex is the knowledge-retrieval doc-unit pass (KR-8, KR-9;
 	// docindexpass.go): the Markdown the connector discovered, split into
 	// sections and written to the store's FTS index, hash-gated per file,
@@ -439,6 +444,7 @@ type extractStats struct {
 	oversize       int
 	classifiedZero int
 	tsFaults       int // extract errors matching extractor.ErrTSEngineFault (critic M1)
+	modelsRefused  int // extract errors matching extractor.ErrModelRefused (I38)
 	// skippedGenerated, ambiguous and sniffed are the dialect gate's
 	// per-ingest counts (LB-F9, LB-F10) over the files extracted this run.
 	skippedGenerated int

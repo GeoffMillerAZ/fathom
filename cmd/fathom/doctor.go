@@ -288,6 +288,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 			return checkAdmissionMode(doctorHTTPClient(ctx), baseURL, daemonUp)
 		}}, // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
 		{name: "daemon_posture", probe: func(ctx context.Context) doctorCheck { return checkDaemonPosture("") }},                            // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		{name: "daemon_bind", probe: func(ctx context.Context) doctorCheck { return checkDaemonBind(tenancyRep) }},                          // ADR-083: FAIL on a wide plist or a running listener beyond loopback (loopback_bind.go)
 		{name: "daemon_lifecycle", probe: func(ctx context.Context) doctorCheck { return checkDaemonLifecycle(tenancyRep) }},                // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
 		{name: "host_pressure", probe: func(ctx context.Context) doctorCheck { return checkHostPressure(tenancyRep) }},                      // RT-50: pressure, swap, swap-volume free
 		{name: "scratch_daemons", probe: func(ctx context.Context) doctorCheck { return checkScratchDaemons(tenancyRep) }},                  // RT-50: leaked unmanaged daemons and stale records
@@ -355,6 +356,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		{name: "ident_cache_env", probe: func(ctx context.Context) doctorCheck { return checkIdentCacheEnv() }},
 		{name: "user_scope_ignore", probe: func(ctx context.Context) doctorCheck { return checkUserScopeIgnoreContext(ctx, root) }},
 		{name: "user_scope_guard", probe: func(ctx context.Context) doctorCheck { return checkUserScopeGuard() }},
+		{name: "egress_guard", probe: func(ctx context.Context) doctorCheck { return checkEgressGuard(root, harness) }}, // ADR-083: recommends the guard when off, names the harness's native control (egress.go)
 		{name: "session_ledger_tokens", probe: func(ctx context.Context) doctorCheck { return checkSessionLedgerTokens() }},
 		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
 		{name: "metrics_tier", probe: func(ctx context.Context) doctorCheck { return checkMetricsTier() }},
@@ -775,12 +777,12 @@ func errnoOf(err error) string {
 }
 
 // doctorBinaryRevision returns the running `fathom doctor` binary's own
-// embedded VCS revision and dirty flag (version.go's vcsInfo, no ldflags
+// embedded VCS revision and dirty flag (internal/buildinfo, no ldflags
 // needed). A package var so tests can simulate a known build identity
 // instead of depending on `go test`'s own build info.
 var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
-	r, _, modified := vcsInfo()
-	return r, modified, r != ""
+	st := versionStamp()
+	return st.Revision, st.Dirty, st.Revision != ""
 }
 
 // checkBinaryFresh compares the currently-running binary's own build

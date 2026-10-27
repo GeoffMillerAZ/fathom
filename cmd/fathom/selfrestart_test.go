@@ -167,23 +167,56 @@ func TestSelfRestartWaitsForTheFileToSettle(t *testing.T) {
 	bin := filepath.Join(dir, "fathom")
 	fakeBinary(t, bin, "fathom v0.1.0 @ aaaaaaaaaaaa", 0)
 
+	// The watcher is stepped by poll count: its sleep hook parks until the
+	// test releases the next poll, so no assertion races a wall clock.
 	var exited atomic.Bool
 	var out syncBuffer
-	// A long poll: the file changes twice within one interval, so a
-	// watcher that acted on first sight would adopt a half-written file.
-	go watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{poll: 150 * time.Millisecond, exit: func(int) { exited.Store(true) }})
+	parked := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{
+			poll:  time.Millisecond,
+			exit:  func(int) { exited.Store(true) },
+			sleep: func(time.Duration) { parked <- struct{}{}; <-release },
+		})
+		close(done)
+	}()
+	waitParked := func(what string) {
+		t.Helper()
+		select {
+		case <-parked:
+		case <-done:
+			t.Fatalf("watcher returned before %s", what)
+		case <-time.After(waitSafety):
+			t.Fatalf("watcher never reached %s", what)
+		}
+	}
 
-	time.Sleep(50 * time.Millisecond)
+	// Before poll 1: the file changes twice, ending in its final bytes.
+	waitParked("poll 1")
 	if err := os.WriteFile(bin, []byte("partial"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(30 * time.Millisecond)
 	fakeBinary(t, bin, "fathom v0.1.0 @ cccccccccccc", 0)
 
-	// One poll is not enough to adopt: the bytes must repeat.
-	time.Sleep(200 * time.Millisecond)
+	// Poll 1 sees the final bytes once. One sighting is not enough to
+	// adopt: the bytes must repeat.
+	release <- struct{}{}
+	waitParked("poll 2")
 	if exited.Load() {
-		t.Error("adopted after a single sighting — a file still being written must not be adopted")
+		t.Fatal("adopted after a single sighting — a file still being written must not be adopted")
+	}
+
+	// Positive control: poll 2 sees the identical stat and adopts.
+	release <- struct{}{}
+	select {
+	case <-done:
+	case <-time.After(waitSafety):
+		t.Fatalf("not adopted after the second identical sighting:\n%s", out.String())
+	}
+	if !exited.Load() {
+		t.Error("the watcher returned without exiting after the second identical sighting")
 	}
 }
 

@@ -1,0 +1,35 @@
+{
+  "status": "complete",
+  "counts_complete": true,
+  "files": 46,
+  "bytes": 953214,
+  "written": {
+    "error_containing": 42,
+    "missing_containing": 39,
+    "both": 37,
+    "error_only": 5,
+    "missing_only": 2,
+    "union": 44,
+    "faults": 0
+  },
+  "selected": {
+    "error_containing": 14,
+    "missing_containing": 10,
+    "both": 10,
+    "error_only": 4,
+    "missing_only": 0,
+    "union": 14,
+    "faults": 0
+  },
+  "reading_sha256": "92121b35cdf738f519aedb8906dba4b7d9e1b0f99055f040adf86715b49744fc",
+  "unmatched_sha256": "618a2e8e1230b8bb2fa1195acdee2310d5fe88b5235de104ec46ddfff47847a5",
+  "population_sha256": "992a86f3b410856169ead76fab990604e7b3dfc82d0d1642578bcba6e6dba45e",
+  "source_sha256": "da6aa603d0da8cbba804ed3e3831dcf9696adf5c0bc0261b161c8daeadbb8df8",
+  "product_revision": "0deba117abaadee0343a58a1645f9232a92b6167",
+  "product_binary_sha256": "f7c4c351006b4b59cd76eedef27f03ba093e0ec4eae088f15e8b972fb496cdd4",
+  "grammar_blob_sha256": "b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34",
+  "grammar_entry_point": "tree_sitter_cpp",
+  "grammar_commit": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+  "preprocess": true,
+  "preprocess_selected": 30
+}

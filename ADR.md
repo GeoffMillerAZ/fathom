@@ -783,7 +783,7 @@ rebuild by re-ingest.
 
 ## ADR-021: Extraction v2 — language truth, tool identity, typed edges, tree-sitter (2026-07-22)
 
-**Status.** Accepted (2026-07-22).
+**Status.** Accepted (2026-07-22); decision (1) amended 2026-10-24 (an OPC zip model container a dialect claims is read, below).
 
 **Decision.** Four connected corrections to how fathom understands source:
 (1) One language registry: the extractor registry becomes the single
@@ -836,6 +836,107 @@ live on two real subjects (shallow clones, deleted after): bumble-tech/appyx
 (Java, 313 files) — 7,559 symbols including 806 fields and 1,912 imports
 that predate this wave's Java coverage fix. Full account: `.fathom/
 observations.md` O79.
+
+**Amendment (2026-10-24, owner ruling (b), lane simulink): an OPC zip model container is read
+when a dialect claims it.** Decision (1)'s "binary files are detected (NUL-byte sniff) and
+excluded" keeps its rule for every file but one class: content whose first four bytes are the
+zip local-file signature `PK\x03\x04` (the gate checks that signature, never that the package
+opens; opening it is the reader's work, under the caps below) whose extension a dialect manifest's `match.container`
+(`{format: "opc-zip", extensions: [...]}`, each one of the manifest's own `match.extensions`,
+checked at load) claims. The first is the Simulink `.slx`: the model is a zip of XML parts, so a
+NUL sniff that excludes it hides every block of a model-based codebase. The exemption is one
+rule, `fusion.binaryExcluded` (`connector.ClaimedModelContainer`), asked by every fusion read
+path in place of `connector.IsBinary` (ingest's extract sink, the one-file refresh, the harness's
+`ExtractForBench`, the file resolver and the doc-xref, route, policy, alert, Lambda, Jenkins,
+log-template, shebang and Unity passes; `TestBinaryGateIsTheOnlySniff` holds the count at one).
+Surfaces that serve text (`read_source`, the client's sources, the tree and reference scans,
+the corpus reader, the service-ref analyzer) keep `IsBinary`: a package is not text to show. The
+dialect reads the package in memory, never on disk, under these caps, each enforced while it
+reads and none taken from a size the package declares: `extractor.SimulinkMaxEntries` 4,096
+entries listed (an entry name listed twice is refused); `SimulinkMaxInflated` 32 MiB inflated
+across the parts it reads, which is the bound on bytes; `SimulinkMaxRatio` 200 bytes inflated
+per compressed byte the inflater actually consumes (counted through `zip.File.OpenRaw`, a part's
+CRC-32 checked, its declared size never trusted past one byte); `SimulinkMaxDepth` 1,024
+levels of element (or `.mdl` brace) nesting, a spliced system's counted from the model;
+`SimulinkMaxElements` 524,288 elements or brace nodes and `SimulinkMaxBlocks` 65,536 blocks
+across a model's parts, counted as each start tag is read; `SimulinkMaxValue` 64 KiB per value
+the reader keeps; `SimulinkMaxStartTag` 1 MiB and `SimulinkMaxAttrs` 256 attributes per start
+tag, checked on the part's bytes before the tokenizer builds the tag (the tokenizer stays strict,
+so each attribute carries the `=` the check counts; `TestSimulinkDecoderStrict` enforces it);
+`SimulinkMaxPath` 16 KiB per block path; and `SimulinkMaxPathBytes` 32 MiB three times over per
+model: of block paths, of its distinct signals' endpoint paths (`len(Src)+len(Dst)` summed), and
+of the Calls the extractor emits for it (blocks sharing a path each carry its calls), the first
+two an `ErrSimulinkCap`, the third a file that yields nothing. Short names pass a byte cap, so
+counts are capped beside them (2026-10-26): `SimulinkMaxSignals` 65,536 distinct signals and
+`SimulinkMaxCalls` 65,536 emitted Call entries per model, and `SimulinkMaxModelRefs` 4,096 model
+references per model from any of `graphicalInterface.json`, its `.xml`, the inline
+`GraphicalInterface` or a `.mdl`'s; the `.json` is decoded as a token stream, never a tree, no
+string in it past `SimulinkMaxValue` (checked on its bytes first), no value nested past
+`SimulinkMaxDepth`, each reference one element of the shared budget. Each is an
+`ErrSimulinkCap`, never a truncated list, and a model-references part over a cap or not parsing
+(data after its top-level value included) refuses the whole model as a system part does. An endpoint resolves to a block index and a
+signal is deduped on its pair of indexes, so no path is hashed per endpoint and each is built
+once; and `.mdl` lines of at most `MaxSimulinkLine` 4 MiB, a longer one a cap error, never a
+partial model. The calibration corpus's largest model sits far inside each (depth 38, 96,366
+elements, 5,801 blocks, a 411-byte value, 24.7:1, a 244-byte start tag, 13 attributes, a 304-byte
+path, 569,136 bytes of paths, 1,316,079 bytes of signal endpoints, 660,200 bytes of Calls, 6,665
+distinct signals, 6,665 Call entries, 4 model references). `TestReadSimulinkModelHeapBound` runs
+the extractor (`ExtractDoc`, which reads the model and emits its rows) on each adversarial shape,
+for `.slx` and `.mdl`, in a child process and holds its peak resident set (the kernel's high-water
+mark) within 8x the inflated budget, 256 MiB, of an empty model's, and checks each refused shape
+ends in the cap it is named for; a shape that models ingestible input fits the 2 MiB fetch cap
+(the `.mdl` element flood and the `.slx` attribute flood, 3.1 and 10.7 MB, are read only by a
+direct caller). The shapes: an element flood and a block flood to their caps, an attribute flood
+(one start tag of 3.9M attributes, refused) and 15,000 tags at the attribute cap, deep long names
+(200 or 120 nested blocks of one 16 KiB name, refused by the path cap) and long names at the
+path-bytes cap (2,040 children of a 16,000-byte name), endpoint fan-out (100,000 or 75,000
+branches at depth 6), fan pairs (children of a 16,000-byte name, every pair joined: 700 or 64
+refused by the signal bytes, 32 inside the caps; a 40,000-byte parent refused by the path cap),
+hashburn (one leaf the destination of 500,000 or, in a `.mdl`, 80,000 endpoints at a 16,000-byte
+path; at a 983 KB path refused by the path cap), short fan pairs (700 or 260 one-letter children,
+every pair joined, refused by the signal count), duplicate sources (8,300 blocks named A, one line
+to 1,000 two-letter blocks, refused by the call count), refflood (878,537 model references, a 1.2
+MB package, refused by the reference count), hugeref (one 30 MiB BlockPath in a 1.9 MB package,
+refused by the value cap) and a `.mdl` property flood. Measured 2026-10-26 on macOS arm64 (peak resident set from getrusage), each shape 3 runs, the
+maximum taken: the most any shape is 143 MiB over (the `.slx` fan pairs, refused, and the `.slx`
+hashburn at the cap); the `.mdl` maximum is 61 MiB (the block flood); refflood 66 MiB, hugeref 66
+MiB, short fan pairs 140 MiB (`.slx`), duplicate sources 9 MiB. Round 4's 195 MiB `.mdl` figure was
+a hashburn of 500,000 endpoints, an 11 MB file ingest's fetch cap never reads. Before these caps,
+refflood reached 456 MiB over and 5.7 s of CPU and hugeref 130 MiB, measured (Linux, VmHWM) on
+round 6's S5-R2 packages of 2.9 MB and 5.6 MB, which are past the fetch cap, not on the 1.2 MB and
+1.9 MB shapes above; re-measured on those committed shapes with the reader of 97eede986 (the commit
+before S5-R2), on macOS arm64 (peak resident set from getrusage), 3 runs each, the maximum taken,
+refflood is 481 MiB over an empty model's and 0.9 s of CPU and hugeref 127 MiB, against 66 MiB and
+67 MiB with the caps on the same machine (command: `go test -c ./internal/extractor`, then, with no `FATHOM_SIMULINK_HEAP_INPUT` set, `<test binary> -test.run '^TestReadSimulinkModelHeapBound$' -test.v`: the test writes each shape from its builders to a temp file, runs the child mode on it (`FATHOM_SIMULINK_HEAP_INPUT=<that file>`) and logs the peak over an empty `.mdl`'s) at that commit. Also before these caps, short fan pairs 490,000 signals
+at 189 MiB, and duplicate sources 8.3M Call entries, which failed a whole service's ingest at the
+store; before round 4's signal caps, fan pairs reached 465 MiB and 19.6 GB of emitted Calls and
+the hashburn 361 MiB and 43 s of CPU. `TestSimulinkHashburnCPU` holds each hashburn within the
+2,000 ms `max_file_ms` bar of process CPU (1.2 s at most measured), and
+`TestSimulinkResolveHashWork` resolves one line of 1,000,000 endpoints on a 16 KiB path within 2x
+(plus 50 ms) the CPU of a one-byte path, which a path-keyed dedupe fails (711 ms against a 125 ms
+bound; the reader 31 ms). These three run without the race detector in validate's
+`simulink-gate` step. A package over a cap, one that does not parse, a `.slx` that is not a zip package (a Git LFS
+pointer) and a text-package `.mdl` yield no
+symbols, never a partial model, and their extract returns `extractor.ErrModelRefused` wrapping the
+reader's error, which ingest counts on `Report.ModelsRefused` (printed as `models-refused` and `models_refused` in `fathom ingest`) and names in one stderr line
+(I38: a refused model is never an empty file stored without a trace; no store change). Ingest's 2 MiB `MaxExtractSize` still applies, to the compressed bytes. Every other
+NUL-sniffed file stays excluded, a `.zip`, `.docx` or `.mlx` included, until a manifest claims
+its extension. Plan row: LB-F587 (`docs/plans/language-breadth.simulink.md`). **Decision
+models.** None applies (ADR-073; DP-41 enforces): whether a file is a claimed container is a
+byte signature and a manifest lookup, so there is no typed question for the port to ask; with
+provider `none` the rule runs whole, and there is no opt-out beyond the manifest, which a
+dialect that drops `match.container` withdraws. Measurement: the dialect's reading
+(LB-Q-simulink), whose throughput counts compressed bytes, `TestReadSimulinkModelCaps`, `TestReadSimulinkModelRealRatio`, `TestReadSimulinkModelAdversarial`,
+`TestReadSimulinkModelSignalBytes`, `TestSimulinkExtractDocOutputBound`, and
+`TestReadSimulinkModelCountCaps`, `TestReadSimulinkModelRefCaps`,
+`TestReadSimulinkModelRefsPartRefused`, `TestReadSimulinkModelJSONRefsSpendElementBudget`,
+`TestIngest_RefusedSimulinkModelKeepsService` (the count), and `TestSimulinkCalibrationIdentity` (with
+`CALIBRATION_DIR` set, the 194 calibration models' per-model counts and two digests, sha256 over
+the sorted `Src\x00Dst` signal lines and over each emitted node's name and sorted Calls, against
+their golden). **Revisit
+when** a claimed container's caps refuse a real calibration model (raise them with the
+measurement), a second container format (a `.mlx`, an `.sldd`) is claimed (the format list
+grows), or a serving surface needs a package's parts as text.
 
 ## ADR-022: MCP server stays bespoke, not `kits/mcp-server` (2026-07-23)
 
@@ -6057,3 +6158,69 @@ reads below its threshold with its oracle available for two releases; the consum
 - K6 reads no knob change holding on the confirm split, or has not read by 2027-01-31: the program stops at the P1 instruments and P3 is refused.
 - RT-M1 reads PASS: moving cards, cases or the ledger into the store needs a new ADR.
 - A Codex arm is needed: ADR-029 is amended first (cards already carry a `harness` field).
+
+## ADR-083: Security defaults: a loopback-only daemon, offline Go subprocesses, an enforced egress allowlist test, an advisory egress guard and build provenance (2026-10-26)
+
+**Status.** Accepted 2026-10-26 (owner-architect). **Type.** security / architecture. One record for every security default: the offline-go and egress-guard records drafted the same day are folded in as decisions 2 and 4. Docs: `docs/security.md`, `SECURITY.md`, `docs/configuration.md` (the egress guard and offline go environment sections). Code: decision 1 `cmd/fathom/loopback_bind.go`, `admission_http.go`, `pprof_guard.go`; decision 2 `internal/goenv`, `internal/fusion` (`TypedEdgeEnv`, the toolchain shim in `toolchainenv.go`, `typed_missingmodules.go`), `internal/ask`, `internal/guardspec/layerrules`; decision 3 `cmd/fathom/egress_allowlist_test.go`; decision 4 `internal/guardspec/egress.cue`, `internal/guardspec/egress.go`, `cmd/fathom/egress.go`; decision 5 `.github/workflows/release.yml`, `internal/buildinfo`. Extends K22 (`docs/plans/language-breadth.md` LB-F341, `GOTOOLCHAIN=local`). Open: Q5 (`docs/intent/questions.md`). Reads I14, I38, P13 (law 13), RT-104 (`docs/design/responsible-tenant.md` §7.2), ADR-011 and ADR-038 (a compiled guard denies at the edit) as constraints.
+
+**Context.** A security review found one real exposure: a fresh `fathom daemon install` bound every interface with no authentication, and the admission check read only the `Host` header, which the client chooses, so a LAN peer sending `Host: 127.0.0.1:7575` reached the whole `/rpc` registry (`ingest`, `remove_service` and `rename_service` included). It found four more gaps. The go commands fathom runs on its own (the typed pass at every ingest and on every daemon drift, ask's module loads, the import graph a generated layer-rules test loads) inherited the user's whole environment. Ingesting a cloned repository could download every module its go.mod names, send a module matching `GOPRIVATE` straight to its version control, and, under an inherited `-mod=mod`, rewrite its go.mod and go.sum. The first offline cut was bypassed twice: `GONOPROXY` defaults to `GOPRIVATE`, which skips `GOPROXY=off`, and an empty `GOFLAGS` lets the GOENV file's `GOFLAGS` (`go env -w GOFLAGS=-mod=mod`) apply. Nothing guarded the binary against a new outbound call. A `go install` build reported no revision, and release archives carried no provenance. A coding agent with Bash can send a repository's contents or secrets off the machine in one command (a curl upload, an scp, a `git push` to a remote it just added, a gist), and nothing at the edit said so. The harness's own boundary (Claude Code's `permissions.deny` and sandbox network allowlist, Codex's sandbox network setting) is the real control, but most sessions run without it. fathom's PreToolUse hook already reads every Bash command into argv units (`internal/shellcmd`) for the git-safety pack, so a typed egress check costs one more pack, not a new seam.
+
+**Decision.**
+1. *A loopback-only daemon.* The daemon has no authentication, so it listens and serves on loopback only.
+   - *1a, the peer decides, not `Host`.* The daemon refuses a request whose peer address is not loopback with 403 naming the peer, whatever `Host` it sends (`peerRefusal`, shared with the pprof guard). A peer address that is not host:port (a unix socket) is this machine.
+   - *1b, install refuses a wide bind.* `fathom daemon install` writes `--addr 127.0.0.1:7575` and refuses a non-loopback `--addr` (exit 2) before writing anything.
+   - *1c, serve-http rebinds a wide address.* `serve-http` never refuses to start over its address: a non-loopback `--addr` or `[daemon].addr` binds `127.0.0.1` on the same port in its place and logs one warning naming the configured address and `fathom daemon install --reconcile`.
+   - *1d, nothing widens the bind.* No flag or config key widens it. Remote serving needs token auth, which is open question Q5.
+   - *1e, repair and report.* `daemon install --reconcile` rewrites a wide plist `--addr` (spaced or inline) to loopback on the same port. Doctor's `daemon_bind` row FAILs on a wide plist or a running serve-http that listens beyond loopback, and WARNs on a wide `[daemon].addr` and on a plist or user config it cannot read (I38).
+2. *Offline Go subprocesses.* Every go command fathom runs on its own runs offline, never writes the repository and uses the local toolchain, and only the user's own config reopens the network.
+   - *2a, one environment.* Every such command gets `internal/goenv`'s environment: `GOPROXY=off`, `GOSUMDB=off`, `GONOPROXY=,` (a list that matches no module, so `GOPRIVATE` never sends one to its version control), `GOTELEMETRY=off`, and `GOTOOLCHAIN=local` last. The daemon's toolchain shim applies the same rule in sh, with pathname expansion off.
+   - *2b, GOFLAGS is resolved, stripped and never empty.* The effective `GOFLAGS` is the process value, or else `go env GOFLAGS`, which reads the GOENV file and `$GOROOT/go.env`. It is split the way cmd/go splits it (quoted fields included), every `-mod=mod` and `--mod=mod` is dropped, and every other flag is kept in order, `-mod=vendor` and `-mod=readonly` included. The result is always set and never empty (a single space when nothing is left), so the GOENV file cannot fill it back in. When `go env` cannot answer, the file's flags are dropped, never trusted.
+   - *2c, a missing module is named, and the pass waits for it.* A dependency the module cache lacks fails the typed pass with the module and `run go mod download in <module dir>` (I38). The pass's partial state names the missing modules and which of their `.mod` and `.zip` files the cache held. Later ingests skip the pass (RT-104) until a Go input changes or one of those files changes.
+   - *2d, the user alone reopens the network.* The one opt-out is `[ingest] go_network = true` in the user's own `~/.fathom/config.toml`. A repository's copy is dropped and named. It passes the inherited `GOPROXY`, `GOSUMDB` and `GONOPROXY` through. The toolchain pin and the `-mod=mod` strip stay.
+   - *2e, explicit verbs.* `fathom doctor --stranger` runs the repository's own script in the user's environment. `fathom receipt verify` (its `go mod download`, go/packages load and `--run-tests` go test) runs under `internal/goenv`'s environment with the network closed whatever `go_network` says, plus `GOWORK=off` and `-mod=readonly`. `fathom export scip --module` runs `scip-go` in the user's environment.
+3. *An enforced egress allowlist test.* `TestEgressImportAllowlist` lists, for every release target, each non-standard package in the binary that imports a standard package that dials, serves, runs a program or loads one, or that calls `os.StartProcess`, `syscall.Exec`, `ForkExec` or `Socket`, or x/sys/unix's `Exec` or `Socket`. It diffs that list against `cmd/fathom/testdata/egress-allowlist.txt`, where each edge carries its reason and gate. A new edge, or a listed one the binary no longer has, fails `task validate`. `cmd/fathom` itself has to stay listed, so a cold-cache ingest test also points `GOPROXY` at a loopback listener that fails on any request.
+4. *An advisory egress guard.* A tripwire on commands and web tools that send data off the machine, not data-loss prevention. It warns by default and denies only on the user's opt-in.
+   - *4a, a shipped `egress` pack beside git-safety.* Typed checks over `internal/shellcmd` units read literal argv words: `curl_upload`, `wget_upload`, `socket_tool` (nc, ncat, netcat, socat), `remote_copy` (scp and rsync by destination, sftp), `ssh_remote`, `git_push_remote` (a URL as written, a remote name through `git remote get-url --push --all` in the command's directory, every push URL), `gh_gist_create` and `cloud_upload`, plus `web_fetch` and `web_search` for Claude Code's `WebFetch` and `WebSearch`. Loopback and `[guards] egress_allow` hosts pass. A GET passes by design.
+   - *4b, a target the guard cannot read matches.* A shell expansion, a remote git cannot resolve now, a git config override or a `GIT_*`/`HOME`/`XDG_CONFIG_HOME` change (a prefix or an earlier assignment, `export` or `declare`), an earlier `git remote|config|init`, a curl or wget proxy, pinned address, DNS server or config file (`-K`, `--config`, another `.curlrc` or wgetrc), and an ssh jump, forward, config, control socket or connection program are unknown targets, and an unknown target is not on the allowlist.
+   - *4c, the user sets the mode, and a repository only tightens it.* `[guards] egress = "warn"` (default) `| "enforce" | "off"`, ordered off < warn < enforce (the `max_asks` precedent). `enforce` denies only while guard enforcement is on, and the user's `enforce` reads only the user's enforcement switches. A repository `.fathom/config.toml` that does not load is skipped, never read as the default, and doctor's `egress_guard` row names it.
+   - *4d, the user governs the allowlist and the switch, inverting law 13 for this one capability.* `egress_allow` is user-only, and the `egress-guard` capability is user-governed: a repository's `capabilities.cue` may switch it on and is refused (`LoosenError`) when it switches it off. A cloned repository is the party the guard defends against, so it never widens or disables it.
+   - *4e, unreadable input warns and never denies, even under enforce.* Input the lexer cannot read (`eval`, a function definition) whose text names an egress tool gets one warning with an unknown target. Its text cannot tell an upload from a read, so a deny would block every function that mentions `curl` or `git`, and the guard is already open to `python -c` or a script, so the deny would buy no boundary.
+   - *4f, one line per match.* The note names the rule (`egress/<check>`), what it saw or what hid the target, the `egress_allow` entry that lets it through, and how to switch the guard off. A deny cites the pack.
+   - *4g, reach is what the harness exposes.* Claude Code: Bash and one new PreToolUse binding, `WebFetch|WebSearch` (capability `guard-pre-web`). Codex: Bash only, `guard-pre-web` named absent. MCP fetch and browser tools are not intercepted, and doctor names each harness's own boundary.
+   - *4h, not I14.* The guard reads the agent's commands and dials nothing (resolving a remote runs local git), and fathom's own egress rule (I14) is unchanged.
+   - *4i, the limits are stated.* `python -c`, a script or an encoded payload passes. A GET carrying data in its URL passes. A command built at run time (`xargs`, a variable as the command word, as in `$c -d @f host`, a sourced script) or a direct write to `.git/config` passes. Claude Code's MCP fetch and browser tools and Codex's web search and MCP calls are not intercepted. An agent with shell access can switch the guard off by editing `~/.fathom/config.toml`. The never-loosen rule (4c, 4d) covers fathom's own config and capability files only: a repository's harness settings are outside it, so a committed `.claude/settings.json` whose `env` sets `FATHOM_ENFORCE=off`, or a `FATHOM_HOME` naming a config the repository controls, loosens the guard once the user trusts the folder. The docs and the changelog say so.
+5. *Build provenance.* `fathom version`, `version --json` and `/statusz` fall back to the module version and sum when no VCS revision is stamped (a `go install` build), through `internal/buildinfo`. The release workflow attests the GoReleaser archives and `checksums.txt` (build provenance through GitHub's Sigstore, from the first release after v0.23.0), grants permissions per job and pins every action by commit SHA.
+6. *Documented.* `SECURITY.md` and `docs/security.md` state the threat model, every egress path and how to verify each claim.
+
+**Decision models.** None applies. These are deterministic security controls computed with provider `none`, and no decision model may reopen a bind, a network default or a guard verdict. The only switches are the user's own `go_network` and `[guards] egress`. A hook process never opens the decision port (I14). The typed question that would fit the guard, a `predicate` "does this command send data to a host outside the allowlist?" over unreadable input, is refused for now because it puts the port on the hook path. With provider `none` the reading in decision 4a is the only path, and `[guards] egress = "off"` is the opt-out. If the port is ever allowed on the hook path, the question is kept only if, on at least 100 labeled eval or function commands, its Wilson lower bound for TPR and TNR is at least 0.90.
+
+**Alternatives rejected.**
+- *Keep `:7575` and rely on the `Host` check (1a):* the client chooses `Host`.
+- *serve-http refuses a wide `--addr` (1c):* an existing install's plist passes `--addr :7575`, so after an upgrade launchd would restart a daemon that exits 1 every 60 s.
+- *An `--allow-non-loopback` flag or config key (1d):* the peer check refuses every network peer anyway, so it would widen only the exposure. Wins if: authentication exists (Q5).
+- *A bearer token now (1d):* it is designed (`~/.fathom/daemon.token`, a middleware, the stdio MCP front) and waits on Q5. Wins if: Q5 answers "hardening before a second adopter", or an adopter needs a non-loopback bind.
+- *Pass the user's environment through (2, the state before):* a cloned repository chose what was fetched, run and written.
+- *`GOFLAGS=-mod=readonly` as the never-empty value (2b):* it is a build-semantic flag and would turn off a vendored repository's default `-mod=vendor`.
+- *`GOENV=off` (2b):* it would also drop the user's `GOMODCACHE`, `GOPRIVATE` and other settings the module cache depends on.
+- *`GOVCS=*:off` alone (2a):* it blocks the version-control fetch but not the choice to bypass the proxy. `GONOPROXY=,` removes the bypass where it starts.
+- *Not recording the partial state while a module is missing (2c):* the daemon reran the whole typed pass on every drift, a non-Go edit included (the RT-104 hazard).
+- *Enforce the egress guard by default (4):* string matching cannot be a boundary, and it would block legitimate pushes.
+- *Deny unreadable input under enforce (4e).* Wins if: `internal/shellcmd` reads eval's literal argument and function bodies, so only input it still cannot read would deny, and a replay of hook logs shows no false deny on that remainder.
+- *Pass an unreadable target (4b).* Never: a shell expansion is the cheapest bypass.
+- *A repository-governed allowlist or switch (4d).* Never: a cloned repository could allow its own exfiltration host.
+- *A raw-text regex over the whole command (4a).* Never: quoted argument text would impersonate argv words, which `internal/shellcmd` exists to prevent.
+- *Network enforcement inside fathom: a proxy, a packet filter or a sandbox around the daemon.* Never: the harness's own permissions and sandbox are the boundary, and fathom stays a loopback evidence engine.
+
+**Consequences.** A deliberate LAN bind is not possible: serve-http binds loopback in its place, and the peer check refuses network peers until authentication exists. An existing install (its plist passes `--addr :7575`) keeps serving on loopback after the upgrade until `fathom daemon install --reconcile`. A client that reached it through a LAN address must use `127.0.0.1`, and a container or VM that reached the host's daemon through a non-loopback address is refused. A machine with a cold module cache gets a failed typed pass with the remedy, never a download, and adopters run `go mod download` or opt in (the changelog's migration line). When the environment sets no `GOFLAGS`, each load runs one `go env GOFLAGS` first. The GOENV file's other flags now reach the typed pass. Before, the `-p` cap made `GOFLAGS` non-empty and hid the file entirely. The guard adds one advisory line to a `git push` to an unlisted host, and adopters run `fathom init` (or `fathom fleet reconcile --apply`) to wire the Claude Code `WebFetch|WebSearch` binding. Attestations cover releases after v0.23.0 only, and `buildinfo.Version()` (the short revision in telemetry) still reads unknown on a `go install` build.
+
+**Revisit when.**
+- Q5 is answered, or a second adopter appears: build the token (opt-in first, `### Breaking` when default).
+- An adopter needs a networked daemon: design authentication before relaxing the peer check.
+- A go release changes how `GOFLAGS`, `GONOPROXY` or the GOENV file are read (cmd/internal/quoted.Split, cfg.Getenv's fallback on an empty value). The goenv and shim tests pin today's reading.
+- A go command fathom runs on its own reaches the network or writes a repository under these defaults, or the Go toolchain adds a setting that makes `go list` write the repository through a path `internal/goenv` does not cover.
+- Adopters ask for a per-repository network opt-in. It would need a new decision, since a cloned repository must never reopen the network.
+- An egress escape is observed in an incident or a `.fathom/observations` entry: a readable egress command passed that a typed check could read. The check gains the case and its test in the same commit.
+- An adopter reports a false deny under enforce on a readable command: the check that fired gains a near-miss test and narrows.
+- Egress guard false-positive reports outweigh catches: narrow the pack, or move the default to `off`.
+- `internal/shellcmd` reads eval's literal argument or a function body: 4e's unreadable set shrinks and the deny question reopens for the rest.
+- Codex hooks expose web or MCP tool events, or Claude Code exposes MCP fetch or browser URLs at PreToolUse in a stable shape: 4g's reach widens to them.
