@@ -1067,7 +1067,7 @@ func checkHooksInstalledContext(ctx context.Context, root, harness string) docto
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range specs {
 			ev := doctorHookEvidence(ctx, root, hooksObj, spec)
-			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && ev.missingScript == "")
+			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && (ev.missingScript == "" || ev.cause != ""))
 			if !ev.found && ev.missingScript != "" {
 				scopeNotes = append(scopeNotes, "hook script not found: "+ev.missingScript)
 			}

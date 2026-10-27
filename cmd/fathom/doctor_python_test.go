@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -315,4 +316,85 @@ func TestDoctorPythonModulesLaunchersAndShebangs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Review round (S10): shapes that read PASS or a definite FAIL by mistake.
+func TestDoctorPythonReviewRound(t *testing.T) {
+	hook := func(body string) doctorWiringEvidence {
+		root := t.TempDir()
+		doctorWriteFixture(t, root, "scripts/h.py", body)
+		return doctorCommandEvidence(context.Background(), root, "python3 scripts/h.py", "prompt-hook")
+	}
+	for name, body := range map[string]string{
+		"star before the program": "import subprocess\ncmd = ['echo']\nsubprocess.run([*cmd, 'fathom', 'prompt-hook'])\n",
+		"star before the sub":     "import subprocess\nsubprocess.run(['fathom', *['status'], 'prompt-hook'])\n",
+		"list changed by alias":   "import subprocess\ncmd = ['fathom', 'prompt-hook']\nc = cmd\nc.clear()\nsubprocess.run(cmd)\n",
+		"list passed elsewhere":   "import subprocess\ncmd = ['fathom', 'prompt-hook']\nchange(cmd)\nsubprocess.run(cmd)\n",
+		"async def parameter":     "import subprocess\nFATHOM = 'fathom'\nasync def f(FATHOM):\n    subprocess.run([FATHOM, 'prompt-hook'])\n",
+		"with as tuple":           "import subprocess\nFATHOM = 'fathom'\nwith open('x') as (FATHOM, y):\n    pass\nsubprocess.run([FATHOM, 'prompt-hook'])\n",
+		"globals":                 "import subprocess\nFATHOM = 'fathom'\nglobals()['FATHOM'] = 'echo'\nsubprocess.run([FATHOM, 'prompt-hook'])\n",
+		"setattr":                 "import subprocess\nsetattr(subprocess, 'run', print)\nsubprocess.run(['fathom', 'prompt-hook'])\n",
+		"literal dollar":          "import subprocess\nsubprocess.run(['$FATHOM', 'prompt-hook'])\n",
+		"assignment word":         "import subprocess\nsubprocess.run(['A=1', 'fathom', 'prompt-hook'])\n",
+		"shell builtin word":      "import subprocess\nsubprocess.run(['exec', 'fathom', 'prompt-hook'])\n",
+	} {
+		t.Run("no false found: "+name, func(t *testing.T) {
+			if got := hook(body); got.found || !got.unknown || got.cause == "" {
+				t.Fatalf("got %+v, want unknown with a cause", got)
+			}
+		})
+	}
+	for name, body := range map[string]string{
+		"module by reference":   "import subprocess  # fathom\nsp = subprocess\nsp.run(['fathom', 'prompt-hook'])\n",
+		"call in an f-string":   "import subprocess\nprint(f\"{subprocess.run(['fathom', 'prompt-hook'])}\")\n",
+		"asyncio.subprocess":    "import asyncio  # fathom\nasyncio.subprocess.create_subprocess_exec('fathom', 'prompt-hook')\n",
+		"carriage-return lines": "import os  # fathom\r# x\ros.system('fathom prompt-hook')\r",
+		"nested dynamic child":  "import subprocess\nsubprocess.run(['python3', 'scripts/child.py'])\n",
+	} {
+		t.Run("no false definite: "+name, func(t *testing.T) {
+			root := t.TempDir()
+			doctorWriteFixture(t, root, "scripts/h.py", body)
+			doctorWriteFixture(t, root, "scripts/child.py", "import os, sys\nos.execvp('fathom', sys.argv)\n")
+			got := doctorCommandEvidence(context.Background(), root, "python3 scripts/h.py", "prompt-hook")
+			if got.found || !got.unknown || got.cause == "" {
+				t.Fatalf("got %+v, want unknown with a cause", got)
+			}
+		})
+	}
+	t.Run("BOM", func(t *testing.T) {
+		if got := hook("\ufeffimport os\nos.execvp('fathom', ['fathom', 'prompt-hook'])\n"); !got.found {
+			t.Fatalf("got %+v", got)
+		}
+	})
+	for name, shebang := range map[string]string{"env -S uv run": "#!/usr/bin/env -S uv run --script\n", "env assignment": "#!/usr/bin/env PYTHONPATH=. python3\n"} {
+		t.Run("shebang "+name, func(t *testing.T) {
+			got := pyGate(t, "./scripts/gate verify", map[string]string{"scripts/gate": shebang + "import subprocess\nsubprocess.run(" + pyStrict + ")\n"})
+			pyWant(t, got, doctorPass, "scripts/gate")
+		})
+	}
+	t.Run("a task binary is never read", func(t *testing.T) {
+		root := t.TempDir()
+		gitRepo(t, root)
+		doctorWriteFixture(t, root, ".git/hooks/pre-push", "#!/bin/sh\n./bin/task validate\n")
+		doctorWriteFixture(t, root, "bin/task", strings.Repeat("\x00", doctorWrapperBytes+1))
+		doctorWriteFixture(t, root, "Taskfile.yml", "version: '3'\ntasks:\n  validate:\n    cmds: [echo ok]\n")
+		pyWant(t, checkLefthookGates(root), doctorFail)
+	})
+	t.Run("a dynamic hook is not masked by a missing script", func(t *testing.T) {
+		root := doctorHookFixture(t, "unused")
+		doctorWriteFixture(t, root, ".claude/hooks/guard.py", "import os\nos.system(os.environ['X'])  # fathom prompt-hook\n")
+		pyPromptHooks(t, root, ".claude/hooks/old.sh", "python3 .claude/hooks/guard.py")
+		if got := checkHooksInstalled(root, "claude"); got.Status != doctorUnknown || !strings.Contains(got.Reason, ".claude/hooks/guard.py:2") {
+			t.Fatalf("got %+v", got)
+		}
+	})
+	t.Run("hostile for chains stay linear", func(t *testing.T) {
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		hook(strings.Repeat("for ", 16000) + "\n")
+		runtime.ReadMemStats(&after)
+		if grew := after.TotalAlloc - before.TotalAlloc; grew > 64<<20 {
+			t.Fatalf("a 64 KiB file allocated %d MiB", grew>>20)
+		}
+	})
 }

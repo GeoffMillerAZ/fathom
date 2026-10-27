@@ -53,7 +53,7 @@ func doctorPySpawnKind(module, attr string) doctorPySpawn {
 			return doctorPyRecognized
 		}
 	case "asyncio":
-		if attr == "create_subprocess_exec" || attr == "create_subprocess_shell" {
+		if attr == "create_subprocess_exec" || attr == "create_subprocess_shell" || attr == "subprocess" {
 			return doctorPyRecognized
 		}
 	case "pty":
@@ -100,7 +100,7 @@ func (r *doctorWrapperReader) pythonUnit(words []string, depth int) (doctorPySte
 		return doctorPyStep{}, false
 	case filepath.Ext(bin) == ".py":
 		return doctorPyStep{script: words[0]}, true
-	case strings.Contains(words[0], "/") && filepath.Ext(bin) == "" && depth < doctorWrapperLevels:
+	case strings.Contains(words[0], "/") && filepath.Ext(bin) == "" && depth < doctorWrapperLevels && bin != "task" && bin != "lefthook":
 		// A path without an extension is a Python step when its #! says so.
 		// At the depth limit nothing is read, so it stays a shell cut.
 		switch r.shebang(words[0]) {
@@ -124,14 +124,17 @@ func (r *doctorWrapperReader) shebang(word string) string {
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(r.root, p)
 	}
-	b, err := r.read(p)
+	b, err := r.peek(p)
 	if err != nil || !bytes.HasPrefix(b, []byte("#!")) {
 		return ""
 	}
 	first, _, _ := bytes.Cut(b[2:], []byte("\n"))
 	fields := strings.Fields(string(first))
 	if len(fields) > 0 && filepath.Base(fields[0]) == "env" {
-		fields = slices.DeleteFunc(fields[1:], func(f string) bool { return strings.HasPrefix(f, "-") })
+		fields = slices.DeleteFunc(fields[1:], func(f string) bool { return strings.HasPrefix(f, "-") || strings.Contains(f, "=") })
+	}
+	if len(fields) > 1 && fields[0] == "uv" && fields[1] == "run" {
+		return "python" // uv run --script: a Python script with inline metadata
 	}
 	if len(fields) == 0 {
 		return ""
@@ -185,8 +188,8 @@ func (r *doctorWrapperReader) pythonUncertainUnit(words []string, cause string, 
 	if r.matches != nil {
 		want = "verify"
 	}
-	if !strings.Contains(strings.Join(words, " "), want) {
-		return
+	if r.inPython == 0 && !strings.Contains(strings.Join(words, " "), want) {
+		return // inside a Python file, the file's own mention rule decides
 	}
 	acc.unknown = true
 	if acc.cause == "" {
@@ -346,7 +349,7 @@ func (r *doctorWrapperReader) pythonStep(step doctorPyStep, words []string, sub 
 	if r.matches != nil {
 		mention = mention || strings.Contains(strings.Join(words, " "), "verify")
 	}
-	if mention {
+	if mention || v.forced {
 		acc.unknown = true
 		if acc.cause == "" {
 			acc.cause = v.cause
@@ -361,6 +364,7 @@ type doctorPyVerdict struct {
 	found                 doctorWiringEvidence
 	cause                 string
 	missingScript, opaque string
+	forced                bool // the cause passed a nested step's own mention rule
 }
 
 type doctorPyBinding struct {
@@ -378,10 +382,12 @@ type doctorPyFile struct {
 	toks     []pysyntax.Token
 	binds    map[string][]doctorPyBinding
 	mutated  map[string]bool
+	loads    map[string]int    // occurrences of a name outside its bindings
 	mods     map[string]string // local name -> spawn-relevant module
 	funcs    map[string]string // local name -> module.attr
 	inImport map[int]bool      // token indexes inside an import statement
 	causes   []doctorPyCause
+	poisoned bool // a cause that unsettles every match in the file
 	v        doctorPyVerdict
 }
 
@@ -394,15 +400,26 @@ func (f *doctorPyFile) uncertain(line int, why string) {
 	f.causes = append(f.causes, doctorPyCause{line, why})
 }
 
+func (f *doctorPyFile) poison(line int, why string) {
+	f.poisoned = true
+	f.uncertain(line, why)
+}
+
 // pythonFile reads one Python file's text at its content depth.
 func (r *doctorWrapperReader) pythonFile(rel string, b []byte, sub string, depth int) doctorPyVerdict {
+	b = bytes.TrimPrefix(b, []byte("\ufeff"))
+	if k := bytes.IndexByte(b, '\r'); k >= 0 && (k+1 == len(b) || b[k+1] != '\n') {
+		// Python ends a line at a lone carriage return; the tokenizer does not.
+		line := 1 + bytes.Count(b[:k], []byte("\n"))
+		return doctorPyVerdict{cause: fmt.Sprintf("%s:%d: a carriage return without a newline", rel, line), forced: true}
+	}
 	toks, issues := pysyntax.Lex(b)
 	if len(issues) > 0 {
 		// Tokens past an issue may not be what Python reads, so not even a
 		// match counts: a misread string can look like a call.
 		return doctorPyVerdict{cause: fmt.Sprintf("%s:%d: %s", rel, issues[0].Line, issues[0].Kind)}
 	}
-	f := &doctorPyFile{r: r, rel: rel, sub: sub, depth: depth, binds: map[string][]doctorPyBinding{}, mutated: map[string]bool{}, mods: map[string]string{}, funcs: map[string]string{}, inImport: map[int]bool{}}
+	f := &doctorPyFile{r: r, rel: rel, sub: sub, depth: depth, binds: map[string][]doctorPyBinding{}, mutated: map[string]bool{}, loads: map[string]int{}, mods: map[string]string{}, funcs: map[string]string{}, inImport: map[int]bool{}}
 	for _, t := range toks {
 		if t.Kind != pysyntax.Newline && t.Kind != pysyntax.Indent && t.Kind != pysyntax.Dedent && t.Kind != pysyntax.EOF {
 			f.toks = append(f.toks, t)
@@ -411,9 +428,10 @@ func (r *doctorWrapperReader) pythonFile(rel string, b []byte, sub string, depth
 	f.collect(toks)
 	f.checkAliases()
 	f.spawns()
-	if f.v.found.found {
+	if f.v.found.found && !f.poisoned {
 		return f.v
 	}
+	f.v.found = doctorWiringEvidence{}
 	if len(f.causes) > 0 {
 		first := slices.MinFunc(f.causes, func(a, b doctorPyCause) int { return a.line - b.line })
 		f.v.cause = fmt.Sprintf("%s:%d: %s", rel, first.line, first.why)
@@ -472,6 +490,32 @@ func (f *doctorPyFile) collect(all []pysyntax.Token) {
 				}
 			}
 		}
+		if !f.inImport[i] {
+			f.loads[t.Text]++
+		}
+	}
+	// `as (a, b)` and `as [a]` bind every name inside the brackets.
+	for i, t := range f.toks {
+		if t.Kind != pysyntax.Name || t.Text != "as" || i+1 >= len(f.toks) || f.toks[i+1].Kind != pysyntax.Op || (f.toks[i+1].Text != "(" && f.toks[i+1].Text != "[") {
+			continue
+		}
+		d := 0
+		for j := i + 1; j < len(f.toks); j++ {
+			u := f.toks[j]
+			if u.Kind == pysyntax.Op && (u.Text == "(" || u.Text == "[") {
+				d++
+			} else if u.Kind == pysyntax.Op && (u.Text == ")" || u.Text == "]") {
+				if d--; d == 0 {
+					break
+				}
+			} else if u.Kind == pysyntax.Name {
+				f.bind(u.Text, doctorPyBinding{line: u.Line})
+			}
+		}
+	}
+	// A plain binding's own name token is not a load.
+	for name, bs := range f.binds {
+		f.loads[name] -= len(bs)
 	}
 	for i, t := range f.toks {
 		if t.Kind == pysyntax.Name && (t.Text == "for" || t.Text == "lambda") {
@@ -528,8 +572,8 @@ func (f *doctorPyFile) targets(i int) {
 				return
 			}
 		}
-		if d == 0 && t.Kind == pysyntax.Name && t.Text == stop {
-			return
+		if d == 0 && t.Kind == pysyntax.Name && (t.Text == stop || t.Text == "for" || t.Text == "lambda") {
+			return // a missing stop never runs on to the next for or lambda
 		}
 		if t.Kind == pysyntax.Name && !f.after(j, ".") {
 			f.bind(t.Text, doctorPyBinding{line: t.Line})
@@ -558,7 +602,7 @@ func (f *doctorPyFile) statement(s []pysyntax.Token, start int) {
 				d--
 			case ":":
 				if d == 0 {
-					if head.Text == "def" {
+					if head.Text == "def" || head.Text == "async" && len(s) > 1 && s[1].Text == "def" {
 						f.params(s[:j], start)
 					}
 					if j+1 < len(s) {
@@ -764,6 +808,10 @@ func doctorSortedKeys(ms ...map[string]string) []string {
 func (f *doctorPyFile) spawns() {
 	for i := 0; i < len(f.toks); i++ {
 		t := f.toks[i]
+		if t.Kind == pysyntax.String && slices.ContainsFunc(t.Parts, func(p pysyntax.StrPart) bool { return p.Dyn && strings.ContainsAny(p.Expr, "(:") }) {
+			f.uncertain(t.Line, "an f-string field runs code doctor does not read")
+			continue
+		}
 		if t.Kind == pysyntax.Op && t.Text == "." && i+2 < len(f.toks) && f.toks[i+1].Kind == pysyntax.Name &&
 			(f.toks[i+1].Text == "subprocess_exec" || f.toks[i+1].Text == "subprocess_shell") && f.next(i+1, "(") {
 			f.uncertain(t.Line, f.toks[i+1].Text+": spawn form not read")
@@ -773,8 +821,16 @@ func (f *doctorPyFile) spawns() {
 			continue
 		}
 		switch {
+		// These can rebind what a spawn or its argv means, so even a match
+		// elsewhere in the file no longer counts.
 		case slices.Contains([]string{"exec", "eval", "compile", "__import__"}, t.Text) && f.next(i, "("):
-			f.uncertain(t.Line, t.Text+"( runs code doctor cannot read")
+			f.poison(t.Line, t.Text+"( runs code doctor cannot read")
+		case slices.Contains([]string{"globals", "locals", "vars", "setattr", "delattr"}, t.Text) && f.next(i, "("):
+			f.poison(t.Line, t.Text+"( can rebind names doctor reads")
+		case t.Text == "sys" && f.next(i, ".") && i+2 < len(f.toks) && f.toks[i+2].Text == "modules":
+			f.poison(t.Line, "sys.modules can replace a module doctor reads")
+		case f.mods[t.Text] != "" && f.mods[t.Text] != "shutil" && !f.next(i, "."):
+			f.poison(t.Line, f.mods[t.Text]+" is used by reference, so its calls may hide elsewhere")
 		case t.Text == "getattr" && f.next(i, "(") && i+2 < len(f.toks) && f.mods[f.toks[i+2].Text] != "":
 			f.uncertain(t.Line, "getattr on "+f.mods[f.toks[i+2].Text]+" reaches a spawn by name")
 		case f.mods[t.Text] != "" && f.next(i, ".") && i+2 < len(f.toks) && f.toks[i+2].Kind == pysyntax.Name:
@@ -1031,7 +1087,12 @@ func (f *doctorPyFile) eval(e []pysyntax.Token, hop int) doctorPyValue {
 		if len(binds) != 1 || !binds[0].plain || f.mutated[name] {
 			return dyn(name + " is not bound exactly once by a plain assignment")
 		}
-		return f.eval(binds[0].value, hop+1)
+		v := f.eval(binds[0].value, hop+1)
+		if v.kind == doctorPyList && f.loads[name] > 1 {
+			// A list is mutable: any other use (an alias, a call) may change it.
+			return dyn("the list " + name + " is used elsewhere and may be changed")
+		}
+		return v
 	case e[0].Kind == pysyntax.Op && (e[0].Text == "[" || e[0].Text == "(") && f.closes(e):
 		inner := e[1 : len(e)-1]
 		items := f.split(inner, ",")
@@ -1044,7 +1105,8 @@ func (f *doctorPyFile) eval(e []pysyntax.Token, hop int) doctorPyValue {
 				continue
 			}
 			if item[0].Kind == pysyntax.Op && item[0].Text == "*" {
-				v.tail = true
+				// Its length is unknown: every later position may shift.
+				v.elems = append(v.elems, doctorPyElem{dyn: true})
 				continue
 			}
 			v.elems = append(v.elems, f.elemAt(item, hop))
@@ -1187,6 +1249,13 @@ func (f *doctorPyFile) judge(line int, name string, elems []doctorPyElem, tail b
 		f.uncertain(line, name+": the program is not a literal")
 		return
 	}
+	// No shell runs this argv: $ is never expanded, X=1 is no assignment
+	// and exec or command is no builtin, though the shell reader reads them so.
+	if slices.ContainsFunc(elems, func(e doctorPyElem) bool { return strings.ContainsAny(e.lit, "$`") }) ||
+		strings.Contains(prog.lit, "=") || prog.lit == "exec" || prog.lit == "command" {
+		f.uncertain(line, name+": an argv word only a shell would expand")
+		return
+	}
 	if prog.fathom || filepath.Base(prog.lit) == "fathom" {
 		decisive := 1
 		if f.r.matches == nil {
@@ -1225,7 +1294,10 @@ func (f *doctorPyFile) judge(line int, name string, elems []doctorPyElem, tail b
 	if tail {
 		words = append(words, "$DYN")
 	}
-	f.result(line, name, f.r.argv(words, f.sub, f.depth))
+	f.r.inPython++
+	ev := f.r.argv(words, f.sub, f.depth)
+	f.r.inPython--
+	f.result(line, name, ev)
 }
 
 // shellString judges a literal shell command like a line of a script (R2).
@@ -1234,7 +1306,10 @@ func (f *doctorPyFile) shellString(line int, name, s string) {
 		f.uncertain(line, name+": the shell command uses <<, $(, () or a backtick")
 		return
 	}
-	f.result(line, name, f.r.command(s, f.sub, f.depth))
+	f.r.inPython++
+	ev := f.r.command(s, f.sub, f.depth)
+	f.r.inPython--
+	f.result(line, name, ev)
 }
 
 func (f *doctorPyFile) result(line int, name string, ev doctorWiringEvidence) {
@@ -1248,6 +1323,7 @@ func (f *doctorPyFile) result(line int, name string, ev doctorWiringEvidence) {
 		why := name + ": the command it runs could not be settled"
 		if ev.cause != "" {
 			why += " (" + ev.cause + ")"
+			f.v.forced = true
 		}
 		f.uncertain(line, why)
 	}

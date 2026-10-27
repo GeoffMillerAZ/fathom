@@ -142,7 +142,7 @@ func harnessHookEntriesByScopeMode(root string, d harness.Descriptor, specs []ho
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range specs {
 			ev := doctorHookEvidence(ctx, root, hooksObj, spec)
-			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && ev.missingScript == "")
+			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && (ev.missingScript == "" || ev.cause != ""))
 			if !ev.found && ev.missingScript != "" {
 				fileNotes = append(fileNotes, "hook script not found: "+ev.missingScript)
 			}

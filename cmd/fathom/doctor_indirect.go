@@ -44,6 +44,9 @@ type doctorWrapperReader struct {
 	// Keep cuts in traversal order and label them while unwinding.
 	walked    map[string]bool
 	depthCuts []doctorWrapperDepthCut
+	// inPython counts the Python files whose spawns are being judged: there
+	// a file's mention rule, not each argv's words, filters uncertainty.
+	inPython int
 }
 
 type doctorWrapperDepthCut struct {
@@ -182,6 +185,40 @@ func (r *doctorWrapperReader) read(path string) ([]byte, error) {
 	}
 	return b, err
 }
+
+// peek reads at most the first doctorPeekBytes of a regular repository file,
+// with read's bounds (root, regular files only, ctx), charging what it reads:
+// enough for a #! line without reading a binary the walk never follows.
+func (r *doctorWrapperReader) peek(path string) ([]byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return nil, err
+	}
+	rel, err := filepath.Rel(r.root, path)
+	if r.root == "" || err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return nil, fmt.Errorf("wrapper is outside the repository")
+	}
+	if b, ok := r.cache[rel]; ok {
+		return b[:min(len(b), doctorPeekBytes)], nil
+	}
+	root, err := os.OpenRoot(r.root)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	f, err := root.OpenFile(rel, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("wrapper is not a regular file")
+	}
+	b, err := io.ReadAll(io.LimitReader(f, int64(min(doctorPeekBytes, r.remaining))))
+	r.remaining -= len(b)
+	return b, err
+}
+
+const doctorPeekBytes = 256
 
 // readExternal reads one bounded regular file outside the repository: the
 // shared git directory's pre-push hook of a linked worktree or submodule, or
