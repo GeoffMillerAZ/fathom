@@ -100,6 +100,9 @@ type selfRestartConfig struct {
 	exit   func(int)                    // os.Exit in production
 	hash   func(string) (string, error) // default hashFile; tests count calls
 	now    func() time.Time             // default time.Now
+	// sleep waits one poll interval (default time.Sleep). Nil in production;
+	// tests step the watcher poll by poll instead of racing a wall clock.
+	sleep func(time.Duration)
 }
 
 // watchOwnBinary polls the daemon's own executable and exits with
@@ -119,6 +122,9 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 	}
 	if cfg.now == nil {
 		cfg.now = time.Now
+	}
+	if cfg.sleep == nil {
+		cfg.sleep = time.Sleep
 	}
 	startedAt := cfg.now() // the uptime fallback when the ledger is unreadable
 	startStat, serr := statBinary(path)
@@ -143,7 +149,7 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 		hashErrOf     binaryStat  // stat whose hash failure was logged
 	)
 	for {
-		time.Sleep(cfg.poll)
+		cfg.sleep(cfg.poll)
 
 		st, serr := statBinary(path)
 		if serr != nil {

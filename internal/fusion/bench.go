@@ -5,7 +5,6 @@ package fusion
 // pipeline.go unchanged.
 
 import (
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
@@ -39,7 +38,7 @@ func (p *Pipeline) ExtractForBenchWith(e extractor.Extractor, serviceID string, 
 }
 
 func (p *Pipeline) extractForBench(with extractor.Extractor, serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
-	if connector.IsBinary(content) {
+	if binaryExcluded(relPath, content) {
 		return BenchExtraction{Skipped: "binary"}, nil
 	}
 	if len(content) > MaxExtractSize {

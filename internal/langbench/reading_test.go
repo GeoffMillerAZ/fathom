@@ -155,6 +155,52 @@ func TestLevelMetToolFormats(t *testing.T) {
 	}
 }
 
+// TestLevelMetL3Evidence is S-R6's bar, scoped by the manifest: with l3_evidence set, L3
+// counts only when its cross-file metric's denominator holds at least min_references
+// resolvable references across at least min_subjects subjects.
+func TestLevelMetL3Evidence(t *testing.T) {
+	sub := func(name string, xref, edges int) Subject {
+		return Subject{Name: name, Files: 1, Counts: map[string]int{"xref_truth": xref, "file_edges_truth": edges}}
+	}
+	bar := &EvidenceBar{MinReferences: 20, MinSubjects: 2}
+	for _, tc := range []struct {
+		name     string
+		kind     string
+		bar      *EvidenceBar
+		subjects []Subject
+		want     string
+	}{
+		{"no bar, 2 references", "tooling", nil, []Subject{sub("a", 2, 0)}, "L3"},
+		{"bar, 2 references in 1 subject", "tooling", bar, []Subject{sub("a", 2, 0), sub("b", 0, 0)}, "L2"},
+		{"bar, 40 references in 1 subject", "tooling", bar, []Subject{sub("a", 40, 0), sub("b", 0, 0)}, "L2"},
+		{"bar, 19 references in 2 subjects", "tooling", bar, []Subject{sub("a", 10, 0), sub("b", 9, 0)}, "L2"},
+		{"bar, 20 references in 2 subjects", "tooling", bar, []Subject{sub("a", 11, 0), sub("b", 9, 0)}, "L3"},
+		{"bar, a language's file edges", "language", bar, []Subject{sub("a", 0, 15), sub("b", 0, 5)}, "L3"},
+		{"bar, a language's 19 file edges", "language", bar, []Subject{sub("a", 0, 15), sub("b", 0, 4)}, "L2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := baseReading(tc.kind)
+			if tc.kind == "tooling" {
+				r.Metrics = map[string]*float64{MSymRecall: f(1), MSymPrecision: f(1), MRefRecall: f(1), MRefPrecision: f(1), MXrefPrecision: f(1), MXrefRecall: f(1)}
+			} else {
+				r.Metrics = l1Metrics(0.97)
+				for _, m := range []string{MCallRecall, MCallPrecision, MImportResolution, MFileEdgePrecision, MFileEdgeRecall} {
+					r.Metrics[m] = f(0.97)
+				}
+			}
+			r.MetricTiers = tiers("C", r.Metrics)
+			r.Subjects, r.L3Evidence = tc.subjects, tc.bar
+			level, grade := LevelMet(r)
+			if level != tc.want {
+				t.Errorf("LevelMet = %s %+v, want %s", level, grade, tc.want)
+			}
+			if tc.want == "L2" && grade.L3 != GradeUnmet {
+				t.Errorf("L3 graded %s under the bar, want %s", grade.L3, GradeUnmet)
+			}
+		})
+	}
+}
+
 func TestValidateReading(t *testing.T) {
 	good := baseReading("language")
 	good.Metrics = l1Metrics(0.97)
