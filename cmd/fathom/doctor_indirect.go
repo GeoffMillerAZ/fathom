@@ -602,6 +602,12 @@ func doctorHookEvidence(ctx context.Context, root string, hooksObj map[string]an
 			if out.missingScript == "" {
 				out.missingScript = ev.missingScript
 			}
+			if out.cause == "" {
+				out.cause = ev.cause
+			}
+			if out.settled == "" {
+				out.settled = ev.settled
+			}
 		}
 	}
 	return out
@@ -653,9 +659,14 @@ func doctorStdioRegistration(ctx context.Context, root, path, command string, ar
 		return row
 	}
 	ev := doctorCommandEvidence(ctx, root, strings.Join(append([]string{command}, args...), " "), "serve-mcp")
-	if ev.found {
+	switch {
+	case ev.found:
 		row.Status = doctorPass
 		row.Reason = "configured (indirect): stdio fathom wrapper in " + path
+	case ev.cause != "":
+		row.Reason += " (" + ev.cause + ")"
+	case ev.settled != "":
+		row.Reason += " (doctor read " + ev.settled + ", which starts no fathom serve-mcp)"
 	}
 	if ctx.Err() != nil {
 		row.Status = doctorTimeout

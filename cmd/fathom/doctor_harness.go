@@ -146,6 +146,9 @@ func harnessHookEntriesByScopeMode(root string, d harness.Descriptor, specs []ho
 			if !ev.found && ev.missingScript != "" {
 				fileNotes = append(fileNotes, "hook script not found: "+ev.missingScript)
 			}
+			if !ev.found && ev.unknown && ev.cause != "" {
+				fileNotes = append(fileNotes, spec.sub+": "+ev.cause) // a Python step it could not settle (GDEV-06)
+			}
 			indirect = indirect || ev.indirect
 			if ev.found {
 				k := hookSpecKeyOf(spec)
