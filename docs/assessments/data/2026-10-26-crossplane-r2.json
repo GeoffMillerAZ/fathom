@@ -1,0 +1,1009 @@
+{
+  "calibration_only": true,
+  "canonical": {
+    "counts": {
+      "fathom_defs": 428,
+      "kind_equal": 428,
+      "matched": 428,
+      "oracle_defs": 428,
+      "ref_fathom": 86,
+      "ref_fathom_in_truth": 86,
+      "ref_truth": 86,
+      "ref_truth_found": 86,
+      "xref_fathom": 33,
+      "xref_fathom_in_truth": 33,
+      "xref_truth": 33,
+      "xref_truth_found": 33
+    },
+    "exact_harness_bytes": true,
+    "files": 244,
+    "grade": {
+      "L1": "good",
+      "L2": "good",
+      "L3": "good",
+      "L4": "not-applicable"
+    },
+    "indexbench_sha256": "6ad6eba2c81823eb48f039a3d4a07b9950f821536e78ae06024d4007a6a5e98f",
+    "indexbench_source_identity": {
+      "vcs_modified": false,
+      "vcs_revision": "1b4c93a844e8b9727c2653636fd665a1748a2232"
+    },
+    "level_met": "L3",
+    "median_run": 2,
+    "metric_tiers": {
+      "ref_precision": "C",
+      "ref_recall": "C",
+      "sym_precision": "C",
+      "sym_recall": "C",
+      "xref_precision": "C",
+      "xref_recall": "C"
+    },
+    "metrics": {
+      "ref_precision": 1,
+      "ref_recall": 1,
+      "sym_precision": 1,
+      "sym_recall": 1,
+      "xref_precision": 1,
+      "xref_recall": 1
+    },
+    "oracle_sha256": "80f36859a4f2f7012d1e07b83bc450492e8e2ab240cc243b864b6cb49f2fe600",
+    "population": "Original three canonical subjects; full tier-C walk, all composed elements, no native-validity filter",
+    "reading_sha256": "a5276b619248d6d74e9ea562e8f5acc0c8bb153fb9a7abd75f5552a94f6b69d7",
+    "runs": [
+      {
+        "counts": {
+          "fathom_defs": 428,
+          "kind_equal": 428,
+          "matched": 428,
+          "oracle_defs": 428,
+          "ref_fathom": 86,
+          "ref_fathom_in_truth": 86,
+          "ref_truth": 86,
+          "ref_truth_found": 86,
+          "xref_fathom": 33,
+          "xref_fathom_in_truth": 33,
+          "xref_truth": 33,
+          "xref_truth_found": 33
+        },
+        "grade": {
+          "L1": "good",
+          "L2": "good",
+          "L3": "good",
+          "L4": "not-applicable"
+        },
+        "launches": [
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "repository": "crossplane/crossplane"
+          },
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "repository": "upbound/platform-ref-aws"
+          },
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "repository": "upbound/configuration-aws-network"
+          }
+        ],
+        "level_met": "L3",
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "reading_sha256": "a5a6cdeb7c13864e87352af9dc0c74f45f328985975b1aec5721f30fbf30b766",
+        "throughput_mb_per_cpu_second": 2.86
+      },
+      {
+        "counts": {
+          "fathom_defs": 428,
+          "kind_equal": 428,
+          "matched": 428,
+          "oracle_defs": 428,
+          "ref_fathom": 86,
+          "ref_fathom_in_truth": 86,
+          "ref_truth": 86,
+          "ref_truth_found": 86,
+          "xref_fathom": 33,
+          "xref_fathom_in_truth": 33,
+          "xref_truth": 33,
+          "xref_truth_found": 33
+        },
+        "grade": {
+          "L1": "good",
+          "L2": "good",
+          "L3": "good",
+          "L4": "not-applicable"
+        },
+        "launches": [
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.69287109375,
+              "nice": 10
+            },
+            "repository": "crossplane/crossplane"
+          },
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "repository": "upbound/platform-ref-aws"
+          },
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "repository": "upbound/configuration-aws-network"
+          }
+        ],
+        "level_met": "L3",
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "reading_sha256": "a5276b619248d6d74e9ea562e8f5acc0c8bb153fb9a7abd75f5552a94f6b69d7",
+        "throughput_mb_per_cpu_second": 2.9
+      },
+      {
+        "counts": {
+          "fathom_defs": 428,
+          "kind_equal": 428,
+          "matched": 428,
+          "oracle_defs": 428,
+          "ref_fathom": 86,
+          "ref_fathom_in_truth": 86,
+          "ref_truth": 86,
+          "ref_truth_found": 86,
+          "xref_fathom": 33,
+          "xref_fathom_in_truth": 33,
+          "xref_truth": 33,
+          "xref_truth_found": 33
+        },
+        "grade": {
+          "L1": "good",
+          "L2": "good",
+          "L3": "good",
+          "L4": "not-applicable"
+        },
+        "launches": [
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "repository": "crossplane/crossplane"
+          },
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "repository": "upbound/platform-ref-aws"
+          },
+          {
+            "harness": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "oracle": {
+              "go_env": {
+                "GOFLAGS": "-p=2",
+                "GOMAXPROCS": "2",
+                "GOTOOLCHAIN": "go1.27.3",
+                "GOWORK": "off"
+              },
+              "load_1m": 7.63720703125,
+              "nice": 10
+            },
+            "repository": "upbound/configuration-aws-network"
+          }
+        ],
+        "level_met": "L3",
+        "metrics": {
+          "ref_precision": 1,
+          "ref_recall": 1,
+          "sym_precision": 1,
+          "sym_recall": 1,
+          "xref_precision": 1,
+          "xref_recall": 1
+        },
+        "reading_sha256": "5f16c029dab7d6861ce6eadd0a3824b919c2b5443a05f31afab6a4244751bef7",
+        "throughput_mb_per_cpu_second": 2.98
+      }
+    ],
+    "subjects": [
+      {
+        "bytes": 119423,
+        "counts": {
+          "fathom_defs": 414,
+          "kind_equal": 414,
+          "matched": 414,
+          "oracle_defs": 414,
+          "ref_fathom": 80,
+          "ref_fathom_in_truth": 80,
+          "ref_truth": 80,
+          "ref_truth_found": 80,
+          "xref_fathom": 31,
+          "xref_fathom_in_truth": 31,
+          "xref_truth": 31,
+          "xref_truth_found": 31
+        },
+        "families": {
+          "l1": "C",
+          "refs": "C",
+          "xref": "C"
+        },
+        "files": 238,
+        "kind_intersection": [
+          "element",
+          "resource",
+          "section",
+          "service",
+          "step"
+        ],
+        "oracle_truth_sha256": "badab0482397d6f221145fe057deeb12bfe81b683e8ee2a2c5450068aa3b34a8",
+        "repository": "crossplane/crossplane",
+        "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb",
+        "tenancy": {
+          "compiled_bytes": 0,
+          "extract_cpu_ms": 44.974,
+          "extract_ms": 41.341,
+          "faulting_files": [],
+          "faults": 0,
+          "max_file_ms": 1,
+          "peak_module_pages": 0
+        },
+        "unmatched_receipt_sha256": "a893c2fd4e330301f1940d0b71d9196b2574d6dd74d1a7ad0b1439c79e6ca3ce"
+      },
+      {
+        "bytes": 6237,
+        "counts": {
+          "fathom_defs": 7,
+          "kind_equal": 7,
+          "matched": 7,
+          "oracle_defs": 7,
+          "ref_fathom": 3,
+          "ref_fathom_in_truth": 3,
+          "ref_truth": 3,
+          "ref_truth_found": 3,
+          "xref_fathom": 1,
+          "xref_fathom_in_truth": 1,
+          "xref_truth": 1,
+          "xref_truth_found": 1
+        },
+        "families": {
+          "l1": "C",
+          "refs": "C",
+          "xref": "C"
+        },
+        "files": 3,
+        "kind_intersection": [
+          "element",
+          "resource",
+          "section",
+          "service",
+          "step"
+        ],
+        "oracle_truth_sha256": "48c3718e765cdcfd027d6e5c353bbc031507ae86d106e670d93face98456fa47",
+        "repository": "upbound/configuration-aws-network",
+        "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d",
+        "tenancy": {
+          "compiled_bytes": 0,
+          "extract_cpu_ms": 0.609,
+          "extract_ms": 0.609,
+          "faulting_files": [],
+          "faults": 0,
+          "max_file_ms": 0,
+          "peak_module_pages": 0
+        },
+        "unmatched_receipt_sha256": "8a702d836a572bccc2a0f91a0f68a551a872e72313f75043c0d19458125046d3"
+      },
+      {
+        "bytes": 8623,
+        "counts": {
+          "fathom_defs": 7,
+          "kind_equal": 7,
+          "matched": 7,
+          "oracle_defs": 7,
+          "ref_fathom": 3,
+          "ref_fathom_in_truth": 3,
+          "ref_truth": 3,
+          "ref_truth_found": 3,
+          "xref_fathom": 1,
+          "xref_fathom_in_truth": 1,
+          "xref_truth": 1,
+          "xref_truth_found": 1
+        },
+        "families": {
+          "l1": "C",
+          "refs": "C",
+          "xref": "C"
+        },
+        "files": 3,
+        "kind_intersection": [
+          "element",
+          "resource",
+          "section",
+          "service",
+          "step"
+        ],
+        "oracle_truth_sha256": "b61a17dd3ec7092e335ee4186a39f1a33914cc979bdfa32839985ffe64772327",
+        "repository": "upbound/platform-ref-aws",
+        "sha": "be065e6afe89e656080557bacf1732168502e325",
+        "tenancy": {
+          "compiled_bytes": 0,
+          "extract_cpu_ms": 0.758,
+          "extract_ms": 0.757,
+          "faulting_files": [],
+          "faults": 0,
+          "max_file_ms": 0,
+          "peak_module_pages": 0
+        },
+        "unmatched_receipt_sha256": "8491339efa637cd8ae452a35cd3027cf2463168f8a0b2d0c2bba672989202d4e"
+      }
+    ]
+  },
+  "engine_commit": "1b4c93a844e8b9727c2653636fd665a1748a2232",
+  "format": "crossplane-r2-review-evidence-v1",
+  "limits": "Candidate results are bounded observed outcomes, not an exhaustive L2/L3 ceiling or a native binding/population certificate; raw diagnostics and package contents remain private",
+  "measured_at": "2026-10-26",
+  "native_schema_evidence": "Unchanged schema-instance probe and three example mutations in 2026-10-26-crossplane-r1.json; all21 matched bases are post-hoc network subjects, not scored population",
+  "owner_probes": {
+    "help": {
+      "crossplane-render": {
+        "exit": 0,
+        "launch_load1": 7.64,
+        "seconds": 0.11,
+        "status": "exit"
+      },
+      "crossplane-xpkg": {
+        "exit": 0,
+        "launch_load1": 7.64,
+        "seconds": 0.05,
+        "status": "exit"
+      },
+      "up-render": {
+        "exit": 1,
+        "launch_load1": 7.64,
+        "seconds": 0.085,
+        "status": "exit"
+      },
+      "up-test": {
+        "exit": 1,
+        "launch_load1": 7.64,
+        "seconds": 0.091,
+        "status": "exit"
+      },
+      "up-version": {
+        "exit": 0,
+        "launch_load1": 7.64,
+        "seconds": 0.122,
+        "status": "exit"
+      },
+      "xpls": {
+        "exit": 0,
+        "launch_load1": 7.64,
+        "seconds": 0.089,
+        "status": "exit"
+      }
+    },
+    "legacy_render": [
+      {
+        "controller_supplied": false,
+        "exit": 1,
+        "input_kind": "exact-legacy-composition",
+        "launch_load1": 7.64,
+        "seconds": 0.059,
+        "status": "exit",
+        "subject": "upbound/platform-ref-aws-network-resources"
+      },
+      {
+        "controller_supplied": false,
+        "exit": 1,
+        "input_kind": "exact-legacy-composition",
+        "launch_load1": 7.64,
+        "seconds": 0.053,
+        "status": "exit",
+        "subject": "upbound/platform-ref-azure-network-resources"
+      },
+      {
+        "controller_supplied": false,
+        "exit": 1,
+        "input_kind": "exact-legacy-composition",
+        "launch_load1": 7.64,
+        "seconds": 0.068,
+        "status": "exit",
+        "subject": "upbound/platform-ref-gcp-network-resources"
+      }
+    ],
+    "schema": "crossplane-owner-probes-v1",
+    "subject_files": {
+      "crossplane/crossplane": 316,
+      "upbound/configuration-aws-network": 11,
+      "upbound/platform-ref-aws": 15,
+      "upbound/platform-ref-aws-legacy": 14,
+      "upbound/platform-ref-aws-network-resources": 2,
+      "upbound/platform-ref-azure": 15,
+      "upbound/platform-ref-azure-network-resources": 2,
+      "upbound/platform-ref-gcp": 16,
+      "upbound/platform-ref-gcp-network-resources": 2
+    },
+    "tools": {
+      "crossplane_sha256": "6e0e00370fce82299b931fabee8559eed8a79446172ceb2c24c6d1d76f76fb8c",
+      "up_modern_sha256": "d23f1e132fd1921f8d161918f87a6b26432210bbd63855dcbc961191a990d4f0",
+      "up_sha256": "a33aa532df161363d3c7589ddcf9f2dd3b5e2e854187eef3a490827b2ddbae31"
+    },
+    "up_modern": {
+      "actions": [
+        {
+          "exit": 1,
+          "kind": "exact-legacy-up-render",
+          "launch_load1": 6.6,
+          "seconds": 0.085,
+          "status": "exit",
+          "subject": "upbound/platform-ref-aws-network-resources"
+        },
+        {
+          "exit": 1,
+          "kind": "exact-legacy-up-render",
+          "launch_load1": 6.6,
+          "seconds": 0.062,
+          "status": "exit",
+          "subject": "upbound/platform-ref-azure-network-resources"
+        },
+        {
+          "exit": 1,
+          "kind": "exact-legacy-up-render",
+          "launch_load1": 6.6,
+          "seconds": 0.079,
+          "status": "exit",
+          "subject": "upbound/platform-ref-gcp-network-resources"
+        },
+        {
+          "exit": 2,
+          "kind": "pinned-modern-up-render",
+          "launch_load1": 6.6,
+          "seconds": 0.085,
+          "status": "exit",
+          "subject": "upbound/configuration-aws-network"
+        },
+        {
+          "exit": 0,
+          "kind": "test-dry-run",
+          "launch_load1": 6.6,
+          "seconds": 0.069,
+          "status": "exit",
+          "subject": "upbound/configuration-aws-network"
+        }
+      ],
+      "help": {
+        "render": {
+          "exit": 0,
+          "launch_load1": 6.6,
+          "seconds": 0.07,
+          "status": "exit"
+        },
+        "test": {
+          "exit": 0,
+          "launch_load1": 6.6,
+          "seconds": 0.062,
+          "status": "exit"
+        },
+        "version": {
+          "exit": 0,
+          "launch_load1": 6.6,
+          "seconds": 0.116,
+          "status": "exit"
+        }
+      }
+    },
+    "xpkg": [
+      {
+        "exit": 1,
+        "launch_load1": 7.64,
+        "package_root": ".",
+        "seconds": 0.06,
+        "status": "exit",
+        "subject": "upbound/platform-ref-aws-legacy"
+      },
+      {
+        "exit": 0,
+        "launch_load1": 7.64,
+        "package_root": "package",
+        "seconds": 0.085,
+        "status": "exit",
+        "subject": "upbound/platform-ref-aws-network-resources"
+      },
+      {
+        "exit": 0,
+        "launch_load1": 7.64,
+        "package_root": "package",
+        "seconds": 0.076,
+        "status": "exit",
+        "subject": "upbound/platform-ref-azure-network-resources"
+      },
+      {
+        "exit": 1,
+        "launch_load1": 7.64,
+        "package_root": ".",
+        "seconds": 0.06,
+        "status": "exit",
+        "subject": "upbound/platform-ref-gcp-network-resources"
+      }
+    ],
+    "xpls": [
+      {
+        "diagnostic_entries": 97,
+        "diagnostic_notifications": 317,
+        "exit": -9,
+        "files_with_diagnostics": 69,
+        "initialized": true,
+        "launch_load1": 7.64,
+        "opened_files": 316,
+        "selected_files": 316,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "crossplane/crossplane"
+      },
+      {
+        "diagnostic_entries": 8,
+        "diagnostic_notifications": 15,
+        "exit": -9,
+        "files_with_diagnostics": 7,
+        "initialized": true,
+        "launch_load1": 7.91,
+        "opened_files": 15,
+        "selected_files": 15,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-aws"
+      },
+      {
+        "diagnostic_entries": 5,
+        "diagnostic_notifications": 11,
+        "exit": -9,
+        "files_with_diagnostics": 5,
+        "initialized": true,
+        "launch_load1": 7.31,
+        "opened_files": 11,
+        "selected_files": 11,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/configuration-aws-network"
+      },
+      {
+        "diagnostic_entries": 19,
+        "diagnostic_notifications": 14,
+        "exit": -9,
+        "files_with_diagnostics": 7,
+        "initialized": true,
+        "launch_load1": 7.2,
+        "opened_files": 14,
+        "selected_files": 14,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-aws-legacy"
+      },
+      {
+        "diagnostic_entries": 10,
+        "diagnostic_notifications": 15,
+        "exit": -9,
+        "files_with_diagnostics": 8,
+        "initialized": true,
+        "launch_load1": 6.62,
+        "opened_files": 15,
+        "selected_files": 15,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-azure"
+      },
+      {
+        "diagnostic_entries": 11,
+        "diagnostic_notifications": 16,
+        "exit": -9,
+        "files_with_diagnostics": 9,
+        "initialized": true,
+        "launch_load1": 6.9,
+        "opened_files": 16,
+        "selected_files": 16,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-gcp"
+      },
+      {
+        "diagnostic_entries": 22,
+        "diagnostic_notifications": 3,
+        "exit": -9,
+        "files_with_diagnostics": 2,
+        "initialized": true,
+        "launch_load1": 8.01,
+        "opened_files": 2,
+        "selected_files": 2,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-aws-network-resources"
+      },
+      {
+        "diagnostic_entries": 6,
+        "diagnostic_notifications": 3,
+        "exit": -9,
+        "files_with_diagnostics": 2,
+        "initialized": true,
+        "launch_load1": 7.62,
+        "opened_files": 2,
+        "selected_files": 2,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-azure-network-resources"
+      },
+      {
+        "diagnostic_entries": 2,
+        "diagnostic_notifications": 3,
+        "exit": -9,
+        "files_with_diagnostics": 1,
+        "initialized": true,
+        "launch_load1": 7.25,
+        "opened_files": 2,
+        "selected_files": 2,
+        "shutdown_responded": false,
+        "status": "exit",
+        "subject": "upbound/platform-ref-gcp-network-resources"
+      }
+    ]
+  },
+  "owner_tool_pins": [
+    {
+      "official_checksum_url": "https://cli.upbound.io/stable/v0.34.2/bin/darwin_arm64/up.sha256",
+      "platform": "darwin_arm64",
+      "platforms": {
+        "darwin_arm64": {
+          "sha256": "a33aa532df161363d3c7589ddcf9f2dd3b5e2e854187eef3a490827b2ddbae31",
+          "url": "https://cli.upbound.io/stable/v0.34.2/bin/darwin_arm64/up"
+        },
+        "linux_amd64": {
+          "sha256": "dfae941292b302a4568f5b99ca5def39c52a9e23121f811daf57bc4c1b3052f9",
+          "url": "https://cli.upbound.io/stable/v0.34.2/bin/linux_amd64/up"
+        },
+        "linux_arm64": {
+          "sha256": "5b3fd4ea9f5d64e51ef25c3601cb96fd247568dbeb670837d5dda7960de5ac2f",
+          "url": "https://cli.upbound.io/stable/v0.34.2/bin/linux_arm64/up"
+        }
+      },
+      "sha256": "a33aa532df161363d3c7589ddcf9f2dd3b5e2e854187eef3a490827b2ddbae31",
+      "tool": "up",
+      "url": "https://cli.upbound.io/stable/v0.34.2/bin/darwin_arm64/up",
+      "version": "v0.34.2"
+    },
+    {
+      "official_checksum_url": "https://cli.upbound.io/stable/v0.38.0/bin/darwin_arm64/up.sha256",
+      "platform": "darwin_arm64",
+      "platforms": {
+        "darwin_arm64": {
+          "sha256": "d23f1e132fd1921f8d161918f87a6b26432210bbd63855dcbc961191a990d4f0",
+          "url": "https://cli.upbound.io/stable/v0.38.0/bin/darwin_arm64/up"
+        },
+        "linux_amd64": {
+          "sha256": "f8630e9afcb15cb8dc459976a26a2999d5d59f607517ec7c1a9cfd5097f883fe",
+          "url": "https://cli.upbound.io/stable/v0.38.0/bin/linux_amd64/up"
+        },
+        "linux_arm64": {
+          "sha256": "b407691a0a9772763385b8ee223db9daacdf5be79b5c955594532046962f3598",
+          "url": "https://cli.upbound.io/stable/v0.38.0/bin/linux_arm64/up"
+        }
+      },
+      "sha256": "d23f1e132fd1921f8d161918f87a6b26432210bbd63855dcbc961191a990d4f0",
+      "tool": "up",
+      "url": "https://cli.upbound.io/stable/v0.38.0/bin/darwin_arm64/up",
+      "version": "v0.38.0"
+    }
+  ],
+  "pending_verification": [],
+  "privacy_erratum": "Historical raw stream lengths/digests, private manifest digest, package-output and log digests withdrawn; these can encode private paths. Source pins, measured counts and command statuses retained.",
+  "reading_conservation": {
+    "after_inventory_sha256": "782688ac7c0198be85e515cfc5f40f69dce7bff0fa91cecb351029817441b942",
+    "base": "1b4c93a844e8b9727c2653636fd665a1748a2232",
+    "before_inventory_sha256": "ab6e9d69eec4bc6843f8af4cf24e5c5ac37532161268273484c18bee8ef35606",
+    "changed_values": [
+      "crossplane.json"
+    ],
+    "eligible": 156,
+    "files": 187,
+    "protected_byte_identical": 31,
+    "required_kinds_preserved": true,
+    "unchanged_bytes": 186
+  },
+  "reading_provenance": "Historical pre-D19 extraction snapshot; the current canonical reading is regenerated by main harness under R-D19, with its own before/after receipt.",
+  "verification": {
+    "canonical_grade": {
+      "command": "python3 calibration/oracles/crossplane/grade.py --cache workspace/artifacts/crossplane-r2 --manifest workspace/artifacts/crossplane-r2/manifest.json --indexbench \"$TOOLS/indexbench-crossplane-r2\" --oracle-bin \"$TOOLS/crossplane-oracle-r2\" --engine-commit 1b4c93a844e8b9727c2653636fd665a1748a2232 --out workspace/artifacts/crossplane-r2/canonical-reading.json",
+      "exit_code": 0
+    },
+    "merge_debris": {
+      "command": "bash scripts/check-merge-debris.sh",
+      "exit_code": 0
+    },
+    "oracle_race": {
+      "command": "go -C calibration/oracles/crossplane test -race -count=1 ./...",
+      "environment": "Pinned CLI on PATH; OX_CROSSPLANE_CRDS points to pinned core CRDs; native offline integration test enabled",
+      "exit_code": 0
+    },
+    "org_names": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "exit_code": 0
+    },
+    "owner_candidates": {
+      "command": "python3 calibration/oracles/crossplane/owner_probes.py --manifest workspace/artifacts/crossplane-r2/manifest.json --crossplane \"$TOOLS/crossplane\" --up \"$TOOLS/up-v0.34.2\" --up-modern \"$TOOLS/up-v0.38.0\" --out workspace/artifacts/crossplane-r2/owner-probes.json --scratch workspace/tmp/crossplane-r2-owner-probes",
+      "exit_code": 0
+    },
+    "python_tests": {
+      "command": "python3 -m unittest calibration.oracles.crossplane.grade_test calibration.oracles.crossplane.probe_test calibration.oracles.crossplane.owner_probes_test",
+      "exit_code": 0
+    },
+    "reading_roundtrip": {
+      "command": "go test -race ./internal/langbench -run ^TestCommittedReadingsRoundTrip$ -count=1",
+      "exit_code": 0
+    },
+    "release_notes": {
+      "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
+      "exit_code": 0
+    },
+    "scratch_ingest": {
+      "command": "fathom ingest --path . --service iac-crossplane-r2 --store workspace/db/crossplane-r2.sqlite",
+      "exit_code": 1,
+      "scope": "Typed Go loading degraded (340/1266 packages, export v5 unsupported by v4 importer); text facts stored. O1508. Not a full gate pass."
+    },
+    "targeted_LB_F157": {
+      "command": "fathom verify --strict --row LB-F157 --service iac-crossplane-r2 --store workspace/db/crossplane-r2.sqlite --plan docs/plans/language-breadth.md --ledger workspace/artifacts/crossplane-r2/verify-ledger.jsonl",
+      "exit_code": 0,
+      "scope": "One lexical row only, against stored source text; typed ingest success and full plan verification not claimed"
+    },
+    "walk_controls": {
+      "exit_code": 0,
+      "procedure": "plain crossplane-oracle before/after the committed product_ablation.go.txt control; authored metadata.name fixture changes truth"
+    }
+  },
+  "walk_independence": {
+    "product_perturbation_truth": [
+      {
+        "after_sha256": "badab0482397d6f221145fe057deeb12bfe81b683e8ee2a2c5450068aa3b34a8",
+        "before_sha256": "badab0482397d6f221145fe057deeb12bfe81b683e8ee2a2c5450068aa3b34a8",
+        "conditions": {
+          "go_env": {
+            "GOFLAGS": "-p=2",
+            "GOMAXPROCS": "2",
+            "GOTOOLCHAIN": "go1.27.3",
+            "GOWORK": "off"
+          },
+          "load_1m": 6.46826171875,
+          "nice": 10
+        },
+        "equal": true,
+        "subject": "crossplane/crossplane"
+      },
+      {
+        "after_sha256": "b61a17dd3ec7092e335ee4186a39f1a33914cc979bdfa32839985ffe64772327",
+        "before_sha256": "b61a17dd3ec7092e335ee4186a39f1a33914cc979bdfa32839985ffe64772327",
+        "conditions": {
+          "go_env": {
+            "GOFLAGS": "-p=2",
+            "GOMAXPROCS": "2",
+            "GOTOOLCHAIN": "go1.27.3",
+            "GOWORK": "off"
+          },
+          "load_1m": 6.46826171875,
+          "nice": 10
+        },
+        "equal": true,
+        "subject": "upbound/platform-ref-aws"
+      },
+      {
+        "after_sha256": "48c3718e765cdcfd027d6e5c353bbc031507ae86d106e670d93face98456fa47",
+        "before_sha256": "48c3718e765cdcfd027d6e5c353bbc031507ae86d106e670d93face98456fa47",
+        "conditions": {
+          "go_env": {
+            "GOFLAGS": "-p=2",
+            "GOMAXPROCS": "2",
+            "GOTOOLCHAIN": "go1.27.3",
+            "GOWORK": "off"
+          },
+          "load_1m": 6.46826171875,
+          "nice": 10
+        },
+        "equal": true,
+        "subject": "upbound/configuration-aws-network"
+      }
+    ],
+    "source_fact_control": {
+      "after_sha256": "570b10557be4c3421d99ff4de9354bf0d03ee76a1e9d8da61403db313f374881",
+      "before_sha256": "874eb5030eadfc0d8f432ac173ad9ecf0b716907e20612d0eb974a06f28d9d53",
+      "definition_counts": [
+        1,
+        1
+      ],
+      "field": "metadata.name",
+      "fixture": "authored Composition control, not a scored subject",
+      "truth_changed": true
+    }
+  },
+  "xpls_advertised_capabilities": [
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    },
+    {
+      "textDocumentSync": 2
+    }
+  ]
+}
