@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -128,8 +129,7 @@ func TestCmdLabsCorpusJSONIsDeterministic(t *testing.T) {
 }
 
 func TestCmdLabsFireReadsTheFunnelAndWritesTheLedger(t *testing.T) {
-	root := labsFixtureProjects(t, labsAssistantLine, labsResultLine)
-	_ = root
+	labsFixtureProjects(t, labsAssistantLine, labsResultLine)
 	cards := filepath.Join(t.TempDir(), "labs.d")
 	if err := os.MkdirAll(cards, 0o755); err != nil {
 		t.Fatal(err)
@@ -254,7 +254,7 @@ func TestCmdLabsCorpusCountsAnUnreadableDirectory(t *testing.T) {
 }
 
 // M1: a transcript whose bytes cannot be digested is counted, not dropped.
-func TestCmdLabsCorpusCountsAnUndigestableTranscript(t *testing.T) {
+func TestCmdLabsCorpusCountsAnUnreadableTranscript(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root reads a mode 000 file")
 	}
@@ -383,5 +383,21 @@ func TestCmdLabsFireResolvesRelativePathsAndWritesAllOrNothing(t *testing.T) {
 	after, _ := os.ReadFile(ledger)
 	if string(after) != first {
 		t.Fatalf("a refused write still appended:\n%s", after)
+	}
+}
+
+// The decoder read the file but the digest failed: the file is counted
+// unreadable and the corpus sha is bounded.
+func TestCmdLabsCorpusCountsADigestOnlyFailure(t *testing.T) {
+	labsFixtureProjects(t, labsAssistantLine, labsResultLine)
+	old := labsFileDigest
+	labsFileDigest = func(string) (string, error) { return "", errors.New("digest failed") }
+	t.Cleanup(func() { labsFileDigest = old })
+	var stdout, stderr bytes.Buffer
+	if code := cmdLabs([]string{"corpus", "--out", filepath.Join(t.TempDir(), "s")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("labs corpus = %d: %s", code, stderr.String())
+	}
+	if got := stdout.String(); !strings.Contains(got, "1 unreadable file(s)") || !strings.Contains(got, "\u2265") {
+		t.Fatalf("a digest-only failure was not counted:\n%s", got)
 	}
 }

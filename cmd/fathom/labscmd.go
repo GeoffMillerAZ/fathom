@@ -379,8 +379,8 @@ func writeLabsSession(dir string, points []labs.Point) error {
 	return os.WriteFile(filepath.Join(dir, name+".json"), append(data, '\n'), 0o644)
 }
 
-// labsFileDigest is one transcript's sha256.
-func labsFileDigest(path string) (string, error) {
+// labsFileDigest is one transcript's sha256. A variable so a test can fail it.
+var labsFileDigest = func(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err

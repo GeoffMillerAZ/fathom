@@ -177,6 +177,20 @@ func TestExtractDecisionPointsWindowBounds(t *testing.T) {
 	}
 }
 
+// The preceding window is capped at five: a point with more earlier calls
+// keeps only the nearest five.
+func TestExtractDecisionPointsPrecedingWindowUpperBound(t *testing.T) {
+	var events []transcript.Event
+	for i := 0; i < 12; i++ {
+		events = append(events, synthEvent("tool_use", fmt.Sprintf("T%d", i), fmt.Sprintf("id%d", i)))
+	}
+	points, _ := ExtractDecisionPoints(transcript.Result{Events: events}, "salt", "s")
+	p := points[7]
+	if len(p.Preceding) != 5 || p.Preceding[0].Name != "T2" || len(p.Followers) != 3 || p.Followers[0].Name != "T8" || p.Followers[2].Name != "T10" {
+		t.Fatalf("window: %d preceding, %d followers: %+v", len(p.Preceding), len(p.Followers), p)
+	}
+}
+
 // m1: the raw tool-use id is joined to its result and dropped; it never
 // reaches a serialized point.
 func TestPointsDoNotSerializeTheToolUseID(t *testing.T) {
