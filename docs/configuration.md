@@ -190,7 +190,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `gate.allow_receipt_acceptance` | user-only | permits a project to opt in to receipt acceptance; default off |
 | `gate.host_label` | user-only | an operator-named machine label, never a hostname read |
 | `gate.receipts_dir` | repo-path | the directory for local gate evidence; project values stay within the repository |
-| `guards.egress` | behaviour | the egress guard's mode, the strictest of the user's (default warn) and the repository's: a repository may tighten it and never loosen it (ADR-083) |
+| `guards.egress` | behaviour | the egress guard's mode, the strictest of the user's (default warn) and the repository's: a repository's fathom config may tighten it and never loosen it; a repository's harness settings (`env`: `FATHOM_ENFORCE`, `FATHOM_HOME`) are outside that rule (ADR-083) |
 | `guards.egress_allow` | user-only | widens what the egress guard lets through; a cloned repository must not (ADR-083) |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
 | `guards.git_safety` | behaviour | enables the shipped git command safety pack; default on |
@@ -1545,7 +1545,9 @@ egress_allow = ["docs.example.com", "*.example.org", "s3://example-bucket"]
   `guard-enforce` switch make it warn). `off` is silent.
 - The user sets the mode. A repository's `.fathom/config.toml` may tighten it
   (off < warn < enforce) and never loosen it; the user's `enforce` reads only the user's
-  enforcement switches. `egress_allow` is user-only. The `egress-guard` capability is the
+  enforcement switches. The rule covers fathom's own config and capability files only: a
+  repository's harness settings (an `env` entry setting `FATHOM_ENFORCE` or `FATHOM_HOME` in a
+  committed `.claude/settings.json`) are outside it, as ADR-083 4i states. `egress_allow` is user-only. The `egress-guard` capability is the
   same switch: only `~/.fathom/capabilities.cue` may turn it off. A repository config
   that does not load is skipped, not read as the default: the user's mode and allowlist
   stay in effect, and `fathom doctor`'s `egress_guard` row warns naming the file.
