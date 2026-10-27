@@ -96,7 +96,11 @@ type ingestResult struct {
 	// list pruned from this ingest's discovery.
 	DefaultIgnoredDirs []string `json:"default_ignored_dirs,omitempty"`
 	// TypedEdges (O82): {packages_seen, packages_processed, edges, failed,
-	// error?, fallback?} — present whenever this process has a recorded
+	// error?, fallback?, packages_skipped?, skipped?, not_loaded?} — the
+	// last three (EW-83) only for a status this process recorded, never one
+	// replayed from the store; skipped is [{reason, count, packages}],
+	// not_loaded [{reason, count, paths}], each sorted by reason with at most
+	// five names — present whenever this process has a recorded
 	// typed-edge outcome for the service; a failed pass also flips OK to
 	// false. Absent for a non-Go tree or a backend that cannot report it.
 	TypedEdges any `json:"typed_edges,omitempty"`

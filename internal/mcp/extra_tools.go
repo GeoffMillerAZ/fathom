@@ -834,6 +834,27 @@ func registerIngest(s *Server, backend QueryInterface) {
 				if st.Fallback != "" {
 					te["fallback"] = st.Fallback
 				}
+				// EW-83 (O1506): the run's skips, by reason with their
+				// first names, and the directories and nested modules no
+				// load covered. Never persisted, so a status replayed from
+				// the store omits them rather than read 0.
+				if !st.Persisted {
+					te["packages_skipped"] = st.PackagesSkipped
+					if len(st.Skips) > 0 {
+						skipped := make([]map[string]any, 0, len(st.Skips))
+						for _, s := range st.Skips {
+							skipped = append(skipped, map[string]any{"reason": s.Reason, "count": s.Count, "packages": s.Names})
+						}
+						te["skipped"] = skipped
+					}
+					if len(st.NotLoaded) > 0 {
+						notLoaded := make([]map[string]any, 0, len(st.NotLoaded))
+						for _, s := range st.NotLoaded {
+							notLoaded = append(notLoaded, map[string]any{"reason": s.Reason, "count": s.Count, "paths": s.Names})
+						}
+						te["not_loaded"] = notLoaded
+					}
+				}
 				// finding [4]/DG-10: see platform_tools.go's list_services block
 				// -- the SAME distinction (a store-replayed, pre-restart answer
 				// vs. one this process just computed) must travel through the

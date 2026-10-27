@@ -449,6 +449,9 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// response can never disagree with staleness_report/doctor about
 	// whether this service's typed pass is trustworthy.
 	report.TypedSkipped = typedRep.Skipped
+	report.TypedPackagesSkipped = typedRep.PackagesSkipped
+	report.TypedSkips = typedRep.Skips
+	report.TypedNotLoaded = typedRep.NotLoaded
 	if st, known := p.TypedEdgeStatus(svc.ID); known && typedRep.Skipped == "" {
 		report.TypedPackagesSeen = st.PackagesSeen
 		report.TypedFailed = st.Failed

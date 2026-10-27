@@ -369,8 +369,14 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// none processed) print nothing at all.
 	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed {
 		edges := report.TypedEdgesDirect + report.TypedEdgesIfaceDispatch + report.TypedEdgesUnresolved
-		fmt.Fprintf(stdout, "typed-edges: %d/%d pkg(s) processed (%d failed), %d edge(s) (%d direct / %d iface-dispatch / %d unresolved)\n",
-			report.TypedPackages, report.TypedPackagesSeen, report.TypedPackagesFailed,
+		// EW-83: the packages the pass skipped, counted by reason; the line
+		// reads as before when it skipped none.
+		skipped := ""
+		if report.TypedPackagesSkipped > 0 {
+			skipped = fmt.Sprintf(", %d skipped: %s", report.TypedPackagesSkipped, fusion.FormatTypedSkipCounts(report.TypedSkips))
+		}
+		fmt.Fprintf(stdout, "typed-edges: %d/%d pkg(s) processed (%d failed%s), %d edge(s) (%d direct / %d iface-dispatch / %d unresolved)\n",
+			report.TypedPackages, report.TypedPackagesSeen, report.TypedPackagesFailed, skipped,
 			edges, report.TypedEdgesDirect, report.TypedEdgesIfaceDispatch, report.TypedEdgesUnresolved)
 		if report.TypedFallback != "" {
 			fmt.Fprintf(stdout, "typed-edges: an ambient Go workspace was overridden (%s)\n", report.TypedFallback)
@@ -379,6 +385,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
 		}
 	}
+	printTypedSkips(stdout, report)
 	// RT-104/RT-105: a gated-off pass is named, never silent.
 	if report.TypedSkipped != "" {
 		fmt.Fprintf(stdout, "typed-edges: skipped — %s (stored typed edges kept)\n", report.TypedSkipped)
@@ -627,4 +634,33 @@ func (ingestRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 func init() {
 	declareVerb(verb{Name: "ingest", Group: "index", Order: 10, Run: ingestRunner{},
 		Summary: "Ingest a service into the knowledge store"})
+}
+
+// printTypedSkips names, in one line, the input the syntax pass indexed and
+// the typed pass did not resolve (EW-83, O1506): each package of a class
+// that loses evidence (build constraints, outside ./...), each discovered
+// Go directory no load covered, and each nested module not loaded, by its
+// go.mod — with its reason, at most five per reason. The harmless classes
+// (test main, test-only, connector scope) are counted on the typed-edges
+// line and named only in --json. It prints even when nothing else typed
+// does (a tree with no module at all), and nothing when there is nothing to
+// name.
+func printTypedSkips(w io.Writer, report client.Report) {
+	var parts []string
+	for _, s := range report.TypedSkips {
+		if fusion.TypedSkipLosesEvidence(s.Reason) {
+			parts = append(parts, fmt.Sprintf("%s %d package(s): %s", s.Reason, s.Count, fusion.FormatTypedSkipNames(s)))
+		}
+	}
+	for _, s := range report.TypedNotLoaded {
+		unit := "module(s)" // a nested module, named by its go.mod
+		if fusion.TypedSkipLosesEvidence(s.Reason) {
+			unit = "directory(ies)"
+		}
+		parts = append(parts, fmt.Sprintf("%s %d %s: %s", s.Reason, s.Count, unit, fusion.FormatTypedSkipNames(s)))
+	}
+	if len(parts) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "typed-edges: syntax-only, the typed pass did not resolve: %s\n", strings.Join(parts, "; "))
 }
