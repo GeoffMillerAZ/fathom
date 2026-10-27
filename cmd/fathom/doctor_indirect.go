@@ -21,12 +21,17 @@ const doctorWrapperLevels = 2
 
 type doctorWiringEvidence struct {
 	found, indirect, unknown bool
-	missingScript            string
-	file                     string
+	// forced marks an unknown a nested Python file settled by its own mention
+	// rule (or an unreadable file), so an enclosing file may not drop it.
+	forced        bool
+	missingScript string
+	file          string
 	// opaque names the last project file the walk followed into that is not
-	// a shell script (an interpreter's script): it may hold the step, but
-	// this reader cannot read it.
-	opaque string
+	// a shell script (a node, ruby or perl script): it may hold the step, but
+	// this reader cannot read it. cause names what stopped a Python step the
+	// walk read or tried to read (file:line and why), and settled the first
+	// Python file it read to a definite not-found (GDEV-06).
+	opaque, cause, settled string
 }
 
 type doctorWrapperReader struct {
@@ -42,6 +47,9 @@ type doctorWrapperReader struct {
 	// Keep cuts in traversal order and label them while unwinding.
 	walked    map[string]bool
 	depthCuts []doctorWrapperDepthCut
+	// inPython counts the Python files whose spawns are being judged: there
+	// a file's mention rule, not each argv's words, filters uncertainty.
+	inPython int
 }
 
 type doctorWrapperDepthCut struct {
@@ -86,11 +94,15 @@ func (r *doctorWrapperReader) labelDepthCuts(start int, at string) {
 	}
 }
 
-// Decide only after the walk: a shallower visit can follow a cut.
+// Decide only after the walk: a shallower visit can follow a cut. The
+// result names where the walk stopped and the target it never read.
 func (r *doctorWrapperReader) depthCutAt() string {
 	for _, cut := range r.depthCuts {
 		if !r.walked[r.walkKey(cut.target)] {
-			return cut.at
+			if cut.at == "" {
+				return cut.target
+			}
+			return cut.at + ", before " + cut.target
 		}
 	}
 	return ""
@@ -177,6 +189,40 @@ func (r *doctorWrapperReader) read(path string) ([]byte, error) {
 	return b, err
 }
 
+// peek reads at most the first doctorPeekBytes of a regular repository file,
+// with read's bounds (root, regular files only, ctx), charging what it reads:
+// enough for a #! line without reading a binary the walk never follows.
+func (r *doctorWrapperReader) peek(path string) ([]byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return nil, err
+	}
+	rel, err := filepath.Rel(r.root, path)
+	if r.root == "" || err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return nil, fmt.Errorf("wrapper is outside the repository")
+	}
+	if b, ok := r.cache[rel]; ok {
+		return b[:min(len(b), doctorPeekBytes)], nil
+	}
+	root, err := os.OpenRoot(r.root)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	f, err := root.OpenFile(rel, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("wrapper is not a regular file")
+	}
+	b, err := io.ReadAll(io.LimitReader(f, int64(min(doctorPeekBytes, r.remaining))))
+	r.remaining -= len(b)
+	return b, err
+}
+
+const doctorPeekBytes = 256
+
 // readExternal reads one bounded regular file outside the repository: the
 // shared git directory's pre-push hook of a linked worktree or submodule, or
 // a core.hooksPath target outside the repository. Callers pass a path git
@@ -206,8 +252,7 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 	if r.ctx.Err() != nil {
 		return doctorWiringEvidence{unknown: true}
 	}
-	var unknown bool
-	var missingScript, opaque string
+	var acc doctorWiringEvidence
 	// A shell command list is wiring evidence, never proof the branch fired.
 	for _, line := range strings.Split(command, "\n") {
 		line = strings.TrimSpace(line)
@@ -223,146 +268,186 @@ func (r *doctorWrapperReader) command(command, sub string, depth int) doctorWiri
 				w = strings.TrimLeft(w, "0123456789")
 				return strings.HasPrefix(w, "<") || strings.HasPrefix(w, ">")
 			})
-			if len(words) > 1 && words[0] == "command" && words[1] == "-v" {
-				continue // template availability guard, not an unresolved wrapper
-			}
-			for len(words) > 0 && (words[0] == "exec" || words[0] == "command" || words[0] == "env" || strings.Contains(words[0], "=")) {
-				words = words[1:]
-			}
-			if len(words) == 0 {
-				continue
-			}
-			if r.matches != nil && r.matches(words) {
-				return doctorWiringEvidence{found: true, indirect: depth > 0}
-			}
-			bin := filepath.Base(words[0])
-			if bin == "fathom" || words[0] == "$FATHOM" || words[0] == "${FATHOM}" {
-				want := strings.Fields(sub)
-				if r.matches == nil && len(words) > len(want) && strings.Join(words[1:1+len(want)], " ") == sub {
-					return doctorWiringEvidence{found: true, indirect: depth > 0}
-				}
-				continue
-			}
-			// A foreign executable cannot stand in for a project wrapper,
-			// even if its basename happens to be a supported task runner.
-			if doctorForeignProgram(r.root, words[0]) {
-				continue
-			}
-			shellScript := false
-			if bin == "sh" || bin == "bash" || bin == "zsh" {
-				if len(words) < 2 || strings.HasPrefix(words[1], "-") {
-					unknown = unknown || depth > 0
-					continue
-				}
-				words = words[1:]
-				shellScript = true
-				bin = filepath.Base(words[0])
-			}
-			wrapper := shellScript || strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
-			if script := r.opaqueScript(words); script != "" {
-				// Only a script run as "...verify..." may hold the verify step;
-				// any other interpreter script is unrelated work.
-				if opaque == "" && strings.Contains(strings.Join(words, " "), "verify") {
-					opaque = script
-				}
-				continue
-			}
-			if bin != "task" && bin != "lefthook" && !wrapper {
-				// Other tools do not stand for fathom. Dynamic shell work is
-				// uncertain only inside a project wrapper we actually read.
-				if depth > 0 && (bin == "eval" || bin == "source" || bin == ".") {
-					unknown = true
-				}
-				continue
-			}
-			atDepthLimit := depth >= doctorWrapperLevels
-			if atDepthLimit {
-				unknown = true
-			}
-			var ev doctorWiringEvidence
-			switch bin {
-			case "task", "lefthook":
-				if atDepthLimit && bin != "task" {
-					continue
-				}
-				ev = r.task(words, sub, depth+1)
-			default:
-				p := words[0]
-				// Quote removal precedes expansion so "$VAR"/script.sh works too.
-				// Only documented project-dir aliases resolve, using the root doctor
-				// is diagnosing, never an unrelated ambient environment value.
-				for _, name := range []string{"CLAUDE_PROJECT_DIR", "GEMINI_PROJECT_DIR", "CURSOR_PROJECT_DIR"} {
-					p = strings.ReplaceAll(p, "${"+name+"}", ".")
-					if p == "$"+name || strings.HasPrefix(p, "$"+name+"/") {
-						p = "." + strings.TrimPrefix(p, "$"+name)
-					}
-				}
-				if doctorForeignProgram(r.root, p) {
-					continue
-				}
-				if strings.ContainsAny(p, "$`{}") {
-					unknown = true
-					continue
-				}
-				if !filepath.IsAbs(p) {
-					p = filepath.Join(r.root, p)
-				}
-				if atDepthLimit {
-					// A missing or foreign script hides no readable commands.
-					// Resolve the target, but never walk its contents past the limit.
-					if r.regularFile(p) {
-						rel, _ := filepath.Rel(r.root, p)
-						r.depthCuts = append(r.depthCuts, doctorWrapperDepthCut{target: rel})
-					}
-					continue
-				}
-				b, err := r.read(p)
-				if err != nil {
-					if os.IsNotExist(err) {
-						if missingScript == "" {
-							missingScript = p
-						}
-					} else {
-						unknown = true
-					}
-					continue
-				}
-				// A script that was read is settled, even when it is refused below:
-				// a later depth cut at the same script hides nothing.
-				rel, _ := filepath.Rel(r.root, p)
-				r.markWalked(rel)
-				// Dynamic shell structure is outside this deliberately small reader.
-				text := string(b)
-				if strings.Contains(text, "<<") || strings.Contains(text, "$(") || strings.Contains(text, "()") || strings.Contains(text, "`") {
-					unknown = true
-					continue
-				}
-				firstCut := len(r.depthCuts)
-				ev = r.command(text, sub, depth+1)
-				r.labelDepthCuts(firstCut, rel)
-				if ev.found && ev.file == "" {
-					ev.file, _ = filepath.Rel(r.root, p)
-				}
-			}
-			if ev.found {
+			if ev := r.unit(words, sub, depth, &acc); ev.found {
 				return ev
-			}
-			unknown = unknown || ev.unknown
-			if missingScript == "" {
-				missingScript = ev.missingScript
-			}
-			if opaque == "" {
-				opaque = ev.opaque
 			}
 		}
 	}
-	return doctorWiringEvidence{unknown: unknown, missingScript: missingScript, opaque: opaque}
+	return acc
+}
+
+// argv judges one command's words that no shell splits, such as a Python
+// spawn's argument list, exactly as unit judges a shell line's.
+func (r *doctorWrapperReader) argv(words []string, sub string, depth int) doctorWiringEvidence {
+	if r.ctx.Err() != nil {
+		return doctorWiringEvidence{unknown: true}
+	}
+	var acc doctorWiringEvidence
+	if ev := r.unit(words, sub, depth, &acc); ev.found {
+		return ev
+	}
+	return acc
+}
+
+// unit judges one command (its words after quote removal and redirections):
+// a match returns found evidence; anything else folds into acc.
+func (r *doctorWrapperReader) unit(words []string, sub string, depth int, acc *doctorWiringEvidence) doctorWiringEvidence {
+	if len(words) > 1 && words[0] == "command" && words[1] == "-v" {
+		return doctorWiringEvidence{} // template availability guard, not an unresolved wrapper
+	}
+	for len(words) > 0 && (words[0] == "exec" || words[0] == "command" || words[0] == "env" || strings.Contains(words[0], "=")) {
+		words = words[1:]
+	}
+	if len(words) == 0 {
+		return doctorWiringEvidence{}
+	}
+	if rest, cause, ok := doctorPythonLauncher(words); ok {
+		if cause != "" {
+			r.pythonUncertainUnit(words, cause, acc)
+			return doctorWiringEvidence{}
+		}
+		return r.unit(rest, sub, depth, acc)
+	}
+	if r.matches != nil && r.matches(words) {
+		return doctorWiringEvidence{found: true, indirect: depth > 0}
+	}
+	bin := filepath.Base(words[0])
+	if bin == "fathom" || words[0] == "$FATHOM" || words[0] == "${FATHOM}" {
+		want := strings.Fields(sub)
+		if r.matches == nil && len(words) > len(want) && strings.Join(words[1:1+len(want)], " ") == sub {
+			return doctorWiringEvidence{found: true, indirect: depth > 0}
+		}
+		return doctorWiringEvidence{}
+	}
+	// A foreign executable cannot stand in for a project wrapper,
+	// even if its basename happens to be a supported task runner.
+	if doctorForeignProgram(r.root, words[0]) {
+		return doctorWiringEvidence{}
+	}
+	if step, ok := r.pythonUnit(words, depth); ok {
+		return r.pythonStep(step, words, sub, depth, acc)
+	}
+	shellScript := false
+	if bin == "sh" || bin == "bash" || bin == "zsh" {
+		if len(words) < 2 || strings.HasPrefix(words[1], "-") {
+			acc.unknown = acc.unknown || depth > 0
+			return doctorWiringEvidence{}
+		}
+		words = words[1:]
+		shellScript = true
+		bin = filepath.Base(words[0])
+	}
+	wrapper := shellScript || strings.Contains(words[0], "/") || strings.HasSuffix(bin, ".sh")
+	if script := r.opaqueScript(words); script != "" {
+		// Only a script run as "...verify..." may hold the verify step;
+		// any other interpreter script is unrelated work.
+		if acc.opaque == "" && strings.Contains(strings.Join(words, " "), "verify") {
+			acc.opaque = script
+		}
+		return doctorWiringEvidence{}
+	}
+	if bin != "task" && bin != "lefthook" && !wrapper {
+		// Other tools do not stand for fathom. Dynamic shell work is
+		// uncertain only inside a project wrapper we actually read.
+		if depth > 0 && (bin == "eval" || bin == "source" || bin == ".") {
+			acc.unknown = true
+		}
+		return doctorWiringEvidence{}
+	}
+	atDepthLimit := depth >= doctorWrapperLevels
+	if atDepthLimit {
+		acc.unknown = true
+	}
+	var ev doctorWiringEvidence
+	switch bin {
+	case "task", "lefthook":
+		if atDepthLimit && bin != "task" {
+			return doctorWiringEvidence{}
+		}
+		ev = r.task(words, sub, depth+1)
+	default:
+		p := words[0]
+		// Quote removal precedes expansion so "$VAR"/script.sh works too.
+		// Only documented project-dir aliases resolve, using the root doctor
+		// is diagnosing, never an unrelated ambient environment value.
+		for _, name := range []string{"CLAUDE_PROJECT_DIR", "GEMINI_PROJECT_DIR", "CURSOR_PROJECT_DIR"} {
+			p = strings.ReplaceAll(p, "${"+name+"}", ".")
+			if p == "$"+name || strings.HasPrefix(p, "$"+name+"/") {
+				p = "." + strings.TrimPrefix(p, "$"+name)
+			}
+		}
+		if doctorForeignProgram(r.root, p) {
+			return doctorWiringEvidence{}
+		}
+		if strings.ContainsAny(p, "$`{}") {
+			acc.unknown = true
+			return doctorWiringEvidence{}
+		}
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(r.root, p)
+		}
+		if atDepthLimit {
+			// A missing or foreign script hides no readable commands.
+			// Resolve the target, but never walk its contents past the limit.
+			if r.regularFile(p) {
+				rel, _ := filepath.Rel(r.root, p)
+				r.depthCuts = append(r.depthCuts, doctorWrapperDepthCut{target: rel})
+			}
+			return doctorWiringEvidence{}
+		}
+		b, err := r.read(p)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if acc.missingScript == "" {
+					acc.missingScript = p
+				}
+			} else {
+				acc.unknown = true
+			}
+			return doctorWiringEvidence{}
+		}
+		// A script that was read is settled, even when it is refused below:
+		// a later depth cut at the same script hides nothing.
+		rel, _ := filepath.Rel(r.root, p)
+		r.markWalked(rel)
+		// Dynamic shell structure is outside this deliberately small reader.
+		text := string(b)
+		if strings.Contains(text, "<<") || strings.Contains(text, "$(") || strings.Contains(text, "()") || strings.Contains(text, "`") {
+			acc.unknown = true
+			return doctorWiringEvidence{}
+		}
+		firstCut := len(r.depthCuts)
+		ev = r.command(text, sub, depth+1)
+		r.labelDepthCuts(firstCut, rel)
+		if ev.found && ev.file == "" {
+			ev.file, _ = filepath.Rel(r.root, p)
+		}
+	}
+	if ev.found {
+		return ev
+	}
+	acc.unknown = acc.unknown || ev.unknown
+	acc.forced = acc.forced || ev.forced
+	if acc.missingScript == "" {
+		acc.missingScript = ev.missingScript
+	}
+	if acc.opaque == "" {
+		acc.opaque = ev.opaque
+	}
+	if acc.cause == "" {
+		acc.cause = ev.cause
+	}
+	if acc.settled == "" {
+		acc.settled = ev.settled
+	}
+	return doctorWiringEvidence{}
 }
 
 // opaqueScript returns the repository-relative path of a project script that
-// an interpreter (python, node, ruby, perl) or a .py/.js/.rb/.pl executable
-// word runs, when that file exists inside the repository. Such a script is
-// outside this deliberately small shell reader: it is named, never read.
+// an interpreter (node, ruby, perl, or a python* that is not python, python3
+// or python3.N) or a .js/.rb/.pl executable word runs, when that file exists
+// inside the repository. Such a script is outside this deliberately small
+// reader: it is named, never read. Python steps go to pythonStep first.
 func (r *doctorWrapperReader) opaqueScript(words []string) string {
 	if len(words) == 0 {
 		return ""
@@ -558,6 +643,12 @@ func doctorHookEvidence(ctx context.Context, root string, hooksObj map[string]an
 			if out.missingScript == "" {
 				out.missingScript = ev.missingScript
 			}
+			if out.cause == "" {
+				out.cause = ev.cause
+			}
+			if out.settled == "" {
+				out.settled = ev.settled
+			}
 		}
 	}
 	return out
@@ -609,9 +700,14 @@ func doctorStdioRegistration(ctx context.Context, root, path, command string, ar
 		return row
 	}
 	ev := doctorCommandEvidence(ctx, root, strings.Join(append([]string{command}, args...), " "), "serve-mcp")
-	if ev.found {
+	switch {
+	case ev.found:
 		row.Status = doctorPass
 		row.Reason = "configured (indirect): stdio fathom wrapper in " + path
+	case ev.cause != "":
+		row.Reason += " (" + ev.cause + ")"
+	case ev.settled != "":
+		row.Reason += " (doctor read " + ev.settled + ", which starts no fathom serve-mcp)"
 	}
 	if ctx.Err() != nil {
 		row.Status = doctorTimeout

@@ -1052,6 +1052,7 @@ func checkHooksInstalledContext(ctx context.Context, root, harness string) docto
 	var scopeNotes []string
 	indirect := false
 	uncertain := map[hookSpecKey]bool{}
+	causes := map[hookSpecKey]string{} // a Python step's file:line and why, or the file it read (GDEV-06)
 	for _, sc := range scopes {
 		data, err := os.ReadFile(sc.path)
 		if err != nil {
@@ -1068,9 +1069,17 @@ func checkHooksInstalledContext(ctx context.Context, root, harness string) docto
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range specs {
 			ev := doctorHookEvidence(ctx, root, hooksObj, spec)
-			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && ev.missingScript == "")
+			uncertain[hookSpecKeyOf(spec)] = uncertain[hookSpecKeyOf(spec)] || (ev.unknown && (ev.missingScript == "" || ev.cause != ""))
 			if !ev.found && ev.missingScript != "" {
 				scopeNotes = append(scopeNotes, "hook script not found: "+ev.missingScript)
+			}
+			if k := hookSpecKeyOf(spec); !ev.found && causes[k] == "" {
+				switch {
+				case ev.unknown && ev.cause != "":
+					causes[k] = ev.cause
+				case ev.settled != "":
+					causes[k] = "doctor read " + ev.settled + ", which starts no fathom " + spec.sub
+				}
 			}
 			if ev.found {
 				indirect = indirect || ev.indirect
@@ -1112,13 +1121,23 @@ func checkHooksInstalledContext(ctx context.Context, root, harness string) docto
 	// Uncertainty belongs to a missing hook, never to the whole row.
 	var definite []hookSpec
 	var unknownLabels []string
+	var settledNotes []string
 	for _, spec := range missing {
+		label := specLabel(spec)
+		if c := causes[hookSpecKeyOf(spec)]; c != "" {
+			if uncertain[hookSpecKeyOf(spec)] {
+				label += " (" + c + ")"
+			} else {
+				settledNotes = append(settledNotes, specLabel(spec)+": "+c)
+			}
+		}
 		if uncertain[hookSpecKeyOf(spec)] {
-			unknownLabels = append(unknownLabels, specLabel(spec))
+			unknownLabels = append(unknownLabels, label)
 		} else {
 			definite = append(definite, spec)
 		}
 	}
+	scopeNotes = append(scopeNotes, settledNotes...)
 	if len(unknownLabels) > 0 {
 		scopeNotes = append(scopeNotes, "uncertain project wrapper wiring: "+strings.Join(unknownLabels, ", "))
 	}
