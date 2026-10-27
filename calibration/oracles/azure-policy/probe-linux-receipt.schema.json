@@ -356,15 +356,6 @@
       "minimum": -2147483648,
       "maximum": 9223372036854775807
     },
-    "trace_sha256": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
-    },
-    "trace_bytes": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 8388608
-    },
     "write_diagnostics": {
       "$ref": "#/$defs/write_diagnostics"
     },
@@ -394,6 +385,38 @@
     },
     "trace_writer_hidden_from_vendor": {
       "const": true
+    },
+    "trace_within_cap": {
+      "type": "boolean"
+    },
+    "diagnostic_status": {
+      "enum": [
+        "complete",
+        "partial",
+        "refused"
+      ]
+    },
+    "diagnostic_failure_class": {
+      "enum": [
+        "ValueError",
+        "OSError",
+        "PermissionError",
+        "TimeoutExpired",
+        "TimeoutError",
+        "ConnectionRefusedError",
+        "JSONDecodeError",
+        "FileNotFoundError",
+        "EOFError",
+        "Empty",
+        "ImportError",
+        "ModuleNotFoundError",
+        "HTTPException",
+        "BrokenPipeError",
+        "ConnectionError",
+        "RuntimeError",
+        "OverflowError",
+        "OtherError"
+      ]
     }
   },
   "required": [
@@ -471,12 +494,15 @@
       ]
     },
     "write_diagnostics": {
-      "type": "object",
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
         "files": {
           "type": "array",
-          "maxItems": 256,
+          "maxItems": 64,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -485,15 +511,8 @@
                 "enum": [
                   "tmp",
                   "home",
-                  "payload",
-                  "scratch",
-                  "memfd",
                   "other"
                 ]
-              },
-              "path_sha256": {
-                "type": "string",
-                "pattern": "^[a-f0-9]{64}$"
               },
               "kind": {
                 "enum": [
@@ -546,7 +565,6 @@
             },
             "required": [
               "area",
-              "path_sha256",
               "kind",
               "observed_write_bytes",
               "final_size_bytes",
@@ -572,15 +590,8 @@
               "enum": [
                 "tmp",
                 "home",
-                "payload",
-                "scratch",
-                "memfd",
                 "other"
               ]
-            },
-            "path_sha256": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{64}$"
             },
             "kind": {
               "enum": [
@@ -621,7 +632,6 @@
           },
           "required": [
             "area",
-            "path_sha256",
             "kind",
             "operation",
             "requested_extent_bytes",
@@ -631,7 +641,7 @@
         "correlated_limit_files": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 256
+          "maximum": 9223372036854775807
         },
         "vendor_exec_observed": {
           "type": "boolean"
@@ -655,15 +665,8 @@
               "enum": [
                 "tmp",
                 "home",
-                "payload",
-                "scratch",
-                "memfd",
                 "other"
               ]
-            },
-            "path_sha256": {
-              "type": "string",
-              "pattern": "^[a-f0-9]{64}$"
             },
             "kind": {
               "enum": [
@@ -716,7 +719,6 @@
           },
           "required": [
             "area",
-            "path_sha256",
             "kind",
             "observed_write_bytes",
             "final_size_bytes",
@@ -730,7 +732,18 @@
         "files_over_previous_limit": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 256
+          "maximum": 64
+        },
+        "files_truncated": {
+          "type": "boolean"
+        },
+        "snapshot_truncated": {
+          "type": "boolean"
+        },
+        "omitted_file_events": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
         }
       },
       "required": [
@@ -741,7 +754,10 @@
         "vendor_exec_observed",
         "native_returncode",
         "largest_private_file",
-        "files_over_previous_limit"
+        "files_over_previous_limit",
+        "files_truncated",
+        "snapshot_truncated",
+        "omitted_file_events"
       ]
     }
   },

@@ -4,14 +4,16 @@ Observed write bytes count successful write-family syscall returns, not mmap
 stores or allocation. Final sizes are a separate post-namespace snapshot. An
 EFBIG alone is not attributed to RLIMIT_FSIZE: require SIGXFSZ on that thread.
 """
-import hashlib
 import os
 import re
 import stat
 import signal
+from itertools import islice
 from pathlib import Path
 
-MAX_FILES = 256
+MAX_FILES = 64
+MAX_DIRECTORIES = 256
+MAX_SNAPSHOT_ENTRIES = 4096
 MAX_TRACE = 8 * 1024**2
 MAX_INT = 2**63 - 1
 CALLS = {'write', 'writev', 'pwrite64', 'pwritev', 'pwritev2', 'ftruncate',
@@ -60,54 +62,57 @@ def diagnostics(trace, root, executable=None):
     root = Path(root).absolute()
     rows, pending, failed, correlated = {}, {}, {}, []
     sigxfsz = False
+    omitted_events, snapshot_truncated = 0, False
+    largest = None
     executable = str(executable or root/'payload'/'PolicyLanguageServer')
     native_pid, native_returncode = None, None
 
     def identity(path):
+        nonlocal omitted_events
         path = path_text(path)
         deleted = path.endswith(' (deleted)')
         if deleted: path = path[:-10]
-        if path.startswith('/memfd:'):
-            area, relative = 'memfd', path[1:]
-            kind = 'dotnet_doublemapper' if relative == 'memfd:doublemapper' else 'generic'
-            deleted = True
-        else:
-            kind = 'generic'
-            # Lexical classification only: never follow vendor symlinks.
-            parts = Path(os.path.normpath(path))
-            for area, base in [('tmp', root/'home'/'tmp'), ('home', root/'home'),
-                               ('payload', root/'payload'), ('scratch', root)]:
-                try:
-                    relative = parts.relative_to(base).as_posix(); break
-                except ValueError: pass
-            else:
-                area, relative = 'other', path
-        public_path = None
-        if area in ('tmp','home'):
-            public_path = Path(path).relative_to(root).as_posix()
-            if (len(public_path)>512 or any(part in ('','.','..') or not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}',part) for part in public_path.split('/'))):
-                raise ValueError('private relative path outside public allowlist')
-        hashed = hashlib.sha256(os.fsencode(relative)).hexdigest()
-        key = (area, hashed)
-        if key not in rows:
-            if len(rows) >= MAX_FILES: raise ValueError('file count cap exceeded')
-            rows[key] = dict(area=area, path_sha256=hashed, relative_path=public_path, kind=kind, observed_write_bytes=0,
-                             largest_requested_extent_bytes=None, exceeds_previous_limit=False,
-                             final_size_bytes=None, final_type='absent', unlinked=deleted)
-        rows[key]['unlinked'] |= deleted
-        return rows[key]
+        canonical = Path(os.path.normpath(path))
+        area, relative, public_path, kind = 'other', None, None, 'generic'
+        if path == '/memfd:doublemapper': kind = 'dotnet_doublemapper'
+        if path.startswith('/memfd:'): deleted = True
+        for candidate,base in [('tmp',root/'home'/'tmp'),('home',root/'home')]:
+            try:
+                canonical.relative_to(base)
+                area = candidate
+                relative = canonical.relative_to(root).as_posix()
+                break
+            except ValueError: pass
+        if relative is not None:
+            if (len(relative)<=512 and all(part not in ('','.','..') and
+                    re.fullmatch(r'[A-Za-z0-9_.-]{1,128}',part) for part in relative.split('/'))):
+                public_path = relative
+        # Only HOME/TMP have per-path rows. Every other target collapses into a
+        # fixed class. No path hash, salt, PID, absolute root or memfd label leaves.
+        key = (area,relative if relative is not None else kind)
+        if key in rows:
+            row=rows[key];row['unlinked'] |= deleted
+            return row
+        row=dict(area=area,relative_path=public_path,kind=kind,observed_write_bytes=0,
+                 largest_requested_extent_bytes=None,exceeds_previous_limit=False,
+                 final_size_bytes=None,final_type='absent',unlinked=deleted)
+        if len(rows)<MAX_FILES: rows[key]=row
+        else: omitted_events+=1
+        return row
 
     def target(arg):
-        if re.fullmatch(r'-?\d+', arg): raise ValueError('file descriptor path unavailable')
-        match = re.fullmatch(r'-?\d+<((?:\\.|[^>])*)>(\(deleted\))?', arg)
+        if re.fullmatch(r'-?\d+',arg): raise ValueError('file descriptor path unavailable')
+        match=re.fullmatch(r'-?\d+<((?:\\.|[^>])*)>(\(deleted\))?',arg)
         if match:
-            name = match[1]
-            if name.startswith(('pipe:[', 'socket:[', 'anon_inode:', 'TCP:', 'UDP:', 'UNIX', 'NETLINK:')): return None
+            name=match[1]
+            if name.startswith(('pipe:[','socket:[','anon_inode:','TCP:','UDP:','UNIX','NETLINK:')): return None,None
             if not name.startswith('/'): raise ValueError('unknown descriptor kind')
-            return identity(name + (' (deleted)' if match[2] else ''))
-        if arg.startswith('"') and arg.endswith('"') and path_text(arg[1:-1]).startswith('/'):
-            return identity(arg[1:-1])
-        raise ValueError('undecoded syscall target')
+            name += ' (deleted)' if match[2] else ''
+        elif arg.startswith('"') and arg.endswith('"'):
+            name=arg[1:-1]  # relative cwd is unknown: fixed other class, not guessed.
+        else: raise ValueError('undecoded syscall target')
+        # The private key is only for distinct EFBIG targets. It is never encoded.
+        return identity(name),path_text(name)
 
     for line in trace.splitlines():
         match = re.fullmatch(r'(?:\[pid\s+)?(\d+)(?:\])?\s+(.*)', line)
@@ -148,7 +153,7 @@ def diagnostics(trace, root, executable=None):
         output = {'copy_file_range': 2, 'sendfile': 0, 'splice': 2}.get(name, 0)
         if output >= len(args): raise ValueError('syscall argument absent')
         if result == '-1' and re.search(r'\bEBADF\b',tail): continue
-        row = target(args[output])
+        row, private_key = target(args[output])
         if row is None:
             if 'EFBIG' in tail: raise ValueError('EFBIG target unavailable')
             continue
@@ -171,8 +176,8 @@ def diagnostics(trace, root, executable=None):
             row['observed_write_bytes'] += count
             if row['observed_write_bytes'] > MAX_INT: raise ValueError('byte sum cap exceeded')
         if count == -1 and re.search(r'\bEFBIG\b', tail):
-            failed[pid] = dict(area=row['area'], path_sha256=row['path_sha256'], relative_path=row['relative_path'], kind=row['kind'],
-                               operation=name, requested_extent_bytes=extent)
+            failed[pid] = (private_key,dict(area=row['area'],relative_path=row['relative_path'],kind=row['kind'],
+                               operation=name,requested_extent_bytes=extent))
         else: failed.pop(pid, None)
     if pending: raise ValueError('unfinished trace refused')
 
@@ -181,25 +186,34 @@ def diagnostics(trace, root, executable=None):
     if home.is_symlink(): raise ValueError('private HOME symlink refused')
     directories = [home] if home.exists() else []
     visited = 0
+    snapshot_entries = 0
     while directories:
         directory = directories.pop(); visited += 1
-        if visited > MAX_FILES: raise ValueError('directory count cap exceeded')
+        if visited > MAX_DIRECTORIES:
+            snapshot_truncated=True;break
         with os.scandir(directory) as entries:
-            for entry in entries:
+            bounded_entries=sorted(islice(entries,max(0,MAX_SNAPSHOT_ENTRIES-snapshot_entries)+1),key=lambda item:item.name)
+            for entry in bounded_entries:
+                snapshot_entries += 1
+                if snapshot_entries > MAX_SNAPSHOT_ENTRIES:
+                    snapshot_truncated=True;directories.clear();break
                 info = entry.stat(follow_symlinks=False)
                 if stat.S_ISDIR(info.st_mode):
-                    if visited+len(directories)>=MAX_FILES: raise ValueError('directory count cap exceeded')
+                    if visited+len(directories)>=MAX_DIRECTORIES:
+                        snapshot_truncated=True;continue
                     directories.append(Path(entry.path)); continue
                 row = identity(entry.path)
-                row['final_size_bytes'] = info.st_size
+                row['final_size_bytes'] = info.st_size if stat.S_ISREG(info.st_mode) else None
                 row['final_type'] = 'regular' if stat.S_ISREG(info.st_mode) else 'symlink' if stat.S_ISLNK(info.st_mode) else 'other'
+                row['exceeds_previous_limit']=max(row['final_size_bytes'] or 0,row['largest_requested_extent_bytes'] or 0)>8*1024**2
+                if row['final_type']=='regular' and (largest is None or (info.st_size,row['relative_path'] or '')>(largest['final_size_bytes'],largest['relative_path'] or '')):
+                    largest=dict(row)
     for row in rows.values():
         row['exceeds_previous_limit']=max(row['final_size_bytes'] or 0,row['largest_requested_extent_bytes'] or 0)>8*1024**2
-    eligible=[r for r in rows.values() if r['area'] in ('home','tmp') and r['final_type']=='regular']
-    largest=max(eligible,key=lambda r:(r['final_size_bytes'],r['path_sha256'])) if eligible else None
-    unique = {(r['area'], r['path_sha256']): r for r in correlated}
-    return dict(files=sorted(rows.values(), key=lambda r:(r['area'],r['path_sha256'])),
-                largest_private_file=largest, files_over_previous_limit=sum(r['exceeds_previous_limit'] for r in rows.values()),
-                sigxfsz_observed=sigxfsz, limit_file=next(iter(unique.values())) if len(unique)==1 else None,
+    unique = dict(correlated)
+    return dict(files=sorted(rows.values(),key=lambda r:(r['area'],r['relative_path'] or '',r['kind'],r['final_type'],r['final_size_bytes'] or 0,r['observed_write_bytes'])),
+                largest_private_file=largest,files_over_previous_limit=sum(r['exceeds_previous_limit'] for r in rows.values()),
+                files_truncated=omitted_events>0,omitted_file_events=omitted_events,snapshot_truncated=snapshot_truncated,
+                sigxfsz_observed=sigxfsz,limit_file=next(iter(unique.values())) if len(unique)==1 else None,
                 correlated_limit_files=len(unique), vendor_exec_observed=native_pid is not None,
                 native_returncode=native_returncode)

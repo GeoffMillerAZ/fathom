@@ -119,6 +119,22 @@ def receipt_base():
                 trace_limit_bytes=MAX_TRACE, receipt_limit_bytes=128*1024)
 
 
+def attach_diagnostics(receipt, trace, scratch, trace_tool):
+    """Outer-only evidence; refusal never erases a worker-validated result."""
+    receipt.update(trace_tool=trace_tool,trace_within_cap=len(trace.encode('utf-8','surrogateescape'))<=MAX_TRACE)
+    try:
+        written=diagnostics(trace,scratch)
+        if receipt.get('native_executed') is True:
+            if not written['vendor_exec_observed'] or written['native_returncode'] is None:
+                raise ValueError('trace did not attest vendor exec and exit')
+            receipt['trace_writer_hidden_from_vendor']=True
+            receipt['native_returncode']=written['native_returncode']
+        receipt.update(write_diagnostics=written,diagnostic_status='partial' if written['files_truncated'] or written['snapshot_truncated'] else 'complete')
+    except Exception as error:
+        receipt.update(write_diagnostics=None,diagnostic_status='refused',diagnostic_failure_class=failure_class(error))
+    return receipt
+
+
 def enable_loopback():
     import fcntl
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -557,17 +573,8 @@ def main():
                 log_error(out, error)
         stage = 'tracing'
         raw_trace = (out / 'native-trace.log').read_bytes()
-        written = diagnostics(raw_trace.decode('utf-8', 'surrogateescape'), scratch)
-        receipt.update(write_diagnostics=written, trace_sha256=digest(raw_trace), trace_bytes=len(raw_trace), trace_tool=trace_tool)
-        if receipt.get('native_executed') is True:
-            if not written['vendor_exec_observed'] or written['native_returncode'] is None:
-                raise ValueError('trace did not attest vendor exec and exit')
-            receipt['trace_writer_hidden_from_vendor'] = True
-            receipt['native_returncode'] = written['native_returncode']
+        attach_diagnostics(receipt,raw_trace.decode('utf-8','surrogateescape'),scratch,trace_tool)
     except Exception as error:
-        if stage == 'tracing':
-            receipt = receipt_base()
-            receipt['native_executed'] = None
         receipt.update(status='probe_refused', failure_class=failure_class(error), failed_stage=stage)
         log_error(out, error)
     return publish_receipt(receipt, out, publish, contract)

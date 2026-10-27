@@ -191,7 +191,7 @@ inherits a direct writable launcher-output descriptor. Bounded no-follow regular
 log reads also refuse oversized, replaced, symlink or FIFO logs. Trace capture
 has a separate 8 MiB bound outside writable scratch. The receipt remains at
 its stricter **128 KiB** read **and write** cap, below the 8 MiB output budget.
-Caps refuse whole diagnostics/receipts; they never silently truncate a public result.
+Capture/parser-integrity failures refuse diagnostics explicitly; bounded row/snapshot overflow retains a visibly partial diagnostic and preserves the validated worker result.
 
 `/usr/bin/strace` must already exist on the runner. Its binary hash and numeric
 version are recorded. No apt/global install or untraced fallback occurs. The
@@ -214,31 +214,43 @@ After the complete worker namespace dies, the outer launcher parses the
 protected trace and snapshots HOME/TMP without following symlinks. Current
 closed schema **v3** includes `write_diagnostics`:
 
-- `files`: scratch-relative HOME/TMP paths, hashes, successful write-family
-  return-byte totals, final logical sizes/types and largest requested allocation
-  or explicit-offset write extent. Other paths and memfd labels are hashed;
-  the single known `dotnet_doublemapper` kind is a fixed enum.
-- `largest_private_file`: largest final regular file in HOME/TMP, including
-  its relative path and size; null when none exists. Unlinked/memfd targets
-  remain in the trace-derived rows even though no directory entry survives.
-- `exceeds_previous_limit` and `files_over_previous_limit`: observed final
-  size or requested extent above 8 MiB. These are rerun observations, not proof
-  that a particular file caused the earlier, uninstrumented death.
-- `limit_file`: the exact hashed target (and relative path for HOME/TMP) only
-  when EFBIG is followed by SIGXFSZ on that same thread and there is one distinct
-  correlated target. Signal alone or multiple distinct targets yield null;
-  their presence/count remains explicit. `native_returncode` comes from the
-  vendor exec/exit trace, separately from the tracer's return code.
+- `files`: at most 64 rows with allowlisted scratch-relative HOME/TMP names,
+  successful write-family return-byte totals, final sizes/types and requested
+  allocation or explicit-offset extents. Unsafe names have `relative_path: null`.
+  All other targets, including payload paths and memfd labels, collapse to fixed
+  classes with no per-path identity. `dotnet_doublemapper` is a fixed kind enum.
+  No path is hashed. No raw trace hash or raw trace byte count is published,
+  because both can depend on absolute runner roots; `trace_within_cap` records
+  the bound instead. Only the strace executable's content hash/version is public.
+- `largest_private_file`: largest inspected final regular HOME/TMP file, with its
+  relative name (or null when redacted) and size. It is retained even if the row
+  array is full. A partial snapshot cannot claim the largest file globally.
+- `exceeds_previous_limit` and `files_over_previous_limit`: final size or requested
+  extent above 8 MiB; the count covers retained rows. These are rerun observations,
+  not evidence of which file caused the earlier uninstrumented death.
+- `limit_file`: a same-thread EFBIG followed by SIGXFSZ with one distinct private
+  target. Only an allowlisted HOME/TMP relative name may be published; other names
+  are null and retain only fixed class/operation/extent. Distinctness is checked
+  privately, with no digest or private identity serialized. Multiple targets or a
+  signal alone yield null. The native return code comes from exec/exit evidence.
+- `files_truncated`, `omitted_file_events`, `snapshot_truncated`: explicit partial
+  coverage. Omitted events count row lookups beyond capacity, not distinct files.
+  Snapshot traversal admits 256 directories and 4,096 entries. It does not follow
+  symlinks. It still records the largest inspected file independently of row capacity.
+- `diagnostic_status`: complete, partial or refused. Parser-integrity failures
+  (including unmatched resumed calls, undecoded descriptor kinds or trace overflow)
+  cannot turn an already validated worker initialize/return-code/stderr/LSP result
+  into an empty launcher receipt. Diagnostic refusal has a fixed exception class
+  and `write_diagnostics: null`; it grants no trace-attested execution claim.
 
-T-R13a explicitly permits these bounded relative path names in the sole receipt
-artifact; no file contents or absolute paths are included. Components admit only
-ASCII letters, digits, dot, underscore and hyphen, excluding dot/dot-dot; 128 bytes
-per component and 512 per path. Unsafe names refuse the diagnostic. At most 256
-file records and 256 directories are inspected. Missing descriptor paths,
-unresolved watched syscalls, incomplete trace, cap overflow or a changed receipt
-identity refuse; publication cannot assert native execution without the outer
-exec/exit evidence and matching diagnostics. Allocation extent is not bytes
-written. Mmap stores, overwritten bytes and final logical sizes are not conflated.
+T-R13a permits only bounded relative HOME/TMP names: ASCII letters, digits, dot,
+underscore and hyphen; no dot/dot-dot components; at most 128 bytes per component
+and 512 per path. Other names are redacted per row. Relative truncate targets with
+unknown cwd use an anonymous fixed class rather than a guessed file. A regression
+publishes byte-identical receipts under differently sized scratch and HOME roots.
+The maximum-shaped closed receipt, including 64 maximal rows, largest/limit records
+and all optional worker fields, encodes to 65,528 bytes under the 128 KiB cap. Allocation extent, bytes
+written, mmap stores and final logical size remain distinct quantities.
 
 The runner suite now requires **two** Linux kernel tests with zero skips. The
 new authored control uses the production tracer/namespace/child chain, proves

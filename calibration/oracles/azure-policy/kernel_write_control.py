@@ -65,13 +65,13 @@ raise RuntimeError('file-size limit failed to stop extension')
                 process.wait()
         capture.check();errors.check()
     result=diagnostics((out/'trace.log').read_text(),root,target)
-    expected=hashlib.sha256(b'limit-control').hexdigest()
+    expected='home/tmp/limit-control'
     limit=result['limit_file']
     if (not result['vendor_exec_observed'] or result['native_returncode']!=-25 or
             not result['sigxfsz_observed'] or not limit or limit['area']!='tmp' or
-            limit['path_sha256']!=expected or limit['requested_extent_bytes']!=32768):
+            limit['relative_path']!=expected or limit['requested_extent_bytes']!=32768):
         raise ValueError('exact file-size control trace failed')
-    row=next(row for row in result['files'] if row['path_sha256']==expected)
+    row=next(row for row in result['files'] if row['relative_path']==expected)
     if row['observed_write_bytes']!=5 or row['final_size_bytes']!=5:
         raise ValueError('per-path written-byte control failed')
     return dict(linux_write_control_executed=True,private_scratch_boundary=True,trace_writer_hidden=True,

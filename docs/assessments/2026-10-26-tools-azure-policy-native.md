@@ -188,7 +188,7 @@ the tracer stays outside the vendor's nested PID/proc view and no trace writer
 is inherited. An authored PID1 preserves ordinary vendor signal semantics.
 Private scratch remains the sole writable filesystem area, with capabilities
 dropped. The outer parser publishes only bounded HOME/TMP relative filenames,
-sizes and successful syscall byte counts, hashes for other targets, the largest
+sizes and successful syscall byte counts, anonymous fixed classes for other targets, the largest
 final private file and the exact EFBIG-plus-SIGXFSZ target when identifiable.
 A final size/request above 8 MiB identifies rerun candidates; it does not prove
 the original untraced cause. Mmap stores, successful write bytes, requested
@@ -198,20 +198,42 @@ for source links, caps, privacy and the complete v3 field contract.
 N3-m1 now refuses a stacked namespace root; its authored regression protects
 against hiding real submounts. New controls also cover unfinished/resumed trace
 calls, deleted memfd targets, signal-only ambiguity, relative path allowlists,
-symlink snapshots and oversized/replaced logs. File/directory 256+1, relative
-path 512+1, generic capture cap+1 and receipt read/write cap overflow refuse
-whole units. The new real Linux regression runs the production child chain on
+symlink snapshots and oversized/replaced logs. Row 64+1 and directory 256+1 preserve explicit partial diagnostics; relative
+path 512+1 is redacted. Generic capture cap+1 refuses diagnostics, while receipt
+read/write cap overflow refuses the publication unit. The new real Linux regression runs the production child chain on
 an authored five-byte TMP file, then requires exact EFBIG/SIGXFSZ attribution
 after lowering only that process's limit. Both Linux controls must run with no
 skips on the runner; local ARM skips exactly those two and grants no Linux proof.
-Nine mutants fail then restore GREEN: read-only enforcement, capabilities,
+Twelve mutants fail then restore GREEN: read-only enforcement, capabilities,
 hidden mounts, dot-dot spellings, stacked-root refusal, lost limit attribution,
-lost byte counts, absent nested PID isolation and an 8 MiB vendor bound.
+lost byte counts, absent nested PID isolation, an 8 MiB vendor bound, leaked
+absolute-path identity, incoherent row limits and discarded worker outcomes.
 
-Local T-R13a validation: 81 Python tests, 79 passed and the two designated
-Linux kernel tests skipped off Linux; all nine FAIL-to-GREEN mutants pass.
+Local T-R13a validation after B1/m1/m2: 85 Python tests, 83 passed and the two designated
+Linux kernel tests skipped off Linux; all twelve FAIL-to-GREEN mutants pass.
 The control summary binds 26 source files, and the launcher manifest verifies
 32 checksums. Release-note, staged/unstaged merge-debris and ADR-011 checks pass.
 No Linux vendor rerun occurred locally. Reproduce the suite and mutations with
 `python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out workspace/artifacts/azure-policy-t13-controls`.
 The controller reviews this follow-up before running the instrumented probe.
+
+
+### Receipt review B1, m1 and m2 (2026-10-27)
+
+All per-path hashes are removed, including relative ones. Only allowlisted HOME/TMP
+names relative to scratch are admitted; outside paths and memfd labels are reduced
+to fixed classes. No hash or byte count of the raw trace is public. This avoids a
+second root-dependent identity channel. Two differently sized scratch and external
+HOME roots produce byte-identical full public receipts in an authored regression.
+
+The row cap is 64 and the validator remains 128 KiB. The maximum-shaped closed
+receipt (all optional worker fields, maximum path lengths, counters, rows and
+largest/limit records) encodes to 65,528 bytes against 131,072 in a focused test. Overflow of row or
+snapshot capacity reports partial coverage and omitted events. Unsafe names and
+relative syscall targets are redacted individually. The largest inspected HOME/TMP
+file survives row overflow; a capped snapshot does not assert a global largest.
+Parser-integrity failure explicitly refuses only the diagnostic and preserves the
+validated native outcome, including initialize stage and return code. No inference
+about the earlier SIGXFSZ file is made. The first real receipt and its frozen schema
+remain byte-identical. Linux controls and the vendor rerun remain the controller's
+runner work, not locally measured evidence.

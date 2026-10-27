@@ -151,12 +151,12 @@ class ReviewProbeTest(unittest.TestCase):
             copied=stack.enter_context(patch.object(probe,'copy_payload'))
             if timeout: stack.enter_context(patch.object(probe,'TIMEOUT',0.001))
             if invalid_trace: stack.enter_context(patch.object(probe,'diagnostics',side_effect=ValueError('authored incomplete trace')))
-            else: stack.enter_context(patch.object(probe,'diagnostics',return_value=dict(files=[],largest_private_file=None,files_over_previous_limit=0,sigxfsz_observed=False,limit_file=None,correlated_limit_files=0,vendor_exec_observed=True,native_returncode=0)))
+            else: stack.enter_context(patch.object(probe,'diagnostics',return_value=dict(files=[],largest_private_file=None,files_over_previous_limit=0,sigxfsz_observed=False,limit_file=None,correlated_limit_files=0,vendor_exec_observed=True,native_returncode=0,files_truncated=False,omitted_file_events=0,snapshot_truncated=False)))
             process=MagicMock(pid=12345)
             def finish(*args,**kwargs):
                 if timeout and kwargs.get('timeout'):
                     raise subprocess.TimeoutExpired(['/private/vendor'],180)
-                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15)
+                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15,native_returncode=0,initialize=probe.summary({'error':{'code':-1}}),stderr_bytes=0,stderr_sha256='0'*64,lsp_bytes=0,lsp_sha256='0'*64)
                 if poison:receipt['arbitrary_vendor_field']='/private/person'
                 (out/'worker'/'receipt.json').write_text(json.dumps(receipt))
                 return 2
@@ -272,12 +272,17 @@ class ReviewProbeTest(unittest.TestCase):
             path=Path(d)/'receipt.json';path.write_bytes(b' '*(MAX_RECEIPT+1))
             with self.assertRaisesRegex(ValueError,'cap'):read_receipt(path,probe.CONTRACT)
 
-    def test_invalid_trace_refuses_public_native_claim(self):
+    def test_invalid_diagnostic_preserves_validated_native_outcome(self):
         receipt=self.launched_worker(invalid_trace=True)
-        self.assertEqual('probe_refused',receipt['status'])
-        self.assertEqual('tracing',receipt['failed_stage'])
-        self.assertIsNone(receipt['native_executed'])
-        self.assertNotIn('write_diagnostics',receipt)
+        self.assertEqual('native_probe_failed',receipt['status'])
+        self.assertEqual('initialize',receipt['failed_stage'])
+        self.assertTrue(receipt['native_executed'])
+        self.assertEqual(0,receipt['native_returncode'])
+        self.assertEqual(-1,receipt['initialize']['error_code'])
+        self.assertEqual(0,receipt['stderr_bytes'])
+        self.assertEqual(0,receipt['lsp_bytes'])
+        self.assertEqual('refused',receipt['diagnostic_status'])
+        self.assertIsNone(receipt['write_diagnostics'])
 
     def test_missing_strace_refuses_before_prepare(self):
         with tempfile.TemporaryDirectory() as directory,ExitStack() as stack:
@@ -293,4 +298,4 @@ class ReviewProbeTest(unittest.TestCase):
             prepare=stack.enter_context(patch.object(probe,'prepare'))
             self.assertEqual(2,probe.main());prepare.assert_not_called()
             receipt=json.loads((out/'receipt.json').read_text())
-            self.assertEqual('tracing',receipt['failed_stage']);self.assertIsNone(receipt['native_executed'])
+            self.assertEqual('tracing',receipt['failed_stage']);self.assertFalse(receipt['native_executed'])

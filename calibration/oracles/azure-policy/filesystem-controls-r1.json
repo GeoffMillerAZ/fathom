@@ -1,5 +1,5 @@
 {
-  "tests": 81,
+  "tests": 85,
   "skips": 2,
   "mutations": [
     {
@@ -20,6 +20,18 @@
     },
     {
       "mutant": "parse_mountinfo",
+      "restored_green": true
+    },
+    {
+      "mutant": "write_diagnostics.diagnostics",
+      "restored_green": true
+    },
+    {
+      "mutant": "write_diagnostics.MAX_FILES",
+      "restored_green": true
+    },
+    {
+      "mutant": "probe_linux.attach_diagnostics",
       "restored_green": true
     },
     {
@@ -51,11 +63,11 @@
     },
     {
       "path": "probe_linux.py",
-      "sha256": "85260ac946c4f7d6ca8acecef0be3b58c5be5365af98648cd783bf38699de03e"
+      "sha256": "8a17d60c8c7821a050f108e73207062450a47da25e5a808b4e402b056587220c"
     },
     {
       "path": "receipt_contract.py",
-      "sha256": "195e58c1d3e8cdb3a3a93af8ac612a9b7cd3f207edf82c2783b3869ed9c17451"
+      "sha256": "abbbd391316c4b69447953f37ec57e4e4bb8e445e45ccf79242f0637e502024f"
     },
     {
       "path": "test_filesystem_isolation.py",
@@ -63,7 +75,7 @@
     },
     {
       "path": "test_review_probe.py",
-      "sha256": "49d6fa9299b6ac06d9a18ff87bec0ead999465a33afc63c1148550dc714921e2"
+      "sha256": "ccaace86d32b791cdf400a535ab1834d74c138ce307a97dea808d4e1e75b8815"
     },
     {
       "path": "test_probe_linux.py",
@@ -71,11 +83,11 @@
     },
     {
       "path": "probe_filesystem_controls.py",
-      "sha256": "c12bab6863e9772640eb2b85f363b158e490148f595779f5e12cf34a59ee3e3f"
+      "sha256": "4dee6a4b3063d9870eec9b059a469c2c56a76919c0cf12ef61c6ace746d62973"
     },
     {
       "path": "probe-linux-receipt.schema.json",
-      "sha256": "4a692e5cdfefae83111824e1f5b2a0d1818a7a3c3f81e8c2c4cb99d43c3a3f8c"
+      "sha256": "8e43f198a8342d73300b1084bd17cf90a3d6c7075894389bcab1328463abe2be"
     },
     {
       "path": "probe-linux-x64.workflow.yml",
@@ -87,11 +99,11 @@
     },
     {
       "path": "native-protocol-r2.json",
-      "sha256": "f9ddd11b29106f975d392a5d6d447ac7eb746a7b18c2fb41e64614f99eeb5671"
+      "sha256": "e4cb95beedc975c00417b8fc9aa1858f04ec4e235117f893d8b211b93f609e9b"
     },
     {
       "path": "LINUX-X64-PROBE.md",
-      "sha256": "8ce54ea1dbb88010ac87f6c411f404280c8dbcb8682e45691f7b1715cd53ef09"
+      "sha256": "391ef4daff1e7751ffec0258c9769d6681ea47bcc8fec58c07f8d17d519bc2f4"
     },
     {
       "path": "kernel_filesystem_control.py",
@@ -111,7 +123,7 @@
     },
     {
       "path": "write_diagnostics.py",
-      "sha256": "14144893ecb000db74fef28e1960571e408e1f4455967ac80711586849b6a3b3"
+      "sha256": "d61cd356c5c92bb42deba8eafb4e61e1291931fc891a470f2afe22a478595164"
     },
     {
       "path": "write_tracing.py",
@@ -123,15 +135,15 @@
     },
     {
       "path": "kernel_write_control.py",
-      "sha256": "6b666380b17182bdfff96cef3d92e250e9d5c1d530a7d2baa8d2912df9513e14"
+      "sha256": "ef6c0a40638f6f3adec1f1559459c8e574c05946076b9b87e1516268a46affb8"
     },
     {
       "path": "test_write_diagnostics.py",
-      "sha256": "e3c06a4ab2497e61d3d55f5c7aa4c4197d95463168a55da87a9dd6654d1d59b5"
+      "sha256": "c8675c9237c0db6b10a0e197771649bfa4214ccf146b83fec9a285e2dc373954"
     },
     {
       "path": "test_write_tracing.py",
-      "sha256": "15a4bc7e068cb31d7c13cf58dd865d09b3c0948e7725f3070f939dddbc925db4"
+      "sha256": "9ef1e9cba38c11fae02be6db380db95ac2a544f916bd02d565d932b3aee876a6"
     },
     {
       "path": "test_write_kernel.py",

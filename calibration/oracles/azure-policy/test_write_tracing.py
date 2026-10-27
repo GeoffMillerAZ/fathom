@@ -74,15 +74,15 @@ class WriteTracingTest(unittest.TestCase):
             with self.assertRaises(ValueError):read_private_log(path)
             link=Path(directory)/'link';link.symlink_to(path)
             with self.assertRaises(OSError):read_private_log(link)
-    def test_unsafe_relative_filename_refuses_instead_of_publishing_it(self):
+    def test_unsafe_relative_filename_is_redacted_instead_of_refusing(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'home').mkdir();(root/'home'/'unsafe\nname').write_bytes(b'')
-            with self.assertRaises(ValueError):diagnostics('',root)
-    def test_directory_count_cap_plus_one_refuses(self):
+            self.assertIsNone(diagnostics('',root)['files'][0]['relative_path'])
+    def test_directory_count_cap_plus_one_flags_partial_snapshot(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);home=root/'home';home.mkdir()
             for index in range(257):(home/str(index)).mkdir()
-            with self.assertRaises(ValueError):diagnostics('',root)
+            self.assertTrue(diagnostics('',root)['snapshot_truncated'])
     def test_vendor_has_ordinary_signal_semantics_and_only_raises_child_limit(self):
         from unittest.mock import patch
         import vendor_exec as vendor
@@ -93,13 +93,13 @@ class WriteTracingTest(unittest.TestCase):
             self.assertEqual('/private/payload/PolicyLanguageServer',executed.call_args.args[0])
         with patch.object(vendor,'require_no_privileges'),patch.object(vendor.os,'getpid',return_value=1):
             with self.assertRaises(ValueError):vendor.execute(Path('/private/payload'))
-    def test_relative_path_total_cap_plus_one_refuses(self):
+    def test_relative_path_total_cap_plus_one_redacts(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory).resolve();(root/'home').mkdir()
             relative='home/'+'/'.join(['a'*127]*3+['b'*124])
             self.assertEqual(513,len(relative))
             trace=f'1 write(3<{root/relative}>, ""..., 1) = 1\n'
-            with self.assertRaises(ValueError):diagnostics(trace,root)
+            self.assertIsNone(diagnostics(trace,root)['files'][0]['relative_path'])
     def test_receipt_write_cap_plus_one_refuses_before_creating_file(self):
         import copy
         from probe_linux import receipt_base, CONTRACT
@@ -108,8 +108,35 @@ class WriteTracingTest(unittest.TestCase):
             root=Path(directory).resolve();(root/'home').mkdir();(root/'home'/'a').write_bytes(b'')
             diagnostic=diagnostics('',root);row=diagnostic['files'][0]
             row['relative_path']='home/'+'/'.join(['a'*127]*3+['b'*123])
-            diagnostic['files']=[copy.deepcopy(row) for _ in range(256)]
+            diagnostic['files']=[copy.deepcopy(row) for _ in range(65)]
             value=receipt_base();value.update(status='probe_refused',failed_stage='tracing',write_diagnostics=diagnostic)
             path=root/'receipt.json'
-            with self.assertRaisesRegex(ValueError,'cap'):write_receipt(path,value,CONTRACT)
+            with self.assertRaises(ValueError):write_receipt(path,value,CONTRACT)
             self.assertFalse(path.exists())
+
+    def test_worst_admissible_diagnostic_and_complete_receipt_fit_together(self):
+        from probe_linux import CONTRACT
+        from receipt_contract import write_receipt, MAX_RECEIPT
+        def largest(schema):
+            if '$ref' in schema:
+                target=CONTRACT
+                for part in schema['$ref'][2:].split('/'):target=target[part]
+                return largest(target)
+            if 'const' in schema:return schema['const']
+            if 'enum' in schema:return max(schema['enum'],key=lambda x:len(str(x)))
+            kind=schema['type'];kind=next(x for x in kind if x!='null') if isinstance(kind,list) else kind
+            if kind=='object':return {key:largest(value) for key,value in schema['properties'].items()}
+            if kind=='array':return [largest(schema['items']) for _ in range(schema.get('maxItems',schema.get('minItems',0)))]
+            if kind=='boolean':return True
+            if kind=='integer':return schema.get('maximum',2**63-1)
+            if kind=='string':return 'home/'+'/'.join(['a'*127]*3+['b'*123]) if 'home/' in schema.get('pattern','') else '0'*64
+            raise AssertionError('unhandled closed-schema type')
+        import write_diagnostics as writes
+        self.assertEqual(writes.MAX_FILES,CONTRACT['$defs']['write_diagnostics']['properties']['files']['maxItems'])
+        value=largest(CONTRACT)
+        value.update(status='native_probe_failed',native_executed=True,failed_stage='initialize',diagnostic_status='partial',trace_writer_hidden_from_vendor=True)
+        value['write_diagnostics']['native_returncode']=value['native_returncode']
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/'receipt.json'
+            write_receipt(output,value,CONTRACT,public=True)
+            self.assertLessEqual(output.stat().st_size,MAX_RECEIPT)

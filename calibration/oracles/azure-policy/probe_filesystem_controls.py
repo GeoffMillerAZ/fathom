@@ -10,6 +10,7 @@ from unittest.mock import patch
 import filesystem_isolation as filesystem
 import write_diagnostics as writes
 import vendor_exec as vendor
+import probe_linux as probe
 
 HERE=Path(__file__).parent
 
@@ -48,10 +49,22 @@ def run(out):
         value=original(*args,**kwargs)
         for row in value['files']:row['observed_write_bytes']=0
         return value
+    def absolute_path_hash(*args,**kwargs):
+        value=original(*args,**kwargs)
+        for row in value['files']:row['path_sha256']=hashlib.sha256(b'/dev/null').hexdigest()
+        return value
+    attach=probe.attach_diagnostics
+    def discard_worker(receipt,*args,**kwargs):
+        value=attach(receipt,*args,**kwargs)
+        if value.get('diagnostic_status')=='refused':value['native_executed']=None
+        return value
     namespace=vendor.namespace_command
     for module,function,mutant,test in [
-        (writes,'diagnostics',no_limit,'test_write_diagnostics.WriteDiagnosticsTest.test_private_path_bytes_and_exact_limit_file_are_hashed'),
-        (writes,'diagnostics',no_bytes,'test_write_diagnostics.WriteDiagnosticsTest.test_private_path_bytes_and_exact_limit_file_are_hashed'),
+        (writes,'diagnostics',absolute_path_hash,'test_write_diagnostics.WriteDiagnosticsTest.test_outside_scratch_rows_have_no_path_identity'),
+        (writes,'MAX_FILES',256,'test_write_tracing.WriteTracingTest.test_worst_admissible_diagnostic_and_complete_receipt_fit_together'),
+        (probe,'attach_diagnostics',discard_worker,'test_review_probe.ReviewProbeTest.test_invalid_diagnostic_preserves_validated_native_outcome'),
+        (writes,'diagnostics',no_limit,'test_write_diagnostics.WriteDiagnosticsTest.test_private_path_bytes_and_exact_limit_file_are_relative'),
+        (writes,'diagnostics',no_bytes,'test_write_diagnostics.WriteDiagnosticsTest.test_private_path_bytes_and_exact_limit_file_are_relative'),
         (vendor,'namespace_command',lambda *a,**k:[x for x in namespace(*a,**k) if x!='--pid'],'test_write_tracing.WriteTracingTest.test_trace_writer_is_outside_private_pid_and_proc_view'),
         (vendor,'VENDOR_LIMIT',8*1024**2,'test_write_tracing.WriteTracingTest.test_vendor_has_ordinary_signal_semantics_and_only_raises_child_limit')]:
         with patch.object(module,function,mutant):
