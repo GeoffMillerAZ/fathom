@@ -124,10 +124,16 @@ remains **2/53**, zero faults and unchanged source, but is a **reused diagnostic
 tuning**, not independent validation, and cannot rescue a failing primary pool.
 
 The [bounded convention search](../../calibration/oracles/opencl-c/template-convention-search.json)
-inspected five projects including clBLAS and found no second independent match for
-its exact host-string convention. Four unauthenticated GitHub code-search requests
-returned 401; that is no absence proof. The intermediate numeric trigger permits
-asking the prepass question but authorizes no runtime prepass.
+now includes authenticated replacements for the four initial HTTP 401 requests:
+all four scoped queries returned HTTP 200 and zero hits. Three global exact-token
+queries returned 32, 92 and 92 hits across the same four numeric repository IDs.
+Every query fits one complete 100-item page with `incomplete_results=false`.
+The matches are clBLAS and three derived template trees, not a second independent
+implementation. Each tree has the same 25 indexed template paths; 25/25/25/22
+blobs respectively match pinned clBLAS, with three modified blobs in one copy.
+Non-subject account names, slugs, URLs and file lists remain private under X-R9.
+This closes the avoidable authentication gap, not the service's indexed-search
+limits. The intermediate numeric trigger still authorizes no runtime prepass.
 
 Retry native admission only when a new licensed grammar or an independently validated
 product-context solution clears the **whole unchanged fixed pool at no more than 5%

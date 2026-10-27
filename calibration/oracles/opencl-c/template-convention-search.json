@@ -1,12 +1,13 @@
 {
-  "schema": "opencl-c-template-convention-search-v1",
-  "date": "2026-10-26",
+  "schema": "opencl-c-template-convention-search-v2",
+  "date": "2026-10-27",
   "question": "After the general grammar repair reduced non-clBLAS errors to 13/386, does a clBLAS template prepass meet G-R6's separate two-independent-project convention guard?",
   "convention_tested": "A .cl file that is a C host string declaration (static const char *name = followed by an unescaped multiline quote), containing OpenCL kernel text and percent substitution tokens such as %TYPE, %PREFIX and %PTYPE; a host generator consumes that template. A different mechanism for embedding or generating kernels does not count as the same convention.",
   "result": "BOUNDED_MISS",
   "independent_matching_projects_found": 0,
-  "interpretation": "The sampled files in four candidate projects did not show the clBLAS convention. GitHub's unauthenticated code-search API denied all four exact-token queries, so this is not a repository-wide absence proof. clFFT and clSPARSE share clBLAS's organization and are not counted as independent merely because their repositories differ. The prepass remains unimplemented; the grammar result alone does not satisfy the two-project guard or prove runtime product behavior.",
-  "request_method": "Public HTTPS GET unless stated otherwise. sha256 values are of response bytes, with no JSON reserialization. Raw-file paths are complete URLs at immutable commits. No source text or attribution records are copied into this receipt.",
+  "interpretation": "Authenticated repository-wide code searches found only the admitted clBLAS source and three clBLAS-derived template trees. Four scoped candidates returned zero exact-token hits. The three global exact-token queries returned 32, 92 and 92 file hits across the same four numeric repository IDs. Twenty-five template paths per repository match the pinned clBLAS tree; exact blob matches are 25, 25, 25 and 22, with three modified blobs in the last tree. Copies of the same library are not a second independent convention implementation. This is bounded indexed-query evidence, not proof that no unindexed or differently expressed convention exists. G-R6 still authorizes no prepass; runtime product behavior and a second independent project remain unmet.",
+  "request_method": "Authenticated public HTTPS GET with existing GitHub credentials held in memory, Accept application/vnd.github+json and API version 2022-11-28. Raw responses were saved privately with exclusive file creation. Searches used per_page=100, page=1; every total_count was <=100, item_count matched, incomplete_results=false and all results were public. Code requests were spaced by at least 6.3 seconds. sha256 values hash exact response bytes, with no reserialization.",
+  "publication_policy": "X-R9: non-subject repository identities are numeric IDs only. Account names, slugs, scoped query URLs and source paths remain private. The admitted clBLAS subject retains its public pin.",
   "reference": {
     "repository": "https://github.com/clMathLibraries/clBLAS",
     "version": "pinned pool commit",
@@ -35,143 +36,253 @@
       }
     ]
   },
-  "candidates": [
+  "scoped_candidates": [
     {
-      "repository": "https://github.com/clMathLibraries/clFFT",
-      "version": "HEAD snapshot 2026-10-26",
-      "commit": "c59712e136fa6207956af22f5c0e4cee7d05340e",
-      "license": "Apache-2.0",
-      "license_url": "https://raw.githubusercontent.com/clMathLibraries/clFFT/c59712e136fa6207956af22f5c0e4cee7d05340e/LICENSE",
-      "license_http_status": 200,
-      "license_response_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-      "tree_url": "https://api.github.com/repos/clMathLibraries/clFFT/git/trees/c59712e136fa6207956af22f5c0e4cee7d05340e?recursive=1",
-      "tree_http_status": 200,
-      "tree_response_sha256": "218d256e9260b668853a3680229d4d77259229be8b160cf6faf16ac5be384693",
-      "tree_entries": 178,
-      "sample": [
-        {
-          "url": "https://raw.githubusercontent.com/clMathLibraries/clFFT/c59712e136fa6207956af22f5c0e4cee7d05340e/src/library/generator.copy.cpp",
-          "http_status": 200,
-          "bytes": 18397,
-          "response_sha256": "253d404a5b9a1236abe8874fac34bdf804f4d174e0392cb3613e39e6c3477ce5"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/clMathLibraries/clFFT/c59712e136fa6207956af22f5c0e4cee7d05340e/src/library/generator.stockham.cpp",
-          "http_status": 200,
-          "bytes": 154630,
-          "response_sha256": "fe08d2f6a3b6becbcf27d21c2f9f06d031ff221c20aa3aa94a3752f6434090a4"
-        }
-      ],
-      "finding": "The pinned tree has no .cl path. Both sampled generators lack the three percent tokens and the clBLAS host-string opening. Same organization as clBLAS."
+      "repository_id": 12084795,
+      "sampled_files_in_historical_check": 2,
+      "exact_token_hits": 0,
+      "metadata_response_sha256": "130f072417a6acba2555d58fc68636d52fe7f538617237face63a306b6d481e0",
+      "metadata_response_bytes": 6638,
+      "historical_sample_result": "No exact clBLAS percent-token host-string convention in the bounded two-file sample. Initial source records remain private."
     },
     {
-      "repository": "https://github.com/clMathLibraries/clSPARSE",
-      "version": "HEAD snapshot 2026-10-26",
-      "commit": "62c93e6f0e05b84caefb1709c6118e0879b9f083",
-      "license": "Apache-2.0",
-      "license_url": "https://raw.githubusercontent.com/clMathLibraries/clSPARSE/62c93e6f0e05b84caefb1709c6118e0879b9f083/LICENSE",
-      "license_http_status": 200,
-      "license_response_sha256": "6cf63d87586c7c25c3ab8e62eef5c75bbaa982b0a6f9c00c59e2720255aac9ec",
-      "tree_url": "https://api.github.com/repos/clMathLibraries/clSPARSE/git/trees/62c93e6f0e05b84caefb1709c6118e0879b9f083?recursive=1",
-      "tree_http_status": 200,
-      "tree_response_sha256": "6bd226070fb36e76fbf9fb9c2df070ebb347a324ffb8607b4d8b86da9ca7aca8",
-      "tree_entries": 274,
-      "sample": [
-        {
-          "url": "https://raw.githubusercontent.com/clMathLibraries/clSPARSE/62c93e6f0e05b84caefb1709c6118e0879b9f083/src/library/kernels/blas1.cl",
-          "http_status": 200,
-          "bytes": 3470,
-          "response_sha256": "dcc77654fa28bd8f054acf43b080a15a339eaba943fe64f284f3ea6bae68b66d"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/clMathLibraries/clSPARSE/62c93e6f0e05b84caefb1709c6118e0879b9f083/src/library/internal/kernel-wrap.cpp",
-          "http_status": 200,
-          "bytes": 2117,
-          "response_sha256": "4813a0ff95b24cb11c09738f32962e11ed9be67aea4e6de5e9e2c68b78a24ea2"
-        }
-      ],
-      "finding": "Sample .cl begins with a C++ raw-string delimiter and lacks the three percent tokens; sampled wrapper also lacks them. Different host-string convention; same organization as clBLAS."
+      "repository_id": 30902100,
+      "sampled_files_in_historical_check": 2,
+      "exact_token_hits": 0,
+      "metadata_response_sha256": "c15e1ec199c79fa49a4b19070ac3155bcc758ea508eb3065686a67052a14523f",
+      "metadata_response_bytes": 6772,
+      "historical_sample_result": "No exact clBLAS percent-token host-string convention in the bounded two-file sample. Initial source records remain private."
     },
     {
-      "repository": "https://github.com/CNugteren/CLBlast",
-      "version": "HEAD snapshot 2026-10-26",
-      "commit": "9a28b432b96a8b9c55a05f0e063f56b9c11b6f24",
-      "license": "Apache-2.0",
-      "license_url": "https://raw.githubusercontent.com/CNugteren/CLBlast/9a28b432b96a8b9c55a05f0e063f56b9c11b6f24/LICENSE",
-      "license_http_status": 200,
-      "license_response_sha256": "bb02db55a590857521cf69f36a74ad89d37158b4af47461f368488093f761cc4",
-      "tree_url": "https://api.github.com/repos/CNugteren/CLBlast/git/trees/9a28b432b96a8b9c55a05f0e063f56b9c11b6f24?recursive=1",
-      "tree_http_status": 200,
-      "tree_response_sha256": "2767b8a3886f5ac4de0b491e319dda020a8405994caef171e8b5bb4678e1b7fa",
-      "tree_entries": 655,
-      "sample": [
-        {
-          "url": "https://raw.githubusercontent.com/CNugteren/CLBlast/9a28b432b96a8b9c55a05f0e063f56b9c11b6f24/src/kernels/level3/xgemm_part1.opencl",
-          "http_status": 200,
-          "bytes": 14173,
-          "response_sha256": "c30c9e180536a91147158873651b136bd0456dcb24b52f5e9fe0c6305bc6a7cf"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/CNugteren/CLBlast/9a28b432b96a8b9c55a05f0e063f56b9c11b6f24/src/database/kernels/gemm_routine/gemm_routine.cpp",
-          "http_status": 200,
-          "bytes": 852,
-          "response_sha256": "951058488d3af8f32f27a117fdc758492d2b9b3b9a12121356ee219c9ba9acf9"
-        }
-      ],
-      "finding": "Sample kernel is .opencl source, not a static const char host string. Neither sample has the three percent tokens. Independent repository, but no matching convention in this bounded sample."
+      "repository_id": 36550739,
+      "sampled_files_in_historical_check": 2,
+      "exact_token_hits": 0,
+      "metadata_response_sha256": "60f9c8ddd6aca17169a5d3e4575f56e34f0708bc747cd0164c2fc660cc9a474d",
+      "metadata_response_bytes": 5344,
+      "historical_sample_result": "No exact clBLAS percent-token host-string convention in the bounded two-file sample. Initial source records remain private."
     },
     {
-      "repository": "https://github.com/viennacl/viennacl-dev",
-      "version": "HEAD snapshot 2026-10-26",
-      "commit": "dc552a8d4bba2bb028a346dc611deea0c67e3eed",
-      "license": "MIT",
-      "license_url": "https://raw.githubusercontent.com/viennacl/viennacl-dev/dc552a8d4bba2bb028a346dc611deea0c67e3eed/LICENSE",
-      "license_http_status": 200,
-      "license_response_sha256": "66564a67e68bcc3b8d454e2f4e50ccea0701934bc35d32813eab785bda99380c",
-      "tree_url": "https://api.github.com/repos/viennacl/viennacl-dev/git/trees/dc552a8d4bba2bb028a346dc611deea0c67e3eed?recursive=1",
-      "tree_http_status": 200,
-      "tree_response_sha256": "4772b177e6acad00be8bc09ab89057187eee2eeacb25ccd6e07b0fc0a478d117",
-      "tree_entries": 609,
-      "sample": [
-        {
-          "url": "https://raw.githubusercontent.com/viennacl/viennacl-dev/dc552a8d4bba2bb028a346dc611deea0c67e3eed/viennacl/linalg/opencl/kernels/fft.hpp",
-          "http_status": 200,
-          "bytes": 14596,
-          "response_sha256": "c2c9a905e04a2035482e78b05d9e23842c5babf28b5c5ed2ebb2ff6326fdee83"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/viennacl/viennacl-dev/dc552a8d4bba2bb028a346dc611deea0c67e3eed/viennacl/device_specific/templates/matrix_product_template.hpp",
-          "http_status": 200,
-          "bytes": 39160,
-          "response_sha256": "b140ceb1d8b9b954c6012450cc7b739e4719b82ef5baf2c96a805e402b5d04f4"
-        }
-      ],
-      "finding": "Sample OpenCL kernel header and matrix-product template header lack the three percent tokens and the clBLAS host-string opening. Independent repository, but no matching convention in this bounded sample."
+      "repository_id": 8359162,
+      "sampled_files_in_historical_check": 2,
+      "exact_token_hits": 0,
+      "metadata_response_sha256": "039d952c7391deb4bb6ae761e9048785cb9ac3e38836f733b1cae47d1aed485e",
+      "metadata_response_bytes": 5441,
+      "historical_sample_result": "No exact clBLAS percent-token host-string convention in the bounded two-file sample. Initial source records remain private."
     }
   ],
-  "exact_code_searches": [
+  "authenticated_code_searches": [
     {
-      "query": "repo:clMathLibraries/clFFT \"%PTYPE\"",
-      "url": "https://api.github.com/search/code?q=repo%3AclMathLibraries%2FclFFT%20%22%25PTYPE%22&per_page=10"
+      "requested_at_utc": "2026-10-27T08:13:41.150675+00:00",
+      "http_status": 200,
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "bytes": 55,
+      "total_count": 0,
+      "incomplete_results": false,
+      "item_count": 0,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [],
+      "query_kind": "scoped",
+      "repository_id": 12084795,
+      "query_template": "repo:{full_name_from_repository_id} \"%PTYPE\"",
+      "query_assembly": "GET /repositories/{repository_id}, substitute its full_name verbatim. Exact query and response stay private under X-R9."
     },
     {
-      "query": "repo:clMathLibraries/clSPARSE \"%PTYPE\"",
-      "url": "https://api.github.com/search/code?q=repo%3AclMathLibraries%2FclSPARSE%20%22%25PTYPE%22&per_page=10"
+      "requested_at_utc": "2026-10-27T08:13:47.459543+00:00",
+      "http_status": 200,
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "bytes": 55,
+      "total_count": 0,
+      "incomplete_results": false,
+      "item_count": 0,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [],
+      "query_kind": "scoped",
+      "repository_id": 30902100,
+      "query_template": "repo:{full_name_from_repository_id} \"%PTYPE\"",
+      "query_assembly": "GET /repositories/{repository_id}, substitute its full_name verbatim. Exact query and response stay private under X-R9."
     },
     {
-      "query": "repo:CNugteren/CLBlast \"%PTYPE\"",
-      "url": "https://api.github.com/search/code?q=repo%3ACNugteren%2FCLBlast%20%22%25PTYPE%22&per_page=10"
+      "requested_at_utc": "2026-10-27T08:13:53.768934+00:00",
+      "http_status": 200,
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "bytes": 55,
+      "total_count": 0,
+      "incomplete_results": false,
+      "item_count": 0,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [],
+      "query_kind": "scoped",
+      "repository_id": 36550739,
+      "query_template": "repo:{full_name_from_repository_id} \"%PTYPE\"",
+      "query_assembly": "GET /repositories/{repository_id}, substitute its full_name verbatim. Exact query and response stay private under X-R9."
     },
     {
-      "query": "repo:viennacl/viennacl-dev \"%PTYPE\"",
-      "url": "https://api.github.com/search/code?q=repo%3Aviennacl%2Fviennacl-dev%20%22%25PTYPE%22&per_page=10"
+      "requested_at_utc": "2026-10-27T08:14:00.072979+00:00",
+      "http_status": 200,
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "bytes": 55,
+      "total_count": 0,
+      "incomplete_results": false,
+      "item_count": 0,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [],
+      "query_kind": "scoped",
+      "repository_id": 8359162,
+      "query_template": "repo:{full_name_from_repository_id} \"%PTYPE\"",
+      "query_assembly": "GET /repositories/{repository_id}, substitute its full_name verbatim. Exact query and response stay private under X-R9."
+    },
+    {
+      "requested_at_utc": "2026-10-27T08:14:06.383160+00:00",
+      "http_status": 200,
+      "sha256": "a248d7d7f37f42c77306592d655a402f6b94c20de720eaba139403f017fcd844",
+      "bytes": 156087,
+      "total_count": 32,
+      "incomplete_results": false,
+      "item_count": 32,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [
+        12084767,
+        74742768,
+        589504474,
+        787376603
+      ],
+      "query_kind": "global",
+      "query": "\"%PTYPE\" extension:cl",
+      "url": "https://api.github.com/search/code?q=%22%25PTYPE%22+extension%3Acl&per_page=100&page=1"
+    },
+    {
+      "requested_at_utc": "2026-10-27T08:14:12.687423+00:00",
+      "http_status": 200,
+      "sha256": "e8e64d5a51c8d00b414241c8febc775e40d0923c1257507e5348b1a2948a224f",
+      "bytes": 448811,
+      "total_count": 92,
+      "incomplete_results": false,
+      "item_count": 92,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [
+        12084767,
+        74742768,
+        589504474,
+        787376603
+      ],
+      "query_kind": "global",
+      "query": "\"%TYPE\" \"%PREFIX\" extension:cl",
+      "url": "https://api.github.com/search/code?q=%22%25TYPE%22+%22%25PREFIX%22+extension%3Acl&per_page=100&page=1"
+    },
+    {
+      "requested_at_utc": "2026-10-27T08:14:18.995424+00:00",
+      "http_status": 200,
+      "sha256": "7f81f90d76e764449f4173538216f87626b777d1c7970070cc82a140fe8903f0",
+      "bytes": 448843,
+      "total_count": 92,
+      "incomplete_results": false,
+      "item_count": 92,
+      "page": 1,
+      "per_page": 100,
+      "repository_ids": [
+        12084767,
+        74742768,
+        589504474,
+        787376603
+      ],
+      "query_kind": "global",
+      "query": "\"static const char\" \"%TYPE\" extension:cl",
+      "url": "https://api.github.com/search/code?q=%22static+const+char%22+%22%25TYPE%22+extension%3Acl&per_page=100&page=1"
     }
   ],
-  "exact_code_search_result": {
+  "matching_repository_classification": [
+    {
+      "repository_id": 12084767,
+      "classification": "admitted reference",
+      "hit_counts_by_global_query": [
+        8,
+        23,
+        23
+      ],
+      "distinct_template_files": 25,
+      "same_relative_paths_as_pinned_clblas": 25,
+      "exact_git_blob_matches_to_pinned_clblas": 25,
+      "modified_git_blobs_at_shared_paths": 0,
+      "lineage_basis": "All indexed paths map to the same clBLAS template directory. Exact file/blob identities establish copied library lineage; three modified blobs in one tree do not establish an independent template convention."
+    },
+    {
+      "repository_id": 787376603,
+      "classification": "clBLAS-derived template tree; not an independent convention implementation",
+      "hit_counts_by_global_query": [
+        8,
+        23,
+        23
+      ],
+      "distinct_template_files": 25,
+      "same_relative_paths_as_pinned_clblas": 25,
+      "exact_git_blob_matches_to_pinned_clblas": 25,
+      "modified_git_blobs_at_shared_paths": 0,
+      "lineage_basis": "All indexed paths map to the same clBLAS template directory. Exact file/blob identities establish copied library lineage; three modified blobs in one tree do not establish an independent template convention."
+    },
+    {
+      "repository_id": 589504474,
+      "classification": "clBLAS-derived template tree; not an independent convention implementation",
+      "hit_counts_by_global_query": [
+        8,
+        23,
+        23
+      ],
+      "distinct_template_files": 25,
+      "same_relative_paths_as_pinned_clblas": 25,
+      "exact_git_blob_matches_to_pinned_clblas": 25,
+      "modified_git_blobs_at_shared_paths": 0,
+      "lineage_basis": "All indexed paths map to the same clBLAS template directory. Exact file/blob identities establish copied library lineage; three modified blobs in one tree do not establish an independent template convention."
+    },
+    {
+      "repository_id": 74742768,
+      "classification": "clBLAS-derived template tree; not an independent convention implementation",
+      "hit_counts_by_global_query": [
+        8,
+        23,
+        23
+      ],
+      "distinct_template_files": 25,
+      "same_relative_paths_as_pinned_clblas": 25,
+      "exact_git_blob_matches_to_pinned_clblas": 22,
+      "modified_git_blobs_at_shared_paths": 3,
+      "lineage_basis": "All indexed paths map to the same clBLAS template directory. Exact file/blob identities establish copied library lineage; three modified blobs in one tree do not establish an independent template convention."
+    }
+  ],
+  "historical_unauthenticated_attempts": {
+    "date": "2026-10-26",
+    "request_count": 4,
     "http_status_each": 401,
     "response_bytes_each": 120,
     "response_sha256_each": "b7dbd173f33b19650f61b1c528737e2037cf768d90076fdfce5d32541765e29e",
-    "meaning": "Authentication required; no search-result set was obtained and no absence inference is drawn."
+    "meaning": "Authentication required; no search-result set was obtained and no absence inference is drawn.",
+    "status": "Superseded access-gap evidence; all four queries were rerun authenticated with HTTP 200 and zero hits."
   },
-  "owner_question": "G-R6's numeric reopening condition is met at 13 non-clBLAS errors, but this bounded search found no second independent project with the exact clBLAS host-string template convention. Should the route remain closed pending a named second project and runtime prepass design, or is there a concrete independent source to assess?"
+  "scope_limits": "GitHub indexed exact-token searches can miss unindexed code, alternate token spellings and defaults excluded by the service. Do not present this as global absence proof or as a semantic support ceiling. No grammar, pool, reading, level or runtime preprocessing changed.",
+  "g_r6_status": "Numeric condition remains fired: 13 non-clBLAS error files is <=19. Whole pool remains refused at 53/386. No second independent convention was found, so no prepass is requested or implemented.",
+  "supplementary_classification_requests": [
+    {
+      "repository_id": 74742768,
+      "purpose": "Exploratory repository metadata; not used to establish clBLAS lineage.",
+      "http_status": 200,
+      "response_sha256": "7c1b9ef8535d31fa1f0dbb221a88e601e6d4d1ee98a6bdae80321c499da6fbe8",
+      "response_bytes": 5427
+    },
+    {
+      "repository_id": 74742768,
+      "purpose": "Exploratory root README; did not identify clBLAS and is not used as lineage evidence.",
+      "http_status": 200,
+      "response_sha256": "859ab2e900efb59fa3267b137d86d173e66d026afafaf6697d0939203f7b5f66",
+      "response_bytes": 1162
+    }
+  ],
+  "collection_window_utc": {
+    "first_code_search": "2026-10-27T08:13:41.150675+00:00",
+    "last_code_search": "2026-10-27T08:14:18.995424+00:00"
+  }
 }
