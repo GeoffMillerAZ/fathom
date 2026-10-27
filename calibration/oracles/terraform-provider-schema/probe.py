@@ -346,6 +346,26 @@ def validate(tool, cwd, env, scratch, label):
     return summarize_validation(data, rc, digest(out))
 
 
+def canonical_validation_sha256(raw_or_data):
+    """Hash validate JSON independently of diagnostic emission order.
+
+    Accepts historical capture bytes as well as parsed JSON. The full diagnostic
+    object is the final tie-break, so a changed detail cannot hide behind the
+    same severity, range, and summary.
+    """
+    data = json.loads(raw_or_data) if isinstance(raw_or_data, (bytes, str)) else raw_or_data
+    if not isinstance(data, dict) or not isinstance(data.get("diagnostics", []), list):
+        raise ProbeError("validate_json")
+    diagnostics = data.get("diagnostics", [])
+    if any(not isinstance(diag, dict) for diag in diagnostics):
+        raise ProbeError("validate_json")
+    normalized = dict(data)
+    normalized["diagnostics"] = sorted(diagnostics, key=lambda diag: (
+        str(diag.get("severity", "")), json_bytes(diag.get("range")),
+        str(diag.get("summary", "")), json_bytes(diag)))
+    return hashlib.sha256(json_bytes(normalized)).hexdigest()
+
+
 def summarize_validation(data, rc, raw_sha256):
     diagnostics = data.get("diagnostics", [])
     def attributed(diag):
@@ -366,7 +386,8 @@ def summarize_validation(data, rc, raw_sha256):
             "unattributed_error_count": error_diagnostics - attributed_errors,
             "diagnostic_severities": {v: sum(d.get("severity") == v for d in diagnostics)
                                       for v in ("error", "warning")},
-            "raw_sha256": raw_sha256}
+            "raw_sha256": raw_sha256,
+            "canonical_sha256": canonical_validation_sha256(data)}
 
 
 def mutation_is_attributed(result):

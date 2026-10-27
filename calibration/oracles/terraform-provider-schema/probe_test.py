@@ -141,6 +141,24 @@ class ProbeTests(unittest.TestCase):
         diagnostic["range"]["filename"] = "other.tf"
         self.assertFalse(probe.mutation_is_attributed(probe.summarize_validation(data, 1, "a" * 64)))
 
+    def test_validate_canonical_hash_ignores_order_but_not_content(self):
+        error = {"severity": "error", "summary": "Unsupported attribute", "detail": "first",
+                 "range": {"filename": "main.tf", "start": {"line": 12, "column": 4}}}
+        warning = {"severity": "warning", "summary": "Deprecated", "detail": "second",
+                   "range": {"filename": "main.tf", "start": {"line": 2, "column": 1}}}
+        data = {"valid": False, "error_count": 1, "warning_count": 1,
+                "diagnostics": [warning, error]}
+        reordered = {**data, "diagnostics": [error, warning]}
+        left = probe.summarize_validation(data, 1, "a" * 64)
+        right = probe.summarize_validation(reordered, 1, "b" * 64)
+        self.assertEqual(left["canonical_sha256"], right["canonical_sha256"])
+        self.assertNotEqual(left["raw_sha256"], right["raw_sha256"])
+        self.assertEqual(left["canonical_sha256"],
+                         probe.canonical_validation_sha256(json.dumps(reordered).encode()))
+        changed = {**data, "diagnostics": [{**warning, "detail": "changed"}, error]}
+        self.assertNotEqual(left["canonical_sha256"],
+                            probe.canonical_validation_sha256(changed))
+
     def test_runner_timeout_and_output_cap_kill_process_group(self):
         root = Path(self.temp.name)
         with mock.patch.object(probe, "wait_for_load", return_value=1.0), \

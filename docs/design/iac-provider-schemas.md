@@ -36,9 +36,7 @@ reading claim, even if the implementation proves native typed bindings.
   Existing store-v0 fields and edge kinds keep their meanings. This proposal adds
   no public tool, command, configuration key or compatibility change by itself.
 - Crossplane's explicit schema-fetch trigger has fired on the owner's request.
-  A Development runtime can use a local process; runtime evaluation remains
-  outside this provider-schema probe. The former container-only premise is
-  superseded.
+  Function execution still needs containers and remains excluded by the brief.
 - Kustomize's directory-preference trigger has already been addressed in code:
   `oneDocFile` prefers the referring dialect, and
   `TestKustomizeBaseDirectoryNeedsTheOneFileRule` includes Kubernetes manifests.
@@ -230,7 +228,7 @@ memo or background worker is introduced by this lane.
 
 ## Provider-schema feasibility evidence
 
-The IAC-2 [design/probe assessment](../assessments/iac-provider-schema-calibration.md)
+The IAC-2 [design/probe assessment](../assessments/2026-10-26-iac-provider-schema-feasibility.md)
 records controlled offline captures for AWS 6.67.0, AzureRM 5.11.0 and Google
 8.8.1. Native configuration display enumerates all four authored traversals per
 provider; native validation rejects each individually renamed field with an
@@ -318,7 +316,7 @@ interpreted by patch direction: FromComposite reads the XRD schema; ToComposite
 reads the managed resource schema; environment patches require their own source.
 Optional/missing fields and runtime transforms do not prove a static binding.
 Function input validation, reference evaluation, group-aware instance joins and
-Function runtime evaluation remain distinct gaps. IAC-19 supplies the missing
+container-dependent render remain distinct gaps. IAC-19 supplies the missing
 calibration/remaining-ceiling assessment, while GAP1-34 covers the provider inputs
 in the eventual reading. Upjet-generated AWS/Azure/GCP providers can reuse pinned
 Terraform schemas as source inputs; bridged Pulumi AWS/GCP can too, while Azure
