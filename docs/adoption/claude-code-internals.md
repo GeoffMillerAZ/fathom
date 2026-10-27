@@ -822,7 +822,7 @@ The egress guard (ADR-083) adds one row of its own, appended after ADR-080's row
 
 | Event | Matcher | Command | Injects? | What it does |
 |---|---|---|---|---|
-| `PreToolUse` | `WebFetch\|WebSearch` | `fathom edit-hook --pre` | yes | checks `WebFetch`'s URL host, or `WebSearch`'s `allowed_domains`, against `[guards] egress_allow`; one advisory line under `warn`, a deny under `enforce` while guard enforcement is on. A tripwire, not data-loss prevention: `permissions.deny` and the sandbox network allowlist are the boundary |
+| `PreToolUse` | `WebFetch\|WebSearch` | `fathom edit-hook --pre` | yes | checks `WebFetch`'s URL host, or `WebSearch`'s `allowed_domains`, against `[guards] egress_allow`; one advisory line under `warn`, a deny under `enforce` while guard enforcement is on. A tripwire, not data-loss prevention: MCP fetch and browser tools are not intercepted, and `permissions.deny` and the sandbox network allowlist are the boundary |
 
 ---
 

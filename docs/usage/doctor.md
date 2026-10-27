@@ -86,8 +86,9 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 (process-lifetime counters — "since this daemon process started"). Later rows:
 `capabilities` (red only when something switched on is failing to deliver), `concerns`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
-`user_scope_guard`, `egress_guard` (ADR-083: WARN when the egress guard is off or set to
-enforce with enforcement off, naming the harness's own boundary — Claude Code's
+`user_scope_guard`, `egress_guard` (ADR-083: WARN when the egress guard is off, set to
+enforce with enforcement off, or when a config file does not load (the row names it),
+naming the harness's own boundary — Claude Code's
 `permissions.deny` and sandbox network allowlist, Codex's sandbox network setting),
 `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
 `project` (every `.fathom/*.cue` key with its file, status and entry count; a key fathom does not

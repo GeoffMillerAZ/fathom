@@ -5,8 +5,11 @@ package guardspec
 // the host check for a harness's own web tools. It is a tripwire, not
 // data-loss prevention: it reads literal argv words only, so `python -c`,
 // a script, or an encoded payload passes unseen. A target the guard cannot
-// read (a shell expansion, an unresolvable git remote) is not on the
-// allowlist, so it matches like any other unlisted host.
+// read (a shell expansion, an unresolvable git remote, a git config
+// override, a curl proxy or pinned address, an ssh jump or config) is not
+// on the allowlist, so it matches like any other unlisted host. Input the
+// lexer cannot read at all (eval, a function definition) that names an
+// egress tool warns and never denies.
 
 import (
 	_ "embed"
@@ -14,7 +17,9 @@ import (
 	"net"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
+	"unicode"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
@@ -40,9 +45,9 @@ type EgressOptions struct {
 	Allow []string
 	// RemoteURLs resolves a git remote name to its push URLs in the
 	// repository at dir (a `git -C` path, "" for the command's own
-	// directory); remote "" is the default push remote. ok false leaves
-	// the target unknown; ok with no URLs means the push has nowhere to go
-	// (no such remote, or no repository), so nothing leaves.
+	// directory); remote "" is the default push remote. ok false, or no
+	// URLs, leaves the target unknown: a remote git cannot name now may be
+	// added by an earlier step of the same command.
 	RemoteURLs func(dir, remote string) ([]string, bool)
 }
 
@@ -125,16 +130,24 @@ func (gs GuardSet) egressOptions() EgressOptions {
 }
 
 // egressTarget is one destination a command names: a host, a bucket
-// ("s3://bucket"), or unknown when the guard cannot read it.
+// ("s3://bucket"), or unknown when the guard cannot read it (why says
+// what hid it; "" is a shell expansion or no literal target).
 type egressTarget struct {
 	host    string
 	unknown bool
+	why     string
+}
+
+// unknownTarget is a destination hidden by why.
+func unknownTarget(why string) egressTarget {
+	return egressTarget{unknown: true, why: why}
 }
 
 var localTarget = egressTarget{host: "localhost"}
 
-// matchEgressGuard runs g's predicate over one simple command.
-func matchEgressGuard(g Guard, u *shellcmd.Unit, opts EgressOptions) (Guard, bool) {
+// matchEgressGuard runs g's predicate over one simple command; prior are
+// the units before it in the same command line.
+func matchEgressGuard(g Guard, u *shellcmd.Unit, prior []*shellcmd.Unit, opts EgressOptions) (Guard, bool) {
 	if u.Kind != shellcmd.KindSimple || len(u.Words) == 0 || !u.Words[0].Literal() {
 		return Guard{}, false
 	}
@@ -152,7 +165,7 @@ func matchEgressGuard(g Guard, u *shellcmd.Unit, opts EgressOptions) (Guard, boo
 	case "ssh_remote":
 		targets, hit = sshRemote(u)
 	case "git_push_remote":
-		targets, hit = gitPushRemote(u, opts)
+		targets, hit = gitPushRemote(u, prior, opts)
 	case "gh_gist_create":
 		targets, hit = ghGistCreate(u)
 	case "cloud_upload":
@@ -188,9 +201,47 @@ func egressNote(g Guard, t egressTarget) string {
 		if g.commandCheck == "web_search" {
 			return fmt.Sprintf("%s: %s, with results from any domain. To allow it, restrict allowed_domains to hosts in [guards] egress_allow (~/.fathom/config.toml)%s", rule, g.Note, off)
 		}
-		return fmt.Sprintf("%s: %s to a host this guard cannot read (a shell expansion, or no literal target). To allow it, name the host literally and add it to [guards] egress_allow in ~/.fathom/config.toml%s", rule, g.Note, off)
+		why := t.why
+		if why == "" {
+			why = "a shell expansion, or no literal target"
+		}
+		return fmt.Sprintf("%s: %s to a host this guard cannot read (%s). To allow it, name the host literally and add it to [guards] egress_allow in ~/.fathom/config.toml%s", rule, g.Note, why, off)
 	}
 	return fmt.Sprintf("%s: %s to %s. To allow it, add %q to [guards] egress_allow in ~/.fathom/config.toml%s", rule, g.Note, t.host, t.host, off)
+}
+
+// egressUnreadableWhy is the unknown-target reason for input the lexer
+// cannot read.
+const egressUnreadableWhy = "unreadable shell input: eval, a function definition, or a command the lexer cannot read"
+
+// egressToolText finds each command check's tool named as a word in raw
+// command text, for input the lexer cannot read. A git push and a gh gist
+// need their verb too.
+var egressToolText = map[string][]*regexp.Regexp{
+	"curl_upload":     {egressWordRE("curl")},
+	"wget_upload":     {egressWordRE("wget")},
+	"socket_tool":     {egressWordRE("nc|ncat|netcat|socat")},
+	"remote_copy":     {egressWordRE("scp|rsync|sftp")},
+	"ssh_remote":      {egressWordRE("ssh")},
+	"git_push_remote": {egressWordRE("git"), egressWordRE("push")},
+	"gh_gist_create":  {egressWordRE("gh"), egressWordRE("gist")},
+	"cloud_upload":    {egressWordRE("aws|gsutil|gcloud|az")},
+}
+
+func egressWordRE(names string) *regexp.Regexp {
+	const before, after = "(^|[\\s;&|()'\"`{}!/])", "($|[\\s;&|()'\"`{}])"
+	return regexp.MustCompile(before + "(" + names + ")" + after)
+}
+
+// egressNamesTool reports whether command's text names check's tool.
+func egressNamesTool(check, command string) bool {
+	res := egressToolText[check]
+	for _, re := range res {
+		if !re.MatchString(command) {
+			return false
+		}
+	}
+	return len(res) > 0
 }
 
 // egressAllowed reports whether target is loopback or on the allowlist.
@@ -368,7 +419,7 @@ var curlSpec = egressSpec{short: "AbcCdDeEFHKmoPQrtTuUwxXyYz", long: longSet(
 	"--continue-at", "--limit-rate", "--interface", "--dns-servers", "--proxy-user",
 	"--oauth2-bearer", "--aws-sigv4", "--variable", "--dump-header", "--trace", "--trace-ascii",
 	"--stderr", "--output-dir", "--unix-socket", "--abstract-unix-socket", "--max-filesize",
-	"--max-redirs", "--noproxy", "--pass", "--preproxy", "--proxy-header", "--quote",
+	"--max-redirs", "--noproxy", "--pass", "--preproxy", "--proxy1.0", "--proxy-header", "--quote",
 	"--request-target", "--socks4", "--socks4a", "--socks5", "--socks5-hostname", "--speed-limit",
 	"--speed-time", "--time-cond", "--url-query", "--mail-from", "--mail-rcpt", "--ciphers",
 	"--cert-type", "--key-type", "--ftp-port", "--doh-url", "--local-port", "--expect100-timeout",
@@ -398,7 +449,47 @@ func curlUpload(u *shellcmd.Unit) ([]egressTarget, bool) {
 	if !upload {
 		return nil, false
 	}
-	return wordTargets(pos), true
+	targets := wordTargets(pos)
+	if len(targets) == 0 {
+		targets = []egressTarget{{unknown: true}}
+	}
+	return append(targets, curlRoutes(u, opts)...), true
+}
+
+// curlRoutes are the destinations other than the URL's host that a curl
+// request reaches: a proxy (an option or a *_proxy / ALL_PROXY variable,
+// any case), or unknown under an option that pins the address or the DNS
+// server, so a loopback URL can still leave the machine.
+func curlRoutes(u *shellcmd.Unit, opts []egressOpt) []egressTarget {
+	var out []egressTarget
+	for _, a := range u.Env {
+		name := strings.ToLower(a.Name)
+		if name == "all_proxy" || strings.HasSuffix(name, "_proxy") && name != "no_proxy" {
+			out = appendProxy(out, a.Value)
+		}
+	}
+	for _, o := range opts {
+		switch {
+		case o.name == "-x" || o.name == "--proxy" || o.name == "--proxy1.0" || o.name == "--preproxy",
+			strings.HasPrefix(o.name, "--socks") && o.has:
+			if !o.has {
+				out = append(out, egressTarget{unknown: true})
+				continue
+			}
+			out = appendProxy(out, o.value)
+		case o.name == "--resolve" || o.name == "--connect-to" || o.name == "--doh-url":
+			out = append(out, unknownTarget("curl "+o.name+" routes the request"))
+		}
+	}
+	return out
+}
+
+// appendProxy adds a proxy's host; an empty literal proxy is none.
+func appendProxy(out []egressTarget, w shellcmd.Word) []egressTarget {
+	if w.Literal() && strings.TrimSpace(w.Text) == "" {
+		return out
+	}
+	return append(out, urlTarget(w))
 }
 
 var wgetSpec = egressSpec{short: "oaeiBtTwQPUlARDIXOn", long: longSet(
@@ -580,24 +671,80 @@ func remoteCopy(u *shellcmd.Unit) ([]egressTarget, bool) {
 		if u.Name() == "rsync" {
 			spec = rsyncSpec
 		}
-		_, pos := readEgressArgs(u.Words[1:], spec)
+		opts, pos := readEgressArgs(u.Words[1:], spec)
 		if len(pos) < 2 {
 			return nil, false
 		}
 		t, remote := remoteSpec(pos[len(pos)-1])
-		return []egressTarget{t}, remote
+		if !remote {
+			return nil, false
+		}
+		if u.Name() == "rsync" {
+			return append([]egressTarget{t}, rsyncShellRoutes(opts)...), true
+		}
+		return append([]egressTarget{t}, sshRoutes(opts)...), true
 	case "sftp":
-		_, pos := readEgressArgs(u.Words[1:], sftpSpec)
+		opts, pos := readEgressArgs(u.Words[1:], sftpSpec)
 		if len(pos) == 0 {
 			return nil, false
 		}
 		w := pos[0]
-		if t, remote := remoteSpec(w); remote {
-			return []egressTarget{t}, true
+		t, remote := remoteSpec(w)
+		if !remote {
+			t = hostTarget(w)
 		}
-		return []egressTarget{hostTarget(w)}, true
+		return append([]egressTarget{t}, sshRoutes(opts)...), true
 	}
 	return nil, false
+}
+
+// sshRoutes is an unknown target when ssh options (ssh, scp, sftp) send
+// the connection somewhere other than the named host: -J, -F, or -o
+// ProxyJump|ProxyCommand|HostName (any case, "=" or a space).
+func sshRoutes(opts []egressOpt) []egressTarget {
+	for _, o := range opts {
+		switch o.name {
+		case "-J", "-F":
+			return []egressTarget{unknownTarget("ssh " + o.name + " routes the connection")}
+		case "-o":
+			if !o.has {
+				continue
+			}
+			if !o.value.Literal() {
+				return []egressTarget{unknownTarget("an ssh -o option this guard cannot read")}
+			}
+			key, _, _ := strings.Cut(strings.TrimSpace(o.value.Text), "=")
+			if f := strings.FieldsFunc(key, unicode.IsSpace); len(f) > 0 {
+				key = f[0]
+			}
+			switch k := strings.ToLower(key); k {
+			case "proxyjump", "proxycommand", "hostname":
+				return []egressTarget{unknownTarget("ssh -o " + key + " routes the connection")}
+			}
+		}
+	}
+	return nil
+}
+
+// rsyncShellRoutes reads rsync's remote shell (-e, --rsh) as an ssh
+// command line: its routing options, or unknown when it cannot be read.
+func rsyncShellRoutes(opts []egressOpt) []egressTarget {
+	for _, o := range opts {
+		if o.name != "-e" && o.name != "--rsh" || !o.has {
+			continue
+		}
+		if !o.value.Literal() {
+			return []egressTarget{unknownTarget("an rsync remote shell this guard cannot read")}
+		}
+		c := shellcmd.ParseCommand(o.value.Text)
+		units := c.Units()
+		if c.Unreadable || len(units) != 1 || len(units[0].Words) == 0 {
+			return []egressTarget{unknownTarget("an rsync remote shell this guard cannot read")}
+		}
+		ropts, _ := readEgressArgs(units[0].Words[1:], sshSpec)
+		return sshRoutes(ropts)
+	}
+	return nil
 }
 
 var sshSpec = egressSpec{short: "BbcDEeFIiJLlmOoPpQRSWw"}
@@ -611,56 +758,118 @@ func sshRemote(u *shellcmd.Unit) ([]egressTarget, bool) {
 		return nil, false
 	}
 	w := pos[0]
+	t := hostTarget(w)
 	if w.Literal() && strings.Contains(w.Text, "://") {
-		return []egressTarget{urlTarget(w)}, true
+		t = urlTarget(w)
 	}
-	return []egressTarget{hostTarget(w)}, true
+	return append([]egressTarget{t}, sshRoutes(opts)...), true
 }
 
-// gitPushRemote reads `git [-C dir] push [options] [repository]`. A
-// repository URL is read as written; a remote name, or none, is resolved
-// through opts.RemoteURLs. A dry run sends nothing.
-func gitPushRemote(u *shellcmd.Unit, opts EgressOptions) ([]egressTarget, bool) {
+// gitInvocation is one git command line read up to its subcommand.
+type gitInvocation struct {
+	sub      string
+	args     []shellcmd.Word // the words after sub
+	dir      string          // the -C path, "" for the command's own directory
+	dirKnown bool            // false under --git-dir, --work-tree or an unreadable -C
+	override bool            // a -c or --config-env config override
+}
+
+// readGit reads `git [global options] sub ...`; ok false when u is not git
+// or a word before the subcommand is not literal.
+func readGit(u *shellcmd.Unit) (gitInvocation, bool) {
 	if u.Name() != "git" {
-		return nil, false
+		return gitInvocation{}, false
 	}
 	words := u.Words[1:]
-	dir, dirKnown := "", true
-	i := 0
-global:
-	for ; i < len(words); i++ {
+	inv := gitInvocation{dirKnown: true}
+	for i := 0; i < len(words); i++ {
 		w := words[i]
 		if !w.Literal() {
-			return nil, false
+			return gitInvocation{}, false
 		}
 		switch t := w.Text; {
 		case t == "-C":
 			if i+1 >= len(words) || !words[i+1].Literal() {
-				dirKnown = false
+				inv.dirKnown = false
 			} else {
-				dir = path.Join(dir, words[i+1].Text)
+				inv.dir = path.Join(inv.dir, words[i+1].Text)
 				if path.IsAbs(words[i+1].Text) {
-					dir = words[i+1].Text
+					inv.dir = words[i+1].Text
 				}
 			}
 			i++
-		case t == "-c" || t == "--namespace" || t == "--config-env" || t == "--exec-path":
+		case t == "-c" || t == "--config-env":
+			inv.override = true
+			i++
+		case strings.HasPrefix(t, "--config-env="):
+			inv.override = true
+		case t == "--namespace" || t == "--exec-path":
 			i++
 		case t == "--git-dir" || t == "--work-tree":
-			dirKnown = false
+			inv.dirKnown = false
 			i++
 		case strings.HasPrefix(t, "--git-dir=") || strings.HasPrefix(t, "--work-tree="):
-			dirKnown = false
+			inv.dirKnown = false
 		case strings.HasPrefix(t, "-"):
 		default:
-			break global
+			inv.sub, inv.args = t, words[i+1:]
+			return inv, true
 		}
 	}
-	if i >= len(words) || words[i].Text != "push" {
+	return inv, true
+}
+
+// gitConfigChange names why a push's remote may not be what git reports
+// now: a config override on the command, a GIT_* variable, or an earlier
+// git remote|config|init in the same command line; "" when none.
+func gitConfigChange(u *shellcmd.Unit, inv gitInvocation, prior []*shellcmd.Unit) string {
+	if inv.override {
+		return "a git -c or --config-env override"
+	}
+	for _, a := range u.Env {
+		if strings.HasPrefix(a.Name, "GIT_") {
+			return "a " + a.Name + " variable"
+		}
+	}
+	for _, p := range prior {
+		if pi, ok := readGit(p); ok {
+			switch pi.sub {
+			case "remote", "config", "init":
+				return "an earlier git " + pi.sub
+			}
+		}
+	}
+	return ""
+}
+
+// gitPushDryRunShorts reads a git push short option cluster letter by
+// letter: n is a dry run; o takes the rest of the word as its value, or the
+// next word when it ends the cluster (next).
+func gitPushDryRunShorts(cluster string) (dry, next bool) {
+	for k := 0; k < len(cluster); k++ {
+		switch cluster[k] {
+		case 'n':
+			return true, false
+		case 'o':
+			return false, k+1 == len(cluster)
+		}
+	}
+	return false, false
+}
+
+// gitPushRemote reads `git [-C dir] push [options] [repository]`. A
+// repository URL is read as written; a remote name, or none, is resolved
+// through opts.RemoteURLs. A dry run sends nothing; a config override, a
+// GIT_* variable or an earlier git remote|config|init leaves the target
+// unknown.
+func gitPushRemote(u *shellcmd.Unit, prior []*shellcmd.Unit, opts EgressOptions) ([]egressTarget, bool) {
+	inv, ok := readGit(u)
+	if !ok || inv.sub != "push" {
 		return nil, false
 	}
+	words := inv.args
 	var repo, repoOpt *shellcmd.Word
-	for j := i + 1; j < len(words); j++ {
+	for j := 0; j < len(words); j++ {
 		w := words[j]
 		t := w.Text
 		if w.Literal() && t == "--" {
@@ -681,13 +890,19 @@ global:
 					j++
 					repoOpt = &words[j]
 				}
-			case "--receive-pack", "--exec", "--push-option", "-o":
+			case "--receive-pack", "--exec", "--push-option":
 				if !eq {
 					j++
 				}
 			default:
-				if !strings.HasPrefix(t, "--") && strings.ContainsRune(t[1:], 'n') {
-					return nil, false
+				if !strings.HasPrefix(t, "--") {
+					dry, next := gitPushDryRunShorts(t[1:])
+					if dry {
+						return nil, false
+					}
+					if next {
+						j++
+					}
 				}
 			}
 			continue
@@ -695,6 +910,9 @@ global:
 		if repo == nil {
 			repo = &words[j]
 		}
+	}
+	if why := gitConfigChange(u, inv, prior); why != "" {
+		return []egressTarget{unknownTarget(why + " can change where git push sends")}, true
 	}
 	if repo == nil {
 		repo = repoOpt
@@ -713,11 +931,11 @@ global:
 			name = repo.Text
 		}
 		ok := false
-		if dirKnown && opts.RemoteURLs != nil {
-			urls, ok = opts.RemoteURLs(dir, name)
+		if inv.dirKnown && opts.RemoteURLs != nil {
+			urls, ok = opts.RemoteURLs(inv.dir, name)
 		}
-		if !ok {
-			return []egressTarget{{unknown: true}}, true
+		if !ok || len(urls) == 0 {
+			return []egressTarget{unknownTarget("a git remote this guard cannot resolve")}, true
 		}
 	}
 	targets := make([]egressTarget, 0, len(urls))

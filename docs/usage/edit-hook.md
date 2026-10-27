@@ -69,7 +69,9 @@ example `egress/curl_upload: curl sends data (...) to evil.example. To allow it,
 `curl` GET, an `scp` download, `ssh localhost`, a `git push` whose remote URL host is
 allowlisted, a dry-run push. `[guards] egress = "enforce"` denies instead while guard
 enforcement is on; `off` silences it. String matching is a tripwire, not data-loss
-prevention, and Codex web search and MCP calls are not intercepted. Modes, the allowlist
+prevention: Codex web search and MCP calls, and Claude Code's MCP fetch and browser tools,
+are not intercepted; a GET carrying data in its URL passes by design; and an agent with
+shell access can switch the guard off by editing `~/.fathom/config.toml`. Modes, the allowlist
 and the scope rule (a repository may tighten, never loosen):
 [configuration.md](../configuration.md#the-egress-guard-guards-egress).
 

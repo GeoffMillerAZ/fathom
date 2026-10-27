@@ -1515,6 +1515,16 @@ is not allowlisted, `gh gist create`, and cloud uploads (`aws s3 cp|sync|mv` to 
 `gsutil`, `gcloud storage`, `az storage blob upload`). On Codex, fathom's hooks see Bash
 only: Codex web search and MCP calls are not intercepted.
 
+What it does not stop:
+
+- Claude Code's MCP fetch tools and browser tools are not intercepted; only Bash,
+  `WebFetch` and `WebSearch` are.
+- A `curl` or `wget` GET passes by design, so data carried in a URL's path or query
+  string passes with it.
+- An agent with shell access can switch the guard off: it can edit
+  `~/.fathom/config.toml` or `~/.fathom/capabilities.cue` like any other file. The guard
+  catches mistakes; it is not a boundary against an agent working around it.
+
 ```toml
 # ~/.fathom/config.toml
 [guards]
@@ -1529,10 +1539,19 @@ egress_allow = ["docs.example.com", "*.example.org", "s3://example-bucket"]
 - The user sets the mode. A repository's `.fathom/config.toml` may tighten it
   (off < warn < enforce) and never loosen it; the user's `enforce` reads only the user's
   enforcement switches. `egress_allow` is user-only. The `egress-guard` capability is the
-  same switch: only `~/.fathom/capabilities.cue` may turn it off.
+  same switch: only `~/.fathom/capabilities.cue` may turn it off. A repository config
+  that does not load is skipped, not read as the default: the user's mode and allowlist
+  stay in effect, and `fathom doctor`'s `egress_guard` row warns naming the file.
 - Loopback hosts always pass. An entry is an exact host, `*.example.com` for its
   subdomains, or `s3://bucket` / `gs://bucket` for a storage bucket. A target the guard
-  cannot read (a shell expansion, an unresolvable remote) is not on the list.
+  cannot read is not on the list: a shell expansion; a git remote git cannot resolve now;
+  a `git push` under `-c`/`--config-env`, a `GIT_*` variable, or after a `git remote`,
+  `git config` or `git init` earlier in the same command; a `curl` upload with
+  `--resolve`, `--connect-to` or `--doh-url`; `ssh`, `scp`, `sftp` or rsync's `-e` with
+  `-J`, `-F` or `-o ProxyJump|ProxyCommand|HostName`. A `curl` proxy (`-x`, `--proxy`,
+  `--preproxy`, `--socks*`, or a `*_proxy`/`ALL_PROXY` variable) is checked like the URL's
+  host. Input the lexer cannot read at all (`eval`, a function definition) that names an
+  egress tool warns and never denies.
 - The real boundary is the harness's own: Claude Code's `permissions.deny` and its sandbox
   network allowlist; Codex's sandbox network setting. `fathom doctor`'s `egress_guard` row
   names them and recommends the guard when it is off.

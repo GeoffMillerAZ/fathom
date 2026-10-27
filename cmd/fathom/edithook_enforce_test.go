@@ -320,6 +320,15 @@ func TestEditHookPre_GitSafetyModes(t *testing.T) {
 			t.Setenv("HOME", t.TempDir())
 			t.Setenv("FATHOM_ENFORCE", tc.env)
 			t.Setenv("CLAUDE_PROJECT_DIR", "")
+			// These cases are the git-safety pack's alone. Outside a
+			// repository a git push is an unknown egress target
+			// (ADR-083), so the user's egress guard is off here;
+			// egress_test.go covers it.
+			home := t.TempDir()
+			t.Setenv("FATHOM_HOME", home)
+			if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte("[guards]\negress = \"off\"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			dir := t.TempDir()
 			if tc.config != "" {
 				if err := os.MkdirAll(filepath.Join(dir, ".fathom"), 0755); err != nil {

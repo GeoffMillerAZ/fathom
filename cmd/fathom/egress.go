@@ -12,7 +12,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -38,19 +37,30 @@ type egressPolicy struct {
 	// own enforce obeys the repository's enforcement switches, the user's
 	// obeys only the user's.
 	source config.Source
+	// broken is the config file that did not load ("" when both did), and
+	// loadErr why; doctor's egress_guard row names it.
+	broken  string
+	loadErr error
 }
 
 // egressPolicyAt resolves the mode for root: [guards] egress (the user's,
 // tightened by the repository's), then the egress-guard capability. A
-// config that does not load leaves warn with no allowlist, so a broken
-// file never opens a deny.
+// repository config that does not load is skipped, never read as warn, so
+// it cannot drop the user's enforce or allowlist; a user config that does
+// not load leaves warn with no allowlist.
 func egressPolicyAt(root string) egressPolicy {
-	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
+	repoPath := projectdir.Config.Path(root)
+	loaded, err := config.Load(config.DefaultUserPath(), repoPath)
+	var p egressPolicy
 	if err != nil {
-		return egressPolicy{mode: config.EgressWarn}
+		p.broken, p.loadErr = repoPath, err
+		loaded, err = config.Load(config.DefaultUserPath(), "")
+		if err != nil {
+			return egressPolicy{mode: config.EgressWarn, broken: config.DefaultUserPath(), loadErr: err}
+		}
 	}
 	g := loaded.Config.Guards
-	p := egressPolicy{mode: g.EgressMode(), allow: g.EgressAllow, source: g.EgressSource}
+	p.mode, p.allow, p.source = g.EgressMode(), g.EgressAllow, g.EgressSource
 	reg := capability.Default()
 	c, ok := reg.Get(egressCapability)
 	if !ok {
@@ -122,10 +132,10 @@ func egressPack(p egressPolicy, command, cwd string) (guardspec.GuardSet, bool) 
 }
 
 // egressRemoteURLs reads a remote's push URLs with git in dir; remote ""
-// is the current branch's push remote, else origin. git's own refusals —
-// no such remote (exit 2), not a repository (exit 128) — resolve to no
-// URLs: that push fails before anything leaves. Any other failure, a
-// deadline included, leaves the target unknown.
+// is the current branch's push remote, else origin. Any failure leaves the
+// target unknown: no such remote (exit 2) or no repository (exit 128) now
+// may be added by an earlier step of the same command, and a deadline
+// says nothing.
 func egressRemoteURLs(dir, remote string) ([]string, bool) {
 	if dir == "" {
 		return nil, false
@@ -137,13 +147,10 @@ func egressRemoteURLs(dir, remote string) ([]string, bool) {
 	}
 	out, err := exec.CommandContext(ctx, "git", "-C", dir, "remote", "get-url", "--push", "--all", remote).Output()
 	if err != nil {
-		var exit *exec.ExitError
-		if ctx.Err() == nil && errors.As(err, &exit) && (exit.ExitCode() == 2 || exit.ExitCode() == 128) {
-			return nil, true
-		}
 		return nil, false
 	}
-	return strings.Fields(string(out)), true
+	urls := strings.Fields(string(out))
+	return urls, len(urls) > 0
 }
 
 // egressDefaultPushRemote is the remote a bare `git push` uses: the current
@@ -247,6 +254,10 @@ func checkEgressGuard(root, harnessLabel string) doctorCheck {
 	p := egressPolicyAt(root)
 	const limit = "string matching is a tripwire, not data-loss prevention"
 	switch {
+	case p.loadErr != nil:
+		return doctorCheck{Name: name, Status: doctorWarn,
+			Reason: fmt.Sprintf("%s does not load (%v); the egress guard runs without it: %s, %d allowlisted host(s)", p.broken, p.loadErr, p.mode, len(p.allow)),
+			Remedy: fmt.Sprintf("fix or remove %s; %s; %s", p.broken, limit, native)}
 	case p.mode == config.EgressOff:
 		return doctorCheck{Name: name, Status: doctorWarn,
 			Reason: "the egress guard is off: shell uploads, remote copies, git push to an unlisted host and web fetches pass without a line",
