@@ -68,7 +68,11 @@ type firstWriteStore struct {
 	*store.SQLiteStore
 	conn     *signalConn
 	atCommit bool
-	once     sync.Once
+	// foreign, when set, replaces this run's ingest_state row at the
+	// first write before the signal (another process's row; what this run
+	// wrote is then not known from the store).
+	foreign *store.IngestState
+	once    sync.Once
 }
 
 func (s *firstWriteStore) SetIngestState(ctx context.Context, st store.IngestState) error {
@@ -84,7 +88,12 @@ func (s *firstWriteStore) PutObservations(ctx context.Context, obs []core.Observ
 		return err
 	}
 	var err error
-	s.once.Do(func() { err = s.conn.deliver(ctx) })
+	s.once.Do(func() {
+		if s.foreign != nil {
+			_ = s.SQLiteStore.SetIngestState(ctx, *s.foreign)
+		}
+		err = s.conn.deliver(ctx)
+	})
 	return err
 }
 
@@ -93,6 +102,12 @@ func (s *firstWriteStore) PutObservations(ctx context.Context, obs []core.Observ
 // the commit when it is "commit") and the signal seam through conn's
 // channel, counting the seam's stops.
 func useSignalIngest(t *testing.T, conn *signalConn, at string) {
+	useSignalIngestForeign(t, conn, at, nil)
+}
+
+// useSignalIngestForeign is useSignalIngest whose store also writes foreign
+// over this run's ingest_state row at the first write.
+func useSignalIngestForeign(t *testing.T, conn *signalConn, at string, foreign *store.IngestState) {
 	t.Helper()
 	origFactory, origSignals, origIdent := newIngestClient, ingestSignals, hookcache.IdentDir
 	newIngestClient = func(_ client.Mode, storePath string) (*client.Client, error) {
@@ -100,7 +115,7 @@ func useSignalIngest(t *testing.T, conn *signalConn, at string) {
 		if err != nil {
 			return nil, err
 		}
-		fw := &firstWriteStore{SQLiteStore: st.(*store.SQLiteStore), atCommit: at == "commit"}
+		fw := &firstWriteStore{SQLiteStore: st.(*store.SQLiteStore), atCommit: at == "commit", foreign: foreign}
 		if at != "" {
 			fw.conn = conn
 		}
@@ -241,6 +256,29 @@ func TestCmdIngestNamesCancellation(t *testing.T) {
 		}
 		if len(env.ScipImports) != 0 || strings.Contains(errText, "warning: scip import") || !env.CountsPartial {
 			t.Fatalf("a SCIP import ran after the cancel, or the counts were not marked partial: %+v %q", env, errText)
+		}
+	})
+
+	t.Run("SIGINT after another process replaced the row", func(t *testing.T) {
+		root, storePath, _ := setup(t)
+		conn := newConn("", os.Interrupt)
+		conn.content = map[string][]byte{"a.go": []byte("package p\n\nfunc Raced() int { return 5 }\n"), "b.go": content["b.go"]}
+		foreign := store.IngestState{ServiceID: "svc", State: store.IngestInProgress, PID: os.Getpid() + 1, StartedAt: 7, Path: "/repo"}
+		useSignalIngestForeign(t, conn, "write", &foreign)
+		var out, errb bytes.Buffer
+		code := cmdIngest([]string{"--service", "svc", "--path", root, "--store", storePath, "--json"}, &out, &errb)
+		if code != 130 {
+			t.Fatalf("exit %d, want 130: %s", code, errb.String())
+		}
+		if e := errb.String(); !strings.Contains(e, "now names another process's ingest") || strings.Contains(e, "before its first write") {
+			t.Fatalf("a replaced row must not be read as this run's state: %q", e)
+		}
+		var env ingestJSON
+		if err := json.Unmarshal(out.Bytes(), &env); err != nil {
+			t.Fatal(err)
+		}
+		if env.CountsPartial {
+			t.Fatal("counts_partial claims the ingest did not commit, but its state is not known")
 		}
 	})
 

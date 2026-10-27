@@ -141,7 +141,8 @@ type ingestStopped struct {
 	row              store.IngestState
 	rowFound         bool
 	rowErr           error
-	// unchanged: the row after the stop is the one before the run.
+	// unchanged: the row after the stop is the one before the run (only
+	// meaningful when rowErr is nil).
 	unchanged bool
 }
 
@@ -153,20 +154,26 @@ type ingestStopped struct {
 func ingestCancelled(stdout, stderr io.Writer, jsonOut bool, st ingestStopped, s os.Signal) int {
 	name, code := signalExit(s)
 	hookcache.BustIdent()
-	committed := st.rowErr == nil && !st.unchanged && st.rowFound && st.row.State == store.IngestComplete && st.row.PID == os.Getpid()
+	known := st.rowErr == nil
+	ours := known && !st.unchanged && st.rowFound && st.row.PID == os.Getpid()
+	committed := ours && st.row.State == store.IngestComplete
 	var state, hint string
 	switch {
-	case st.rowErr != nil:
-		state = fmt.Sprintf("its ingest_state could not be read (%v)", st.rowErr)
+	case !known:
+		state = fmt.Sprintf("what it wrote is not known (%v)", st.rowErr)
 		hint = "a stop before the first write leaves the store as it was; one after it leaves ingest_state in_progress, and the next ingest redoes the service (RT-109)"
 	case committed:
 		state = "the ingest committed before the stop"
-	case !st.unchanged && st.rowFound && st.row.State == store.IngestInProgress && st.row.PID == os.Getpid():
+	case ours && st.row.State == store.IngestInProgress:
 		state = "it stopped after it began writing: ingest_state stays in_progress"
 		hint = "the next ingest redoes the service (RT-109)"
-	default:
+	case st.unchanged:
 		state = "it stopped before its first write: the store keeps its previous state"
 		hint = "nothing of this run was written (RT-109)"
+	case st.rowFound:
+		state = fmt.Sprintf("ingest_state now names another process's ingest (%s, pid %d), so what this run wrote is not known", st.row.State, st.row.PID)
+	default:
+		state = "ingest_state names no ingest, so what this run wrote is not known"
 	}
 	progress := fmt.Sprintf("discovered %d, extracted %d, skipped %d", st.report.Discovered, st.report.Extracted, st.report.Skipped)
 	if !committed {
@@ -188,7 +195,7 @@ func ingestCancelled(stdout, stderr io.Writer, jsonOut bool, st ingestStopped, s
 		fmt.Fprintf(stderr, "hint: %s\n", hint)
 	}
 	if jsonOut {
-		renderIngestCancelledJSON(stdout, st.service, st.svcPath, st.report, st.readErr, st.scipResults, committed, name, code, msg, hint)
+		renderIngestCancelledJSON(stdout, st.service, st.svcPath, st.report, st.readErr, st.scipResults, known && (ours || st.unchanged) && !committed, name, code, msg, hint)
 	}
 	return code
 }
@@ -388,8 +395,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	iss, hasState := c.Store().(store.IngestStateStore)
 	var prevRow store.IngestState
 	var prevFound bool
+	var prevErr error
 	if hasState {
-		prevRow, prevFound, _ = iss.GetIngestState(ctx, *service)
+		prevRow, prevFound, prevErr = iss.GetIngestState(context.WithoutCancel(ctx), *service)
 	}
 	report, err := c.Ingest(ctx, client.ServiceRef{
 		ID:   *service,
@@ -406,7 +414,12 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			return 0, false
 		}
 		st := ingestStopped{service: *service, svcPath: svcPath, report: report, readErr: readErr, scipResults: scipResults, step: step}
-		if hasState {
+		switch {
+		case !hasState:
+			st.rowErr = errors.New("the store keeps no ingest_state")
+		case prevErr != nil:
+			st.rowErr = fmt.Errorf("the row before the run could not be read: %w", prevErr)
+		default:
 			st.row, st.rowFound, st.rowErr = iss.GetIngestState(context.Background(), *service)
 			st.unchanged = st.rowErr == nil && st.rowFound == prevFound && st.row == prevRow
 		}

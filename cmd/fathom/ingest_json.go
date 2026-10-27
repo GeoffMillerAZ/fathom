@@ -216,14 +216,15 @@ func errnoClass(errText string) string {
 // auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
 // nil when none ran.
 // renderIngestCancelledJSON writes the envelope of a run a signal stopped:
-// the finished envelope's counts and SCIP imports (counts_partial when the
-// ingest itself did not commit, so its counts are as far as it got, not
-// totals), outcome "cancelled", the signal, its exit code, and the error and
-// hint ingestCancelled names.
-func renderIngestCancelledJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult, committed bool, signal string, code int, msg, hint string) {
+// the finished envelope's counts and SCIP imports (partial when the ingest
+// is known not to have committed: its counts are as far as it got, not
+// totals; when its state could not be read, the error says so and no claim
+// is made), outcome "cancelled", the signal, its exit code, and the error
+// and hint ingestCancelled names.
+func renderIngestCancelledJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult, partial bool, signal string, code int, msg, hint string) {
 	out := ingestJSONOf(service, svcPath, report, readErr, scipResults)
 	out.Outcome, out.ExitCode, out.Signal, out.Error, out.Hint = "cancelled", code, signal, msg, hint
-	out.CountsPartial = !committed
+	out.CountsPartial = partial
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(out)

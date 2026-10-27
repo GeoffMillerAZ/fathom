@@ -27,13 +27,15 @@ Outcomes and exit codes: `ok` exits 0; `degraded` (every readable file indexed, 
 (SIGINT)` with how far it got (discovered, extracted, skipped), `--json` carries `signal`, and the
 exit is 130 for SIGINT and 143 for SIGTERM (128 + the signal, as a shell reports a death by it; a
 Go parent's `ExitCode()` reads that, where it read -1 before). stderr also names what the store
-holds, read from the service's `ingest_state` after the stop, never assumed: the ingest committed
-before the stop; or it stopped after it began writing (`in_progress`, and the next ingest redoes
-the service, RT-109); or it stopped before its first write (the store as it was). A stop during the
+holds, read from the service's `ingest_state` before and after the run, never assumed: the ingest
+committed before the stop; or it stopped after it began writing (`in_progress`, and the next
+ingest redoes the service, RT-109); or it stopped before its first write (the row unchanged, the
+store as it was); or, when the row cannot be read or another process's ingest replaced it, that
+what it wrote is not known. A stop during the
 ingest runs no SCIP import, `[tests]` pickup or certify step; a stop during one of those names it,
 it may be partial, and no step after it runs (`scip_imports` keeps the imports that completed).
-`--json` adds `counts_partial: true` when the ingest had not committed: its counts are as far as it
-got, not totals (`symbols` is counted only at the end). A second signal takes the default action
+`--json` adds `counts_partial: true` when the ingest is known not to have committed: its counts are
+as far as it got, not totals (`symbols` is counted only at the end). A second signal takes the default action
 at once. SIGINT is not armed when the process ignores it.
 `busy`: another live process (a daemon's ingest, or another CLI's) holds an uncommitted ingest of
 the service in this store (`fathom watch`, `ingest-diff` and `platform-ingest` do not check yet), so nothing was read or written; exit 1, `--json` carries `owner_pid`
@@ -177,7 +179,9 @@ evidence left untouched; every readable file is still indexed; the run exits 1 w
 holds observations for the service **refuses to write** (no watermark advance, no purge):
 `error: ingest refused: …`, exit 1, and on "operation not permitted" adds
 `hint: external-volume TCC wedge? tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`.
-Transport errors (context cancellation, connector failure) still abort before any write.
+Transport errors (a connector failure, a cancellation) are not read failures: they abort the
+ingest, which leaves the store as it was when it stopped before its first write and
+`ingest_state` `in_progress` after it (RT-109); a signal is named as `cancelled` (above).
 The daemon's `ingest` MCP tool returns the same cause + hint as a JSON-RPC error rather
 than `ok:true`; `pkg/client` re-exports `client.ReadFailuresError` (`Refused`, `Existing`,
 `Hint()`).
