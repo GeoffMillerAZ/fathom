@@ -1,0 +1,1686 @@
+{
+  "schema": "slang-code-search-r3",
+  "searched_on": "2026-10-26",
+  "status": "INCOMPLETE; no r3 repository union, dispositions, or pool freeze",
+  "preregistration": {
+    "commit": "4c606debf7a5870cc2dcc2a04934d33540e91c2f",
+    "path": "calibration/oracles/slang/search-rule-r3.json",
+    "sha256": "26dde17cd3c5cd3821081eaeada4adcd010e9cb9f711280ed482121510821639",
+    "published_derivative_sha256": "26dde17cd3c5cd3821081eaeada4adcd010e9cb9f711280ed482121510821639",
+    "historical_ordering_record": "preregistration-provenance.json"
+  },
+  "method": "Exact two preregistered extension:slang token queries; inclusive binary size partitions, 100 results/page, authenticated read-only GitHub API. Split-node probes do not contribute to complete hit totals or repository union. Raw responses and full repository metadata remain in ignored workspace; public rows omit code paths, snippets, people and owner details.",
+  "routes": [
+    {
+      "id": "code-parameterblock",
+      "query": "extension:slang ParameterBlock",
+      "root_total_count": 2260,
+      "status": "incomplete-stable-count-failure",
+      "complete_leaves": [
+        {
+          "size_lo": 0,
+          "size_hi": 1023,
+          "files": 658,
+          "pages": 7,
+          "unique_indexed_file_identities": 658
+        }
+      ],
+      "probes_and_complete_leaf_receipts": [
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..2147483647&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..2147483647",
+          "size_lo": 0,
+          "size_hi": 2147483647,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1073741823&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..1073741823",
+          "size_lo": 0,
+          "size_hi": 1073741823,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..536870911&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..536870911",
+          "size_lo": 0,
+          "size_hi": 536870911,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..268435455&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..268435455",
+          "size_lo": 0,
+          "size_hi": 268435455,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..134217727&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..134217727",
+          "size_lo": 0,
+          "size_hi": 134217727,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..67108863&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..67108863",
+          "size_lo": 0,
+          "size_hi": 67108863,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..33554431&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..33554431",
+          "size_lo": 0,
+          "size_hi": 33554431,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..16777215&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..16777215",
+          "size_lo": 0,
+          "size_hi": 16777215,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..8388607&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..8388607",
+          "size_lo": 0,
+          "size_hi": 8388607,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..4194303&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..4194303",
+          "size_lo": 0,
+          "size_hi": 4194303,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..2097151&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..2097151",
+          "size_lo": 0,
+          "size_hi": 2097151,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1048575&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..1048575",
+          "size_lo": 0,
+          "size_hi": 1048575,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..524287&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..524287",
+          "size_lo": 0,
+          "size_hi": 524287,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..262143&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..262143",
+          "size_lo": 0,
+          "size_hi": 262143,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9adf73dd976c29b8ff2943f35ea4c25457e1c65fcd6a519e103823543ff2a08d",
+          "response_bytes": 488801,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..131071&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..131071",
+          "size_lo": 0,
+          "size_hi": 131071,
+          "page": 1,
+          "total_count": 2260,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "f90048e76bbaa3f86b179c4f89ca80a08f416796f12666446969182a3ee037cb",
+          "response_bytes": 489091,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..65535&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..65535",
+          "size_lo": 0,
+          "size_hi": 65535,
+          "page": 1,
+          "total_count": 2252,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "b8e93f45e8ba2e4ad6dc080878b194cd2cb3104a1200df8e837334e3e35df7d1",
+          "response_bytes": 488937,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..32767&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..32767",
+          "size_lo": 0,
+          "size_hi": 32767,
+          "page": 1,
+          "total_count": 2180,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "861c63b4921c4b498224f16f6324a078d963a815623bbd6943be1e31587ea3da",
+          "response_bytes": 489339,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..16383&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..16383",
+          "size_lo": 0,
+          "size_hi": 16383,
+          "page": 1,
+          "total_count": 2192,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "660707c9fdde017b2a65b32cbf505af1d93e332c4c267a61fd90101b43f5d157",
+          "response_bytes": 489253,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..8191&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..8191",
+          "size_lo": 0,
+          "size_hi": 8191,
+          "page": 1,
+          "total_count": 2044,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "0474272ba321e5f8390816af0f9a6d1f6e0f4b3deb5fe031f06676a785302ab4",
+          "response_bytes": 489466,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..4095&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..4095",
+          "size_lo": 0,
+          "size_hi": 4095,
+          "page": 1,
+          "total_count": 1728,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "aefc502dac853e58e92566949915fbff8d4e4d77347f9f0a9b177dc93435ea62",
+          "response_bytes": 490813,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..2047&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..2047",
+          "size_lo": 0,
+          "size_hi": 2047,
+          "page": 1,
+          "total_count": 1268,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "b4bc155e913ab91e6f784fe44777230fa9c53863e1489256ff68c5936bf6045d",
+          "response_bytes": 493424,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=1",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 1,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "cdf592dc1c7f777bdb6cfcb12ec583009899beca3eb87280f5b14f96fef83b19",
+          "response_bytes": 477581,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=2",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 2,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "a363a21fdea279c539e753608ba3d8fd5d4e488ab2fd09f068b0e8fabb2b4db7",
+          "response_bytes": 474105,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=3",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 3,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "fa6fc48e70fe057995b168a5d8eea1d321a4f31abc51b70f027f19204b898a6a",
+          "response_bytes": 477521,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=4",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 4,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "5d730cba698b1f877dda25ac28a630a0f0592d6dea42b589d634ebc52b60a732",
+          "response_bytes": 481053,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=5",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 5,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "2ded181b4169f253643ed28ce8ee22a319d49fc5b8f7be5abf78a12d33e4b18e",
+          "response_bytes": 480249,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=6",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 6,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "e272caba82e813fed6dad7d1471d96db087b1a26c8ca39d90dcabe191482fcea",
+          "response_bytes": 482669,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20ParameterBlock%20size%3A0..1023&per_page=100&page=7",
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 7,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 58,
+          "response_sha256": "b0d32c70221e7c951b0784a1157a883f87356add045b3c29b091de33c7d97a3d",
+          "response_bytes": 276176,
+          "status": 200
+        }
+      ],
+      "unstable_attempt_receipts": [
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 1,
+          "attempt": 1,
+          "total_count": 638,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "47ebc1c9f28a4ae45e4132531452a7164c1c40fca49fe6826fe22e439a41eaf3",
+          "response_bytes": 477581,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 2,
+          "attempt": 1,
+          "total_count": 638,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "abf7e5d49b99ad48dd6a8f8b0afc3e2534b3fbf82595cd170bf9f0a7c005bdcd",
+          "response_bytes": 474105,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 3,
+          "attempt": 1,
+          "total_count": 638,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "3bb43bb5c85125ff98feae104be60d2bdb416750025ae5417adc5a1d3b04a592",
+          "response_bytes": 477521,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 4,
+          "attempt": 1,
+          "total_count": 638,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "27107c4463d2120bce7778c39db43e2edc7b031dba4a8b35f19609a55813f6ae",
+          "response_bytes": 481053,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 5,
+          "attempt": 1,
+          "total_count": 638,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9ce62b697606c02cdd2d8f29066ff0a2f82e4939c06995e94b18de00eea214e9",
+          "response_bytes": 480249,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 6,
+          "attempt": 1,
+          "total_count": 638,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "925d43cbe119898b56a3f88ef5b7f9bc021bf4160fe97f35f644da3bc161816a",
+          "response_bytes": 482669,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:0..1023",
+          "size_lo": 0,
+          "size_hi": 1023,
+          "page": 7,
+          "attempt": 1,
+          "total_count": 658,
+          "incomplete_results": false,
+          "returned_count": 58,
+          "response_sha256": "b0d32c70221e7c951b0784a1157a883f87356add045b3c29b091de33c7d97a3d",
+          "response_bytes": 276176,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 1,
+          "attempt": 1,
+          "total_count": 628,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "a185ed10a479bc27cc709a3bb2ca6584f277bf04f9274a79c5c382b3bd13a260",
+          "response_bytes": 489627,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 1,
+          "attempt": 2,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "54830d8a785958601f2448d9218d39a8b3388b4b5388225db98ff73f8250bbb2",
+          "response_bytes": 489627,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 1,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "9245a21af7c43648c41427876a08a49623c5559d1e61a5a706be56b43e7c0591",
+          "response_bytes": 489627,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 2,
+          "attempt": 1,
+          "total_count": 628,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "c791e911e1422d242a52df1017fb74e4d8a0c53b706df76b76f04d457862bc25",
+          "response_bytes": 491285,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 2,
+          "attempt": 2,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "dfc863ef6c4f344eab956205aaf5e09890a36969304f9a8fef846fab2972d7f9",
+          "response_bytes": 491285,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 2,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "c3fc4c094f9277a8bd49a7a88c726707d89cfea66a55ad90a0b08c2cfc3d8448",
+          "response_bytes": 491285,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 3,
+          "attempt": 1,
+          "total_count": 628,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "3be3b7d606339c098ee3a295d39951bc0f88db5b88652f20765f0c3cc7abcc52",
+          "response_bytes": 490457,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 3,
+          "attempt": 2,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "abf2e7579972aed66610c47583b7efc477ad30f0f0840efd4b424f08f766bd50",
+          "response_bytes": 490457,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 3,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "cde9c60c5d5e7ea1b4d71358c138fd21cecd219ede5a8da46cd08bfe22489025",
+          "response_bytes": 490457,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 4,
+          "attempt": 1,
+          "total_count": 628,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "1235d80c4fdcc53e594e0f0a0860bdddf42313264fa5f8e2a3dc847b859732b8",
+          "response_bytes": 485379,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 4,
+          "attempt": 2,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "3321f05dcc7e8ca461bc6465e06424ffb21c4bc3516185fb166515ec37aae8b7",
+          "response_bytes": 485379,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 4,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "dda2ba6df6b5f091056440dcab8d39e71b99c27adb54191148e71d574c2b9c6d",
+          "response_bytes": 485379,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 5,
+          "attempt": 1,
+          "total_count": 628,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "286b5cc2352e0929b9275998e5beafb35f9b1a8b578f66c74b80ba44acda1e8f",
+          "response_bytes": 482156,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 5,
+          "attempt": 2,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "ad7c3bf033369d52430d1fb78c7afa431333acaa3a1f96c4465df5c347821b76",
+          "response_bytes": 482156,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 5,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "cc39d6227ce58eed9a59baa65d5c5a45e6598f9374bcb026aacb1750bb7faaf4",
+          "response_bytes": 482156,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 6,
+          "attempt": 1,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "d5f616d3c5f0fd105fcbca36cb43d014b9b0096a8369f2e724c971894bd24f41",
+          "response_bytes": 483678,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 6,
+          "attempt": 2,
+          "total_count": 693,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "d5f616d3c5f0fd105fcbca36cb43d014b9b0096a8369f2e724c971894bd24f41",
+          "response_bytes": 483678,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 6,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "bc49b9c0245d2d141d99ec5d0621f869cf9a3910534715887d2fd4a672ebbe99",
+          "response_bytes": 483678,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 7,
+          "attempt": 2,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "57c01f4cabb9b62a72a85ca43f392eeeeeb1b096f432755715f19d25f567ed06",
+          "response_bytes": 486436,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 7,
+          "attempt": 3,
+          "total_count": 760,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "57c01f4cabb9b62a72a85ca43f392eeeeeb1b096f432755715f19d25f567ed06",
+          "response_bytes": 486436,
+          "status": 200
+        },
+        {
+          "query": "extension:slang ParameterBlock size:1024..2047",
+          "size_lo": 1024,
+          "size_hi": 2047,
+          "page": 8,
+          "attempt": 3,
+          "total_count": 780,
+          "incomplete_results": false,
+          "returned_count": 80,
+          "response_sha256": "4e4620dd9f62fad0ca7413b079213b6b9d3844bd9d23c7fbab0348ca9b1f9728",
+          "response_bytes": 384148,
+          "status": 200
+        }
+      ]
+    },
+    {
+      "id": "code-shader-attribute",
+      "query": "extension:slang \"[shader(\"",
+      "root_total_count": 39040,
+      "status": "incomplete-stopped-after-first-route-failure",
+      "complete_leaves": [],
+      "probes_and_complete_leaf_receipts": [
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20%22%5Bshader%28%22%20size%3A0..2147483647&per_page=100&page=1",
+          "query": "extension:slang \"[shader(\" size:0..2147483647",
+          "size_lo": 0,
+          "size_hi": 2147483647,
+          "page": 1,
+          "total_count": 39040,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "870a237cac874c2b118586f6ed9af7972cd425011a766b33900a8664da05bbf1",
+          "response_bytes": 470568,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20%22%5Bshader%28%22%20size%3A0..1073741823&per_page=100&page=1",
+          "query": "extension:slang \"[shader(\" size:0..1073741823",
+          "size_lo": 0,
+          "size_hi": 1073741823,
+          "page": 1,
+          "total_count": 39040,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "870a237cac874c2b118586f6ed9af7972cd425011a766b33900a8664da05bbf1",
+          "response_bytes": 470568,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20%22%5Bshader%28%22%20size%3A0..536870911&per_page=100&page=1",
+          "query": "extension:slang \"[shader(\" size:0..536870911",
+          "size_lo": 0,
+          "size_hi": 536870911,
+          "page": 1,
+          "total_count": 39040,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "870a237cac874c2b118586f6ed9af7972cd425011a766b33900a8664da05bbf1",
+          "response_bytes": 470568,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20%22%5Bshader%28%22%20size%3A0..268435455&per_page=100&page=1",
+          "query": "extension:slang \"[shader(\" size:0..268435455",
+          "size_lo": 0,
+          "size_hi": 268435455,
+          "page": 1,
+          "total_count": 39040,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "870a237cac874c2b118586f6ed9af7972cd425011a766b33900a8664da05bbf1",
+          "response_bytes": 470568,
+          "status": 200
+        },
+        {
+          "url": "https://api.github.com/search/code?q=extension%3Aslang%20%22%5Bshader%28%22%20size%3A0..134217727&per_page=100&page=1",
+          "query": "extension:slang \"[shader(\" size:0..134217727",
+          "size_lo": 0,
+          "size_hi": 134217727,
+          "page": 1,
+          "total_count": 39040,
+          "incomplete_results": false,
+          "returned_count": 100,
+          "response_sha256": "870a237cac874c2b118586f6ed9af7972cd425011a766b33900a8664da05bbf1",
+          "response_bytes": 470568,
+          "status": 200
+        }
+      ],
+      "unstable_attempt_receipts": []
+    }
+  ],
+  "certified_partial_leaf_repositories": [
+    {
+      "repository_id": 706781604,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 892418185,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 5,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1068017003,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 768330594,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 13,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 764673441,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 966712807,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 3,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1120517754,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1154099229,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 230267279,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 925735099,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1164349837,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 500280790,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 738596485,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 59,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 913575642,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 8,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1278721907,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1141778836,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 934229200,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1355010216,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1400026618,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1249514483,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1315909754,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1381258989,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1325445730,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1221717007,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 238536999,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1076418029,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1154928695,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 23,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1311092583,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1423671811,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1199292375,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1158242769,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 8,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1341490262,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 5,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1218807129,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 4,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1147132235,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1188693120,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1026498189,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 114163815,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 3,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1388678896,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 998515017,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 177627360,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1018987479,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1126811143,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1108487870,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 15,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1171967503,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1289636582,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 4,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1025749031,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1120349158,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 575910870,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 3,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 915191250,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 5,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1145533423,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1318813535,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 9,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1030573997,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 35,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 761921652,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 314832017,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 98,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 541853415,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 46,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 612232577,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 22,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 735089006,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 4,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 930560322,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 775498926,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 448295615,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 676315748,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 8,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1148329240,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1183345994,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1080103442,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 651218808,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 18,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1002765245,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1058026238,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1136558465,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 995702224,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1185045436,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1212403068,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1153469464,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 623983567,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 11,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "id": 505900706,
+      "full_name": "oxylusengine/Oxylus",
+      "stars_at_metadata_lookup": 282,
+      "reach_status": "within-stars-bound",
+      "source": "code-parameterblock size:0..1023 complete leaf",
+      "metadata_sha256": "f6d496be13e707c4558e379f317cd470e82f6a9b6367138cb29f541c10dc0433",
+      "repository_id": 505900706
+    },
+    {
+      "repository_id": 1090319305,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 150963264,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 11,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 888174635,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1265004094,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1058936448,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1298335881,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 925888313,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 978996356,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1331172081,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1199750337,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 855567977,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 753214965,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 93882897,
+      "disposition": "diagnostic-role",
+      "reach_status": "within-stars-bound",
+      "stars_at_metadata_lookup": 5762,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "id": 846627057,
+      "full_name": "shader-slang/slang-rhi",
+      "stars_at_metadata_lookup": 218,
+      "reach_status": "within-stars-bound",
+      "source": "code-parameterblock size:0..1023 complete leaf",
+      "metadata_sha256": "9a16e5274d524fada0c9d57ad99bddecc0672f3dc2e829bb329a69a51d726017",
+      "repository_id": 846627057
+    },
+    {
+      "id": 912798934,
+      "full_name": "shader-slang/slangpy",
+      "stars_at_metadata_lookup": 156,
+      "reach_status": "within-stars-bound",
+      "source": "code-parameterblock size:0..1023 complete leaf",
+      "metadata_sha256": "2055ce456adb83fea65044b11ff30281fb14e08a5d20003e8745a8365d0e0c9c",
+      "repository_id": 912798934
+    },
+    {
+      "repository_id": 1066944446,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 937083948,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 22,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 572831365,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 3,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 768523392,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 844453207,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 673702495,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1157265445,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 264425005,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 50,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 362177675,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 14,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1423504653,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 934486161,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 3,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 730800442,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1279446035,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 3,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 989759181,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1140155785,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1004215904,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 1,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 743128401,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 7,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1237250019,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 588251135,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 371776599,
+      "disposition": "zero-population",
+      "reach_status": "within-stars-bound",
+      "stars_at_metadata_lookup": 426,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1106304494,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 34,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 808342376,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 521930582,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 0,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 143801928,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 17,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1143343718,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 15,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 743745585,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 9,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1311581370,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 2,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 48717612,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 17,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 735519405,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 7,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    },
+    {
+      "repository_id": 1111153053,
+      "disposition": "below-reach",
+      "reach_status": "below-reach",
+      "stars_at_metadata_lookup": 47,
+      "source": "code-parameterblock size:0..1023 complete leaf"
+    }
+  ],
+  "certified_partial_leaf_repository_count": 119,
+  "certified_partial_leaf_below_reach_count": 114,
+  "private_hit_observations": 0,
+  "responses_checked_for_private_flag": 61,
+  "operational_stop": "ParameterBlock size 1024..2047 reported changing total_count across pages on the initial attempt and two complete retries: 628 to 693, 693 to 760, and 760 to 780. GitHub code search rate limits were honored and the unchanged query retried after reset. Shader-attribute root reported 39,040 hits; partition traversal stopped once the first route could not satisfy its committed stability rule. No search completeness or pool membership claim follows.",
+  "scope_limit": "Code search covers only GitHub-indexed default-branch files and the two selected tokens. A repository with neither token, unindexed files or unsupported file size can be missed. No claim to enumerate all Slang repositories or all secondary-language use.",
+  "measurement": "No shader bodies, code snippets, native build, parse, compiler run or grade.",
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private."
+}

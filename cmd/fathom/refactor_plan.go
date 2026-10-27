@@ -174,6 +174,17 @@ func buildRefactorPlan(ctx context.Context, c *client.Client, svc, root, baselin
 		}
 	}
 
+	// A name several definitions share resolves to no one symbol: refuse
+	// it naming them, never render it as an import plan (pre-existing on
+	// main).
+	if amb := callgraph.AmbiguousKeys(g, target); len(amb) > 1 {
+		listed := amb
+		if len(listed) > 5 {
+			listed = append(append([]string{}, amb[:5]...), "…")
+		}
+		return "", fmt.Errorf("target %q names %d definitions (%s): pass a qualified name (pkg.Name or a key)", target, len(amb), strings.Join(listed, ", "))
+	}
+
 	importPath, ierr := resolveImportTarget(root, target)
 	if ierr != nil {
 		return "", fmt.Errorf("target %q is not a known symbol in %q, and %v", target, svc, ierr)
@@ -188,7 +199,9 @@ func buildRefactorPlan(ctx context.Context, c *client.Client, svc, root, baselin
 // CallersDetail so each caller's Kind is known), a certified_by row per
 // live-certified test TestImpact says reaches the target, the final gone:
 // callers row (package: disambiguates the target's own bare name), and the
-// closing conserve instruction.
+// closing conserve instruction. A Go struct field has no typed callers
+// (field references are not indexed): its ratchets are grouped and counted
+// lexically from its `.Field` selector, and the plan names that limit.
 func renderSymbolRefactorPlan(b *strings.Builder, g *callgraph.Graph, byKey map[string]core.SymbolNode, sources []core.SourceFile, claims []core.SemanticClaim, baseline, slug, canon string, node core.SymbolNode) {
 	bareTarget := node.Name // "Name" for a func, "Recv.Method" for a method (goextract.go's own convention)
 	targetPkg := path.Dir(node.FilePath)
@@ -196,9 +209,23 @@ func renderSymbolRefactorPlan(b *strings.Builder, g *callgraph.Graph, byKey map[
 	if i := strings.LastIndex(patternWord, "."); i >= 0 {
 		patternWord = patternWord[i+1:] // a call site reads "recv.Method(", never "Recv.Method(" — scan for the trailing name only
 	}
-	wordRe := regexp.MustCompile(`\b` + regexp.QuoteMeta(patternWord) + `\b`)
+	pattern := `\b` + regexp.QuoteMeta(patternWord) + `\b`
 
 	byPkg := map[string]bool{}
+	if node.Kind == core.KindGoField {
+		// Field references are not indexed: no typed caller groups the
+		// ratchets, so they are seeded lexically from the member's selector
+		// (`.Field`) in Go sources, and the plan says why.
+		pattern = `\.` + regexp.QuoteMeta(patternWord) + `\b`
+		selector := regexp.MustCompile(pattern)
+		for _, f := range sources {
+			if strings.HasSuffix(f.Path, ".go") && selector.Match(f.Content) {
+				byPkg[path.Dir(f.Path)] = true
+			}
+		}
+		fmt.Fprintf(b, "> %s is a Go struct field and field references are not indexed: its ratchets are seeded lexically from `.%s` selectors, and its gone: callers row stays Unknown at verify.\n\n", bareTarget, patternWord)
+	}
+	wordRe := regexp.MustCompile(pattern)
 	for _, ci := range callgraph.CallersDetail(g, canon) {
 		if !isResolvedKind(ci.Kind) {
 			continue // heuristic/unresolved callers are not a typed reference (design §4's own store-query basis)
@@ -217,8 +244,8 @@ func renderSymbolRefactorPlan(b *strings.Builder, g *callgraph.Graph, byKey map[
 	for _, dir := range pkgs {
 		n++
 		count := countPatternInDir(sources, dir, wordRe)
-		fmt.Fprintf(b, "- [ ] %s: no more references to %s from %s {id: %s-g%d, gone: pattern \"\\b%s\\b\", paths: \"%s/\", max: %d}\n",
-			dir, bareTarget, dir, slug, n, regexp.QuoteMeta(patternWord), dir, count)
+		fmt.Fprintf(b, "- [ ] %s: no more references to %s from %s {id: %s-g%d, gone: pattern \"%s\", paths: \"%s/\", max: %d}\n",
+			dir, bareTarget, dir, slug, n, pattern, dir, count)
 	}
 
 	n = 0

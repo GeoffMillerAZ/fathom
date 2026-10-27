@@ -85,14 +85,22 @@ var adviceHookSpecAdditions = []hookSpec{
 	{event: "PostToolUse", matcher: `mcp__fathom__(symbol_context|find_symbol|read_source)|mcp__plugin_[^_]*_fathom__(symbol_context|find_symbol|read_source)`, marker: "fathom edit-hook", sub: "edit-hook", timeout: 5, async: true},
 }
 
+// egressWebHookSpecAddition is ADR-083's egress guard on Claude Code's web
+// tools, appended after ADR-080's rows. DELIBERATE GOLDEN CHANGE
+// (2026-10-26): internal/harness's TestClaudeHookTableEgressWebAddition is
+// the twin.
+var egressWebHookSpecAddition = []hookSpec{
+	{event: "PreToolUse", matcher: "WebFetch|WebSearch", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
+}
+
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and
 // doctor all read fathomHookSpecs, and fathomHookSpecs is now
 // hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
 // prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
 	want := append(append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...), testRunHookSpecAddition...)
-	wantOpt := append(append(append([]hookSpec{}, want...), readoutHookSpecAddition...), adviceHookSpecAdditions...)
-	want = append(want, adviceHookSpecAdditions...)
+	wantOpt := append(append(append(append([]hookSpec{}, want...), readoutHookSpecAddition...), adviceHookSpecAdditions...), egressWebHookSpecAddition...)
+	want = append(append(want, adviceHookSpecAdditions...), egressWebHookSpecAddition...)
 	got := hookSpecsFor(harness.ClaudeCode)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", got, want)

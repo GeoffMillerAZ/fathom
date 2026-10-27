@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-26T20:28:44Z",
+  "scope": "Public, bounded OpenCL C indexer, language-server, and grammar-list discovery. Counts are search-service aggregates or case-insensitive literal counts, not compatibility findings or a ceiling.",
+  "privacy": "Only query metadata and aggregates are retained. Raw public responses remain in ignored workspace/tmp and no result repository filenames, owners, usernames, people, or email addresses are published here.",
+  "request_method": "curl -sS -L --fail-with-body -A 'fathom-opencl-oracle-search/1.0' -D <ignored-headers> -o <ignored-response> -w '%{http_code}\\n' '<url>'",
+  "digest_method": "shasum -a 256 <ignored-response>; each value below was recomputed from the saved response after access completed (X-R8).",
+  "receipts": [
+    {
+      "id": "github-scip-opencl",
+      "source_group": "SCIP/LSIF producers",
+      "query": "scip-opencl",
+      "url": "https://api.github.com/search/repositories?q=scip-opencl&per_page=100&page=1",
+      "bound": "repository search; page 1 only; at most 100 results",
+      "http_status": 200,
+      "response_sha256": "ad9ad609c3d99233e7005bc274dd1e86f805e7f94ce249aafbb0b3f76d2ef22a",
+      "aggregate": { "kind": "GitHub total_count", "count": 1 },
+      "result": "The sole lexical hit was unrelated; zero OpenCL-specific SCIP indexers found. This bounded miss does not establish absence."
+    },
+    {
+      "id": "github-opencl-lsif",
+      "source_group": "SCIP/LSIF producers",
+      "query": "OpenCL LSIF",
+      "url": "https://api.github.com/search/repositories?q=OpenCL%20LSIF&per_page=100&page=1",
+      "bound": "repository search; page 1 only; at most 100 results",
+      "http_status": 200,
+      "response_sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "aggregate": { "kind": "GitHub total_count", "count": 0 },
+      "result": "No lexical hits. This bounded miss does not establish absence."
+    },
+    {
+      "id": "github-opencl-language-server",
+      "source_group": "Language servers",
+      "query": "OpenCL language server",
+      "url": "https://api.github.com/search/repositories?q=OpenCL%20language%20server&per_page=100&page=1",
+      "bound": "repository search; page 1 only; at most 100 results",
+      "http_status": 200,
+      "response_sha256": "4289f7c90ba05af33f19e879bd72934fd0f4e558ec0a75ec3fef96d812e441c1",
+      "aggregate": { "kind": "GitHub total_count", "count": 4 },
+      "result": "One relevant OpenCL language-server repository and three unrelated lexical hits. Native execution and exportability of the relevant server remain untried."
+    },
+    {
+      "id": "github-opencl-lsp",
+      "source_group": "Language servers",
+      "query": "opencl lsp",
+      "url": "https://api.github.com/search/repositories?q=opencl%20lsp&per_page=100&page=1",
+      "bound": "repository search; page 1 only; at most 100 results",
+      "http_status": 200,
+      "response_sha256": "a58fc2227b9b1d098bc985e2242f9afdcaf73b30b5e933d24909b4de17897765",
+      "aggregate": { "kind": "GitHub total_count", "count": 1 },
+      "result": "The sole lexical hit was unrelated; zero OpenCL language servers found by this query. This bounded miss does not establish absence."
+    },
+    {
+      "id": "github-opencl-language-server-name",
+      "source_group": "Language servers",
+      "query": "opencl-language-server",
+      "url": "https://api.github.com/search/repositories?q=opencl-language-server&per_page=100&page=1",
+      "bound": "repository search; page 1 only; at most 100 results",
+      "http_status": 200,
+      "response_sha256": "f6df748fc697c7f70fd2a179771537784b85d8b376d0102812a00c6016c047bc",
+      "aggregate": { "kind": "GitHub total_count", "count": 1 },
+      "result": "One relevant OpenCL language-server repository. Native execution and exportability remain untried."
+    },
+    {
+      "id": "sourcegraph-scip-indexer-list",
+      "source_group": "SCIP/LSIF producers",
+      "query": "case-insensitive literal OpenCL in the complete pinned SCIP README",
+      "url": "https://raw.githubusercontent.com/scip-code/scip/d556dd3c24b3c1787e0b62cd31f25188300e3098/README.md",
+      "bound": "one complete response document at the cited commit",
+      "http_status": 200,
+      "response_sha256": "fce767acbc4242c6f589fedf6f81a3089d6da766789e4d5a0a5673d2f6a927c0",
+      "aggregate": { "kind": "case-insensitive literal matches", "count": 0 },
+      "result": "The pinned SCIP indexer list does not name OpenCL. This is a list result, not an incompatibility test."
+    },
+    {
+      "id": "sourcegraph-lsif-indexer-list",
+      "source_group": "SCIP/LSIF producers",
+      "query": "case-insensitive literal OpenCL in the complete LSIF indexer-list response",
+      "url": "https://lsif.dev/",
+      "bound": "one complete response document",
+      "http_status": 200,
+      "response_sha256": "095c143c6a3bb6df0d93387b5b3f1a9150bfda3afd673a697c5ba6a7e6706de6",
+      "aggregate": { "kind": "case-insensitive literal matches", "count": 0 },
+      "result": "The LSIF indexer list does not name OpenCL. This is a list result, not an incompatibility test."
+    },
+    {
+      "id": "tree-sitter-parser-list",
+      "source_group": "Grammar lists",
+      "query": "case-insensitive literal OpenCL in the complete parser-list response",
+      "url": "https://raw.githubusercontent.com/wiki/tree-sitter/tree-sitter/List-of-parsers.md",
+      "bound": "one complete response document",
+      "http_status": 200,
+      "response_sha256": "0a6b25ed3aebd089180a00c6d55c22fd9430d1e56122f8b57da6e43669304e17",
+      "aggregate": { "kind": "case-insensitive literal matches", "count": 0 },
+      "result": "No OpenCL entry. This list miss does not establish absence."
+    },
+    {
+      "id": "nvim-treesitter-supported-list",
+      "source_group": "Grammar lists",
+      "query": "case-insensitive literal OpenCL in the complete supported-language response",
+      "url": "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/main/SUPPORTED_LANGUAGES.md",
+      "bound": "one complete response document",
+      "http_status": 200,
+      "response_sha256": "2dc62b6dfb7a1771b9d22f2fb448aa96d068f680dcc4d7b8f09f4dc6939b23a2",
+      "aggregate": { "kind": "case-insensitive literal matches", "count": 0 },
+      "result": "No OpenCL entry. This list miss does not establish absence."
+    },
+    {
+      "id": "helix-language-registry",
+      "source_group": "Grammar lists",
+      "query": "case-insensitive literal OpenCL in the complete language-registry response",
+      "url": "https://raw.githubusercontent.com/helix-editor/helix/master/languages.toml",
+      "bound": "one complete response document",
+      "http_status": 200,
+      "response_sha256": "365d39f08c94e792d685cb9f12020340daefeb7999ab4bb8202d4fe04b9fc273",
+      "aggregate": { "kind": "case-insensitive literal matches", "count": 4 },
+      "result": "The registry contains an OpenCL entry and grammar reference. The measured grammar disposition remains in grammar-candidates.json and the grammar-gate assessment."
+    },
+    {
+      "id": "scip-clang-v0.4.0-license",
+      "source_group": "Named candidate license",
+      "query": "complete LICENSE at the pinned scip-clang v0.4.0 commit",
+      "url": "https://raw.githubusercontent.com/sourcegraph/scip-clang/1860adf8deab7870fed2199eadc190e3965a92ff/LICENSE",
+      "bound": "one complete response document at the cited commit",
+      "http_status": 200,
+      "response_sha256": "96b8b909d18f94921214e3995e4c12483826b12ca64dd93fc710b87e1bc5a08a",
+      "aggregate": { "kind": "license documents", "count": 1 },
+      "result": "Apache License 2.0."
+    },
+    {
+      "id": "scip-clang-v0.4.1-license",
+      "source_group": "Named candidate license",
+      "query": "complete LICENSE at the pinned scip-clang v0.4.1 commit",
+      "url": "https://raw.githubusercontent.com/sourcegraph/scip-clang/14423f07d164e640b7ffe2de937789653d63708c/LICENSE",
+      "bound": "one complete response document at the cited commit",
+      "http_status": 200,
+      "response_sha256": "96b8b909d18f94921214e3995e4c12483826b12ca64dd93fc710b87e1bc5a08a",
+      "aggregate": { "kind": "license documents", "count": 1 },
+      "result": "Apache License 2.0."
+    },
+    {
+      "id": "llvm-clangd-license",
+      "source_group": "Named candidate license",
+      "query": "complete llvm/LICENSE.TXT at the pinned LLVM commit containing clangd",
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/e484029533e1f603c850a252620a0b26737b161b/llvm/LICENSE.TXT",
+      "bound": "one complete response document at the cited commit",
+      "http_status": 200,
+      "response_sha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee",
+      "aggregate": { "kind": "license documents", "count": 1 },
+      "result": "Apache License 2.0 with LLVM Exceptions."
+    },
+    {
+      "id": "galarius-opencl-language-server-license",
+      "source_group": "Named candidate license",
+      "query": "complete LICENSE at the pinned OpenCL language-server commit",
+      "url": "https://raw.githubusercontent.com/Galarius/opencl-language-server/c3b8b8c6e6b9a6d269cb040d9cd03387802ad3d4/LICENSE",
+      "bound": "one complete response document at the cited commit",
+      "http_status": 200,
+      "response_sha256": "2bd3e3e0e8c156c0d330a626fe617da9fb33ef7acde141fbbcee0381a86a2119",
+      "aggregate": { "kind": "license documents", "count": 1 },
+      "result": "MIT License."
+    },
+    {
+      "id": "openclio-repository-identity",
+      "source_group": "Named candidate provenance",
+      "query": "GitHub repository metadata for the current and legacy OpenCLIO repository paths",
+      "url": "https://api.github.com/repos/sniarchos/openclio",
+      "additional_url": "https://api.github.com/repos/zehanort/openclio",
+      "bound": "one repository metadata object from each URL",
+      "http_status": 200,
+      "additional_http_status_chain": [301, 200],
+      "response_sha256": "aaf6ee0ee1b40918db7e0118401ccceb08b0dafc0438a158a304692c4aeb93ab",
+      "additional_response_sha256": "aaf6ee0ee1b40918db7e0118401ccceb08b0dafc0438a158a304692c4aeb93ab",
+      "aggregate": { "kind": "canonical repository objects", "count": 1 },
+      "result": "The legacy API path redirects to GitHub repository id 377204183 and returns byte-identical metadata for the current repository path. The mixed paths in parser-candidates.json therefore identify one renamed repository, not two sources."
+    }
+  ]
+}

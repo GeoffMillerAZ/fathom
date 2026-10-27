@@ -1,0 +1,169 @@
+{
+  "schema": "opencl-c-pool-rule-v1",
+  "registration": "The initial membership rule was registered at 3e56917af after seven outcomes and before PyOpenCL. This amendment clarifies the named hashcat exception after those baselines and the first implementation trials; it changes no member. The amended bytes govern future patch measurements. Earlier receipts remain bound to their original rule digest and are not retroactively rewritten.",
+  "selection_rule": "Every whole project in these closed pinned search records with a nonempty tracked regular lowercase .cl population and OSI-approved software licences enters the primary pool, except diagnostic roles recorded before its candidate screen and the named hashcat exception. Hashcat's diagnostic role was assigned after its round-1 screen because computed includes and qualifier macros require a compiler-evidenced context; round-1 review accepted that structural exception. No future subject may be reclassified after screening. No error rate, clean count, throughput, compiler result, duplicate count or oracle result can include or exclude any other subject or file.",
+  "membership_inputs": [
+    "repository identity",
+    "full commit pin",
+    "licence eligibility",
+    "previously recorded population role or the named hashcat structural exception",
+    "nonempty exact-lowercase .cl population"
+  ],
+  "prohibited_membership_inputs": [
+    "parse result",
+    "grammar identity",
+    "compiler success",
+    "oracle coverage",
+    "duplicate count"
+  ],
+  "population": "Every tracked regular lowercase .cl at each fixed pin. No sampling, caps, outcome exclusions or deduplication; report distinct blob counts beside file counts. Symlinks and gitlinks counted without traversal.",
+  "source_records": [
+    {
+      "path": "calibration/oracles/opencl-c/pins.json",
+      "sha256": "144600c298e2be4f6706f7bdf7143a4790306362b17eaace1d4d9740d32b87b1"
+    },
+    {
+      "path": "calibration/oracles/opencl-c/subject-search.json",
+      "sha256": "bcbac51a177ed5b2f7e7a8ffabeea5b0dbce768e349fbc8b5c7ed6392a7e9b7d"
+    },
+    {
+      "path": "calibration/oracles/opencl-c/subject-search-r3.json",
+      "sha256": "67e169d0d332265681ab8250a76fedcd2f0f8f9b8db5fba865793d91282b5cec"
+    },
+    {
+      "path": "calibration/oracles/opencl-c/subject-search-r4.json",
+      "sha256": "4707b6a0b990b363e14057100726718451c22f1d3221f8d7491215e37b381f69"
+    }
+  ],
+  "osi_approved_licenses": [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "GPL-3.0"
+  ],
+  "primary_subjects": [
+    {
+      "id": "sdk",
+      "name": "KhronosGroup/OpenCL-SDK",
+      "repository": "https://github.com/KhronosGroup/OpenCL-SDK",
+      "pin": "6090378a113db8dab20ae278c8fa57ab10b92300",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "darktable",
+      "name": "darktable-org/darktable",
+      "repository": "https://github.com/darktable-org/darktable",
+      "pin": "891e46cd57b64d67dbde183d5d3c0e430edd11d6",
+      "licenses": [
+        "GPL-3.0"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "opencv",
+      "name": "opencv/opencv",
+      "repository": "https://github.com/opencv/opencv",
+      "pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "arrayfire",
+      "name": "arrayfire/arrayfire",
+      "repository": "https://github.com/arrayfire/arrayfire",
+      "pin": "ab4a5063c92512dd65ab2b418cf81e4b3c46299b",
+      "licenses": [
+        "BSD-3-Clause"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "clblas",
+      "name": "clMathLibraries/clBLAS",
+      "repository": "https://github.com/clMathLibraries/clBLAS",
+      "pin": "cf9113982fdfc994297d372785ce76eb80911af2",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "rodinia",
+      "name": "yuhc/gpu-rodinia",
+      "repository": "https://github.com/yuhc/gpu-rodinia",
+      "pin": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "licenses": [
+        "BSD-3-Clause"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "shoc",
+      "name": "vetter/shoc",
+      "repository": "https://github.com/vetter/shoc",
+      "pin": "00b25e2751dde4f1d7c595cadbb7fdb0873257b0",
+      "licenses": [
+        "BSD-3-Clause"
+      ],
+      "role": "primary"
+    },
+    {
+      "id": "pyopencl",
+      "name": "inducer/pyopencl",
+      "repository": "https://github.com/inducer/pyopencl",
+      "pin": "0c46357ef31474b1dfd2ec4000b4421fcf71193a",
+      "licenses": [
+        "MIT",
+        "Apache-2.0",
+        "BSD-3-Clause"
+      ],
+      "role": "primary"
+    }
+  ],
+  "diagnostic_or_ineligible": [
+    {
+      "id": "hashcat",
+      "reason": "Macro/context stress role assigned after its round-1 screen and accepted in round-1 review on structural grounds: computed includes and qualifier macros require a compiler-evidenced context. No evidenced compiler context or prepass exists. Applied without this named exception, the historical inclusive pool fails at 1,482/1,735 (85.42%) dedicated ERROR-or-MISSING files."
+    },
+    {
+      "id": "pocl",
+      "reason": "Builtin/generated/negative diagnostic role fixed in subject-search.json before its screen."
+    },
+    {
+      "id": "handson",
+      "reason": "CC-BY-3.0 is not OSI-approved; diagnostic only, forbidden as a calibration subject under design \u00a713.3 step 16 and the corpus.d/vue.yaml precedent."
+    },
+    {
+      "id": "nvidia",
+      "reason": "Unresolved NVIDIA EULA; no confirmed OSI licence, diagnostic only."
+    },
+    {
+      "id": "clinfo",
+      "reason": "Zero exact-lowercase .cl files at its fixed pin; CC0-1.0 is also not an OSI software licence."
+    }
+  ],
+  "existing_baseline": {
+    "receipt": "docs/assessments/data/opencl-c-triage-correction-2026-10-26/subject-outcomes.json",
+    "primary_subjects_before_pyopencl": 7,
+    "files": 378,
+    "dedicated_error_or_missing": 133,
+    "dedicated_error_rate": 0.35185185185185186,
+    "status": "Fails P-R1 natively. The withdrawn SDK+HandsOn pairing is invalid evidence and establishes no level."
+  },
+  "future_evaluation": "P-R1 grammar repair must be measured on this unchanged complete primary pool, with per-subject and pooled counts. Every future patch measurement must also report hashcat's dedicated and C rates beside the fixed eight-project pool. New candidates require another metadata-only preregistration before reading, not search-until-pass. No grammar patch implementation is started until G-R1 opens it.",
+  "license_evidence": {
+    "rodinia": {
+      "license": "BSD-3-Clause",
+      "license_sha256": "440539e50c8d134f4587a8a1c2b9434b695a626b6bd35c13356946f17ebf4a1a",
+      "basis": "Pinned LICENSE has the standard three-clause grant; trailing citation request is nonbinding."
+    },
+    "pyopencl": {
+      "basis": "Disclosed-license eligibility: root LICENSE names MIT, Apache-2.0 and BSD-3-Clause, including the random123 component. Tree metadata alone is not an audit of every file for licence exceptions."
+    }
+  }
+}

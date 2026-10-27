@@ -173,7 +173,9 @@
   },
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "ports, generics, signals, variables, constants and aliases are excluded by kind on the oracle side (ctags:alias 1,138, ctags:constant 1,670, ctags:generic 1,162, ctags:port 1,483, ctags:signal 1,412, ctags:variable 2,053) and are not emitted; the 5 of 399 calibration files (1.25%) that parse with an ERROR node are VUnit's fifo.vhd, tb_axi_stream.vhd, custom_types.vhd, com_messenger.vhd and AlertLogPkg.vhd, and the definitions around each error are still found"
+    "ports, generics, signals, variables, constants and aliases are excluded by kind on the oracle side (ctags:alias 1,138, ctags:constant 1,670, ctags:generic 1,162, ctags:port 1,483, ctags:signal 1,412, ctags:variable 2,053) and are not emitted; the 5 of 399 calibration files (1.25%) that parse with an ERROR node are VUnit's fifo.vhd, tb_axi_stream.vhd, custom_types.vhd, com_messenger.vhd and AlertLogPkg.vhd, and the definitions around each error are still found",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 9ea6da5f)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 9ea6da5f)"
   ],
   "disposition": null
 }

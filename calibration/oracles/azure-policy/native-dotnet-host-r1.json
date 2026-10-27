@@ -1,0 +1,8 @@
+{
+  "version": "9.0.12",
+  "runtime_archive_sha512": "fab776a85b8a4abbdd86466f684146e4fbf479b26e5706ec917fa819c5f9b6258868f3fd8c9cbd103984257d6d1c9689ca5263e183310502d1200841553435c1",
+  "host_sha256": "7a98460963d13000a4af6859cdeee33ae533242d3b549bcc89bd3fc750e5a819",
+  "files": 190,
+  "bytes": 83118736,
+  "native_executed": false
+}

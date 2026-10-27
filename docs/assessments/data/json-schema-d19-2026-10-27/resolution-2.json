@@ -1,0 +1,16 @@
+{
+  "tool": "@apidevtools/json-schema-ref-parser",
+  "version": "16.0.5",
+  "counts": {
+    "files": 11,
+    "schemas": 11,
+    "parse_refusals": 0,
+    "resolve_refusals": 0,
+    "native_read_events": 28,
+    "native_url_read_events": 17,
+    "native_subject_file_read_events": 11,
+    "relative_file_reference_sites": 18,
+    "physical_subject_file_sites": 18,
+    "physical_sites_attested_as_file_reads": 0
+  }
+}

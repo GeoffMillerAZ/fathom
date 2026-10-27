@@ -1,6 +1,6 @@
 package main
 
-// tiera.go — the tier-A definitions (wave ox, LB-F157).
+// tiera.go — legacy -tier-a mode (wave ox, LB-F157). Its definitions are tier C.
 //
 // `crossplane resource validate` (crossplane CLI 2.5.0; `crossplane beta
 // validate` before 2.x) validates each Crossplane file offline against
@@ -9,17 +9,15 @@ package main
 // unknown-field detection; --crossplane-image="" keeps it from pulling
 // Crossplane's package from a registry, and a dead proxy proves nothing else
 // is fetched. A file is accepted when no resource is invalid and every
-// Crossplane object of the file validates; a missing schema is tolerated
-// only for a pipeline step's function input (validate reports it as a
-// resource of the function's group: not one of the file's objects). A file
+// Crossplane object of the file validates; missing-schema report rows are
+// tolerated only when they are not among the file's objects. A file
 // refused (an invalid object, an object with no schema here such as package
-// metadata) contributes nothing and is counted. The entities of an accepted file are its schema-valid objects'
-// (the object, an XRD's composite and claim kinds and versions, a pipeline
-// step), read from the fields the schema validated. A composed resource
-// (`element`, a function input's resources[]) sits in a function's input,
-// which Crossplane's CRDs leave to the function's own schema: it is
-// unevidenced, counted, and in no truth. References and cross_references stay
-// the walk's, tier C: validate checks no compositeTypeRef or functionRef.
+// metadata) contributes nothing and is counted. Definitions come from the
+// authored yaml walk, filtered to accepted files; native validation does not
+// enumerate nested definitions. Composed resources (`element`) in function
+// inputs are excluded because this mode has no native evidence for them.
+// References and cross_references stay the walk's, tier C: validate checks
+// no compositeTypeRef or functionRef.
 
 import (
 	"bytes"
@@ -44,8 +42,8 @@ type report struct {
 
 // verdict reads validate's JSON report for a file whose Crossplane objects
 // are objs (Kind/[namespace/]name): accepted when no resource is invalid and
-// every object is valid. inputs counts the missing schemas tolerated (what is
-// not one of the file's objects: a function's input).
+// every object is valid. inputs counts tolerated missing-schema report rows
+// that are not among the file's objects.
 func verdict(b []byte, objs []string) (ok bool, why string, inputs int) {
 	var r report
 	if err := json.Unmarshal(b, &r); err != nil {
@@ -68,13 +66,12 @@ func verdict(b []byte, objs []string) (ok bool, why string, inputs int) {
 			return false, "no valid result for " + o, 0
 		}
 	}
-	// every object is valid, so each missing schema is something else: a
-	// function's input
+	// Every file object is valid, so missing-schema rows are additional rows.
 	return true, "", inputs
 }
 
 // validate runs crossplane resource validate on one file, offline, and
-// returns how many function inputs it could not validate.
+// returns how many additional report rows lacked a schema.
 func validate(bin, crds, cache, file string, objs []string) (int, error) {
 	var last error
 	for i := 0; i < 6; i++ {
@@ -109,8 +106,9 @@ func firstMark(out string) string {
 	return strings.TrimSpace(out)
 }
 
-// writeTierA writes the tier-A definitions to stdout, the walk's tier-C
-// references and cross_references to refsOut, the accepted files to filesOut.
+// writeTierA retains the legacy name and flag. It writes tier-C definitions
+// to stdout, the walk's tier-C references and cross_references to refsOut,
+// and the accepted files to filesOut.
 func writeTierA(o out, files []string, subject, bin, crds, scratch, refsOut, filesOut string) error {
 	ver, err := exec.Command(bin, "version", "--client").Output()
 	if err != nil {
@@ -158,7 +156,7 @@ func writeTierA(o out, files []string, subject, bin, crds, scratch, refsOut, fil
 		}
 		defs = append(defs, d)
 	}
-	fmt.Fprintf(os.Stderr, "crossplane-oracle: tier A (%s): %d crossplane files, %d validated, refused %v; %d function inputs without a schema (tolerated: not the file's objects); %d definitions; %d composed resources in function inputs unevidenced (the function's schema needs a registry)\n",
+	fmt.Fprintf(os.Stderr, "crossplane-oracle: tier C (%s): %d crossplane files, %d validated, refused %v; %d additional report rows without a schema (tolerated: not the file's objects); %d definitions; %d composed resources in function inputs unevidenced (native validation does not enumerate them)\n",
 		strings.Join(strings.Fields(string(ver)), " "), len(files), len(acc), reasons, inputs, len(defs), elements)
 	if defs == nil {
 		defs = []def{}
@@ -172,9 +170,9 @@ func writeTierA(o out, files []string, subject, bin, crds, scratch, refsOut, fil
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(defsOut{
-		Tool:        "crossplane resource validate, offline, against crossplane's own CRDs (cluster/crds at the subject's tag); lines: gopkg.in/yaml.v3",
+		Tool:        "gopkg.in/yaml.v3 definition walk filtered by crossplane resource validate, offline, against crossplane's own CRDs (cluster/crds at the subject's tag)",
 		Version:     strings.Join(strings.Fields(string(ver)), " "),
-		Tier:        "A",
+		Tier:        "C",
 		Definitions: defs,
 	}); err != nil {
 		return err

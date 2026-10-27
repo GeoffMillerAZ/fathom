@@ -68,9 +68,9 @@ func TestIngest_PaymentService(t *testing.T) {
 	if report.Skipped != 0 {
 		t.Errorf("Skipped = %d, want 0 on first ingest", report.Skipped)
 	}
-	// payment.go has 5 symbols (3 types/interface + 2 funcs); errors.go has two
-	// unexported vars, which are symbols too (LB-F60, epoch 40) → 7.
-	const wantSymbols = 7
+	// C-R14: payment.go has 5 declarations plus 5 indexed struct fields;
+	// errors.go has two unexported vars (LB-F60), for 12 symbols.
+	const wantSymbols = 12
 	if report.Symbols != wantSymbols {
 		t.Errorf("Symbols = %d, want %d", report.Symbols, wantSymbols)
 	}

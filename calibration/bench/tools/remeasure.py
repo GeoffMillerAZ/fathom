@@ -52,7 +52,7 @@ def measure(config, job, trials_only=False):
                 '--cpus', '4', '--tmpfs', '/work/tmp:rw,exec,mode=1777,uid=1000,gid=1000', '-v', str(source) + ':/subject:ro', '-v', str(work) + ':/work',
                 '-v', str(work / 'passwd') + ':/etc/passwd:ro', '-v', str(work / 'group') + ':/etc/group:ro',
                 '-v', str(Path(__file__).resolve().parents[2] / 'bench.d') + ':/bench-inputs:ro',
-                '-w', '/subject', '-e', 'TMPDIR=/work/tmp', '-e', 'COREPACK_HOME=/work/corepack',
+                '-w', '/subject', '-e', 'BENCH_PHASE=' + stage, '-e', 'TMPDIR=/work/tmp', '-e', 'COREPACK_HOME=/work/corepack',
                 '-e', 'UV_PROJECT_ENVIRONMENT=/work/venv', '-e', 'UV_CACHE_DIR=/work/uv-cache',
                 '-e', 'UV_PYTHON_DOWNLOADS=never', '-e', 'GIT_CONFIG_COUNT=3',
                 '-e', 'GIT_CONFIG_KEY_0=safe.directory', '-e', 'GIT_CONFIG_VALUE_0=/subject',
@@ -67,7 +67,7 @@ def measure(config, job, trials_only=False):
                      '-e', 'npm_config_offline=true', '-e', 'PNPM_CONFIG_OFFLINE=true',
                      '-e', 'pnpm_config_verify_deps_before_run=warn', '-e', 'COREPACK_ENABLE_NETWORK=0',
                      '-e', 'HTTP_PROXY=', '-e', 'HTTPS_PROXY=', '-e', 'ALL_PROXY=']
-        command = 'printf \'BENCH_UNAME_M=\'; uname -m; ' + shell_command(config['language'], stage, command)
+        command = 'printf \'BENCH_UNAME_M=\'; uname -m; printf \'BENCH_UID=\'; id -u; ' + shell_command(config['language'], stage, command)
         argv += [config.get('image', IMAGES[config['language']]), 'sh', '-c', command]
         lease = (job / 'offline-trials.lock').open('w')
         if offline:
@@ -86,9 +86,11 @@ def measure(config, job, trials_only=False):
                 raise
         lines = log.read_text(errors='replace').splitlines()
         uname_m = next((line.split('=', 1)[1] for line in lines if line.startswith('BENCH_UNAME_M=')), None)
+        uid = next((int(line.split('=', 1)[1]) for line in lines if line.startswith('BENCH_UID=')), None)
         if code == 0 or uname_m is not None:
             assert uname_m == expected_uname, 'container architecture is not native'
-        result = {'uname_m': uname_m, 'command': command, 'seconds': round(time.monotonic() - start, 3),
+            assert uid == 1000, 'container user is not uid 1000'
+        result = {'uname_m': uname_m, 'uid': uid, 'command': command, 'seconds': round(time.monotonic() - start, 3),
                   'started_at': started_at, 'exit_code': code, 'network': 'none' if offline else 'bridge',
                   'log': log.name, 'log_sha256': hashlib.sha256(log.read_bytes()).hexdigest()}
         lease.close()
@@ -106,6 +108,7 @@ def measure(config, job, trials_only=False):
     else:
         result['setup'] = run('setup', config['setup'], False)
     result['uname_m'] = result['setup'].get('uname_m')
+    result['uid'] = result['setup'].get('uid')
     result['runs'] = []
     receipt = job / 'receipts' / (name + '-suite.json')
     def checkpoint():

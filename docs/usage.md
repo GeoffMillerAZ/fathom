@@ -590,7 +590,10 @@ shown beside every value (law 13):
 | `<repo>/.fathom/capabilities.cue` | **govern** — the final word for that repository |
 
 A user-scope file that tries to set a project-only capability (a gate, a
-guard) is **refused with the key named**, never silently ignored. An
+guard) is **refused with the key named**, never silently ignored. The one
+inversion is `egress-guard` (ADR-083), which protects the user from the
+repository: the user decides, and a repository file that switches it off is
+refused with the key named (switching it on is allowed). An
 unknown id is refused with the nearest known id suggested. `on?: false`
 — which in CUE declares the field may exist rather than setting it, so
 the line does nothing — is refused with the fix in the message.

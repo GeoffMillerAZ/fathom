@@ -185,7 +185,9 @@ func ResolveAnchorSymbol(nodes []core.SymbolNode, query string) (AnchorMatch, er
 		if len(hits) == 0 {
 			continue
 		}
-		distinct := distinctByAnchorKey(hits)
+		// A Go struct field never shadows the method, func or type its
+		// member spelling shares (core.WithoutShadowingFields).
+		distinct := distinctByAnchorKey(core.WithoutShadowingFields(hits, q))
 		if len(distinct) == 1 {
 			return AnchorMatch{Node: distinct[0], Key: SymbolAnchorKey(distinct[0]), Tier: t.tier}, nil
 		}

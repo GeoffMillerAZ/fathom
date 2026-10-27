@@ -73,6 +73,11 @@ func writeRefusal(w http.ResponseWriter, ref *tenancy.Refusal) {
 	case tenancy.RefusalSlots, tenancy.RefusalDeadline, tenancy.RefusalCallerGone:
 		scope = hookguard.BusyScopeClass
 	}
+	// A refusal its code does not scope (a handler's store distress, GDEV-08)
+	// carries its scope itself.
+	if ref.ClassScoped() {
+		scope = hookguard.BusyScopeClass
+	}
 	w.Header().Set(hookguard.BusyScopeHeader, scope)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -98,7 +103,8 @@ const (
 // newDaemonServer is serve-http's http.Server (RT-59): header, idle and
 // per-route write timeouts, a loopback Host and a same-origin Origin on
 // every route (requireLocalMutation's check, generalized: DNS rebinding
-// cannot reach /rpc or the console), and the managed daemon's 409 for a
+// cannot reach /rpc or the console), a loopback peer (ADR-083: a spoofed
+// Host from the network is refused), and the managed daemon's 409 for a
 // test caller. Every route requires the loopback Host: hosted-modules mode,
 // the one network-reachable exception, was removed by SR-17.
 func newDaemonServer(h http.Handler, o daemonServerOpts) *http.Server {
@@ -148,12 +154,18 @@ func liftRPCWriteDeadline(w http.ResponseWriter) error {
 	return http.NewResponseController(w).SetWriteDeadline(time.Time{})
 }
 
-// requireLoopbackHost refuses a request whose Host is not loopback, or
-// whose Origin (when present) is not the page's own origin.
+// requireLoopbackHost refuses a request whose Host is not loopback, whose
+// peer is not loopback (ADR-083: the Host header is the client's to choose,
+// so a network peer that spoofs a loopback Host is refused by its address),
+// or whose Origin (when present) is not the page's own origin.
 func requireLoopbackHost(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !hostIsLoopback(r.Host) {
 			http.Error(w, fmt.Sprintf("refused: Host %q is not loopback — fathom serves this machine only", r.Host), http.StatusForbidden)
+			return
+		}
+		if reason := peerRefusal(r); reason != "" {
+			http.Error(w, "refused: "+reason+" — fathom serves this machine only, and the daemon has no authentication", http.StatusForbidden)
 			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" && !sameOrigin(r, origin) {

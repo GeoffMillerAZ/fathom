@@ -837,7 +837,9 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 			hop.Tool = "find_symbol"
 			hop.Arg = item.Value
 			found, _ := backend.FindSymbol(ctx, service, item.Value)
-			found = withoutLogTemplates(found)
+			// A frame or a failing test names a function, never a struct
+			// field it shares a name with.
+			found = core.WithoutShadowingFields(withoutLogTemplates(found), item.Value)
 			sort.Slice(found, func(i, j int) bool {
 				if found[i].FilePath != found[j].FilePath {
 					return found[i].FilePath < found[j].FilePath

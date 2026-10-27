@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -84,5 +85,26 @@ func TestInstallDocsCarryCurrentRelease(t *testing.T) {
 		if !strings.Contains(repoFile(t, f), want) {
 			t.Errorf("%s: sample `fathom version` output does not contain %q", f, want)
 		}
+	}
+}
+
+func TestFromBuildInfoModuleFallback(t *testing.T) {
+	mk := func(ver, sum string, settings ...debug.BuildSetting) *debug.BuildInfo {
+		return &debug.BuildInfo{Main: debug.Module{Version: ver, Sum: sum}, Settings: settings}
+	}
+	got := FromBuildInfo(mk("v1.2.3", "h1:abc=", debug.BuildSetting{Key: "vcs.revision", Value: "deadbeef"}))
+	want := Stamp{Revision: "deadbeef", ModuleVersion: "v1.2.3", ModuleSum: "h1:abc="}
+	if got != want {
+		t.Errorf("stamped = %+v, want %+v", got, want)
+	}
+	got = FromBuildInfo(mk("v1.2.3", "h1:abc="))
+	if got.Revision != "" || got.ModuleVersion != "v1.2.3" || got.ModuleSum != "h1:abc=" {
+		t.Errorf("go install build = %+v, want module only", got)
+	}
+	if got := FromBuildInfo(mk("(devel)", "")); got != (Stamp{}) {
+		t.Errorf("(devel) module must read as no identity, got %+v", got)
+	}
+	if got := FromBuildInfo(nil); got != (Stamp{}) {
+		t.Errorf("nil build info = %+v, want zero", got)
 	}
 }

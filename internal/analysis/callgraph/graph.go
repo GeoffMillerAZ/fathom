@@ -150,6 +150,9 @@ func Build(nodes []core.SymbolNode) *Graph {
 			if calleeKey == "" {
 				continue // unknown external symbol
 			}
+			if g.nodes[calleeKey].Kind == core.KindGoField {
+				continue // a field definition is not a syntax call target
+			}
 			if _, dup := seen[calleeKey]; dup {
 				continue
 			}
@@ -193,6 +196,9 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 	}
 	for key, n := range g.nodes {
 		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
+		if n.Kind == core.KindGoField {
+			continue // keep fields queryable, outside call-resolution indexes
+		}
 		if n.Package != "" {
 			name := n.Package + "." + n.Name
 			if _, seen := g.byPkgName[name]; seen {
@@ -211,8 +217,14 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 	}
 	for name, keys := range g.byNameAll {
 		sort.Strings(keys)
-		if len(keys) == 1 {
-			g.byName[name] = keys[0]
+		var callTargets []string
+		for _, key := range keys {
+			if g.nodes[key].Kind != core.KindGoField {
+				callTargets = append(callTargets, key)
+			}
+		}
+		if len(callTargets) == 1 {
+			g.byName[name] = callTargets[0]
 		}
 	}
 	// Every SymbolKey contains "::", so empty values mark collisions only
@@ -259,6 +271,9 @@ func (g *Graph) buildSuffixIndex() {
 	g.bySuffix = make(map[string]suffixCandidate)
 	g.byDotSuffix = make(map[string]suffixCandidate)
 	for key := range g.nodes {
+		if g.nodes[key].Kind == core.KindGoField {
+			continue
+		}
 		seenAll := make(map[string]struct{})
 		seenDot := make(map[string]struct{})
 		for i := 1; i < len(key); i++ {
@@ -423,7 +438,7 @@ func (g *Graph) resolveCtorScoped(importPath, methodSuffix string) string {
 	}
 	var match string
 	for key, n := range g.nodes {
-		if !strings.HasSuffix(n.Name, methodSuffix) || n.FilePath == "" {
+		if n.Kind == core.KindGoField || !strings.HasSuffix(n.Name, methodSuffix) || n.FilePath == "" {
 			continue
 		}
 		dir := path.Dir(n.FilePath)
@@ -1101,17 +1116,63 @@ func (g *Graph) canonicalize(symbol string) string {
 		}
 		return ""
 	}
-	// Try suffix match for dotted partial keys like "pkg.Name".
-	var match string
-	for key := range g.nodes {
+	// Try suffix match for dotted partial keys like "pkg.Name". A Go struct
+	// field's key ends with its member name like a method's does, and a
+	// field never shadows the method, func or type the name means
+	// (core.WithoutShadowingFields); its own Owner.Field spelling still
+	// resolves it.
+	var hits []core.SymbolNode
+	for key, n := range g.nodes {
 		if keyEndsWith(key, symbol) {
-			if match != "" {
-				return "" // ambiguous
-			}
-			match = key
+			hits = append(hits, n)
 		}
 	}
-	return match
+	if hits = core.WithoutShadowingFields(hits, symbol); len(hits) != 1 {
+		return "" // none, or ambiguous
+	}
+	return hits[0].Key()
+}
+
+// AmbiguousKeys returns, sorted, the canonical keys symbol names when it
+// names more than one node (why Canonical answers "" for it), and nil when
+// it names one node or none. It reads canonicalize's own last tiers: a
+// "svc::pkg.Name" key by its package-qualified name, anything else by the
+// component-boundary suffix match, a Go struct field never counting beside
+// the func, method or type the name means (core.WithoutShadowingFields).
+// A caller that would answer zero for an unresolved name asks it first: an
+// ambiguous name is never an absence.
+func AmbiguousKeys(g *Graph, symbol string) []string {
+	if g == nil || symbol == "" || g.canonicalize(symbol) != "" {
+		return nil
+	}
+	var hits []core.SymbolNode
+	if i := strings.Index(symbol, "::"); i >= 0 {
+		rest := symbol[i+2:]
+		for _, n := range g.nodes {
+			if n.Package+"."+n.Name == rest {
+				hits = append(hits, n)
+			}
+		}
+	} else {
+		for key, n := range g.nodes {
+			if keyEndsWith(key, symbol) {
+				hits = append(hits, n)
+			}
+		}
+	}
+	seen := make(map[string]bool, len(hits))
+	var keys []string
+	for _, n := range core.WithoutShadowingFields(hits, symbol) {
+		if k := n.Key(); !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) < 2 {
+		return nil
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // keyEndsWith reports whether the canonical key ends with the partial

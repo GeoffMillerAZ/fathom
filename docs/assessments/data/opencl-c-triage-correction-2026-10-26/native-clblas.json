@@ -1,0 +1,85 @@
+{
+  "checkout_unchanged": true,
+  "eligible": {
+    "bytes": 1133326,
+    "files": 40
+  },
+  "expected_commit": "cf9113982fdfc994297d372785ce76eb80911af2",
+  "grammars": [
+    {
+      "abi_version": 14,
+      "both_count": 23,
+      "clean_count": 0,
+      "clean_rate": 0.0,
+      "error_only_count": 17,
+      "error_or_missing_count": 40,
+      "fault_count": 0,
+      "id": "opencl",
+      "library_sha256": "fd8ab192178f160a6cf2ed22c2aa378d69a1d6c93edf13a65bd8cbed07b8d51e",
+      "missing_only_count": 0,
+      "parsed_count": 40,
+      "population_count": 40
+    },
+    {
+      "abi_version": 15,
+      "both_count": 30,
+      "clean_count": 0,
+      "clean_rate": 0.0,
+      "error_only_count": 10,
+      "error_or_missing_count": 40,
+      "fault_count": 0,
+      "id": "c",
+      "library_sha256": "8ddc36a951aacd8b8ed99e70bdb07491507627b1726ea1020cf9ee6d675752b8",
+      "missing_only_count": 0,
+      "parsed_count": 40,
+      "population_count": 40
+    }
+  ],
+  "schema": "opencl-c-native-triage-v1",
+  "scope": "native grammar parse triage only",
+  "tracked": {
+    "after": {
+      "bytes": 9943927,
+      "entries": 777,
+      "gitlinks": 0,
+      "manifest_sha256": "ea731d51b819753d1768ae95fa7dd3361c87191897f0014978c67555240bbab1",
+      "regular_bytes": 9943927,
+      "regular_files": 777,
+      "stage_bytes": 69456,
+      "stage_sha256": "52bbd59bc7be9bc09f0826920e3fa8b259740606fc8b0e870363cc58db8a4911",
+      "symlink_target_bytes": 0,
+      "symlinks": 0
+    },
+    "before": {
+      "bytes": 9943927,
+      "entries": 777,
+      "gitlinks": 0,
+      "manifest_sha256": "ea731d51b819753d1768ae95fa7dd3361c87191897f0014978c67555240bbab1",
+      "regular_bytes": 9943927,
+      "regular_files": 777,
+      "stage_bytes": 69456,
+      "stage_sha256": "52bbd59bc7be9bc09f0826920e3fa8b259740606fc8b0e870363cc58db8a4911",
+      "symlink_target_bytes": 0,
+      "symlinks": 0
+    },
+    "unchanged": true
+  },
+  "tree_sitter": "0.25.2",
+  "untracked": {
+    "after": {
+      "files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unignored_files": 0
+    },
+    "before": {
+      "files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unignored_files": 0
+    },
+    "unchanged": true
+  }
+}

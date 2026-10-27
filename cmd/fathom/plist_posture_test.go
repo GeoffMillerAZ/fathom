@@ -100,7 +100,7 @@ func plutilLint(t *testing.T, raw []byte) {
 // run before the installed binary reports tenancy_contract >= 1.
 func TestPlistV2RoundTripAndReconcileKeepsOperatorKeys(t *testing.T) {
 	// Schema 2 as rendered: no drift, reconcile is a byte-identical no-op.
-	body := []byte(plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7581", "/logs", "/logs/c.jsonl", "/usr/bin", []string{"GOPATH=/home/u/go"}))
+	body := []byte(plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", "127.0.0.1:7581", "/logs", "/logs/c.jsonl", "/usr/bin", []string{"GOPATH=/home/u/go"}))
 	plutilLint(t, body)
 	for key, want := range map[string]string{
 		"KeepAlive":               "{SuccessfulExit: false}",

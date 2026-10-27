@@ -661,7 +661,7 @@ func goSCIPNotes(name string, c map[string]int) []string {
 		if n := c[langbench.CntScipGoDefsUnmeasured]; n > 0 {
 			unmeasured = fmt.Sprintf("; %d of them in a file the reading does not measure (a directory fathom's corpus prunes by name, RT-145's default list: no symbol to map to, still counted)", n)
 		}
-		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s%s. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: K17's member pass failed its cost gate and was reverted (wave lf2, O673)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c)), unmeasured))
+		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s%s. This remaining field-category oracle class includes interface methods outside the field-symbol-only pass. The current extractor emits GoField symbols for top-level struct fields; K17's earlier full-member pass failed its cost gate and was reverted (wave lf2, O673)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c)), unmeasured))
 	}
 	if n := c[langbench.CntScipDefsNamespace]; n > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d package-clause definitions name a Go package, a namespace (K18): out of def_mapping, counted (scip_defs_namespace); a package is file granularity, graded at L3 by file edges, and never a fathom symbol (LB-F344)", name, n))

@@ -1,0 +1,180 @@
+{
+  "language": "GPU Slang (shader-slang/slang)",
+  "as_of": "2026-10-26",
+  "scope": "X-R4 oracle triage only; no calibration run or semantic ceiling",
+  "status": "source-audited-untried",
+  "compiler_pin": {
+    "version": "v2026.20",
+    "license": "Apache-2.0 WITH LLVM-exception",
+    "release": "https://github.com/shader-slang/slang/releases/tag/v2026.20",
+    "license_source": "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/LICENSE#L1",
+    "mac_arm_runtime": {
+      "url": "https://github.com/shader-slang/slang/releases/download/v2026.20/slang-2026.20-macos-aarch64.zip",
+      "sha256_published": "ede1865bf086442c8786c5b7c0470ce5f4fd4f032eefe881356726ff9c445f40",
+      "size_published": "61.8 MB",
+      "evidence": "https://api.github.com/repos/shader-slang/slang/releases/tags/v2026.20",
+      "downloaded": false,
+      "digest_status": "published GitHub release API asset digest; archive not downloaded or locally hashed"
+    },
+    "commit": "d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+    "tag_object": "d8729bec562ca9d9c669f7b13263c06067cda40b"
+  },
+  "fields": [
+    "definitions",
+    "definition_end_ranges",
+    "calls",
+    "imports_and_resolved_files",
+    "typed_edges"
+  ],
+  "candidates": [
+    {
+      "id": "slangc-ast",
+      "route": "own_toolchain",
+      "pin": "shader-slang/slang d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "invocation_to_probe": "slangc -dump-ast -no-codegen <input.slang>",
+      "documented_output": ".slang-ast sidecar next to input",
+      "field_potential": {
+        "definitions": "possible",
+        "definition_end_ranges": "unknown",
+        "calls": "possible",
+        "imports_and_resolved_files": "unknown",
+        "typed_edges": "unknown"
+      },
+      "limitation": "Documentation confirms an AST dump but does not specify its schema, source ranges, semantic bindings, or preservation of imported declarations. Inspect output before assigning a tier.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/user-guide/08-compiling.md"
+      ]
+    },
+    {
+      "id": "slangc-ir",
+      "route": "own_toolchain",
+      "pin": "shader-slang/slang d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "invocation_to_probe": "slangc -dump-ir -no-codegen <input.slang>",
+      "documented_output": "IR after every pass; -emit-ir writes module IR and -dump-module disassembles module IR",
+      "field_potential": {
+        "definitions": "possible",
+        "definition_end_ranges": "unknown",
+        "calls": "possible",
+        "imports_and_resolved_files": "unknown",
+        "typed_edges": "possible"
+      },
+      "limitation": "Pass timing and source-location fidelity are not established by CLI documentation. Need compare IR symbol and call identity to source facts before use.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/include/slang.h"
+      ]
+    },
+    {
+      "id": "slangc-depfile-includes",
+      "route": "own_toolchain",
+      "pin": "shader-slang/slang d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "invocation_to_probe": "slangc -depfile <path> -output-includes -no-codegen <input.slang>",
+      "documented_output": "Makefile dependency list of source files and imported precompiled modules; processed-source hierarchy",
+      "field_potential": {
+        "definitions": "no documented output",
+        "definition_end_ranges": "no documented output",
+        "calls": "no documented output",
+        "imports_and_resolved_files": "yes, dependency files; per-import edge still unknown",
+        "typed_edges": "no documented output"
+      },
+      "limitation": "Dependency membership alone does not identify the import statement or its target edge; inspect hierarchy format and compare with source.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md"
+      ]
+    },
+    {
+      "id": "slang-reflection",
+      "route": "own_toolchain",
+      "pin": "shader-slang/slang d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "invocation_to_probe": "slangc -reflection-json <path> -no-codegen <input.slang>; then inspect the C++ reflection API",
+      "documented_output": "CLI JSON reflection; C++ API IModule::getModuleReflection returns a DeclReflection tree (name, kind, children, type), ISession::getDeclSourceLocation returns file/line/column, and IModule exposes transitive dependency paths",
+      "field_potential": {
+        "definitions": "yes, declaration-tree API subset; completeness untested",
+        "definition_end_ranges": "unknown; source-location API gives start only",
+        "calls": "unknown",
+        "imports_and_resolved_files": "dependency paths yes; per-import edge unknown",
+        "typed_edges": "declaration type API possible; edge identity unknown"
+      },
+      "limitation": "Do not equate CLI layout JSON with the richer declaration API. API exposes start locations, not end ranges; completeness, call relationships and per-import linkage need a fixture probe.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/include/slang.h#L3983-L4035",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/include/slang.h#L4786-L4791",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/include/slang.h#L5798-L5809",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md#L450-L454"
+      ]
+    },
+    {
+      "id": "official-slangd",
+      "route": "language_server",
+      "pin": "shader-slang/slang d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "documented_output": "Pinned server advertises definitionProvider, documentSymbolProvider, and semanticTokensProvider; documentSymbol loads a parsed Module and calls getDocumentSymbols; gotoDefinition uses AST lookup and resolved DeclRef locations",
+      "field_potential": {
+        "definitions": "yes, request-scoped symbols",
+        "definition_end_ranges": "possible; inspect actual DocumentSymbol ranges",
+        "calls": "possible via AST-backed lookup at call sites; exhaustive extraction untested",
+        "imports_and_resolved_files": "possible via gotoDefinition; import handling untested",
+        "typed_edges": "possible via resolved declaration references; breadth untested"
+      },
+      "limitation": "Opened-document/request scope, result completeness, exact end ranges and call/import coverage need protocol probes. Pinned initializer does not advertise references or call hierarchy; this is an observed LSP capability list, not a claim about internal AST potential.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/source/slang/slang-language-server.cpp#L140-L170",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/source/slang/slang-language-server.cpp#L1094-L1145",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/source/slang/slang-language-server.cpp#L2071-L2093"
+      ]
+    },
+    {
+      "id": "tree-sitter-slang",
+      "route": "package_parser",
+      "pin": "tree-sitter-grammars/tree-sitter-slang master 1dbcc4abc7b3cdd663eb03d93031167d6ed19f56; npm tree-sitter-slang 0.3.1 gitHead c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3",
+      "license": "MIT",
+      "documented_output": "Concrete syntax tree through tree-sitter bindings",
+      "field_potential": {
+        "definitions": "possible via queries",
+        "definition_end_ranges": "possible via node span",
+        "calls": "possible via queries",
+        "imports_and_resolved_files": "syntax only",
+        "typed_edges": "no type checker documented"
+      },
+      "limitation": "A syntax candidate, not proof of compiler semantics or resolved edges; compare against compiler AST. If selected for the product, same-grammar queries cap at tier C.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/commits/master",
+        "https://registry.npmjs.org/tree-sitter-slang/latest",
+        "https://github.com/tree-sitter-grammars/tree-sitter-slang"
+      ],
+      "independence_note": "If this grammar is selected for the product, queries over the same grammar are tier C, not independent semantic truth."
+    },
+    {
+      "id": "slang-function-coverage-runtime",
+      "route": "runtime_tracing",
+      "pin": "shader-slang/slang d9ede2dd5836afc0e9586da18d9236b171d0faa8",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "documented_output": "Pinned compiler flag -trace-function-coverage instruments per-function-entry counters and emits a coverage manifest; -trace-coverage also instruments statement coverage. slangi interpreter target is enabled in build options.",
+      "field_potential": {
+        "definitions": "unknown",
+        "definition_end_ranges": "unknown",
+        "calls": "executed-function subset possible, no caller-callee edge documented",
+        "imports_and_resolved_files": "unknown",
+        "typed_edges": "unknown"
+      },
+      "limitation": "This is a documented compiler instrumentation route but remains UNTRIED. Executed-function counters would cover only exercised runtime paths and do not alone prove caller-callee identity or full static calls. Any additional tracing capability remains uninvestigated.",
+      "status": "source-audited-untried",
+      "sources": [
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/command-line-slangc-reference.md#L326-L337",
+        "https://github.com/shader-slang/slang/blob/d9ede2dd5836afc0e9586da18d9236b171d0faa8/docs/building.md#L312-L314"
+      ]
+    }
+  ],
+  "tier_policy": "No oracle tier assigned by this source inventory. Reconstructed contexts cap at tier B; a same-grammar query oracle caps at tier C. Native semantic context and output coverage require independent proof."
+}

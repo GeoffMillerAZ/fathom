@@ -67,9 +67,9 @@ One always-on daemon serves every repo and session (launchd example in
 `docs/usage.md`); ingest is hash-gated (~0.2s when clean) and self-refreshes
 on git-HEAD drift. `fathom init --skills` (bare = `.agents/skills` +
 `.claude/skills`; `=claude`, `=codex`/`=agents` for one path, `=codex-prompts`
-for the deprecated `~/.codex/prompts` twin) also installs the ten shipped
-skills (activate, custodian, doctor, feedback, findings, impact, onboard,
-plan, rewire, verify); `fathom plugin render` packages the same ten with the
+for the deprecated `~/.codex/prompts` twin) also installs the eleven shipped
+skills (activate, custodian, doctor, feedback, findings, impact, offload,
+onboard, plan, rewire, verify); `fathom plugin render` packages the same eleven with the
 hook template and the MCP registration as one plugin tree carrying both the
 Claude Code and the Agent Plugins 1.0 manifests. Every file `init` or
 `fathom fleet reconcile --apply` writes goes through one plan → apply →

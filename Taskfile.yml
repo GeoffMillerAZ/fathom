@@ -172,10 +172,13 @@ tasks:
     # time against a bound, and under -race that time is the race
     # detector's. It runs in its own `perfgate` step (no -race), a
     # validate:unleased dependency.
+    # scripts/temp-path-canary.sh (a symlinked "_"/"." TMPDIR) is off until the
+    # Linux temp-path failures it exposed are fixed (issue 120).
     # The go test line stays literal in this task: the test-run hook
     # (cmd/fathom/testrunhook_declared.go) reads the declared test commands
     # from this Taskfile.
     cmds:
+      - "{{.GO}} vet -tags=fathom_grammar_audit ./internal/extractor/tsengine ./calibration/oracles/scip-clang/cpp-screen"
       - |
         export CGO_ENABLED=1
         rc=0
@@ -191,6 +194,10 @@ tasks:
   perfgate:
     desc: The typed-edges performance gate (internal/fusion/perfgate) WITHOUT -race - it times the typed pass against a syntax-only baseline, and under -race it would time the race detector. Every other package, internal/fusion included, stays under -race in `task test`; this package is excluded from that line and runs here, in validate:unleased
     cmds: ["bash scripts/scratch-home.sh {{.GO}} test -count=1 ./internal/fusion/perfgate/..."]
+
+  simulink-gate:
+    desc: The Simulink reader's memory and CPU bounds (internal/extractor TestReadSimulinkModelHeapBound, TestSimulinkHashburnCPU, TestSimulinkResolveHashWork) WITHOUT -race - they measure a child's peak resident set and CPU time, which under -race are the race detector's, so they skip there; this step, in validate:unleased, is where they run (S5-R4)
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -count=1 -run '^(TestReadSimulinkModelHeapBound|TestSimulinkHashburnCPU|TestSimulinkResolveHashWork)$' ./internal/extractor"]
 
   test:weights:
     desc: Re-measure cmd/fathom's per-test seconds into scripts/test-shards.weights.tsv (the shard balance of `task test`) from one go test -race -json run
@@ -367,7 +374,7 @@ tasks:
     cmds: ["bash scripts/gate-log.sh validate bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, test
+    desc: Full gate — merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, simulink-gate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -379,7 +386,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate, record-ids-check]
+    deps: [merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate, simulink-gate, record-ids-check]
     cmds: [{ task: test }]
 
   push:

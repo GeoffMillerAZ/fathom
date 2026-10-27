@@ -84,7 +84,10 @@ func TestGapSeedsOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles, e
 	for _, n := range nodes {
 		k := n.Key()
 		byKey[k] = n
-		if (changed[n.FilePath] || extraKey[k]) && !callgraph.IsTestNode(n) {
+		// A Go struct field is no seed: field references are not indexed,
+		// so no test reaching it is ever recorded and it would read as an
+		// untested gap (blast_radius discloses changed fields apart).
+		if (changed[n.FilePath] || extraKey[k]) && !callgraph.IsTestNode(n) && n.Kind != core.KindGoField {
 			seeds = append(seeds, k)
 		}
 	}

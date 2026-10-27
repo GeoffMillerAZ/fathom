@@ -460,6 +460,24 @@ globalName: #Dialect & {
 	queue_id:     "gqlfixture"
 }
 
+// A native dialect whose .slx files are OPC zip model containers (ADR-021 (1), amended
+// 2026-10-24): read despite the binary sniff, the .mdl beside them as text.
+modelContainer: #Dialect & {
+	id:       "model-container"
+	display:  "Model container"
+	kind:     "tooling"
+	engine:   "native"
+	lang_tag: "model-container"
+	match: {
+		extensions: [".slx", ".mdl"]
+		container: {format: "opc-zip", extensions: [".slx"]}
+	}
+	kinds: {model: {source_kind: "ModelContainerModel", canonical: "module"}}
+	required_kinds: ["model"]
+	target_level: "L1"
+	queue_id:     "model-container"
+}
+
 // Namespace imports use include-path lookup without wildcard scope.
 namespaceImports: #Dialect & {
 	id: "example", display: "Example", kind: "language", engine: "native", lang_tag: "example"

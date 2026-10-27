@@ -73,6 +73,11 @@ type QueryResult = core.QueryResult
 // fusion.Report.
 type Report = fusion.Report
 
+// TypedSkip is one reason the typed pass did not resolve some of its input
+// (Report.TypedSkips, Report.TypedNotLoaded). It is a re-export of
+// fusion.TypedSkip.
+type TypedSkip = fusion.TypedSkip
+
 // ReadFailure names one file an Ingest could not read — Report.ReadFailures
 // lists them sorted by Path. It is a re-export of fusion.ReadFailure.
 type ReadFailure = fusion.ReadFailure

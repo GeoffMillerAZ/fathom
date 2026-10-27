@@ -175,6 +175,8 @@ func symbolKind(k core.SourceKind) scip.SymbolInformation_Kind {
 		return scip.SymbolInformation_Constant
 	case core.KindGoInterface:
 		return scip.SymbolInformation_Interface
+	case core.KindGoField:
+		return scip.SymbolInformation_Field
 	default:
 		return scip.SymbolInformation_UnspecifiedKind
 	}
