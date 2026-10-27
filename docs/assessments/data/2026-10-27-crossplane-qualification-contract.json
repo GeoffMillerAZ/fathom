@@ -1,0 +1,137 @@
+{
+  "canonical_reading_sha256": "7084784fae38d4d14108cb17761e18d8477d6754af927d97372d5c519a3e6005",
+  "cases": [
+    {
+      "exit_code": 0,
+      "gate_pass": true,
+      "label": "baseline",
+      "row_status": "pass"
+    },
+    {
+      "after": "unmet",
+      "before": "good",
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "grade_L1",
+      "mutation": "grade.L1",
+      "row_status": "fail"
+    },
+    {
+      "after": "unmet",
+      "before": "good",
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "grade_L2",
+      "mutation": "grade.L2",
+      "row_status": "fail"
+    },
+    {
+      "after": "unmet",
+      "before": "good",
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "grade_L3",
+      "mutation": "grade.L3",
+      "row_status": "fail"
+    },
+    {
+      "after": "unmet",
+      "before": "not-applicable",
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "grade_L4",
+      "mutation": "grade.L4",
+      "row_status": "fail"
+    },
+    {
+      "after": 0.97,
+      "before": 1,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "metric_sym_recall",
+      "mutation": "metrics.sym_recall",
+      "row_status": "fail"
+    },
+    {
+      "after": "D",
+      "before": "C",
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "tier_sym_recall",
+      "mutation": "metric_tiers.sym_recall",
+      "row_status": "fail"
+    },
+    {
+      "after": 427,
+      "before": 428,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "counts_matched",
+      "mutation": "counts.matched",
+      "row_status": "fail"
+    },
+    {
+      "after": 237,
+      "before": 238,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "population_files",
+      "mutation": "subjects[0].files",
+      "row_status": "fail"
+    },
+    {
+      "after": 2,
+      "before": 3,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "population_subjects",
+      "mutation": "subjects",
+      "row_status": "fail"
+    },
+    {
+      "after": 4,
+      "before": 5,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "population_required_kinds",
+      "mutation": "required_kinds",
+      "row_status": "fail"
+    },
+    {
+      "after": 4,
+      "before": 5,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "population_kind_intersection",
+      "mutation": "kind_intersection",
+      "row_status": "fail"
+    },
+    {
+      "after": 0,
+      "before": 33,
+      "exit_code": 1,
+      "gate_pass": false,
+      "label": "regraded_xref_truth_found",
+      "mutation": "subjects[*].counts.xref_truth_found",
+      "regraded_L3": "unmet",
+      "regraded_level_met": "L2",
+      "row_status": "fail"
+    },
+    {
+      "exit_code": 0,
+      "gate_pass": true,
+      "label": "restored_baseline",
+      "row_status": "pass"
+    }
+  ],
+  "main_commit": "3118be853",
+  "method": "real strict CLI verification of one claimed row and live reading in an isolated scratch Git tree; the supplied store bootstraps symbol access only",
+  "production_claimed": false,
+  "production_plan_unchanged": true,
+  "production_reading_unchanged": true,
+  "row_contract_sha256": "f70374260281df457ad0f733b83639c5d2db38617a9b2a37b8d1ead0c211b228",
+  "row_id": "LB-IAC-crossplane-pt1",
+  "scratch_claimed": true,
+  "tool_revision": "3118be85327b57e260d09d9efa332ec91426f727",
+  "tools_clean": true
+}

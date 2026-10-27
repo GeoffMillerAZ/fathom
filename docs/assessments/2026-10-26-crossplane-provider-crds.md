@@ -16,9 +16,9 @@ binding. The L2/L3 native-oracle question remains open; no ceiling is establishe
 IAC-19 / GAP1-34 uses provider CRDs as calibration-only oracle inputs. ADR-048
 and I54 require measured support; I56 prohibits an implicit product downloader.
 The owner authorized the provider-schema fetch trigger. F25 remains deferred.
-No product engine, dependency layer or generated board changes. F11 corrects only
-the Crossplane queue oracle string in its own commit. F12 withdraws the historical
-LB-F157 claim and uses a new, unchecked qualification row.
+No product engine, dependency layer or generated board changes. The Crossplane
+queue records the independent tier-C walk as its oracle. P-T1 withdraws the
+historical LB-F157 tier-A claim and uses a separate, unchecked qualification row.
 The sole canonical shard remains `calibration/corpus.d/crossplane.yaml`.
 
 The original three canonical subjects are preserved. A legacy AWS platform,
@@ -165,23 +165,23 @@ Concurrent host jobs were not recorded. The controller owns full merged-head
 `task validate`, verification, Linux CI and integration.
 
 Round 3 preserves LB-F157's original tier-A deliverable and contract, but marks
-that claim withdrawn (`[-]`, disposition `refused`) under the controller's F12
-instruction. It no longer reuses that ID for the P-T1 correction. The replacement
+that claim withdrawn (`[-]`, disposition `refused`) under P-T1 because schema
+acceptance did not enumerate nested definitions. It no longer reuses that ID for the P-T1 correction. The replacement
 `LB-IAC-crossplane-pt1` has its own full-population evidence contract and remains
 unchecked for the controller. The earlier one-row lexical verification in the
 R2 receipt is historical and does not certify this replacement.
 
-F8 independently fetched every subject/provider archive from its own repository
+The archive-pin reconciliation independently fetched every subject/provider archive from its own repository
 and peeled commit: all twelve now match their recorded digest and byte count.
 Azure/GCP network archive metadata had been copied from other versions; both
 are corrected. The legacy AWS archive pin also changed from its annotated tag
 object to its peeled commit; all 29 relative entries and contents are identical.
 The reproducible setup checker rejects a copied digest or wrong commit root.
-F10 reproduced six errors in an otherwise fresh Python tree without `workspace/`;
+The fresh-tree reproduction found six errors without `workspace/`;
 the test modules now create the required scratch directory. All 27 tests pass,
 including two new archive-identity checks. The [R3 receipt](data/2026-10-26-crossplane-r3.json)
 records these results. Neither the canonical reading nor the native results
-changed. F13 explicitly records the published L1 excellent-to-good downgrade.
+changed. The change note explicitly records the published L1 excellent-to-good downgrade.
 
 The private R2 scratch ingest stored source text but failed typed Go loading for
 340 of 1,266 packages because its importer supports export-data v4 while Go
@@ -208,3 +208,29 @@ output hashes and raw-log digests have been withdrawn from public receipts.
 They can encode private root identities even without literal paths. Existing
 source pins, actual measured counts and command statuses remain. Private raw
 owner-tool outputs stay ignored; they must not be copied into public evidence.
+
+## Reading qualification contract
+
+Under I-R7, `LB-IAC-crossplane-pt1` reads
+`docs/bench/readings/lang/crossplane.json` directly. Its exact-match contract
+requires the recorded grade block and level, all six accuracy values and tier-C
+labels, pooled counts, all three subject pins/file counts and the required and
+measured kinds. It does not certify a hand-authored qualification
+sentence in a receipt. The production row remains unchecked.
+
+The [contract controls](data/2026-10-27-crossplane-qualification-contract.json)
+come from the actual main verifier and grader, through
+`calibration/oracles/crossplane/qualification_contract.py`. Only an isolated
+scratch copy is claimed. Grade-only, accuracy-only, tier-only and count-only
+changes must fail strict verification. Dropping a file, subject or required/
+measured element kind must also fail. The real regrade control removes all 33
+found cross-file references from the subjects' counts, gives L3 unmet, and must
+also fail. Original and restored inputs must pass. The canonical reading and
+production plan are never written by the driver. The
+[reproduction recipe](../../calibration/oracles/crossplane/README.md#reading-qualification-contract)
+keeps its scratch store and ledger outside the canonical evidence population.
+
+Public references to the archive-pin corrections, fresh-tree scratch setup,
+queue oracle and withdrawn tier-A claim now name their substance or P-T1 and
+`LB-F157`/`LB-IAC-crossplane-pt1`. Historical commands and measurements are
+retained. G18's typed layer remains deferred and NP-Q5 remains the owner's call.
