@@ -118,6 +118,13 @@ const (
 	// and the Read offset and limit recipe; the read runs unchanged.
 	// Opt-in ([hooks] read_outline_hint).
 	CapReadOutlineHint Capability = "read-outline-hint"
+	// CapGuardPreWeb is the egress guard on a harness's own web tools
+	// (ADR-083): before a WebFetch or WebSearch, the URL host or the
+	// search's allowed domains are checked against [guards] egress_allow;
+	// warn injects one line, enforce denies. A tripwire, not data-loss
+	// prevention; the harness's own permissions and sandbox are the
+	// boundary.
+	CapGuardPreWeb Capability = "guard-pre-web"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -139,6 +146,8 @@ var Capabilities = []Capability{
 	CapClaimCheck,
 	// H8's Read outline hint, appended for the same reason.
 	CapReadOutlineHint,
+	// ADR-083's egress guard on web tools, appended for the same reason.
+	CapGuardPreWeb,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
@@ -212,6 +221,7 @@ const (
 	ToolDiscoveryRead ToolClass = "discovery-read"
 	ToolDiscoveryGrep ToolClass = "discovery-grep"
 	ToolDiscoveryGlob ToolClass = "discovery-glob"
+	ToolWeb           ToolClass = "web" // a harness's own web fetch or search (ADR-083)
 	ToolOther         ToolClass = "other"
 )
 

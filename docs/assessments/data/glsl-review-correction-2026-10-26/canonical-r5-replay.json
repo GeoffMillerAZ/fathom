@@ -1,0 +1,92 @@
+{
+  "catalog_fingerprint_sha256": "bc10197e4a50b121c13e56bee2f5536714515c3d94296cb260bc6922a658d6e5",
+  "checks": {
+    "TestCommittedReadingsRoundTrip": "pass0.587s",
+    "TestNoOrgSpecificNames": "pass2.566s",
+    "X-R5-delta-lexical-scan": "0 lexical pattern matches in added lines since reviewed2d48781e0",
+    "merge-debris-full-and-staged": "pass",
+    "release-notes-check": "pass"
+  },
+  "conditions": {
+    "GOFLAGS": "-p=2",
+    "GOMAXPROCS": 2,
+    "GOWORK": "off",
+    "nice": 10,
+    "start_load_one_max": 9
+  },
+  "counts": {
+    "call_fathom": 390,
+    "call_fathom_in_truth": 332,
+    "call_pairs_excluded_fathom": 3240,
+    "call_truth": 332,
+    "call_truth_found": 332,
+    "callables": 1288,
+    "callables_signed": 1288,
+    "fathom_defs": 1657,
+    "kind_equal": 1650,
+    "matched": 1650,
+    "oracle_defs": 1816,
+    "range_eligible": 1650,
+    "range_ok": 1650
+  },
+  "extension_catalog_sha256": "43e34f4c96a7ad9ce2aaae7cc1427e16e46d1a4a1f1bd996d5653b088cd1159d",
+  "faults": 0,
+  "files": 968,
+  "files_with_error": 39,
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "historical_reading_sha256": "e52245fea41a385de7dd7e11fe875cf147694067df27e55e08e2feabf0ad563f",
+  "historical_source_commit": "85ee9a41cb79a25acbee625cce3d5402ad284840",
+  "level_met": "L2",
+  "limits": [
+    "Timing and path-bearing receipt hashes may vary across runs.",
+    "Historical delta/holdout receipts remain diagnostics from their recorded source; this replay replaces the canonical reading only.",
+    "No grammar, runtime, catalog or exclusion change."
+  ],
+  "max_file_ms": 6,
+  "median_throughput_mb_s": 2.11,
+  "publication": "The controller must push the corrected branch history to PR #61. The measured source is an ancestor of the corrected READY head; this receipt does not claim it was already on a remote when measured.",
+  "quality_comparison": {
+    "equal": true,
+    "method": "Compare sorted JSON values after removing only source commit, measured_at, notes and timing fields: throughput_mb_s, wall_throughput_mb_s, extract_ms, extract_cpu_ms, max_file_ms. Keep all counts, grades, metric tiers, scope, subject pins, catalog identities, fault/error and module-size fields.",
+    "sha256": "30f2a8430948a61f59c97108f90fdcab3d92263644e34aea516c1063b9226a99"
+  },
+  "reading_sha256": "3ea0cfa4e20c003cdd5175eb5bdb8525d43765e1379297d761e19812ce458293",
+  "scope": "Canonical GLSL replay at clean source; historical G-R3 delta and holdout diagnostics retained separately",
+  "source_commit": "8eaab47019c68a214fe549f9692e9507b75621fd",
+  "subjects": [
+    {
+      "files": 353,
+      "oracle_sha256": "5ec2568b7cc8920a3ac0b67fbf6913e8dd5d83f1c07f51309c0003a312f422aa",
+      "oracle_truth_sha256": "810c776a32c1aab67964b63ea387a220a6da0edbcf4be586b7ab786446870b2d",
+      "sha": "1cbc8d87b731b438f47dea00a2e083ba7d59051d",
+      "shader_tree_sha256": "8bcfba6a498ac7d82bd72445ecfbcbe3eaac8ae41620214592596e5de17f99c9",
+      "unmatched_sha256": "5cc543291125eedeb4abc4f921cea444e96777e757caa5acb088e4d6e041af1d"
+    },
+    {
+      "files": 306,
+      "oracle_sha256": "3aff29f931d04e914a55ec012520d6e2cb68eefeb11d66da9efb9282f783804b",
+      "oracle_truth_sha256": "ff0da232302b697af5728d3158f4cfee8c7c0e5ec798bde55b47e542be2c862f",
+      "sha": "f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7",
+      "shader_tree_sha256": "0db302ffef34d8eaba07684232ae04700679697dff3f66f3da59c5f88baaae30",
+      "unmatched_sha256": "888b7bdd6896338a0702b0368563ef79558b84d407720f04515f83310be3b8fd"
+    },
+    {
+      "files": 309,
+      "oracle_sha256": "88e22324cc651b17ddf87415f4acc611a2dcdc8970086aa5c98d6f7113891e9d",
+      "oracle_truth_sha256": "c10099e5da49080ff3e41343dd17e171478bf82b52754b677a1094ff4e6b6843",
+      "sha": "69622af06f7652c7fc9b9a9180e7142046315cbc",
+      "shader_tree_sha256": "67b77b7439d3d4ded4530e7ed869f4e6dcd608a7769c88de7aac631a3f981391",
+      "unmatched_sha256": "0443bbf987a46e75ff6352cfaaf4094d8b768b9669b9090e964b43cdf7709ab6"
+    }
+  ],
+  "throughput_mb_s": [
+    2.11,
+    2.09,
+    2.12
+  ]
+}

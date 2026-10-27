@@ -1,0 +1,246 @@
+{
+  "schema": "slang-grammar-search-receipt-v1",
+  "as_of": "2026-10-26",
+  "scope": "shader-slang/slang grammar candidate discovery only; no parse or build measurement",
+  "queries": [
+    {
+      "q": "site:github.com \"tree-sitter-slang\" \"shader\"",
+      "result": "tree-sitter-grammars/tree-sitter-slang found",
+      "source": "https://github.com/tree-sitter-grammars/tree-sitter-slang"
+    },
+    {
+      "q": "site:github.com \"tree-sitter\" \"Slang\" \"shader\" grammar",
+      "result": "Search index returned canonical repository; fork inventory required GitHub API.",
+      "source": "https://github.com/tree-sitter-grammars/tree-sitter-slang"
+    },
+    {
+      "q": "tree-sitter/tree-sitter wiki List-of-parsers: slang, hlsl, cuda",
+      "result": "slang entry points to theHamsta/tree-sitter-slang, now redirected to tree-sitter-grammars; HLSL and CUDA entries are separate C++ extensions",
+      "source": "https://github.com/tree-sitter/tree-sitter/wiki/List-of-parsers"
+    },
+    {
+      "q": "https://github.com/tree-sitter-grammars/tree-sitter-slang/releases",
+      "result": "latest visible release v0.3.1; tag commit c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3",
+      "source": "https://github.com/tree-sitter-grammars/tree-sitter-slang/releases"
+    },
+    {
+      "q": "https://pypi.org/project/tree-sitter-slang/",
+      "result": "v0.3.1 source distribution and SHA256, MIT metadata",
+      "source": "https://pypi.org/project/tree-sitter-slang/"
+    },
+    {
+      "q": "\"tree-sitter-slang\" \"forked from\" \"tree-sitter-grammars\" github",
+      "result": "Search-index miss; primary GitHub forks API later identified three forks, including one grammar-changing fork."
+    },
+    {
+      "q": "\"tree-sitter-slang\" \"grammar.js\" -tree-sitter-grammars",
+      "result": "Search-index miss; primary GitHub compare API later identified Vostranox fork with grammar.js changes."
+    },
+    {
+      "q": "site:github.com/3rd/syslang tree sitter",
+      "result": "unrelated document syntax whose informal alias is slang",
+      "source": "https://github.com/3rd/syslang"
+    },
+    {
+      "q": "site:github.com \"tree-sitter-slang\" \"SystemVerilog\"",
+      "result": "no Slang GPU shader grammar candidate; slang/pyslang in HDL context denotes SystemVerilog tooling"
+    },
+    {
+      "q": "site:github.com \"tree-sitter-slang\" \"S-Lang\"",
+      "result": "no Slang GPU shader grammar candidate; S-Lang scripting is unrelated"
+    }
+  ],
+  "access_checks": [
+    {
+      "target": "api.github.com from default sandbox",
+      "method": "Python urllib and gh api",
+      "result": "DNS/network unavailable; retried with read-only sandbox escalation and received HTTP 200 for bounded primary queries"
+    },
+    {
+      "target": "https://github.com/tree-sitter-grammars/tree-sitter-slang/forks",
+      "method": "web open",
+      "result": "web cache miss; GitHub API forks?per_page=100&page=1 succeeded with HTTP 200"
+    }
+  ],
+  "exclusions": [
+    {
+      "identity": "https://github.com/3rd/syslang",
+      "reason": "document format, not shader-slang/slang"
+    },
+    {
+      "identity": "https://github.com/gmlarumbe/tree-sitter-systemverilog",
+      "reason": "SystemVerilog grammar; slang HDL compiler is a different product"
+    },
+    {
+      "identity": "https://github.com/theHamsta/tree-sitter-slang",
+      "reason": "redirects to canonical tree-sitter-grammars repository; duplicate identity"
+    }
+  ],
+  "public_evidence_policy": "Repository identities, bounded search results, versions, counts, and hashes only; no subject code, filenames, people, emails, or copied subject content.",
+  "http_receipts": [
+    {
+      "name": "repository",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang",
+      "http_status": 200,
+      "response_sha256": "e2202e794e7a7bb256b78b6438a97d56e25c0de8e5c64b07856f07e4ff6f5a31",
+      "response_bytes": 7370
+    },
+    {
+      "name": "upstream-master-commit",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/commits/master",
+      "http_status": 200,
+      "response_sha256": "2fd7c2c76aef87b7df2d9a308a3bae7c473b87b0dbc8d1eec8ffb911c55040a1",
+      "response_bytes": 5136
+    },
+    {
+      "name": "release-latest",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/releases/latest",
+      "http_status": 200,
+      "response_sha256": "650dc4b267b4b88bdd77eccba21298c3a13494253b86593722d0b69bac676185",
+      "response_bytes": 2532
+    },
+    {
+      "name": "release-tag",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/git/ref/tags/v0.3.1",
+      "http_status": 200,
+      "response_sha256": "00e63361ff3dfe723e62d7734fc07b2ca7ea1c68f45aae6b0ca458712ffe9774",
+      "response_bytes": 377
+    },
+    {
+      "name": "forks",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/forks?per_page=100&page=1",
+      "http_status": 200,
+      "response_sha256": "d76cd71aa5a3165ccacadbadef98c3e6a3b2fa451c899a72c7a0d595783d9a0d",
+      "response_bytes": 16794,
+      "result_count": 3
+    },
+    {
+      "name": "exact-name-repository-search",
+      "url": "https://api.github.com/search/repositories?q=tree-sitter-slang+in%3Aname&per_page=100&page=1",
+      "http_status": 200,
+      "response_sha256": "60d63824bb6a38b3765b0e199b1824c4e93be9da23c95dd3df4ee07f6a279379",
+      "response_bytes": 6216,
+      "result_count": 1,
+      "note": "GitHub search defaults to excluding forks"
+    },
+    {
+      "name": "vostranox-compare",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/compare/master...Vostranox:master",
+      "http_status": 200,
+      "response_sha256": "da05bf5c8f2e8e27df8283e824b8bd99be44dd777db85f1bd1006a766750f7ed",
+      "response_bytes": 111824,
+      "ahead_by": 2,
+      "behind_by": 0
+    },
+    {
+      "name": "guidoschmidt-compare",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/compare/master...guidoschmidt:master",
+      "http_status": 200,
+      "response_sha256": "6fdbbac7501f6c65e0a03ee68929748e6cdafb78316333c683b3b04d9bdb647c",
+      "response_bytes": 8192,
+      "ahead_by": 0,
+      "behind_by": 13
+    },
+    {
+      "name": "henryhchchc-compare",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/compare/master...henryhchchc:master",
+      "http_status": 200,
+      "response_sha256": "68db65196371b249a261b6493c6bc97d32ee38e0e3e271b95085d6a0c9cc4be9",
+      "response_bytes": 39527,
+      "ahead_by": 1,
+      "behind_by": 24
+    },
+    {
+      "name": "upstream-master-archive",
+      "url": "https://codeload.github.com/tree-sitter-grammars/tree-sitter-slang/tar.gz/1dbcc4abc7b3cdd663eb03d93031167d6ed19f56",
+      "http_status": 200,
+      "response_sha256": "275040f67e2e73c3f290168c39a70a9e91137fdff85b21b2745ecd0c5fe2a4f2",
+      "response_bytes": 1850584
+    },
+    {
+      "name": "upstream-release-archive",
+      "url": "https://codeload.github.com/tree-sitter-grammars/tree-sitter-slang/tar.gz/c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3",
+      "http_status": 200,
+      "response_sha256": "0394529e6b5530fa589089af91ee922df95a2b53c2ce375bc40f66514acea0ca",
+      "response_bytes": 1850585
+    },
+    {
+      "name": "vostranox-archive",
+      "url": "https://codeload.github.com/Vostranox/tree-sitter-slang/tar.gz/e42d9b7d4ea82105218aa57666355e7ab5a85216",
+      "http_status": 200,
+      "response_sha256": "4640c7b6c96699fb220edbc63192cb6d4aa27a5c95897fffd84c788a7e045134",
+      "response_bytes": 2689228
+    },
+    {
+      "name": "release-license",
+      "url": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-slang/c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3/LICENSE",
+      "http_status": 200,
+      "response_sha256": "188fdcca13247f567cddb0d5155c622de1a6cf3f0245e52f0986907b6c2819f5",
+      "response_bytes": 1080
+    },
+    {
+      "name": "master-license",
+      "url": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-slang/1dbcc4abc7b3cdd663eb03d93031167d6ed19f56/LICENSE",
+      "http_status": 200,
+      "response_sha256": "188fdcca13247f567cddb0d5155c622de1a6cf3f0245e52f0986907b6c2819f5",
+      "response_bytes": 1080
+    },
+    {
+      "name": "vostranox-license",
+      "url": "https://raw.githubusercontent.com/Vostranox/tree-sitter-slang/e42d9b7d4ea82105218aa57666355e7ab5a85216/LICENSE",
+      "http_status": 200,
+      "response_sha256": "188fdcca13247f567cddb0d5155c622de1a6cf3f0245e52f0986907b6c2819f5",
+      "response_bytes": 1080
+    },
+    {
+      "name": "vostranox-head",
+      "url": "https://api.github.com/repos/Vostranox/tree-sitter-slang/commits/master",
+      "http_status": 200,
+      "response_sha256": "c6565d65dd2701f8e82922254d8669a1ded20a13502df9a067dfade1b8853dfa",
+      "response_bytes": 3438
+    },
+    {
+      "name": "guidoschmidt-head",
+      "url": "https://api.github.com/repos/guidoschmidt/tree-sitter-slang/commits/master",
+      "http_status": 200,
+      "response_sha256": "fcb9c34b357c951d8047f2eda2103cd88bcc8f39f356a7b436991a68414030d1",
+      "response_bytes": 5042
+    },
+    {
+      "name": "henryhchchc-head",
+      "url": "https://api.github.com/repos/henryhchchc/tree-sitter-slang/commits/master",
+      "http_status": 200,
+      "response_sha256": "db0795ad09287e4aaf45c17c4677995339a60754c071c40de4eab1f7621c0c8d",
+      "response_bytes": 31327
+    },
+    {
+      "name": "release-commit",
+      "url": "https://api.github.com/repos/tree-sitter-grammars/tree-sitter-slang/commits/c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3",
+      "http_status": 200,
+      "response_sha256": "9f6b2f7abe67a27379c577d17a350459b5be446c1ac84f1bb310ba95ce4bfaaf",
+      "response_bytes": 16188
+    },
+    {
+      "name": "release-package",
+      "url": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-slang/c7ab1ee2bea2ac431fa78d72b80d8957d5a5bcd3/package.json",
+      "http_status": 200,
+      "response_sha256": "1e5d43a2ff1f2b422e3bb8e5418dced572a1201ecd9c04eea40c5f18548b81fe",
+      "response_bytes": 1116
+    },
+    {
+      "name": "master-package",
+      "url": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-slang/1dbcc4abc7b3cdd663eb03d93031167d6ed19f56/package.json",
+      "http_status": 200,
+      "response_sha256": "1e5d43a2ff1f2b422e3bb8e5418dced572a1201ecd9c04eea40c5f18548b81fe",
+      "response_bytes": 1116
+    },
+    {
+      "name": "fork-package",
+      "url": "https://raw.githubusercontent.com/Vostranox/tree-sitter-slang/e42d9b7d4ea82105218aa57666355e7ab5a85216/package.json",
+      "http_status": 200,
+      "response_sha256": "1e5d43a2ff1f2b422e3bb8e5418dced572a1201ecd9c04eea40c5f18548b81fe",
+      "response_bytes": 1116
+    }
+  ],
+  "raw_responses": "workspace/tmp/slang-grammar/ (ignored local workspace only)"
+}

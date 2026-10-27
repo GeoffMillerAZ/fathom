@@ -1,0 +1,179 @@
+{
+  "candidates": [
+    {
+      "candidate": {
+        "commit": "b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+        "entry_point": "tree_sitter_c",
+        "generate": false,
+        "id": "c-stock",
+        "repository": "https://github.com/tree-sitter/tree-sitter-c",
+        "scanner": false,
+        "version": "v0.24.2"
+      },
+      "hashes": {
+        "archive_sha256": "dc3979e40fce678c27273ba8ab93b48b5acd6b91d1dfde6a4451222d366d689f",
+        "candidate_config_sha256": "6e0a844ec22193c8286f2d79a3dea3dbf19865dfc54b9e2c273cfec9a5f5ee5b",
+        "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+        "native_sha256": "7554fed9ab2c67ff6d558e0bc3a310a96c6ee223b88a33d656dde23ace2e9354",
+        "original_parser_c_sha256": "f2883ff9b21f4a5bd5553c1b10366c418947d17a7bc6bf256124a7542f079dd2",
+        "parser_c_sha256": "f2883ff9b21f4a5bd5553c1b10366c418947d17a7bc6bf256124a7542f079dd2",
+        "patches_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "tool_versions_sha256": "a2884e987d7a3f796aff83a5139b8c9e4c3b370e596f338145278720965e3d36"
+      },
+      "patches": [],
+      "schema": "opencl-native-grammar-build-v1",
+      "scope": "calibration-only native grammar build; no product WASM",
+      "test": null,
+      "tool_versions": {
+        "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "git": "git version 2.54.0 (Apple Git-157)"
+      }
+    },
+    {
+      "candidate": {
+        "commit": "8b5b49eb196bec7040441bee33b2c9a4838d6967",
+        "entry_point": "tree_sitter_cpp",
+        "generate": false,
+        "id": "cpp-head",
+        "repository": "https://github.com/tree-sitter/tree-sitter-cpp",
+        "scanner": true,
+        "version": "HEAD-8b5b49eb"
+      },
+      "hashes": {
+        "archive_sha256": "a12b464b8c89d7c1843849bfebb0b5807980555351d60598b92939233abff842",
+        "candidate_config_sha256": "0d25f7eeab13eac33c9ee15abebc634f83529efa2ff9ec952d50d44676389894",
+        "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+        "native_sha256": "b9aff9b3ff8ae59a6996e1e1d0b4b2e46577e9df25677c361217343bfa07a8fe",
+        "original_parser_c_sha256": "0007727b6e1fbc07657b6a4bf5dc39f524c6009fa347f9faaf180fa9ab17e999",
+        "parser_c_sha256": "0007727b6e1fbc07657b6a4bf5dc39f524c6009fa347f9faaf180fa9ab17e999",
+        "patches_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "tool_versions_sha256": "a2884e987d7a3f796aff83a5139b8c9e4c3b370e596f338145278720965e3d36"
+      },
+      "patches": [],
+      "schema": "opencl-native-grammar-build-v1",
+      "scope": "calibration-only native grammar build; no product WASM",
+      "test": null,
+      "tool_versions": {
+        "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "git": "git version 2.54.0 (Apple Git-157)"
+      }
+    },
+    {
+      "candidate": {
+        "commit": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "entry_point": "tree_sitter_cpp",
+        "generate": false,
+        "id": "cpp-stock",
+        "repository": "https://github.com/tree-sitter/tree-sitter-cpp",
+        "scanner": true,
+        "version": "v0.23.4"
+      },
+      "hashes": {
+        "archive_sha256": "7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051",
+        "candidate_config_sha256": "2683cf108e354a90ea18b77e44f4a3bb57fb2063f30fc694952e0c9f57d830a7",
+        "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+        "native_sha256": "edf1ff76e83b36bcdbe6d588d19f675d3bf210402659decf838225076d2c7445",
+        "original_parser_c_sha256": "2a35a43b4af6c9f7b69624ac00c2c50808912591450dc79c05dea03ac1bae814",
+        "parser_c_sha256": "2a35a43b4af6c9f7b69624ac00c2c50808912591450dc79c05dea03ac1bae814",
+        "patches_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "tool_versions_sha256": "a2884e987d7a3f796aff83a5139b8c9e4c3b370e596f338145278720965e3d36"
+      },
+      "patches": [],
+      "schema": "opencl-native-grammar-build-v1",
+      "scope": "calibration-only native grammar build; no product WASM",
+      "test": null,
+      "tool_versions": {
+        "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "git": "git version 2.54.0 (Apple Git-157)"
+      }
+    },
+    {
+      "candidate": {
+        "commit": "b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+        "entry_point": "tree_sitter_opencl",
+        "generate": true,
+        "id": "opencl-c-patched",
+        "repository": "https://github.com/tree-sitter/tree-sitter-c",
+        "scanner": false,
+        "version": "v0.24.2 plus experimental OpenCL C patch"
+      },
+      "hashes": {
+        "archive_sha256": "dc3979e40fce678c27273ba8ab93b48b5acd6b91d1dfde6a4451222d366d689f",
+        "candidate_config_sha256": "a4906d829297179b76b33a922513f44e2a3c14641c3f5ce97bcd10e7a4a0137b",
+        "license_sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+        "native_sha256": "f6157f5c7caf4b37f962ff66dcf7de9e51784239cd7c84b9297375d8f75e82be",
+        "original_parser_c_sha256": "f2883ff9b21f4a5bd5553c1b10366c418947d17a7bc6bf256124a7542f079dd2",
+        "parser_c_sha256": "36b98273c162efea7a74188fe2395f60b3dd1a96ff987655aea3424089a243f5",
+        "patches_sha256": "453fca08fb0dad535e5ddcf989860bccd2eb3ed8c56cdff597afdd76c38baa96",
+        "tool_versions_sha256": "efcd4729536bb5bf9848ced1e5cce8aa422ffb79e2629e63ab4543801551a73c"
+      },
+      "patches": [
+        {
+          "path": "patches/opencl/0001-opencl-c-syntax.patch",
+          "sha256": "3227529eaa2d1c2c19f0d4d99ca6e856a23f8092cde8cc06b249a833a9743677"
+        }
+      ],
+      "proof": {
+        "language": "openclproof36b98273c162",
+        "native_sha256": "f9f3181eca949254f35c1b44761d8aa058381aa884e1e4401a41576d482540b3",
+        "original_parser_unchanged": true,
+        "parser_c_sha256": "93d9d751fb1682b182cd01c97b04cf614c8f4c24d5f1324b49d296cad9efcdb3"
+      },
+      "schema": "opencl-native-grammar-build-v1",
+      "scope": "calibration-only native grammar build; no product WASM",
+      "test": {
+        "exit_code": 0,
+        "failed": 0,
+        "passed": 137,
+        "skipped": 0,
+        "total": 137
+      },
+      "tool_versions": {
+        "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "git": "git version 2.54.0 (Apple Git-157)",
+        "tree_sitter": "tree-sitter 0.26.11"
+      }
+    },
+    {
+      "candidate": {
+        "commit": "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb",
+        "entry_point": "tree_sitter_opencl",
+        "generate": false,
+        "id": "opencl-stock",
+        "repository": "https://github.com/lefp/tree-sitter-opencl",
+        "scanner": false,
+        "version": "HEAD at 2026-10-26; no release tag"
+      },
+      "hashes": {
+        "archive_sha256": "919d96678787666c0381b2382ca4942fd1f29a688e58c3ee36e7193fbb466f13",
+        "candidate_config_sha256": "04190976cdbc106cb1b64371f5d022e93dd62a9ec7cd556c94052c4d2a2ccb20",
+        "license_sha256": "b554b8af06ebca05a26877bf7016aaa0f515b5687707a46d2e69510931ef3df3",
+        "native_sha256": "a8fae629b0030649dfe0d6bb26677179b2df6108dd120f109496d557317e2e6f",
+        "original_parser_c_sha256": "8d6ef5dd49b5ef6317a3182c581b420fa2d4a1f34b2367c2782b778877f9bd28",
+        "parser_c_sha256": "8d6ef5dd49b5ef6317a3182c581b420fa2d4a1f34b2367c2782b778877f9bd28",
+        "patches_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "tool_versions_sha256": "a2884e987d7a3f796aff83a5139b8c9e4c3b370e596f338145278720965e3d36"
+      },
+      "patches": [],
+      "schema": "opencl-native-grammar-build-v1",
+      "scope": "calibration-only native grammar build; no product WASM",
+      "test": null,
+      "tool_versions": {
+        "cc": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "cxx": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+        "git": "git version 2.54.0 (Apple Git-157)"
+      }
+    }
+  ],
+  "instrument": {
+    "builder_sha256": "98fd62b92e987814513b8078e1cf297bedb8f3dc28243e86387f0ad157ef2008",
+    "candidate_descriptor_sha256": "258784e735c194c2ce5e09a99629bb3f18cde2c91e929a86b18382dd0cdecf73",
+    "patch_applier_sha256": "93fc532f5e25fb65dd2f9cfe4fb1d4aa2ff489f17ef5ff7fdf5b5a6d050b9da6"
+  },
+  "schema": "opencl-c-native-build-matrix-v1",
+  "scope": "native experimental grammar qualification only; no product WASM or support level"
+}

@@ -2166,11 +2166,13 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "a reference validator's $ref resolution (tier A)"
+      "@apidevtools/json-schema-ref-parser 16.0.5 (independent third-party resolver, tier C under P-T1)"
     ],
     "calibration_subjects": [
       "SchemaStore/schemastore",
-      "json-schema-org/JSON-Schema-Test-Suite"
+      "json-schema-org/JSON-Schema-Test-Suite",
+      "radiantearth/stac-spec",
+      "oasis-open/cti-stix2-json-schemas"
     ],
     "depends_on": [
       "LB-F8",
@@ -2184,7 +2186,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-json-schema",
     "worker_model": "sonnet",
-    "notes": "new; $defs/definitions, properties; $ref edges local and cross-file"
+    "notes": "D19 replay 2026-10-27: four complete preregistered subject scopes; L1/L2 good at C under P-T1, L3 unmet with 3 scored pairs; 291 more Fathom pairs unattested and unscored (SchemaStore 107, STAC 14, STIX 170). New STAC/STIX physical targets resolve as URL reads and are not attested in the existing file-pair unit; no URL rewrites or population trimming. See docs/assessments/2026-10-27-tools-json-schema-d19.md. T-R18: precision 1 applies only to 3 scored pairs; its denominator is under 20 only because absent oracle families omit those 291 pairs. Neither true nor false without identifier-aware attestation; no empty family/instrument-rule change."
   },
   {
     "id": "scala",
@@ -2634,7 +2636,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067)",
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067); 2026-10-26 L1/L2 native audit: pinned owner Declarative Converter accepts all 23 canonical inputs (753 model nodes, 747 positioned); no absent-offline-evaluator ceiling. Full dialect definition/range/pair mapping remains unbuilt; existing 163 definitions and 133 pairs stay C, no new tier or L3 change. See calibration/oracles/jenkinsfile/NATIVE.md and the dated tools-jenkins-native assessment",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (@Library shared-library and load file edges); oracle gains the Jenkins declarative linter (tier A, ruling W4, a local controller in the measuring harness only)"
   },
   {
@@ -3350,7 +3352,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "crossplane beta validate (tier A, offline schemas)"
+      "independent yaml.v3 walk (tier C, full canonical scope; native schema validation is calibration only)"
     ],
     "calibration_subjects": [
       "crossplane/crossplane (examples subpath)",
@@ -4038,7 +4040,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-glsl",
     "worker_model": "sonnet",
-    "notes": "Refused at the grammar gate (LB-Q-glsl-rest, docs/bench/readings/lang/glsl-grammar.md): tree-sitter-glsl v0.2.0 leaves 272 of the 968 files of the three subjects in error (28.1%), so no dialect is built. Planned shape if revived: functions, structs, macros (required); uniforms, in/out globals and interface blocks emitted, not required. L1 oracle ctags-c-glsl: universal-ctags 6.2.1's C parser run over GLSL, a foreign parser, so tier C (owner ruling G1, L1 caps at good). L2 oracle glslang-ast: glslang 16.6.0's AST dump, calls only, tier A (replays each subject's own invocation) or B; call_exclusions are the GLSL 4.60 specification's built-in function index plus the built-in type constructors, counted on both sides (ruling G2)",
+    "notes": "Patched grammar at upstream v0.2.0 with in-tree verified patches measures 39/968 ERROR/MISSING files and zero faults under the pooled grammar gate. GLSL definitions and syntax calls dispatch through the tags engine. docs/bench/readings/lang/glsl.json measures L1 good (ctags 6.2.1 C parser, tier C under G1) and L2 good (glslang 16.6.0 AST, tier B): call precision 332/390, recall 332/332. G-R3 exclusions are mechanically derived from pinned Khronos core and all registered-extension declarations. The independent frozen holdout remains diagnostic at 656/772 compiler coverage, with no validation claim; see docs/assessments/2026-10-26-glsl-registered-extensions.md. No L3 claim.",
     "retargeted": "2026-10-24 (owner rulings G1 G2): L1 -> L2; three.js and glTF-Sample-Viewer dropped for SaschaWillems/Vulkan, KhronosGroup/SPIRV-Cross and KhronosGroup/Vulkan-Samples, each a stand-alone shader tree its own tool compiles"
   },
   {
@@ -4071,7 +4073,7 @@
     "plan_row": "LB-Q-nginx",
     "worker_model": "sonnet",
     "retargeted": "L2 tags engine to L3 native (owner 2026-10-01: routing formats target L3): the tags engine cannot emit route targets or include cross_file references; opa-oz/tree-sitter-nginx v1.0.1 (MIT) was licence-checked and not used",
-    "notes": "servers, locations (route), upstreams and their servers; proxy_pass/grpc_pass/fastcgi_pass to an upstream of the file (L2); include repo-path candidates and route_ref route-host targets (L3, the route contract)"
+    "notes": "servers, locations (route), upstreams and their servers; proxy_pass/grpc_pass/fastcgi_pass to an upstream of the file (L2); include repo-path candidates and route_ref route-host targets (L3, the route contract); Native lexer/upstream diagnostic now measures L1/L2 excellent: 71/71 scored names and exact ranges A, 1/1 full native local references A, zero faults, median 9.71 MB/CPU-s. All 47 original native inputs retained; 35 harness files, 12 existing ingest exclusions and 12 raw definitions disclosed, no excluded reference. Every target evaluated once; six repeated context-source evaluations share exact native trees while all counts remain. Canonical L3 unchanged pending D19. Content-sniff, extensionless/template and file-glob gaps remain disclosed; shared ENGINE work held T-R2. Known tunnel_pass native registrations are unclassified and refuse; trigger a subject using it or dialect support."
   },
   {
     "id": "haproxy",
@@ -4325,7 +4327,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-kong",
     "worker_model": "sonnet",
-    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref)"
+    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref). Canonical alias-weighted counts remain 568 files / 821 definitions / 10 references C / 12 route pairs A; distinct owned counts are 231 / 365 / 4, ratios and canonical grades unaffected. Native GDR 1.42.4 enumerates 37 pairs and 1,332 named definitions. Filename ownership (O348) chooses only 4 route.service pairs and 365 definitions for comparison, all found; 33 pairs and 967 named definitions in accepted, unowned files are not compared. No tier-A L2 recall or full-population L1 grade is granted. Unowned 35 resolved sites include 31 plugin.route, 1 plugin.service and 3 route.service; their 33 semantic pairs are 29, 1 and 3. Host-to-upstream population is zero. Fourteen fresh native race controls bind to test-source hashes; reproducible-build and protocol amendments are documented. Preserve O347 parent-selection (T-R2), O348 filename coverage, and Supabase DB-less rejection (14 unscored C route pairs, definitions unattested); Kong runtime acceptance remains an untried trigger. Independent ranges stay C; throughput is unmeasured; no Docker or D19-held L3 work."
   },
   {
     "id": "traefik",
@@ -5787,8 +5789,8 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L3",
-    "grammar_source": "chrnorm/tree-sitter-cedar 5092204d or cedar-go v1.8.0, both refused at pin (LB-Q-cedar-rest)",
-    "licence": "MIT (tree-sitter-cedar LICENCE); Apache-2.0 (cedar-go)",
+    "grammar_source": "SwornSystems/tree-sitter-cedar v0.12.0 112e886c (cedar + cedarschema grammars)",
+    "licence": "MIT OR Apache-2.0 (LICENSE-MIT, LICENSE-APACHE)",
     "oracle": [
       "cedar check-parse / translate-policy / translate-schema, cedar-policy-cli 4.13.0 (tier A; calibration/oracles/cedar; lines located by the writer)"
     ],
@@ -5817,7 +5819,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-cedar",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; wave pc (2026-10-02) pinned the subjects and the tier-A oracle and measured both parsers in scope under the 5% line: refused (LB-Q-cedar-rest); next gap: a parser of Cedar policies and schemas with positions (a native reader under ADR-048's wave-pc admission is the owner's call)"
+    "notes": "SwornSystems native syntax screen: 1/42 policy and 0/17 schema ERROR or MISSING files (1/59 total), 0 faults against cedar-policy-cli 4.13.0. Proceed through the normal tags/WASM route. Next gap: owner settles Cedar's queue kind and L3 policy-to-schema governed-scope model before dialect work."
   },
   {
     "id": "aws-iam-policy",
@@ -6004,7 +6006,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-pgbouncer",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T5; rides a pure-Go INI parser; [databases] host/dbname become service_ref edges; next gap: the INI parser and those edges"
+    "notes": "Native PgBouncer 1.26.1 r4 enumerates every callback and brackets each token line with exact native prefixes before the token and after its line: all 161 definitions/ranges A. Shifted/reversed locator mutants refuse; disabling prefix checks FAILs then restores GREEN. Native SHOW DATABASES independently enumerates all 52 sources and attests 1/1 references A. L1/L2 excellent; median 43.48 MB/CPU-s at start load 1.79, nice10 on shared machine. Five logfile destinations private; unchanged keys/lines/kinds/populations. Explicit per-build receipt flags; no L3. One binding is thin evidence."
   },
   {
     "id": "proxysql",
@@ -6164,6 +6166,39 @@
     "notes": "GDEV-10 groundwork only. Derived file ownership, scopes and declared references follow documented Unity 2021+ rules. No native oracle reading or support grade claimed."
   },
   {
+    "id": "simulink",
+    "name": "Simulink models (.slx, .mdl)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:archive/zip + encoding/xml (.slx), the .mdl brace tree",
+    "licence": "n/a",
+    "oracle": [
+      "walk.py (tier C: zipfile and xml.parsers.expat, start and end lines; the graded oracle, which copies the Go reader's decisions, so it shows agreement); cross-checks run 2026-10-25 under workspace/tools, ungraded, summarized in calibration/oracles/simulink-walk/CROSSCHECK.md: miss-hit-core 0.9.44 s_parser (GPL-3, .slx only, reproduced in round 3: 163 of 178 parsed, 15 Thermodynamics models refused by its parser; all 36,203 of its blocks agree, 105 of them only by a trailing line break fathom reads as a space; fathom adds 3,660 chart-internal blocks it folds), mathworks/data-explorer-core v1.46.0 (BSD-3, parseModel over all 194 models, unreproduced in round 3's VM: SID and path for the 8,544 blocks it reports agree, 7,651 byte for byte, 893 differing only by its display labels; 9 of 9 model references); no tool checked the signal lines; rustylink and SLX2MDL did not run"
+    ],
+    "calibration_subjects": [
+      "WEC-Sim/WEC-Sim v7.1.0 a23d2993 (subpath; 19 .slx, 15 distinct; MOST_Lib.slx 5.97 MB is oversize)",
+      "Thermodynamics v1.3.1 ce9bc73d (40)",
+      "LADAC main 1a295a82 (97, GPL)",
+      "Firmament-Autopilot/FMT-Model master 70984e23 (22)",
+      "etherlab-examples master 491f9375 (16 .mdl, 15 distinct)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "language-breadth.simulink.md#LB-F587"
+    ],
+    "wave": 6,
+    "engine": "native",
+    "plan_row": "LB-Q-simulink",
+    "worker_model": "sonnet",
+    "notes": "new, outside 18.3's tiers (owner ruling 2026-10-24 (a)); a .slx is read only through ADR-021 (1)'s 2026-10-24 amendment (match.container); block names hold spaces, line breaks and '/', so the dialect compares names whole (name_match identity); L3 tries resolve entity-name with to_kind before a new mode, same-named models in several directories ambiguous; tier C only (owner ruling (d)), which caps every level at good; MATLAB code a model calls is a handoff for the reading's notes, never an LB-Q-simulink-matlab row; throughput counts compressed bytes",
+    "retargeted": "2026-10-25 (owner rulings S-R6, S-R7, round 2): L3 counts only with at least 20 resolvable model references across at least 2 subjects; the subjects hold 2 (one subject, 7 more ambiguous), and simulink/blog 2e4bde16 (BSD-3) would add 9, so the item reads L2 good and LB-Q-simulink-rest carries L3 deferred; the oracle text says what ran; PID_MATLAB_Learn dropped from the subjects: no repository of that name resolved to commit 0029fffe, so it was never measured"
+    },
+    {
     "id": "python-manifests",
     "name": "Python dependency manifests (requirements*.txt, constraints*.txt, setup.cfg, Pipfile, poetry.lock, uv.lock, environment.yml)",
     "kind": "tooling",

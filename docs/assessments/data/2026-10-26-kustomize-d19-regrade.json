@@ -1,0 +1,78 @@
+{
+  "dialect": "kustomize",
+  "exact_harness_bytes": true,
+  "frozen_measurements_preserved": true,
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "harness_commit": "440a94365",
+  "lane_commit": "e9bff6a67",
+  "lane_reading_sha256": "574e814e399214a5c6a9cef764a8fcc9e224ec8885a17bdc59399f49f73f551c",
+  "lane_to_result_fields": [],
+  "leave_one_subject_out_count_floor": [
+    {
+      "both_count_floors_met": false,
+      "subject": "GoogleCloudPlatform/microservices-demo",
+      "xref_fathom": 19,
+      "xref_truth": 19
+    },
+    {
+      "both_count_floors_met": true,
+      "subject": "argoproj/argocd-example-apps",
+      "xref_fathom": 34,
+      "xref_truth": 34
+    },
+    {
+      "both_count_floors_met": true,
+      "subject": "fluxcd/flux2-kustomize-helm-example",
+      "xref_fathom": 33,
+      "xref_truth": 33
+    },
+    {
+      "both_count_floors_met": true,
+      "subject": "fluxcd/flux2-multi-tenancy",
+      "xref_fathom": 31,
+      "xref_truth": 31
+    },
+    {
+      "both_count_floors_met": true,
+      "subject": "kubernetes-sigs/kustomize",
+      "xref_fathom": 23,
+      "xref_truth": 23
+    }
+  ],
+  "level_met": "L3",
+  "main_reading_sha256": "5ce70d44bd1b99accb52a7559abb2bc8b01c5de4ea8d484998742caf3e90d192",
+  "main_to_result_fields": [
+    "counts.fathom_defs",
+    "counts.kind_equal",
+    "counts.matched",
+    "counts.oracle_defs",
+    "counts.ref_fathom",
+    "counts.ref_fathom_in_truth",
+    "counts.ref_truth",
+    "counts.ref_truth_found",
+    "counts.xref_fathom",
+    "counts.xref_fathom_in_truth",
+    "counts.xref_truth",
+    "counts.xref_truth_found",
+    "fathom_commit",
+    "grade.L1",
+    "grade.L3",
+    "grade.L3_reason",
+    "level_met",
+    "measured_at",
+    "metrics.sym_precision",
+    "oracles",
+    "subjects",
+    "tenancy.throughput_mb_s",
+    "tenancy.wall_throughput_mb_s"
+  ],
+  "method": "main lang-regrade from frozen lane counts; no extraction or oracle rerun",
+  "result_reading_sha256": "a9115583852e2f264c5835f61128b656c94523c65a89ad1493fe5db4b5381f86",
+  "xref_precision_denominator": 35,
+  "xref_recall_denominator": 35
+}

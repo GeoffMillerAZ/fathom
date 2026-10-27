@@ -1,0 +1,24 @@
+# Native resolver validation. Not a canonical corpus shard.
+id: core-t1-scss-resolver-holdout
+holdout:
+  - name: picturepan2/spectre
+    url: https://github.com/picturepan2/spectre
+    ref: v0.5.9
+    sha: 8847251d71b4dac27e8407cbdb71ae89ce156a43
+    licence: MIT
+    idioms:
+      - 'modular component SCSS and shared variable/mixin imports'
+    notes: >
+      Fresh independent subject. No SCSS source read before this pin.
+      Freeze the native resolver, primary oracle and harness before the first
+      source walk or oracle run. All tracked SCSS, no only filter, no source edits.
+      One untuned reading after canonical Bootstrap/Primer and spent Foundation
+      diagnostic. Success is L1-L3 excellent, zero faults, median of three
+      throughput at least 1 MB per CPU second, with all oracle coverage gaps
+      disclosed. A miss is reported, never tuned on this holdout. Keep outside
+      calibration/corpus.d and never call Foundation fresh again.
+
+# SPENT at freeze 678269006119029000aa81d54d42dd3890727a00.
+# Primary parser rejected 5/76 tracked SCSS files; native composition refused
+# a dependency without a positioned primary statement. No composite reading
+# was produced, no source/oracle tuning occurred, and this pin is never reused.

@@ -56,7 +56,7 @@ func (r *serveRun) configure() (int, bool) {
 
 	fs := newFlagSet("serve-http", r.stderr)
 	storePath := fs.String("store", loaded.Config.Daemon.Store, "store path, .sqlite/.db (required; [daemon].store in config.toml, or --store)")
-	addr := fs.String("addr", firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"), "listen address (host:port); loopback by default — surfaces are not a security boundary (amendment)")
+	addr := fs.String("addr", firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"), "listen address (host:port); loopback only — a non-loopback address binds 127.0.0.1 on the same port, with a warning; surfaces are not a security boundary (amendment)")
 	autoRefresh := fs.Bool("auto-refresh", daemonAutoRefreshDefault(loaded.Config.Daemon), "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath()), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 	fs.Var(&r.modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY so obligations unions in the rules of every module a service binds in .fathom/modules.cue; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-) rather than starting up silently degraded.")
@@ -78,6 +78,21 @@ func (r *serveRun) configure() (int, bool) {
 		flog.Error("--store is required")
 		fs.Usage()
 		return 1, true
+	}
+	// ADR-083: the daemon has no authentication, so it listens on loopback
+	// only. A wider --addr or [daemon].addr binds 127.0.0.1 on the same port
+	// in its place, with one warning, instead of refusing: a plist written
+	// before (--addr :7575) keeps serving after an upgrade rather than
+	// crash-looping under launchd ahead of the lifecycle ledger.
+	if !hostIsLoopback(r.addr) {
+		source := "[daemon].addr"
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "addr" {
+				source = "--addr"
+			}
+		})
+		flog.Warn(nonLoopbackRebindWarning(source, r.addr))
+		r.addr = loopbackAddrFor(r.addr)
 	}
 
 	// §10.1: managed or unmanaged decides every tenancy default below.

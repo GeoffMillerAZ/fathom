@@ -357,6 +357,7 @@ func firstErr(b []byte) string {
 }
 
 func main() {
+	locateSource := flag.String("locate-source", "", "emit independent C entity positions only; no decK, Compose, Docker or routes")
 	subject := flag.String("subject", "", "subject checkout (required)")
 	deck := flag.String("deck", "deck", "the decK binary")
 	scratch := flag.String("scratch", "", "scratch directory outside the subject (default: a temp dir)")
@@ -364,6 +365,12 @@ func main() {
 	routesOut := flag.String("routes-out", "", "write the route_ref layer's truth (route_references, route_unresolved) here")
 	filesOut := flag.String("files-out", "", "write the files decK accepted, one per line, for lang-oracle -only")
 	flag.Parse()
+	if *locateSource != "" {
+		if err := runLocations(*locateSource); err != nil {
+			fatal(err)
+		}
+		return
+	}
 	if *subject == "" {
 		fmt.Fprintln(os.Stderr, "usage: kong-oracle -subject <checkout> [-deck <deck>] [-scratch <dir>] [-refs-out <file>] [-files-out <file>]")
 		os.Exit(2)

@@ -97,8 +97,8 @@ func TestCmdLangOracleGoFileEdgesAndImports(t *testing.T) {
 			t.Errorf("%s = %v tier %q, want 1 at A\n%s", m, v, r.MetricTiers[m], raw)
 		}
 	}
-	if r.Grade.L3 != langbench.GradeExcellent {
-		t.Errorf("grade.L3 = %q, want excellent", r.Grade.L3)
+	if g := l3OnAmpleEvidence(t, r); g != langbench.GradeExcellent {
+		t.Errorf("grade.L3 = %q, want excellent", g)
 	}
 	if !bytes.Contains(raw, []byte(noteGoTypedFileEdges)) {
 		t.Errorf("the typed-pass basis of Go's file edges is not disclosed:\n%s", raw)

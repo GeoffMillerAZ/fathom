@@ -1,0 +1,9 @@
+{
+  "load_only_powershell_bytes": 20353,
+  "load_only_powershell_files": 3,
+  "original_tracked_source_changed": false,
+  "removed_bytes": 443266,
+  "removed_files": 21,
+  "removed_recipe_owned_build": "pester/bin",
+  "scope": "the three generated wrapper inputs were load state only, outside the frozen original tracked population; removed before product discovery scoring"
+}

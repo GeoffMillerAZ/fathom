@@ -1,0 +1,22 @@
+{
+  "tests": 3,
+  "skips": 0,
+  "mutations": [
+    {
+      "family": "definitions",
+      "mutant": "C to A",
+      "restored_green": true
+    },
+    {
+      "family": "cross_references",
+      "mutant": "C to A",
+      "restored_green": true
+    }
+  ],
+  "independence_basis": "structural_argv_and_source_review",
+  "output_perturbation_control": false,
+  "input_sensitive": true,
+  "zero_reference_inputs_retained": true,
+  "repeated_sites_use_existing_distinct_file_pair_unit": true,
+  "oracle_sha256": "d0ee6ebf4ff965804cd5973aa70fd4c51b73a845e4f97b1d9d1f3b7cbf8f749d"
+}

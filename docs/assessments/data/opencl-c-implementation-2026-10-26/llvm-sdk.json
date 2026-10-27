@@ -1,0 +1,50 @@
+{
+  "active_line_files": 10,
+  "active_line_ranges": 89,
+  "active_lines": 546,
+  "classes": {
+    "declaration": 26,
+    "resolved": 147
+  },
+  "commit": "6090378a113db8dab20ae278c8fa57ab10b92300",
+  "compile_units": 10,
+  "compiler_and_minimal_resource_pins_checked_before_after_each_consumer": true,
+  "compiler_pins": {
+    "archive": {
+      "name": "LLVM-21.1.8-macOS-ARM64.tar.xz",
+      "sha256": "b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669"
+    },
+    "compiler_archive_member": "LLVM-21.1.8-macOS-ARM64/bin/clang-21",
+    "compiler_version": "clang version 21.1.8 (https://github.com/llvm/llvm-project 2078da43e25a4623cab2d0d60decddf709aaea28)",
+    "pin_file_sha256": "bdcf4b6be54dfe528773cf3810e9df9676207b592ea7fadad7a61d8600c22e57",
+    "platform": {
+      "arch": "arm64",
+      "os": "macos"
+    },
+    "profile": "llvm-21.1.8-macos-arm64",
+    "schema": "opencl-c-compiler-pins-v1"
+  },
+  "database_unchanged": true,
+  "errored": 0,
+  "function_ranges": 23,
+  "minimal_resource_tree_unchanged": true,
+  "path_bound_diagnostic_run_identity": {
+    "capture_receipt_sha256": "a48570f534c75655e83d10bfc79ca174d625bb679bfd82d112c2886779c29d97",
+    "database_sha256": "87421574249b54b7fcc840f5dee8b0f911922f471597d6c9c633f56b74bb553e",
+    "database_tree_sha256": "baae49501c8ddb5bb42f0318d3748dfb8f6b43a2dfc7ac4aa52694e7f53accb0",
+    "scope": "includes absolute checkout, output, compiler, and resource paths; not a cross-host reproducibility check"
+  },
+  "raw_output_sha256": {
+    "clang-calls.json": "3b40db53f336df707a253349b6baa2cb312512be2de61195a6f748350bbe7f3d",
+    "preproc.json": "35392c1ac9de5b03233e1a74f33bd0665b5d7d639e7995fb85a11ce4dc07e847",
+    "preproc.ranges.json": "4aea5adffd1ba391effc0b0c103f78e069fcc6a03301937f5f0122afbbe4ef99"
+  },
+  "resource_tree_sha256": "470e69dbf869cd30f884c00246950480b9dbce8c151e21791abe58d5c6c8d655",
+  "schema": "opencl-c-sdk-pipeline-replay-v1",
+  "scope": "triage only; no extraction grade or runtime configuration union",
+  "skipped": 0,
+  "snapshot_sha256": "260c6778e05b9a16f925847e7f2392350db3b6d05239bb2602433f99c35df2aa",
+  "subject_snapshot_unchanged": true,
+  "tier": "B",
+  "written_sites": 173
+}

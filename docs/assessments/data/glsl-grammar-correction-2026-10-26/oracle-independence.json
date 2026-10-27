@@ -1,0 +1,18 @@
+{
+  "fixture": "internal/extractor/dialects/glsl/testdata/macro_precision.frag",
+  "product_commit": "85ee9a41cb79a25acbee625cce3d5402ad284840",
+  "compiler_sha256": "18c23a68d6f4a21e822a8dcee212a2a448a66494b8f58aaf1655ef6328543d11",
+  "extractor_perturbation": "Remove every call-expression capture from an isolated copy of the committed GLSL query and build its actual extractor",
+  "original_query_sha256": "1ddd308d2ec306536b7886e340fa90a4a2e0c56ca0ad63f6f5e657a941ab5cce",
+  "suppressed_query_sha256": "45057b4533b4734ded3b7864556303859981f18654e39ba5169afc33a0c80d15",
+  "original_predicted_calls": 3,
+  "suppressed_predicted_calls": 0,
+  "oracle_truth_calls": 1,
+  "oracle_truth_sha256": "eb83ebba7dcdadfcc174897ce0b7a65bb492ce16f02337b0ad43e0ffc4caee74",
+  "oracle_truth_unchanged_after_extractor_perturbation": true,
+  "changed_input_fact": "Rename the authored helper and its invocation",
+  "original_input_sha256": "cc0f458aa931970610a405f72d1895921b75e9e3819ed51c95e315d555195eae",
+  "changed_input_sha256": "ae8e414ba6f9207cf619ee4a6b30bf1e1618b6213147678b8b48b128d0452ad7",
+  "changed_input_truth_sha256": "e7755dc1d039e8d515d7bc60482e5d1e0dc184d0938df052b5c83489f948783e",
+  "known_input_fact_changes_truth": true
+}

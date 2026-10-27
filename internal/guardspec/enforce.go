@@ -107,7 +107,7 @@ func EvaluateCommandEnforcement(g Guard) *EnforceViolation {
 	}
 	cite := projectdir.Guard.Rel()
 	if g.commandCheck != "" {
-		cite = "git-safety"
+		cite = g.pack
 	}
 	return &EnforceViolation{
 		CheckID: "command_match",
@@ -120,7 +120,7 @@ func EvaluateCommandEnforcement(g Guard) *EnforceViolation {
 
 func guardRuleID(g Guard) string {
 	if g.commandCheck != "" {
-		return "git-safety/" + g.commandCheck
+		return g.pack + "/" + g.commandCheck
 	}
 	if g.Note != "" {
 		return g.Note

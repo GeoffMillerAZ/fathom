@@ -1,0 +1,22 @@
+{
+  "candidate": "PgBouncer1.26.1 native cfparser verbose enumeration and error-line ablation",
+  "dependency": "tools/pgbouncer-r1 native L2 population experiment remains frozen; this is a separate L1 branch",
+  "subject": "the unchanged six canonical configurations at native-protocol-r2.json's subject pin; baseline161definitions",
+  "source_identity": {
+    "archive": "native-protocol-r2.json checksum-pinned release",
+    "lib/usual/cfparser.c": "8ade4eda0c4c32d9a8de22d4eddc8c15af8528d0f12890801aeea40478b05f34",
+    "lib/usual/cfparser.h": "8b26b1dad680eb2ce071968d8a59c3939a5bd14cbb52afb2cd8f857aa467701d"
+  },
+  "rules": [
+    "Check df -h before each heavy step; require20GiB free, load<=6, nice10 and the lane serial lock. Keep GOCACHE and all artifacts private; no Docker, server backend or SQL workload.",
+    "First test authored configs against the unmodified native build. Native parse_ini_file debug callbacks enumerate explicit section/key tokens before any comparison to the independent scanner. Native console membership checks evaluated key families separately.",
+    "The native parser reads one physical value line and logs each section/key callback. Its invalid-value error line is computed after skipping following whitespace, so it is not automatically the key's line; measure this behavior instead of assuming it.",
+    "Probe native error-line ablation by corrupting only an enumerated key token or inserting a deliberately invalid line immediately after it. Require a native error at the precise queried location and disclose any offset. Scanner positions may locate a mutation, never choose the native population or supply a native line fallback.",
+    "Require controls for unused keys, leading comments/blank lines, quoted keys, repeated sections/keys, non-ASCII data, verbose settings that suppress callbacks, malformed input and version/hash mismatch. If native logs stop or an event cannot be classified, fail the entire native family; do not drop that input.",
+    "Preserve original line counts and key/section names in isolation profiles. Account for every changed machine-specific value and appended context-only override. No entity may disappear through sanitization.",
+    "Do not claim A recall over scanner-selected entities. Establish the complete native explicit population, duplicate semantics, start/end range rules and original-file coverage first. Native positions for some selected entities are partial evidence only.",
+    "Freeze tracked inputs with the exact normative before/after manifest recipe and retain generated-input receipts. Measure every canonical input and publish per-subject counts/ratios alongside pooled figures, preserving required kinds and the existing metric contract.",
+    "If stock native debug/error APIs do not provide completeness or ranges, record the concrete failure and keep native cfparser instrumentation as open work. An unbuilt harness is not an oracle-availability ceiling.",
+    "Delete measured source builds, downloads and calibration subjects after packaging counts/hashes/relative summaries. No subject content or wholesale file lists in committed evidence; L3 remains outside this protocol."
+  ]
+}

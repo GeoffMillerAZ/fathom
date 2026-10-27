@@ -1,0 +1,109 @@
+{
+  "candidates": [
+    {
+      "disposition": "already-used; no new attempt",
+      "route": "existing context oracle"
+    },
+    {
+      "disposition": "needs-owner-approval; untried",
+      "route": "owner cdk synth",
+      "url": "https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-synth.html"
+    },
+    {
+      "disposition": "needs-owner-approval; untried",
+      "route": "construct tree metadata and debug traces",
+      "url": "https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.AppProps.html"
+    },
+    {
+      "disposition": "needs-owner-approval; untried",
+      "route": "TypeScript tsc plus scip-typescript"
+    }
+  ],
+  "canonical_combined_assessment": {
+    "path": "docs/assessments/2026-10-26-iac-oracle-first-triage.md",
+    "present": false
+  },
+  "completion_contract_audit": [
+    {
+      "Claimed": false,
+      "ID": "IAC-20",
+      "Label": "path-absent",
+      "Path": "docs/assessments/2026-10-26-iac-oracle-first-triage.md",
+      "Plan": "docs/plans/iac-provider-schemas.md",
+      "Ref": "WORKTREE",
+      "Skipped": false,
+      "Status": "fail"
+    },
+    {
+      "Claimed": false,
+      "ID": "GAP1-37",
+      "Label": "path-absent",
+      "Path": "docs/assessments/2026-10-26-iac-oracle-first-triage.md",
+      "Plan": "docs/plans/language-breadth.gap1.md",
+      "Ref": "WORKTREE",
+      "Skipped": false,
+      "Status": "fail"
+    }
+  ],
+  "disposition": "needs-owner-approval",
+  "existing_oracle": {
+    "command": "cdk context --json -vv",
+    "effect": "reads configuration without running app",
+    "path": "calibration/oracles/aws-cdk/cdk_oracle.js"
+  },
+  "feeds": [
+    "IAC-20",
+    "GAP1-37"
+  ],
+  "inventory": {
+    "counts": {
+      "cdk_assemblies": 0,
+      "cdk_executable_candidates_in_tools": 0,
+      "cdk_json_files_in_subject_roots": 0,
+      "installed_package_versions_in_tools": {
+        "aws-cdk": {},
+        "aws-cdk-lib": {},
+        "yaml": {}
+      },
+      "on_path": {
+        "cdk": 0,
+        "node": 1,
+        "npm": 1
+      },
+      "subject_roots_with_cdk_json": 0
+    },
+    "missing_roots": [],
+    "root_roles": [
+      "git_subjects",
+      "subjects",
+      "tools",
+      "workspace"
+    ],
+    "schema": "aws-cdk-readonly-inventory-v2",
+    "script": "calibration/oracles/aws-cdk-triage/inventory.py",
+    "script_sha256": "17df5a29f5e178e2fe75d92c891f6bce5497fca65741168b7989c5bbacb27235"
+  },
+  "inventory_scope": "Exact lane-cache tools and direct subject roots plus workspace; hidden and ignored directories included; role names and aggregate counts only; opaque npm tar cache not treated as installed package",
+  "main_commit": "01ea58c6b",
+  "native_runs": 0,
+  "owner_tool": {
+    "docs": "https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-synth.html",
+    "name": "aws-cdk CLI",
+    "package": "https://www.npmjs.com/package/aws-cdk/v/2.1144.0",
+    "proposed_command": "cdk synth --no-lookups",
+    "version": "2.1144.0"
+  },
+  "result": "No synth attempt, failure, ceiling, or grade claim",
+  "satisfies": [],
+  "source": {
+    "canonical_scope": "sparse cdk.json only",
+    "repo": "aws-samples/aws-cdk-examples",
+    "sha": "6408f42657df60f063d4c328e871bb5fef51aaf1",
+    "url": "https://github.com/aws-samples/aws-cdk-examples.git"
+  },
+  "source_protocol_sha256": {
+    "calibration/corpus.d/aws-cdk.yaml": "0c25b2f21936745786de59fe0cc466cdeb1ca4e95f6349d10711dc34f6e4b7c4",
+    "calibration/oracles/aws-cdk/cdk_oracle.js": "270f70bccf29b9fa3eea9b0e9623b66b8ad574362ab32a835d936173696ad1fa"
+  },
+  "status": "needs-owner-approval; new synth/static candidates untried"
+}

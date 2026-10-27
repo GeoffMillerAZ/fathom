@@ -1,0 +1,10 @@
+Model {
+  Name "broken"
+  System {
+    Block {
+      BlockType Gain
+      Name "Kept"
+    }
+    Block {
+      BlockType Gain
+      Name "Unclosed"

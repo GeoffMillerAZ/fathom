@@ -78,6 +78,26 @@ process, `throughput_basis: "cpu"`; D1, §1.5); `max_file_ms ≤ 2000`; `peak_mo
 Tool formats: L1 `sym_recall` and `sym_precision` ≥ .98 (good ≥ .95); L2 reference
 recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .80 (good .90/.60).
 
+**L3's minimum evidence (owner ruling D19, E1 in §1.9).** Each graded L3 metric counts only when
+its own denominator, summed over the reading's subjects, holds at least 20 references: `xref_truth`
+for `xref_recall` and `xref_fathom` for `xref_precision` (a tool format); `file_edges_truth`,
+`file_edges_fathom` and `imports_in_repo` for `file_edge_recall`, `file_edge_precision` and
+`import_resolution` (a language). A metric under 20 is not measured, which caps L3 at good; L3 is
+unmet only when every graded L3 metric is under 20, and then its grade carries `L3_reason`
+("evidence: N references, under 20"), which the tracker renders, so the cell reads as thin evidence,
+not a metric failure. A missing L3 metric is never thin evidence: when one is unmeasured the level
+is unmet with that metric as its cause (E2-R4). There is no subject minimum: breadth is the corpus
+rules' job at every level.
+
+**A manifest's evidence bar.** A dialect manifest may set `l3_evidence: {min_references,
+min_subjects}` (owner ruling S-R6, scoped to the manifest by S3-R4, 2026-10-25): its L3 then
+counts only when the L3 recall metric's denominator (`xref_truth` for a tool format,
+`file_edges_truth` for a language) holds at least `min_references` across at least
+`min_subjects` subjects, else L3 grades unmet whatever its ratios read. The reading carries
+the bar it was graded under. Simulink sets 20 across 2. It applies after D19's general
+20-reference rule (above), which is the owner ruling that generalised the reference minimum;
+the manifest bar adds the subject minimum for the manifests that set one.
+
 ### 1.3 Oracle tiers and what they can prove
 
 | Tier | Oracles | May prove |
@@ -102,6 +122,30 @@ counts as in-repo when the same lookup from the driver's load path names a subje
 90% the trace's file is tier B, as the dump is. The trace writes only literal statements, the
 ones an extractor of import statements can see. It counts a computed `require` it ran, and
 never writes one.
+
+**Dated amendment 2026-10-26, C-R7 and review correction C2-F1 (P-T1).**
+[P-T1](https://github.com/GeoffMillerAZ/fathom/issues/22#issuecomment-6408090828)
+assigns tier A to evaluation by the format owner (official tools, compilers,
+runtimes and vendor-maintained servers), or a maintained SCIP indexer.
+"Independent third-party analyzers are tier C." Its
+[population precedent](https://github.com/GeoffMillerAZ/fathom/issues/22#issuecomment-6409554475)
+is restated by C2-F1 as "a tier-A grade needs a population the oracle itself
+enumerates". Accepting pairs selected by a tier-C scanner does not satisfy it.
+
+C-R7 authorizes a pinned, checksummed headless browser as a format-owner CSS
+oracle candidate. The present audit proposes ranges using an authored scanner
+and Lightning CSS definitions. Chromium validates exact declaration/property
+ends for unchanged bytes but does not enumerate this population. Therefore
+this audit's **range grade is tier C**, capped at good, even at 1.0 agreement.
+It cannot acquire tier A by adopting a coverage floor alone. Unaccepted ends,
+whole keyframes and nested-parent ends remain unattested. A live next route is
+the pinned browser's own recursive CSSOM `cssRules` enumeration; it is unmeasured.
+
+The older W2 assigns Lightning CSS's primary families tier A. Those historical
+labels are retained for comparison, not reclassified by this range-only audit;
+the tension with P-T1's third-party clause needs an owner disposition before
+future canonical adoption. No coverage floor or exemption was granted by C-R7.
+The parser gate still applies. [CSS assessment](../assessments/2026-10-26-core-t1-css-ceiling.md).
 
 ### 1.4 Matching rules
 
@@ -820,7 +864,7 @@ maintained licensed one, leaves an ERROR or MISSING node in 13 of the 72 templat
 pinned subjects (18.1%; a unary minus in a conditional branch, a non-null assertion, a structural directive's `let`
 microsyntax, a `@for` header's trailing semicolon; `docs/bench/readings/lang/angular-grammar.md`), over §14.2's 5%. No
 Angular dialect is built, so no Angular rule is ruled here: a template stays the html dialect's, and LB-Q-angular-rest
-is refused with the measurement and its trigger. *Astro* is ruled as follows. A `.astro` file (the compiler's own
+is refused with the measurement and its trigger. **Angular amendment 2026-10-26:** that wave-lf7 grammar-only account is historical, since the P-R1 experiment reached canonical 2/72 while R-R4 still failed independent grading on 55 context-deferred templates, and the [ceiling assessment](../assessments/2026-10-26-refused-angular-ceiling.md) records the scope rulings and all canonical, holdout and control residual classes. *Astro* is ruled as follows. A `.astro` file (the compiler's own
 input; no other dialect claims the extension) is one component: the astro dialect keys it by its base name with the
 extension (package strategy `file`, F1), so `Card.astro` never shares a key with a sibling `Card.ts`, and it hosts its
 injected ranges (F2): the frontmatter and each `<script>` whose `type` is absent or names JavaScript (`module`,
@@ -884,8 +928,22 @@ attests a pipeline's syntax, not the files its steps load, so no tier-A oracle c
 good. L3 is graded under §1.2's tool-format thresholds in this unit (good: precision >= .90, recall >= .60), and the
 reading says so. Criterion, pre-registered: jenkinsfile.json reads `level_met` L3.
 
-### 1.9 Owner rulings on throughput measurement (2026-10-25)
+### 1.9 Owner rulings on measurement (2026-10-25)
 
+- **E1, L3's minimum evidence (D19).** L3 needs at least 20 references in the denominator of each
+  cross-file metric it is graded on (§1.2), with no subject minimum; it is the general
+  rule, and the per-manifest `l3_evidence` bar (S-R6, S3-R4; Simulink sets 20 across 2) stays and
+  applies after it, adding the subject minimum for the manifests that set one. A
+  thin metric is not measured and caps L3 at good; L3 is unmet, with the stated reason, only when
+  every graded L3 metric is thin and none is missing. The regrade at 5b802bc2 moved eight tool
+  formats from L3 to L2 below their L3 target (json-schema 3, otel-collector 4, protobuf 11,
+  kong 12, kustomize 13, nginx 13, taskfile 14, haproxy 19 references), each with a deferred
+  `LB-Q-<id>-rest` row whose trigger is the corpus reaching 20 resolvable cross-file references;
+  tailwind read L3 to L2 at its L2 target (19), and dart's L3 excellent to good (import_resolution
+  over 6 in-repo imports). Five nested readings moved with them (holdout/bash 8, holdout/nix-2 5,
+  holdout/tailwind 10, holdout/tailwind-shadcn 9, tuned/astro 11): E2-R1 and D20 put every
+  committed reading in the regrade's scope, holdouts and tuned variants included, since the rule
+  is grading logic and reads no new data.
 - **T1, the median of three.** A reading's throughput is the median of at least three runs of one binary at one
   commit on one machine, and the reading's notes give every run's value and its basis. One run near the floor proves
   nothing: CUDA's round-1 pair at one commit read 1.06 and 0.97.
@@ -1775,6 +1833,21 @@ oracle output stays under `workspace/`.
 `TestLanguagesTrackerMatchesRegistry` gains a third assertion (LB-F17): a tracker row's
 level is never higher than its reading's `level_met`, and a registered dialect without a
 reading is listed as `tolerated`.
+
+**Tool-oracle call scope.** A neutral oracle's nonempty `scope` names every measured
+file it read, including files where it found no calls. Call precision counts fathom's
+pairs on all those files; an empty truth set in one file cannot hide false positives.
+The oracle's `call_exclusions` still remove the named callees on both sides, with counts.
+A nonempty `scope` asserts complete call coverage over the named files, even when
+`calls` is empty, null or omitted: zero calls there is truth. An empty call list
+without scope does not assert coverage or contribute a calls family; producers may
+emit it after a parse fallback or for definitions-only output. Nonempty legacy
+call dumps without an explicit scope retain their calls-derived file coverage.
+This coverage is independent of definitions. In the current reading inventory,
+`dxc-ast` is the only producer of a top-level call `scope`, and HLSL is the
+only affected reading. Its raw call pairs require remeasurement, not merely
+regrading stored counts. SQL's unscoped empty call lists remain unasserted;
+PHP's current nonempty unscoped calls retain their calls-derived coverage.
 
 **Producer-specific rules (LB-Q-rust, 2026-09-28).** A SCIP producer's own vocabulary is read
 by the harness where it would otherwise score a definition or a call no source text spells:

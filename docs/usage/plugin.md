@@ -13,7 +13,9 @@ generator, so re-rendering overwrites) from the same embedded sources
 | `plugin.json`, `mcp.json` | Agent Plugins 1.0 (VS Code, Cursor, Copilot, Codex, Kiro, …): the closed `$schema`-selected manifest and the `streamable-http` loopback registration, plus an `X-Fathom-Default-Surface` header naming the `/rpc/agent` default eight (RH-5) |
 | `.claude-plugin/plugin.json`, `.mcp.json`, `hooks/hooks.json` | Claude Code: its manifest (whose open `metadata` field also carries `defaultSurface`/`surfaceGroups`, RH-5), the `type: http` registration, the full hook template spelled via the shim-stable `fathom` |
 | `.cursor-plugin/plugin.json` (only with `--client cursor`) | Cursor's own manifest (RH-8): `mcpServers` is a path string (`"./mcp.json"`) pointing at the portable file above, not an inline server map — the one documented structural difference from the Agent Plugins pair |
-| `skills/<name>/SKILL.md` | both — ten skills, spec-only frontmatter (the six Agent Skills fields are the shared floor) |
+| `skills/<name>/SKILL.md` | both — eleven skills, spec-only frontmatter (the six Agent Skills fields are the shared floor) |
+
+The hook template carries the egress guard: the `PreToolUse` `WebFetch|WebSearch` entry and the Bash `PreToolUse` check warn before data leaves for a host off `[guards] egress_allow` ([the egress guard](../configuration.md#the-egress-guard-guards-egress)).
 
 Both manifests vet against `schema/plugin/schema.cue` under `task cue-vet`
 (`TestPluginManifestsVet`), the Agent Plugins pair is golden-pinned

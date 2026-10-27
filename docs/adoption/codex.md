@@ -45,7 +45,7 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   documented once, in
   [docs/adoption/claude-code-internals.md §3.1](claude-code-internals.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)), and
 - if you passed `--skills=codex` (or a bare `--skills`), rendered the ten
-  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`
+  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings,offload}`
   skills into `<repo>/.claude/skills/` and linked `<repo>/.agents/skills` —
   the path Codex documents — to it, §1.1 below.
 
@@ -68,8 +68,8 @@ bin/fathom init --skills                # bare = all: the same
 bin/fathom init --skills=codex-prompts  # the deprecated ~/.codex/prompts twin, explicit only
 ```
 
-Renders the ten shipped skill sources
-(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}/`)
+Renders the eleven shipped skill sources
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings,offload}/`)
 once, into `.claude/skills`
 ([docs/adoption/claude-code.md, Skills](claude-code.md#skills)),
 and makes the path Codex's skills documentation lists —
@@ -348,7 +348,7 @@ alone and why. The vehicle column is what fathom delivers on Codex
 | `prime` | `hook-inject` | verified — SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install |
 | `obligations-post-edit` | `hook-inject` | verified — PostToolUse on apply_patch (first file of the patch); MEASURED firing 2026-09-12 on a real patch. The `obligations` MCP tool is the fallback until the hook is trusted |
 | `guard-pre-edit` | `hook-inject` | verified — PreToolUse on apply_patch, inject-only (no permissionDecision); MEASURED firing 2026-09-12 |
-| `guard-pre-shell` | `hook-inject` | verified — PreToolUse on Bash (shell and exec_command), inject-only |
+| `guard-pre-shell` | `hook-inject` | verified — PreToolUse on Bash (shell and exec_command), inject-only; the egress guard's command checks ride it |
 | `discovery-observe` | `absent` | verified — Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved |
 | `stop-verify` | `hook-inject` | verified — advisory; `--block` renders {"decision":"block"} — the pre-push verify gate is the backstop |
 | `deposit-session-end` | `hook-silent` | verified — SessionEnd reason is always "other", which the verb does not deposit on — `fathom thread note` before ending a session |
@@ -372,6 +372,7 @@ alone and why. The vehicle column is what fathom delivers on Codex
 | `readout` | `absent` | verified — not ported to Codex yet — the readout hook reads Claude Code's Bash envelope only |
 | `claim-check` | `absent` | verified — not ported to Codex yet — the claim check reads Claude Code's last_assistant_message and the test-run rows, which Codex does not write |
 | `read-outline-hint` | `absent` | verified — not ported to Codex yet — the hint reads Claude Code's Read tool envelope (file_path, offset, limit) only |
+| `guard-pre-web` | `absent` | verified — fathom's Codex hooks see Bash and apply_patch only: the egress guard checks shell commands, and Codex web search and MCP calls are not intercepted — Codex's own sandbox network setting is the control there |
 <!-- fathom:harness-capabilities codex end -->
 
 `subagent-prime`'s ≤600 B primer now carries an addition (RC-28, docs/vision/
@@ -564,8 +565,8 @@ Codex's plugin loader reads beside Claude Code's), `prime` (the Codex pull tier)
 eight-tool default surface), the `codex-cli` provider lane
 (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
 `fathom verify` / `--strict` / `--quiet` (git-native gate, identical to
-Claude Code), the ten shipped Codex prompts
-(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`).
+Claude Code), the eleven shipped Codex prompts
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings,offload}`).
 Codex-specific `config.toml`/`codex mcp` syntax is
 sourced from Codex's own public docs, not this repo — re-verify those
 specifics against your installed Codex version when they change. Update

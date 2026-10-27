@@ -101,7 +101,9 @@
   "notes": [
     "cloud-custodian/cloud-custodian: 10 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "cloud-custodian/cloud-custodian: restricted to tests/data/test_policies/ami-GOODVALIDATION.yml, tests/data/test_policies/dup-policy-keys.yml, tools/c7n_azure/tests_azure/azure-functions/templates/policies.yaml, tools/c7n_guardian/example.yml, tools/c7n_mailer/tests/azure/templates/notify_policy.yaml, tools/c7n_org/tests/fixtures/deprecated-policy.yml, tools/c7n_org/tests/fixtures/duplicate-names-policy.yml, tools/c7n_org/tests/fixtures/flow-logs-deprecated-policy.yml, tools/c7n_org/tests/fixtures/multicloud-policy.yml, tools/c7n_org/tests/fixtures/policy-missing-vars.yml, tools/c7n_org/tests/fixtures/policy-with-runtime-vars.yml, tools/c7n_org/tests/fixtures/policy-with-vars.yml, tools/c7n_org/tests/fixtures/simple-valid-policy.yml, tools/c7n_org/tests/fixtures/valid-policy.yml, tools/c7n_tencentcloud/tests/data/policies/cvm.yaml (-only; the files outside are a disclosed gap, not measured)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at d8216dd4)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at d8216dd4)"
   ],
   "disposition": null
 }

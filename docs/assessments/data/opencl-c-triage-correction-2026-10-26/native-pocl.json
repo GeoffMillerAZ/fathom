@@ -1,0 +1,85 @@
+{
+  "checkout_unchanged": true,
+  "eligible": {
+    "bytes": 7663676,
+    "files": 1016
+  },
+  "expected_commit": "de1ef97242387b6e07d64633edb1573d7156bfee",
+  "grammars": [
+    {
+      "abi_version": 14,
+      "both_count": 178,
+      "clean_count": 223,
+      "clean_rate": 0.21948818897637795,
+      "error_only_count": 394,
+      "error_or_missing_count": 793,
+      "fault_count": 0,
+      "id": "opencl",
+      "library_sha256": "fd8ab192178f160a6cf2ed22c2aa378d69a1d6c93edf13a65bd8cbed07b8d51e",
+      "missing_only_count": 221,
+      "parsed_count": 1016,
+      "population_count": 1016
+    },
+    {
+      "abi_version": 15,
+      "both_count": 121,
+      "clean_count": 169,
+      "clean_rate": 0.16633858267716536,
+      "error_only_count": 501,
+      "error_or_missing_count": 847,
+      "fault_count": 0,
+      "id": "c",
+      "library_sha256": "8ddc36a951aacd8b8ed99e70bdb07491507627b1726ea1020cf9ee6d675752b8",
+      "missing_only_count": 225,
+      "parsed_count": 1016,
+      "population_count": 1016
+    }
+  ],
+  "schema": "opencl-c-native-triage-v1",
+  "scope": "native grammar parse triage only",
+  "tracked": {
+    "after": {
+      "bytes": 49133714,
+      "entries": 2579,
+      "gitlinks": 0,
+      "manifest_sha256": "a265e1a71692c6cf5e955fc3ee87ce64b083978f30077420f8e9ead7a58ecbfd",
+      "regular_bytes": 49133678,
+      "regular_files": 2577,
+      "stage_bytes": 212435,
+      "stage_sha256": "ec63f651f87f204d62e33248b8d63d57f5c8a3726f43bed8dac137b2311f8a5f",
+      "symlink_target_bytes": 36,
+      "symlinks": 2
+    },
+    "before": {
+      "bytes": 49133714,
+      "entries": 2579,
+      "gitlinks": 0,
+      "manifest_sha256": "a265e1a71692c6cf5e955fc3ee87ce64b083978f30077420f8e9ead7a58ecbfd",
+      "regular_bytes": 49133678,
+      "regular_files": 2577,
+      "stage_bytes": 212435,
+      "stage_sha256": "ec63f651f87f204d62e33248b8d63d57f5c8a3726f43bed8dac137b2311f8a5f",
+      "symlink_target_bytes": 36,
+      "symlinks": 2
+    },
+    "unchanged": true
+  },
+  "tree_sitter": "0.25.2",
+  "untracked": {
+    "after": {
+      "files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unignored_files": 0
+    },
+    "before": {
+      "files": 0,
+      "ignored_files": 0,
+      "path_bytes": 0,
+      "paths_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unignored_files": 0
+    },
+    "unchanged": true
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "published_clean_source_commit": "72b283011d816be4cc0b83862b88aa59c18b64e1",
+  "historical_measured_source_commit": "85ee9a41cb79a25acbee625cce3d5402ad284840",
+  "historical_reading_source_ids_retained": true,
+  "new_measurement_claimed": false,
+  "source_tree_comparison": {
+    "excluded_unit_test_path": "calibration/oracles/glslang-ast/test_extract_extensions.py",
+    "compared_entries": 11283,
+    "historical_sha256": "b8b9ea67096028e76abb7bbb6c42909f407bf4d34225b233012eb57c624a8cab",
+    "clean_sha256": "b8b9ea67096028e76abb7bbb6c42909f407bf4d34225b233012eb57c624a8cab",
+    "identical": true,
+    "digest_method": "SHA-256 of the concatenation of complete NUL-terminated git ls-tree -r -z <commit> records, preserving git output order, excluding the exact path calibration/oracles/glslang-ast/test_extract_extensions.py. Each included record ends in one NUL byte."
+  },
+  "unchanged_artifacts": [
+    {
+      "path": "docs/bench/readings/lang/glsl.json",
+      "sha256": "e52245fea41a385de7dd7e11fe875cf147694067df27e55e08e2feabf0ad563f"
+    },
+    {
+      "path": "calibration/oracles/glslang-ast/registered-extensions.json",
+      "sha256": "43e34f4c96a7ad9ce2aaae7cc1427e16e46d1a4a1f1bd996d5653b088cd1159d"
+    },
+    {
+      "path": "calibration/oracles/glslang-ast/registry-ambiguous-source-review.json",
+      "sha256": "6768b63ad400942eada31429e9dc31e0abba22a17079899ac9399d92e7654b82"
+    },
+    {
+      "path": "internal/extractor/tsengine/grammars/grammars.lock.json",
+      "sha256": "7737905a2766320b75ccb2cf4edc60620314dc9924ee6ccb4388c796d5f59f49"
+    },
+    {
+      "path": "internal/extractor/tsengine/grammars/PROVENANCE.md",
+      "sha256": "20133333d1b7899143bf2afd78c86709f2fdcf7d72365b7a22fbe157898072d3"
+    },
+    {
+      "path": "internal/extractor/tsengine/grammars/glsl.wasm.gz",
+      "sha256": "ffa140a4d25c005ea0aca5a71bb4bb87fce7c635a76977642a88d5c364cf7ea9"
+    }
+  ],
+  "raw_wasm_sha256": "678ef71680ed0224d732400e55685ca16eba32b126382449497d193e048fcba6",
+  "withdrawn_heads_excluded_from_clean_ancestry": [
+    "f7c40e3ab",
+    "85ee9a41cb79a25acbee625cce3d5402ad284840",
+    "04fa6298a17a02b8fc1bfeb59adca59a6cb0ea2d"
+  ],
+  "notes": "The only source-tree difference is synthetic oracle unit-test data and additional raw-token rejection assertions. The separate follow-up changes documentation and native regression tests only. Accepted historical measurements and artifact bytes are preserved. This is the historical feature comparison at72b283011, not a promise that later documentation/test commits or a refreshed canonical reading retain those hashes."
+}

@@ -125,7 +125,11 @@ export function useCount() {
 	// A fixture this small reads under the tenancy floor's throughput, so
 	// the grades, not level_met, are what it proves: tier C caps each at good.
 	for _, l := range []string{"L1", "L2", "L3"} {
-		if g := r.GradeAt(l); g != langbench.GradeGood {
+		g := r.GradeAt(l)
+		if l == "L3" {
+			g = l3OnAmpleEvidence(t, r)
+		}
+		if g != langbench.GradeGood {
 			t.Errorf("%s grade %s, want good (tier C)", l, g)
 		}
 	}

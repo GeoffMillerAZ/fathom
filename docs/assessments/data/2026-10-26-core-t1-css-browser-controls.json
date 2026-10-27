@@ -1,0 +1,139 @@
+{
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "HeadlessChrome/156.0.8078.47",
+    "revision": "@1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.47 Safari/537.36",
+    "jsVersion": "15.6.75.19"
+  },
+  "pin": {
+    "version": "156.0.8078.47",
+    "platform": "mac-arm64",
+    "url": "https://storage.googleapis.com/chrome-for-testing-public/156.0.8078.47/mac-arm64/chrome-headless-shell-mac-arm64.zip",
+    "archive_sha256": "2fd1c09a3e1ebde9e69e6aba92f1dd3f21ad247b55d9bf66e39213ff4205436d",
+    "binary_sha256": "3c3950c515a97109e1220670ecc31c1f73605ed8379e36a45d1bee064a991162",
+    "bytes": 103927850,
+    "checksum_basis": "SHA-256 of downloaded official HTTPS archive and extracted executable; manifest supplies versioned URL, not an upstream checksum"
+  },
+  "controls_only": true,
+  "grade_claim": false,
+  "results": [
+    {
+      "name": "comma",
+      "source_sha256": "6ea8b1c1dc4d222a0f6eda4565029090b65e191c9d305333c4b477ebe5b52434",
+      "negative_controls_rejected": 2,
+      "positive": {
+        "accepted": true,
+        "range": {
+          "startLine": 1,
+          "startColumn": 6,
+          "endLine": 4,
+          "endColumn": 0
+        },
+        "properties": [
+          {
+            "name": "color",
+            "range": {
+              "startLine": 2,
+              "startColumn": 1,
+              "endLine": 2,
+              "endColumn": 12
+            }
+          },
+          {
+            "name": "--tone",
+            "range": {
+              "startLine": 3,
+              "startColumn": 1,
+              "endLine": 3,
+              "endColumn": 15
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "utf16-crlf",
+      "source_sha256": "c78ffa43e7887edbf90a2f1ec4c38908f276ed3321de93d6ac37271dd47523f1",
+      "negative_controls_rejected": 2,
+      "positive": {
+        "accepted": true,
+        "range": {
+          "startLine": 0,
+          "startColumn": 15,
+          "endLine": 3,
+          "endColumn": 0
+        },
+        "properties": [
+          {
+            "name": "content",
+            "range": {
+              "startLine": 1,
+              "startColumn": 1,
+              "endLine": 1,
+              "endColumn": 17
+            }
+          },
+          {
+            "name": "--tone",
+            "range": {
+              "startLine": 2,
+              "startColumn": 1,
+              "endLine": 2,
+              "endColumn": 14
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "nested",
+      "source_sha256": "0dd682bb426fbec5feb91474cc3b63192c0709387d30892028eaeb6d05066949",
+      "negative_controls_rejected": 2,
+      "positive": {
+        "accepted": false,
+        "reason": "CSS.setStyleTexts: Failed applying edit #0: NotFoundError Source range didn't match existing style source range (-32000)"
+      }
+    },
+    {
+      "name": "empty",
+      "source_sha256": "f0fef49eed38004845a6a7f37bb19011203e8deed1a7450cec8a7d0745477b6a",
+      "negative_controls_rejected": 1,
+      "positive": {
+        "accepted": true,
+        "range": {
+          "startLine": 0,
+          "startColumn": 8,
+          "endLine": 0,
+          "endColumn": 8
+        },
+        "properties": []
+      }
+    },
+    {
+      "name": "inactive-media",
+      "source_sha256": "f8b75dede4ce9e9a638cfb480c87ecac9005fe5328de9e5d8eb1ced0ee4ed163",
+      "negative_controls_rejected": 2,
+      "positive": {
+        "accepted": true,
+        "range": {
+          "startLine": 1,
+          "startColumn": 9,
+          "endLine": 1,
+          "endColumn": 23
+        },
+        "properties": [
+          {
+            "name": "color",
+            "range": {
+              "startLine": 1,
+              "startColumn": 10,
+              "endLine": 1,
+              "endColumn": 22
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

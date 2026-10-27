@@ -7,6 +7,7 @@ import (
 	"go/ast"
 	"go/build"
 	"go/token"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/mod/sumdb/dirhash"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -190,9 +192,12 @@ func Call() { a.Target(); _ = a.Identity(a.Box[int]{Value: 1}); dep.Work() }
 					writeTypedLoadFixture(t, base, map[string]string{"dep/go.mod": "module example.com/dep\n\ngo 1.23\n", "dep/dep.go": body})
 				} else {
 					cache := filepath.Join(base, "modcache")
-					seedTypedModuleCache(t, cache, body)
+					// ADR-083: the typed pass drops an inherited -mod=mod,
+					// which this case used to rely on to write go.sum; the
+					// fixture now carries the sums of the seeded module.
+					files["go.sum"] = seedTypedModuleCache(t, cache, body)
 					t.Setenv("GOMODCACHE", cache)
-					t.Setenv("GOFLAGS", "-mod=mod -modcacherw")
+					t.Setenv("GOFLAGS", "-modcacherw")
 				}
 			}
 			writeTypedLoadFixture(t, dir, files)
@@ -332,7 +337,9 @@ func TestTypedLoadRuntimeVersionDiagnostic(t *testing.T) {
 
 // Populate only a private on-disk download cache. The go command unpacks it
 // with GOPROXY=off; the dependency is outside the repo and has no replacement.
-func seedTypedModuleCache(t *testing.T, cache, body string) {
+// seedTypedModuleCache writes example.com/dep v1.0.0 into the module cache
+// at cache and returns the go.sum lines that verify it.
+func seedTypedModuleCache(t *testing.T, cache, body string) string {
 	t.Helper()
 	mod := "module example.com/dep\n\ngo 1.23\n"
 	download := filepath.Join(cache, "cache", "download", "example.com", "dep", "@v")
@@ -360,6 +367,17 @@ func seedTypedModuleCache(t *testing.T, cache, body string) {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
+	zipSum, err := dirhash.HashZip(filepath.Join(download, "v1.0.0.zip"), dirhash.Hash1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modSum, err := dirhash.Hash1([]string{"go.mod"}, func(string) (io.ReadCloser, error) {
+		return io.NopCloser(strings.NewReader(mod)), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return "example.com/dep v1.0.0 " + zipSum + "\nexample.com/dep v1.0.0/go.mod " + modSum + "\n"
 }
 
 func TestTypedLoadRetainsOnlyRootSyntaxAndInfo(t *testing.T) {

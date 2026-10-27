@@ -90,6 +90,21 @@ func (r Resolution) Conflicts() []Conflict {
 // fails safe by deferring to the built-in rather than honouring a setting
 // the scope was not entitled to make.
 func (r Resolution) For(c Capability) Setting {
+	if c.Scopes == ScopeUserGoverns {
+		// A repository may tighten it and never loosen it: its "off" is
+		// refused at validation, and ignored here for callers that skipped
+		// validation.
+		if v, ok := r.Project[c.ID]; ok && v {
+			return Setting{On: true, Scope: ScopeProject}
+		}
+		if v, ok := r.User[c.ID]; ok {
+			return Setting{On: v, Scope: ScopeUser}
+		}
+		if v, ok := r.Config[c.ID]; ok {
+			return Setting{On: v, Scope: ScopeConfig}
+		}
+		return Setting{On: c.Default, Scope: ScopeBuiltIn}
+	}
 	if v, ok := r.Project[c.ID]; ok {
 		return Setting{On: v, Scope: ScopeProject}
 	}
@@ -114,6 +129,17 @@ type ScopeViolationError struct {
 func (e *ScopeViolationError) Error() string {
 	return fmt.Sprintf("capability %q may only be set by a repository's own .fathom/capabilities.cue, "+
 		"not at %s scope — it governs behaviour rather than expressing a preference (law 13)", e.ID, e.Scope)
+}
+
+// LoosenError names a repository setting that would switch off a
+// user-governed capability (ScopeUserGoverns): only the user may.
+type LoosenError struct {
+	ID string
+}
+
+func (e *LoosenError) Error() string {
+	return fmt.Sprintf("capability %q may be switched off only in your own ~/.fathom/capabilities.cue, "+
+		"not by a repository — a repository may switch it on, never off (ADR-083)", e.ID)
 }
 
 // UnknownCapabilityError names an unrecognised id and, when one is close
@@ -157,6 +183,9 @@ func (r Registry) ValidateSettings(s Settings, scope Scope) []error {
 		}
 		if scope == ScopeUser && c.Scopes == ScopeProjectOnly {
 			errs = append(errs, &ScopeViolationError{ID: id, Scope: scope})
+		}
+		if scope == ScopeProject && c.Scopes == ScopeUserGoverns && !s[id] {
+			errs = append(errs, &LoosenError{ID: id})
 		}
 	}
 	return errs

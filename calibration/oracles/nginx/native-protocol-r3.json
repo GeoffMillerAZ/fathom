@@ -1,0 +1,45 @@
+{
+  "version": "nginx/1.31.6",
+  "build_inputs": [
+    {
+      "name": "nginx-1.31.6",
+      "url": "https://nginx.org/download/nginx-1.31.6.tar.gz",
+      "sha256": "974ed5298a5e398e008704ed5db284e655fc270c596493dbccada452448fc9f1",
+      "bytes": 1373124,
+      "license": "BSD-2-Clause"
+    },
+    {
+      "name": "openssl-3.6.2",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz",
+      "sha256": "aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
+      "bytes": 54913556,
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "pcre2-10.47",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.gz",
+      "sha256": "c08ae2388ef333e8403e670ad70c0a11f1eed021fd88308d7e02f596fcd9dc16",
+      "bytes": 2792969,
+      "license": "BSD-3-Clause"
+    }
+  ],
+  "population": "Observe every native HTTP/stream upstream registration call while parsing each of all 47 original disclosed inputs. Match reference returned-object identities against native declaration returned-object identities after successful whole configuration evaluation. Independent source positions may classify enclosing owners only; they do not choose references or targets.",
+  "rules": [
+    "Require clean pinned subjects and exact native version/binary digest.",
+    "Load each original accepted input through the existing native -T scope checker, with existing path/log isolation only. No server, HTTP request, backend workload or Docker runs.",
+    "A local upstream reference is attested only if the unchanged profile passes and renaming only its target upstream declaration causes native -t/-T rejection that names that original upstream and the queried source directive location.",
+    "Do not mask other references or declarations to move an error to the queried location. If another error wins or the name resolves externally, fail the native family rather than substituting an independent answer.",
+    "Keep raw input/file inventories and native stderr in scratch. Publish counts, version/source/binary identities and digests only.",
+    "Preregister before building/querying; after measurement remove source builds and subjects, keeping only the binary and receipts if needed.",
+    "The current crossplane walk selects the candidate reference population. Native ablation attests selected-pair validity only, so emit the entire reference family at C; do not claim native recall completeness.",
+    "A future native population instrument must enumerate all native parsed reference sites/targets before comparison. Candidate route: inspect native nginx configuration parser and upstream-registration APIs, including native debug-symbol introspection. This route is not measured or rejected here.",
+    "Scope replay never narrows a prior disclosure to improve metrics. Native load failures or count changes stop the diagnostic; do not rewrite a baseline or claim an upgrade.",
+    "The observer wraps ngx_http_upstream_add and ngx_stream_upstream_add, preserving original bodies/return values. It emits native source file/line, parser command/argument, declaration flag, host and returned object identity. Capture every call, including unused declarations, forward references and nonlocal targets.",
+    "Classify all native events before comparison. Every same-file literal upstream reference to a native declaration enters truth, regardless of the old crossplane pair list. Unknown event kinds, missing metadata, failed native configs or ambiguous source ownership fail the family; never fall back to scanner truth.",
+    "Use target-only negative controls for each native local pair. Compare to the independent scanner only after enumeration, recording every discrepancy. Tier A completeness is not claimed until this full experiment and its controls succeed.",
+    "Do not harvest runtime visited-request traces. This is whole-input native configuration parsing: no server, HTTP request, backend workload or Docker.",
+    "Before accepting native output, authored controls must cover unused native declarations, a native pair omitted from scanner candidates, HTTP and stream registration, forward declaration binding and identity/version failures.",
+    "Delete completed source builds and subjects after packaging measured receipts. Keep only the small native observer binary and summaries needed for review."
+  ],
+  "revision": "r3: native HTTP and stream upstream population observer"
+}

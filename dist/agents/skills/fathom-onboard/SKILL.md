@@ -119,14 +119,14 @@ It is idempotent and additive. It:
    repository holds secrets or data: every connected MCP client can read
    the index;
 2. ingests the repository through the daemon and confirms it indexed;
-3. wires the Claude Code hooks into `.claude/settings.json` (20 entries on
-   15 events; `fathom harness hooks --harness claude-code` prints them);
+3. wires the Claude Code hooks into `.claude/settings.json` (27 entries on
+   16 events; `fathom harness hooks --harness claude-code` prints them);
 4. scaffolds `.fathom/guard.cue`, `concerns.cue`, `modules.cue` and
    `capabilities.cue`, all commented out;
 5. writes the fathom stanza into `AGENTS.md` between fathom markers. A root
    `CLAUDE.md` that exists gets one `@AGENTS.md` import; init never creates
    one;
-6. installs the ten shipped skills into `.claude/skills/` and links
+6. installs the eleven shipped skills into `.claude/skills/` and links
    `.agents/skills` to that directory;
 7. scaffolds `~/.fathom/config.toml` if absent;
 8. prints the steps it does not take for you, such as MCP registration.

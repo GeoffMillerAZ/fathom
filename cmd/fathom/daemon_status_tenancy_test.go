@@ -196,7 +196,7 @@ func TestDoctorDaemonPostureNamesReconcile(t *testing.T) {
 		t.Fatalf("a hand-written plist's remedy needs --adopt: %q", c.Remedy)
 	}
 
-	write(plistBody("com.example.mine", "/opt/fathom/fathom", "/s", ":7581", "/l", "/c", "/usr/bin", nil))
+	write(plistBody("com.example.mine", "/opt/fathom/fathom", "/s", "127.0.0.1:7581", "/l", "/c", "/usr/bin", nil))
 	if c := checkDaemonPosture(""); c.Status != doctorPass {
 		t.Fatalf("a schema-2 plist passes: %+v", c)
 	}
