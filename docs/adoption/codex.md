@@ -45,7 +45,7 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   documented once, in
   [docs/adoption/claude-code-internals.md §3.1](claude-code-internals.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)), and
 - if you passed `--skills=codex` (or a bare `--skills`), rendered the ten
-  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`
+  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings,offload}`
   skills into `<repo>/.claude/skills/` and linked `<repo>/.agents/skills` —
   the path Codex documents — to it, §1.1 below.
 
@@ -68,8 +68,8 @@ bin/fathom init --skills                # bare = all: the same
 bin/fathom init --skills=codex-prompts  # the deprecated ~/.codex/prompts twin, explicit only
 ```
 
-Renders the ten shipped skill sources
-(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}/`)
+Renders the eleven shipped skill sources
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings,offload}/`)
 once, into `.claude/skills`
 ([docs/adoption/claude-code.md, Skills](claude-code.md#skills)),
 and makes the path Codex's skills documentation lists —
@@ -565,8 +565,8 @@ Codex's plugin loader reads beside Claude Code's), `prime` (the Codex pull tier)
 eight-tool default surface), the `codex-cli` provider lane
 (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
 `fathom verify` / `--strict` / `--quiet` (git-native gate, identical to
-Claude Code), the ten shipped Codex prompts
-(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`).
+Claude Code), the eleven shipped Codex prompts
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings,offload}`).
 Codex-specific `config.toml`/`codex mcp` syntax is
 sourced from Codex's own public docs, not this repo — re-verify those
 specifics against your installed Codex version when they change. Update

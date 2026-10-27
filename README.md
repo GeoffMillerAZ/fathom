@@ -138,7 +138,7 @@ claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/ag
 ```
 
 `init` only adds files (`git status` lists them): `.fathomignore`, `.fathom/`, a marked
-stanza in `AGENTS.md`, hooks in `.claude/settings.json` and ten skills in `.claude/skills/`,
+stanza in `AGENTS.md`, hooks in `.claude/settings.json` and eleven skills in `.claude/skills/`,
 plus `~/.fathom/` and a `~/.local/bin/fathom` shim. Its `MANUAL:` lines are optional.
 Codex: [docs/adoption/codex.md](docs/adoption/codex.md).
 
