@@ -99,6 +99,44 @@ type Daemon struct {
 type Guards struct {
 	GitSafety *bool // nil = shipped command pack enabled; false opts out
 	Enforce   *bool // nil = unset at every layer; caller applies its own default (true)
+	// Egress is the egress guard's mode (ADR-083): "off", "warn" or
+	// "enforce"; "" is unset at every layer, which EgressMode reads as
+	// warn. The user layer sets it; a later layer only tightens it (off <
+	// warn < enforce), so a repository can never loosen what the user set.
+	// EgressSource is the layer whose value is in effect ("" when unset).
+	Egress       string
+	EgressSource Source
+	// EgressAllow are the hosts the egress guard lets through. User-only:
+	// a repository's list is dropped by name (scope.go).
+	EgressAllow []string
+}
+
+// The egress guard's modes, loosest first.
+const (
+	EgressOff     = "off"
+	EgressWarn    = "warn"
+	EgressEnforce = "enforce"
+)
+
+// EgressMode is the egress guard's mode in effect: the configured value, or
+// warn when no layer sets one.
+func (g Guards) EgressMode() string {
+	if g.Egress == "" {
+		return EgressWarn
+	}
+	return g.Egress
+}
+
+// egressRank orders the modes from loosest to strictest; an unknown value
+// ranks with warn, the default.
+func egressRank(mode string) int {
+	switch mode {
+	case EgressOff:
+		return 0
+	case EgressEnforce:
+		return 2
+	}
+	return 1
 }
 
 // Findings configures the findings-loop's governed external import

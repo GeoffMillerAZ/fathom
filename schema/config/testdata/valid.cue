@@ -308,3 +308,12 @@ gateEvidence: #Config & {
 // All supported swap-volume floor pressure levels.
 floorAtNormal: #Config & {tenancy: host: floor_on_pressure: "normal"}
 floorAtCritical: #Config & {tenancy: host: floor_on_pressure: "critical"}
+
+// The egress guard (ADR-083): warn by default; enforce denies while guard
+// enforcement is on; the allowlist is user-only.
+exampleEgressGuard: #Config & {
+	guards: {
+		egress: "enforce"
+		egress_allow: ["docs.example.com", "*.example.org", "s3://example-bucket"]
+	}
+}

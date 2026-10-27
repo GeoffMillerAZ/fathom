@@ -71,7 +71,11 @@ func MatchCommandGuard(gs GuardSet, command string) (Guard, bool) {
 	var warning *Guard
 	for _, g := range gs.Guards {
 		for _, u := range units {
-			if g.commandCheck != "" {
+			if g.pack == egressPackName {
+				if matched, ok := matchEgressGuard(g, u, gs.egressOptions()); ok {
+					return matched, true // every egress match is enforce-capable
+				}
+			} else if g.commandCheck != "" {
 				if matched, ok := matchSafetyGuard(g, u); ok {
 					if matched.Enforce {
 						return matched, true
@@ -87,7 +91,7 @@ func MatchCommandGuard(gs GuardSet, command string) (Guard, bool) {
 		if g.commandCheck == "" && commandGlobMatches(g.CommandScopes, command) {
 			return g, true
 		}
-		if unreadable && g.commandCheck != "" && safetyGitText.MatchString(command) && safetyActionText.MatchString(command) && warning == nil {
+		if unreadable && g.pack == gitSafetyPackName && safetyGitText.MatchString(command) && safetyActionText.MatchString(command) && warning == nil {
 			g.Enforce = false
 			g.Note = "git-safety: command safety is unknown (unreadable shell input); run git with hooks enabled and name the target branch."
 			warning = &g
