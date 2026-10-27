@@ -98,7 +98,9 @@ func TempDirs() []string {
 // trailing slash; "" for "". A path that does not exist resolves its
 // deepest existing ancestor and keeps the rest as cleaned (issue 120), so
 // a missing directory under a symlinked root still nests under that root's
-// canonical form; a path with no existing ancestor is only cleaned.
+// canonical form. The cleaned path is returned unresolved only when no
+// ancestor resolves at all, which on Unix cannot happen ("/" always does)
+// but can on Windows (a missing volume).
 func Canonical(path string) string {
 	c := cleanAbs(path)
 	if c == "" {
