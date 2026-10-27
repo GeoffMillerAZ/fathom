@@ -123,7 +123,7 @@ func daemonRestartHint(storeHint string) string {
 	if runtime.GOOS == "darwin" {
 		return fmt.Sprintf("fathom daemon install   # writes the launchd agent and starts it (or run it in the foreground: fathom serve-http --store %s)", storeHint)
 	}
-	return fmt.Sprintf("fathom serve-http --store %s --addr :7575   # no launchd on this platform; run it under your own supervisor", storeHint)
+	return fmt.Sprintf("fathom serve-http --store %s --addr %s   # no launchd on this platform; run it under your own supervisor", storeHint, defaultDaemonAddr)
 }
 
 func cmdDaemon(args []string, stdout, stderr io.Writer) int {
@@ -332,16 +332,31 @@ func daemonGoEnv() []string {
 	return out
 }
 
+// daemonInstallLaunchctl runs one launchctl command for `daemon install`
+// and returns its combined output; a test replaces it (launchctl run from an
+// agent's shell wedges).
+var daemonInstallLaunchctl = func(args ...string) ([]byte, error) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
+	return exec.Command("launchctl", args...).CombinedOutput()
+}
+
 func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("daemon install", stderr)
 	label := fs.String("label", defaultDaemonLabel, "launchd label")
 	store := fs.String("store", "", "store path (default: ~/.fathom/db/fathom.sqlite — the shared fleet store)")
-	addr := fs.String("addr", ":7575", "listen address")
+	addr := fs.String("addr", defaultDaemonAddr, "listen address; loopback only: "+remoteServingReason)
 	binPath := fs.String("bin", "", "fathom binary to run (default: this executable, symlink-resolved)")
 	force := fs.Bool("force", false, "overwrite an existing agent with the same label")
 	direct := fs.Bool("direct", false, "run the binary itself as the agent's program instead of the fathomd launcher beside it (the earlier shape: on macOS every deploy then changes the program launchd tracks)")
 	if err := fs.Parse(args); err != nil {
 		return 1
+	}
+	// ADR-083: the daemon has no authentication, so a wide --addr is
+	// refused here, before anything is written (serve-http would bind
+	// loopback in its place).
+	if !hostIsLoopback(*addr) {
+		fmt.Fprintln(stderr, "fathom daemon install: "+nonLoopbackInstallRefusal(*addr))
+		return 2
 	}
 	if runtime.GOOS != "darwin" {
 		fmt.Fprintf(stderr, "fathom daemon install is launchd-only (this is %s).\n", runtime.GOOS)
@@ -443,10 +458,8 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 	uid := os.Getuid()
 	// bootout first so a re-install replaces rather than stacks; a missing
 	// service makes bootout fail, which is fine and not worth reporting.
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", uid, *label)).Run()
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, bootErr := exec.Command("launchctl", "bootstrap", fmt.Sprintf("gui/%d", uid), plistPath).CombinedOutput()
+	_, _ = daemonInstallLaunchctl("bootout", fmt.Sprintf("gui/%d/%s", uid, *label))
+	out, bootErr := daemonInstallLaunchctl("bootstrap", fmt.Sprintf("gui/%d", uid), plistPath)
 	if bootErr != nil {
 		fmt.Fprintf(stderr, "fathom daemon install: wrote the agent but launchctl bootstrap failed: %v\n%s\n", bootErr, strings.TrimSpace(string(out)))
 		fmt.Fprintf(stderr, "  start it by hand: launchctl bootstrap gui/%d %s\n", uid, plistPath)

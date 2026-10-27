@@ -48,7 +48,7 @@ func verbHelpStatic() map[string][]helpFlag {
 		// RT-3 kill switch first, then config.toml, whose [daemon] table
 		// seeds the defaults (serveRun.configure).
 		"serve-http": {
-			{"addr", "string", "[daemon].addr in config.toml, else the loopback default", "listen address (host:port); loopback by default — surfaces are not a security boundary (amendment)"},
+			{"addr", "string", "[daemon].addr in config.toml, else the loopback default", "listen address (host:port); loopback only — a non-loopback address binds 127.0.0.1 on the same port, with a warning; surfaces are not a security boundary (amendment)"},
 			{"allow-operator-state", "bool", "", "unmanaged only: allow --store/--call-log to name the managed daemon's store or call log"},
 			{"auto-refresh", "bool", "[daemon].auto_refresh, else true; an unmanaged daemon leaves it off unless set", "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries"},
 			{"call-log", "string", "[daemon].call_log, else " + defaultCallLogPath(), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable"},
