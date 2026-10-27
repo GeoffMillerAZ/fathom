@@ -53,9 +53,8 @@ when you summarize:
   not configured). It is neither a failure nor a pass. Report it as "could
   not verify: <reason>".
 
-**A fresh install, read correctly.** In v0.11.0 a correct `fathom init
---skills` usually prints about 60 rows with three FAIL rows that are not
-wiring faults:
+**A fresh install, read correctly.** A correct `fathom init --skills`
+usually prints three FAIL rows that are not wiring faults:
 
 | Row | Why it fails on day one | What to do |
 |---|---|---|
@@ -82,6 +81,8 @@ The rows that decide whether fathom works:
 | `wiring_drift` | Hooks, stanza and skills match the shipped template; `fathom fleet reconcile --repo .` shows the diff |
 | `config_valid` | `.fathom/config.toml` (user and project) validates |
 | `concerns` | Every registered config concern holds (`fathom config audit` has the evidence) |
+| `daemon_bind` | The daemon listens on loopback only. FAIL on a wide plist `--addr` or a running non-loopback listener: run `fathom daemon install --reconcile` from your own terminal (WARN on a wide `[daemon].addr` or an unreadable plist or config) |
+| `egress_guard` | The egress guard is on. WARN when it is off (`[guards] egress = "off"`), when a repository config does not load, or when `enforce` is set while guard enforcement is off |
 
 ## 3. Apply remedies with the operator's approval, one at a time
 

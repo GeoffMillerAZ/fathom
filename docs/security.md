@@ -104,8 +104,9 @@ The harness boundary is the real one. Use it.
   `Bash(curl:*)`), and the sandbox network allowlist so only named hosts are reachable.
 - **Codex:** keep the sandbox network setting off (the default for workspace-write), and
   review hooks before trusting them with `/hooks`.
-- **Fathom:** keep `go_network` unset, keep `[daemon].addr` on loopback, set
-  `egress = "enforce"` with a short `egress_allow`, and set `FATHOM_DECIDE=off` if you want no
-  decision-model calls at all.
+- **Fathom:** keep `go_network` unset, set `egress = "enforce"` with a short `egress_allow`,
+  and set `FATHOM_DECIDE=off` if you want no decision-model calls at all. A wide
+  `[daemon].addr` is rebound to loopback, and doctor's `daemon_bind` row WARNs on it (a wide
+  plist `--addr` is a FAIL).
 - **Machine:** do not expose port 7575 through port forwarding, a dev container with host
   networking, or a tunnel. There is no authentication behind it.
