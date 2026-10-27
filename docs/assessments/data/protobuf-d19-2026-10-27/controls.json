@@ -1,0 +1,10 @@
+{
+  "native_input_sensitive": true,
+  "native_independent": true,
+  "zero_reference_file_retained": true,
+  "repeated_sites_preserve_distinct_file_pair_unit": true,
+  "authority_mutant_refused": true,
+  "restored_green": true,
+  "oracle_source_sha256": "5d173243b6618d2f2be947fd4474834b7439104393c573a37bbed6c7a6119e92",
+  "compiler_sha256": "5c51efe5d53bb87ffb4de8beb43611757b13c98361ce1008ae590e5261f02ee2"
+}

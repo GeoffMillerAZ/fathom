@@ -1,6 +1,6 @@
 id: protobuf
 language: Protocol Buffers
-# Both subjects are cloned sparse to their .proto files and buf configs: protoc and the dialect read
+# Three subjects are cloned sparse to their .proto files and buf configs: protoc and the dialect read
 # nothing else, and grpc-go's Go tree is not needed to compile its protos.
 repos:
   - name: grpc/grpc-go
@@ -27,3 +27,14 @@ repos:
       - 'map fields whose value is a message type'
       - 'proto2, proto3 and editions files side by side (buf module roots under proto/)'
       - 'imports rooted at buf module roots rather than the repository root'
+  - name: protocolbuffers/protobuf
+    url: https://github.com/protocolbuffers/protobuf
+    ref: v34.1
+    sha: 4b0c3aacf0657fbf38253b38918d3358dd4319ec
+    licence: BSD-3-Clause
+    subpath: src
+    sparse: ["src/google/protobuf/**/*.proto", "src/google/protobuf/*.proto"]
+    idioms:
+      - 'complete owner source-proto tree under the genuine src import root, including zero-reference files'
+      - 'well-known messages, descriptor types, compiler plugin messages, proto2/proto3 and edition fixtures'
+      - 'compiler-refused inputs remain in the population; no local imports are rewritten or synthesized'

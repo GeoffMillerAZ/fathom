@@ -112,6 +112,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [iac-provider-schema-feasibility](2026-10-26-iac-provider-schema-feasibility.md), [native data](data/2026-10-26-provider-schema-native-probe.json), [size data](data/2026-10-26-provider-schema-export-sizes.json) | Three offline native schema exports, 12 authored traversals and 12 attributable field refusals; dependency-plane policy, anchors and store costs remain open | IAC-2, IAC-7, IAC-12, IAC-16, SG-36, SG-37 |
 | 2026-10-26 | [terragrunt-triage](2026-10-26-terragrunt-triage.md), [data](data/terragrunt-triage-2026-10-26/receipt.json) | Owner stack/DAG/language-server candidates; content-based cache inventory, native attempts need owner approval | Feeds IAC-20/GAP1-37; does not satisfy them |
 | 2026-10-26 | [aws-cdk-triage](2026-10-26-aws-cdk-triage.md), [data](data/aws-cdk-triage-2026-10-26/receipt.json) | Owner synth/tree/trace and ordinary language candidates; content-based path-free cache inventory | Feeds IAC-20/GAP1-37; does not satisfy them |
+| 2026-10-27 | [tools-protobuf-d19](2026-10-27-tools-protobuf-d19.md), [data](data/protobuf-d19-2026-10-27/receipt.json) | Dialect L3 unmet to excellent under D19 at native A: recall107/116, precision107/107; incumbent dispatch and rpc signatures stay unchanged | LB-Q-protobuf-rest, D19 |
 
 ## Companion pages
 

@@ -1,0 +1,262 @@
+{
+  "native": {
+    "protocol_sha256": "7c788481456d0ce38ad84147515c36f6ca1462d93403adea039f1a4cc0318da2",
+    "compiler_sha256": "5c51efe5d53bb87ffb4de8beb43611757b13c98361ce1008ae590e5261f02ee2",
+    "oracle_source_sha256": "5d173243b6618d2f2be947fd4474834b7439104393c573a37bbed6c7a6119e92",
+    "oracle_binary_sha256": "ec192bc6cd746baf8b54830bd5b5128222db3183e88dfa861fd2854b50102a15",
+    "subjects": [
+      {
+        "subject": 0,
+        "files": 13,
+        "compiled": 13,
+        "rejected": 0,
+        "definitions": 59,
+        "reference_sites": 46,
+        "import_sites": 3,
+        "cross_reference_sites": 0,
+        "distinct_cross_file_pairs": 0,
+        "oracle_sha256": "c8f9afd1d4ca42de916c566fa80e5e50c1935a3b60f80fd8fdeda0c17f88883b"
+      },
+      {
+        "subject": 1,
+        "files": 156,
+        "compiled": 126,
+        "rejected": 30,
+        "definitions": 1164,
+        "reference_sites": 473,
+        "import_sites": 129,
+        "cross_reference_sites": 12,
+        "distinct_cross_file_pairs": 11,
+        "oracle_sha256": "ca68e9f5e2cd63c2da91b597beea30dab80da02f357c25bbe488844bbda63e65"
+      },
+      {
+        "subject": 2,
+        "files": 92,
+        "compiled": 90,
+        "rejected": 2,
+        "definitions": 976,
+        "reference_sites": 1235,
+        "import_sites": 70,
+        "cross_reference_sites": 233,
+        "distinct_cross_file_pairs": 106,
+        "oracle_sha256": "b7333c35b0b4a50b1b119b41fdf71af1e9dceaf127aaa234bd8df92509629044"
+      }
+    ]
+  },
+  "manifests": [
+    {
+      "subject": 0,
+      "scope": ":(glob)**/*.proto",
+      "summary": {
+        "bytes": 19478,
+        "entries": 13,
+        "files": 13,
+        "gitlinks": 0,
+        "sha256": "3501224d09f70ed868cd334cc0a3f6173ed0e2d7e143a192c72b983182d1ee78",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 0,
+      "scope": ":(glob)**/buf.yaml",
+      "absent": true
+    },
+    {
+      "subject": 0,
+      "scope": ":(glob)**/buf.gen.yaml",
+      "absent": true
+    },
+    {
+      "subject": 0,
+      "scope": ":(glob)**/buf.work.yaml",
+      "absent": true
+    },
+    {
+      "subject": 1,
+      "scope": ":(glob)**/*.proto",
+      "summary": {
+        "bytes": 520907,
+        "entries": 156,
+        "files": 156,
+        "gitlinks": 0,
+        "sha256": "3d905747e818b64caf2ec51ee10393bcf5a6115697b28ddd8d4cfdb358605c4f",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 1,
+      "scope": ":(glob)**/buf.yaml",
+      "summary": {
+        "bytes": 2606,
+        "entries": 3,
+        "files": 3,
+        "gitlinks": 0,
+        "sha256": "3097cb27387c0da8c0f0e54c4627fa845382d8bc69258cfaed251320c0f16b75",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 1,
+      "scope": ":(glob)**/buf.gen.yaml",
+      "summary": {
+        "bytes": 281,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "b5e2e5e21372dc0902503f760679c2f8b926d54a805d64f0de0d246852750ac4",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 1,
+      "scope": ":(glob)**/buf.work.yaml",
+      "absent": true
+    },
+    {
+      "subject": 1,
+      "scope": ":(glob)**/buf.lock",
+      "summary": {
+        "bytes": 832,
+        "entries": 2,
+        "files": 2,
+        "gitlinks": 0,
+        "sha256": "95ddcb313499e0c6b83d5f398e6e7b8ef1af32768b10934c22dd685593432b33",
+        "symlinks": 0
+      }
+    },
+    {
+      "subject": 2,
+      "scope": ":(glob)src/google/protobuf/**/*.proto",
+      "summary": {
+        "bytes": 739454,
+        "entries": 92,
+        "files": 92,
+        "gitlinks": 0,
+        "sha256": "6614e80138aa535b0324756aae5fa8af2d0ff052599b6e099d3212272510f6b5",
+        "symlinks": 0
+      }
+    }
+  ],
+  "modified_untracked_ignored": 0,
+  "indexbench_sha256": "1061ec368b163bb55e4e22ac934819079e4d1b40a06a9b727361a331502d6ea0",
+  "reading_sha256": "06fac5b783255bd5ae582612667528399ef7b2750ef84de9c56a660c2979cfcf",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "counts": {
+    "callables": 1948,
+    "callables_signed": 1948,
+    "fathom_defs": 2172,
+    "kind_equal": 2166,
+    "matched": 2166,
+    "oracle_defs": 2166,
+    "range_eligible": 2166,
+    "range_ok": 2166,
+    "ref_fathom": 1214,
+    "ref_fathom_in_truth": 1214,
+    "ref_truth": 1214,
+    "ref_truth_found": 1214,
+    "xref_fathom": 107,
+    "xref_fathom_in_truth": 107,
+    "xref_truth": 116,
+    "xref_truth_found": 107
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "subjects": [
+    {
+      "name": "bufbuild/protovalidate",
+      "sha": "4baed765070e580226a0a30bf2a357cc027dc1f7",
+      "files": 118,
+      "bytes": 478546,
+      "counts": {
+        "callables": 1086,
+        "callables_signed": 1086,
+        "fathom_defs": 1146,
+        "kind_equal": 1146,
+        "matched": 1146,
+        "oracle_defs": 1146,
+        "range_eligible": 1146,
+        "range_ok": 1146,
+        "ref_fathom": 421,
+        "ref_fathom_in_truth": 421,
+        "ref_truth": 421,
+        "ref_truth_found": 421,
+        "xref_fathom": 11,
+        "xref_fathom_in_truth": 11,
+        "xref_truth": 11,
+        "xref_truth_found": 11
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      }
+    },
+    {
+      "name": "grpc/grpc-go",
+      "sha": "e84aa5ab15d1d2b29d54f838312ad490cb7551a8",
+      "files": 10,
+      "bytes": 16113,
+      "counts": {
+        "callables": 40,
+        "callables_signed": 40,
+        "fathom_defs": 46,
+        "kind_equal": 46,
+        "matched": 46,
+        "oracle_defs": 46,
+        "range_eligible": 46,
+        "range_ok": 46,
+        "ref_fathom": 35,
+        "ref_fathom_in_truth": 35,
+        "ref_truth": 35,
+        "ref_truth_found": 35,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      }
+    },
+    {
+      "name": "protocolbuffers/protobuf",
+      "sha": "4b0c3aacf0657fbf38253b38918d3358dd4319ec",
+      "files": 91,
+      "bytes": 739062,
+      "counts": {
+        "callables": 822,
+        "callables_signed": 822,
+        "fathom_defs": 980,
+        "kind_equal": 974,
+        "matched": 974,
+        "oracle_defs": 974,
+        "range_eligible": 974,
+        "range_ok": 974,
+        "ref_fathom": 758,
+        "ref_fathom_in_truth": 758,
+        "ref_truth": 758,
+        "ref_truth_found": 758,
+        "xref_fathom": 96,
+        "xref_fathom_in_truth": 96,
+        "xref_truth": 105,
+        "xref_truth_found": 96
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      }
+    }
+  ]
+}

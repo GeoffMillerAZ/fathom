@@ -1873,7 +1873,8 @@
     ],
     "calibration_subjects": [
       "grpc/grpc-go",
-      "bufbuild/protovalidate"
+      "bufbuild/protovalidate",
+      "protocolbuffers/protobuf"
     ],
     "depends_on": [
       "LB-F1",
@@ -1898,7 +1899,7 @@
     "plan_row": "LB-Q-protobuf",
     "worker_model": "sonnet",
     "port_of": "protoextract.go (pure Go)",
-    "notes": "messages, enums, services, rpcs; field type references; import edges"
+    "notes": "messages, enums, services, rpcs; field type references; import edges; D19 replay 2026-10-27: same two canonical pins plus complete official v34.1 src proto scope; dialect L3 excellent at A, recall107/116 and precision107/107. Incumbent dispatch and rpc Signature contract remain unchanged; see docs/assessments/2026-10-27-tools-protobuf-d19.md."
   },
   {
     "id": "gdscript",
