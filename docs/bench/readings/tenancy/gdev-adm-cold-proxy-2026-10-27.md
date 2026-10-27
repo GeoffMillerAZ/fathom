@@ -7,10 +7,11 @@ receipt the game-development plan asks for, and it proves no plan row.
 lane (6d117677e), every refusal and every abandonment was named somewhere. None was silent:
 the one abandoned call named its cause in its response and its call-log row, and every plan
 `plans status` could not measure was listed as not measured. One gap remains. Three of the four
-daemons left at the exit rung during `plans status`, both arms alike. The cause (`exiting 70 over
-budget: own footprint 1.0 GiB ≥ exit mark 1 GiB`) is named only in the daemon's own log. The
-client named each plan it could no longer measure by its transport error (`EOF`, `connection
-refused`), not by that exit. The lane does not change memory and was not expected to: both arms
+daemons left at the exit rung during `plans status`, both arms alike. The daemon named the cause
+(`exiting 70 over budget: own footprint 1.0 GiB ≥ exit mark 1 GiB`) in its log, its diagnostics
+capture and its lifecycle ledger (an `exit` row: code 70, reason `over_budget`). The client named
+each plan it could no longer measure only by its transport error (`EOF`, `connection refused`):
+it does not read that ledger. The lane does not change memory and was not expected to: both arms
 peaked at about 1.0 GiB, and whether a daemon reached the exit rung, and when, varied run to run
 under this machine's load, so two cold starts per arm do not separate the arms. The memory
 itself is O1014's graph residency, outside this lane.
@@ -47,12 +48,17 @@ itself is O1014's graph residency, outside this lane.
   answer is served`, and its call-log row's outcome is `abandoned`. The CLI exited 2, the
   operational code `fathom verify` fails open on.
 - Admission refused nothing: in `observe` mode every call is decided and counted, and only
-  `enforce` refuses. Each run logged and counted one would-refuse (`list_services`, fleet class,
-  agent origin, level refuse; `fathom_would_refuse_total{class="fleet",reason="level"} 1`) and
-  served it.
-- Every call that ran to an answer answered `ok`. No `fathom_inflight` count remained in the one
-  run whose end-of-run `/metrics` could be read (origin/main 2); the three that reached the exit
-  rung left with the process.
+  `enforce` refuses. Each run logged one would-refuse (`list_services`, fleet class, agent origin,
+  level refuse) and served it. The counter is readable only in origin/main 2, whose end-of-run
+  `/metrics` reads `fathom_would_refuse_total{class="fleet",reason="level",origin="agent"} 1`; the
+  other three daemons had exited.
+- Every call that ran to an answer answered `ok`. In the one run whose end-of-run `/metrics`
+  could be read (origin/main 2), nothing was left in flight (`fathom_oldest_inflight_seconds` 0
+  in every class, `fathom_typed_pass_inflight 0`); the three that reached the exit rung left
+  with the process.
+- verify's "578 verified" is the CLI's verdict line; the server's call-log row for the same call
+  records `verdict_outcome.verified: 319` of 578 claimed, a difference this reading does not
+  explain.
 
 ## Against O1014
 
@@ -69,8 +75,8 @@ itself in three of four runs.
 The lane's admission changes (a setup panic that frees its slot, the ingest tool's refusals and
 the lifecycle body in the §3.4 wire format) and its ingest changes (named CLI cancellation, the
 busy refusal) are not exercised by these two requests: no handler panicked, nothing called the
-`ingest` tool, and nothing ingested beside another ingest. The runs show they cost nothing on
-this path. The open gap is outside the lane: a client of a daemon that left at the exit rung
-cannot name why. Naming it would need the exit reason somewhere a client reads after the daemon
-has gone, for example the daemon record or the lifecycle ledger, which `fathom resources`
-already reads.
+`ingest` tool, and nothing ingested beside another ingest. Two cold starts per arm on a loaded
+machine show no difference between the arms that they could detect, and no more. The open gap is
+outside the lane: a client of a daemon that left at the exit rung does not say why, although the
+daemon's lifecycle ledger already records the reason (`fathom resources` reads it); `plans
+status` and `verify` could read it when the daemon stops answering.
