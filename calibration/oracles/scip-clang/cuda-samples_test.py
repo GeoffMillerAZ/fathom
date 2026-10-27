@@ -66,13 +66,22 @@ class CUDADatabaseLocation(unittest.TestCase):
             subprocess.run(['bash', '-eu', '-c', selection], env=env, check=True)
             self.assertEqual(json.loads(database.read_text()), [entry])
             self.assertEqual(sorted(p.name for p in subject.iterdir()), ['k.cu'])
-            # Exercise the real scip-clang launch line with a local recording stub.
+            # Round 5 R5-1: the database is written at <work>/subject/build, where fathom's
+            # include-path resolver reads it (internal/fusion/compdb.go), as an adopter's CMake build puts it.
+            publish = re.search(r'\nmkdir -p "\$subj/build".*?\n', driver).group().strip()
+            subprocess.run(['bash', '-eu', '-c', publish], env=env, check=True)
+            resolved = subject / 'build' / 'compile_commands.json'
+            self.assertEqual(json.loads(resolved.read_text()), json.loads(database.read_text()))
+            self.assertEqual(sorted(str(p.relative_to(subject)) for p in subject.rglob('*') if p.is_file()),
+                             ['build/compile_commands.json', 'k.cu'])
+            # Exercise the real scip-clang launch line with a local recording stub: the index reads the
+            # database the resolver reads.
             stub = work / 'run.sh'
             stub.write_text('test -f "$3/compile_commands.json" || exit 1\nprintf "%s" "$3" > "$4"\n')
             line = next(l for l in driver.splitlines() if l.startswith('bash "$here/run.sh"'))
             env.update(here=str(work), tools=str(work))
             subprocess.run(['bash', '-eu', '-c', line], env=env, check=True)
-            self.assertEqual((work / 'index.scip').read_text(), str(work))
+            self.assertEqual((work / 'index.scip').read_text(), str(subject / 'build'))
             # Host call and range companions must consume that same database.
             stub = work / 'go'
             stub.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE"\n')

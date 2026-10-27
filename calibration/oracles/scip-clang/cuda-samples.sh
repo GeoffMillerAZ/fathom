@@ -18,7 +18,8 @@
 #      __CUDA_ARCH__); the two runs' active lines and includes are unioned into preproc.json;
 #   4. a clang CUDA host-only translation of each .cu entry (cuda-compdb.py's flags over the entry's own -I, -isystem
 #      and -D) at <work-dir>/compile_commands.json: scip-clang 0.4.0 does not read nvcc entries, so the
-#      index, clang-calls and clang-ast-defs read it, and the last two are written at -tier B;
+#      index, clang-calls and clang-ast-defs read it, and the last two are written at -tier B; it is copied to
+#      <work-dir>/subject/build/compile_commands.json, where fathom's include-path resolver reads it (round 5 R5-1);
 #   5. indexbench lang-oracle over the one subject, <runs> times (default 3) at one commit, readings kept apart
 #      (ruling C-R5: the median throughput is the one committed); the measured set (the subject's .cu and .cuh files,
 #      the dialect's extensions) is listed at <work-dir>/measured-files.txt, must agree with each reading's file count
@@ -207,6 +208,10 @@ EOF
 if [ "$scip_tier" = A ]; then # the samples' own clang build compiles: its database, untranslated, is the index's
   cp "$work/build-clang/compile_commands.json" "$work/compile_commands.json"
 fi
+# Round 5 R5-1: the database the index reads is also written at <work-dir>/subject/build, where fathom's include-path
+# resolver reads it (internal/fusion/compdb.go), as an adopter's CMake build puts it; a work-dir-only database leaves
+# the resolver without it (round 4 R3-3: import_resolution 1 -> .9722, file_edge_recall .8809 -> .3047).
+mkdir -p "$subj/build" && cp "$work/compile_commands.json" "$subj/build/compile_commands.json"
 export PATH="$cuda/bin:$PATH"
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-device.json" -tier A > "$work/preproc-device.json" )
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-host.json" -tier A > "$work/preproc-host.json" )
@@ -233,7 +238,7 @@ out["imports"] = [json.loads(i) for i in sorted(imps)]
 out["version"] = a.get("version", "") + " (nvcc device and host passes, unioned)"
 json.dump(out, open(os.path.join(w, "preproc.json"), "w"), indent=1)
 EOF
-bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$work" "$work/index.scip" "$scip_tier" 4
+bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.scip" "$scip_tier" 4
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-host.json" )
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/clang-device.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-device.json" )
 python3 - "$work" <<'EOF'
