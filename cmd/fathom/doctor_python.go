@@ -18,6 +18,9 @@ import (
 
 var doctorPyInterpreter = regexp.MustCompile(`^python(3(\.[0-9]+)?)?$`)
 
+// doctorPyLaunchers run their next word in the project's environment.
+var doctorPyLaunchers = []string{"uv", "poetry", "pipenv", "pdm", "hatch", "rye"}
+
 // doctorPyQuietFlags change nothing about which program runs.
 var doctorPyQuietFlags = []string{"-B", "-E", "-I", "-O", "-OO", "-P", "-q", "-s", "-S", "-u", "-v"}
 
@@ -64,19 +67,23 @@ func doctorPySpawnKind(module, attr string) doctorPySpawn {
 // doctorPyStep is one unit classified as a Python step: the script or module
 // it runs, or the reason it is uncertain before any file is read.
 type doctorPyStep struct {
-	script, uncertain string
+	script, module, uncertain string
+	opaque                    bool // a node, ruby or perl shebang: named, never read
 }
 
 // pythonUnit classifies a unit (P1). ok is false for anything that is not a
 // Python step, which keeps today's handling.
-func (r *doctorWrapperReader) pythonUnit(words []string) (doctorPyStep, bool) {
+func (r *doctorWrapperReader) pythonUnit(words []string, depth int) (doctorPyStep, bool) {
 	bin := filepath.Base(words[0])
 	switch {
 	case doctorPyInterpreter.MatchString(bin):
 		for i := 1; i < len(words); i++ {
 			switch w := words[i]; {
 			case w == "-m":
-				return doctorPyStep{}, false // module wrappers: today's handling
+				if i+1 == len(words) {
+					return doctorPyStep{uncertain: "python -m names no module"}, true
+				}
+				return doctorPyStep{module: words[i+1]}, true
 			case w == "-c":
 				return doctorPyStep{uncertain: "python -c runs an inline program doctor does not read"}, true
 			case w == "-":
@@ -93,8 +100,49 @@ func (r *doctorWrapperReader) pythonUnit(words []string) (doctorPyStep, bool) {
 		return doctorPyStep{}, false
 	case filepath.Ext(bin) == ".py":
 		return doctorPyStep{script: words[0]}, true
+	case strings.Contains(words[0], "/") && filepath.Ext(bin) == "" && depth < doctorWrapperLevels:
+		// A path without an extension is a Python step when its #! says so.
+		// At the depth limit nothing is read, so it stays a shell cut.
+		switch r.shebang(words[0]) {
+		case "python":
+			return doctorPyStep{script: words[0]}, true
+		case "opaque":
+			return doctorPyStep{script: words[0], opaque: true}, true
+		}
 	}
 	return doctorPyStep{}, false
+}
+
+// shebang names the interpreter family of an in-repository file's #! line:
+// "python", "opaque" (node, ruby, perl or another python) or "" (anything
+// else, a shell script, or a file it cannot read).
+func (r *doctorWrapperReader) shebang(word string) string {
+	p := doctorProjectDirPath(word)
+	if doctorForeignProgram(r.root, p) || strings.ContainsAny(p, "$`{}") {
+		return ""
+	}
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(r.root, p)
+	}
+	b, err := r.read(p)
+	if err != nil || !bytes.HasPrefix(b, []byte("#!")) {
+		return ""
+	}
+	first, _, _ := bytes.Cut(b[2:], []byte("\n"))
+	fields := strings.Fields(string(first))
+	if len(fields) > 0 && filepath.Base(fields[0]) == "env" {
+		fields = slices.DeleteFunc(fields[1:], func(f string) bool { return strings.HasPrefix(f, "-") })
+	}
+	if len(fields) == 0 {
+		return ""
+	}
+	switch interp := filepath.Base(fields[0]); {
+	case doctorPyInterpreter.MatchString(interp):
+		return "python"
+	case strings.HasPrefix(interp, "python") || interp == "node" || interp == "ruby" || interp == "perl":
+		return "opaque"
+	}
+	return ""
 }
 
 // doctorProjectDirPath resolves the documented project-dir aliases to the
@@ -107,6 +155,26 @@ func doctorProjectDirPath(p string) string {
 		}
 	}
 	return p
+}
+
+// doctorPythonLauncher drops `uv run` and its kin when the next word is the
+// command; any other shape is the cause it is uncertain.
+func doctorPythonLauncher(words []string) ([]string, string, bool) {
+	if len(words) < 2 || !slices.Contains(doctorPyLaunchers, words[0]) || words[1] != "run" {
+		return nil, "", false
+	}
+	launcher := words[0] + " run"
+	if len(words) == 2 {
+		return nil, launcher + " names no command", true
+	}
+	next := words[2]
+	switch {
+	case strings.HasPrefix(next, "-"):
+		return nil, launcher + " option " + next + " is not one doctor reads past", true
+	case !doctorPyInterpreter.MatchString(filepath.Base(next)) && !strings.Contains(next, "/") && filepath.Ext(next) != ".py":
+		return nil, launcher + " " + next + " runs a console-script entry point doctor does not resolve", true
+	}
+	return words[2:], "", true
 }
 
 // pythonUncertainUnit records a cause found before any file was read. It
@@ -126,10 +194,38 @@ func (r *doctorWrapperReader) pythonUncertainUnit(words []string, cause string, 
 	}
 }
 
-// pythonTarget resolves a step's script to a repository-relative
+// pythonTarget resolves a step's script or module to a repository-relative
 // file. ok is false (and cause empty) for a file that is not there or is
 // foreign, which hides nothing, as for any named script today.
 func (r *doctorWrapperReader) pythonTarget(step doctorPyStep) (rel, cause string, ok bool) {
+	exists := func(rel string) bool {
+		_, err := os.Lstat(filepath.Join(r.root, rel))
+		return err == nil
+	}
+	if step.module != "" {
+		parts := strings.Split(step.module, ".")
+		for _, part := range parts {
+			if part == "" || !doctorPyIdent(part) {
+				return "", "python -m " + step.module + " is not a module name", false
+			}
+		}
+		base := filepath.Join(parts...)
+		var found []string
+		for _, c := range []string{base + ".py", filepath.Join(base, "__main__.py")} {
+			if exists(c) {
+				found = append(found, filepath.ToSlash(c))
+			}
+		}
+		switch {
+		case len(found) == 2:
+			return "", "python -m " + step.module + " could run " + found[0] + " or " + found[1], false
+		case len(found) == 1:
+			return found[0], "", true
+		case exists(filepath.Join("src", parts[0])):
+			return "", "python -m " + step.module + " resolves only under src/ (an installed layout doctor cannot prove)", false
+		}
+		return "", "", false // an installed module, as today
+	}
 	p := doctorProjectDirPath(step.script)
 	if doctorForeignProgram(r.root, p) {
 		return "", "", false
@@ -150,6 +246,16 @@ func (r *doctorWrapperReader) pythonTarget(step doctorPyStep) (rel, cause string
 	return filepath.ToSlash(rel), "", true
 }
 
+func doctorPyIdent(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= 0x80 || i > 0 && c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return s != ""
+}
+
 // pythonStep judges one Python step (P1, P2, P7). A file counts as one
 // wrapper level: its contents are judged at depth+1.
 func (r *doctorWrapperReader) pythonStep(step doctorPyStep, words []string, sub string, depth int, acc *doctorWiringEvidence) doctorWiringEvidence {
@@ -163,6 +269,13 @@ func (r *doctorWrapperReader) pythonStep(step doctorPyStep, words []string, sub 
 		return doctorWiringEvidence{}
 	}
 	if !ok {
+		return doctorWiringEvidence{}
+	}
+	if step.opaque {
+		// Only a script run as "...verify..." may hold the verify step.
+		if acc.opaque == "" && strings.Contains(strings.Join(words, " "), "verify") {
+			acc.opaque = rel
+		}
 		return doctorWiringEvidence{}
 	}
 	p := filepath.Join(r.root, rel)
@@ -773,7 +886,7 @@ func (f *doctorPyFile) site(module, attr string, i int) {
 		if len(rest.elems) > 1 {
 			elems = append(elems, rest.elems[1:]...)
 		}
-		f.judge(line, name, elems, rest.tail || len(rest.elems) == 0 && rest.tail)
+		f.judge(line, name, elems, rest.tail)
 	default: // execl, execle, execlp, execlpe
 		if strings.HasSuffix(attr, "e") && len(pos) > 0 {
 			pos = pos[:len(pos)-1] // the environment

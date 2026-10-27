@@ -269,3 +269,50 @@ func TestDoctorPythonDeterministic(t *testing.T) {
 		t.Fatalf("rows differ or name a later cause: %+v / %+v", a, b)
 	}
 }
+
+// S6: module wrappers, launchers, interpreter flags and shebangs (P1, M1).
+func TestDoctorPythonModulesLaunchersAndShebangs(t *testing.T) {
+	gate := "import subprocess\nsubprocess.run(" + pyStrict + ")\n"
+	for _, tc := range []struct {
+		name, step string
+		files      map[string]string
+		want       doctorStatus
+		names      string
+	}{
+		{"module file", "python3 -m tools.gate verify", map[string]string{"tools/gate.py": gate}, doctorPass, "tools/gate.py"},
+		{"module package", "python3 -m tools.gate verify", map[string]string{"tools/gate/__main__.py": gate}, doctorPass, "tools/gate/__main__.py"},
+		{"module both forms", "python3 -m tools.gate verify", map[string]string{"tools/gate.py": "x = 1\n", "tools/gate/__main__.py": gate}, doctorUnknown, "tools.gate"},
+		{"src layout", "python3 -m tools.gate verify", map[string]string{"src/tools/gate.py": gate}, doctorUnknown, "src/"},
+		{"installed module", "python3 -m pytest verify", nil, doctorFail, ""},
+		{"uv run python", "uv run python scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorPass, "scripts/gate.py"},
+		{"poetry run python", "poetry run python scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorPass, "scripts/gate.py"},
+		{"uv run module", "uv run python -m tools.gate verify", map[string]string{"tools/gate.py": gate}, doctorPass, "tools/gate.py"},
+		{"interpreter -W", "python3 -W ignore scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorPass, "scripts/gate.py"},
+		{"interpreter flags", "python3 -B -u -X dev scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorPass, "scripts/gate.py"},
+		{"venv interpreter", ".venv/bin/python3.12 scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorPass, "scripts/gate.py"},
+		{"executable .py", "./scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorPass, "scripts/gate.py"},
+		{"launcher option", "uv run --project x python scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorUnknown, "--project"},
+		{"entry point", "uv run gate verify", nil, doctorUnknown, "entry point"},
+		{"python -c", "python3 -c pass verify", nil, doctorUnknown, "-c"},
+		{"unknown flag", "python3 -Bu scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorUnknown, "-Bu"},
+		{"unrelated launcher", "poetry run pytest", nil, doctorFail, ""},
+		{"absolute interpreter", "/usr/bin/python3 scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorFail, ""},
+		{"env interpreter", "/usr/bin/env python3 scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorFail, ""},
+		{"absent script", "python3 scripts/absent.py verify", nil, doctorFail, ""},
+		{"python shebang", "./scripts/gate verify", map[string]string{"scripts/gate": "#!/usr/bin/env python3\n" + gate}, doctorPass, "scripts/gate"},
+		{"python shebang with ()", "./scripts/gate verify", map[string]string{"scripts/gate": "#!/usr/bin/env python3\n" + gate + "def main():\n    pass\nmain()\n"}, doctorPass, "scripts/gate"},
+		{"python shebang docstring", "./scripts/gate verify", map[string]string{"scripts/gate": "#!/usr/bin/python3\n\"\"\"\nfathom verify --strict\n\"\"\"\n"}, doctorFail, "scripts/gate"},
+		{"node shebang", "./scripts/gate verify", map[string]string{"scripts/gate": "#!/usr/bin/env node\nrequire('x')\n"}, doctorUnknown, "non-shell script doctor cannot read further"},
+		{"other python", "pythonw scripts/gate.py verify", map[string]string{"scripts/gate.py": gate}, doctorUnknown, "non-shell script doctor cannot read further"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := pyGate(t, tc.step, tc.files)
+			if got.Status != tc.want || !strings.Contains(got.Reason, tc.names) {
+				t.Fatalf("got %+v, want %s naming %q", got, tc.want, tc.names)
+			}
+			if tc.want == doctorFail && got.Remedy != "wire both commands in the repository-local pre-push wrapper" {
+				t.Fatalf("remedy changed: %+v", got)
+			}
+		})
+	}
+}

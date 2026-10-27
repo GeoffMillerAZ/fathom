@@ -261,6 +261,13 @@ func (r *doctorWrapperReader) unit(words []string, sub string, depth int, acc *d
 	if len(words) == 0 {
 		return doctorWiringEvidence{}
 	}
+	if rest, cause, ok := doctorPythonLauncher(words); ok {
+		if cause != "" {
+			r.pythonUncertainUnit(words, cause, acc)
+			return doctorWiringEvidence{}
+		}
+		return r.unit(rest, sub, depth, acc)
+	}
 	if r.matches != nil && r.matches(words) {
 		return doctorWiringEvidence{found: true, indirect: depth > 0}
 	}
@@ -277,7 +284,7 @@ func (r *doctorWrapperReader) unit(words []string, sub string, depth int, acc *d
 	if doctorForeignProgram(r.root, words[0]) {
 		return doctorWiringEvidence{}
 	}
-	if step, ok := r.pythonUnit(words); ok {
+	if step, ok := r.pythonUnit(words, depth); ok {
 		return r.pythonStep(step, words, sub, depth, acc)
 	}
 	shellScript := false
