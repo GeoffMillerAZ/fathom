@@ -30,6 +30,9 @@ type Manifest struct {
 	NameMatch   string `json:"name_match,omitempty"`
 	TargetLevel string `json:"target_level"`
 	QueueID     string `json:"queue_id"`
+	// L3Evidence is the manifest's minimum-evidence bar for L3 (S-R6), copied onto
+	// each reading it starts; nil for none.
+	L3Evidence *EvidenceBar `json:"l3_evidence,omitempty"`
 	// Ctags is the manifest's own tier-B invocation (extractor.DialectCtags),
 	// for a dialect the embedded incumbents.json spec does not cover.
 	Ctags *CtagsSpec `json:"ctags,omitempty"`

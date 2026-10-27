@@ -136,12 +136,14 @@
     "fathom:CSSKeyframes": 434
   },
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "pico: 119 files skipped by ingest's gates (generated)",
-    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
     "names are compared in universal-ctags' own rendition of each selector (K19, LB-F423, O798): its CSS parser joins selector tokens with spaces, drops a leading attribute selector's brackets and ends a tag at any comma, also inside :not(), :is(), :where() and :has(), so a selector's further tags are the same definition (excluded_by_kind ctags:selector-fragment) and ctags runs with --sort=no; held out once on github-markdown-css and pure (holdout/css.json: sym_recall and sym_precision .999)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 118 of 119 files hold one ERROR node each, tree-sitter-css v0.25.0 (the latest release) on `@-moz-document url-prefix()`; the selectors inside are still extracted",
+    "pico: 119 files skipped by ingest's gates (generated)",
     "pico: the 590 dialect-only selectors sit in @-moz-document blocks, which universal-ctags skips (it reads inside @media and @supports only); they are oracle misses, not adjudicated",
-    "pico: 118 of 119 files hold one ERROR node each, tree-sitter-css v0.25.0 (the latest release) on `@-moz-document url-prefix()`; the selectors inside are still extracted"
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 212bbdf4)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 212bbdf4)"
   ],
   "disposition": null
 }

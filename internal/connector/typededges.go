@@ -98,6 +98,7 @@ var typedEdgeProducers = map[string]string{
 	"objective-c": "syntax",
 	"hlsl":        "syntax",
 	"jupyter":     "syntax",
+	"simulink":    "syntax",
 	"emacs-lisp":  "syntax",
 	"commonlisp":  "syntax",
 	"ada":         "syntax",

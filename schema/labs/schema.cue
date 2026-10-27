@@ -77,7 +77,17 @@ package labs
 	pass_k!:  number & >=0 & <=1
 	// RecordArmPins owns the arm's pin keys. These lab-specific pins are
 	// required beside those keys, without closing the upstream record.
-	pins!: {plugin_digest!: #SHA, stanza_sha!: #SHA, description_sha!: #SHA, ...}
+	//
+	// A replay row reads past transcripts, whose plugin, stanza and
+	// descriptions at each session are not knowable, so it cannot carry
+	// those pins honestly. Provenance is never dropped, only named for
+	// what replay can prove: such a row carries the corpus sha (sha256
+	// over the sorted per-file sha256 list the run decoded) and the
+	// fathom commit that read it. Every other arm pins as before.
+	pins?: {plugin_digest!: #SHA, stanza_sha!: #SHA, description_sha!: #SHA, ...}
+	replay?: {corpus_sha!: #SHA, fathom_commit!: #Text}
+	if arm != "replay" {pins!: _}
+	if arm == "replay" {replay!: _}
 	prereg_sha!:  #SHA
 	spend_usd!:   number & >=0
 	spend_label!: #Text

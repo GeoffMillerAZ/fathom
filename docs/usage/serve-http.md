@@ -9,7 +9,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 2
 | Flag | Default | Description |
 |---|---|---|
 | `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
-| `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
+| `--addr` | `127.0.0.1:7575` | Listen address — loopback only (ADR-083): a non-loopback `--addr` or `[daemon].addr` binds `127.0.0.1` on the same port instead, with one warning naming the configured address and `fathom daemon install --reconcile`, because the daemon has no authentication and remote serving needs token auth (open question Q5). Non-loopback peers are refused 403 whatever Host they send. Surfaces are not a security boundary (ADR-014 amendment) |
 | `--auto-refresh` | `true` managed; `false` unmanaged | Queue a re-ingest of a service on git-HEAD drift (HEAD read from the ref files, no `git` fork); an explicit flag wins either way. The read never waits: it answers from the index as it stands with `refresh: queued (index_stale) …` in the envelope. Every whole-service ingest the daemon runs — auto-refresh, the `ingest` tool, `POST /refresh-request` (post-commit) — shares one refresh queue: one ingest per service (a request mid-run becomes one follow-up), one at a time machine-wide, the most recently queried service first, background work held 60 s after a start and staggered one per 30 s during warm-up, paused at shed and refused at refuse; `/refresh-file` leaves a file to a queued or running service refresh. One that fails before recording the new commit is retried after 30 s, doubling to at most 30 min; a read inside that wait says `index_stale`, the failure and the retry time in its `refresh` note |
 | `--managed` | `false` | This is the supervised daemon (ADR-047 §10.1; plist schema 2 passes it). A launchd job whose label is the default `dev.fathom.serve-http` or the `Label` of an installed fathom agent (`XPC_SERVICE_NAME`) is detected as managed without it; a systemd unit passes it. Only the managed daemon obeys `~/.fathom/daemon/disabled.json`/`paused.json` and watches its own binary: it stats it every 20 s, hashes only on a (size, mtime, inode) change, adopts a verified new binary by exiting **75**, and keeps a 5-minute cooldown between adoptions across restarts in `~/.fathom/daemon/<label>/lifecycle.jsonl` (`FATHOM_SELF_RESTART=off` still pins the binary). Every other serve-http is **unmanaged** (a scratch daemon) and bounded by the four flags below; it also runs no self-restart watcher or scavenger tick and starts the console feeders only when `/events` is first requested |
 | `--exit-with-parent` | `true` | Unmanaged: exit within 10 s of the parent process's death, SIGKILL included (kqueue `NOTE_EXIT` on macOS, a `getppid` poll everywhere); a daemon started by pid 1 has no parent to watch |
@@ -89,7 +89,9 @@ cancels its read and a caller already gone is never run (an ingest runs
 detached). `[tenancy].admission` defaults to
 `observe` (every would-refuse logged and counted, nothing refused); `enforce`
 answers HTTP 503 + `Retry-After` + JSON-RPC `-32050`; `off` is the escape
-hatch. Every route requires a loopback `Host` (and a same-origin `Origin`);
+hatch. Every route requires a loopback `Host`, a loopback peer address (a
+network peer that sends `Host: 127.0.0.1` is refused 403 by its address,
+ADR-083) and a same-origin `Origin`;
 the managed daemon answers a
 test binary (`X-Fathom-Caller … test=1`) 409. See
 [configuration.md](../configuration.md#the-budget-tenancy-user-scope-only).

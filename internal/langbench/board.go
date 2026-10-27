@@ -199,6 +199,9 @@ func boardNum(v float64) string {
 // reason the level still fails: a metric nobody measured, an oracle tier that
 // proves nothing, or the tenancy floor.
 func unmetCause(r Reading, level string) string {
+	if level == "L3" && r.Grade.L3Reason != "" {
+		return r.Grade.L3Reason
+	}
 	ts := thresholdsFor(r.Kind)[level]
 	for _, t := range ts {
 		if slices.Contains(r.NotApplicable, t.metric) {
@@ -230,13 +233,17 @@ func unmetCause(r Reading, level string) string {
 
 // goodCause is the first metric of a good level that stops it being
 // excellent: a value under the excellent bar, the oracle tier that caps the
-// metric at good, or a metric the oracle cannot measure.
+// metric at good, a metric the oracle cannot measure, or an L3 metric whose
+// denominator is under MinL3Evidence (owner ruling D19).
 func goodCause(r Reading, level string) string {
 	for _, t := range thresholdsFor(r.Kind)[level] {
 		if slices.Contains(r.NotApplicable, t.metric) {
 			continue
 		}
 		v := r.Metrics[t.metric]
+		if n := l3Evidence(r, t.metric); level == "L3" && v != nil && n < MinL3Evidence {
+			return fmt.Sprintf("%s evidence %d < %d", t.metric, n, MinL3Evidence)
+		}
 		switch {
 		case v == nil && slices.Contains(r.NotMeasured, t.metric):
 			return t.metric + " not measured"

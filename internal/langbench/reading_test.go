@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -148,10 +149,132 @@ func TestLevelMetToolFormats(t *testing.T) {
 		MXrefPrecision: f(0.96), MXrefRecall: f(0.85),
 	}
 	r.MetricTiers = tiers("A", r.Metrics)
+	r.Subjects[0].Counts = map[string]int{CntXrefTruth: 20, CntXrefFathom: 20}
 	level, grade := LevelMet(r)
 	want := Grade{L1: GradeGood, L2: GradeExcellent, L3: GradeExcellent, L4: GradeNotApplicable}
 	if level != "L3" || grade != want {
 		t.Fatalf("tool LevelMet = %s %+v, want L3 %+v", level, grade, want)
+	}
+}
+
+// TestLevelMetL3Evidence is owner ruling D19 (E1, E2): each graded L3 metric counts only when
+// its own denominator, summed over the subjects, holds at least 20 references. A thin metric is
+// not measured, which caps L3 at good; L3 is unmet, with the evidence stated on the grade, only
+// when every graded L3 metric is thin and none is missing: a metric nobody measured is the
+// level's cause, not thin evidence. There is no subject minimum.
+func TestLevelMetL3Evidence(t *testing.T) {
+	tool := func(truth, fathom int) []Subject {
+		return []Subject{{Name: "a", Files: 1, Counts: map[string]int{CntXrefTruth: truth, CntXrefFathom: fathom}}}
+	}
+	lang := func(imports, truth, fathom int) []Subject {
+		return []Subject{
+			{Name: "a", Files: 1, Counts: map[string]int{CntImportsInRepo: imports, CntFileEdgesTruth: truth - 1, CntFileEdgesFathom: fathom}},
+			{Name: "b", Files: 1, Counts: map[string]int{CntFileEdgesTruth: 1}},
+		}
+	}
+	for _, tc := range []struct {
+		name     string
+		kind     string
+		subjects []Subject
+		noL3     bool
+		drop     []string
+		level    string
+		l3       string
+		reason   string
+	}{
+		{"19 references", "tooling", tool(19, 19), false, nil, "L2", GradeUnmet, "evidence: 19 references, under 20"},
+		{"20 references", "tooling", tool(20, 20), false, nil, "L3", GradeExcellent, ""},
+		{"20 in one subject is enough", "tooling", tool(2445, 2445), false, nil, "L3", GradeExcellent, ""},
+		{"a precision denominator under 20", "tooling", tool(40, 19), false, nil, "L3", GradeGood, ""},
+		{"import_resolution under 20", "language", lang(6, 772, 700), false, nil, "L3", GradeGood, ""},
+		{"every L3 metric under 20", "language", lang(19, 19, 19), false, nil, "L2", GradeUnmet, "evidence: 19 references, under 20"},
+		{"file edges summed across subjects", "language", lang(20, 20, 20), false, nil, "L3", GradeExcellent, ""},
+		{"no L3 metric graded", "tooling", tool(0, 0), true, nil, "L2", GradeNotAttempted, ""},
+		{"a thin metric beside a missing one", "tooling", tool(19, 19), false, []string{MXrefPrecision}, "L2", GradeUnmet, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := baseReading(tc.kind)
+			if tc.kind == "tooling" {
+				r.Metrics = map[string]*float64{MSymRecall: f(1), MSymPrecision: f(1), MRefRecall: f(1), MRefPrecision: f(1), MXrefPrecision: f(1), MXrefRecall: f(1)}
+				if tc.noL3 {
+					delete(r.Metrics, MXrefPrecision)
+					delete(r.Metrics, MXrefRecall)
+				}
+			} else {
+				r.Metrics = l1Metrics(0.97)
+				for _, m := range []string{MCallRecall, MCallPrecision, MImportResolution, MFileEdgePrecision, MFileEdgeRecall} {
+					r.Metrics[m] = f(0.97)
+				}
+			}
+			for _, m := range tc.drop {
+				delete(r.Metrics, m)
+			}
+			r.MetricTiers = tiers("A", r.Metrics)
+			r.Subjects = tc.subjects
+			level, grade := LevelMet(r)
+			if level != tc.level || grade.L3 != tc.l3 || grade.L3Reason != tc.reason {
+				t.Errorf("LevelMet = %s %+v, want %s with L3 %s (%q)", level, grade, tc.level, tc.l3, tc.reason)
+			}
+		})
+	}
+}
+
+// TestL3DenominatorCoversEveryL3Metric keeps the evidence rule total: a graded L3 metric with
+// no l3Denominator entry would read as zero references and silently fail its level.
+func TestL3DenominatorCoversEveryL3Metric(t *testing.T) {
+	for _, kind := range []string{"language", "tooling"} {
+		for _, th := range thresholdsFor(kind)["L3"] {
+			if _, ok := l3Denominator[th.metric]; !ok {
+				t.Errorf("%s L3 metric %s has no l3Denominator entry", kind, th.metric)
+			}
+		}
+	}
+}
+
+// TestLevelMetManifestL3Evidence is S-R6's per-manifest bar, applied after D19's general
+// 20-reference rule: with l3_evidence set, L3 counts only when its cross-file metric's
+// denominator holds at least min_references resolvable references across at least
+// min_subjects subjects.
+func TestLevelMetManifestL3Evidence(t *testing.T) {
+	sub := func(name string, xref, edges int) Subject {
+		return Subject{Name: name, Files: 1, Counts: map[string]int{"xref_truth": xref, "file_edges_truth": edges}}
+	}
+	bar := &EvidenceBar{MinReferences: 20, MinSubjects: 2}
+	for _, tc := range []struct {
+		name     string
+		kind     string
+		bar      *EvidenceBar
+		subjects []Subject
+		want     string
+	}{
+		{"no bar, 2 references (D19: under 20)", "tooling", nil, []Subject{sub("a", 2, 0)}, "L2"},
+		{"bar, 2 references in 1 subject", "tooling", bar, []Subject{sub("a", 2, 0), sub("b", 0, 0)}, "L2"},
+		{"bar, 40 references in 1 subject", "tooling", bar, []Subject{sub("a", 40, 0), sub("b", 0, 0)}, "L2"},
+		{"bar, 19 references in 2 subjects", "tooling", bar, []Subject{sub("a", 10, 0), sub("b", 9, 0)}, "L2"},
+		{"bar, 20 references in 2 subjects", "tooling", bar, []Subject{sub("a", 11, 0), sub("b", 9, 0)}, "L3"},
+		{"bar, a language's file edges", "language", bar, []Subject{sub("a", 0, 15), sub("b", 0, 5)}, "L3"},
+		{"bar, a language's 19 file edges", "language", bar, []Subject{sub("a", 0, 15), sub("b", 0, 4)}, "L2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := baseReading(tc.kind)
+			if tc.kind == "tooling" {
+				r.Metrics = map[string]*float64{MSymRecall: f(1), MSymPrecision: f(1), MRefRecall: f(1), MRefPrecision: f(1), MXrefPrecision: f(1), MXrefRecall: f(1)}
+			} else {
+				r.Metrics = l1Metrics(0.97)
+				for _, m := range []string{MCallRecall, MCallPrecision, MImportResolution, MFileEdgePrecision, MFileEdgeRecall} {
+					r.Metrics[m] = f(0.97)
+				}
+			}
+			r.MetricTiers = tiers("C", r.Metrics)
+			r.Subjects, r.L3Evidence = tc.subjects, tc.bar
+			level, grade := LevelMet(r)
+			if level != tc.want {
+				t.Errorf("LevelMet = %s %+v, want %s", level, grade, tc.want)
+			}
+			if tc.want == "L2" && grade.L3 != GradeUnmet {
+				t.Errorf("L3 graded %s under the bar, want %s", grade.L3, GradeUnmet)
+			}
+		})
 	}
 }
 
@@ -227,5 +350,28 @@ func TestReadingMarshalShape(t *testing.T) {
 	b2, _ := MarshalReading(back)
 	if string(b2) != s {
 		t.Errorf("round trip not byte-identical")
+	}
+}
+
+// TestMarshalReadingWritesAngleBracketsRaw (owner ruling E2-R2): MarshalReading is the
+// canonical writer, so a note holding <, > or & is written as measured, not HTML-escaped.
+func TestMarshalReadingWritesAngleBracketsRaw(t *testing.T) {
+	r := baseReading("language")
+	r.Metrics = l1Metrics(0.97)
+	r.MetricTiers = tiers("A", r.Metrics)
+	r.LevelMet, r.Grade = LevelMet(r)
+	r.Notes = []string{"a <module> element & its </module> close"}
+	b, err := MarshalReading(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(b, []byte(`"a <module> element & its </module> close"`)) {
+		t.Errorf("MarshalReading escaped the note: %s", b)
+	}
+	if bytes.Contains(b, []byte(`\u00`)) {
+		t.Errorf("MarshalReading still escapes HTML: %s", b)
+	}
+	if !bytes.HasSuffix(b, []byte("}\n")) || bytes.HasSuffix(b, []byte("}\n\n")) {
+		t.Errorf("MarshalReading ends %q, want one trailing newline", b[len(b)-3:])
 	}
 }

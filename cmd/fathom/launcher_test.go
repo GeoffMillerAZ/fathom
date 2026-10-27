@@ -34,7 +34,7 @@ func fakeFathomBinary(t *testing.T, dir, build string) string {
 
 func TestDaemonPlistRunsTheStableLauncher(t *testing.T) {
 	const bin = "/home/u/.local/libexec/fathom/fathom"
-	body := []byte(plistBody("dev.fathom.serve-http", bin, "/Volumes/ext/fleet.sqlite", ":7581", "/home/u/.fathom/logs", "/Volumes/ext/mcp-calls.jsonl", "/usr/bin", nil))
+	body := []byte(plistBody("dev.fathom.serve-http", bin, "/Volumes/ext/fleet.sqlite", "127.0.0.1:7581", "/home/u/.fathom/logs", "/Volumes/ext/mcp-calls.jsonl", "/usr/bin", nil))
 	plutilLint(t, body)
 	args := plistProgramArgs(body)
 	if len(args) < 2 || args[0] != "/home/u/.local/libexec/fathom/fathomd" || args[1] != "serve-http" {
@@ -50,7 +50,7 @@ func TestDaemonPlistRunsTheStableLauncher(t *testing.T) {
 	}
 
 	// --direct is today's shape: the binary itself, no WorkingDirectory.
-	direct := []byte(plistBodyDirect("dev.fathom.serve-http", bin, "/Volumes/ext/fleet.sqlite", ":7581", "/home/u/.fathom/logs", "/Volumes/ext/mcp-calls.jsonl", "/usr/bin", nil))
+	direct := []byte(plistBodyDirect("dev.fathom.serve-http", bin, "/Volumes/ext/fleet.sqlite", "127.0.0.1:7581", "/home/u/.fathom/logs", "/Volumes/ext/mcp-calls.jsonl", "/usr/bin", nil))
 	plutilLint(t, direct)
 	if a := plistProgramArgs(direct); len(a) == 0 || a[0] != bin {
 		t.Fatalf("--direct runs the binary itself: %v", a)
@@ -163,7 +163,7 @@ func TestPostureReadsTheLaunchersSiblingAsTheBinary(t *testing.T) {
 	launcher := filepath.Join(binDir, launcherName)
 
 	// A launcher plist: the daemon's binary is the sibling fathom.
-	body := []byte(plistBody("com.example.mine", bin, "/data/fleet.sqlite", ":7581", filepath.Join(home, ".fathom", "logs"), "/data/c.jsonl", "/usr/bin", nil))
+	body := []byte(plistBody("com.example.mine", bin, "/data/fleet.sqlite", "127.0.0.1:7581", filepath.Join(home, ".fathom", "logs"), "/data/c.jsonl", "/usr/bin", nil))
 	post, err := plistPosture(body)
 	if err != nil || post.Program != launcher || post.Binary != bin || post.Direct {
 		t.Fatalf("launcher posture: program %q binary %q direct %v err %v", post.Program, post.Binary, post.Direct, err)
@@ -195,7 +195,7 @@ func TestPostureReadsTheLaunchersSiblingAsTheBinary(t *testing.T) {
 	}
 
 	// A plist that runs the binary itself reads as drift, in plain words.
-	direct := plistBodyDirect("com.example.mine", bin, "/data/fleet.sqlite", ":7581", filepath.Join(home, ".fathom", "logs"), "/data/c.jsonl", "/usr/bin", nil)
+	direct := plistBodyDirect("com.example.mine", bin, "/data/fleet.sqlite", "127.0.0.1:7581", filepath.Join(home, ".fathom", "logs"), "/data/c.jsonl", "/usr/bin", nil)
 	direct = strings.Replace(direct, "<key>RunAtLoad</key>", "<key>WorkingDirectory</key><string>/Volumes/ext/repo</string>\n  <key>RunAtLoad</key>", 1)
 	if err := os.WriteFile(plistPath, []byte(direct), 0o644); err != nil {
 		t.Fatal(err)

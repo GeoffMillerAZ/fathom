@@ -200,6 +200,13 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	if im, ok := raw["ingest"].(map[string]any); ok {
+		if b, ok := im["go_network"].(bool); ok {
+			cfg.Ingest.GoNetwork = b
+			prov["ingest.go_network"] = SourceInfo{source, path}
+		}
+	}
+
 	if rm, ok := raw["receipts"].(map[string]any); ok {
 		if v, ok := stringField(rm, "repository_uri"); ok {
 			cfg.Receipts.RepositoryURI = v
@@ -391,6 +398,21 @@ func mergeGuardsFields(g *Guards, raw map[string]any, source Source, path string
 			g.Enforce = &b
 			prov["guards.enforce"] = SourceInfo{source, path}
 		}
+	}
+	if v, ok := stringField(raw, "egress"); ok {
+		// ADR-083: the user layer sets the mode; any later layer only
+		// tightens it, so a repository never loosens the user's mode or
+		// the default.
+		if source == SourceUser || egressRank(v) > egressRank(g.EgressMode()) {
+			g.Egress = v
+			g.EgressSource = source
+			prov["guards.egress"] = SourceInfo{source, path}
+		}
+	}
+	if list, ok := stringSlice(raw["egress_allow"]); ok {
+		// User-only (scope.go): Load has already dropped a repository's.
+		g.EgressAllow = list
+		prov["guards.egress_allow"] = SourceInfo{source, path}
 	}
 }
 

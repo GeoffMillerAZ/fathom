@@ -436,3 +436,19 @@ func TestParser_TypeScriptBothEntryPoints(t *testing.T) {
 		p.Close()
 	}
 }
+
+// TestHardBackstopDefaultIsTwiceTheGuestBudget pins the product default that
+// wall-clock-widened tests bypass: unset, the host backstop is 2x
+// ParseTimeout, 20s at the 10s default. TestEngine_HardBackstopAbandonsRunawayCall
+// proves the abandonment itself, with an explicit short bound.
+func TestHardBackstopDefaultIsTwiceTheGuestBudget(t *testing.T) {
+	if ParseHardBackstop != 0 {
+		t.Fatalf("ParseHardBackstop = %v, want the zero product default", ParseHardBackstop)
+	}
+	if ParseTimeout != 10*time.Second {
+		t.Fatalf("ParseTimeout = %v, want 10s", ParseTimeout)
+	}
+	if got := hardBackstop(); got != 20*time.Second {
+		t.Fatalf("default hard backstop = %v, want 20s", got)
+	}
+}

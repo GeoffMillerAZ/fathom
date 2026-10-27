@@ -190,6 +190,8 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `gate.allow_receipt_acceptance` | user-only | permits a project to opt in to receipt acceptance; default off |
 | `gate.host_label` | user-only | an operator-named machine label, never a hostname read |
 | `gate.receipts_dir` | repo-path | the directory for local gate evidence; project values stay within the repository |
+| `guards.egress` | behaviour | the egress guard's mode, the strictest of the user's (default warn) and the repository's: a repository's fathom config may tighten it and never loosen it; a repository's harness settings (`env`: `FATHOM_ENFORCE`, `FATHOM_HOME`) are outside that rule (ADR-083) |
+| `guards.egress_allow` | user-only | widens what the egress guard lets through; a cloned repository must not (ADR-083) |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
 | `guards.git_safety` | behaviour | enables the shipped git command safety pack; default on |
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
@@ -201,6 +203,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.subagent_map_facts` | behaviour | opts in to local exploration-map excerpts in subagent prompts |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
 | `hooks.tests_to_run` | behaviour | the tests-to-run line runs nothing: it asks the daemon which tests reach the edited file and prints the go test recipe as text (edithook_teststorun.go) |
+| `ingest.go_network` | user-only | reopens the module network (GOPROXY, GOSUMDB) for the go commands fathom runs on its own (ADR-083, internal/goenv) |
 | `learning.promote_corroborations` | behaviour | a threshold (the learned-rule promotion bar) |
 | `learning.promote_min_sessions` | behaviour | a threshold (the learned-rule promotion bar) |
 | `learning.promote_window_days` | behaviour | a threshold (the learned-rule promotion window) |
@@ -1502,6 +1505,71 @@ Each computed call logs channel `prompt-definitions`: kind `line`, `missed`
 `dropped=budget` when the line would not fit, and `emitted`. Observe always
 logs `emitted=false`. The row carries no prompt text.
 
+## The egress guard: `[guards] egress`
+
+The egress guard (ADR-083) is a **tripwire, not data-loss prevention**: it reads the literal
+argv words of a shell command, and the URL of Claude Code's `WebFetch` (or the
+`allowed_domains` of `WebSearch`), so `python -c`, a script or an encoded payload passes
+it unseen. It flags `curl` and `wget` uploads, `nc`/`ncat`/`netcat`/`socat`,
+`scp`/`rsync`/`sftp` and `ssh` to a non-loopback host, `git push` to a remote whose URL host
+is not allowlisted, `gh gist create`, and cloud uploads (`aws s3 cp|sync|mv` to `s3://`,
+`gsutil`, `gcloud storage`, `az storage blob upload`). On Codex, fathom's hooks see Bash
+only: Codex web search and MCP calls are not intercepted.
+
+What it does not stop:
+
+- Claude Code's MCP fetch tools and browser tools are not intercepted; only Bash,
+  `WebFetch` and `WebSearch` are.
+- A `curl` or `wget` GET passes by design, so data carried in a URL's path or query
+  string passes with it.
+- A command built or configured at run time passes: `xargs curl …`, a sourced script, or
+  a `git push` after a step that writes `.git/config` directly
+  (`printf … >> .git/config`), since the guard reads argv words, not file writes.
+- Input the lexer cannot read (`eval`, a function definition) that names an egress tool
+  warns and never denies, even under `enforce`: its text cannot tell an upload from a
+  read, so a deny would block every function that mentions `curl` or `git`.
+- An agent with shell access can switch the guard off: it can edit
+  `~/.fathom/config.toml` or `~/.fathom/capabilities.cue` like any other file. The guard
+  catches mistakes; it is not a boundary against an agent working around it.
+
+```toml
+# ~/.fathom/config.toml
+[guards]
+egress = "warn"            # warn (default) | enforce | off
+egress_allow = ["docs.example.com", "*.example.org", "s3://example-bucket"]
+```
+
+- `warn` injects one advisory line naming the rule (`egress/curl_upload`) and the
+  `egress_allow` entry that would let the call through. `enforce` denies instead, only
+  while guard enforcement is on (`FATHOM_ENFORCE=off`, `[guards] enforce = false` and the
+  `guard-enforce` switch make it warn). `off` is silent.
+- The user sets the mode. A repository's `.fathom/config.toml` may tighten it
+  (off < warn < enforce) and never loosen it; the user's `enforce` reads only the user's
+  enforcement switches. The rule covers fathom's own config and capability files only: a
+  repository's harness settings (an `env` entry setting `FATHOM_ENFORCE` or `FATHOM_HOME` in a
+  committed `.claude/settings.json`) are outside it, as ADR-083 4i states. `egress_allow` is user-only. The `egress-guard` capability is the
+  same switch: only `~/.fathom/capabilities.cue` may turn it off. A repository config
+  that does not load is skipped, not read as the default: the user's mode and allowlist
+  stay in effect, and `fathom doctor`'s `egress_guard` row warns naming the file.
+- Loopback hosts always pass. An entry is an exact host, `*.example.com` for its
+  subdomains, or `s3://bucket` / `gs://bucket` for a storage bucket. A target the guard
+  cannot read is not on the list: a shell expansion; a git remote git cannot resolve now;
+  a `git push` under `-c`/`--config-env`, with a `GIT_*`, `HOME` or `XDG_CONFIG_HOME`
+  prefix, or after an earlier assignment, `export` or `declare` of one, or a `git remote`,
+  `git config` or `git init`, in the same command; a `curl` upload with `--resolve`,
+  `--connect-to` or `--doh-url`; any `curl` with `-K`/`--config` or a `HOME`, `CURL_HOME`
+  or `XDG_CONFIG_HOME` change (another `.curlrc`), and any `wget` with `--config`, an `-e`
+  it cannot read, or a `WGETRC`, `HOME` or `XDG_CONFIG_HOME` change, since those may add
+  an upload of their own; a proxy variable set by an earlier step; `ssh`, `scp`, `sftp` or
+  rsync's `-e` with `-J`, `-F` or `-o ProxyJump|ProxyCommand|HostName|LocalForward|RemoteForward|DynamicForward|ControlPath`,
+  `ssh -W`, `-L`, `-R`, `-D` or `-S`, `scp`/`sftp -S`, or an rsync remote shell other
+  than `ssh`. A `curl` proxy (`-x`, `--proxy`, `--preproxy`, `--socks*`, or a
+  `*_proxy`/`ALL_PROXY` prefix) and a `wget` proxy (a `*_proxy` prefix or an `-e` proxy
+  command) are checked like the URL's host.
+- The real boundary is the harness's own: Claude Code's `permissions.deny` and its sandbox
+  network allowlist; Codex's sandbox network setting. `fathom doctor`'s `egress_guard` row
+  names them and recommends the guard when it is off.
+
 ## The console: `[console]`
 
 The Observatory console bounds its own background work
@@ -1661,6 +1729,38 @@ skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
   (`fathom config` names it). It is refused in the user layer
   (`~/.fathom/config.toml`): a load error names the file, since the pass
   reads only the corpus's own file.
+
+## The offline go environment: `[ingest]`
+
+Every go command fathom runs on its own (the typed pass at ingest and in the
+daemon, the daemon's toolchain shim, ask's module loads, the layer-rules
+import graph) runs offline (ADR-083): `GOPROXY=off`, `GOSUMDB=off`,
+`GONOPROXY=,` (a `GOPRIVATE` module is never fetched straight from its
+version control), `GOTELEMETRY=off` and `GOTOOLCHAIN=local`. `GOFLAGS` is
+the environment's, or else the one `go env -w` wrote to the GOENV file,
+with `-mod=mod` dropped in every form the go command reads (quoted
+included), so `go list` never rewrites the repository's `go.mod` or
+`go.sum`; `-mod=vendor`, `-mod=readonly` and every other flag are kept, and
+`GOFLAGS` is never left empty, so the GOENV file cannot add `-mod=mod` back.
+A dependency missing from the module cache fails the typed pass with a named
+reason: the module, and `run go mod download in <module dir>`. Later ingests
+skip the pass, like any pass with failed packages, until a Go file changes
+or one of the missing modules appears in the module cache.
+
+```toml
+# ~/.fathom/config.toml (user scope only)
+[ingest]
+go_network = true
+```
+
+- `go_network` (optional, default false): true passes the inherited
+  `GOPROXY`, `GOSUMDB` and `GONOPROXY` through, so the typed pass downloads
+  a missing module itself. The toolchain pin and the `-mod=mod` strip stay.
+- It is read only from `~/.fathom/config.toml`: a repository's copy is
+  dropped and named, since a cloned repository must not reopen the network.
+  A user file that does not load reads as false.
+- `GOTELEMETRY=off` is a declaration: the go command takes its telemetry
+  mode from `go telemetry`, not the environment.
 
 ## Receipts: `[receipts]`
 

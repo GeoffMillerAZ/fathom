@@ -1,0 +1,25 @@
+{
+  "symbols": [
+    {
+      "name": "broken",
+      "kind": "SimulinkModel",
+      "line": 1,
+      "end": 1,
+      "signature": ""
+    },
+    {
+      "name": "broken/Kept",
+      "kind": "SimulinkBlock",
+      "line": 4,
+      "end": 7,
+      "signature": "Gain"
+    },
+    {
+      "name": "broken/Unclosed",
+      "kind": "SimulinkBlock",
+      "line": 8,
+      "end": 8,
+      "signature": "Gain"
+    }
+  ]
+}

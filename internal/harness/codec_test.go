@@ -319,6 +319,8 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"agent_transcript_path": true,
 		// H8: Read's own range (claudeToolInput.Offset, Limit).
 		"tool_input.offset": true, "tool_input.limit": true,
+		// ADR-083: the web tools' targets (claudeToolInput.URL, AllowedDomains).
+		"tool_input.url": true, "tool_input.allowed_domains": true,
 		// ADR-080 AD-11/AD-12: complete spawn input and completed MCP result.
 		"tool_input": true, "tool_response": true,
 	}

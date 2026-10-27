@@ -182,7 +182,6 @@
   },
   "excluded_by_kind": {},
   "notes": [
-    "in the cloud VM of round 2 MATLAB read 0.71 MB/CPU-s against 1.2 to 1.3 for lua and python measured beside it (0.55 of their speed), and the same VM read 0.94 in round 1; the local re-measure below (2.22 MB/CPU-s, 3 runs) shows the VM, not the extractor, held it under 1.0",
     "chebfun: 1 files skipped by ingest's gates (ambiguous)",
     "chebfun: 5 files MISS_HIT rejects (parse error), left out with -only",
     "chebfun: 5 files are not UTF-8 and were decoded with replacement characters (line numbers unchanged)",
@@ -191,10 +190,13 @@
     "control (round 2, cloud VM, same session, lang-oracle with a placeholder oracle, extract_cpu_ms basis): lua Kong/kong 587 files 3,203,247 bytes read 1.32 MB/CPU-s against the committed 3.61 (VM factor 2.74); python fastapi 1,175 files 3,386,387 bytes read 1.21 against the committed 3.02 (VM factor 2.50); a second pass read 1.32 and 1.22",
     "export_fig: 1 files are not UTF-8 and were decoded with replacement characters (line numbers unchanged)",
     "export_fig: miss-hit-core 0.9.44 parser dump, 18 .m files, 18 parsed",
+    "in the cloud VM of round 2 MATLAB read 0.71 MB/CPU-s against 1.2 to 1.3 for lua and python measured beside it (0.55 of their speed), and the same VM read 0.94 in round 1; the local re-measure below (2.22 MB/CPU-s, 3 runs) shows the VM, not the extractor, held it under 1.0",
+    "local re-measure (an Apple-silicon development machine, the machine class of the committed pre-cloud readings; fathom bea95991b, chebfun -only scope, extract_cpu_ms basis, 3 runs): 2.08, 2.22, 2.22 MB/CPU-s, median 2.22 (wall 1.98, 2.25, 2.23); lua control Kong/kong 587 files 3,203,247 bytes read 3.89, 3.76, 3.96 MB/CPU-s (median 3.89) against the committed 3.61; the cloud VM read 0.71 for MATLAB, 2.5 to 2.7 times slower than the committed lua and python readings",
     "matlab2tikz: miss-hit-core 0.9.44 parser dump, 64 .m files, 64 parsed",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "profile (chebfun, -only scope, in-guest call timers; the same wasm module runs parse and query): tree-sitter parse (fathom_parse_bounded) 70% of extraction CPU, query evaluation (ts_query_cursor_next_match) 29%, tree delete 1.4%; a one-pattern tags.scm floor cut the pass from 8.99 s to 7.86 s, so the whole 154-line query costs at most 12% over a bare traversal and rewriting it could not have moved the VM reading to 1.0; the cost is the grammar's parse, left unedited (owner ruling M-R3)",
-    "local re-measure (an Apple-silicon development machine, the machine class of the committed pre-cloud readings; fathom bea95991b, chebfun -only scope, extract_cpu_ms basis, 3 runs): 2.08, 2.22, 2.22 MB/CPU-s, median 2.22 (wall 1.98, 2.25, 2.23); lua control Kong/kong 587 files 3,203,247 bytes read 3.89, 3.76, 3.96 MB/CPU-s (median 3.89) against the committed 3.61; the cloud VM read 0.71 for MATLAB, 2.5 to 2.7 times slower than the committed lua and python readings"
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at bea95991b)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at bea95991b)"
   ],
   "disposition": "L1 excellent is the measured free-oracle ceiling (assessment 2026-10-25, docs/assessments/2026-10-25-matlab-free-oracle-ceiling.md). MISS_HIT leaves call-versus-indexing references ambiguous; McLab SimpleFunctionCollection at beeea16c rejects scripts and classdef, so no independent L2/L3 call and resolution truth covers the unchanged subjects. L2/L3 remain not-attempted. Retry when a free analyzer covers classes, scripts and function resolution on the pinned subjects with an independent call dump, or an approved MATLAB oracle becomes available."
 }
