@@ -50,12 +50,32 @@ Runnable regression and stored-count proof:
 go test -race ./cmd/indexbench -run 'TestScoreToolOracle(CallScope|DefinitionsOnlyBesideCalls)|TestCmdLangOracle(UnscopedEmptyCallsIgnored|DefinitionsOnlyBesideCalls)|TestCmdLangRegradeCallScopeUnaffectedReadings' -count=1
 ```
 
-## One open regrade: HLSL
+## HLSL fresh replay
 
-HLSL requires fresh DXC scope and pair output; stored counts cannot recover newly scored zero-call files. Run the exact replay with pinned DXC `1.9.0.5184`:
+The [public Linux replay](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407275332) ran on Ubuntu 24.04 with DXC v1.9.2602 across the pinned three-subject corpus. The #45-disabled control reproduced the committed semantic counters, metrics, scope and grades. The main harness measured the same 543 DXC-scoped files of 644 measured files. The only semantic metric change from control was call precision, 0.9656 to 0.956 (delta -0.0096): 39 additional false positives in explicitly scoped files with no oracle calls, 9 in directx-graphics-samples and 30 in kajiya. Fathom call pairs rose 3920 to 3959; matched pairs stayed 3785 and truth pairs stayed 3839, so call recall stayed 0.9859. L1 excellent, L2 good and L3 good remain unchanged. The [canonical HLSL reading](lang/hlsl.json) now contains the main-run values and its Linux timing, with a note linking the public run. Historical-to-fresh timing and note differences are environmental or producer-description drift, not effects attributed to #45.
+
+## R-D19 integration regrade
+
+Main `5d41806d0` was merged once into this branch. The conflicting reading
+was regenerated from the complete frozen [public replay](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407275332)
+reading with main's committed `indexbench lang-regrade`, rather than merging
+reading fields between parents. The same harness regraded scratch copies of
+both parents as controls.
+
+D19 changes no HLSL values: import-resolution, file-edge-precision and
+file-edge-recall denominators are 998, 597 and 1,222, all above 20. HLSL
+declares no extra manifest-specific evidence bar. L3 good and every other
+grade remain unchanged. The scope replay still contributes only the 39 extra
+Fathom calls to semantic counters: +9 directx-graphics-samples, +30 kajiya,
+3,920 to 3,959 pooled; precision .9656 to .956, recall .9859 unchanged.
+
+The frozen replay retains its Linux timing and provenance, including
+1.30 MB/CPU-s and maximum 25 ms. Main's separately recorded Apple M4 retime
+is 1.92 MB/CPU-s and maximum 19 ms. These existing G-R9 source differences
+and producer-note differences are not attributed to D19 or the scope rule.
+No producer or extractor was rerun here.
 
 ```sh
-bash calibration/oracles/dxc-ast/reading.sh docs/bench/readings/lang/hlsl.json
+bash scripts/fathom-go.sh run ./cmd/indexbench lang-regrade -commit 5d41806d0 docs/bench/readings/lang/hlsl.json
+bash scripts/fathom-go.sh test -race -count=1 -run 'Test(LevelMetL3Evidence|L3DenominatorCoversEveryL3Metric|LevelMetManifestL3Evidence|CommittedReadingsRoundTrip|CommittedReadingsAreCanonical|CmdLangRegrade|ScoreToolOracleCallScope|CmdLangOracleEmptyCallsScopeBlocksL2|CmdLangOracleScopeReportsZeroTruthFile)' ./internal/langbench ./cmd/indexbench
 ```
-
-This ENGINE change must not land before the HLSL result returns. No HLSL metric or level is asserted by this report.
