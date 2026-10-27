@@ -6,7 +6,7 @@ Full grammar commit pins are retained in the assessment's structured evidence; t
 
 ## Baseline provenance
 
-The 13/72 baseline was measured on 2026-10-11 at fathom `40aecf63` plus an experimental uncommitted Angular blob and placeholder dialect (O984), using `indexbench lang-oracle` and LB-F59's `files_with_error` measure, which counts a file containing any ERROR or MISSING node, on baseline blob SHA-256 `73529a584b23aa5e3fa2eadd4169161a903012eca0c92c685c7c9174a4532b28`; the full historical per-file record remains available with `git show 6db920e72:docs/bench/readings/lang/angular-grammar.md`. No subject file list or content is recopied here.
+The 13/72 baseline (the released grammar left an ERROR or MISSING node in 13 of the 72 templates the Angular compiler reads) was measured on 2026-10-11 at fathom `40aecf63` plus an experimental uncommitted Angular blob and placeholder dialect (O984), using `indexbench lang-oracle` and LB-F59's `files_with_error` measure, which counts a file containing any ERROR or MISSING node, on baseline blob SHA-256 `73529a584b23aa5e3fa2eadd4169161a903012eca0c92c685c7c9174a4532b28`; the full historical per-file record remains available with `git show 6db920e72:docs/bench/readings/lang/angular-grammar.md`. No subject file list or content is recopied here.
 
 ## Named candidates and routes
 
