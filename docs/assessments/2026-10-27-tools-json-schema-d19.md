@@ -141,3 +141,16 @@ does the same for output bytes. Production caps are 4,096 files, 32 MiB per sour
 512 MiB source per subject, 64 MiB per oracle artifact (process FSIZE bound plus
 bounded reads), 1 GiB Node heap and 300 seconds per subject. These limits do not
 expand native URI scope or silently admit a partial success.
+
+
+Validation after main merge: origin/main 3118be853 merged cleanly at 25e153422;
+its changes do not alter JSON Schema extraction or the measured Go implementation.
+`bash scripts/fathom-go.sh test -race ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestCommittedReadingsAreCanonical)$' -count=1`
+and `bash scripts/fathom-go.sh test -race ./internal/extractor -run '^TestJSONSchema' -count=1`
+pass. Release-note, merge-debris and ADR-011 checks pass. The YAML shard parses
+with pinned yaml 2.8.2; its four distinct names/pins exactly match the reading.
+X-R10 finds no lane-changed Go file, and four lexical consumers in one plan
+(three queue paths and this reading). The first scratch attempt ingested cleanly
+but verify exited operationally (2): an uncommitted change-note fragment held ten
+gone rows unknown under I44. Commit that fragment and repeat the scratch ingest
+and strict check from a clean HEAD; this attempt is not a passing verification.
