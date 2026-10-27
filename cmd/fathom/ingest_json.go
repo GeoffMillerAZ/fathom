@@ -235,10 +235,6 @@ func errnoClass(errText string) string {
 	return ""
 }
 
-// renderIngestJSON writes the envelope and returns the exit code (the same
-// 0/1 the text path returns). scipResults carries every --scip (or
-// auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
-// nil when none ran.
 // renderIngestCancelledJSON writes the envelope of a run a signal stopped:
 // the finished envelope's counts and SCIP imports (partial when the ingest
 // is known not to have committed: its counts are as far as it got, not
@@ -264,6 +260,10 @@ func renderIngestBusyJSON(w io.Writer, service string, pid int, startedAt, msg, 
 	_ = enc.Encode(out)
 }
 
+// renderIngestJSON writes the envelope and returns the exit code (the same
+// 0/1 the text path returns). scipResults carries every --scip (or
+// auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
+// nil when none ran.
 func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) int {
 	out := ingestJSONOf(service, svcPath, report, readErr, scipResults)
 	enc := json.NewEncoder(w)
