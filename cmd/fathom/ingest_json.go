@@ -38,12 +38,36 @@ type ingestTypedEdgesJSON struct {
 	// discoverable and therefore overridden (defect 2, same wave).
 	Fallback string `json:"fallback,omitempty"`
 
+	// PackagesSkipped counts the packages the load returned and the pass
+	// did not resolve; Skipped lists them by reason with the first five
+	// names, NotLoaded the discovered Go directories and nested modules no
+	// load covered (EW-83, O1506). Both sorted by reason.
+	PackagesSkipped int                        `json:"packages_skipped"`
+	Skipped         []ingestTypedSkipJSON      `json:"skipped,omitempty"`
+	NotLoaded       []ingestTypedNotLoadedJSON `json:"not_loaded,omitempty"`
+
 	// Pre-O82 fields, kept for compatibility.
 	Packages       int `json:"packages"`
 	PackagesFailed int `json:"packages_failed"`
 	Direct         int `json:"direct"`
 	IfaceDispatch  int `json:"iface_dispatch"`
 	Unresolved     int `json:"unresolved"`
+}
+
+// ingestTypedSkipJSON is one reason the typed pass skipped packages: the
+// exact count and the first five, sorted.
+type ingestTypedSkipJSON struct {
+	Reason   string   `json:"reason"`
+	Count    int      `json:"count"`
+	Packages []string `json:"packages"`
+}
+
+// ingestTypedNotLoadedJSON is one reason discovered Go directories or nested
+// modules (by go.mod) were not loaded: the exact count and the first five.
+type ingestTypedNotLoadedJSON struct {
+	Reason string   `json:"reason"`
+	Count  int      `json:"count"`
+	Paths  []string `json:"paths"`
 }
 
 // ingestCUEEdgesJSON is the CUE typed-edge pass counters (ADR-041 decision
@@ -238,13 +262,22 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 	// never the pre-O82 "non-zero packages/failures only" condition, which
 	// is exactly what let a Go tree with ZERO typed edges (packages seen,
 	// none processed) report a silently empty block.
-	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed {
+	// EW-83: also when not_loaded alone has entries (a tree with no module
+	// at all), its counts then 0 and failed false.
+	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed || len(report.TypedNotLoaded) > 0 {
 		edges := report.TypedEdgesDirect + report.TypedEdgesIfaceDispatch + report.TypedEdgesUnresolved
 		out.TypedEdges = &ingestTypedEdgesJSON{
-			PackagesSeen: report.TypedPackagesSeen, PackagesProcessed: report.TypedPackages,
+			PackagesSkipped: report.TypedPackagesSkipped,
+			PackagesSeen:    report.TypedPackagesSeen, PackagesProcessed: report.TypedPackages,
 			Edges: edges, Failed: report.TypedFailed, Error: report.TypedFailReason, Fallback: report.TypedFallback,
 			Packages: report.TypedPackages, PackagesFailed: report.TypedPackagesFailed,
 			Direct: report.TypedEdgesDirect, IfaceDispatch: report.TypedEdgesIfaceDispatch, Unresolved: report.TypedEdgesUnresolved,
+		}
+		for _, sk := range report.TypedSkips {
+			out.TypedEdges.Skipped = append(out.TypedEdges.Skipped, ingestTypedSkipJSON{Reason: sk.Reason, Count: sk.Count, Packages: sk.Names})
+		}
+		for _, nl := range report.TypedNotLoaded {
+			out.TypedEdges.NotLoaded = append(out.TypedEdges.NotLoaded, ingestTypedNotLoadedJSON{Reason: nl.Reason, Count: nl.Count, Paths: nl.Names})
 		}
 	}
 	for _, r := range scipResults {

@@ -347,11 +347,14 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		// named on the service and returned, so the Ingest fails before its
 		// final commit and stays in_progress (RT-109).
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
-			PackagesSeen: rep.PackagesTotal,
-			Packages:     rep.PackagesLoaded,
-			Failed:       true,
-			Reason:       err.Error(),
-			Fallback:     rep.Fallback,
+			PackagesSeen:    rep.PackagesTotal,
+			Packages:        rep.PackagesLoaded,
+			Failed:          true,
+			Reason:          err.Error(),
+			Fallback:        rep.Fallback,
+			PackagesSkipped: rep.PackagesSkipped,
+			Skips:           rep.Skips,
+			NotLoaded:       rep.NotLoaded,
 		})
 		p.diagWarn("fusion: typed-edge pass %q: %v — the ingest stays in_progress; the next start resumes it\n", svc.ID, err)
 		return rep, err
@@ -360,6 +363,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			Failed:                 true,
 			Reason:                 err.Error(),
 			Fallback:               rep.Fallback,
+			PackagesSkipped:        rep.PackagesSkipped,
+			Skips:                  rep.Skips,
+			NotLoaded:              rep.NotLoaded,
 			DiscoveryGaps:          rep.DiscoveryGaps,
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
@@ -373,6 +379,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			Failed:                 true,
 			Reason:                 fmt.Sprintf("%d/%d package(s) failed typed loading%s", rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages)),
 			Fallback:               rep.Fallback,
+			PackagesSkipped:        rep.PackagesSkipped,
+			Skips:                  rep.Skips,
+			NotLoaded:              rep.NotLoaded,
 			DiscoveryGaps:          rep.DiscoveryGaps,
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
@@ -395,13 +404,16 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			PackagesSeen:           rep.PackagesTotal,
 			Failed:                 true,
-			Reason:                 fmt.Sprintf("%d package(s) seen but 0 processed — skipped: %s", rep.PackagesTotal, formatTypedSkipCounts(rep.Skips)),
+			Reason:                 fmt.Sprintf("%d package(s) seen but 0 processed — skipped: %s", rep.PackagesTotal, FormatTypedSkipCounts(rep.Skips)),
 			Fallback:               rep.Fallback,
+			PackagesSkipped:        rep.PackagesSkipped,
+			Skips:                  rep.Skips,
+			NotLoaded:              rep.NotLoaded,
 			DiscoveryGaps:          rep.DiscoveryGaps,
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
-		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — skipped: %s; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal, formatTypedSkipCounts(rep.Skips))
+		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — skipped: %s; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal, FormatTypedSkipCounts(rep.Skips))
 		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
 	default:
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
@@ -409,6 +421,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			Packages:               rep.PackagesLoaded + rep.PackagesCached,
 			EdgesTotal:             edgesTotal,
 			Fallback:               rep.Fallback,
+			PackagesSkipped:        rep.PackagesSkipped,
+			Skips:                  rep.Skips,
+			NotLoaded:              rep.NotLoaded,
 			DiscoveryGaps:          rep.DiscoveryGaps,
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,

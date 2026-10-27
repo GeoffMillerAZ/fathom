@@ -277,6 +277,14 @@ type TypedEdgeStatus struct {
 	DiscoveryGaps          int
 	DiscoveryGapFiles      []string
 	EdgesDroppedOutOfScope int
+	// PackagesSkipped, Skips and NotLoaded carry the run's skips (EW-83,
+	// O1506: TypedEdgeReport's fields of the same name). In memory only:
+	// noteTypedEdgeStatus never persists them (the table freeze), so a
+	// status replayed from the store (Persisted) has none and every surface
+	// omits them rather than read 0.
+	PackagesSkipped int
+	Skips           []TypedSkip
+	NotLoaded       []TypedSkip
 	// Persisted is true when this status was NOT recorded by this process
 	// (TypedEdgeStatus fell back to the store, DG-10) — the daemon has not
 	// ingested this service since it last started, but a previous process

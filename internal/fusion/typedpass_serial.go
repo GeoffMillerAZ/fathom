@@ -161,7 +161,7 @@ func typedPassLine(service string, rep TypedEdgeReport, h passHeap) string {
 	packages := rep.PackagesLoaded + rep.PackagesCached
 	skipped := ""
 	if rep.PackagesSkipped > 0 {
-		skipped = fmt.Sprintf(", %d skipped: %s", rep.PackagesSkipped, formatTypedSkipCounts(rep.Skips))
+		skipped = fmt.Sprintf(", %d skipped: %s", rep.PackagesSkipped, FormatTypedSkipCounts(rep.Skips))
 	}
 	edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
 	// "edges" is what this pass WROTE: a package whose content hash is

@@ -51,12 +51,12 @@ const (
 // exact.
 const typedSkipNamed = 5
 
-// typedSkipLosesEvidence reports whether a reason's input carries source the
+// TypedSkipLosesEvidence reports whether a reason's input carries source the
 // syntax pass indexed and the typed pass never reads: those are named in the
 // pass's warning. The others are harmless (a test main, a test-only plain
 // package whose files resolve under its test variant) or declared (the
 // connector's scope); a nested module not loaded keeps its own line.
-func typedSkipLosesEvidence(reason string) bool {
+func TypedSkipLosesEvidence(reason string) bool {
 	switch reason {
 	case typedSkipBuildConstraints, typedSkipOutside, typedSkipNoGoMod:
 		return true
@@ -180,9 +180,9 @@ func (t *typedSkipTally) skips() []TypedSkip {
 	return out
 }
 
-// formatTypedSkipNames renders a skip's names with "and N more" when its
+// FormatTypedSkipNames renders a skip's names with "and N more" when its
 // count exceeds them.
-func formatTypedSkipNames(s TypedSkip) string {
+func FormatTypedSkipNames(s TypedSkip) string {
 	named := strings.Join(s.Names, ", ")
 	if more := s.Count - len(s.Names); more > 0 {
 		named += fmt.Sprintf(" and %d more", more)
@@ -190,10 +190,10 @@ func formatTypedSkipNames(s TypedSkip) string {
 	return named
 }
 
-// formatTypedSkipCounts renders skips as "4 test main, 1 test-only", in
+// FormatTypedSkipCounts renders skips as "4 test main, 1 test-only", in
 // their (reason) order: counts only, never a name, so it may reach the
 // persisted TypedEdgeStatus.Reason.
-func formatTypedSkipCounts(skips []TypedSkip) string {
+func FormatTypedSkipCounts(skips []TypedSkip) string {
 	parts := make([]string, len(skips))
 	for i, s := range skips {
 		parts[i] = fmt.Sprintf("%d %s", s.Count, s.Reason)
@@ -208,13 +208,13 @@ func formatTypedSkipCounts(skips []TypedSkip) string {
 func typedSkipsLine(serviceID string, skips, notLoaded []TypedSkip) string {
 	var parts []string
 	for _, s := range skips {
-		if typedSkipLosesEvidence(s.Reason) {
-			parts = append(parts, fmt.Sprintf("%s %d package(s): %s", s.Reason, s.Count, formatTypedSkipNames(s)))
+		if TypedSkipLosesEvidence(s.Reason) {
+			parts = append(parts, fmt.Sprintf("%s %d package(s): %s", s.Reason, s.Count, FormatTypedSkipNames(s)))
 		}
 	}
 	for _, s := range notLoaded {
-		if typedSkipLosesEvidence(s.Reason) {
-			parts = append(parts, fmt.Sprintf("%s %d directory(ies): %s", s.Reason, s.Count, formatTypedSkipNames(s)))
+		if TypedSkipLosesEvidence(s.Reason) {
+			parts = append(parts, fmt.Sprintf("%s %d directory(ies): %s", s.Reason, s.Count, FormatTypedSkipNames(s)))
 		}
 	}
 	if len(parts) == 0 {
