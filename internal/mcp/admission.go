@@ -153,15 +153,34 @@ func (s *Server) admitToolCall(ctx context.Context, te toolEntry, args json.RawM
 	tk, ref := s.gate.Admit(actx, req)
 	if ref != nil {
 		if top {
-			if sink, ok := ctx.Value(refusalSinkKey{}).(*refusalSink); ok {
-				sink.mu.Lock()
-				sink.ref = ref
-				sink.mu.Unlock()
-			}
+			setRefusal(ctx, ref)
 		}
 		return ctx, nil, busyError(ref)
 	}
 	return tk.Context(), tk, nil
+}
+
+// setRefusal records ref on ctx's refusal sink (nil clears it); a ctx with
+// no sink (stdio, a test) is left alone.
+func setRefusal(ctx context.Context, ref *tenancy.Refusal) {
+	if sink, ok := ctx.Value(refusalSinkKey{}).(*refusalSink); ok {
+		sink.mu.Lock()
+		sink.ref = ref
+		sink.mu.Unlock()
+	}
+}
+
+// handlerRefusal is an admitted handler's own refusal (GDEV-08: the ingest
+// tool's refresh-gate, ingest-slot and concurrent-ingest refusals) in the
+// admission wire format: -32050 with the §3.4 data keys, recorded on the
+// HTTP sink so POST /rpc answers 503 with Retry-After and the refusal's
+// scope. A call settle turns into an abandonment clears the sink again: a
+// call that did not end refused never answers 503. Handler refusals are
+// not counted in fathom_rejected_total (admission's own count): the call
+// was admitted, and its call-log row and fathom_calls_total say refused.
+func handlerRefusal(ctx context.Context, ref *tenancy.Refusal) *rpcError {
+	setRefusal(ctx, ref)
+	return busyError(ref)
 }
 
 // settleCall names how a call ended and releases its ticket: a call the
@@ -178,6 +197,7 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 		result, rpcErr = nil, ab
 		meta.outcome, release = outcomeAbandonedByGovernor, tenancy.OutcomeAbandoned
 		tenancy.RecordAbandoned(tool, tenancy.AbandonGovernor)
+		setRefusal(ctx, nil)
 	case tk != nil && ctx.Err() != nil:
 		cause := "the client went away"
 		why := tenancy.AbandonClient
@@ -189,6 +209,11 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 		result, rpcErr = nil, &rpcError{Code: ErrCodeInternal, Message: "abandoned: " + cause + "; " + tool + " did not finish and no partial answer is served",
 			Data: map[string]any{"outcome": string(tenancy.OutcomeAbandoned), "cause": cause}}
 		meta.outcome, release = string(tenancy.OutcomeAbandoned), tenancy.OutcomeAbandoned
+		setRefusal(ctx, nil)
+	case rpcErr != nil && rpcErr.Code == ErrCodeBusy:
+		// A handler's own refusal (handlerRefusal): named refused, as an
+		// admission refusal is, never error.
+		meta.outcome, release = string(tenancy.OutcomeRefused), tenancy.OutcomeRefused
 	case rpcErr != nil:
 		meta.outcome, release = string(tenancy.OutcomeError), tenancy.OutcomeError
 	case tk != nil && tk.Stopped():

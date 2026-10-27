@@ -488,6 +488,23 @@ func registerRenameService(s *Server, backend QueryInterface) {
 
 // ─── shared: ingest ───────────────────────────────────────────────────────────
 
+// ingestGateRefusal is the refresh gate's refusal of an explicit ingest
+// (refresh.TenancyGate: an explicit request is refused only for store
+// distress or at the refuse rung) as an admission refusal. The kind is read
+// from the typed state, in the gate's own order, never parsed from why:
+// distress refuses writes and still serves reads, so it reaches only the
+// ingest class (lifecycleRefusal scopes it the same way); the rung reaches
+// the daemon.
+func ingestGateRefusal(svc, why string, now time.Time) *tenancy.Refusal {
+	ref := &tenancy.Refusal{Reason: "ingest of " + svc + " refused: " + why, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String()}
+	if _, on := tenancy.StoreDistressNow(now); on {
+		ref.RetryAfter = 60 * time.Second
+		return ref.WithClassScope()
+	}
+	ref.Code, ref.RetryAfter = tenancy.RefusalLevel, 30*time.Second
+	return ref
+}
+
 func registerIngest(s *Server, backend QueryInterface) {
 	// Ingest honesty (docs/plans/instrument-truth.md IT-15, O16): the
 	// pipeline's refusal to replace a populated index with a wedged
@@ -716,8 +733,17 @@ func registerIngest(s *Server, backend QueryInterface) {
 			st := q.RequestRefresh(waitCtx, refresh.Request{Service: svc, Path: p.Path, Reason: refresh.ReasonIngestTool, Done: late.runDone}, true)
 			budgetSpent := waitCtx.Err() != nil && ctx.Err() == nil
 			stopWait()
+			// GDEV-08: the refresh gate refused the request, or dropped
+			// the queued job when distress or the refuse rung arrived
+			// while it waited; either way nothing ran, and the answer is
+			// the admission wire format, never -32600 or an ingest failure
+			// (which would re-arm distress and bust caches for a write that
+			// never happened).
 			if st.State == refresh.StateRefused {
-				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + st.Refused}
+				return nil, handlerRefusal(ctx, ingestGateRefusal(svc, st.Refused, time.Now()))
+			}
+			if st.Done && errors.Is(st.Err, refresh.ErrRefused) {
+				return nil, handlerRefusal(ctx, ingestGateRefusal(svc, st.Err.Error(), time.Now()))
 			}
 			if !st.Done && budgetSpent {
 				late.answerEarly()
@@ -732,7 +758,8 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// ingest or backfill holds the slot leaves, named.
 			releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
 			if slotErr != nil {
-				return nil, &rpcError{Code: ErrCodeBusy, Message: "ingest: " + svc + " not ingested — the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()}
+				return nil, handlerRefusal(ctx, &tenancy.Refusal{Code: tenancy.RefusalSlots, Class: tenancy.ClassIngest.String(), Level: tenancy.CurrentLevel().String(), RetryAfter: 30 * time.Second,
+					Reason: "ingest of " + svc + " not started: the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()})
 			}
 			if p.Path != "" {
 				ingestErr = backend.(ingestAtBackend).IngestServiceAt(ctx, svc, p.Path)
