@@ -775,12 +775,12 @@ func errnoOf(err error) string {
 }
 
 // doctorBinaryRevision returns the running `fathom doctor` binary's own
-// embedded VCS revision and dirty flag (version.go's vcsInfo, no ldflags
+// embedded VCS revision and dirty flag (internal/buildinfo, no ldflags
 // needed). A package var so tests can simulate a known build identity
 // instead of depending on `go test`'s own build info.
 var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
-	r, _, modified := vcsInfo()
-	return r, modified, r != ""
+	st := versionStamp()
+	return st.Revision, st.Dirty, st.Revision != ""
 }
 
 // checkBinaryFresh compares the currently-running binary's own build

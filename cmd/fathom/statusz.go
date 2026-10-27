@@ -43,11 +43,15 @@ type StatuszBuildInfo struct {
 	ModuleSum     string `json:"module_sum,omitempty"`
 }
 
+// statuszStamp reads the binary's build identity; a variable so tests can
+// supply a fake stamp.
+var statuszStamp = buildinfo.Read
+
 // statuszBuildInfo reads the running daemon binary's VCS stamp from
 // internal/buildinfo. An unstamped binary (built without -buildvcs) yields
 // an empty commit, which readers treat as "unknown", never as fresh.
 func statuszBuildInfo() StatuszBuildInfo {
-	st := buildinfo.Read()
+	st := statuszStamp()
 	return StatuszBuildInfo{BinaryCommit: st.Revision, BinaryDirty: st.Dirty, BuiltAt: st.BuiltAt,
 		ModuleVersion: st.ModuleVersion, ModuleSum: st.ModuleSum}
 }

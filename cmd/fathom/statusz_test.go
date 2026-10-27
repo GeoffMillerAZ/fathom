@@ -216,3 +216,15 @@ func TestStatuszBinaryLabelModuleFallback(t *testing.T) {
 		t.Errorf("json = %s", b)
 	}
 }
+
+func TestStatuszBuildInfoCarriesModuleFields(t *testing.T) {
+	old := statuszStamp
+	statuszStamp = func() buildinfo.Stamp {
+		return buildinfo.Stamp{ModuleVersion: "v9.9.9", ModuleSum: "h1:abc="}
+	}
+	defer func() { statuszStamp = old }()
+	got := statuszBuildInfo()
+	if got.ModuleVersion != "v9.9.9" || got.ModuleSum != "h1:abc=" {
+		t.Errorf("statuszBuildInfo = %+v, want module fields carried", got)
+	}
+}
