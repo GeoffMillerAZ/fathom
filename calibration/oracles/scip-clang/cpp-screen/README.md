@@ -67,7 +67,7 @@ This diagnostic does not establish accuracy, adoption, or a support level.
 optional loader even though ordinary product builds exclude it.
 
 The recorded WillBooster measurement used the tagged tool source frozen at
-`8f90d5e59`. Reproduce that measurement from the pinned revision before
+`a3374ac40`. Reproduce that measurement from the pinned revision before
 using it as evidence.
 
 Inputs are bounded at 256 MiB per JSON, 20,000 files, 16 MiB per source,

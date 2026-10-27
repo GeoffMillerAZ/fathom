@@ -117,7 +117,7 @@ func TestAuditReadWorkspaceCapsAndSymlinks(t *testing.T) {
 func TestKnownAuditMetadataAcceptsOnlyPinnedCandidates(t *testing.T) {
 	base := auditLock{Schema: "fathom-cpp-external-audit-v1", BuilderSHA256: strings.Repeat("a", 64), BudgetSHA256: strings.Repeat("b", 64)}
 	base.Module.Blob, base.Module.EntryPoint, base.Module.ABI = "cpp", "tree_sitter_cpp", 15
-	base.Runtime = auditSource{Crate: "tree-sitter/tree-sitter", Version: "0.26.11", ArchiveSHA256: "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971", Licence: "MIT", LicenceSHA256: "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", ArchiveBytes: 920828, Entries: 673, Files: 600, ExtractedBytes: 3922532}
+	base.Runtime = auditSource{Crate: "tree-sitter/tree-sitter", Version: "0.26.11", ArchiveSHA256: "fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e", Licence: "MIT", LicenceSHA256: "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", ArchiveBytes: 920896, Entries: 673, Files: 600, ExtractedBytes: 3922532}
 	base.Toolchain.ZigVersion, base.Toolchain.ZigSHA256 = "0.16.0", auditZigSHA256
 	base.Toolchain.WasmOptVersion, base.Toolchain.WasmOptSHA256 = "129", auditWasmOptSHA256
 	for _, c := range []struct {

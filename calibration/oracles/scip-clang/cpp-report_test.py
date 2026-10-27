@@ -190,6 +190,8 @@ def audit_fixture(test):
 def timing_fixture(root, base):
     timing = base / "timing"
     timing.mkdir()
+    (base / "timing-bin").write_bytes(b"synthetic timing binary")
+    binary_hash = sha((base / "timing-bin").read_bytes())
     for scope in report.SCOPES:
         for version in audit.INDEX_BINARY:
             name = f"cpp-{scope}-{version}.json"
@@ -204,7 +206,7 @@ def timing_fixture(root, base):
                    "reading_before_sha256": sha(original.read_bytes()),
                    "reading_after_sha256": sha((timing / name).read_bytes()),
                    "os": "darwin", "arch": "arm64", "product_revision": "d" * 40,
-                   "product_binary_sha256": "e" * 64, "product_modified": False,
+                   "product_binary_sha256": binary_hash, "product_modified": False,
                    "runs": [{"number": n, "rate_mb_cpu_s": rate,
                              "load_before": 2.0 + n, "load_after": 2.5 + n}
                             for n, rate in enumerate((1.1, 1.2, 1.3), 1)]}
@@ -224,7 +226,8 @@ class ReportTests(unittest.TestCase):
         root, out, base = audit_fixture(self)
         timing = timing_fixture(root, base)
         kwargs = {"workspace_roots": [base], "audit_module": audit,
-                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing}
+                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing,
+                  "timing_binary": base / "timing-bin"}
         with mock.patch.object(report, "_current_revision", return_value="d" * 40):
             result = report.produce(root, out, **kwargs)
         row = result["readings"]["cpp-full-v0.4.0.json"]
@@ -235,10 +238,16 @@ class ReportTests(unittest.TestCase):
                                                  {"before": 5.0, "after": 5.5}])
         self.assertEqual(row["historical_timing"]["load_condition"], "unrecorded")
         self.assertEqual(result["timing_product_revision"], "d" * 40)
-        self.assertEqual(result["timing_product_binary_sha256"], "e" * 64)
+        self.assertEqual(result["timing_product_binary_sha256"], sha((base / "timing-bin").read_bytes()))
         self.assertEqual(len(result["audit_inputs_sha256"]), report.MAX_INPUTS)
         self.assertEqual(len(result["timing_inputs"]), 4)
         out.unlink()
+        (base / "timing-bin").write_bytes(b"different timing binary")
+        with mock.patch.object(report, "_current_revision", return_value="d" * 40):
+            with self.assertRaisesRegex(report.Refusal, "retime log provenance mismatch"):
+                report.produce(root, out, **kwargs)
+        self.assertFalse(out.exists())
+        (base / "timing-bin").write_bytes(b"synthetic timing binary")
         for fault in ("counts", "before_hash", "after_hash", "binary", "revision", "loads", "rate"):
             with self.subTest(fault=fault):
                 path = timing / "cpp-full-v0.4.0.json"
@@ -269,11 +278,42 @@ class ReportTests(unittest.TestCase):
                 path.write_bytes(original_reading)
                 log_path.write_bytes(original_log)
 
+    def test_timing_binary_required_and_bound_before_publish(self):
+        root, out, base = audit_fixture(self)
+        timing = timing_fixture(root, base)
+        kwargs = {"workspace_roots": [base], "audit_module": audit,
+                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing,
+                  "timing_binary": base / "timing-bin"}
+        with self.assertRaisesRegex(report.Refusal, "must be supplied together"):
+            report.produce(root, out, **{k: v for k, v in kwargs.items() if k != "timing_binary"})
+        with mock.patch.object(report, "_current_revision", return_value="d" * 40):
+            with self.assertRaisesRegex(report.Refusal, "binary or producer changed before publish"):
+                report.produce(root, out, before_publish=lambda: (base / "timing-bin").write_bytes(b"changed"), **kwargs)
+        self.assertFalse(out.exists())
+
+    def test_timing_binary_cap_boundary(self):
+        root, out, base = audit_fixture(self)
+        timing = timing_fixture(root, base)
+        kwargs = {"workspace_roots": [base], "audit_module": audit,
+                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing,
+                  "timing_binary": base / "timing-bin"}
+        size = (base / "timing-bin").stat().st_size
+        with mock.patch.object(report, "_current_revision", return_value="d" * 40), \
+                mock.patch.object(report, "TIMING_BINARY_CAP", size):
+            self.assertEqual(report.produce(root, out, **kwargs)["status"], "complete")
+        out.unlink()
+        with mock.patch.object(report, "_current_revision", return_value="d" * 40), \
+                mock.patch.object(report, "TIMING_BINARY_CAP", size - 1):
+            with self.assertRaises(report.Refusal):
+                report.produce(root, out, **kwargs)
+        self.assertFalse(out.exists())
+
     def test_timing_shared_budget_and_growing_file(self):
         root, out, base = audit_fixture(self)
         timing = timing_fixture(root, base)
         kwargs = {"workspace_roots": [base], "audit_module": audit,
-                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing}
+                  "screen_binary": base / "cpp-screen-bin", "timing_dir": timing,
+                  "timing_binary": base / "timing-bin"}
         total = sum(path.stat().st_size for path in root.rglob("*.json")) + \
                 sum(path.stat().st_size for path in timing.glob("*.json"))
         with mock.patch.object(report, "_current_revision", return_value="d" * 40):

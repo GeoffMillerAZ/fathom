@@ -102,9 +102,13 @@ def git(root, *args):
     return result.stdout.decode().strip()
 
 
-def clean_repo():
+def clean_repo(expected_head):
+    if git(REPO, "rev-parse", "HEAD") != expected_head:
+        raise Refusal("fathom revision changed")
     if git(REPO, "status", "--porcelain", "--untracked-files=all"):
         raise Refusal("fathom tree changed")
+    if git(REPO, "rev-parse", "HEAD") != expected_head:
+        raise Refusal("fathom revision changed")
 
 
 def tracked_manifest(root):
@@ -339,12 +343,8 @@ def confined_output_paths(args, parser):
     outputs = [args.work_dir, args.indexes_dir, args.lock_dir]
     if args.readings_dir is not None:
         outputs.append(args.readings_dir)
-    docs_readings = REPO / "docs" / "bench" / "readings" / "lang"
     for path in outputs:
-        allowed = any(under(path, root) for root in roots)
-        if path == args.readings_dir and under(path, docs_readings):
-            allowed = True
-        if not allowed:
+        if not any(under(path, root) for root in roots):
             parser.error("output must be within an ignored checkout workspace")
     for first, path in enumerate(outputs):
         for other in outputs[first + 1:]:
@@ -488,8 +488,8 @@ def index_stamp(args, subject, compdb, binary, license_path):
             digest(binary), digest(license_path), digest(Path(__file__)))
 
 
-def index_phase(args, found):
-    clean_repo()
+def index_phase(args, found, expected_head):
+    clean_repo(expected_head)
     if args.scip_binaries_root is None:
         raise Refusal("--scip-binaries-root is required for index")
     expected = [(slug, version) for slug in PINS for version in INDEX_BINARY]
@@ -515,7 +515,7 @@ def index_phase(args, found):
             run([str(binary), "--version"], REPO, stdout,
                 args.work_dir / "index" / version / "version.stderr", 30,
                 LOG_CAP, load_limit=args.load_limit)
-            clean_repo()
+            clean_repo(expected_head)
             if read_bounded(stdout, LOG_CAP).decode(errors="replace").splitlines()[:1] != ["scip-clang " + version[1:]]:
                 raise Refusal("SCIP binary version mismatch")
             binaries[version] = (binary, license_path)
@@ -538,7 +538,7 @@ def index_phase(args, found):
                        "--no-progress-report", "--log-level", "warning"]
             run(command, subject, stdout_log,
                 log, args.timeout, LOG_CAP, load_limit=args.load_limit)
-            clean_repo()
+            clean_repo(expected_head)
             if stamp != index_stamp(args, subject, compdb, binary, license_path):
                 raise Refusal("index inputs changed during command")
             digest(log, LOG_CAP)
@@ -565,7 +565,7 @@ def index_phase(args, found):
         if any(stamp != index_stamp(args, found[slug][0], found[slug][1], *binaries[version])
                for (slug, version), stamp in phase_stamps.items()):
             raise Refusal("index inputs changed during phase")
-        clean_repo()
+        clean_repo(expected_head)
         state["status"] = "complete"
         state["rows"] = rows
         state.pop("reason", None)
@@ -730,8 +730,8 @@ def build_oracles(args):
     return binaries
 
 
-def native(args, found):
-    clean_repo()
+def native(args, found, expected_head):
+    clean_repo(expected_head)
     receipt = args.work_dir / "native" / "receipt.json"
     prior = load_json(receipt) if receipt.exists() else None
     if prior is not None and prior.get("status") != "complete":
@@ -751,7 +751,7 @@ def native(args, found):
         if prior is not None:
             if prior.get("inputs") != inputs or prior.get("outputs") != native_outputs(args.work_dir):
                 raise Refusal("native receipt or inputs changed; use a fresh work directory")
-            clean_repo()
+            clean_repo(expected_head)
             complete = True
             return
         if any(digest(args.clang) not in item[3] for item in found.values()):
@@ -776,7 +776,7 @@ def native(args, found):
                 try:
                     run(argv, REPO, partial, target / (name + ".stderr"), args.timeout,
                         JSON_CAP, load_limit=args.load_limit)
-                    clean_repo()
+                    clean_repo(expected_head)
                     if stamp != native_command_stamp(args, slug, subject, compdb, binaries[name], module):
                         raise Refusal("native inputs changed during command")
                     data = load_json(partial)
@@ -807,7 +807,7 @@ def native(args, found):
         if inputs != native_inputs(args, found, binaries):
             raise Refusal("native inputs changed during phase")
         stage = "finalize"
-        clean_repo()
+        clean_repo(expected_head)
         write_json(receipt, {"status": "complete", "inputs": inputs,
                              "commands": [module for _, module, _ in ORACLES],
                              "outputs": native_outputs(args.work_dir), "counts": counts})
@@ -937,11 +937,11 @@ def grade_command(args, slug, subject, index, output, unmatched, scope, commit):
     return cmd
 
 
-def grade(args, found):
-    clean_repo()
+def grade(args, found, expected_head):
+    clean_repo(expected_head)
     if args.readings_dir is None:
         raise Refusal("--readings-dir is required for grade")
-    commit = git(REPO, "rev-parse", "HEAD")
+    commit = expected_head
     outputs = {f"cpp-{scope}-{version}.json": None for scope in ("legacy", "full")
                for version in ("v0.4.0", "v0.4.1")}
     receipt = args.readings_dir / "cpp-audit-receipt.json"
@@ -970,7 +970,7 @@ def grade(args, found):
                     stamp = grade_command_stamp(args, slug, subject, compdb, index)
                     run(cmd, REPO, target / slug / "stdout.log", target / slug / "stderr.log",
                         args.timeout, LOG_CAP, load_limit=args.load_limit)
-                    clean_repo()
+                    clean_repo(expected_head)
                     if stamp != grade_command_stamp(args, slug, subject, compdb, index):
                         raise Refusal("grade inputs changed during command")
                 published["reason"] = "reading_validation"
@@ -987,7 +987,7 @@ def grade(args, found):
                     retime.extend(["-subject", PINS[slug][1] + "=" + str(subject)])
                 run(retime, REPO, target / "retime.stdout", target / "retime.stderr",
                     args.timeout, LOG_CAP, load_limit=args.load_limit)
-                clean_repo()
+                clean_repo(expected_head)
                 if before != grade_inputs(args, found):
                     raise Refusal("retime inputs changed during command")
                 published["reason"] = "retime_validation"
@@ -1003,7 +1003,7 @@ def grade(args, found):
                 if len(runs) != 3 or len(median) != 1 or [int(x[0]) for x in runs] != [1, 2, 3]:
                     raise Refusal("retime summary incomplete")
                 final = args.readings_dir / f"{stem}.json"
-                clean_repo()
+                clean_repo(expected_head)
                 with reading.open("rb") as source, final.open("xb") as destination:
                     shutil.copyfileobj(source, destination)
                 published["readings"][final.name] = {"sha256": digest(final, READING_CAP),
@@ -1012,7 +1012,7 @@ def grade(args, found):
                     "run_rates_mb_cpu_s": [float(x[1]) for x in runs]}
         if published["inputs"] != grade_inputs(args, found):
             raise Refusal("grade inputs changed during phase")
-        clean_repo()
+        clean_repo(expected_head)
         published["status"] = "complete"
         published.pop("reason", None)
     except Exception:
@@ -1080,14 +1080,15 @@ def main(argv=None):
     try:
         args.work_dir.mkdir(parents=True, exist_ok=True)
         try:
-            clean_repo()
+            expected_head = git(REPO, "rev-parse", "HEAD")
+            clean_repo(expected_head)
             found = subjects(args)
             if args.phase == "index":
-                index_phase(args, found)
+                index_phase(args, found, expected_head)
             elif args.phase == "native":
-                native(args, found)
+                native(args, found, expected_head)
             else:
-                grade(args, found)
+                grade(args, found, expected_head)
         except (Refusal, OSError, ValueError, subprocess.TimeoutExpired,
                 subprocess.SubprocessError, json.JSONDecodeError):
             if args.phase == "native":

@@ -218,7 +218,7 @@ func knownAuditMetadata(lock auditLock) bool {
 			validAuditSource(lock.Grammar, "willbooster-tree-sitter-cpp", "6.0.2", auditGrammarArchive, auditGrammarLicence, 1365727) &&
 			validAuditSource(lock.Runtime, "willbooster-tree-sitter", "7.0.5", auditRuntimeArchive, auditRuntimeLicence, 246632)
 	}
-	if lock.Module.ABI != 15 || !validAuditSource(lock.Runtime, "tree-sitter/tree-sitter", "0.26.11", "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971", "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", 920828) {
+	if lock.Module.ABI != 15 || !validAuditSource(lock.Runtime, "tree-sitter/tree-sitter", "0.26.11", "fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e", "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", 920896) {
 		return false
 	}
 	switch lock.Module.SHA256 {

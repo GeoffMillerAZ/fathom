@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -25,6 +26,7 @@ import (
 
 const retimeNotePrefix = "throughput (design 1.9 T1, T2)"
 const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write] [-load-log <workspace/file.json>]"
+const retimeReadingCap = 16 << 20
 
 type retimeLoadRun struct {
 	Number     int     `json:"number"`
@@ -172,6 +174,41 @@ func retimeSHA(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// retimeBoundedReading parses and hashes exactly the same bounded snapshot.
+func retimeBoundedReading(path string) (langbench.Reading, string, error) {
+	var reading langbench.Reading
+	f, err := os.Open(path)
+	if err != nil {
+		return reading, "", err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, retimeReadingCap+1))
+	if err != nil {
+		return reading, "", err
+	}
+	if len(data) > retimeReadingCap {
+		return reading, "", fmt.Errorf("reading exceeds 16 MiB")
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&reading); err != nil {
+		return reading, "", fmt.Errorf("%s: %w", path, err)
+	}
+	return reading, retimeSHA(data), nil
+}
+
+func retimeWorkspaceRoot() (string, error) {
+	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", fmt.Errorf("checkout root unavailable: %w", err)
+	}
+	workspace := filepath.Join(strings.TrimSpace(string(root)), "workspace")
+	if err := exec.Command("git", "-C", strings.TrimSpace(string(root)), "check-ignore", "-q", "--", "workspace/").Run(); err != nil {
+		return "", fmt.Errorf("checkout workspace is not git-ignored: %w", err)
+	}
+	return workspace, nil
+}
+
 func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("lang-retime", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -201,14 +238,13 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	}
 	refuse := func(err error) int { fmt.Fprintln(stderr, "lang-retime: refused:", err); return 1 }
 	var readingBefore string
+	var r langbench.Reading
+	var err error
 	if *loadLog != "" {
-		data, err := os.ReadFile(*path)
-		if err != nil {
-			return refuse(err)
-		}
-		readingBefore = retimeSHA(data)
+		r, readingBefore, err = retimeBoundedReading(*path)
+	} else {
+		r, err = loadReading(*path)
 	}
-	r, err := loadReading(*path)
 	if err != nil {
 		return refuse(err)
 	}
@@ -225,7 +261,11 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	loadLogSaved := false
 	var product retimeProduct
 	if *loadLog != "" {
-		loadFile, err = openRetimeLoadLog(*loadLog, "workspace")
+		workspace, rootErr := retimeWorkspaceRoot()
+		if rootErr != nil {
+			return refuse(rootErr)
+		}
+		loadFile, err = openRetimeLoadLog(*loadLog, workspace)
 		if err != nil {
 			return refuse(err)
 		}
@@ -379,7 +419,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if loadFile != nil {
-		data, err := os.ReadFile(*path)
+		_, readingAfter, err := retimeBoundedReading(*path)
 		if err != nil {
 			return refuse(err)
 		}
@@ -393,7 +433,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 			ProductBinarySHA256 string          `json:"product_binary_sha256"`
 			ProductModified     bool            `json:"product_modified"`
 			Runs                []retimeLoadRun `json:"runs"`
-		}{"fathom-lang-retime-load-v1", readingBefore, retimeSHA(data), runtime.GOOS, runtime.GOARCH, product.revision, product.binarySHA256, false, loadRuns}
+		}{"fathom-lang-retime-load-v1", readingBefore, readingAfter, runtime.GOOS, runtime.GOARCH, product.revision, product.binarySHA256, false, loadRuns}
 		if err := json.NewEncoder(loadFile).Encode(log); err != nil {
 			return refuse(err)
 		}

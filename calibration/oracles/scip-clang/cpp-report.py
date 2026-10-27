@@ -42,6 +42,7 @@ GRAMMAR_COMMIT = "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02"
 GRAMMAR_ENTRY = "tree_sitter_cpp"
 SCREEN_BINARY_SHA256 = "f7c4c351006b4b59cd76eedef27f03ba093e0ec4eae088f15e8b972fb496cdd4"
 SCREEN_BINARY_CAP = 64 << 20
+TIMING_BINARY_CAP = 128 << 20
 NATIVE_FILES = ("calls.json", "preproc.json", "preproc.ranges.json")
 SYNTAX_FIELDS = ("error_containing", "missing_containing", "both", "error_only",
                  "missing_only", "union", "faults")
@@ -362,7 +363,7 @@ def _screen(screen, reading_hash, unmatched_hash, tenancy, measured, scope, slug
 
 def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
             json_cap=256 << 20, scip_cap=256 << 20, before_publish=None,
-            screen_binary=None, timing_dir=None):
+            screen_binary=None, timing_dir=None, timing_binary=None):
     _require_clean_repo()
     audit = audit_module or _audit()
     if Path(audit_root).is_symlink() or Path(out).parent.is_symlink():
@@ -400,6 +401,8 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
                 timing_root == root or timing_root in root.parents or root in timing_root.parents or \
                 timing_root == target or timing_root in target.parents or target in timing_root.parents:
             raise Refusal("timing directory outside workspace or overlaps inputs")
+    if (timing_root is None) != (timing_binary is None):
+        raise Refusal("timing directory and binary must be supplied together")
     cursor = target.parent
     if not cursor.is_dir() or cursor.is_symlink():
         raise Refusal("output directory absent or symlinked")
@@ -528,6 +531,16 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
     timing_product_revision = None
     timing_product_binary_sha256 = None
     if timing_root is not None:
+        timing_binary = Path(timing_binary)
+        if not timing_binary.is_absolute() or timing_binary != Path(os.path.abspath(timing_binary)):
+            raise Refusal("timing binary path must be absolute and canonical")
+        timing_binary_roots = [base for base in roots if base in timing_binary.parents]
+        if not timing_binary_roots:
+            raise Refusal("timing binary outside workspace")
+        timing_binary_snapshots = {}
+        _safe_file(timing_binary, timing_binary_roots[0], TIMING_BINARY_CAP,
+                   [TIMING_BINARY_CAP], timing_binary_snapshots)
+        timing_product_binary_sha256 = timing_binary_snapshots[timing_binary][0]
         timing_product_revision = _current_revision()
         if len(timing_product_revision) != 40 or any(
                 char not in "0123456789abcdef" for char in timing_product_revision):
@@ -548,8 +561,6 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
                 if not isinstance(timing_log_binary, str) or len(timing_log_binary) != 64 or any(
                         char not in "0123456789abcdef" for char in timing_log_binary):
                     raise Refusal("timing binary hash invalid")
-                if timing_product_binary_sha256 is None:
-                    timing_product_binary_sha256 = timing_log_binary
                 row = _timing_row(readings[(scope, version)], fresh, log,
                                   receipt_rows[name]["sha256"], snapshots[reading_path][0],
                                   timing_product_revision, timing_product_binary_sha256)
@@ -648,6 +659,9 @@ def produce(audit_root, out, *, workspace_roots=None, audit_module=None,
     _require_clean_repo()
     if binary.is_symlink() or not binary.is_file() or binary.stat().st_size > SCREEN_BINARY_CAP or \
             hashlib.sha256(_bounded_bytes(binary, SCREEN_BINARY_CAP)).hexdigest() != binary_hash or \
+            (timing_root is not None and (timing_binary.is_symlink() or
+             not timing_binary.is_file() or timing_binary.stat().st_size > TIMING_BINARY_CAP or
+             hashlib.sha256(_bounded_bytes(timing_binary, TIMING_BINARY_CAP)).hexdigest() != timing_product_binary_sha256)) or \
             producer.is_symlink() or hashlib.sha256(_bounded_bytes(producer, 1 << 20)).hexdigest() != producer_hash or \
             helper.is_symlink() or hashlib.sha256(_bounded_bytes(helper, 1 << 20)).hexdigest() != helper_hash:
         raise Refusal("binary or producer changed before publish")
@@ -678,9 +692,10 @@ if __name__ == "__main__":
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--screen-binary", type=Path, required=True)
     parser.add_argument("--timing-dir", type=Path)
+    parser.add_argument("--timing-binary", type=Path)
     args = parser.parse_args()
     try:
         produce(args.audit_root, args.out, screen_binary=args.screen_binary,
-                timing_dir=args.timing_dir)
+                timing_dir=args.timing_dir, timing_binary=args.timing_binary)
     except Refusal as exc:
         parser.error(str(exc))

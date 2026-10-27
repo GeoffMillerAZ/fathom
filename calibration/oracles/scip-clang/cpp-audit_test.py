@@ -24,7 +24,21 @@ class DriverTest(unittest.TestCase):
                 " M calibration/oracles/scip-clang/cpp-audit.py"
                 if argv[0] == "status" else "a" * 40)):
             with self.assertRaisesRegex(audit.Refusal, "fathom tree changed"):
-                audit.clean_repo()
+                audit.clean_repo("a" * 40)
+
+    def test_clean_repo_refuses_clean_checkout_at_different_head(self):
+        expected = "a" * 40
+        with mock.patch.object(audit, "git", side_effect=lambda root, *argv: (
+                "" if argv[0] == "status" else "b" * 40)):
+            with self.assertRaisesRegex(audit.Refusal, "fathom revision changed"):
+                audit.clean_repo(expected)
+
+    def test_clean_repo_refuses_head_change_during_status(self):
+        heads = iter(("a" * 40, "b" * 40))
+        with mock.patch.object(audit, "git", side_effect=lambda root, *argv: (
+                "" if argv[0] == "status" else next(heads))):
+            with self.assertRaisesRegex(audit.Refusal, "fathom revision changed"):
+                audit.clean_repo("a" * 40)
 
     def test_bounded_inputs_refuse_growth_after_initial_check(self):
         with tempfile.TemporaryDirectory(dir=TEST_TMP) as tmp:
@@ -99,7 +113,7 @@ class DriverTest(unittest.TestCase):
                 for phase in (audit.index_phase, audit.native, audit.grade):
                     with self.subTest(phase=phase.__name__), \
                             self.assertRaisesRegex(audit.Refusal, "fathom tree changed"):
-                        phase(args, {})
+                        phase(args, {}, "a" * 40)
             self.assertFalse(args.index_receipt.exists())
             self.assertFalse(args.readings_dir.exists())
             self.assertFalse(args.work_dir.exists())
@@ -294,6 +308,10 @@ class DriverTest(unittest.TestCase):
                 base.work_dir = subject
                 with self.assertRaises(ValueError):
                     audit.confined_output_paths(base, parser)
+                base.work_dir = workspace / "work"
+                base.readings_dir = audit.REPO / "docs" / "bench" / "readings" / "lang" / "cpp"
+                with self.assertRaises(ValueError):
+                    audit.confined_output_paths(base, parser)
                 base.work_dir = audit.REPO / "docs" / "bench" / "readings" / "lang" / "tracked"
                 with self.assertRaises(ValueError):
                     audit.confined_output_paths(base, parser)
@@ -439,9 +457,10 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "build_inputs", return_value={"files": 1, "sha256": "d" * 64}), \
                     mock.patch.object(audit, "index_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run):
-                audit.index_phase(args, found)
+                audit.index_phase(args, found, "a" * 40)
                 evidence = audit.index_evidence(args, found)
                 self.assertGreaterEqual(clean.call_count, 10)
+                self.assertTrue(all(call.args == ("a" * 40,) for call in clean.call_args_list))
             receipt = args.index_receipt.read_text()
             self.assertNotIn(tmp, receipt)
             self.assertEqual(json.loads(receipt)["status"], "complete")
@@ -532,7 +551,7 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "clean_repo"), \
                     mock.patch.object(audit, "grade_inputs", side_effect=audit.Refusal("private path")), \
                     self.assertRaises(audit.Refusal):
-                audit.grade(args, {})
+                audit.grade(args, {}, "a" * 40)
             receipt = (readings / "cpp-audit-receipt.json").read_text()
             self.assertNotIn(tmp, receipt)
             data = json.loads(receipt)
@@ -584,8 +603,9 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "grade_inputs", return_value={"safe_sha256": "b" * 64}), \
                     mock.patch.object(audit, "grade_command_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run):
-                audit.grade(args, found)
+                audit.grade(args, found, "a" * 40)
                 self.assertGreaterEqual(clean.call_count, 21)
+                self.assertTrue(all(call.args == ("a" * 40,) for call in clean.call_args_list))
             self.assertEqual(len(commands), 16)
             receipt = (args.readings_dir / "cpp-audit-receipt.json").read_text()
             self.assertNotIn(tmp, receipt)
@@ -607,7 +627,7 @@ class DriverTest(unittest.TestCase):
                             mock.patch.object(audit, "run", side_effect=fake_run), \
                             mock.patch.object(audit, "validate_cpp_reading", side_effect=outcomes), \
                             self.assertRaises(audit.Refusal):
-                        audit.grade(args, found)
+                        audit.grade(args, found, "a" * 40)
                     failed = json.loads((args.readings_dir / "cpp-audit-receipt.json").read_text())
                     self.assertEqual(failed["reason"], phase)
                     self.assertEqual(failed["status"], "failed")
@@ -635,7 +655,7 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "native_command_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run), \
                     self.assertRaises(audit.Refusal):
-                audit.native(args, found)
+                audit.native(args, found, "a" * 40)
             receipt = json.loads((root / "native" / "receipt.json").read_text())
             self.assertEqual(receipt["status"], "failed")
             self.assertIsNone(receipt["outputs"])
@@ -661,7 +681,7 @@ class DriverTest(unittest.TestCase):
                     mock.patch.object(audit, "native_command_stamp", return_value=("frozen",)), \
                     mock.patch.object(audit, "run", side_effect=fake_run), \
                     self.assertRaises(audit.Refusal):
-                audit.native(args, found)
+                audit.native(args, found, "a" * 40)
             receipt = json.loads((root / "native" / "receipt.json").read_text())
             self.assertEqual(receipt["status"], "failed")
             self.assertEqual(receipt["counts"]["fmt"]["preproc"], {"units": 1, "stopped": 1})

@@ -93,7 +93,7 @@ The committed `cpp-screen` helper separately counts ERROR, MISSING, their inters
 | Unreal fork, MIT, ABI 15 | `920e9810cc64a47fa05cfcf30c7caecb85b5f2c3`, blob `613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df` | Legacy 61/222. Full fmt 19/69 + spdlog 43/135 exceeds allowance; same json stop/unresolved count. Rejected; isolated replay, no product change. |
 | WillBooster grammar 6.0.2 + runtime 7.0.5, MIT | Crate SHA-256s `8c892195d9e44d816b4cc5ffa9f8cf53d2d1c00b3030feb0d35e612ae5f34bcc` / `166cf42202927500081763e65e63d3c0bc9273e05ba998496756fff7569de9c5` | ABI 0x57420006 requires its own core. Two builds are byte-identical. Legacy 50/222. Full spdlog 37/135 alone exceeds 33-file allowance; fmt/json selected traps leave 27/199 unresolved. Diagnostic rejected; no product pin change. |
 
-[O1508](../../.fathom/observations/O1508.md) records the unresolved incumbent full-json parser fault. A committed helper replay reproduces it at raw ordinal 345; the isolated file probe passes. The exact-order diagnostic traps in 31.767 ms with `wasm error: unreachable` and prior peak 1000 WASM pages. Neither an out-of-memory cause nor a timeout is established. The two ABI 15 candidates trap at selected ordinal 277. WillBooster traps at selected ordinal 43 for fmt and 277 for json, with prior peaks 957/901 pages; memory exhaustion remains unproven. Incomplete screen counters are not population rates, and their unresolved files are never dropped.
+[O1509](../../.fathom/observations/O1509.md) records the unresolved incumbent full-json parser fault. A committed helper replay reproduces it at raw ordinal 345; the isolated file probe passes. The exact-order diagnostic traps in 31.767 ms with `wasm error: unreachable` and prior peak 1000 WASM pages. Neither an out-of-memory cause nor a timeout is established. The two ABI 15 candidates trap at selected ordinal 277. WillBooster traps at selected ordinal 43 for fmt and 277 for json, with prior peaks 957/901 pages; memory exhaustion remains unproven. Incomplete screen counters are not population rates, and their unresolved files are never dropped.
 
 The foreign-runtime audit is C++-only and behind `fathom_grammar_audit`. Its lock must match exact source/tool/licence/module hashes; arbitrary self-consistent module/lock pairs are refused. The production loader, trust policy, grammar lock and default parser are unchanged. The measured module is `e39bd1cf09c15b52b9495b8e19e6b0627f41312f1e60453f4427695baf29e684` (3852285 bytes), with pinned Zig 0.16.0 and wasm-opt 129. This route does not require moving every other language to a fork runtime.
 
@@ -113,7 +113,7 @@ Source-search recovery on 2026-10-26: public requests to `GET /search/repositori
 
 The parser sources checked include the [official grammar](https://github.com/tree-sitter/tree-sitter-cpp), [Unreal fork](https://github.com/taku25/tree-sitter-unreal-cpp), [WillBooster grammar 6.0.2](https://crates.io/crates/willbooster-tree-sitter-cpp/6.0.2), and [matching runtime 7.0.5](https://crates.io/crates/willbooster-tree-sitter/7.0.5). Crates.io registry API access failed, but the sparse index and exact static archives succeeded. The grammar crate records a dirty source tree, so its archive checksum supplies its immutable identity; a Git commit is not substituted. Grammar licence hashes are `2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1` (official HEAD), `ef02f1077281d63262946e50ec461ba72efda41e51084c887379b59397b96a6d` (Unreal), and `2bb45b424e2a497412ab9eb903554eebb9847e4f70bc81eecd2609817301679f` (WillBooster); runtime licence hash is `f1e1e62c6e1119d27f5ba38a0cbdae0788fc00f1d0bdf71cb7710ca5d2421d1c`. [Committed parser receipts](../bench/readings/cpp-audit-2026-10-26/) preserve complete/failed status and every source/population/reading identity. Compiler, LSP and tracing alternatives cannot cure the independently measured parser-admission failure. Their untried metric adapters are not classified as measured failures.
 
-The experimental `O1504` in `1922c8606` is a withdrawn draft unrelated to main's `O1504` (graph-cache eviction). Controller review m1 authorizes the parser-fault record as O1508, allocated against origin/main `4e7eea67a` (highest O1507). No history is rewritten.
+The experimental `O1504` in `1922c8606` is a withdrawn draft unrelated to main's `O1504` (graph-cache eviction). The initial replacement O1508 allocation checked main only and collided with PR #97. It is withdrawn. O1509 is absent from main `01ea58c6b` and all 19 open PR heads in the round-2 allocation snapshot, checked with `gh pr list` and `git grep` as required by M3. No history is rewritten.
 
 ENGINE-history note (M1): `95c59df54` and `b9d22930d` are experiment-only product-swap commits, each reverted immediately by `1283b60ed` and `807922cf4`. They must never be cherry-picked or treated as shipping product states. The current product lock/blob remain byte-exact. All 18 candidate receipts now come from isolated audit-tag replays at `a3374ac40aeca2d527e4c79637809bbf419885fa`, where the shipped grammar is the incumbent. Their syntax counts and population/input identities match the earlier trials, including failed/partial cases. No new production swap is permitted.
 
@@ -127,7 +127,7 @@ Use committed commands with explicit pinned workspace inputs, never a private dr
 
 ```sh
 python3 calibration/oracles/scip-clang/cpp-report_test.py
-python3 calibration/oracles/scip-clang/cpp-report.py --audit-root "$AUDIT_ROOT" --screen-binary "$SCREEN_BINARY" --timing-dir "$TIMING_DIR" --out "$REPORT_OUT"
+python3 calibration/oracles/scip-clang/cpp-report.py --audit-root "$AUDIT_ROOT" --screen-binary "$SCREEN_BINARY" --timing-dir "$TIMING_DIR" --timing-binary "$TIMING_BINARY" --out "$REPORT_OUT"
 python3 calibration/oracles/scip-clang/cpp-audit_test.py
 bash scripts/fathom-go.sh test -race -count=1 ./calibration/oracles/scip-clang/cpp-screen
 bash scripts/fathom-go.sh test -race -count=1 -tags=fathom_grammar_audit -run TestGrammarAudit ./internal/extractor/tsengine
@@ -173,7 +173,7 @@ M1 and M2 plus m1 through m9 are tracked explicitly. The canonical reading and p
 |---|---|
 | M1 | Isolated source-pinned builds and official/Unreal re-screens replace product-swap-dependent receipts; historical commits disclosed above. Fresh replay passes. |
 | M2 | LB-F473 is restored verbatim. The spent pin follows the existing docs/bench convention, with its URL and a shard pointer. No new validation. |
-| m1 | Withdrawn draft O1504 distinguished from main's record; next free O1508 allocated under the controller ruling. |
+| m1 | Withdrawn draft O1504 distinguished from main's record; replacement O1508 withdrawn after its cross-PR collision; M3 records the checked O1509 allocation. |
 | m2 | Optional lang-retime load log brackets all three runs and records clean measuring-binary identity. Four fresh copies publish rates and loads; original unknown loads remain unknown. Fresh replay passes. |
 | m3 | Every phase and publication refuse dirty source trees; the summary binds historical grade/driver commit and all tool hashes separately from current collector identity. |
 | m4 | Both Zig caches and cwd are explicitly under each fresh work directory. Fresh builds are byte-equal to the pinned module hashes. |
@@ -223,3 +223,21 @@ bash scripts/check-merge-debris.sh
 bash scripts/check-merge-debris.sh --staged
 bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom
 ```
+
+
+## Binding review R2
+
+The default grammar and canonical readings were accepted byte-exact in round 2. M3 and n1 through n7 are repaired below; measurements from clean source a3374ac40 remain historical until the fresh R2 replay is published.
+
+| ID | Repair / verification |
+|---|---|
+| M3 | O1508 withdrawn after collision with PR #97. O1509 is absent from main 01ea58c6b and all 19 open PR heads, checked by gh pr list and git grep. No controller assignment is claimed. |
+| n1 | Screen README now names a3374ac40 for the published R1 WillBooster screens. |
+| n2 | Grade outputs must use ignored workspace paths; every phase pins HEAD through cleanliness checks and publication. |
+| n3 | Command-level load tests interleave actual measured clocks; exact binary hash cap accepts equality and refuses cap+1. |
+| n4 | Retime hashes and parses one bounded reading buffer; log output resolves the Git root and checks ignore status. The report requires and hashes the actual timing binary before and after publication. |
+| n5 | Runtime archive fetch uses exact commit 64402de2857cc197ecc4ca3bc144ea91fda7e72e. Its archive SHA-256 is fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e, 920896 bytes. |
+| n6 | Both compiler/optimizer calls assert confined cwd and both Zig cache variables; corrupt archives exit with a path-free error. |
+| n7 | The allowlist is explicitly frozen to this audit; the unused holdout path is removed. Receipt-prefix acceptance and near-miss refusals are tested. |
+
+Allocation snapshot: main 01ea58c6bc0f5d7753d51a6be00c46fe2659fffc and PRs #73, #76, #77, #86, #87, #88, #89, #90, #91, #92, #93, #95, #96, #97, #98, #105 and #106, #107 and #108. Their fetched heads matched the gh listing before `git grep -I -l -w O1509` returned no matches across all 20 refs. Only PR numbers and commit identities are relevant; no author data was retained. This is a checked snapshot, not a reservation against future concurrent allocations.

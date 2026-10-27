@@ -50,6 +50,9 @@ type config struct {
 	ProductRoot                                   string // tests supply an isolated Git repo; production uses this checkout
 }
 
+// candidatePaths is frozen to this C++ audit, not a reusable allowance for
+// later product or build changes. Recorded screens are built directly with
+// scripts/fathom-go.sh, never through Taskfile build targets.
 var candidatePaths = map[string]bool{
 	"Taskfile.yml": true,
 	"calibration/oracles/scip-clang/cpp-audit.py":                 true,
@@ -62,9 +65,8 @@ var candidatePaths = map[string]bool{
 	"docs/assessments/README.md":                                  true,
 	"docs/plans/language-breadth.md":                              true,
 	"docs/bench/cpp-historical-holdout.yaml":                      true,
-	"calibration/holdouts/cpp.yaml":                               true,
 	"calibration/corpus.d/cpp.yaml":                               true,
-	".fathom/observations/O1508.md":                               true,
+	".fathom/observations/O1509.md":                               true,
 
 	"internal/extractor/tsengine/grammars/grammars.lock.json":            true,
 	"internal/extractor/tsengine/grammars/cpp.wasm.gz":                   true,

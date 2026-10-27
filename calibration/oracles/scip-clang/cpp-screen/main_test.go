@@ -92,6 +92,34 @@ func TestCandidateDiffAdmitsHelperOnly(t *testing.T) {
 		t.Fatalf("refused narrow diagnostic changes: %v", err)
 	}
 }
+func TestCandidateDiffAuditReceiptPrefix(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		allowed bool
+	}{
+		{"docs/bench/readings/cpp-audit-2026-10-26/replay.json", true},
+		{"docs/bench/readings/cpp-audit-2026-10-26/timing/replay.loads.json", true},
+		{"docs/bench/readings/lang/x.json", false},
+		{"docs/bench/readings/cpp-audit-2026-10-26-other/x.json", false},
+		{"docs/bench/readings/cpp-audit-2026-10-26/replay.go", false},
+		{"calibration/holdouts/cpp.yaml", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _, baseline := gitCandidateFixture(t)
+			writeFixtureFile(t, root, tc.name, "{}")
+			gitFixtureCommand(t, root, "add", ".")
+			gitFixtureCommand(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "receipt guard")
+			err := candidateDiffAllowedForMode(root, baseline, gitFixtureCommand(t, root, "rev-parse", "HEAD"), true)
+			if tc.allowed && err != nil {
+				t.Fatalf("refused audit receipt: %v", err)
+			}
+			if !tc.allowed && (err == nil || err.Error() != "candidate_unrelated_change") {
+				t.Fatalf("near miss: got %v, want candidate_unrelated_change", err)
+			}
+		})
+	}
+}
+
 func TestCandidateDiffRejectsOtherGrammarAndStaleOrDirtySource(t *testing.T) {
 	root, baseline, candidate := gitCandidateFixture(t)
 	writeFixtureFile(t, root, "internal/extractor/tsengine/grammars/grammars.lock.json", `{"core":{},"toolchain":{},"grammars":[{"blob":"c","blob_sha256":"changed"},{"blob":"cpp","blob_sha256":"new"}]}`)

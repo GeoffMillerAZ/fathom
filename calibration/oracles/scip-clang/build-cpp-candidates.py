@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import tarfile
 import urllib.request
 
 HERE = Path(__file__).resolve().parent
@@ -14,7 +15,7 @@ spec = importlib.util.spec_from_file_location("willbooster_builder", HERE / "bui
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 audit = builder.audit
-CORE = ("tree-sitter/tree-sitter", "v0.26.11", "64402de2857cc197ecc4ca3bc144ea91fda7e72e", "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971", "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", 920828, "tree-sitter-0.26.11")
+CORE = ("tree-sitter/tree-sitter", "v0.26.11", "64402de2857cc197ecc4ca3bc144ea91fda7e72e", "fc2a4d846c36f7d19714085bbad76a68c5ff9d0fe7b1e2a6a62a22446efe966e", "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78", 920896, "tree-sitter-64402de2857cc197ecc4ca3bc144ea91fda7e72e")
 CANDIDATES = {
     "official-head": ("tree-sitter/tree-sitter-cpp", "c009222808634c1014f82438d4883753516a2c24", "6c6efaf024f5c02fee0403e4e2373346eeadc40828587bcfad9351df2f0a7986", "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1", 1740811, "fde7035227a488422e95cc1a408fecbbc5b3440dceebf109e42d483d31270ed2", 2790800),
     "unreal": ("taku25/tree-sitter-unreal-cpp", "920e9810cc64a47fa05cfcf30c7caecb85b5f2c3", "285ad7c2969a03254ed7a77068e0effca26cb8f014bc5b9d300bd4415ec0b17b", "ef02f1077281d63262946e50ec461ba72efda41e51084c887379b59397b96a6d", 2628614, "613af35868891df920a1e5c12fb67b2c2e83eb6a7c9cab6d3a1247acd20d22df", 3975018),
@@ -52,7 +53,7 @@ def build(args):
     out.mkdir(parents=True)
     repo, version, pin, archive_sha, licence_sha, size, prefix = CORE
     core, runtime = source(work, "runtime", repo, version[1:], archive_sha, licence_sha,
-                           size, prefix, "https://codeload.github.com/" + repo + "/tar.gz/refs/tags/" + version)
+                           size, prefix, "https://codeload.github.com/" + repo + "/tar.gz/" + pin)
     repo, pin, archive_sha, licence_sha, size, module_sha, module_bytes = CANDIDATES[args.candidate]
     prefix = repo.split("/")[1] + "-" + pin
     grammar, provenance = source(work, "grammar", repo, pin, archive_sha, licence_sha, size,
@@ -89,13 +90,19 @@ def build(args):
     (out / "grammars.lock.json").write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n")
 
 
-if __name__ == "__main__":
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidate", choices=tuple(CANDIDATES), required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--gzip", action="store_true")
     try:
-        build(parser.parse_args())
+        build(parser.parse_args(argv))
+    except tarfile.TarError:
+        parser.exit(1, "build-cpp-candidates: corrupt source archive\n")
     except (audit.Refusal, OSError) as error:
         parser.exit(1, "build-cpp-candidates: " + type(error).__name__ + "\n")
+
+
+if __name__ == "__main__":
+    main()

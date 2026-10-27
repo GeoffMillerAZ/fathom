@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -42,35 +43,75 @@ func TestRetimeLoadLogPathRefusesUnsafeDestinations(t *testing.T) {
 	}
 }
 
-func TestRetimeLoadObservationBracketsRun(t *testing.T) {
-	var steps []string
+func TestRetimeWorkspaceRootUsesCheckoutAndIgnoreRule(t *testing.T) {
+	t.Chdir(filepath.Join("..", ".."))
+	root, err := os.MkdirTemp("workspace/tmp", "retime-root-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err = filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(root) })
+	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	if err := os.Mkdir(filepath.Join(root, "workspace"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	if _, err := retimeWorkspaceRoot(); err == nil {
+		t.Fatal("accepted a checkout whose workspace is not git-ignored")
+	}
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("workspace/\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	workspace, err := retimeWorkspaceRoot()
+	if err != nil || workspace != filepath.Join(root, "workspace") {
+		t.Fatalf("workspace = %q, %v", workspace, err)
+	}
+}
+
+func TestRetimeBoundedReadingRejectsOversize(t *testing.T) {
+	t.Chdir(filepath.Join("..", ".."))
+	dir, err := os.MkdirTemp("workspace", "retime-reading-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	path := filepath.Join(dir, "reading.json")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(retimeReadingCap + 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := retimeBoundedReading(path); err == nil {
+		t.Fatal("accepted reading above size bound")
+	}
+}
+
+func TestRetimeLoadObserverValues(t *testing.T) {
 	reads := 0
 	read := func() (float64, error) {
 		reads++
 		if reads == 1 {
-			steps = append(steps, "before")
 			return 7.25, nil
 		}
-		steps = append(steps, "after")
 		return 8.5, nil
 	}
 	observer := retimeLoadObserver{read: read}
 	if err := observer.before(); err != nil {
 		t.Fatal(err)
 	}
-	rate, err := func() (float64, error) {
-		steps = append(steps, "run")
-		return 1.23, nil
-	}()
+	observed, err := observer.after(2, 1.23)
 	if err != nil {
 		t.Fatal(err)
-	}
-	observed, err := observer.after(2, rate)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(steps, []string{"before", "run", "after"}) {
-		t.Fatalf("observation order: %v", steps)
 	}
 	want := retimeLoadRun{Number: 2, RateMBCPUS: 1.23, LoadBefore: 7.25, LoadAfter: 8.5}
 	if observed != want {
@@ -84,6 +125,12 @@ func TestRetimeLoadObservationBracketsRun(t *testing.T) {
 func TestCmdLangRetimeLoadLogBindsReadingAndProduct(t *testing.T) {
 	root, reading := retimeFixture(t)
 	stubFileClocks(t, time.Millisecond, time.Millisecond, true)
+	var steps []string
+	clock := fileClocks.cpu
+	fileClocks.cpu = func() time.Duration {
+		steps = append(steps, "clock")
+		return clock()
+	}
 	dir, err := os.MkdirTemp("workspace", "retime-load-")
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +144,11 @@ func TestCmdLangRetimeLoadLogBindsReadingAndProduct(t *testing.T) {
 	oldLoad, oldProduct := retimeLoadReader, retimeProductIdentityReader
 	t.Cleanup(func() { retimeLoadReader, retimeProductIdentityReader = oldLoad, oldProduct })
 	reads := 0
-	retimeLoadReader = func() (float64, error) { reads++; return float64(reads), nil }
+	retimeLoadReader = func() (float64, error) {
+		reads++
+		steps = append(steps, "load")
+		return float64(reads), nil
+	}
 	retimeProductIdentityReader = func() (retimeProduct, error) {
 		return retimeProduct{revision: "clean-revision", binarySHA256: "binary-hash"}, nil
 	}
@@ -107,6 +158,15 @@ func TestCmdLangRetimeLoadLogBindsReadingAndProduct(t *testing.T) {
 	}
 	if reads != 6 {
 		t.Fatalf("load reads = %d, want 6", reads)
+	}
+	segments := strings.Split(strings.Join(steps, ","), "load")
+	if len(segments) != 7 {
+		t.Fatalf("load/clock order: %v", steps)
+	}
+	for run := 0; run < 3; run++ {
+		if !strings.Contains(segments[2*run+1], "clock") {
+			t.Fatalf("run %d has no measured clock between load reads: %v", run+1, steps)
+		}
 	}
 	after, err := os.ReadFile(reading)
 	if err != nil {
@@ -150,6 +210,19 @@ func TestRetimeBoundedBinarySHARejectsOversize(t *testing.T) {
 	t.Cleanup(func() { os.RemoveAll(dir) })
 	path := filepath.Join(dir, "large")
 	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(128 << 20); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := retimeBoundedBinarySHA(path); err != nil {
+		t.Fatalf("exact cap refused: %v", err)
+	}
+	f, err = os.OpenFile(path, os.O_WRONLY, 0600)
 	if err != nil {
 		t.Fatal(err)
 	}
