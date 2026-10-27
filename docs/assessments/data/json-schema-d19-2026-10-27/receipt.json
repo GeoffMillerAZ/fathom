@@ -1,8 +1,52 @@
 {
+  "unattested_fathom": [
+    {
+      "fathom_pairs": 107,
+      "files": 977,
+      "graded": false,
+      "membership_sha256": "4b2d026e09221f1c1bf944cddacd0f6604eb6f1b9eaacf086b0a1c510bc22b7b",
+      "unit": "source file, root entity, target file",
+      "subject": 0,
+      "oracle_xref_family_present": false,
+      "unattested_unscored_pairs": 107
+    },
+    {
+      "fathom_pairs": 3,
+      "files": 52,
+      "graded": false,
+      "membership_sha256": "a2c391d78b4967fb55d6cbbd146535268212548167700ed56d2c2da920f1b83b",
+      "unit": "source file, root entity, target file",
+      "subject": 1,
+      "oracle_xref_family_present": true,
+      "unattested_unscored_pairs": 0
+    },
+    {
+      "fathom_pairs": 14,
+      "files": 11,
+      "graded": false,
+      "membership_sha256": "f79fbcabfa05f7ce22cb32461c9e06a45595bda88c5c1fc086edd511476efd7b",
+      "unit": "source file, root entity, target file",
+      "subject": 2,
+      "oracle_xref_family_present": false,
+      "unattested_unscored_pairs": 14
+    },
+    {
+      "fathom_pairs": 170,
+      "files": 57,
+      "graded": false,
+      "membership_sha256": "c178ccc3521e4983e237183c868ad89c8a1956a41a6ffb4d8446a4c2729f7c70",
+      "unit": "source file, root entity, target file",
+      "subject": 3,
+      "oracle_xref_family_present": false,
+      "unattested_unscored_pairs": 170
+    }
+  ],
+  "pair_counter_sha256": "f9e488556fea7a80a261e861e1d7fa236c22e6f43a677077023c12e156f322e6",
+  "pair_counter_source_sha256": "3f7102b8fb1be0b428886a8110fbc1b88bda7be59166ac891fb44f580d12982c",
   "native": {
     "protocol_sha256": "15865e8130a49a061607bcbde5ef08e5a0b04b8f687cb359528f2dfc7feeb5d9",
     "oracle_sha256": "d0ee6ebf4ff965804cd5973aa70fd4c51b73a845e4f97b1d9d1f3b7cbf8f749d",
-    "controls_sha256": "a77918b59b2b52ea5960019b73d4d8ac1855d391633271dbf60c7d2c495e1908",
+    "controls_sha256": "76298df44b0a0ca07dfef4a40f7586a9e63decee29e91f09a845043b4d269476",
     "subjects": [
       {
         "subject": 0,
@@ -122,10 +166,10 @@
       }
     ]
   },
-  "reading_sha256": "8ad789c8edffbeba3f520218cc380b0d5ad3e960cd7c9a1f07ef84617949251c",
-  "indexbench_sha256": "a2610ef0b45af35d3cb2b21bb38d54fe673403a3c2996637e9cb8e33a351337b",
-  "fathom_commit": "736146e5d",
-  "extractor_tree": "a6ae8eafbd2a3668cb31c8df7ee24c044d6f761b",
+  "reading_sha256": "232b86d3206c0b30b36d7e1f591710a92a8f377c7ebbf77c9a70de5ce7241eb5",
+  "indexbench_sha256": "a99a1164b84bb4aa4f3979924bca57db30ccde5110ea7506a78c3dd8c7ce9c80",
+  "fathom_commit": "b6abd86a2",
+  "extractor_tree": "6ace9e87ca5a00490250a287f856a890479d0dc2",
   "manifests": [
     {
       "subject": 0,

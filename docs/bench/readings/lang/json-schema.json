@@ -11,7 +11,7 @@
     "L3_reason": "evidence: 3 references, under 20"
   },
   "measured_at": "2026-10-27",
-  "fathom_commit": "736146e5d",
+  "fathom_commit": "b6abd86a2",
   "extractor": "dialect",
   "subjects": [
     {
@@ -41,9 +41,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1645.3069999999989,
-        "extract_cpu_ms": 1770.769999999999,
-        "max_file_ms": 122,
+        "extract_ms": 1643.6019999999992,
+        "extract_cpu_ms": 1767.8599999999979,
+        "max_file_ms": 125,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -80,8 +80,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 4.960000000000002,
-        "extract_cpu_ms": 6.215000000000002,
+        "extract_ms": 4.698,
+        "extract_cpu_ms": 5.619,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -114,8 +114,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 8.898000000000003,
-        "extract_cpu_ms": 10.341000000000001,
+        "extract_ms": 9.262000000000002,
+        "extract_cpu_ms": 10.679000000000002,
         "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -148,8 +148,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.377,
-        "extract_cpu_ms": 1.43,
+        "extract_ms": 1.5059999999999998,
+        "extract_cpu_ms": 1.8539999999999999,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -211,10 +211,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 20.49,
+    "throughput_mb_s": 20.52,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 22.07,
-    "max_file_ms": 122,
+    "wall_throughput_mb_s": 22.09,
+    "max_file_ms": 125,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -222,14 +222,26 @@
   "notes": [
     "SchemaStore/schemastore: 6 files skipped by ingest's gates (oversize)",
     "SchemaStore/schemastore: 64151 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "SchemaStore/schemastore: Fathom resolves 107 distinct file/root-entity/target-file pairs; 107 unattested and unscored because the oracle emits no xref family where it attests none. Neither true nor false without identifier-aware attestation; no empty family supplied.",
     "SchemaStore/schemastore: P-T1 independent resolver tier C; complete preregistered scope; no network reference fetch; D19 per-metric minimum 20",
+    "SchemaStore/schemastore: Pooled xref precision 1 describes only 3 scored pairs; its denominator is under 20 only because other subjects have unattested and unscored Fathom pairs, not because Fathom resolves only 3 pairs.",
+    "SchemaStore/schemastore: Timing is one final capture per subject, nice 10, load at most 6 and free disk at least 20 GiB, private caches, no daemon; not a median of three or a speedup claim.",
     "SchemaStore/schemastore: restricted to src/schemas/json/** (-only; the files outside are a disclosed gap, not measured)",
+    "json-schema-org/JSON-Schema-Test-Suite: Fathom resolves 3 distinct file/root-entity/target-file pairs, all admitted to the existing xref score; zero additional unscored pairs.",
     "json-schema-org/JSON-Schema-Test-Suite: P-T1 independent resolver tier C; complete preregistered scope; no network reference fetch; D19 per-metric minimum 20",
+    "json-schema-org/JSON-Schema-Test-Suite: Pooled xref precision 1 describes only 3 scored pairs; its denominator is under 20 only because other subjects have unattested and unscored Fathom pairs, not because Fathom resolves only 3 pairs.",
+    "json-schema-org/JSON-Schema-Test-Suite: Timing is one final capture per subject, nice 10, load at most 6 and free disk at least 20 GiB, private caches, no daemon; not a median of three or a speedup claim.",
     "json-schema-org/JSON-Schema-Test-Suite: restricted to remotes/** (-only; the files outside are a disclosed gap, not measured)",
+    "oasis-open/cti-stix2-json-schemas: Fathom resolves 170 distinct file/root-entity/target-file pairs; 170 unattested and unscored because the oracle emits no xref family where it attests none. Neither true nor false without identifier-aware attestation; no empty family supplied.",
     "oasis-open/cti-stix2-json-schemas: P-T1 independent resolver tier C; complete preregistered scope; no network reference fetch; D19 per-metric minimum 20",
+    "oasis-open/cti-stix2-json-schemas: Pooled xref precision 1 describes only 3 scored pairs; its denominator is under 20 only because other subjects have unattested and unscored Fathom pairs, not because Fathom resolves only 3 pairs.",
+    "oasis-open/cti-stix2-json-schemas: Timing is one final capture per subject, nice 10, load at most 6 and free disk at least 20 GiB, private caches, no daemon; not a median of three or a speedup claim.",
     "oasis-open/cti-stix2-json-schemas: restricted to schemas/** (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "radiantearth/stac-spec: Fathom resolves 14 distinct file/root-entity/target-file pairs; 14 unattested and unscored because the oracle emits no xref family where it attests none. Neither true nor false without identifier-aware attestation; no empty family supplied.",
     "radiantearth/stac-spec: P-T1 independent resolver tier C; complete preregistered scope; no network reference fetch; D19 per-metric minimum 20",
+    "radiantearth/stac-spec: Pooled xref precision 1 describes only 3 scored pairs; its denominator is under 20 only because other subjects have unattested and unscored Fathom pairs, not because Fathom resolves only 3 pairs.",
+    "radiantearth/stac-spec: Timing is one final capture per subject, nice 10, load at most 6 and free disk at least 20 GiB, private caches, no daemon; not a median of three or a speedup claim.",
     "radiantearth/stac-spec: restricted to item-spec/json-schema/**, catalog-spec/json-schema/**, collection-spec/json-schema/** (-only; the files outside are a disclosed gap, not measured)"
   ],
   "disposition": null

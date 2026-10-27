@@ -1,7 +1,6 @@
 {
-  "subject": 1,
-  "actual_comparison_artifact_perturbed": true,
-  "native_definitions_unchanged": true,
-  "native_cross_references_unchanged": true,
-  "reading_restored": true
+  "method": "structural_argv_and_source_review",
+  "dynamic_independence_control": false,
+  "basis": "Oracle argv supplies tools and subject only; reviewed reads enumerate subject JSON and resolver dependencies, never a Fathom comparison artifact.",
+  "oracle_sha256": "d0ee6ebf4ff965804cd5973aa70fd4c51b73a845e4f97b1d9d1f3b7cbf8f749d"
 }

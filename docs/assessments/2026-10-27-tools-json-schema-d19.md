@@ -1,7 +1,9 @@
 # JSON Schema: D19 replay and authority correction
 
-The full four-subject replay leaves L3 **unmet → unmet**, with D19 recall and
-precision denominators **3 → 3** each (the pre-D19 grade was excellent).
+The full four-subject replay leaves L3 **unmet → unmet**, with **3 scored pairs; 291 more Fathom pairs unattested and unscored**.
+D19 still sees 3/3 only because absent oracle families omit those Fathom pairs;
+the displayed precision 1 covers the scored subset, not whole-format accuracy.
+The pre-D19 grade was excellent.
 L1/L2 change **excellent → good** because P-T1 classifies the actual independent
 third-party resolver at C. Accuracy remains sym 1/1 and refs 1/0.9993. There is
 no product extractor, shared ENGINE, epoch or generated-board change.
@@ -24,17 +26,19 @@ file references, not STIX validity.
 
 | Subject | Tracked JSON / bytes | Native schemas | Scored files / bytes | L1 matched / truth / Fathom | L2 found / truth / Fathom | L3 found / truth / Fathom |
 |---|---:|---:|---:|---:|---:|---:|
-| SchemaStore | 1,001 / 75,198,609 | 983 | 977 / 36,424,833 | 35,948 / 35,948 / 35,948 | 40,880 / 40,880 / 40,908 | absent |
+| SchemaStore | 1,001 / 75,198,609 | 983 | 977 / 36,424,833 | 35,948 / 35,948 / 35,948 | 40,880 / 40,880 / 40,908 | no family; 107 Fathom pairs unscored |
 | JSON Schema Test Suite remotes | 79 / 17,269 | 52 | 52 / 13,036 | 97 / 97 / 97 | 3 / 3 / 3 | 3 / 3 / 3 |
-| STAC | 11 / 24,804 | 11 | 11 / 24,804 | 40 / 40 / 40 | 5 / 5 / 5 | absent |
-| STIX | 57 / 188,583 | 57 | 57 / 188,583 | 142 / 142 / 142 | 5 / 5 / 5 | absent |
-| Pooled | 1,148 / 75,429,265 | 1,103 | 1,097 / 36,651,256 | 36,227 / 36,227 / 36,227 | 40,893 / 40,893 / 40,921 | 3 / 3 / 3 |
+| STAC | 11 / 24,804 | 11 | 11 / 24,804 | 40 / 40 / 40 | 5 / 5 / 5 | no family; 14 Fathom pairs unscored |
+| STIX | 57 / 188,583 | 57 | 57 / 188,583 | 142 / 142 / 142 | 5 / 5 / 5 | no family; 170 Fathom pairs unscored |
+| Pooled | 1,148 / 75,429,265 | 1,103 | 1,097 / 36,651,256 | 36,227 / 36,227 / 36,227 | 40,893 / 40,893 / 40,921 | 3 / 3 / 3 scored; 291 additional unscored |
 
 Every scored family is C. Per-subject L1 precision/recall are 1; L2 recall is 1,
 and precision is 40,880/40,908 (0.9993) for SchemaStore and 1 for the other three.
-Only the suite has an L3 family: 3/3 recall and precision, both below D19's 20.
-Absent subject metrics remain absent; zero observed pairs are not invented
-denominators. No new subject minimum is applied.
+Only the suite has an L3 family: 3/3 scored recall and precision. The precision
+denominator is below 20 only because the oracle emits no xref family where it
+attests none, so the harness omits 291 additional Fathom pairs. Those pairs are
+neither true nor false without identifier-aware attestation. We do not supply an
+empty family or change the scoring rule. No new subject minimum is applied.
 
 The exact design §13.3.1 before/after manifests are equal in all six scopes;
 counts/digests are in the [receipt](data/json-schema-d19-2026-10-27/receipt.json).
@@ -50,8 +54,12 @@ This is a fresh scoped replay, not a numerical reproduction of the historical
 reading. That reading had 978 SchemaStore files / 36,427,989 bytes and 54 suite
 files / 21,607 bytes, versus 977 / 36,424,833 and 52 / 13,036 now. In particular,
 the historical suite byte count exceeds the complete pinned remotes manifest.
-The old counts alone do not identify those additional inputs; no historical
-file membership is inferred or repaired. The new `-only` scopes and native claim
+The cause is the historical cone-mode sparse checkout including parent-directory
+files. The suite included two root schemas: 5,725 + 2,846 = 8,571 bytes, exactly
+21,607 - 13,036, and 54 - 52 = 2 files. SchemaStore included its parent validation
+schema: 3,156 bytes, exactly 36,427,989 - 36,424,833, and 978 - 977 = 1 file. The
+four suite and ten SchemaStore definitions removed by the explicit scopes were
+all previously matched; this does not trim hard inputs to improve accuracy. The new `-only` scopes and native claim
 set exactly reconcile to the current reading. Required kinds stay field,
 package and type_alias.
 
@@ -69,8 +77,10 @@ STAC reports 17 URL read events and 11 initial subject-file reads, and STIX 170
 URL events and 57 initial subject-file reads. Absolute schema identifiers move
 resolution to URL space. The stub does not attest their local target bindings.
 These 254 sites are disclosed unscored references, not valid measured pairs or
-evidence of 100% whole-format L3 recall. SchemaStore's three in-subject file
-reference sites are self references and add no cross-file pair. The suite's
+evidence of 100% whole-format L3 recall. The oracle's three in-subject SchemaStore file-reference sites are self references
+and add no native cross-file pair. Fathom independently resolves 107 pairs there;
+all are unattested and unscored. Together with STAC14 and STIX170 this is 291
+unscored pairs beside the suite's three scored pairs, 294 Fathom pairs total. The suite's
 three distinct pairs are the entire current scored L3 population.
 
 Reproduce the diagnostic for each new subject with
@@ -91,8 +101,10 @@ and Bowtie 2026.10.2 coordinates validators without an established file-pair dum
 inventory's pending wording records the pre-run state. No generic absence claim
 or untried-candidate failure is asserted.
 
-The measured ceiling is this instrument/population: L3 remains thin and the
-independent authority caps otherwise passing L1/L2 at good. Revisit when a
+The measured ceiling is this instrument/population: L3 has only three scored
+pairs while 291 Fathom pairs lack attestation; the apparent thin precision
+denominator is an instrument artifact. Independent authority caps otherwise
+passing L1/L2 at good. Revisit when a
 same-unit full replay has at least 20 truth and Fathom pairs per graded metric,
 or an approved identifier-aware instrument measures the disclosed URI scope.
 Excellence additionally requires owner evaluation or a maintained SCIP producer
@@ -110,28 +122,34 @@ python3 -B calibration/oracles/json-schema/prepare_d19.py sdk --out workspace/ar
 python3 -B calibration/oracles/json-schema/prepare_d19.py subjects --out workspace/artifacts/json-schema-d19-r1
 python3 -B calibration/oracles/json-schema/controls_d19.py -tools workspace/artifacts/json-schema-d19-r1/tools -out workspace/artifacts/json-schema-d19-r1/controls
 bash scripts/fathom-go.sh build -o workspace/artifacts/json-schema-d19-r1/bin/indexbench ./cmd/indexbench
+bash scripts/fathom-go.sh build -o workspace/artifacts/json-schema-d19-r1/bin/fathom-pairs ./calibration/oracles/json-schema/fathom-pairs
 python3 -B calibration/oracles/json-schema/measure_d19.py native --out workspace/artifacts/json-schema-d19-r1
-python3 -B calibration/oracles/json-schema/measure_d19.py compare --out workspace/artifacts/json-schema-d19-r1 --indexbench workspace/artifacts/json-schema-d19-r1/bin/indexbench
+python3 -B calibration/oracles/json-schema/measure_d19.py compare --out workspace/artifacts/json-schema-d19-r1 --indexbench workspace/artifacts/json-schema-d19-r1/bin/indexbench --pair-counter workspace/artifacts/json-schema-d19-r1/bin/fathom-pairs
 python3 -B calibration/oracles/json-schema/measure_d19.py independence --out workspace/artifacts/json-schema-d19-r1
 python3 -B -m unittest discover -s calibration/oracles/json-schema -p 'test_*.py'
 ```
 
 All four native populations finish before Fathom comparisons. SDK source versions,
 integrities, lock hash, binary hash and extractor tree are pinned in the protocol
-and public receipts. Extraction was measured at 736146e5d; source-only oracle and
-driver changes do not change product extraction. The harness recorded zero faults,
-maximum file 122 ms and 20.49 MB/CPU-s for this replay. This is one timing capture,
+and public receipts. The disclosure replay uses the product extractor at b6abd86a2; the bench-only
+counter and driver changes do not alter product extraction. The harness recorded zero faults,
+maximum file 125 ms and 20.52 MB/CPU-s for this disclosure replay. This is one timing capture,
 not a separate median-of-three throughput experiment or speedup claim.
 
-Controls: raw truth remains byte-identical after perturbing the actual Fathom
-comparison artifact; an authored input reference changes its native target.
+Independence is structural source/argv review: the oracle receives only its SDK
+and pinned subject and has no Fathom comparison artifact in its reviewed reads.
+The old unrelated-output perturbation could not falsify this and is withdrawn
+as a control, including the equivalent authored-fixture perturbation. The
+[structural record](data/json-schema-d19-2026-10-27/independence.json) explicitly
+makes no dynamic-control claim. All native truth hashes match the prior run.
+A genuine input-sensitivity control changes an authored reference target.
 Zero-reference schemas remain in scope and repeated sites preserve the incumbent
 distinct-file pair unit. Mutation: `controls_d19.py` changes each emitted C family
 to A in a private copy of `json_schema_oracle.mjs`; the focused
-`OracleControlTest.test_native_truth_is_independent_and_input_sensitive_at_tier_c`
+`OracleControlTest.test_native_truth_is_input_sensitive_at_tier_c`
 fails on `C != A` for each mutant, then restores GREEN (no skips). The committed
 [control summary](data/json-schema-d19-2026-10-27/controls.json) and
-[actual-output probe](data/json-schema-d19-2026-10-27/independence.json) bind results.
+[structural review](data/json-schema-d19-2026-10-27/independence.json) bind results.
 
 Caps: `test_prepare_d19.py::PrepareBoundsTest.test_population_caps_refuse_whole_scope_and_symlinks_are_not_followed`
 tests exact and +1 file count, source-file bytes and aggregate bytes using smaller
@@ -143,7 +161,7 @@ bounded reads), 1 GiB Node heap and 300 seconds per subject. These limits do not
 expand native URI scope or silently admit a partial success.
 
 
-Validation after main merge: origin/main 3118be853 merged cleanly at 25e153422;
+Original validation before T-R18, after the main merge: origin/main 3118be853 merged cleanly at 25e153422;
 its changes do not alter JSON Schema extraction or the measured Go implementation.
 `bash scripts/fathom-go.sh test -race ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestCommittedReadingsAreCanonical)$' -count=1`
 and `bash scripts/fathom-go.sh test -race ./internal/extractor -run '^TestJSONSchema' -count=1`
@@ -169,3 +187,15 @@ workspace/artifacts/json-schema-d19-r1/bin/fathom verify --strict --since origin
 
 The validation record changes no plan lexical input. Subjects, SDK and builds are
 pruned after the final check; reproduction recreates them with the commands above.
+
+T-R18 follow-up: the bench-only counter consumes the harness's exact tenancy_files
+membership and calls the same ResolveDocXrefs and ResolveIdentityXrefs passes.
+It deduplicates the existing file/root-entity/target-file unit, emits counts only
+with graded=false, and supplies no truth or empty oracle family. Each compare
+first enumerates that population, then regenerates the canonical reading with
+per-subject -note disclosures and rechecks membership and pair counts. No reading
+was hand edited. Two Go tests cover repeated-site collapse, identifier behavior
+and refusal of invalid/duplicate membership. X-R10 tenancy and clean-head strict
+verification are required before READY. TestLanguagesTrackerIsGenerated is
+expected red until the controller regenerates docs/languages.md at integration
+(F2); the lane does not modify generated files.

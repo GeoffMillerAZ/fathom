@@ -13,7 +13,8 @@
       "restored_green": true
     }
   ],
-  "truth_independent": true,
+  "independence_basis": "structural_argv_and_source_review",
+  "output_perturbation_control": false,
   "input_sensitive": true,
   "zero_reference_inputs_retained": true,
   "repeated_sites_use_existing_distinct_file_pair_unit": true,

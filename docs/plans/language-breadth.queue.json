@@ -2186,7 +2186,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-json-schema",
     "worker_model": "sonnet",
-    "notes": "D19 replay 2026-10-27: four complete preregistered subject scopes; L1/L2 good at C under P-T1, L3 unmet with xref_truth/xref_fathom 3/3. New STAC/STIX physical targets resolve as URL reads and are not attested in the existing file-pair unit; no URL rewrites or population trimming. See docs/assessments/2026-10-27-tools-json-schema-d19.md."
+    "notes": "D19 replay 2026-10-27: four complete preregistered subject scopes; L1/L2 good at C under P-T1, L3 unmet with 3 scored pairs; 291 more Fathom pairs unattested and unscored (SchemaStore 107, STAC 14, STIX 170). New STAC/STIX physical targets resolve as URL reads and are not attested in the existing file-pair unit; no URL rewrites or population trimming. See docs/assessments/2026-10-27-tools-json-schema-d19.md. T-R18: precision 1 applies only to 3 scored pairs; its denominator is under 20 only because absent oracle families omit those 291 pairs. Neither true nor false without identifier-aware attestation; no empty family/instrument-rule change."
   },
   {
     "id": "scala",
