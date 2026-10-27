@@ -210,6 +210,7 @@ decisions in [ADR.md](ADR.md), indexed in [docs/intent/decisions/](docs/intent/d
 | [adoption/claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md) | Full wiring guides per harness |
 | [docs/languages.md](docs/languages.md) | Per-language extraction, typed-edge sources, the generated board |
 | [docs/mcp-tools.md](docs/mcp-tools.md), [docs/usage.md](docs/usage.md) | MCP tools and surfaces; the CLI reference |
+| [docs/security.md](docs/security.md) | Threat model, every egress path, a reviewer checklist, hardening; report vulnerabilities per [SECURITY.md](SECURITY.md) |
 | [docs/architecture.md](docs/architecture.md) | Layers, data model, fusion pipeline, store |
 | [docs/intent/README.md](docs/intent/README.md) | Principles, invariants, scope and non-goals, decisions |
 | [CHANGELOG.md](CHANGELOG.md) | Releases; `### Breaking` lines link migration notes in `docs/upgrades/` |

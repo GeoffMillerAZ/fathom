@@ -23,6 +23,8 @@ It is not yet for gating other people's work in production, for a
 fleet you cannot rebuild from source, or for anyone who needs signed or
 notarized binaries.
 
+Security posture (loopback daemon, no authentication yet, every egress path): [security.md](security.md).
+
 ## Install
 
 Three ways, in this order.

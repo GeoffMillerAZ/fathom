@@ -6158,3 +6158,33 @@ reads below its threshold with its oracle available for two releases; the consum
 - K6 reads no knob change holding on the confirm split, or has not read by 2027-01-31: the program stops at the P1 instruments and P3 is refused.
 - RT-M1 reads PASS: moving cards, cases or the ledger into the store needs a new ADR.
 - A Codex arm is needed: ADR-029 is amended first (cards already carry a `harness` field).
+
+## ADR-083: Security defaults: a loopback-only daemon, offline Go subprocesses, an enforced egress allowlist test, and an advisory egress guard (2026-10-26)
+
+**Status.** Accepted 2026-10-26 (owner-architect). **Type.** security / architecture. Docs: `docs/security.md`, `SECURITY.md`. Open: Q5 (`docs/intent/questions.md`). Reads I38, ADR-011.
+
+**Context.** A security review found one real exposure: a fresh `fathom daemon install` bound every interface with no authentication, and the admission check read only the client-controlled `Host` header, so a LAN peer sending `Host: 127.0.0.1:7575` reached the whole `/rpc` registry. It also found that go commands fathom runs on its own inherited the user's environment (module downloads, `GOPRIVATE` fetches, an inherited `-mod=mod` rewriting `go.mod`), that nothing guarded the binary against a new outbound call, that a `go install` build reported no revision, that release archives carried no provenance, and that nothing warned when an agent command sent data off the machine.
+
+**Decision.**
+1. *Loopback only.* The daemon refuses a peer whose address is not loopback, whatever `Host` it sends. `daemon install` writes `127.0.0.1:7575`. `serve-http` refuses a non-loopback `--addr` unless `--allow-non-loopback` or the user-only `[daemon] allow_non_loopback` is set, then warns that there is no authentication. `--reconcile` and `fathom doctor` repair or flag a wide plist.
+2. *Offline Go.* The typed pass, the toolchain shim, ask and layer rules run go with `GOPROXY=off`, `GOSUMDB=off`, `GONOPROXY=,`, `GOTELEMETRY=off`, `GOTOOLCHAIN=local` and `-mod=mod` stripped. Only the user's `[ingest] go_network = true` reopens it. A missing module fails the pass with its name and `run go mod download`.
+3. *An enforced egress allowlist.* `TestEgressImportAllowlist` diffs the packages that import dialing or exec packages, across all release targets, against `cmd/fathom/testdata/egress-allowlist.txt`. A new edge fails `task validate`.
+4. *An advisory egress guard.* A guard pack matches commands that send data off the machine, plus Claude Code `WebFetch` and `WebSearch`. `[guards] egress` is `warn` by default, `enforce` or `off` by choice, with a user-owned `egress_allow`. It is a tripwire, not data-loss prevention.
+5. *Provenance.* `fathom version` falls back to the module version and sum. Releases attest archives and `checksums.txt`, with per-job permissions and actions pinned by SHA.
+6. *Documented.* `SECURITY.md` and `docs/security.md` state the threat model, every egress path and how to verify each claim.
+
+**Alternatives rejected.**
+- Keep `:7575` and rely on the `Host` check (spoofable).
+- A bearer token now: it is designed (`~/.fathom/daemon.token`, a middleware, the stdio MCP front) and waits on Q5. Wins if: Q5 answers "hardening before a second adopter", or an adopter needs a non-loopback bind.
+- Enforce the egress guard by default (string matching cannot be a boundary, and it would block legitimate pushes).
+- Sandbox or network-isolate the daemon ourselves (the harness's own permissions and sandbox are the boundary; do not reinvent them).
+
+**Decision models.** None applies: these are deterministic security controls computed with provider `none`, and no decision model may reopen a bind, a network default or a guard verdict.
+
+**Consequences.** A deliberate LAN bind needs an explicit flag and still serves only loopback peers until authentication exists. A cold module cache needs `go mod download` before the typed pass. The guard adds one advisory line to a `git push` to an unlisted host. Existing wired repositories run `fathom init` to get the `WebFetch` binding.
+
+**Revisit when.**
+- Q5 is answered, or a second adopter appears: build the token (opt-in first, `### Breaking` when default).
+- An adopter needs a networked daemon: design authentication before relaxing the peer check.
+- Egress guard false-positive reports outweigh catches: narrow the pack, or move the default to `off`.
+- The Go toolchain adds a setting that makes `go list` write the repository through a path `internal/goenv` does not cover.
