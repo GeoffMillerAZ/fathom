@@ -1,10 +1,11 @@
 id: kustomize
 language: Kustomize (kustomization.yaml)
 # The queue entry names kubernetes-sigs/kustomize (its examples subpath) and
-# argoproj/argocd-example-apps, both Apache-2.0 and both read only, never vendored.
+# argoproj/argocd-example-apps; I-R4 adds three pinned organization-owned subjects.
+# All are Apache-2.0, read only, never vendored; one shard owns the entire pool.
 # kustomize/v5.8.1 is the release whose Kustomize the installed `kubectl kustomize`
 # (kubectl v1.36.1) embeds, so the oracle and the subject are one version; the tag is
-# annotated, and `sha` is the commit it points at. Both subjects are small (22
+# annotated, and `sha` is the commit it points at. The original pair is small (22
 # kustomization files between them, 1.5 MB and 0.5 MB): the examples directory is the
 # hand-written half of the tool's own documentation, argocd-example-apps the working
 # applications a GitOps controller is demonstrated with.
@@ -41,3 +42,25 @@ repos:
         (kustomized-helm)"
       - "a kustomization over a file no checkout holds (plugins/kustomized-helm:
         ./all.yaml is written by helm at render time), which the tool rejects"
+  - name: fluxcd/flux2-kustomize-helm-example
+    url: https://github.com/fluxcd/flux2-kustomize-helm-example.git
+    ref: pinned-commit
+    sha: 4f1a5b1051b469108d1bdf0ebec6c814427e3834
+    licence: Apache-2.0
+    idioms:
+      - "cluster overlays composing local bases and declarative Flux resources; no Helm execution"
+  - name: fluxcd/flux2-multi-tenancy
+    url: https://github.com/fluxcd/flux2-multi-tenancy.git
+    ref: pinned-commit
+    sha: 16752eb2929feb1d0e7de6ad4fa0a2e1972825ac
+    licence: Apache-2.0
+    idioms:
+      - "multi-directory platform and tenant bases, patches and generated configuration"
+  - name: GoogleCloudPlatform/microservices-demo
+    url: https://github.com/GoogleCloudPlatform/microservices-demo.git
+    ref: pinned-commit
+    sha: 38e7348eb289eb5b87c0c6e8cb19ced0449dc389
+    licence: Apache-2.0
+    idioms:
+      - "real component definitions and their repository-authored parent kustomizations"
+      - "generators and patches across directories, measured by component-content ablation"
