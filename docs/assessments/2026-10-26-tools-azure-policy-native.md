@@ -315,3 +315,29 @@ mutants, including omission of child cwd, must fail then restore green. The
 candidate is **awaiting the controller's same two Linux diagnostic commands**,
 not READY. No vendor rerun is permitted before both pass on its sha. See the
 [runner contract](../../calibration/oracles/azure-policy/LINUX-X64-PROBE.md#t-r15t-r16-authored-control-refusal-and-diagnostic-gate).
+
+
+### Admitted rerun: the ceiling (run 40504219895, 2026-10-27)
+
+The admitted ubuntu-22.04 x64 rerun executed the vendor and returned
+`probe_complete_requires_analysis` (native returncode 0). Isolation held. The
+committed receipt is `calibration/oracles/azure-policy/probe-receipt-run40504219895.json`.
+
+What it shows:
+
+- `initialize` ok; capability keys `experimental` and `workspace`; no definition
+  or reference provider.
+- `definition`, `references` and the cache command each return -32601.
+- The `valid`, `unknown_parameter` and `changed_input_fact` evaluations all
+  return HTTP 500 with identical sha256 and bytes.
+- The SIGXFSZ seen earlier was the .NET double-mapper requesting a 2 TiB
+  `ftruncate`; the 256 MiB limit refuses it and the runtime absorbs that.
+
+Reading: this route offers no definition or reference oracle and no working
+offline evaluation, so it cannot raise Azure Policy above its current level.
+That is a ceiling. The C reading and the deferred `LB-Q-azure-policy-rest` row
+stay as they are.
+
+Revisit when an extension release advertises `definitionProvider` or
+`referencesProvider`, or an offline evaluation returns HTTP 200 with
+input-dependent bytes for the `valid` variant.
