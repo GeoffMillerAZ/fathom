@@ -1,0 +1,460 @@
+{
+  "annotations": {
+    "baseline_commit": "2b6f341e939f23394f32412989a824ef293a0ec5",
+    "build": {
+      "baseline_commit": "2b6f341e939f23394f32412989a824ef293a0ec5",
+      "build_flags": [
+        "-trimpath",
+        "-buildvcs=false"
+      ],
+      "candidate_commit": "c975fbbe38e9244bca839029cce58d483613c3ed",
+      "collector_sha256": "d52d503c165671811c1810cb02be3271179ca9696d3be5bd67c1ae2aad9a3709",
+      "phases": [
+        {
+          "exit": 0,
+          "phase": "go-members-r1-baseline-checkout",
+          "wall_seconds": 1.528
+        },
+        {
+          "exit": 0,
+          "phase": "go-members-r1-baseline-build",
+          "wall_seconds": 18.847
+        },
+        {
+          "exit": 0,
+          "phase": "go-members-r1-candidate-build",
+          "wall_seconds": 18.189
+        }
+      ],
+      "settings": {
+        "FATHOM_DECIDE": "off",
+        "GOFLAGS": "-p=2",
+        "GOMAXPROCS": "2",
+        "GOTOOLCHAIN": "local",
+        "GOWORK": "off",
+        "MACOSX_DEPLOYMENT_TARGET": "14.0"
+      },
+      "source_commit": "5b84aa5b4d179460a2f9b7a96973a89a6cd8b322",
+      "toolchain": "go version go1.27.3 darwin/arm64"
+    },
+    "collector_sha256": "d52d503c165671811c1810cb02be3271179ca9696d3be5bd67c1ae2aad9a3709",
+    "interpretation": "FAIL current-main ENGINE cost gate; prior critic-reproduced +11.62% wall pass remains historical. No adoption or holdout reading authorized by this result.",
+    "raw_receipt_sha256": "17696446df8b42a7975f7226b4ba5203c4df0191923c919a3f465c689eab9ab2",
+    "pass_cpu_seconds": {
+      "baseline": {
+        "centrality": {
+          "runs": [
+            8.163742,
+            6.534921,
+            6.830616
+          ],
+          "median": 6.830616
+        },
+        "extract": {
+          "runs": [
+            14.719807,
+            14.223562,
+            13.536036
+          ],
+          "median": 14.223562
+        },
+        "typed_go": {
+          "runs": [
+            34.472391,
+            36.098472,
+            32.383695
+          ],
+          "median": 34.472391
+        }
+      },
+      "candidate": {
+        "centrality": {
+          "runs": [
+            13.755015,
+            11.406346,
+            13.771176
+          ],
+          "median": 13.755015
+        },
+        "extract": {
+          "runs": [
+            14.940974,
+            14.265032,
+            14.977096
+          ],
+          "median": 14.940974
+        },
+        "typed_go": {
+          "runs": [
+            34.75831,
+            31.748703,
+            34.274696
+          ],
+          "median": 34.274696
+        }
+      }
+    }
+  },
+  "baseline": {
+    "median_store_bytes": 205312000,
+    "median_wall_seconds": 80.441
+  },
+  "binary_sha256": {
+    "baseline": "690d5c0de65e03fc7097f0b0ea190ac8671a78f7964af13d2c95f87c5d387d70",
+    "candidate": "e9fc8302d3bdc09c3ec55c72ff6c99d3065ab5a2db7279a969e8b2714d3bdb63"
+  },
+  "candidate": {
+    "median_store_bytes": 218238976,
+    "median_wall_seconds": 95.389
+  },
+  "candidate_commit": "c975fbbe38e9244bca839029cce58d483613c3ed",
+  "changed_field_work_executed": true,
+  "gate": "FAIL",
+  "method": "three alternating baseline/candidate direct CLI ingests, fresh stores, nice 10, 20-minute timeout; no daemon or SCIP",
+  "readout": "SQLite immutable read only after process exit and no nonempty WAL",
+  "runs": [
+    {
+      "arm": "baseline",
+      "cpu_seconds": 87.118,
+      "exit": 0,
+      "load_end": 11.4,
+      "load_start": 7.72,
+      "max_sampled_load": 14.48,
+      "run": 1,
+      "source_unchanged": true,
+      "store_bytes": 205312000,
+      "store_sidecar_bytes": 0,
+      "symbols": 63329,
+      "table_rows": {
+        "observations": 63442,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 85.34,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "candidate",
+      "cpu_seconds": 100.094,
+      "exit": 0,
+      "load_end": 5.77,
+      "load_start": 7.77,
+      "max_sampled_load": 7.81,
+      "run": 1,
+      "source_unchanged": true,
+      "store_bytes": 218238976,
+      "store_sidecar_bytes": 0,
+      "symbols": 84893,
+      "table_rows": {
+        "observations": 85006,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 96.479,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "baseline",
+      "cpu_seconds": 85.17,
+      "exit": 0,
+      "load_end": 5.0,
+      "load_start": 5.77,
+      "max_sampled_load": 6.27,
+      "run": 2,
+      "source_unchanged": true,
+      "store_bytes": 205312000,
+      "store_sidecar_bytes": 0,
+      "symbols": 63329,
+      "table_rows": {
+        "observations": 63442,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 80.441,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "candidate",
+      "cpu_seconds": 90.26,
+      "exit": 0,
+      "load_end": 4.51,
+      "load_start": 5.0,
+      "max_sampled_load": 5.0,
+      "run": 2,
+      "source_unchanged": true,
+      "store_bytes": 218238976,
+      "store_sidecar_bytes": 0,
+      "symbols": 84893,
+      "table_rows": {
+        "observations": 85006,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 85.353,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "baseline",
+      "cpu_seconds": 82.625,
+      "exit": 0,
+      "load_end": 4.8,
+      "load_start": 4.51,
+      "max_sampled_load": 4.8,
+      "run": 3,
+      "source_unchanged": true,
+      "store_bytes": 205312000,
+      "store_sidecar_bytes": 0,
+      "symbols": 63329,
+      "table_rows": {
+        "observations": 63442,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 77.325,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    },
+    {
+      "arm": "candidate",
+      "cpu_seconds": 99.781,
+      "exit": 0,
+      "load_end": 5.15,
+      "load_start": 4.8,
+      "max_sampled_load": 5.5,
+      "run": 3,
+      "source_unchanged": true,
+      "store_bytes": 218238976,
+      "store_sidecar_bytes": 0,
+      "symbols": 84893,
+      "table_rows": {
+        "observations": 85006,
+        "typed_edges": 210536
+      },
+      "typed": {
+        "direct": 76739,
+        "edges": 150810,
+        "failed": false,
+        "iface_dispatch": 60288,
+        "packages": 330,
+        "packages_failed": 0,
+        "packages_processed": 330,
+        "packages_seen": 477,
+        "unresolved": 13783
+      },
+      "typed_edge_kinds": {
+        "direct": 76749,
+        "file-resolved": 5805,
+        "func-value": 1144,
+        "iface-dispatch": 60288,
+        "instantiates": 52767,
+        "unresolved": 13783
+      },
+      "wall_seconds": 95.389,
+      "workload": {
+        "classified_by_sniff": 1,
+        "classified_zero": 2,
+        "discovered": 6942,
+        "excluded": {
+          "project": 10,
+          "service": 0,
+          "user": 0
+        },
+        "exit_code": 0,
+        "extracted": 6940,
+        "file_resolved": 1962,
+        "outcome": "ok",
+        "oversize": 2,
+        "read_failed": 0,
+        "skipped": 0,
+        "skipped_generated": 20,
+        "unclassified": 137
+      }
+    }
+  ],
+  "source_commit": "5b84aa5b4d179460a2f9b7a96973a89a6cd8b322",
+  "source_manifest_sha256": "63f56d8e78e127193e1640e3ae8cb1fa8422806762f1de11dd70e9c6e2e632ef",
+  "store_change": 0.06296259351620948,
+  "store_gate": 0.2,
+  "wall_change": 0.1858256361805546,
+  "wall_gate": 0.15,
+  "work_equivalent": true
+}

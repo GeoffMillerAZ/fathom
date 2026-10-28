@@ -107,3 +107,7 @@ no member defines, and one defined twice.
 | F89 | Responsibility clusters: split candidates for files agents keep growing | `futures/f86-f91.md` |
 | F90 | Duplicate at birth: a new symbol that already exists | `futures/f86-f91.md` |
 | F92 | Job cost evidence for placement | `futures/f92-f97.md` |
+| F93 | Compliance interchange: OSCAL assessment results and Gemara evaluation records from fact and join receipts | `futures/f92-f97.md` |
+| F94 | The project map: computed components with their governing records, owners, coverage and levels | `futures/f92-f97.md` |
+| F95 | A named meaning-search pairing in the adoption docs | `futures/f92-f97.md` |
+| F96 | Review-comment verification: another reviewer's anchors resolved against the index | `futures/f92-f97.md` |

@@ -1,0 +1,28 @@
+# gitleaks configuration for fathom (read by `gitleaks git` from the repo root).
+# fathom's evidence trees (readings, assessments, calibration, plans, change
+# notes, observations) cite upstream commits by their 40-hex SHA and artifacts
+# by their sha256 digest. gitleaks' default rules read the first as a
+# Sourcegraph access token and the second as a generic API key. These two
+# allowlists apply only inside the evidence trees and only to a bare hex value,
+# so bare hex anywhere else (code, scripts, config) still flags: legacy GitHub
+# and Sourcegraph tokens are bare 40-hex.
+title = "fathom"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "a bare commit SHA or sha256 digest in an evidence tree is not a Sourcegraph token"
+targetRules = ["sourcegraph-access-token"]
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^(?:[0-9a-f]{40}|[0-9a-f]{64})$''']
+paths = ['''^docs/assessments/''', '''^docs/bench/''', '''^calibration/''', '''^docs/changelog/''', '''^docs/plans/''', '''^\.fathom/observations/''']
+
+[[allowlists]]
+description = "a bare commit SHA or sha256 digest in an evidence tree is not a generic API key"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^(?:[0-9a-f]{40}|[0-9a-f]{64})$''']
+paths = ['''^docs/assessments/''', '''^docs/bench/''', '''^calibration/''', '''^docs/changelog/''', '''^docs/plans/''', '''^\.fathom/observations/''']

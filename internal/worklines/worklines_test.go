@@ -144,7 +144,14 @@ func buildFixture(t *testing.T) (root, wtPath string) {
 	// stash@{0}: an unlanded stash on main.
 	f.write(root, "README", "stashed edit\n")
 	f.git(root, "stash", "push", "-q", "-m", "wip readme")
-	return root, wtPath
+
+	// git records a linked worktree at its symlink-resolved path, so the
+	// path a line reports is that one when TMPDIR is a symlink (issue 120).
+	resolved, err := filepath.EvalSymlinks(wtPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root, resolved
 }
 
 func TestClassifyLinesLandedAtRiskIdle(t *testing.T) {

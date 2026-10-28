@@ -39,6 +39,7 @@ func GitSafetyPack() (GuardSet, error) {
 		switch g.Check {
 		case "git_no_verify", "push_lefthook_off", "git_hooks_path", "push_force_protected":
 			gs.Guards[i].commandCheck = g.Check
+			gs.Guards[i].pack = gitSafetyPackName
 		default:
 			return GuardSet{}, fmt.Errorf("git-safety: unknown command check %q", g.Check)
 		}

@@ -28,7 +28,7 @@ func TestScoreXrefs(t *testing.T) {
 	r := Reading{Dialect: "github-actions", Kind: "tooling", TargetLevel: "L3"}
 	MergeSubject(&r, Subject{Name: "s", Files: 3, Bytes: 3e6,
 		Counts: map[string]int{CntOracleDefs: 10, CntFathomDefs: 10, CntMatched: 10, CntRefTruth: 4, CntRefTruthFound: 4, CntRefFathom: 4, CntRefFathomInTrue: 4,
-			CntXrefTruth: 10, CntXrefTruthFound: 9, CntXrefFathom: 9, CntXrefFathomInTrue: 9},
+			CntXrefTruth: 100, CntXrefTruthFound: 90, CntXrefFathom: 90, CntXrefFathomInTrue: 90},
 		Families: map[string]string{FamilyL1: "C", FamilyRefs: "C", FamilyXref: "C"},
 		Tenancy:  &SubjectTenancy{FaultingFiles: []string{}, ExtractMS: 100}})
 	if r.Metrics[MXrefPrecision] == nil || *r.Metrics[MXrefPrecision] != 1 || r.Metrics[MXrefRecall] == nil || *r.Metrics[MXrefRecall] != 0.9 {

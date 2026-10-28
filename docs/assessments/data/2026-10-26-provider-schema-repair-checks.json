@@ -1,0 +1,110 @@
+{
+  "additive_output_sha256": {
+    "calibration/oracles/terraform-provider-schema/pins-errata.json": "5a2585ec6d898e7a1bfb46e1bd3b4988f11f3f40ac316f1c408dbe4d52e4d19e",
+    "docs/assessments/data/2026-10-26-provider-schema-export-sizes-bound.json": "24f88cae2e7667b5900036251b1e1dbf621ac37250e3dce83a2ec48ba1a23691",
+    "docs/assessments/data/2026-10-26-provider-schema-validation-replay.json": "c0842e19c61ac6cf84a439c5f56d823abe80f37bc8e7ac3ec681d65e78d3b612"
+  },
+  "aws_archive_url_head_http_status": 200,
+  "bound_selector": {
+    "command": "python3 calibration/oracles/terraform-provider-schema/summarize_exports.py --capture workspace/tmp/ps2 --receipt docs/assessments/data/2026-10-26-provider-schema-native-probe.json --out workspace/artifacts/provider-schemas-probe-r2/export-sizes-bound.json",
+    "exit_code": 0,
+    "original_metric_values_conserved": true,
+    "private_log_sha256": "8ba0c7e4092a0970aac4197ec9f6f290db5983c0bd529225c25695bc80912f6b"
+  },
+  "calibration_proof_guard": {
+    "contract_pattern_matches_in_dated_assessment": 0,
+    "contract_pattern_matches_in_old_assessment": 1,
+    "dated_assessment": "docs/assessments/2026-10-26-iac-provider-schema-feasibility.md",
+    "path": "docs/assessments/iac-provider-schema-calibration.md",
+    "path_exists": false,
+    "plan_contract_and_claim_state_changed": false
+  },
+  "current_tool_sha256": {
+    "calibration/oracles/terraform-provider-schema/probe.py": "fe49e2c4292e5406eecaf24486faa3e96bbc8f00e589e657e1f9f907f6bc182e",
+    "calibration/oracles/terraform-provider-schema/replay_validation.py": "e6fd84da4ba6500e52ee6e50f04bc040d7f47a45789ec37194a452bfdb5b5ba1",
+    "calibration/oracles/terraform-provider-schema/summarize_exports.py": "fa6eb95c43e8b4b60de6b1b45e19d8b372c0c27b415c4c2ec83608b34f9e28b7"
+  },
+  "historical_launch_load": {
+    "display": "2.76 through 3.58",
+    "maximum": 3.58447265625,
+    "minimum": 2.7646484375
+  },
+  "historical_native_commit": "ed0081bb0",
+  "historical_network_scope": "Direct outbound IP connections denied; system resolver can emit DNS queries. No DNS-free execution claim. Profile unchanged.",
+  "main_merged_commit": "01ea58c6b",
+  "merge_commit": "34f890e75",
+  "mutations": {
+    "capture-binding": {
+      "command": "python3 -m unittest discover -s workspace/tmp/provider-schema-r2-mutants/capture-binding -p '*_test.py' -v",
+      "exit_code": 1,
+      "expected_failure": "ERROR: test_one_capture_hash_mismatch_refuses_whole_output",
+      "file": "summarize_exports.py",
+      "location": "private copy of committed instrument/tests; product and working instrument unchanged",
+      "mutant": "Remove complete capture_receipt_mismatch condition",
+      "private_log_sha256": "adfe6263576988bb946e0b6429e323e36beefbb7280ef3f476b8cd8c6339a94e"
+    },
+    "diagnostic-order": {
+      "command": "python3 -m unittest discover -s workspace/tmp/provider-schema-r2-mutants/diagnostic-order -p '*_test.py' -v",
+      "exit_code": 1,
+      "expected_failure": "FAIL: test_validate_canonical_hash_ignores_order_but_not_content",
+      "file": "probe.py",
+      "location": "private copy of committed instrument/tests; product and working instrument unchanged",
+      "mutant": "Keep diagnostics in original order instead of sorting",
+      "private_log_sha256": "20ac3f39f90e2f2138ffc245972a6466432ddee026b97b60c1478739feea1518"
+    },
+    "output-clobber": {
+      "command": "python3 -m unittest discover -s workspace/tmp/provider-schema-r2-mutants/output-clobber -p '*_test.py' -v",
+      "exit_code": 1,
+      "expected_failure": "ERROR: test_existing_output_is_untouched",
+      "file": "summarize_exports.py",
+      "location": "private copy of committed instrument/tests; product and working instrument unchanged",
+      "mutant": "Replace existing-output refusal with unlink(missing_ok=True)",
+      "private_log_sha256": "8af5943f2a831a393ff897c577ae4d4254e1817669082cdf6ce7c6632c1c2a28"
+    }
+  },
+  "native_executions": 0,
+  "original_files_conserved": {
+    "calibration/oracles/terraform-provider-schema/pins.json": "98f97564f7d4c2defe34ba8f33522335312c352b85e6c4f6dc1682c34adfe4f7",
+    "calibration/oracles/terraform-provider-schema/protocol.json": "1e7ed5d40a0ad84257c522d9ea6f2295c3924358ae41f04b3a8c46b72ab70511",
+    "docs/assessments/data/2026-10-26-provider-schema-export-sizes.json": "ab248c4a3b725024cb0428609851c723ac0445cd2f4f5aebca3454dbc1b817e0",
+    "docs/assessments/data/2026-10-26-provider-schema-native-probe.json": "b78b68ba47cfea07ed8c896ba9e4c1232dc7fcefe14c23971ff57102aaf5c235",
+    "docs/assessments/data/2026-10-26-provider-schema-probe-checks.json": "0eaa2e08091bba5f0a18e3d32ccf86ec7f2f24469436e329cb0eb51002ff06c9"
+  },
+  "privacy": "No subject people, emails or name/email shapes. Author tokens are authored-control prose or the existing privacy instruction; at-sign is an existing npm package identity.",
+  "review": "No remaining issues in staged code, docs, bindings or data; final check-log metadata added afterward.",
+  "scope": "accounting/provenance repair of historical feasibility captures; no new native provider run or support grade",
+  "unit_tests": {
+    "command": "PYTHONPYCACHEPREFIX=workspace/tmp/pycache python3 -m unittest discover -s calibration/oracles/terraform-provider-schema -p '*_test.py' -v",
+    "exit_code": 0,
+    "post_mutation_green_log_sha256": "bba0bc696bc5d99d217c23ee0d687598675c6bcd24d872ec1e32d41b5097f5ca",
+    "post_mutation_green_tests": 20,
+    "private_log_sha256": "c58068e660ae1296776e174143919ad7a88ef87a45dcddd5ae4ca26a89189bb6",
+    "tests": 20
+  },
+  "validation_replay": {
+    "canonical_equal": 15,
+    "command": "python3 calibration/oracles/terraform-provider-schema/replay_validation.py --capture workspace/tmp/ps2 --receipt docs/assessments/data/2026-10-26-provider-schema-native-probe.json --compare-capture workspace/tmp/ps1 --out workspace/artifacts/provider-schemas-probe-r2/validation-replay.json",
+    "exit_code": 0,
+    "private_log_sha256": "8ba0c7e4092a0970aac4197ec9f6f290db5983c0bd529225c25695bc80912f6b",
+    "raw_equal": 13,
+    "streams": 15
+  },
+  "verification": {
+    "merge_debris": {
+      "command": "bash scripts/check-merge-debris.sh; bash scripts/check-merge-debris.sh --staged",
+      "exit_code": 0,
+      "private_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "org_names": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "exit_code": 0,
+      "private_log_sha256": "348f8ba08a209a33909a9094e5329f5aaea9bcc500f1830d88343e9b6ff20469"
+    },
+    "release_notes": {
+      "command": "go run ./third_party/agentic-kit/cmd/release-notes -check",
+      "exit_code": 0,
+      "private_log_sha256": "1795e5f241580366353825ca811d7886aee840f85503acdaa5228e40eb8981e0"
+    }
+  },
+  "verification_status": "required focused checks passed; controller owns full merged-head validate/verify/CI"
+}

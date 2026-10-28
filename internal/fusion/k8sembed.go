@@ -261,7 +261,7 @@ type k8sEmbedExtractor struct {
 }
 
 // Extract implements extractor.Extractor: the Kubernetes nodes, then the
-// embedded documents' entities.
+// embedded documents' entities and their facts (WAE-4).
 func (x k8sEmbedExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	nodes, err := x.base.Extract(service, relPath, src)
 	if err != nil {
@@ -269,6 +269,7 @@ func (x k8sEmbedExtractor) Extract(service, relPath string, src []byte) ([]core.
 	}
 	if res, ok := k8sEmbeddedResult(service, relPath, src); ok {
 		nodes = append(nodes, res.Nodes...)
+		nodes = append(nodes, storeEntityFacts(res)...)
 	}
 	return nodes, nil
 }

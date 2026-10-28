@@ -197,6 +197,7 @@ stall a session: the session-start hook gives up after two seconds.
 | SessionStart | `fathom session-hook` | one line: this repo is service X, use fathom before grep, or an honest "daemon down" or "not indexed". On a fresh start or `/clear` also a short handoff brief and, if something needs attention, one attention line |
 | PostToolUse (Edit, Write, MultiEdit) | `fathom edit-hook` | up to six governing rules for the file just edited, each with its source. After a `git commit`, a note if a test a governing document names was deleted or weakened |
 | PreToolUse | `fathom edit-hook --pre` | the note and rules for files you marked as guarded in `.fathom/guard.cue`, before the edit. Nothing is guarded until you uncomment a scope there |
+| PreToolUse (WebFetch, WebSearch) | `fathom edit-hook --pre` | the egress guard: one advisory line when the fetch or search targets a host off `[guards] egress_allow`; a Bash command that uploads data off the machine gets the same check through the Bash `PreToolUse` entry. See [the egress guard](../configuration.md#the-egress-guard-guards-egress) |
 | Stop | `fathom stop-hook` | re-verifies plan rows ticked during the session; advisory, or blocking if you add `--block` |
 | SessionEnd, PreCompact | `session-end-hook`, `pre-compact-hook` | nothing injected; leave a continuity note for the next session |
 | InstructionsLoaded, ConfigChange and others | `session-hook --event ...`, `config audit --hook` | nothing or one line; they record that the instructions loaded and audit config changes |
@@ -275,15 +276,16 @@ and queues a re-ingest in the background.
 
 ## Skills
 
-`fathom init --skills` installs ten skills, embedded in the binary:
+`fathom init --skills` installs eleven skills, embedded in the binary:
 `fathom-plan` (write a gate-ready plan), `fathom-verify` (run and read the
 gate), `fathom-onboard` (wire a repo end to end), `fathom-doctor` (read the
 wiring checklist), `fathom-rewire` (repair drifted wiring),
 `fathom-activate` (turn on guards, layers and gates, each proven by
 demonstration), `fathom-custodian` (keep CLAUDE.md and AGENTS.md true),
 `fathom-findings` (work with an imported review kit's findings),
-`fathom-feedback` (file friction the moment you hit it) and `fathom-impact`
-(report measured impact honestly).
+`fathom-feedback` (file friction the moment you hit it), `fathom-impact`
+(report measured impact honestly) and `fathom-offload` (run builds, tests
+or agent tasks on another machine).
 
 A re-run overwrites only files carrying fathom's ownership marker; a file of
 your own with a skill's name stops the install with exit `1` and is never
@@ -393,5 +395,5 @@ If every box is checked, the loop (index, serve, inject, gate) is live.
 This page covers `fathom init` (with `--skills`), `ingest`, `scope`, `purge`,
 `serve-mcp`, `serve-http`, `daemon`, `compile`, `verify`, `doctor`, `providers`,
 `smoke`, `config`, the `/rpc`, `/rpc/agent` and `/rpc/extended` surfaces, the
-Claude Code hooks, the lefthook pre-push gate and the ten shipped skills. Update
+Claude Code hooks, the lefthook pre-push gate and the eleven shipped skills. Update
 it, and `claude-code-internals.md`, when any of these change.

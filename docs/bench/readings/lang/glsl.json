@@ -244,7 +244,8 @@
     "SaschaWillems/Vulkan: R5 M2 canonical replay at clean review-fix source; nice10, initial load1<=9, GOMAXPROCS=2, GOFLAGS=-p=2, GOWORK=off; median of three runs on shared Apple Silicon host",
     "SaschaWillems/Vulkan: glslangValidator -i grades calls on its scope, 341 of 353 measured files (the files it reads); a file outside is neither a recall nor a precision miss, while tenancy and file edges cover every measured file",
     "SaschaWillems/Vulkan: glslangValidator 16.6.0 -i parsed 341/353 GLSL files; see per-file invocation and diagnostics receipt",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 8eaab47019c68a214fe549f9692e9507b75621fd)"
   ],
   "disposition": null
 }

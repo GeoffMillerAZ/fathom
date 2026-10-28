@@ -1,0 +1,134 @@
+{
+  "schema": "opencl-c-source-contexts-v1",
+  "scope": "Pinned host-source audit only. No whole-pool compiler coverage or extraction grade is asserted. Only the SDK reconstructed baseline has been replayed.",
+  "policy_sha256": "2e6ebd4c74fb0d579c72b235d0c20ba12d290fd4ae32330235cd694fed83e108",
+  "constraints": [
+    "Keep all eight frozen populations in tenancy, including fragments and templates.",
+    "Freeze exact source/option variants before full-pool compiler measurement; no parse-result or compiler-success selection.",
+    "Reuse existing clang-calls, clang-ast-defs and preproc active_lines; any reconstructed context remains tier B.",
+    "Use compiler-owned definitions and filter both truth and extraction through the same evidenced active lines.",
+    "A link-unit companion requires evidenced runtime source assembly; do not infer singleton programs.",
+    "No template transform is authorized by this audit."
+  ],
+  "subjects": [
+    {
+      "id": "sdk",
+      "repository": "https://github.com/KhronosGroup/OpenCL-SDK",
+      "pin": "6090378a113db8dab20ae278c8fa57ab10b92300",
+      "assembly": "Pinned raw .cl roots in the reconstructed CL3.0/SPIR64 baseline; host variants and appended helper source are documented separately.",
+      "references": [
+        "calibration/oracles/opencl-c/sdk-contexts.json"
+      ],
+      "known_context": "Existing baseline SDK replay only; not every runtime configuration."
+    },
+    {
+      "id": "darktable",
+      "repository": "https://github.com/darktable-org/darktable",
+      "pin": "891e46cd57b64d67dbde183d5d3c0e430edd11d6",
+      "assembly": "One file per runtime program; shared includes resolve through the kernel-directory include path.",
+      "references": [
+        "data/kernels/programs.conf",
+        "data/kernels/CMakeLists.txt:12-29",
+        "src/common/opencl.c:1010-1117",
+        "src/common/opencl.c:2240-2450"
+      ],
+      "known_context": "Project build-time syntax check uses CL1.2, default OpenCL header, image support and source/binary include directories. Runtime uses device-default language version and device/vendor options.",
+      "remaining": "Keep build-time and runtime contexts distinct; enumerate device/vendor alternatives before compiler grading."
+    },
+    {
+      "id": "opencv",
+      "repository": "https://github.com/opencv/opencv",
+      "pin": "4d7924ebb501ae31d69820039d92a0d5fe7ee7dd",
+      "assembly": "cl2cpp converts each raw file independently into a host ProgramEntry, removing comments/blank lines and normalizing text. These entries have empty embedded build options; variable inputs are call-site flags, device defines and configured extra options.",
+      "references": [
+        "cmake/OpenCVModule.cmake:870-886",
+        "cmake/cl2cpp.cmake:57-85",
+        "modules/core/src/ocl.cpp:4311-4370",
+        "modules/core/src/ocl.cpp:4563-4595",
+        "modules/core/src/ocl.cpp:7208-7350"
+      ],
+      "known_context": "No single repository-wide -cl-std. Source-specific type/matrix constants and device defines come from host call sites.",
+      "remaining": "Freeze a source-grounded finite variant manifest and source mapping; do not choose a variant by compiler success."
+    },
+    {
+      "id": "arrayfire",
+      "repository": "https://github.com/arrayfire/arrayfire",
+      "pin": "ab4a5063c92512dd65ab2b418cf81e4b3c46299b",
+      "assembly": "Byte-preserving per-file conversion; actual programs prepend fixed macros and generated KParam source, then one or more requested kernel strings.",
+      "references": [
+        "src/backend/opencl/CMakeLists.txt:25-141",
+        "CMakeModules/FileToString.cmake:28-74",
+        "src/backend/opencl/compile_module.cpp:74-164",
+        "src/backend/opencl/device_manager.cpp:282-295",
+        "src/backend/opencl/platform.cpp:562-572"
+      ],
+      "known_context": "Device maximum OpenCL C version, dimension type and optional math options combine with caller/JIT options.",
+      "remaining": "Evidence fixed preludes, caller options and source groupings. Never infer one program per raw file."
+    },
+    {
+      "id": "clblas",
+      "repository": "https://github.com/clMathLibraries/clBLAS",
+      "pin": "cf9113982fdfc994297d372785ce76eb80911af2",
+      "assembly": "tplgen converts host-string templates to .clT; kprintf performs runtime substitutions and directive expansion before one final program string is built.",
+      "references": [
+        "src/library/CMakeLists.txt:693-697",
+        "src/library/CMakeLists.txt:821-824",
+        "src/library/tools/tplgen/tplgen.cpp:184-225",
+        "src/library/blas/gens/kprintf.cpp:2100-2317",
+        "src/library/blas/generic/common.c:447-477",
+        "src/library/common/clkern.c:163-180"
+      ],
+      "known_context": "No general runtime language-version flag. Offline precompile CL2.0 is a different context.",
+      "remaining": "Raw host-string templates are not standalone compiler units. This audit implements and authorizes no template transform; preserve all files and report uncovered scope."
+    },
+    {
+      "id": "rodinia",
+      "repository": "https://github.com/yuhc/gpu-rodinia",
+      "pin": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "assembly": "Applications generally load one kernel source string and build it with per-application options.",
+      "references": [
+        "opencl/cfd/CLHelper.h:516-532",
+        "opencl/pathfinder/OpenCL.cpp:145-176",
+        "opencl/lud/ocl/lud.cpp:235-242",
+        "opencl/nw/nw.c:285-293",
+        "opencl/hotspot/hotspot.c:293-301",
+        "opencl/nn/clutils.cpp:790-830"
+      ],
+      "known_context": "No project-wide -cl-std. Some applications use default options; others define block/workgroup sizes or add relative include roots and image/math alternatives.",
+      "remaining": "Resolve each application working directory and host-build macro values before grading."
+    },
+    {
+      "id": "shoc",
+      "repository": "https://github.com/vetter/shoc",
+      "pin": "00b25e2751dde4f1d7c595cadbb7fdb0873257b0",
+      "assembly": "Build rules convert .cl line-by-line to escaped host strings; most programs use one converted string, with an independently evidenced inline/multi-string exception.",
+      "references": [
+        "config/targets.mk.in:18-21",
+        "src/opencl/level1/triad/Triad.cpp:188-204",
+        "src/opencl/level1/fft/fftlib.cpp:29-52",
+        "src/opencl/level1/md/MD.cpp:166-181",
+        "src/opencl/level2/s3d/S3D.cpp:267-268",
+        "src/opencl/level1/gemm/GEMM.cpp:186-191"
+      ],
+      "known_context": "Precision/device alternatives, operation-specific dimensions and math flags vary by source; no project-wide -cl-std.",
+      "remaining": "Enumerate evidenced source-specific alternatives rather than one selected compiler-success context."
+    },
+    {
+      "id": "pyopencl",
+      "repository": "https://github.com/inducer/pyopencl",
+      "pin": "0c46357ef31474b1dfd2ec4000b4421fcf71193a",
+      "assembly": "The .cl population consists of headers used by generated consumer programs and preambles. The binding passes one assembled source string and exact options.",
+      "references": [
+        "pyopencl/__init__.py:355-379",
+        "pyopencl/__init__.py:510-535",
+        "src/wrap_cl.hpp:4532-4606",
+        "pyopencl/cache.py:422-436",
+        "pyopencl/elementwise.py:62-127",
+        "pyopencl/reduction.py:151-259",
+        "pyopencl/scan.py:831-892"
+      ],
+      "known_context": "Package include path plus caller/platform/environment options; no default -cl-std. Cache-miss builds append a generated constant.",
+      "remaining": "Use independently generated consumer contexts and preserve source-location mapping; standalone header compilation is not the runtime program."
+    }
+  ]
+}

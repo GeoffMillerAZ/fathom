@@ -152,7 +152,15 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the 64 KiB read budget ran out before the walk found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
 	}
 	if validate.found && !verify.found && verifyDepthCutStrict != "" && (native || !verifyAny.found) {
-		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the depth limit stopped the walk at %s before it found a strict fathom verify step, so whether it runs one is unknown", notInstalled, source, verifyDepthCutStrict), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate, but the depth limit stopped the walk at %s, without finding a strict fathom verify step, so whether it runs one is unknown", notInstalled, source, verifyDepthCutStrict), Remedy: "no change needed if the gate runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
+	}
+	if native && (validate.found || validate.cause != "") && (verify.found || verify.cause != "") {
+		// A Python step was read (or named) but not settled (GDEV-06): the
+		// native FAIL below never reads evidence's unknown, so name it here.
+		if !verify.found {
+			return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate; the strict fathom verify step may be in a Python step doctor could not settle (%s), so whether it runs fathom verify --strict is unknown", notInstalled, source, verify.cause), Remedy: "no change needed if that step runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
+		}
+		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches fathom verify --strict; task validate may be in a Python step doctor could not settle (%s), so whether it runs task validate is unknown", notInstalled, source, validate.cause), Remedy: "no change needed if that step runs `task validate`; doctor never executes hooks or tasks"}, true
 	}
 	if native && validate.found && !verify.found && verify.opaque != "" {
 		// The hook provably reaches task validate; the strict verify step may
@@ -160,7 +168,15 @@ func checkComposedPushGate(root string) (doctorCheck, bool) {
 		return doctorCheck{Name: "lefthook_gates", Status: doctorUnknown, Reason: fmt.Sprintf("%s%s reaches task validate; the strict fathom verify step is beyond %s, a non-shell script doctor cannot read further, so whether it runs fathom verify --strict is unknown", notInstalled, source, verify.opaque), Remedy: "no change needed if " + verify.opaque + " runs `fathom verify --strict`; doctor never executes hooks or tasks"}, true
 	}
 	if native && (validate.found || verifyAny.found) {
-		return doctorCheck{Name: "lefthook_gates", Status: doctorFail, Reason: notInstalled + "pre-push does not reach both task validate and fathom verify --strict", Remedy: "wire both commands in the repository-local pre-push wrapper"}, true
+		reason := notInstalled + "pre-push does not reach both task validate and fathom verify --strict"
+		// A FAIL that rests on a Python file read to a definite not-found names it.
+		switch {
+		case !verify.found && verify.settled != "":
+			reason += "; doctor read " + verify.settled + ", which starts no strict fathom verify step"
+		case !validate.found && validate.settled != "":
+			reason += "; doctor read " + validate.settled + ", which starts no task validate"
+		}
+		return doctorCheck{Name: "lefthook_gates", Status: doctorFail, Reason: reason, Remedy: "wire both commands in the repository-local pre-push wrapper"}, true
 	}
 	if notInstalled != "" {
 		// git never runs lefthook here, so lefthook.yml proves nothing.

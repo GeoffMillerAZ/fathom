@@ -184,7 +184,7 @@ func TestRecomputeImportResolution(t *testing.T) {
 				CntOracleDefs: 100, CntFathomDefs: 100, CntMatched: 100, CntKindEqual: 100,
 				CntRangeEligible: 100, CntRangeOK: 100, CntCallables: 10, CntCallablesSigned: 10,
 				CntCallTruth: 10, CntCallTruthFound: 10, CntCallFathom: 10, CntCallFathomInTrue: 10,
-				CntFileEdgesTruth: 10, CntFileEdgesFathom: 10, CntFileEdgesAgree: 10,
+				CntFileEdgesTruth: 100, CntFileEdgesFathom: 100, CntFileEdgesAgree: 100,
 				CntImports: 25, CntImportsInRepo: 20, CntImportsAgree: agree, CntImportsUnresolved: 20 - agree,
 				CntImportEdgesTruth: 22, CntImportEdgesFathom: 21, CntImportEdgesAgree: agree,
 			},

@@ -69,8 +69,18 @@ func TestPostCommitHookSkipsWhenRootIsNotRegistered(t *testing.T) {
 	if ingestCalls != 0 {
 		t.Errorf("hook must skip the ingest call entirely when its root is not the registered one, got %d call(s)", ingestCalls)
 	}
+	// The skip line names both roots in the canonical form it compared
+	// (symlinks resolved: a symlinked TMPDIR, issue 120).
+	registeredCanon, err := filepath.EvalSymlinks(registeredRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pushCloneCanon, err := filepath.EvalSymlinks(pushClone)
+	if err != nil {
+		t.Fatal(err)
+	}
 	msg := errBuf.String()
-	for _, want := range []string{`"svc"`, registeredRoot, pushClone, "remap"} {
+	for _, want := range []string{`"svc"`, registeredCanon, pushCloneCanon, "remap"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("skip line must carry %q, got %q", want, msg)
 		}

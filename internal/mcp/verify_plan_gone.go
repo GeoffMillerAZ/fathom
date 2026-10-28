@@ -177,5 +177,10 @@ func (e *verifyEvidence) TypedCallers(symbol, pkg string) (nonTest, test []verif
 	return e.goneEvidence().TypedCallers(symbol, pkg)
 }
 
+// CallersUnindexed implements verify.GoneEvidence.
+func (e *verifyEvidence) CallersUnindexed(symbol, pkg string) string {
+	return e.goneEvidence().CallersUnindexed(symbol, pkg)
+}
+
 // GoneReadFailures implements verify.GoneReadEvidence.
 func (e *verifyEvidence) GoneReadFailures() []string { return e.goneEvidence().GoneReadFailures() }

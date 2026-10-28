@@ -38,6 +38,9 @@
   ],
   "facts": [
     {"from": "AlertmanagerRoute", "select": "$.receiver", "key": "receiver"},
-    {"from": "AlertmanagerRoute", "select": "$.continue", "key": "continue"}
+    {"from": "AlertmanagerRoute", "select": "$.continue", "key": "continue"},
+    {"from": "AlertmanagerRoute", "select": "$.group_wait", "key": "group_wait"},
+    {"from": "AlertmanagerRoute", "select": "$.group_interval", "key": "group_interval"},
+    {"from": "AlertmanagerRoute", "select": "$.repeat_interval", "key": "repeat_interval"}
   ]
 }

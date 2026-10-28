@@ -142,6 +142,7 @@ def main():
     parser.add_argument('--sdk', type=Path, required=True)
     parser.add_argument('--clang', type=Path, required=True)
     parser.add_argument('--resource-dir', type=Path, required=True)
+    parser.add_argument('--compiler-pins', type=Path)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     if os.getpriority(os.PRIO_PROCESS, 0) < 10:
@@ -150,11 +151,12 @@ def main():
     work.mkdir(parents=True)
     layout = make_private_layout(work)
     compiler = args.clang.resolve()
-    pin, headers = compdb._load_compiler_pins()
+    pin, headers, pin_identity = compdb._load_compiler_pins(args.compiler_pins)
     database = layout['database']
     capture = compdb.generate(subject=args.sdk, commit=SDK, clang=compiler,
                               clang_sha256=pin, resource_dir=args.resource_dir,
-                              expected_header_sha256=headers, out=database)
+                              expected_header_sha256=headers, out=database,
+                              compiler_identity=pin_identity)
     subject = database / 'subject'
     resource = database / 'resource'
     compile_database = database / 'compile_commands.json'
@@ -218,6 +220,7 @@ def main():
                'active_lines': sum(b-a+1 for rows in preproc['active_lines'].values() for a,b in rows),
                'subject_snapshot_unchanged': True, 'database_unchanged': True,
                'minimal_resource_tree_unchanged': True,
+               'compiler_pins': pin_identity,
                'compiler_and_minimal_resource_pins_checked_before_after_each_consumer': True,
                'snapshot_sha256': source_before, 'resource_tree_sha256': resource_before,
                'raw_output_sha256': {

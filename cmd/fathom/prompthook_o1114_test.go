@@ -65,3 +65,24 @@ func TestFetchSymbolFile_OnlyExactOrMarkedCaseFold(t *testing.T) {
 		}
 	}
 }
+
+// A struct field named like the function the prompt names is not a second
+// definition (core.WithoutShadowingFields): one func plus one field reads
+// as the func alone, wherever find_symbol lists the field.
+func TestFetchSymbolDefGoFieldIsNotASecondDefinition(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		inner, _ := json.Marshal(map[string]any{"symbols": []any{
+			map[string]any{"name": "Config.Default", "kind": "GoField", "file_path": "p/config.go", "line": 3},
+			map[string]any{"name": "Default", "kind": "GoFunc", "file_path": "p/p.go", "line": 5},
+		}, "matched_via": "exact"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"content": []any{map[string]any{"type": "text", "text": string(inner)}}}})
+	}))
+	defer srv.Close()
+	d, ok := fetchSymbolDef(&http.Client{Timeout: 2 * time.Second}, srv.URL, "svc", "Default", true)
+	if !ok || d.Count != 1 || d.Kind != "GoFunc" || d.File != "p/p.go" || d.Line != 5 {
+		t.Fatalf("fetchSymbolDef(Default) = %+v, %v; want the function alone at p/p.go:5", d, ok)
+	}
+	if line := promptDefinitionsLine([]promptDefinition{d}, false); strings.Contains(line, "definitions") {
+		t.Errorf("definitions line = %q, want one definition", line)
+	}
+}

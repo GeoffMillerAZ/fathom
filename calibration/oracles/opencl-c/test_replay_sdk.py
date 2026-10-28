@@ -145,6 +145,13 @@ class PrivateLayoutTests(unittest.TestCase):
             sdk.mkdir()
             work = root / "fresh" / "nested" / "replay"
             compiler_pin = "0" * 64
+            pin_file = root / "portable-pins.json"
+            pin_file.write_text("{}", encoding="utf-8")
+            pin_identity = {
+                "schema": "opencl-c-compiler-pins-v1",
+                "profile": "llvm-21.1.8-test-arm64",
+                "pin_file_sha256": "1" * 64,
+            }
 
             def stop_after_layout(**kwargs):
                 self.assertEqual(kwargs["out"], work / "private" / "database")
@@ -156,12 +163,13 @@ class PrivateLayoutTests(unittest.TestCase):
                 "--sdk", str(sdk),
                 "--clang", str(root / "clang"),
                 "--resource-dir", str(root / "resource"),
+                "--compiler-pins", str(pin_file),
                 "--out", str(work),
             ]
             with (mock.patch.object(replay.sys, "argv", argv),
                   mock.patch.object(replay.os, "getpriority", return_value=10),
                   mock.patch.object(replay.compdb, "_load_compiler_pins",
-                                    return_value=(compiler_pin, {})),
+                                    return_value=(compiler_pin, {}, pin_identity)) as load_pins,
                   mock.patch.object(replay.compdb, "generate",
                                     side_effect=stop_after_layout) as generate,
                   mock.patch.object(replay.subprocess, "run") as subprocess_run):
@@ -169,7 +177,33 @@ class PrivateLayoutTests(unittest.TestCase):
                     replay.main()
 
             generate.assert_called_once()
+            load_pins.assert_called_once_with(pin_file)
+            self.assertEqual(generate.call_args.kwargs["compiler_identity"], pin_identity)
             subprocess_run.assert_not_called()
+
+    def test_entrypoint_defaults_to_historical_pin_file(self):
+        class GenerationReached(RuntimeError):
+            pass
+
+        workspace = replay.ROOT / "workspace"
+        with tempfile.TemporaryDirectory(dir=workspace) as temp:
+            root = Path(temp)
+            sdk = root / "sdk"
+            sdk.mkdir()
+            work = root / "replay"
+            argv = [
+                "replay-sdk.py", "--sdk", str(sdk), "--clang", str(root / "clang"),
+                "--resource-dir", str(root / "resource"), "--out", str(work),
+            ]
+            with (mock.patch.object(replay.sys, "argv", argv),
+                  mock.patch.object(replay.os, "getpriority", return_value=10),
+                  mock.patch.object(replay.compdb, "_load_compiler_pins",
+                                    return_value=("0" * 64, {}, {"profile": "historical-apple-clang"})) as load_pins,
+                  mock.patch.object(replay.compdb, "generate", side_effect=GenerationReached("generate reached"))):
+                with self.assertRaisesRegex(GenerationReached, "generate reached"):
+                    replay.main()
+
+            load_pins.assert_called_once_with(None)
 
 
 if __name__ == "__main__":

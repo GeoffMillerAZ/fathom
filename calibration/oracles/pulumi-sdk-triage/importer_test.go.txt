@@ -1,0 +1,83 @@
+package main
+
+import (
+	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
+	"google.golang.org/protobuf/proto"
+)
+
+func resultAt(t *testing.T, parent, name, language string) (map[string]any, []byte) {
+	t.Helper()
+	dir := filepath.Join(parent, name)
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.ts"), []byte("export const marker = 1\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	idx := &scippb.Index{
+		Metadata: &scippb.Metadata{ProjectRoot: "file://" + dir,
+			ToolInfo: &scippb.ToolInfo{Name: "scip-typescript", Version: "0.4.0"}},
+		Documents: []*scippb.Document{{RelativePath: "index.ts", Language: language}},
+	}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.scip"), raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	saved := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	runErr := run(dir)
+	os.Stdout = saved
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	public, err := io.ReadAll(r)
+	r.Close()
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(public, &result); err != nil {
+		t.Fatal(err)
+	}
+	return result, raw
+}
+
+func TestPublicReceiptIndependentOfScratchRoot(t *testing.T) {
+	parent := t.TempDir()
+	first, raw1 := resultAt(t, parent, "short", "typescript")
+	second, raw2 := resultAt(t, parent, "different-and-longer-root", "typescript")
+	if digest(raw1) == digest(raw2) {
+		t.Fatal("test indices must differ in raw project_root bytes")
+	}
+	if !reflect.DeepEqual(first, second) {
+		t.Fatal("public importer receipts differ across scratch roots")
+	}
+	normalized, ok := first["normalized_index_sha256"].(string)
+	if !ok || normalized == "" {
+		t.Fatal("missing normalized index identity")
+	}
+	if normalized == digest(raw1) || normalized == digest(raw2) {
+		t.Fatal("raw index digest leaked")
+	}
+	third, _ := resultAt(t, parent, "semantic-change", "javascript")
+	if third["normalized_index_sha256"] == normalized {
+		t.Fatal("normalization erased document language change")
+	}
+}

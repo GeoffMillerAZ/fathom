@@ -1,0 +1,151 @@
+{
+  "schema": "slang-triage-verification-v2",
+  "scope": "Metadata-only triage. No shader body was fetched, parser/compiler executed, language level measured or product support implemented.",
+  "owner_gate": "NP-Q5 before implementation",
+  "historical_verification": {
+    "source_audits": "Three grammar archives, embedded commits and license grants were checked in r1. The original subject and registry metadata audits remain historical.",
+    "review_correction": "The prior r1 privacy review missed non-subject personal account names. Binding M4 and X-R9 supersede that claim; r1 must never be published. This branch contains a single net-change commit on main.",
+    "search_order": "Original dated search rules preceded requests. The historical r1 commits remain private; squashing does not turn them into public ancestors."
+  },
+  "checks": {
+    "json": {
+      "command": "for input in calibration/oracles/slang/*.json; do python3 -m json.tool \"$input\" > /dev/null || exit; done",
+      "result": "pass: 21 JSON files"
+    },
+    "source_digests": {
+      "result": "pass",
+      "count": 20
+    },
+    "release_notes": {
+      "command": "bash scripts/fathom-go.sh run ./third_party/agentic-kit/cmd/release-notes -check",
+      "result": "pass"
+    },
+    "merge_debris": {
+      "commands": [
+        "bash scripts/check-merge-debris.sh",
+        "bash scripts/check-merge-debris.sh --staged"
+      ],
+      "result": "pass: full and staged"
+    },
+    "org_agnostic": {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "result": "pass",
+      "seconds": 3.288
+    },
+    "privacy": {
+      "policy": "X-R9: retain admitted subject slugs and pinned commits. All 418 non-subject discovery rows use numeric repository IDs, counts, dispositions and response hashes, without account names, slugs or URLs.",
+      "result": "pass",
+      "publication_files_reviewed": 25,
+      "non_subject_namespace_and_slug_path_hits": 0,
+      "subject_people_or_email_or_host_path_hits": 0,
+      "at_sign_matches": "Seven admitted subject version/pin separators in the historical inventory; no email shapes."
+    },
+    "local_review": {
+      "result": "pass, no findings",
+      "scope": "Independent read-only reviewer checked all 466 numeric IDs, 48 admitted pins and metadata, exact rule identity-only differences, original commit dates and hashes, derivative hashes, six component receipts, pool bindings, 20 source digests, page/request accounting and Falcor lineage. It did not rerun parent tests or scanner."
+    }
+  },
+  "provenance": {
+    "candidate_repositories": 466,
+    "admitted_subjects": 48,
+    "non_subject_numeric_ids": 418,
+    "numeric_repository_ids_unique": 466,
+    "parameterblock": {
+      "requests": 198,
+      "http_200": 195,
+      "rate_limit_403": 3,
+      "certified_single_page_size_leaves": 109,
+      "distinct_file_observations": 4963,
+      "certified_repositories": 333,
+      "all_current_and_historical_code_repositories_retained": 373
+    },
+    "readme_topic": {
+      "queries": 4,
+      "certified_leaves": 24,
+      "query_hits": 123,
+      "distinct_repositories": 103,
+      "known_requests": 28,
+      "overwritten_initial_responses": 3,
+      "preserved_manual_check": 1
+    },
+    "shader_attribute": {
+      "status": "incomplete",
+      "reported_total_count": 39040,
+      "distinct_pages_read": 1,
+      "page_number": 1,
+      "distinct_file_hits": 100,
+      "distinct_repositories": 51,
+      "requests_for_identical_response": 5,
+      "authenticated_requests_per_minute": 10,
+      "r3a_new_requests": 0,
+      "scope": "One distinct page requested five times with narrowing size ranges. All five returned byte-identical responses. Neither reach-complete nor an atomic snapshot; the reported total does not establish actual attribute count."
+    },
+    "complete_untruncated_tree_responses_replayed_in_r1": 127,
+    "new_metadata_receipt_hashes_and_bytes_verified_in_r1": 814,
+    "eligible_language_evidence_entries": 48,
+    "new_pinned_language_proofs": 37,
+    "candidate_tree_pairs": 8001,
+    "exact_shared_blob_pairs": 12,
+    "falcor_path_lineage": {
+      "primary_projects": 4,
+      "selected_files_under_falcor_trees": 587,
+      "files_in_four_whole_projects": 1004,
+      "remaining_primary_files_for_diagnostic_comparison": 1748
+    },
+    "public_source_digests": 20
+  },
+  "measurement_status": {
+    "grammar_parse_rates": "unmeasured",
+    "compiler_output_fields": "source-audited only; untried",
+    "primary_projects": 47,
+    "primary_files": 2752,
+    "primary_bytes": 14417219,
+    "primary_distinct_git_blobs": 2712,
+    "primary_duplicate_blob_occurrences": 40,
+    "separate_holdout_files": 461,
+    "separate_holdout_bytes": 2951994,
+    "separate_holdout_distinct_git_blobs": 461,
+    "holdout_distinct_blobs_shared_with_primary": 240,
+    "holdout_independence": "Limited: exact blob sharing and 587 primary files under Falcor-lineage trees. Future readings must compare holdout with primary both with and without the four whole lineage projects. Membership does not change.",
+    "gates": "On the same frozen grammar, primary and holdout separately must have at most 5% ERROR-or-MISSING files and at most 0.1% faults. The weaker result caps every level and change note. Both are unmeasured.",
+    "canonical_holdout_shards_added": 0,
+    "per_file_terms_and_raw_checkout_identity": "Pending admission checks before measurement. Stop and report any conflict instead of trimming."
+  },
+  "scanner": {
+    "result": "pass: zero remaining findings with an exact per-command X-R8 baseline",
+    "raw_findings": 5,
+    "rule_ids": [
+      "sourcegraph-access-token"
+    ],
+    "verified_public_commits": 2,
+    "verified_canonical_public_annotated_tag_artifacts": 1,
+    "site_counts": "Three public commit-pin sites and two public annotated-tag artifact sites.",
+    "verification": "Public commits API returned HTTP 200 with exact commit equality. Recomputed SHA-1 from canonical annotated tag bytes; the public API normalizes tagger date to UTC, so the original -0700 offset was restored and proved by exact artifact hash equality.",
+    "baseline_entries": 5,
+    "baseline_scope": "Only these five verified findings for this command. No inherited X-R6 finding or other site is included.",
+    "global_hook_changes": false,
+    "hook_bypass": false
+  },
+  "source_digests": {
+    "additional-subjects-r3.json": "54274c49d8690f485cef2dd2ffbbed362fbb2a7ef5d3bd32f6f592eb002aa186",
+    "code-only-subjects-r4.json": "e8309d4dfa07d1ee819addb509cdf315f7995042a900e9ceeb0b3e2ff86b87ce",
+    "code-search-r3.json": "3bbc442a78a713256793f99954ee29e47513dd05b07e0b182ee8c62bfb220c0b",
+    "code-search-r3a.json": "0e2493a2eec953e4c7eda13129946cb3e93839f0a15ae4315b9daabe3c0bdbc7",
+    "grammar-candidates.json": "72bd53157126983428c20540659bf2ed9cb876a0f7088c92f1504c0a166ba191",
+    "grammar-search.json": "c21778e58840a4e8a998ba44515bd70d8338d6a0441bbd9dbb0d74e38d51f308",
+    "oracle-candidates.json": "aba4c14532b9fe2ccf81705485b9749603cb53c0a20ff43acb019f4317b366da",
+    "oracle-search.json": "1e55d0d038e082b5a5080cd0d08dfc3ab5b2199be9da76501342524182cd79a2",
+    "pool-rule.json": "a63b3151f7e4ccb9609b877c522fb83d358a7d547a35c204ed04abc6280ef806",
+    "preregistration-provenance.json": "751fad3dbf964a12efab88aaf0158e20cb252e80f6bf711ea81a2353a67ae9f5",
+    "queue-proposal.json": "5550d9475eaee40a0d43d8afe24c6bf1798246c6cf9d4e892f538dd3edc03b90",
+    "repository-search-r4.json": "5f3591fa030ea24926c06ea02958134ee97eeeb1a2a4dd532cde04a36e625564",
+    "review-seeds-r3.json": "5ccda363f2bd56f2d23cfba100511396dfa9585fb254af0fc88cee3565bd3dc8",
+    "search-protocol-r3a.json": "b2896b47a70f57116a94afe144780b8c1cfef387c965b0c6fd847a42fd8f5aad",
+    "search-rule-r2.json": "0620aee9c4998007e4e0bff01118d0a06874048f1b0c3e2c1ae89bcfa0ef21c6",
+    "search-rule-r3.json": "26dde17cd3c5cd3821081eaeada4adcd010e9cb9f711280ed482121510821639",
+    "search-rule-r4.json": "0b475fa273babfe964220b76da97c62c371b05a9cc26549b9a676b72f4e34b9f",
+    "subject-search-r2.json": "3b129a3354de44151d38274e791172eb6e667d04d73b01dd8061b6fb628732ef",
+    "subject-search-r4.json": "57c79feacaf3f221ec1654d2a74e829a27a31a116a48a86d50527dca67593a88",
+    "subject-search.json": "238093bb4f692bfa1469ca30fb0aa118720286e511ec990f8ebafdaf032ae1b2"
+  }
+}

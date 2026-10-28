@@ -174,4 +174,7 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:fbd5e792983bf39f15c733e43c568a24951565a4266ae1dc5d45da02249ca064", // fathom-onboard claude 2026-10-10 h4-cgofree
 	"sha256:fd0f9103ad4e3c7dbc733e8a34de1b6e52551107e6ff740dca194a6727f07b67", // fathom-plan claude 2026-10-03 6a7c8087
 	"sha256:ffca1cf580f5acfe79f4ee95c8d55db282fdbc03eeff5cdca5192b2c8e17bfdc", // fathom-verify claude 2026-07-23 356630db
+	"sha256:18c82ef00ef665555cf924a4f49c70894652ba19d3ab8c93bc75f485b70bdf37", // fathom-rewire claude+agents 2026-10-26 v0.24.0 prep
+	"sha256:2c2e72a27bad7c4dd2953a604d573c53e1aeda61ebbe1333826bbc56571aa8d5", // fathom-doctor claude+agents 2026-10-26 v0.24.0 prep
+	"sha256:c8a8e8a227ad7002de3b588589253cc3b0e273e48975edaa2e80df92af7f8d55", // fathom-onboard claude+agents 2026-10-26 v0.24.0 prep
 }

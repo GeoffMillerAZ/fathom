@@ -242,6 +242,12 @@
       "line": 13
     },
     {
+      "entity": "route",
+      "key": "group_wait",
+      "value": "30s",
+      "line": 15
+    },
+    {
       "entity": "route.routes[0]",
       "key": "receiver",
       "value": "null",

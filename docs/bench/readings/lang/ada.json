@@ -168,11 +168,13 @@
     "ctags:variable": 3281
   },
   "notes": [
+    "5 of 914 calibration files (0.55%) parse with an ERROR node under the pinned grammar, all of them alire test-suite fixtures (crate.adb one-liners and a deliberately malformed bad.adb); the other subjects parse clean",
+    "a child unit is named whole (`GNATCOLL.Arg_Lists`) by both ctags and the dialect; the harness now compares an oracle's dotted identifier path on its last segment as it does the dialect's (design section 1.4, D2 Ada, internal/langbench.oracleMatchName): before that rule the same run read sym_precision .8909 and level_met none, with 573 child units counted as a miss on each side",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 9ea6da5f)",
+    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 9ea6da5f)",
     "universal-ctags 6.2.1 (tier B, run with --kinds-Ada=+ET) is the only Ada oracle: no SCIP producer or tier-A tool is installed. It loses sync in real bodies, so sym_precision counts against the dialect definitions it never wrote: 896 of the two subjects' 1,064 dialect-only definitions (750 of gnatcoll-core's 881, 146 of alire's 183) come after the last structure tag ctags writes in their file (after a `declare` block, a `private package` header or an `is abstract` function; gnatcoll-json.adb after line 817, gnatcoll-io.ads whole), and 109 of its definitions the dialect does not emit are words of an expression it tagged as constants (`access`, `declare`, `and`) or the 20 operator functions (`\"/\"`) whose name the harness splits on its own `/`",
-    "a child unit is named whole (`GNATCOLL.Arg_Lists`) by both ctags and the dialect; the harness now compares an oracle's dotted identifier path on its last segment as it does the dialect's (design section 1.4, D2 Ada, internal/langbench.oracleMatchName): before that rule the same run read sym_precision .8909 and level_met none, with 573 child units counted as a miss on each side",
-    "5 of 914 calibration files (0.55%) parse with an ERROR node under the pinned grammar, all of them alire test-suite fixtures (crate.adb one-liners and a deliberately malformed bad.adb); the other subjects parse clean",
     "variables, record components, enumeration literals, generic formals and labels are excluded by kind on the oracle side (ctags:variable 3,281, ctags:literal 706, ctags:component 874, ctags:formal 118) and are not emitted"
   ],
   "disposition": null

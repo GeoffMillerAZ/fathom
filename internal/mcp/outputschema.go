@@ -65,6 +65,9 @@ type findCallersResult struct {
 	// backend cannot name one).
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when the symbol
+	// is a Go struct field: its callers are unknown, never none.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
 }
 
 // typedEdgeRef is one kind-labeled typed edge ({key, kind}).
@@ -96,7 +99,11 @@ type ingestResult struct {
 	// list pruned from this ingest's discovery.
 	DefaultIgnoredDirs []string `json:"default_ignored_dirs,omitempty"`
 	// TypedEdges (O82): {packages_seen, packages_processed, edges, failed,
-	// error?, fallback?} — present whenever this process has a recorded
+	// error?, fallback?, packages_skipped?, skipped?, not_loaded?} — the
+	// last three (EW-83) only for a status this process recorded, never one
+	// replayed from the store; skipped is [{reason, count, packages}],
+	// not_loaded [{reason, count, paths}], each sorted by reason with at most
+	// five names — present whenever this process has a recorded
 	// typed-edge outcome for the service; a failed pass also flips OK to
 	// false. Absent for a non-Go tree or a backend that cannot report it.
 	TypedEdges any `json:"typed_edges,omitempty"`
@@ -308,11 +315,16 @@ type symbolContextResult struct {
 	// Def is absent on an ambiguous, hub or not_found answer.
 	Def *symbolNodeDTO `json:"def,omitempty"`
 	// Callers/Callees/RelatedTests are lists of symbol keys, or the string
-	// "not computed (cold graph)" on a partial answer (O1446); absent on an
-	// ambiguous, hub or not_found answer.
+	// "not computed (cold graph)" on a partial answer (O1446), or, for a
+	// Go struct field's callers and related tests, "not computed (field
+	// references are not indexed)"; absent on an ambiguous, hub or
+	// not_found answer.
 	Callers      any `json:"callers,omitempty"`
 	Callees      any `json:"callees,omitempty"`
 	RelatedTests any `json:"related_tests,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when Def is a Go
+	// struct field.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
 	// Partial (O1446): present only when the call graph was cold and the
 	// answer holds what the symbol index alone could give.
 	Partial string `json:"partial,omitempty"`
@@ -387,6 +399,15 @@ type renameImpactResult struct {
 	// callers, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when the target
+	// is a Go struct field: its call sites are unknown, never zero.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
+	// Ambiguous/Candidates/Elision: present only when symbol names several
+	// definitions; callers is then empty and the summary asks for a
+	// qualified name, never "nothing to rename".
+	Ambiguous  bool     `json:"ambiguous,omitempty"`
+	Candidates []string `json:"candidates,omitempty"`
+	Elision    string   `json:"elision,omitempty"`
 }
 
 // testImpactResult mirrors test_impact's payload (analysis_tools.go).
@@ -402,6 +423,14 @@ type testImpactResult struct {
 	// Risk (TQ-5): rank:"risk"'s risk-weighted coverage list; tests is
 	// then empty.
 	Risk *certify.RiskReport `json:"risk,omitempty"`
+	// FieldReferencesIndexed is false, and present only, when the symbol
+	// is a Go struct field: its reaching tests are unknown, never none.
+	FieldReferencesIndexed *bool `json:"field_references_indexed,omitempty"`
+	// Ambiguous/Candidates: present only when symbol names several
+	// definitions; tests is then empty and the summary asks for a
+	// qualified name, never "no tests reach".
+	Ambiguous  bool     `json:"ambiguous,omitempty"`
+	Candidates []string `json:"candidates,omitempty"`
 }
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).
@@ -418,6 +447,10 @@ type blastRadiusResult struct {
 	DepthCapped  bool          `json:"depth_capped"`
 	MaxDepth     int           `json:"max_depth"`
 	ByDepth      []blastBucket `json:"by_depth"`
+	// Go fields in changed files are separate from the traversable graph:
+	// their references are not indexed, so they never consume MaxSymbols.
+	ChangedFields     []changedFieldRow `json:"changed_fields,omitempty"`
+	ChangedFieldCount int               `json:"changed_field_count,omitempty"`
 	// References (wave lg): the listed symbols reached through a
 	// reference to a Go type, not a call.
 	References []string `json:"references"`

@@ -59,6 +59,11 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 // recorder (passes.mark) right after it runs.
 func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, error) {
 	passes := passTimesFrom(ctx)
+	// GDEV-02: another live process's uncommitted ingest of this service
+	// refuses this one by name, before any read or write.
+	if err := p.refuseConcurrentIngest(ctx, svc); err != nil {
+		return Report{}, err
+	}
 	// RT-109 (design §6): the watermark this ingest will record is read
 	// now, before the corpus is, and ingest_state = in_progress is written
 	// first. The watermark moves only at the final commit (commitIngest); a
@@ -68,7 +73,9 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// ── Pass 1: Filter ──────────────────────────────────────────────────────
 	refs, err := p.conn.Discover(ctx, svc)
 	if err != nil {
-		p.abandonIngestState(ctx, run) // before the first write
+		// Before the first write; under WithoutCancel, so a cancel during
+		// the walk (a CLI's Ctrl-C) still puts the row back (GDEV-02).
+		p.abandonIngestState(context.WithoutCancel(ctx), run)
 		return Report{}, fmt.Errorf("fusion: discover %q: %w", svc.ID, err)
 	}
 
@@ -449,6 +456,9 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// response can never disagree with staleness_report/doctor about
 	// whether this service's typed pass is trustworthy.
 	report.TypedSkipped = typedRep.Skipped
+	report.TypedPackagesSkipped = typedRep.PackagesSkipped
+	report.TypedSkips = typedRep.Skips
+	report.TypedNotLoaded = typedRep.NotLoaded
 	if st, known := p.TypedEdgeStatus(svc.ID); known && typedRep.Skipped == "" {
 		report.TypedPackagesSeen = st.PackagesSeen
 		report.TypedFailed = st.Failed

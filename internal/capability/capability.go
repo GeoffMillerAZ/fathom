@@ -27,6 +27,10 @@ type ScopeRule string
 const (
 	ScopeAny         ScopeRule = "any"          // user may default, project governs
 	ScopeProjectOnly ScopeRule = "project-only" // only the repository may decide
+	// ScopeUserGoverns inverts law 13 for a control that protects the user
+	// from the repository (ADR-083, the egress guard): the user decides,
+	// and a repository may switch it on, never off.
+	ScopeUserGoverns ScopeRule = "user-governs"
 )
 
 // State is a capability's observed condition. It is deliberately not a

@@ -1,0 +1,30 @@
+{
+  "checked_date": "2026-10-26",
+  "pins_sha256": "98f97564f7d4c2defe34ba8f33522335312c352b85e6c4f6dc1682c34adfe4f7",
+  "providers": {
+    "aws": {
+      "archive_sha256": "25afdd7ee3235adec8c96ee2b12b9abecc00b56a1b8505acc6f2889798240d04",
+      "archive_url": "https://github.com/opentofu/terraform-provider-aws/releases/download/v6.67.0/terraform-provider-aws_6.67.0_darwin_arm64.zip",
+      "binary_sha256": "dd371fb4f035197de2ceef49b390d6f233293d93499f137f55895856906228a4",
+      "build_schema_equivalence": "unmeasured",
+      "hashicorp_build_not_run": {
+        "archive_url": "https://releases.hashicorp.com/terraform-provider-aws/6.67.0/terraform-provider-aws_6.67.0_darwin_arm64.zip",
+        "darwin_arm64_archive_sha256": "25e03c7f025ff4851889537605aa560d2e39bd738b33a5204b8037eb164b475f",
+        "sha256sums_sha256": "d17ac99f1387aa972ec03d60d3eda5bddb9cf044bead00e9cb1c17422d5775c6",
+        "sha256sums_url": "https://releases.hashicorp.com/terraform-provider-aws/6.67.0/terraform-provider-aws_6.67.0_SHA256SUMS"
+      },
+      "publisher": "OpenTofu re-release, not the HashiCorp build",
+      "selection": "inherited Terraform oracle pin; no highest-stable selection performed",
+      "sha256sums_sha256": "f58e6563d5f209796a5abae1380bfa2abaa6643b3c89adf18b0bb54644d85d31",
+      "sha256sums_url": "https://github.com/opentofu/terraform-provider-aws/releases/download/v6.67.0/terraform-provider-aws_6.67.0_SHA256SUMS",
+      "version": "6.67.0"
+    }
+  },
+  "scope": "provenance correction only; original frozen pins and native receipt remain unchanged",
+  "selection_rule": "Highest-stable HashiCorp release-index selection applies to AzureRM and Google only; AWS inherits the Terraform oracle pin.",
+  "superseded_fields": [
+    "providers.aws.official_archive_url",
+    "providers.aws.official_sha256sums_url",
+    "selection_rule"
+  ]
+}

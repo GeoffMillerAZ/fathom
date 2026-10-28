@@ -97,6 +97,11 @@ type GoneEvidence interface {
 	// disambiguating a bare name that exists in more than one package —
 	// the same role `package:` plays for an ordinary symbol row.
 	TypedCallers(symbol, pkg string) (nonTest, test []GoneReferent)
+	// CallersUnindexed names why an empty TypedCallers answer for symbol
+	// proves no absence, or returns "" when it does: the target is a Go
+	// struct field, whose references the index does not record. pkg is
+	// TypedCallers' package filter.
+	CallersUnindexed(symbol, pkg string) string
 }
 
 // GoneReadEvidence is an optional GoneEvidence extension (O1068, I38): an
@@ -468,6 +473,11 @@ func evaluateGoneCallers(t Task, ev GoneEvidence, symbol string) (Criterion, str
 	if t.Tests != "allowed" && len(test) > 0 {
 		r := firstReferent(test)
 		return Criterion{goneCriterion, Fail, fmt.Sprintf("%s still has %d typed TEST referent(s), e.g. %s:%d (add tests: allowed to permit)", symbol, len(test), r.File, r.Line)}, "gone-not-proven"
+	}
+	// A referent found still fails the row above; an empty set over
+	// references the index never records proves nothing (a Go field).
+	if why := ev.CallersUnindexed(symbol, t.Expect.Package); why != "" {
+		return goneUnknown([]string{why})
 	}
 	return Criterion{goneCriterion, Pass, fmt.Sprintf("%s is kept but has zero typed referents (%d test referent(s))", symbol, len(test))}, ""
 }
