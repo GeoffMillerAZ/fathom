@@ -203,6 +203,12 @@ func ParseHeldOutRecord(root, path string) (HeldOutRecord, error) {
 				return HeldOutRecord{}, malformedLine(lineNo, line)
 			}
 			rec.Demoted = append(rec.Demoted, SplitDemotion{SplitSHA256: m[1], Reason: m[2], Line: lineNo, Text: line})
+		default:
+			// A record line behind indentation or a list marker would otherwise read as
+			// prose and vanish: a hidden Demoted or Read line must refuse, not pass.
+			if hasRecordPrefix(strings.TrimLeft(line, " \t-*+>")) {
+				return HeldOutRecord{}, fmt.Errorf("held-out record: line %d hides a record prefix behind indentation or a list marker; start it at column 0: %q", lineNo, line)
+			}
 		}
 	}
 	if err := sc.Err(); err != nil {
@@ -216,6 +222,16 @@ func ParseHeldOutRecord(root, path string) (HeldOutRecord, error) {
 
 func malformedLine(lineNo int, line string) error {
 	return fmt.Errorf("held-out record: line %d is malformed: %q", lineNo, line)
+}
+
+// hasRecordPrefix reports whether s opens with one of the record's line prefixes.
+func hasRecordPrefix(s string) bool {
+	for _, p := range []string{PrefixDevSplit, PrefixHeldOutSplit, PrefixHeldOutRead, PrefixDemoted} {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // atoiCount reads the task count (the third submatch) of a Dev or Held-out

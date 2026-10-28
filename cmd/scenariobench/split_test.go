@@ -721,3 +721,32 @@ func TestCmdSplitRefusesOutOnTheRecord(t *testing.T) {
 		}
 	}
 }
+
+// split never overwrites its inputs: an -out on the corpus, or inside the
+// manifest directory, exits 2 and leaves the corpus byte-identical.
+func TestCmdSplitRefusesOutOnItsInputs(t *testing.T) {
+	fx := newSplitFixture(t, nil)
+	before, err := os.ReadFile(fx.corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ out, want string }{
+		{fx.corpus, "corpus"},
+		{filepath.Join("calibration", "bench.d", "split.json"), "manifest directory"},
+	} {
+		code, stdout, errOut := runSplit(t, "-corpus", fx.corpus, "-root", fx.root, "-out", tc.out)
+		if code != 2 || !strings.Contains(errOut, tc.want) {
+			t.Fatalf("-out %s: exit=%d stdout=%q stderr=%q, want 2 naming the %s", tc.out, code, stdout, errOut, tc.want)
+		}
+	}
+	after, err := os.ReadFile(fx.corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatal("an -out refusal rewrote the corpus")
+	}
+	if _, err := os.Stat(filepath.Join(fx.root, "calibration", "bench.d", "split.json")); !os.IsNotExist(err) {
+		t.Fatalf("split wrote inside the manifest directory: %v", err)
+	}
+}

@@ -15,7 +15,8 @@ Who writes each line, and its format (placeholders in angle brackets):
 - `Held-out split sha256: <hex> <split: held-out|post-cutoff> (<n> tasks)`: a committed held-out split. Only the
   controller writes it, at BX-11.
 - `Read: <split sha256> split <name> prereg <id> <prereg sha256> run <run id> commit <sha> at <RFC3339 UTC>`: one read
-  of a held-out split, appended by `RecordHeldOutRead` for `scenariobench run` (BX-29). It carries no host or user field.
+  of a held-out split, appended by `RecordHeldOutRead`, which `scenariobench run -heldout-read` will call once NP-B1's
+  `LoadPrereg` lands (BX-29). It carries no host or user field.
   A second read of a split sha is refused until the split is demoted.
 - `Demoted: <split sha256> <reason>`: the split is a dev set from here on; a held-out read of it is refused. Only the
   controller writes it.

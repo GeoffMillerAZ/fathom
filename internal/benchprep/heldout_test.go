@@ -332,11 +332,7 @@ func TestParseHeldOutRecord_ProsePasses(t *testing.T) {
 		"# Held-out reads",
 		"",
 		"- `Dev split sha256: <hex> <repo-relative path> (<n> tasks)`: prose bullet",
-		"  Dev split sha256: indented so prose",
 		"Dev split sha256:no-space-after-colon is prose",
-		" Held-out split sha256: leading space is prose",
-		"- Read: <split sha256> split <name> prereg <id> <prereg sha256> run <run id> commit <sha> at <RFC3339 UTC>",
-		"> Demoted: <split sha256> <reason>",
 		"`Held-out split sha256: <hex> <split> (<n> tasks)`",
 		"read: lower-case prefix is prose",
 		"Reads are appended at the end.",
@@ -345,8 +341,32 @@ func TestParseHeldOutRecord_ProsePasses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseHeldOutRecord: %v", err)
 	}
-	if len(rec.Dev) != 1 || rec.Dev[0].Line != 12 || len(rec.HeldOut)+len(rec.Reads)+len(rec.Demoted) != 0 {
-		t.Fatalf("rec = %+v, want exactly the one Dev line at line 12", rec)
+	if len(rec.Dev) != 1 || rec.Dev[0].Line != 8 || len(rec.HeldOut)+len(rec.Reads)+len(rec.Demoted) != 0 {
+		t.Fatalf("rec = %+v, want exactly the one Dev line at line 8", rec)
+	}
+}
+
+// A record line behind indentation or a list marker must refuse, never read as
+// prose: a vanished Demoted line would allow a read of a demoted split, and a
+// vanished Read line a second read.
+func TestParseHeldOutRecord_HiddenPrefixRefused(t *testing.T) {
+	f := newHeldoutFixture(t)
+	devSHA := f.tasks("dev.json", "d1", "d2")
+	hSHA := shaOf("held")
+	for _, line := range []string{
+		"  Dev split sha256: " + devSHA + " dev.json (2 tasks)",
+		" Held-out split sha256: " + hSHA + " held-out (3 tasks)",
+		"- Read: " + hSHA + " split held-out prereg P1 " + hSHA + " run r1 commit abcdef1 at 2026-10-26T00:00:00Z",
+		"> Demoted: " + hSHA + " reason",
+		" Demoted: " + strings.Repeat("0", 64) + " bogus",
+		"\t* Read: " + hSHA,
+	} {
+		t.Run(line, func(t *testing.T) {
+			_, err := f.record("# prose", "", "Dev split sha256: "+devSHA+" dev.json (2 tasks)", line)
+			if err == nil || !strings.Contains(err.Error(), "line 4") || !strings.Contains(err.Error(), "column 0") {
+				t.Fatalf("hidden record line %q: err = %v, want a line 4 refusal naming column 0", line, err)
+			}
+		})
 	}
 }
 

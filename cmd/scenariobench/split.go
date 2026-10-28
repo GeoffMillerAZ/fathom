@@ -83,6 +83,16 @@ func cmdSplit(args []string) int {
 	if samePath(outPath, record) {
 		return fail(fmt.Errorf("-out %s is the held-out record; split never writes the record (BX-11 is the controller's)", outPath))
 	}
+	corpusAbs, err := filepath.Abs(*corpusPath)
+	if err != nil {
+		return fail(err)
+	}
+	if samePath(outPath, corpusAbs) {
+		return fail(fmt.Errorf("-out %s is the corpus; split never overwrites its inputs", outPath))
+	}
+	if underDir(outPath, manifestsDir) {
+		return fail(fmt.Errorf("-out %s is inside the manifest directory %s; split never writes among its inputs", outPath, manifestsDir))
+	}
 
 	corpus, _, err := loadCorpus(*corpusPath)
 	if err != nil {
@@ -158,6 +168,19 @@ func samePath(a, b string) bool {
 	ai, aerr := os.Stat(a)
 	bi, berr := os.Stat(b)
 	return aerr == nil && berr == nil && os.SameFile(ai, bi)
+}
+
+// underDir reports whether p lies inside dir (or is dir), comparing after the
+// symlinks of dir and of p's parent are resolved where they exist.
+func underDir(p, dir string) bool {
+	resolve := func(s string) string {
+		if r, err := filepath.EvalSymlinks(s); err == nil {
+			return r
+		}
+		return filepath.Clean(s)
+	}
+	rel, err := filepath.Rel(resolve(dir), filepath.Join(resolve(filepath.Dir(p)), filepath.Base(p)))
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // countLine renders "<label>: <n> tasks", followed by " (a, b)" when n > 0.
