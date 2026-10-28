@@ -344,7 +344,11 @@ reads a run that passes as a no-read until `ClassifyOutcome` exists (BX-88).
 Each prereg fixes, before any data under it: hypotheses, strata and arms; a prediction per arm including the
 predicted nulls; the primary metric and its minimum effect of interest (MEI); the equivalence margin δ for each
 predicted-null stratum; alpha 0.05 with Holm across the prereg's primaries; n from the power table; the turn cap; the
-cost cap; the seed; exclusions; and a deviation log.
+cost cap; the seed; exclusions; and a deviation log. The prereg's `deviation_log` holds only entries made before
+sign-off (BX-65's review answers). A deviation after the first cell goes to `docs/bench/prereg/<id>.deviations.md`,
+which the provenance checks neither hash nor date, so the signed prereg never changes once data exists under it
+(ruled 2026-10-28: committing a deviation into the prereg would move its sha and commit date past `first_cell_at`
+and refuse the run for good; the code change is a BX-63 prerequisite).
 
 **Three outcomes (correction 2).** For a predicted-win primary, on the Holm-adjusted interval:
 
