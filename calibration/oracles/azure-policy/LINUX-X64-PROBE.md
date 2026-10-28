@@ -148,3 +148,174 @@ stderr line is `runner-userns-ubuntu-24.04.stderr.txt`; a replay verifies refusa
 at userns before preparation or vendor startup, with only stderr count/hash
 in the receipt. This is a captured negative-control replay, not a local Linux
 execution. Neither observation grants a calibration metric or a tier.
+
+## First actual probe: run 40407284519 (T-R13)
+
+The controller imported the unchanged, counts/flags-only
+`probe-receipt-run40407284519.json` from public
+[run 40407284519](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407284519),
+on the disposable `tools/azure-policy-probe-run` branch, ubuntu-22.04 x64.
+That run branch is never merged. The receipt SHA-256 is
+`ac6dee711f8f4e7dab06b242ea55f2361d95a3e38219838590e3c201c75d626c`.
+Its launcher, filesystem helper and input hashes match reviewed source
+`d938ba273`. Its original closed v2 schema is frozen separately as
+`probe-receipt-run40407284519.schema.json`; newer schemas do not rewrite history.
+
+The vendor executed after measured namespace/write controls (15 EROFS denials,
+capabilities dropped, loopback only). Initialization then failed with EOFError,
+native return code -25 and zero stderr/LSP bytes. Linux signal 25 is SIGXFSZ.
+The 8 MiB process file-size bound is the working hypothesis; this receipt has
+no file-attribution evidence, so neither the failing path nor a sufficient new
+bound is measured. T-R13 requires diagnostics on the rerun. No API completion,
+calibration metric or tier follows from this isolated startup failure.
+
+N3-m1: a mount stacked directly on the namespace root now refuses before any
+remount. The previous reachability algorithm could hide the real submounts in
+that shape. An authored regression covers this latent case; it is distinct from
+the unchanged real runner fixture, which has no stacked root.
+
+## T-R13a rerun: finite child bound and write attribution
+
+T-R13a admits **one instrumented 256 MiB rerun**, with no separate 8 MiB
+trace-only run. `RLIMIT_FSIZE` is a process limit, not a per-directory quota
+([Linux getrlimit](https://man7.org/linux/man-pages/man2/getrlimit.2.html)).
+The private scratch remains the only writable filesystem subtree. After the
+separately size-bounded preparation/copy, launcher and worker soft FSIZE limits
+are 8 MiB, with a finite 256 MiB inherited hard ceiling. Only the restricted
+vendor child raises its soft limit to 256 MiB. This is a provisional diagnostic
+bound, not a measured sufficient size or a statement about the first failing file.
+There is no unlimited fallback. A second SIGXFSZ is useful evidence, not success.
+
+Stderr and LSP are pipes with 8 MiB capture/protocol bounds; the vendor never
+inherits a direct writable launcher-output descriptor. Bounded no-follow regular
+log reads also refuse oversized, replaced, symlink or FIFO logs. Trace capture
+has a separate 8 MiB bound outside writable scratch. The receipt remains at
+its stricter **128 KiB** read **and write** cap, below the 8 MiB output budget.
+Capture/parser-integrity failures refuse diagnostics explicitly; bounded row/snapshot overflow retains a visibly partial diagnostic and preserves the validated worker result.
+
+`/usr/bin/strace` must already exist on the runner. Its binary hash and numeric
+version are recorded. No apt/global install or untraced fallback occurs. The
+[Ubuntu 22.04 strace 5.16 manual](https://manpages.ubuntu.com/manpages/jammy/man1/strace.1.html)
+documents the used flags: follow forks, decode descriptor paths, zero buffer
+string length, and one quiet flag (retain exit/signal records). Only write,
+pwrite/writev, truncate/allocation, copy/send/splice and exec calls are selected.
+Raw trace paths, argv, buffers, LSP, evaluation and stderr remain private and are
+deleted by the shell launcher. The raw trace is never an artifact.
+
+The tracer runs outside a nested vendor PID namespace. An authored launcher
+closes all extra descriptors before creating that PID/mount/proc view, which
+remounts everything outside the same scratch read-only. The vendor cannot see
+the outer tracer through procfs and inherits no trace-pipe writer. An authored
+PID1 waits for the zero-cap vendor child; the vendor has ordinary process signal
+semantics, rather than PID1's special semantics. The existing full outer
+user/network/PID/mount isolation and 15 EROFS controls remain required.
+
+After the complete worker namespace dies, the outer launcher parses the
+protected trace and snapshots HOME/TMP without following symlinks. Current
+closed schema **v3** includes `write_diagnostics`:
+
+- `files`: at most 64 rows with allowlisted scratch-relative HOME/TMP names,
+  successful write-family return-byte totals, final sizes/types and requested
+  allocation or explicit-offset extents. Unsafe names have `relative_path: null`.
+  Noncanonical HOME/TMP spellings (dot or empty components) keep distinct private
+  raw keys and publish null names. Dot-dot always uses `other`, since a symlink
+  can change its target area. Every `other` target, including noncanonical paths,
+  payload paths and memfd labels, collapses to fixed classes with no per-path
+  identity, preserving the row budget for HOME/TMP evidence. `dotnet_doublemapper` is a fixed kind enum.
+  No path is hashed. No raw trace hash or raw trace byte count is published,
+  because both can depend on absolute runner roots; `trace_within_cap` records
+  the bound instead. Only the strace executable's content hash/version is public.
+- `largest_private_file`: largest inspected final regular HOME/TMP file, with its
+  relative name (or null when redacted) and size. It is retained even if the row
+  array is full. A partial snapshot cannot claim the largest file globally.
+- `exceeds_previous_limit` and `files_over_previous_limit`: final size or requested
+  extent above 8 MiB; the count covers retained rows. These are rerun observations,
+  not evidence of which file caused the earlier uninstrumented death.
+- `limit_file`: a same-thread EFBIG followed by SIGXFSZ with one distinct private
+  target. Only an allowlisted HOME/TMP relative name may be published; other names
+  are null and retain only fixed class/operation/extent. Distinctness is checked
+  privately, with no digest or private identity serialized. Multiple targets or a
+  signal alone yield null. The native return code comes from exec/exit evidence.
+- `files_truncated`, `omitted_file_events`, `snapshot_truncated`: explicit partial
+  coverage. Omitted events count row lookups beyond capacity, not distinct files.
+  Snapshot traversal admits 256 directories and inspects at most 4,096 entries.
+  Before applying that cap it selects names in lexical order, independently of
+  readdir order, retaining at most 4,097 directory entries in memory. Selection
+  scans directory names to EOF under the workflow's ten-minute job timeout; unselected entries
+  are not statted. It never follows symlinks, and retains the largest inspected
+  file independently of row capacity.
+- `diagnostic_status`: complete, partial, refused or contradicted. Parser-integrity failures
+  (including unmatched resumed calls, undecoded descriptor kinds or trace overflow)
+  cannot turn an already validated worker initialize/return-code/stderr/LSP result
+  into an empty launcher receipt. Diagnostic refusal has a fixed exception class
+  and `write_diagnostics: null`; it grants no trace-attested execution claim.
+  A parsed trace missing the vendor exec or exit contradicts a worker execution
+  claim: keep its parsed diagnostics and worker initialize/stderr/LSP fields,
+  but set `native_executed: null` (unknown), `native_returncode: null`,
+  `status: probe_refused`, `failed_stage: tracing` and
+  `diagnostic_status: contradicted`. The closed schema forbids retaining a native
+  execution claim or asserting non-execution in that outcome. A trace-attested exit supersedes the worker
+  wrapper return code; a wrapper/native code difference alone is not contradiction.
+
+T-R13a permits only bounded relative HOME/TMP names: ASCII letters, digits, dot,
+underscore and hyphen; no dot/dot-dot components; at most 128 bytes per component
+and 512 per path. Other names are redacted per row. Relative truncate targets with
+unknown cwd use an anonymous fixed class rather than a guessed file. A regression
+publishes byte-identical receipts under differently sized scratch and HOME roots.
+The maximum-shaped closed receipt, including 64 maximal rows, largest/limit records
+and all optional worker fields, encodes to 65,585 bytes under the 128 KiB cap. Allocation extent, bytes
+written, mmap stores and final logical size remain distinct quantities.
+
+The runner suite now requires **two** Linux kernel tests with zero skips. The
+new authored control uses the production tracer/namespace/child chain, proves
+no extra descriptor reaches the child and the outer tracer is absent from its
+PID view, checks the inherited 256 MiB bound, lowers only the authored process
+to 16 KiB and deliberately extends a TMP file to 32 KiB. It must attribute five
+written bytes and the exact EFBIG/SIGXFSZ target. It executes no vendor code.
+Off Linux exactly these two tests skip; missing strace or a namespace/control
+failure on Linux blocks preparation/vendor execution. Local mocked controls
+are not a successful Linux run. Canonical readings and tiers remain unchanged.
+
+
+## T-R15/T-R16 authored-control refusal and diagnostic gate
+
+Run 40487438655 refused at `filesystem_controls`, with `native_executed: false`.
+The vendor never ran; T-R15 leaves the single T-R13a rerun unspent. Its original
+counts/flags receipt is `probe-receipt-run40487438655.json`. Diagnostic run
+40494795380 then identified the authored Linux write control: 93 tests, one
+error (`exact file-size control trace failed`), followed by the generic
+boundary-suite refusal.
+
+The setup bug precedes path classification: `mount_readonly(home.parent)` changes
+cwd to the scratch root. The nested launcher inherited it, so the authored
+relative `tmp/limit-control` open addressed a nonexistent scratch-root TMP
+rather than private HOME/TMP. A local regression reproduces ENOENT (encoded
+exit66) for both authored and vendor launch modes before the fix. The child now
+starts with explicit `cwd=home`; the same actual relative-open regression exits0
+and writes five bytes under HOME/TMP. The mount, capability, PID, descriptor and
+file-size controls are retained. A separate absolute-fd trace control confirms
+that `ftruncate` on a `-yy` decoded target still attests `area: tmp`, relative
+`home/tmp/limit-control`, native returncode -25 and the 32 KiB failed extent.
+This authored trace is not a captured Linux trace; runner confirmation remains
+mandatory.
+
+On assertion failure, the authored control's test error describes the compared
+native and outer returncodes, execution/signal/overflow flags, limit-file
+area/relative path/extent, and expected file's final size/write bytes. These
+bounded authored fields appear only in test diagnostics, never receipt.json;
+raw trace, stderr and absolute paths are not included. The production receipt
+instead permits only fixed enum `failure_detail: required_authored_controls_failed`
+at this launcher gate, never an exception message. Its complete maximum-shaped
+receipt is 65,585 bytes, below 131,072.
+
+Local validation is insufficient for READY: the controller must run both commands
+below on a GitHub-hosted ubuntu-22.04 x64 candidate, without the vendor. All 97
+tests must run with zero errors/skips, and all 15 mutants must fail then restore
+green. Off Linux exactly two designated kernel tests skip. Do not relax either
+kernel test or the suite gate to proceed. Any new refusal requires another fix
+and diagnostic run before READY, then the admitted vendor probe.
+
+```sh
+python3 -B -m unittest discover -s calibration/oracles/azure-policy -p 'test_*.py' -v
+python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out "$RUNNER_TEMP/controls"
+```

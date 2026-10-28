@@ -3,7 +3,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 2
+      "const": 3
     },
     "candidate": {
       "const": "AzurePolicy.azurepolicyextension/0.2.6"
@@ -70,7 +70,8 @@
         "evaluations",
         "shutdown",
         "execution",
-        null
+        null,
+        "tracing"
       ]
     },
     "failure_class": {
@@ -322,6 +323,106 @@
     },
     "filesystem_dotdot_writes_refused": {
       "const": true
+    },
+    "diagnostics_script_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "vendor_script_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "tracing_script_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "vendor_file_limit_bytes": {
+      "const": 268435456
+    },
+    "launcher_file_limit_bytes": {
+      "const": 8388608
+    },
+    "trace_limit_bytes": {
+      "const": 8388608
+    },
+    "receipt_limit_bytes": {
+      "const": 131072
+    },
+    "tracer_returncode": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": -2147483648,
+      "maximum": 9223372036854775807
+    },
+    "write_diagnostics": {
+      "$ref": "#/$defs/write_diagnostics"
+    },
+    "trace_tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "version": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99999
+          }
+        }
+      },
+      "required": [
+        "sha256",
+        "version"
+      ]
+    },
+    "trace_writer_hidden_from_vendor": {
+      "const": true
+    },
+    "trace_within_cap": {
+      "type": "boolean"
+    },
+    "diagnostic_status": {
+      "enum": [
+        "complete",
+        "partial",
+        "refused",
+        "contradicted"
+      ]
+    },
+    "diagnostic_failure_class": {
+      "enum": [
+        "ValueError",
+        "OSError",
+        "PermissionError",
+        "TimeoutExpired",
+        "TimeoutError",
+        "ConnectionRefusedError",
+        "JSONDecodeError",
+        "FileNotFoundError",
+        "EOFError",
+        "Empty",
+        "ImportError",
+        "ModuleNotFoundError",
+        "HTTPException",
+        "BrokenPipeError",
+        "ConnectionError",
+        "RuntimeError",
+        "OverflowError",
+        "OtherError"
+      ]
+    },
+    "failure_detail": {
+      "enum": [
+        "required_authored_controls_failed"
+      ]
     }
   },
   "required": [
@@ -338,7 +439,14 @@
     "tier_granted",
     "failed_stage",
     "kernel_capabilities",
-    "filesystem_script_sha256"
+    "filesystem_script_sha256",
+    "diagnostics_script_sha256",
+    "vendor_script_sha256",
+    "tracing_script_sha256",
+    "vendor_file_limit_bytes",
+    "launcher_file_limit_bytes",
+    "trace_limit_bytes",
+    "receipt_limit_bytes"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Closed Azure Policy authored probe receipt; no calibration claim",
@@ -389,6 +497,273 @@
         "result_type",
         "error_code",
         "result_count"
+      ]
+    },
+    "write_diagnostics": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "area": {
+                "enum": [
+                  "tmp",
+                  "home",
+                  "other"
+                ]
+              },
+              "kind": {
+                "enum": [
+                  "generic",
+                  "dotnet_doublemapper"
+                ]
+              },
+              "observed_write_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              "final_size_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              "final_type": {
+                "enum": [
+                  "absent",
+                  "regular",
+                  "symlink",
+                  "other"
+                ]
+              },
+              "unlinked": {
+                "type": "boolean"
+              },
+              "relative_path": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^(?=.{1,512}$)home/(?:(?!\\.{1,2}(?:/|$))[A-Za-z0-9_.-]{1,128}/)*(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,128}$"
+              },
+              "largest_requested_extent_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              "exceeds_previous_limit": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "area",
+              "kind",
+              "observed_write_bytes",
+              "final_size_bytes",
+              "final_type",
+              "unlinked",
+              "relative_path",
+              "largest_requested_extent_bytes",
+              "exceeds_previous_limit"
+            ]
+          }
+        },
+        "sigxfsz_observed": {
+          "type": "boolean"
+        },
+        "limit_file": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "area": {
+              "enum": [
+                "tmp",
+                "home",
+                "other"
+              ]
+            },
+            "kind": {
+              "enum": [
+                "generic",
+                "dotnet_doublemapper"
+              ]
+            },
+            "operation": {
+              "enum": [
+                "write",
+                "writev",
+                "pwrite64",
+                "pwritev",
+                "pwritev2",
+                "ftruncate",
+                "truncate",
+                "fallocate",
+                "copy_file_range",
+                "sendfile",
+                "splice"
+              ]
+            },
+            "requested_extent_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "relative_path": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^(?=.{1,512}$)home/(?:(?!\\.{1,2}(?:/|$))[A-Za-z0-9_.-]{1,128}/)*(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,128}$"
+            }
+          },
+          "required": [
+            "area",
+            "kind",
+            "operation",
+            "requested_extent_bytes",
+            "relative_path"
+          ]
+        },
+        "correlated_limit_files": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "vendor_exec_observed": {
+          "type": "boolean"
+        },
+        "native_returncode": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -2147483648,
+          "maximum": 9223372036854775807
+        },
+        "largest_private_file": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "area": {
+              "enum": [
+                "tmp",
+                "home",
+                "other"
+              ]
+            },
+            "kind": {
+              "enum": [
+                "generic",
+                "dotnet_doublemapper"
+              ]
+            },
+            "observed_write_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "final_size_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "final_type": {
+              "enum": [
+                "absent",
+                "regular",
+                "symlink",
+                "other"
+              ]
+            },
+            "unlinked": {
+              "type": "boolean"
+            },
+            "relative_path": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^(?=.{1,512}$)home/(?:(?!\\.{1,2}(?:/|$))[A-Za-z0-9_.-]{1,128}/)*(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,128}$"
+            },
+            "largest_requested_extent_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "exceeds_previous_limit": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "area",
+            "kind",
+            "observed_write_bytes",
+            "final_size_bytes",
+            "final_type",
+            "unlinked",
+            "relative_path",
+            "largest_requested_extent_bytes",
+            "exceeds_previous_limit"
+          ]
+        },
+        "files_over_previous_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "files_truncated": {
+          "type": "boolean"
+        },
+        "snapshot_truncated": {
+          "type": "boolean"
+        },
+        "omitted_file_events": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        }
+      },
+      "required": [
+        "files",
+        "sigxfsz_observed",
+        "limit_file",
+        "correlated_limit_files",
+        "vendor_exec_observed",
+        "native_returncode",
+        "largest_private_file",
+        "files_over_previous_limit",
+        "files_truncated",
+        "snapshot_truncated",
+        "omitted_file_events"
       ]
     }
   },
@@ -460,6 +835,37 @@
           "vendor_capabilities_dropped",
           "filesystem_write_probes",
           "filesystem_dotdot_writes_refused"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "diagnostic_status"
+        ],
+        "properties": {
+          "diagnostic_status": {
+            "const": "contradicted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "native_executed": {
+            "const": null
+          },
+          "native_returncode": {
+            "const": null
+          },
+          "status": {
+            "const": "probe_refused"
+          },
+          "failed_stage": {
+            "const": "tracing"
+          }
+        },
+        "required": [
+          "native_returncode"
         ]
       }
     }
