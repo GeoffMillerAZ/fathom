@@ -5786,7 +5786,8 @@ and `TestNoJudgedTokenOnAnySurfaceUnderKill` holds both halves. The decision sta
 
 ## ADR-074: Intent practice v2: no INTENT.md and no committed view without a reader and a check, every rejection names what would make it win, CUE declares and gates the parsed form while markdown stays the authoring surface, and edit-time intent is generated from the router (2026-10-17)
 
-**Status.** Accepted 2026-10-17. **Type.** process / architecture. Design: the intent-practice-v2 final decisions (V1 to V11,
+**Status.** Accepted 2026-10-17. Amended 2026-10-28 (ADR-087): R1's wins-if counts unparsed statuses, not field-vet
+failures. **Type.** process / architecture. Design: the intent-practice-v2 final decisions (V1 to V11,
 T1 to T4), from research `wf_888f8f2d-57b` and the adversarial review `wf_a6ee03dd-707` (lenses evidence, agents, doctrine,
 and a judge); this record keeps fathom's part. Plan: `docs/plans/intent-v2.md` (IV-). Amends ADR-018 (decision 3's
 round-trip claim) and ADR-026 (K0 fired), each with a dated line; narrows the CUE non-goal (`scope/non-goals.md`); adds F86;
@@ -5905,6 +5906,13 @@ committed the region deletes the file and drops the gate step. The CUE non-goal 
   month: that kind becomes CUE-authored (the narrowed non-goal's trigger, R1's wins-if).
 - IV-9 reads that a per-file split needs no paid recompile: split `ADR.md` in its own change.
   - 2026-10-17, fired and declined (owner: "i'll take your advice here"): IV-9 measured that a cut keeping each record's bytes recompiles nothing (docs/bench/readings/intent-v2/adr-split.md), but the split's cause is gone and its cost is large. The id collision that fired T3 (ADR-058) is prevented by pre-assigned record ids and caught by `intent index --check` (IV-2); a per-file split would turn it from a merge conflict into two silent files. Replaying the 444 merges on main since 2026-09-17 with `git merge-tree`, 6 conflicted on ADR.md (1.4%) and 103 on CHANGELOG.md (23%); the split touches 95 Go files and 306 doc mentions. Rejected for now. Wins if: ADR.md conflicts exceed 10% of a month's merges by the same replay, or a tool fathom adopts needs per-file decision records.
+
+**Amended 2026-10-28 (ADR-087): R1's wins-if counts unparsed statuses, not field-vet failures.** R1's second
+condition and the matching Revisit when line, "markdown field vet failures exceed five a month", name an instrument that
+cannot exist: the gate refuses a bad field before commit and leaves no trace (ADR-087 decision 4). Both now read: a
+kind's unparsed-status count in `intent audit --json` exceeds five a month for two months. The first condition, over half
+a kind's bytes structured, is unchanged and is read from the structured-bytes share in the same output. The CUE non-goal
+(`scope/non-goals.md`) carries the same clause.
 
 ## ADR-075: Collision-free append points: a change note is a file of its own, a generated file merges by regeneration, a language wave's foundation rows go in a sibling plan, and the extractor epoch is derived from bump files and a data digest (2026-10-19)
 
@@ -6327,7 +6335,7 @@ reads below its threshold with its oracle available for two releases; the consum
 
 ## ADR-087: Intent record statuses get a CUE vocabulary, three conditions at HEAD and an unparsed count; markdown stays the source, edge judgment waits on a backtest, kit lifecycles are input only (2026-10-28)
 
-**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** process / architecture. Design: `docs/design/project-understanding.md` section 7. Plan rows: PU-L1 to PU-L9, PU-M4, PU-M5. Goal: G47. Amends ADR-018 (a dated note). Extends ADR-074 decision 5 and gives its R1 wins-if an instrument. Reads ADR-040, ADR-074's rejected alternatives, the CUE non-goal, Q20 and agentic-kit 0021 as constraints.
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** process / architecture. Design: `docs/design/project-understanding.md` section 7. Plan rows: PU-L1 to PU-L9, PU-M4, PU-M5. Goal: G47. Amends ADR-018 and ADR-074 (a dated note on each). Extends ADR-074 decision 5 and gives its R1 wins-if an instrument. Reads ADR-040, ADR-074's rejected alternatives, the CUE non-goal, Q20 and agentic-kit 0021 as constraints.
 
 **Context.** The owner asked on 2026-10-17 and again on 2026-10-24 for vision, goals and specs as CUE state machines, queryable by models and enforced deterministically. Three records declined CUE as the authoring source, each with a wins-if: agentic-kit 0021, ADR-074 R1 and an adopter platform repository's own structured-intent decision. The wins-if has not fired: structured bytes measured 2026-10-28 are 28% for goals, 7.5% to 13.7% for futures and 38% for plan rows, against 50%. Its other condition, more than five field-vet failures a month, has no instrument, because the gate refuses a bad field before commit and leaves no trace. Kit libraries use the pattern for runtime records (agentic-kit's workflow engine, correction ledger, intake triage and claim lifecycle, and a review kit's finding lifecycle): CUE declares the vocabulary and Go owns the law. No repository authored goals or specs as CUE state machines. Every gap measured today is checkable at the current commit: decision statuses in four spellings with superseded-by links never checked, 9 of 36 goal bets past review with no keep or kill recorded, and 1 of 9 incident outcomes pending with the outcome rule unchecked. In 30 days of `ADR.md` history the one accepted-to-superseded edge had a resolving successor, so no edge-only violation was found.
 

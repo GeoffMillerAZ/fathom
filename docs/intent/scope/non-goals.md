@@ -60,8 +60,8 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
 - **CUE is never an authoring surface for plans or prose records, and never an execution engine** (ADR-018, `09`;
   narrowed 2026-10-17 by ADR-074). Hand-authored CUE data is in scope: `.fathom/guard.cue`, `.fathom/concerns.cue` and a
   repository's risk.cue are written by hand, and fathom's schemas declare and gate the parsed form of markdown records.
-  Revisit when: a record kind becomes mostly fields (over half its bytes structured), or markdown field vet failures
-  exceed five a month; that kind then becomes CUE-authored.
+  Revisit when: a record kind becomes mostly fields (over half its bytes structured), or its unparsed-status count in
+  `intent audit --json` exceeds five a month for two months (ADR-087 d4); that kind then becomes CUE-authored.
 - **No separate SDD binary or repo.** Why: no consumer without the index (ADR-018). Revisit when: never.
 - **No Node toolchain.** Why: the artifact is a Go binary; CSS via the pinned Tailwind
   binary (`.fathom/guard.cue`). Carve-out (2026-10-16, ADR-072): `fathom plugin render` may write one

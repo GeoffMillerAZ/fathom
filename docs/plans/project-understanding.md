@@ -23,7 +23,7 @@ decision 6). Lanes: controller, owner, cloud, codex, api.
 
 - [ ] Six decision records ADR-084 to ADR-089 appended to `ADR.md`, each with Context, Decision, Decision models, Alternatives rejected with a Wins if per alternative, Consequences and Revisit when (lane: controller) {id: PU-D1, oracle: lexical, path: ADR.md, pattern: "^## ADR-08[4-9]: ", min: 6}
 - [ ] Their six rows in the decisions index (lane: controller) {id: PU-D2, oracle: lexical, path: docs/intent/decisions/README.md, pattern: "^[|] ADR-08[4-9] [|] accepted", min: 6}
-- [ ] ADR-018 carries the dated note pointing at ADR-087's status vocabulary (lane: controller) {id: PU-D3, oracle: lexical, path: ADR.md, pattern: "^[*][*]Amended 2026-10-28 [(]ADR-087[)]"}
+- [ ] ADR-018 carries the dated note pointing at ADR-087's status vocabulary (lane: controller) {id: PU-D3, oracle: lexical, path: ADR.md, pattern: "^[*][*]Amended 2026-10-28 [(]ADR-087[)]: a status vocabulary"}
 - [ ] The assessment that condenses the research, the verdict and the open questions (lane: controller) {id: PU-D4, oracle: lexical, path: docs/assessments/2026-10-28-project-understanding.md, pattern: "^## Verdict$"}
 - [ ] The assessment's row in the assessments index (lane: controller) {id: PU-D5, oracle: lexical, path: docs/assessments/README.md, pattern: "2026-10-28-project-understanding[.]md"}
 - [ ] The design doc with its `## Decision models` section (lane: controller) {id: PU-D6, oracle: lexical, path: docs/design/project-understanding.md, pattern: "^## Decision models$"}
@@ -38,6 +38,8 @@ decision 6). Lanes: controller, owner, cloud, codex, api.
 - [ ] Questions Q38, Q39 and Q40 (lane: controller) {id: PU-D15, oracle: lexical, path: docs/intent/questions.md, pattern: "^[*][*]Q(38|39|40)[.] ", min: 3}
 - [ ] Q5 records the hosted channels it blocks (lane: controller) {id: PU-D16, oracle: lexical, path: docs/intent/questions.md, pattern: "every hosted channel"}
 - [ ] Q4 records its effect on ADR-084's frame (lane: controller) {id: PU-D17, oracle: lexical, path: docs/intent/questions.md, pattern: "keeps ADR-084's"}
+- [ ] ADR-074 carries the dated note, in its Status line and as a paragraph, that R1's wins-if counts unparsed statuses (lane: controller) {id: PU-D18, oracle: lexical, path: ADR.md, pattern: "Amended 2026-10-28 [(]ADR-087[)]: R1's wins-if counts unparsed statuses", min: 2}
+- [ ] The CUE non-goal's Revisit when reads the unparsed-status count, not field-vet failures (lane: controller) {id: PU-D19, oracle: lexical, path: docs/intent/scope/non-goals.md, pattern: "exceeds five a month for two months [(]ADR-087 d4[)]"}
 
 ### Intent statuses (ADR-087, design section 7)
 
