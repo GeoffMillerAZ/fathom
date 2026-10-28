@@ -644,8 +644,8 @@ scenariobench parity -corpus <corpus.json> [-baseline <arm>] [-task <id>] \
 It renders the baseline (default: the corpus criterion's `control` arm) and
 every other arm through `RenderArm`, each into its own scratch copy of one
 local tree: an empty directory by default, or `-tree`, copied (never cloned
-or fetched; `.git`, symlinks and other non-regular entries are not copied
-and are named on stderr). It then compares seven fields
+or fetched; a symlinked `-tree` is resolved first; `.git`, symlinks and other
+non-regular entries inside it are not copied and are named on stderr). It then compares seven fields
 (`scenariobench.CheckArmParity`):
 
 - `prompt`: the task prompt, the instruction files the render leaves in the

@@ -167,12 +167,12 @@ func TestCheckArmParity_NotesFileIsNotPrompt(t *testing.T) {
 func TestCheckArmParity_SystemAppendNotExplainedByNotesFileIsPrompt(t *testing.T) {
 	a := armView{notes: true, systemAppend: "x"}
 	b := armView{notes: true, systemAppend: "y"}
-	got := diffViews(a, b)
+	got := diffViews(a, b, true)
 	if !reflect.DeepEqual(got, []string{"prompt"}) {
 		t.Fatalf("diffViews = %v, want [prompt] for a SystemAppend difference with equal NotesFile", got)
 	}
 	b.notes = false
-	got = diffViews(a, b)
+	got = diffViews(a, b, true)
 	if !reflect.DeepEqual(got, []string{"notes_file"}) {
 		t.Fatalf("diffViews = %v, want [notes_file] once NotesFile itself differs", got)
 	}
@@ -549,13 +549,15 @@ func TestParityReportJSONShape(t *testing.T) {
 // testdata/scenariobench/*.json BEFORE Arm.Declares existed (recorded from
 // CanonicalCorpusSHA256 and armContentHash at the commit that added it). The
 // field is omitempty, so none of them may move: a moved hash orphans every
-// committed cell keyed under it.
+// committed cell keyed under it. A corpus edited on purpose updates its own
+// line, recomputed without Declares (guards-adr.json: its anchor repin in
+// 6f0339ec6, recomputed at that commit, before this field existed).
 var committedCorpusGoldens = map[string]struct {
 	corpus string
 	arms   map[string]string
 }{
 	"findings-loop.json": {"053c36aa40e088a1740fd18849dee52cf3be025651ba4e8f14ba7f87f32d1c00", map[string]string{"control": "ff7273a241fb", "full": "d9b199f0567c"}},
-	"guards-adr.json":    {"ebcabaae382a977cea0ee9b051a41e1fa3e719189c31a4bc3abbb07b2927c92e", map[string]string{"control": "58e2504e9a41", "full": "d9b199f0567c"}},
+	"guards-adr.json":    {"d12d25a00ad8d5a0243c050fd9a23ec3e0970f10afae342d49153719c0458a38", map[string]string{"control": "58e2504e9a41", "full": "d9b199f0567c"}},
 	"guards-fathom.json": {"da6e7a4b9db217b70bf85cee57ef74a34c2f97ded80ee5d3f2aa2ffdf03085cb", map[string]string{"control": "58e2504e9a41", "full": "d9b199f0567c"}},
 	"guards-m1.json":     {"eb333938614c5797f5ae0cff52af04c5da28f4970d224c0af96144b1047f5cc6", map[string]string{"control": "58e2504e9a41", "full": "d9b199f0567c"}},
 	"lookups-py.json":    {"28bc17813e66a72ea157c820695bf7bf8562d8de0d068bc076fe26be4f2d37df", map[string]string{"full": "1c2ab0972246", "grep": "cc15494d419f"}},
@@ -611,5 +613,103 @@ func TestCommittedCorporaHashesUnchangedByDeclares(t *testing.T) {
 		if !seen[name] {
 			t.Errorf("golden corpus %s is no longer committed under testdata/scenariobench", name)
 		}
+	}
+}
+
+// A failed render hides only what the render produces: Arm.Env (settings)
+// and Arm.NotesFile (notes_file) are arm data, compared even when either
+// side's render failed, so an undeclared difference there is FAIL, not
+// INCOMPLETE.
+func TestCheckArmParity_FailedRenderStillComparesArmData(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mut  func(*Arm)
+		want []string
+	}{
+		{name: "env", mut: func(a *Arm) { a.Env = map[string]string{"SOME_FLAG": "1"} }, want: []string{"settings"}},
+		{name: "notes file", mut: func(a *Arm) { a.NotesFile = true }, want: []string{"notes_file"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			wired := Arm{Wired: true, Instructions: "stanza"}
+			tc.mut(&wired)
+			rep, err := CheckArmParity(parityCorpus(map[string]Arm{"control": parityArm(nil), "full": wired}), ParityOptions{ScratchDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			row := parityRow(t, rep, "full")
+			if row.Verdict != ParityFail || !reflect.DeepEqual(row.Undeclared, tc.want) || len(row.Unrendered) != 4 {
+				t.Fatalf("row = %+v, want FAIL %v with the four unrendered fields still reported", row, tc.want)
+			}
+			// The baseline's own failed render does not hide arm data either.
+			rep, err = CheckArmParity(parityCorpus(map[string]Arm{"control": {Wired: true, Instructions: "stanza"}, "full": wired}), ParityOptions{ScratchDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if row := parityRow(t, rep, "full"); row.Verdict != ParityFail || !reflect.DeepEqual(row.Undeclared, tc.want) {
+				t.Fatalf("with a failed baseline: row = %+v, want FAIL %v", row, tc.want)
+			}
+		})
+	}
+}
+
+// The report is deterministic: two checks of the same corpus and tree with
+// different scratch directories are identical, render errors included (they
+// must not carry the scratch copy's own path).
+func TestCheckArmParity_ReportIndependentOfScratchDir(t *testing.T) {
+	c := parityCorpus(map[string]Arm{"control": parityArm(nil), "full": {Wired: true, Instructions: "stanza"}})
+	a, err := CheckArmParity(c, ParityOptions{ScratchDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := CheckArmParity(c, ParityOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(a, b) {
+		t.Fatalf("reports differ across scratch dirs:\n%+v\n%+v", a, b)
+	}
+	if row := parityRow(t, a, "full"); !strings.Contains(row.RenderError, "<arm copy>") {
+		t.Fatalf("RenderError = %q, want the copy path replaced by <arm copy>", row.RenderError)
+	}
+}
+
+// A symlinked -tree root is resolved and walked, never read as an empty tree
+// (I38), and an empty directory is copied and hashed, not silently dropped.
+func TestCheckArmParity_SymlinkedTreeRootAndEmptyDirs(t *testing.T) {
+	real := t.TempDir()
+	writeTestFile(t, filepath.Join(real, "CLAUDE.md"), "# subject\n")
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	c := parityCorpus(map[string]Arm{"control": parityArm(nil), "full": parityArm(func(a *Arm) { a.Instructions = "none" })})
+	viaReal, err := CheckArmParity(c, ParityOptions{Tree: real, ScratchDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	viaLink, err := CheckArmParity(c, ParityOptions{Tree: link, ScratchDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if viaLink.TreeSHA256 != viaReal.TreeSHA256 {
+		t.Fatalf("tree sha via link %s != via real dir %s", viaLink.TreeSHA256, viaReal.TreeSHA256)
+	}
+	if row := parityRow(t, viaLink, "full"); row.Verdict != ParityFail || !reflect.DeepEqual(row.Undeclared, []string{"prompt"}) {
+		t.Fatalf("via link: row = %+v, want FAIL [prompt] as via the real dir", row)
+	}
+
+	if err := os.Mkdir(filepath.Join(real, "empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	scratch := t.TempDir()
+	withDir, err := CheckArmParity(c, ParityOptions{Tree: real, ScratchDir: scratch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withDir.TreeSHA256 == viaReal.TreeSHA256 {
+		t.Fatalf("an added empty directory did not change the tree sha256")
+	}
+	if fi, err := os.Stat(filepath.Join(scratch, "0", "empty")); err != nil || !fi.IsDir() {
+		t.Fatalf("empty directory not copied into the arm's tree: %v", err)
 	}
 }

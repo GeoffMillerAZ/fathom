@@ -134,19 +134,20 @@ type ParityOptions struct {
 // RenderArm into its own fresh copy of the source tree and compares each arm
 // to the baseline over ParityFields, field by field.
 //
-// The source tree is hashed (sorted walk; per regular file the relative slash
-// path, the permission bits and the sha256 of its bytes). `.git`, symlinks
-// and non-regular files are not copied and are listed in
-// ParityReport.Skipped, never silently dropped. RenderArm writes only into
+// The source tree (a symlinked root is resolved first) is hashed (sorted
+// walk; per directory and regular file the relative slash path, the
+// permission bits and the sha256 of its bytes). `.git`, symlinks and
+// non-regular files are not copied and are listed in ParityReport.Skipped,
+// never silently dropped. RenderArm writes only into
 // the copies; the source tree is never modified. Nothing is written into a
 // copy before RenderArm (no stand-in hook stack to get past
 // assertWiredHooksPresent): a wired arm in a tree `fathom init` never wired
 // fails to render, and that reads INCOMPLETE, not PASS. A RenderArm error
 // leaves the arm's prompt, settings, tools and notes_file Unrendered (a
-// failed render returns no ArmFiles) with the error text in RenderError. A
-// field that is unrendered on either side of a comparison is Unrendered for
-// that arm and is not reported as differing, including the Env part of
-// settings.
+// failed render returns no ArmFiles) with the error text in RenderError
+// (the copy's path reads "<arm copy>"). A rendered part that is unrendered
+// on either side is not compared, but the arm and task data still are: an
+// undeclared Env or NotesFile difference fails even when a render failed.
 //
 // Verdict: any Undeclared field is FAIL; else any Unrendered field is
 // INCOMPLETE; else PASS. The baseline's own row compares it to itself (PASS,
@@ -229,6 +230,13 @@ func CheckArmParity(corpus Corpus, opts ParityOptions) (ParityReport, error) {
 			return ParityReport{}, fmt.Errorf("parity: creating empty tree: %w", err)
 		}
 	}
+	// A symlinked root is resolved once and walked; WalkDir alone would
+	// Lstat it, see a non-directory and read the tree as empty (I38).
+	resolved, err := filepath.EvalSymlinks(tree)
+	if err != nil {
+		return ParityReport{}, fmt.Errorf("parity: reading tree: %w", err)
+	}
+	tree = resolved
 	files, skipped, treeSHA, err := hashTree(tree)
 	if err != nil {
 		return ParityReport{}, err
@@ -253,7 +261,7 @@ func CheckArmParity(corpus Corpus, opts ParityOptions) (ParityReport, error) {
 		row := ArmParity{Arm: name}
 		var differing []string
 		if name != baseline {
-			differing = diffViews(view, base)
+			differing = diffViews(view, base, view.renderErr == "" && base.renderErr == "")
 		}
 		switch {
 		case view.renderErr != "":
@@ -265,9 +273,6 @@ func CheckArmParity(corpus Corpus, opts ParityOptions) (ParityReport, error) {
 		}
 		declares := corpus.Arms[name].Declares
 		for _, field := range differing {
-			if slices.Contains(row.Unrendered, field) {
-				continue
-			}
 			if slices.Contains(declares, field) {
 				row.Declared = append(row.Declared, field)
 			} else {
@@ -290,7 +295,10 @@ func CheckArmParity(corpus Corpus, opts ParityOptions) (ParityReport, error) {
 // armView is everything CheckArmParity compares about one arm: the rendered
 // harness inputs read back from its copy, plus the arm and task data that
 // need no render. renderErr is non-empty when RenderArm (or reading its
-// output back) failed; the rendered members are then zero and ignored.
+// output back) failed; the rendered members are then zero and ignored, and
+// the arm and task data are still compared. renderErr never carries the
+// copy's own path (it reads "<arm copy>"), so a report does not depend on
+// the scratch directory.
 type armView struct {
 	renderErr string
 
@@ -329,9 +337,10 @@ func renderView(arm Arm, dir string, tasks []Task) armView {
 		v.turnCaps = append(v.turnCaps, task.Sessions.MaxTurns)
 	}
 
+	scrub := func(msg string) string { return strings.ReplaceAll(msg, dir, "<arm copy>") }
 	files, err := RenderArm(arm, dir)
 	if err != nil {
-		v.renderErr = err.Error()
+		v.renderErr = scrub(err.Error())
 		return v
 	}
 	v.systemAppend = files.SystemAppend
@@ -347,18 +356,18 @@ func renderView(arm Arm, dir string, tasks []Task) armView {
 	}
 	var rerr error
 	if v.settings, _, rerr = read(files.SettingsPath); rerr != nil {
-		v.renderErr = "reading back the rendered settings: " + rerr.Error()
+		v.renderErr = scrub("reading back the rendered settings: " + rerr.Error())
 		return v
 	}
 	if v.mcp, _, rerr = read(files.MCPConfigPath); rerr != nil {
-		v.renderErr = "reading back the rendered MCP config: " + rerr.Error()
+		v.renderErr = scrub("reading back the rendered MCP config: " + rerr.Error())
 		return v
 	}
 	v.instr = map[string]string{}
 	for _, rel := range armInstructionFiles {
 		text, ok, rerr := read(filepath.Join(dir, filepath.FromSlash(rel)))
 		if rerr != nil {
-			v.renderErr = "reading back " + rel + ": " + rerr.Error()
+			v.renderErr = scrub("reading back " + rel + ": " + rerr.Error())
 			return v
 		}
 		if ok {
@@ -366,30 +375,32 @@ func renderView(arm Arm, dir string, tasks []Task) armView {
 		}
 	}
 	if v.notesMD, v.notesMDSet, rerr = read(filepath.Join(dir, "NOTES.md")); rerr != nil {
-		v.renderErr = "reading back NOTES.md: " + rerr.Error()
+		v.renderErr = scrub("reading back NOTES.md: " + rerr.Error())
 		return v
 	}
 	return v
 }
 
-// diffViews returns the sorted parity fields on which a and b differ. It does
-// not know about render failures: CheckArmParity drops the rendered fields
-// (renderedParityFields) of a pair with a failed render before using this.
-func diffViews(a, b armView) []string {
+// diffViews returns the sorted parity fields on which a and b differ. The
+// arm and task data (task prompts, Env, NotesFile, turn caps, Setup) are
+// always compared; the rendered members only when rendered is true (both
+// renders succeeded). A failed render therefore leaves its fields
+// Unrendered without hiding a difference in data no render produces.
+func diffViews(a, b armView, rendered bool) []string {
 	var out []string
-	if !slices.Equal(a.prompts, b.prompts) || !maps.Equal(a.instr, b.instr) ||
-		(a.notes == b.notes && a.systemAppend != b.systemAppend) {
+	if !slices.Equal(a.prompts, b.prompts) ||
+		rendered && (!maps.Equal(a.instr, b.instr) || (a.notes == b.notes && a.systemAppend != b.systemAppend)) {
 		out = append(out, "prompt")
 	}
-	if !slices.Equal(a.allowed, b.allowed) || !slices.Equal(a.disallowed, b.disallowed) {
+	if rendered && (!slices.Equal(a.allowed, b.allowed) || !slices.Equal(a.disallowed, b.disallowed)) {
 		out = append(out, "tools")
 	}
-	if a.settings != b.settings || a.mcp != b.mcp || !maps.Equal(a.env, b.env) {
+	if !maps.Equal(a.env, b.env) || rendered && (a.settings != b.settings || a.mcp != b.mcp) {
 		out = append(out, "settings")
 	}
 	// A SystemAppend difference with NotesFile differing is explained by it
 	// (notes_file); with NotesFile equal it is a prompt difference (above).
-	if a.notes != b.notes || a.notesMDSet != b.notesMDSet || a.notesMD != b.notesMD {
+	if a.notes != b.notes || rendered && (a.notesMDSet != b.notesMDSet || a.notesMD != b.notesMD) {
 		out = append(out, "notes_file")
 	}
 	if !slices.Equal(a.turnCaps, b.turnCaps) {
@@ -405,22 +416,28 @@ func diffViews(a, b armView) []string {
 	return out
 }
 
-// treeFile is one regular file of the source tree.
+// treeFile is one directory or regular file of the source tree.
 type treeFile struct {
 	rel  string // slash path relative to the tree root
+	dir  bool
 	perm os.FileMode
-	sum  string // hex sha256 of the bytes
+	sum  string // hex sha256 of the bytes; "dir" for a directory
 }
 
-// hashTree walks root in sorted order and returns its regular files, the
-// entries it will not copy (`.git` at any depth, symlinks and non-regular
-// files, by relative slash path, sorted) and a sha256 over each regular
-// file's relative path, permission bits and content hash. Any read error
-// refuses: an unreadable tree is never treated as empty (I38).
+// hashTree walks root in sorted order and returns its directories and
+// regular files, the entries it will not copy (`.git` at any depth, symlinks
+// and non-regular files, by relative slash path, sorted) and a sha256 over
+// each entry's relative path, permission bits and content hash ("dir" for a
+// directory, so an empty directory counts). Any read error refuses: an
+// unreadable tree is never treated as empty (I38). root must not itself be
+// a symlink (CheckArmParity resolves it first): WalkDir would not descend.
 func hashTree(root string) (files []treeFile, skipped []string, sum string, err error) {
-	info, err := os.Stat(root)
+	info, err := os.Lstat(root)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("parity: reading tree: %w", err)
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		return nil, nil, "", fmt.Errorf("parity: tree %s is a symlink; resolve it first", root)
 	}
 	if !info.IsDir() {
 		return nil, nil, "", fmt.Errorf("parity: tree %s is not a directory", root)
@@ -445,6 +462,11 @@ func hashTree(root string) (files []treeFile, skipped []string, sum string, err 
 			return nil
 		}
 		if d.IsDir() {
+			fi, ierr := d.Info()
+			if ierr != nil {
+				return ierr
+			}
+			files = append(files, treeFile{rel: rel, dir: true, perm: fi.Mode().Perm(), sum: "dir"})
 			return nil
 		}
 		if !d.Type().IsRegular() { // symlinks, sockets, devices, pipes
@@ -487,13 +509,19 @@ func hashFile(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// copyTreeFiles copies exactly the regular files hashTree listed from src
-// into dst, creating parent directories and restoring each file's permission
-// bits.
+// copyTreeFiles copies exactly the directories and regular files hashTree
+// listed from src into dst, restoring each file's permission bits.
+// Directories are created writable (0o755) so RenderArm can write into them.
 func copyTreeFiles(src, dst string, files []treeFile) error {
 	for _, f := range files {
 		from := filepath.Join(src, filepath.FromSlash(f.rel))
 		to := filepath.Join(dst, filepath.FromSlash(f.rel))
+		if f.dir {
+			if err := os.MkdirAll(to, 0o755); err != nil {
+				return fmt.Errorf("parity: copying %s: %w", f.rel, err)
+			}
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
 			return fmt.Errorf("parity: copying %s: %w", f.rel, err)
 		}
