@@ -6263,7 +6263,7 @@ reads below its threshold with its oracle available for two releases; the consum
 
 **Revisit when.**
 - The program kill: on 2027-03-31, if PU-M1 and PU-M3 both read an adequately powered null on every preregistered primary type, decisions 3 and 4 revert, every understanding parameter leaves under a `gone:` row and the product-vision row returns to byproduct. An underpowered or unread reading never fires the kill; it keeps every understanding claim withheld, and the owner decides whether to fund the sample or stop.
-- The local channels go unused: zero fathom calls in review runs of the owner's own repositories over the 60 days after the first owner CI workflow that runs `fathom review`, read from the uploaded call-log artifacts. Decision 1 narrows to the coding-agent channel.
+- The local channels go unused: over the 60 days after the first owner CI workflow that runs `fathom review`, no later commit in a reviewed PR touches an anchor `fathom review` flagged, read from the uploaded SARIF artifacts. The workflow's own review call is not use. Decision 1 narrows to the coding-agent channel.
 - Q5 is answered: decision 6 opens a remote channel through a new record.
 - Q4 is answered "force multiplier only": decision 1 narrows to the owner's fleet.
 
@@ -6271,7 +6271,7 @@ reads below its threshold with its oracle available for two releases; the consum
 
 **Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** process / measurement. Design: `docs/design/project-understanding.md` section 8. Plan rows: PU-B0 to PU-B4 and the PU-M readings. Goal: G46. Reads LAB-R1 (no model judge on a primary metric), ADR-082 (feature labs and the labs ledger) and the next-phase plan's preregistration rule (NP-B1 to NP-B8, NP-B12) as constraints.
 
-**Context.** No measured basis exists for an understanding claim. SWE-bench Verified is contaminated: models name the buggy file from the issue text up to 76% of the time, and one agent resolved 19.25% on SWE-bench Live against 43.20% on Verified. Public sets, independent of fathom, now exist for the question types the owner named: RepoProbe (ASE 2026, arXiv 2608.04783, 500 expert-validated questions from 50 repositories, graded by a checklist through a model judge), ORCA-bench (arXiv 2607.28545, 1,079 root-cause tasks with source access), GitHub ReviewBench (2026-10-05, 219 PRs from 187 repositories in 19 languages, open data and runner; authored by GitHub, whose Copilot code review leads its leaderboard at 40.1% grounded F1, with gold findings drawn partly from LLM reviewers and static tools and re-labelled by people at 96.6% agreement, per GitHub's blog of 2026-10-05), MULocBench (arXiv 2509.25242, 2025-09-26, 1,100 issues that include config, docs and build locations) and ApacheJIT (a public just-in-time defect corpus). Bench prep's subject pipeline (BX-M1) has most of its rows open. A first draft of this bench used 20 owner-written questions per type and a +0.10 bar; at a plausible paired standard deviation of 0.25 to 0.35 its 95% half-width is 0.11 to 0.15 (estimate), so it could not exclude zero.
+**Context.** No measured basis exists for an understanding claim. SWE-bench Verified is contaminated: models name the buggy file from the issue text up to 76% of the time (arXiv 2506.12286, ICSE 2026), and one agent resolved 19.25% on SWE-bench Live against 43.20% on Verified (arXiv 2505.23419, 2025-05-29). Public sets, independent of fathom, now exist for the question types the owner named: RepoProbe (ASE 2026, arXiv 2608.04783, 500 expert-validated questions from 50 repositories, graded by a checklist through a model judge), ORCA-bench (arXiv 2607.28545, 1,079 root-cause tasks with source access), GitHub ReviewBench (2026-10-05, 219 PRs from 187 repositories in 19 languages, open data and runner; authored by GitHub, whose Copilot code review leads its leaderboard at 40.1% grounded F1, with gold findings drawn partly from LLM reviewers and static tools and re-labelled by people at 96.6% agreement, per GitHub's blog of 2026-10-05), MULocBench (arXiv 2509.25242, 2025-09-26, 1,100 issues that include config, docs and build locations) and ApacheJIT (a public just-in-time defect corpus). Bench prep's subject pipeline (BX-M1) has most of its rows open. A first draft of this bench used 20 owner-written questions per type and a +0.10 bar; at a plausible paired standard deviation of 0.25 to 0.35 its 95% half-width is 0.11 to 0.15 (estimate), so it could not exclude zero.
 
 **Decision.**
 1. *Five question types, reported separately, losses included.* T1 locate ("where does X live"), T2 flow and orientation ("how does X work"), T3 why ("which decision or constraint explains X"), T4 impact ("what must change or breaks if X changes"), T5 config ("what config, IaC or manifest governs X at run time").
@@ -6297,7 +6297,7 @@ reads below its threshold with its oracle available for two releases; the consum
 **Revisit when.**
 - The anchor grader's agreement with person labels falls under kappa 0.6: fix the grader before any reading counts.
 - A benchmark changes its key during a run: pin the key revision and re-read.
-- Two adequately powered readings show A0 at or above A1 on every primary type: ADR-084's program kill applies.
+- PU-M1 and PU-M3 read an adequately powered null on every preregistered primary type: ADR-084's program kill applies.
 - A public benchmark with an independent key appears for T3: it replaces the owner-built why bank.
 
 ## ADR-086: The intent trace first: `fathom why <record>` walks a record to plan rows, symbols and receipts; the symbol why card is additive to `symbol_context` and reads stored verdicts; drift reuses `staleness_report`; the project map is deferred (2026-10-28)
@@ -6359,7 +6359,7 @@ reads below its threshold with its oracle available for two releases; the consum
 - *TLA+ for intent records.* Models write semantically correct TLA+ 8.6% of the time, and documents have no run time to check. Wins if: never for intent records.
 - *No change.* Leaves the HEAD gaps unchecked. Wins if: PU-M4 reads KILL.
 
-**Consequences.** `fathom intent audit` gains kind `lifecycle`, an unparsed-status count and a structured-share figure. The overdue goal reviews and the pending incident outcome become named conditions. Nothing gates.
+**Consequences.** `fathom intent audit` gains kind `lifecycle`, an unparsed-status count and a structured-share figure. The overdue goal reviews become ReviewRecorded conditions. Nothing gates.
 
 **Revisit when.**
 - PU-M4 reads KILL: the three conditions are removed and the vocabulary stays as documentation.
