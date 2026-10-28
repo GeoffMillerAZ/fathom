@@ -80,6 +80,9 @@ func cmdSplit(args []string) int {
 		outPath = filepath.Join("workspace", "bench", "splits", stem+".json")
 	}
 	outPath = underRoot(outPath)
+	if samePath(outPath, record) {
+		return fail(fmt.Errorf("-out %s is the held-out record; split never writes the record (BX-11 is the controller's)", outPath))
+	}
 
 	corpus, _, err := loadCorpus(*corpusPath)
 	if err != nil {
@@ -144,6 +147,17 @@ func cmdSplit(args []string) int {
 	}
 	fmt.Printf("wrote %s\n", displayPath(root, outPath))
 	return 0
+}
+
+// samePath reports whether a and b name one file: the same cleaned path, or
+// (both existing) the same file through a symlink or another spelling.
+func samePath(a, b string) bool {
+	if filepath.Clean(a) == filepath.Clean(b) {
+		return true
+	}
+	ai, aerr := os.Stat(a)
+	bi, berr := os.Stat(b)
+	return aerr == nil && berr == nil && os.SameFile(ai, bi)
 }
 
 // countLine renders "<label>: <n> tasks", followed by " (a, b)" when n > 0.

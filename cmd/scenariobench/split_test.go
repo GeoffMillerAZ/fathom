@@ -693,3 +693,31 @@ func TestCmdSplitRealCommittedData(t *testing.T) {
 		t.Fatal("the test created or removed workspace/bench/splits in the repository")
 	}
 }
+
+// split never writes the record (BX-11 is the controller's): an -out that
+// names the record, relatively, absolutely or through a symlink, exits 2 and
+// leaves the record byte-identical.
+func TestCmdSplitRefusesOutOnTheRecord(t *testing.T) {
+	fx := newSplitFixture(t, nil)
+	before, err := os.ReadFile(fx.record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "record-link.md")
+	if err := os.Symlink(fx.record, link); err != nil {
+		t.Fatal(err)
+	}
+	for _, out := range []string{filepath.Join("docs", "bench", "heldout-reads.md"), fx.record, link} {
+		code, stdout, errOut := runSplit(t, "-corpus", fx.corpus, "-root", fx.root, "-out", out)
+		if code != 2 || !strings.Contains(errOut, "record") {
+			t.Fatalf("-out %s: exit=%d stdout=%q stderr=%q, want 2 naming the record", out, code, stdout, errOut)
+		}
+		after, err := os.ReadFile(fx.record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(after) != string(before) {
+			t.Fatalf("-out %s rewrote the record", out)
+		}
+	}
+}
