@@ -83,8 +83,8 @@ consistent reading is FTS now and a third-party meaning-search tool measured bes
   unproven claims (measured 2026-10-28). Plans are reconciled by `fathom verify`; goals are pre-registered bets.
 - **Gates.** The table freeze holds (RT-M1 read FAIL twice; host swap caused every refuse minute). Several plans carry
   a 2027-01-31 kill date.
-- **Records debt.** Goal reviews for G2, G3, G4, G9, G11, G12, G13 (2026-10-25) and G14 (2026-10-26) passed with no
-  record; G7 and G9 are listed past their Done when; `scope/boundaries.md` still says no CI runner exists.
+- **Records debt.** Goal reviews for G7 (2026-09-27), G2, G3, G4, G9, G11, G12, G13 (2026-10-25) and G14 (2026-10-26)
+  passed with no record; G7 and G9 are listed past their Done when; `scope/boundaries.md` still says no CI runner exists.
 - **Structural leads, none of them a lookup feature.** Governed and cited claims, done means proven, receipts a
   stranger re-derives with git (50 of 50 re-derived, envelope 7.6% of payload), oracle-graded levels, an audited
   intent corpus, the honesty floor (I38) and a decision port that cannot contaminate proof.

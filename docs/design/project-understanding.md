@@ -26,7 +26,7 @@ machines for intent. This document is the how; the records hold the decisions.
 | Kind | Id | How the design stays inside it |
 |---|---|---|
 | Invariant | I4 | Every answer carries the store's staleness and a freshness word (current, stale, unverified, no store) |
-| Invariant | I8 | Nothing calls `VerifyPlan` on a request path; verdicts are read from the verify ledger "as of" their commit |
+| Invariant | I48, I49; ADR-086 decision 1 | Nothing calls `VerifyPlan` on a request path; verdicts are read from the verify ledger "as of" their commit |
 | Invariant | I9, I35 | Nothing new runs in a hook or is injected at the edit; every new answer is pulled |
 | Invariant | I11 | An additive tool parameter lands with `docs/mcp-tools.md` in the same change |
 | Invariant | I14, I56 | No fetch and no egress; benchmark repositories are cloned by the bench binary from operator-named sources |
@@ -53,7 +53,7 @@ machines for intent. This document is the how; the records hold the decisions.
 
 Fired or due triggers: ADR-074's K1 and K6 reading is due 2026-11-17 and ADR-067's RT-M1 date trigger on 2026-11-15;
 neither is fired by this design. ADR-074 R1's CUE wins-if has not fired (assessment section 3). Goal reviews for G2,
-G3, G4, G9, G11, G12, G13 and G14 are overdue with no record; ADR-087's ReviewRecorded condition will name them.
+G3, G4, G7, G9, G11, G12, G13 and G14 are overdue with no record; ADR-087's ReviewRecorded condition will name them.
 
 ## 2. Position
 
