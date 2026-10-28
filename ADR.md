@@ -6263,7 +6263,7 @@ reads below its threshold with its oracle available for two releases; the consum
 
 **Revisit when.**
 - The program kill: on 2027-03-31, if PU-M1 and PU-M3 both read an adequately powered null on every preregistered primary type, decisions 3 and 4 revert, every understanding parameter leaves under a `gone:` row and the product-vision row returns to byproduct. An underpowered or unread reading never fires the kill; it keeps every understanding claim withheld, and the owner decides whether to fund the sample or stop.
-- The local channels go unused: zero fathom calls in review runs of the owner's own repositories over 60 days, read from call logs the CI runs upload as artifacts. Decision 1 narrows to the coding-agent channel.
+- The local channels go unused: zero fathom calls in review runs of the owner's own repositories over the 60 days after the first owner CI workflow that runs `fathom review`, read from the uploaded call-log artifacts. Decision 1 narrows to the coding-agent channel.
 - Q5 is answered: decision 6 opens a remote channel through a new record.
 - Q4 is answered "force multiplier only": decision 1 narrows to the owner's fleet.
 
@@ -6331,7 +6331,7 @@ reads below its threshold with its oracle available for two releases; the consum
 - The link pre-reading reads under its bar: doc links stay a labelled secondary in the trace and the why card waits.
 - PU-M3 reads A2 no better than A1 on T3 with adequate power: `include: why` leaves under a `gone:` row, and the trace stays as an intent-maintenance verb.
 - The verify ledger admits only registered roots: ID5 is reconsidered.
-- RT-M1 reads PASS and plan-row contracts prove lossy as links: an intent-binding table may be proposed by a new record.
+- RT-M1 reads PASS and plan-row contracts prove lossy as links, meaning at least half of PU-M3's T3 misses name a record that no plan-row contract binds: an intent-binding table may be proposed by a new record.
 
 ## ADR-087: Intent record statuses get a CUE vocabulary, three conditions at HEAD and an unparsed count; markdown stays the source, edge judgment waits on a backtest, kit lifecycles are input only (2026-10-28)
 
