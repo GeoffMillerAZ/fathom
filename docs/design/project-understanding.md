@@ -212,7 +212,7 @@ The three conditions (PU-L5 to PU-L7), each computed at the current commit only:
 
 `fathom intent audit --kind lifecycle` prints them; `--json` carries them with the unparsed-status count and the
 structured-bytes share per kind (PU-L9); `--format sarif` gives each False condition a rule (PU-L8). Nothing gates.
-Records written before the vocabulary's commit are listed once as not computed, never as violations.
+A condition reads the records at the current commit, whatever their age.
 
 **Edge judgment** (proposed then judged between git endpoints) waits on PU-M5: a $0 backtest that replays 12 months
 of git history of `ADR.md` and `docs/intent/` and counts illegal transitions against the vocabulary. At 2 or more, a
@@ -234,7 +234,7 @@ detectable effect reads `underpowered`.
 | PU-M1 | A1 against A0, RepoProbe slice plus MULocBench's config subset plus the owner gap bank | Home bench 41 against 44 at 1.81x tokens (not comprehension) | A1 above A0 on T4 at the prereg's MDE, Holm-adjusted, paired interval excluding 0, tokens at most 1.25x A0 | A lost type is published as a loss; G46 fails | P1, API on the owner's cap |
 | PU-M2 | ORCA-bench code-bearing tasks, one agent with and without fathom | None | Anchor match on the benchmark's root-cause key above the without arm at the MDE | Evidence cards not positioned for RCA | P2, API |
 | PU-M3 | A2 against A1 on T3; A3 against A1 on T1 | PU-M1 | A2 above A1 on T3 at the MDE; A3 above A1 on T1 promotes F95 | `include: why` leaves under a `gone:` row; program kill if PU-M1 also null | P2, API |
-| PU-M4 | The three lifecycle conditions on first runs over fathom's and the vendored agentic-kit's corpora | 9 overdue goal reviews and 1 pending outcome found by hand | At least 2 person-confirmed real defects, false reports at most 20% | Conditions removed, vocabulary kept as documentation | P0 to P1, $0 |
+| PU-M4 | The three lifecycle conditions on first runs over fathom's and the vendored agentic-kit's corpora | 9 overdue goal reviews and 1 pending outcome found by hand | All 10 hand-listed defects found, and at least 2 person-confirmed defects outside that list, false reports at most 20% | Conditions removed, vocabulary kept as documentation | P0 to P1, $0 |
 | PU-M5 | Illegal status edges in 12 months of history | 1 accepted-to-superseded edge in 30 days, resolving | Reading only: 2 or more revives edge judgment | n/a | P0, $0 |
 | PU-M6 | `review_diff` precision per finding kind on clean and seeded PRs | 5 of 42 historical PRs, no false findings | Per kind: Wilson lower bound of precision at least 0.80 and at most 0.1 false findings per clean PR | The kind is advisory by default | P2, $0 plus labels |
 | PU-M7 | One reviewer with and without fathom's MCP server on GitHub ReviewBench (Martian's offline set secondary) | In-the-wild acceptance 36.4% | Anchor-matched precision above the without arm at the MDE, recall non-inferior by the prereg margin | Reviewer guidance says unproven | P2, API |

@@ -48,9 +48,10 @@ unread. Kill: on 2027-03-31 PU-M1 and PU-M3 both read a powered null on every pr
 
 **G47. Intent records are checked at HEAD, or the checks are cut (ADR-087).** Done when: PU-M4 reads KEEP: the three
 lifecycle conditions (SupersederResolves, OutcomeResolves, ReviewRecorded), run over fathom's corpus and the vendored
-agentic-kit corpus, report at least 2 real defects a person confirms, with at most 20% of their reports false. Fewer
-confirmed defects or more false reports read KILL and fail the goal; the conditions are then removed and the status
-vocabulary stays as documentation. Every reading is $0 in model spend.
+agentic-kit corpus, find all 10 defects listed by hand on 2026-10-28 (9 overdue goal reviews and 1 pending incident
+outcome) and at least 2 real defects outside that list a person confirms, with at most 20% of their reports false. A
+missed listed defect, fewer new confirmed defects or more false reports read KILL and fail the goal; the conditions are
+then removed and the status vocabulary stays as documentation. Every reading is $0 in model spend.
 {bet: intent-conditions, instrument: "fathom verify", threshold: "row PU-G47 verifies: the PU-M4 reading's verdict line reads KEEP", review: 2026-12-15}
 
 **G48. Fathom makes a reviewer more precise on GitHub ReviewBench, or guidance says unproven (ADR-088).**
