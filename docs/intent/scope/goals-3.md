@@ -1,4 +1,4 @@
-# Scope: current goals, G39 to G41
+# Scope: current goals, G39 to G48
 
 Part of the scope router, `../scope.md` (the goal index, the compatibility surface and every section's member).
 
@@ -37,3 +37,25 @@ spend.
 `task merge-drivers` ran, over the 30 days after the last build row). Kill: AP-M1 FAIL reopens ADR-075 at its Revisit
 when; the deferred rows AP-D1 to AP-D4 build only on their triggers. Every reading is $0 in model spend.
 {bet: append-points, instrument: "fathom plans status", threshold: "AP-M1 reads PASS (at most 61 append-point conflicted merges a month, 25% of 247) or FAIL (ADR-075 reopens)", review: 2027-01-31}
+
+**G46. Fathom helps an agent understand code on a public benchmark, or the claim is withdrawn (ADR-084, ADR-085).**
+Done when: `docs/plans/project-understanding.md` PU-M1 (A1, fathom's default surface, against
+A0, grep and the harness's tools, on a RepoProbe slice, MULocBench's config subset and the owner gap bank) reads KEEP:
+A1 above A0 on the preregistered primary type T4 at the prereg's minimum detectable effect, Holm-adjusted, the paired
+interval excluding 0, tokens at most 1.25 times A0's. A powered null fails the goal; an underpowered reading leaves it
+unread. Kill: on 2027-03-31 PU-M1 and PU-M3 both read a powered null on every primary type (ADR-084's program kill).
+{bet: understanding, instrument: "fathom verify", threshold: "row PU-G46 verifies: the PU-M1 reading's verdict line reads KEEP", review: 2027-02-15}
+
+**G47. Intent records are checked at HEAD, or the checks are cut (ADR-087).** Done when: PU-M4 reads KEEP: the three
+lifecycle conditions (SupersederResolves, OutcomeResolves, ReviewRecorded), run over fathom's corpus and the vendored
+agentic-kit corpus, report at least 2 real defects a person confirms, with at most 20% of their reports false. Fewer
+confirmed defects or more false reports read KILL and fail the goal; the conditions are then removed and the status
+vocabulary stays as documentation. Every reading is $0 in model spend.
+{bet: intent-conditions, instrument: "fathom verify", threshold: "row PU-G47 verifies: the PU-M4 reading's verdict line reads KEEP", review: 2026-12-15}
+
+**G48. Fathom makes a reviewer more precise on GitHub ReviewBench, or guidance says unproven (ADR-088).**
+Done when: PU-M7 reads KEEP: the same reviewer model and harness with fathom's MCP server shows anchor-matched
+precision above the arm without it at the prereg's minimum detectable effect, recall non-inferior by the prereg
+margin, run only with the finding kinds PU-M6 kept at their precision floor. A powered null fails the goal.
+Kill: PU-M6 finds no kind at its floor, or PU-M7 reads a powered null, by 2027-03-15.
+{bet: review-precision, instrument: "fathom verify", threshold: "row PU-G48 verifies: the PU-M7 reading's verdict line reads KEEP", review: 2027-01-31}

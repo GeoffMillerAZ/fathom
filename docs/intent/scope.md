@@ -45,6 +45,9 @@ doctrine` refuses it at load and names what it lacks (DP-4, ADR-026 amendment 20
 **G40. Claude Code mods earn their place, or are cut (ADR-072).** `scope/goals-3.md`\
 **G41. Every interception seam rated Medium or higher works, or its own reading re-rates it (readouts design §20).** `scope/goals-3.md`\
 **G43. Parallel lines stop colliding at append points (ADR-075).** `scope/goals-3.md`\
+**G46. Fathom helps an agent understand code on a public benchmark, or the claim is withdrawn (ADR-084, ADR-085).** `scope/goals-3.md`\
+**G47. Intent records are checked at HEAD, or the checks are cut (ADR-087).** `scope/goals-3.md`\
+**G48. Fathom makes a reviewer more precise on GitHub ReviewBench, or guidance says unproven (ADR-088).** `scope/goals-3.md`\
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** `scope/goals-2.md`\
 **G12. The surface leads with the answers grep cannot give, and every answer is falsifiable (ADR-035).** `scope/goals-2.md`\
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** `scope/goals-2.md`
