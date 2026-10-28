@@ -136,9 +136,10 @@ more), asked only after EXP-M5 reads KEEP. Answerable by the owner. 2026-10-17: 
 and its spend is not asked (JP-14 is back behind J0); Q-DM5 alone is open. Q-DM1 to Q-DM4, Q-DM6 and Q-DM7 were answered
 2026-10-16 and live in ADR-073. Delete this entry when both are answered.
 
-**Q38. Who confirms the key items of the understanding bench's owner-built gap bank (ADR-085)?** Only T3 why-questions
-and IaC or Kubernetes T5 questions use it; no agent-drafted item counts toward a primary metric until a person confirms
-it. Blocks: PU-B2's bank and PU-M1's gap types. Answerable by: owner.
+**Q38. Who confirms the key items of the understanding bench's owner-built gap bank (ADR-085)?** The bank fills the
+types the prereg's item count leaves short of the power analysis's N (T3 why-questions at least); no agent-drafted item
+counts toward a primary metric until a person confirms it. Blocks: PU-B2's bank and PU-M1's gap types. Answerable by:
+owner.
 
 **Q39. The API cap for the understanding, ORCA-bench and reviewer readings (PU-M1, PU-M2, PU-M3, PU-M7).** Proposed: one
 cap for all four, the LAB-37 shakedown first, no claim from the shakedown. Blocks: those readings. Answerable by: owner.

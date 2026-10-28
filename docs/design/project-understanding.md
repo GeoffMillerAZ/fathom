@@ -225,7 +225,8 @@ input, an unknown version refused by name.
 ADR-085 fixes the rules. The arms are A0 (grep and the harness's tools), A1 (fathom's default surface), A2 (A1 plus
 the intent trace and, once built, the why card) and A3 (A1 plus a named third-party meaning-search server). Primary
 types: A1 against A0 on T4, A2 against A1 on T3, A3 against A1 on T1, Holm across the rest, typed-language stratum
-primary. Every N comes from a power analysis on the LAB-37 shakedown's variance; a reading short of its minimum
+primary. The prereg counts items per type per benchmark and fixes a primary type only where its public and confirmed
+gap-bank items reach the power analysis's N; the gap bank fills whichever type the count leaves short. Every N comes from a power analysis on the LAB-37 shakedown's variance; a reading short of its minimum
 detectable effect reads `underpowered`.
 
 | Id | Measures | Baseline | KEEP bar (fixed in the prereg before data) | CUT or kill effect | Phase, cost |
