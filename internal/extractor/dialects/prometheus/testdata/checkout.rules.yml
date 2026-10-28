@@ -34,3 +34,4 @@ groups:
         for: 1h
         labels:
           severity: warning
+        keep_firing_for: 10m

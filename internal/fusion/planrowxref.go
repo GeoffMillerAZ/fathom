@@ -87,7 +87,7 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 		if i := strings.LastIndex(bare, "."); i >= 0 {
 			bare = bare[i+1:] // a method is named Recv.Method; the anchor names the method
 		}
-		if bare != n.Name {
+		if bare != n.Name && n.Kind != core.KindGoField {
 			for _, sym := range byBare[bare] {
 				byName[sym] = append(byName[sym], n)
 			}

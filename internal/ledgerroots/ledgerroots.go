@@ -94,17 +94,29 @@ func TempDirs() []string {
 	return []string{os.TempDir(), "/tmp"}
 }
 
-// Canonical is path absolute and clean, its symlinks resolved when it
-// resolves (else the cleaned path), with no trailing slash; "" for "".
+// Canonical is path absolute and clean, its symlinks resolved, with no
+// trailing slash; "" for "". A path that does not exist resolves its
+// deepest existing ancestor and keeps the rest as cleaned (issue 120), so
+// a missing directory under a symlinked root still nests under that root's
+// canonical form. The cleaned path is returned unresolved only when no
+// ancestor resolves at all, which on Unix cannot happen ("/" always does)
+// but can on Windows (a missing volume).
 func Canonical(path string) string {
 	c := cleanAbs(path)
 	if c == "" {
 		return ""
 	}
-	if r, err := filepath.EvalSymlinks(c); err == nil {
-		return r
+	for dir, rest := c, ""; ; {
+		if r, err := filepath.EvalSymlinks(dir); err == nil {
+			return filepath.Join(r, rest)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return c
+		}
+		rest = filepath.Join(filepath.Base(dir), rest)
+		dir = parent
 	}
-	return c
 }
 
 // cleanAbs is path absolute and clean (Clean drops a trailing slash).

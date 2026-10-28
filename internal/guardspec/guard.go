@@ -43,15 +43,21 @@ type Guard struct {
 	ForbiddenPaths []string
 	Checks         []string
 
-	// commandCheck is a predicate selected by the embedded safety pack,
-	// never by repository/user configuration or the guard schema.
+	// commandCheck is a predicate selected by an embedded pack, never by
+	// repository/user configuration or the guard schema; pack names that
+	// pack ("git-safety", "egress").
 	commandCheck string
+	pack         string
 }
 
 // GuardSet is the decoded runtime form of a `.fathom/guard.cue` file
 // (#Guards, docs/design/guarded-edits.md §2.1).
 type GuardSet struct {
 	Guards []Guard
+
+	// egress binds the egress pack's predicates to their allowlist and
+	// remote resolver (EgressPack); nil for every other set.
+	egress *EgressOptions
 }
 
 // FieldError names one guard field that failed to load or validate.

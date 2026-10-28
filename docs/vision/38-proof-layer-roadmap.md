@@ -430,6 +430,29 @@ Development fan-out stays outside fathom (ADR-078). The plan's owner questions N
 the OP-1 amendment, labelling, the language-lane count and goals G44 and G45. The two-wave limit and the swap-volume
 rule of section 9.4 still apply.
 
+### 9.17 Amended 2026-10-28 (owner's ask, owner-architect): the understanding layer, measured first
+
+The owner asked for fathom to become the code and project understanding tool (vision 45, ADR-084 to ADR-089, plan
+`docs/plans/project-understanding.md`). The program adds four phases. It amends no freeze: phases 0 to 2 need no
+table, column, cache or background job.
+
+| Phase | Window | Work | Exit test | Kill or narrowing |
+|---|---|---|---|---|
+| P0 records, statuses, the bench | 2026-10-28 to 2026-11-17 | The records (PU-D); the CUE status vocabulary, three HEAD conditions and two counts (PU-L1 to PU-L9); the link pre-reading (PU-M0) and the edge backtest (PU-M5), both $0; the bench: prereg, loaders, gap-bank format, anchor grader and its validation (PU-B0 to PU-B4) | `fathom verify` proves the PU-D, PU-L and PU-B rows; PU-B4 reads kappa at least 0.6; PU-M0 and PU-M5 published | A grader that fails validation voids every later reading until fixed |
+| P1 the intent trace and the baselines | 2026-11-17 to 2026-12-15 | `fathom why` (PU-W1 to PU-W5), the common-name guards (PU-C1, PU-C2), ID3 (PU-I1, PU-I2); readings PU-M1, PU-M4, PU-M9 to PU-M12 | PU-M1 published per type; PU-M4 reads KEEP or KILL | PU-M1 shows A1 at or below A0 on every type with power: no understanding claim anywhere, P2 narrows to the arms that could change it |
+| P2 the decisive readings | 2026-12-15 to 2027-01-31 | The why card if its trigger fired (PU-W6 to PU-W8); PU-M2 (ORCA-bench), PU-M3 (arms); review: PU-V1, PU-V2, PU-M6, PU-M7; risk: PU-R1, PU-M8 | G46, G47 and G48 read their threshold rows (PU-G46 to PU-G48) | Each reading's CUT removes what it killed in the same change |
+| P3 gated depth | not before RT-M1 PASS or the owner's NP-Q1 | The project map if F94 fires; ref overlays (F70); cross-repository joins (F72); the read-only sidecar (ADR-069 d14); the rollback dimension (IM-M0 BUILD) | Each item's own bar | Each item's own kill |
+
+Validity gates: NP-P0's deadline-abandon work lands before any agent reading, NP-B1 to NP-B8 hold for every claim
+run, and the LAB-37 shakedown sets every N. **Program kill, 2027-03-31:** if PU-M1 and PU-M3 read an adequately powered
+null on every preregistered primary type, ADR-084 decisions 3 and 4 revert. An underpowered or unread reading never
+fires it; it keeps every understanding claim withheld until the owner funds the sample or stops (Q39).
+
+Capacity (the next-phase plan's split that section 9.16 adopts): the bench and readings sit inside the 40% bench and experiments share and take the
+live-experiment slot of NP-E4 (K3, tool and skill text), which moves one cycle; the CUE rows sit inside the 10%
+records share, since the overdue reviews and status spellings they name are that share's own work; the intent trace
+and ID3 start only after NP-P0 lands. Two waves at a time and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,

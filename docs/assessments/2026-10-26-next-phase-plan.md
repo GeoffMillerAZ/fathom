@@ -42,7 +42,7 @@ not from `fathom verify`. Work order NP-W2 re-derives them with `fathom plans st
 - **PR #45** (oracle-call scope, held for an HLSL replay) reached main inside #61's history.
   - SQL and CUDA are cleared: their producers declare no scope, and a no-scope test plus a stored-count regrade show
     no change.
-  - The HLSL replay runs on a pinned Linux x64 runner and is in review.
+  - The [public HLSL replay](https://github.com/GeoffMillerAZ/fathom/actions/runs/40407275332) returned on Ubuntu 24.04 with pinned DXC v1.9.2602: call precision .9656 -> .956, recall .9859 unchanged, and L1/L2/L3 grades unchanged. The fresh reading and [scope assessment](../bench/readings/oracle-call-scope-compatibility.md) record the result.
   - The integration rules now include a stacked-PR check (section 7).
 
 ## 2. Priorities
@@ -227,6 +227,7 @@ the language share grows.
 - Do not build scheduling, placement or load reading into fathom.
 - Do not tag over red CI, and run one gate at a time.
 
-**Specced, not implemented:** NP-B1 to NP-B12 (bench-prep rows), the labs harness rows, NP-W3's GDEV rows.
+**Already proven:** part of NP-B4 and NP-B7 (BX-84, BX-85 and BX-86, including the `BENCH_UID=` witness).
+**Specced, not implemented:** the rest of NP-B1 to NP-B12 (their bench-prep rows), the labs harness rows, NP-W3's GDEV rows.
 **Planned, not specced:** a fan-out instrument (lanes, rounds, outcome, wall time) in the operator's lane tooling.
 Until it reads, "fan-out saved time" is a claim.

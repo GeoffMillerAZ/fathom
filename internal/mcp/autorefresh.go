@@ -140,6 +140,17 @@ func NewRefreshQueueLogged(backend QueryInterface, cfg refresh.Config, log *dlog
 			err = backend.IngestService(ctx, job.Service)
 		}
 		release()
+		// GDEV-02: another live process's uncommitted ingest of the service
+		// refused this one before it read or wrote anything. A refusal, not
+		// a failure: no distress, no cache bust, no failed refresh or
+		// backoff (refresh.ErrRefused); named in the log, never silent.
+		var cie *fusion.ConcurrentIngestError
+		if errors.As(err, &cie) {
+			if log != nil {
+				log.Info(fmt.Sprintf("refresh: %s not ingested (%s): %v", job.Service, joinReasons(job.Reasons), err))
+			}
+			return fmt.Errorf("%w: %w", refresh.ErrRefused, err)
+		}
 		tenancy.NoteStoreError(err, time.Now())
 		hookcache.BustIdent()
 		// §5: the superseded snapshot and graphs leave now, not when the
@@ -275,7 +286,7 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	// drift, and even at a HEAD this backend already refreshed to (the
 	// seen debounce below describes this process's ingests, not another's).
 	// One point read of the row per ensure.
-	interrupted, owner, rowPath := a.interruptedIngest(ctx, service)
+	interrupted, live, owner, rowPath := a.interruptedIngest(ctx, service)
 	if interrupted {
 		a.mu.Lock()
 		if a.resumed[service] == owner {
@@ -302,6 +313,14 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 		}
 	}
 	if head == "" || (head == indexed && !interrupted) {
+		return
+	}
+	if live {
+		// GDEV-02: another live process holds an uncommitted ingest of the
+		// service (a CLI ingest into this store); a second one beside it
+		// would double the memory ADR-047 bounds, so the drift waits.
+		noteRefreshDeferred(ctx, service, fmt.Sprintf("deferred (another process is ingesting %s: pid %d since %s) — served from the index as it stands",
+			service, owner.pid, time.Unix(0, owner.started).UTC().Format(time.RFC3339)))
 		return
 	}
 	a.queue.NoteQueried(service)
@@ -368,24 +387,26 @@ type ingestStateBackend interface {
 // by the drift and backoff rules), and a row whose owner is still running
 // is a live concurrent ingest (a CLI ingest into this store): re-ingesting
 // beside it would double the memory this program bounds (review finding
-// 3), so both are not interruptions.
-func (a *autoRefreshBackend) interruptedIngest(ctx context.Context, service string) (bool, ingestOwner, string) {
+// 3), so both are not interruptions. live reports that second case, with
+// the owner (GDEV-02: ensure defers a drift beside it).
+func (a *autoRefreshBackend) interruptedIngest(ctx context.Context, service string) (interrupted, live bool, owner ingestOwner, path string) {
 	isb, ok := a.QueryInterface.(ingestStateBackend)
 	if !ok {
-		return false, ingestOwner{}, ""
+		return false, false, ingestOwner{}, ""
 	}
 	row, found, err := isb.IngestState(ctx, service)
 	if err != nil || !found || row.State != store.IngestInProgress || row.PID == os.Getpid() {
-		return false, ingestOwner{}, ""
+		return false, false, ingestOwner{}, ""
 	}
 	alive := a.ownerAlive
 	if alive == nil {
 		alive = loadIngestOwnerProbe()
 	}
+	owner = ingestOwner{pid: row.PID, started: row.StartedAt}
 	if alive(row.PID, time.Unix(0, row.StartedAt)) {
-		return false, ingestOwner{}, ""
+		return false, true, owner, ""
 	}
-	return true, ingestOwner{pid: row.PID, started: row.StartedAt}, row.Path
+	return true, false, owner, row.Path
 }
 
 // ingestOwner identifies one ingest_state row's ingest: its pid and start.

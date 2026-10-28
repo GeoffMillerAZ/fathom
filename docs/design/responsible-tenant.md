@@ -747,6 +747,8 @@ func Stats() []GroupStats                      // entries, bytes, hits, misses, 
   `review_diff`'s conservation dimension (`conserve.Run`/`Residue` read the store directly
   and build per review) — open. SU-4's
   single-file refresh patches the snapshot and graphs copy-on-write (`memo.PatchPackage`).
+  §18 (2026-10-26) measures that patch and the eviction on a watermark move, and designs the
+  re-warm that keeps the graph resident across one.
 - Groups (migrations): `graphstore` keyed `(service, watermark, kind)` — replaces
   `callgraph.CachedCallGraph`, `projectIndexMemo`'s graph, the console plans graphs;
   `BuildBoth` becomes two keys — so no service's graph is held three times.
@@ -809,6 +811,26 @@ HEAD this daemon already refreshed to, once per interrupted row. The row carries
 root, so a first ingest killed before any `service_meta` exists is re-ingested from it. An
 ingest that stops before its first write (Discover or fetch failure, IT-15 refusal) puts the
 previous row back.
+
+New ingests beside a live owner (2026-10-26, GDEV-02). The live-owner rule above also
+governs a new ingest by `fathom ingest`, serve-http or serve-mcp. Before it writes its own row, an ingest
+whose service has an `in_progress` row owned by another process that the installed probe
+reads alive (the pid-reuse-safe check above, cmd/fathom's `ingestOwnerProbe`, installed by
+`fathom ingest`, serve-http and serve-mcp through `fusion.InstallIngestOwnerProbe`) is
+refused by name (`fusion.ConcurrentIngestError`: service, owner pid, start), before any
+read or write; and `ensure` defers a drift beside such a row (`deferred (another process
+is ingesting <svc>: pid N since T)`) instead of queueing a second ingest. The queue counts
+the refusal as a refusal (no failure, no backoff, no distress), the `ingest` tool answers
+it class-scoped in §3.4's format, and `fathom ingest` exits 1 with `outcome: "busy"`. A
+library caller with no probe installed is unchanged, and so, for now, are `fathom watch`,
+`ingest-diff` and `platform-ingest`, which install none. Known limits: two processes that start
+in the same instant can both pass the check before either writes its row (closing it needs
+a conditional store write); and a row an ingest left `in_progress` after a write reads the
+same as a running ingest while its owner lives, so a long-lived owner (the daemon,
+`fathom watch`, a serve-mcp on the same store) refuses a CLI ingest of that service, and
+defers another process's drift, until it ingests the service again or restarts. The CLI
+names the row, not a certainty; telling the two apart needs a field or a lock, which waits
+for RT-M1 (ADR-049 d2).
 
 ADR-017 amendment: a service whose stored watermark is a git SHA never takes the content
 manifest path — a git failure is `freshness: unknown`, disclosed. Genuine non-git corpora
@@ -1518,3 +1540,301 @@ deploy` (never a raw `cp`). The plan's waves:
   `KeepAlive` dict semantics and the 10 s default throttle; `ResidentSetSize` is advisory;
   Background QoS is inherited by children; `.gitignore` is the authority for build and tool
   caches in git worktrees.
+
+---
+
+## 18. The resident graph across a watermark move (2026-10-26, #71)
+
+Status: proposed 2026-10-26 (#71, parent #9). This is a design only, with no Go in this change. Plan:
+`docs/plans/responsible-tenant.md` §H, rows RT-195 to RT-199 and RT-M15. Reading:
+`docs/bench/readings/tenancy/graph-patch-2026-10-26.md`. It builds on §5 (the memo registry) and §7 (the refresh
+queue), ADR-041 decisions 3 and 4, and ADR-047 decisions 4 and 7. The trigger
+is O1504, K2's pre-registered branch for a watermark-dominant reading: on the managed daemon, 170 of 254
+graphstore evictions in 40.3 h (67%) were watermark evictions.
+
+### 18.0 The decision on one screen
+
+The verdict is to keep evicting and rebuild ahead, not to patch. On a watermark move the superseded entries leave
+as they do today. The refresh job that moved the watermark then rebuilds, at the new watermark, every entry it
+evicted, before the next hook call needs them. That rebuild is affordable only once one function stops dominating
+the build.
+
+| Class | What |
+|---|---|
+| **Build first** | RT-195: constructor-scoped resolution through an index. That scan is 96–97% of a cold `callgraph.Build`, and the index takes a build of this repository from 17.1–25.3 s to 0.56–0.93 s with an identical graph, on 25 snapshots |
+| **Then** | RT-196: the refresh job re-warms what it evicted, at the new watermark, under the ladder's rules. That is a snapshot, typed edges and three graphs for about 3.6 s of indexed work at the median on this VM, against about 44 s cold today |
+| **Correctness debt found** | RT-197: the one-file refresh's patch (`ReplacePackage`, SU-4) differed from a rebuild on 13 of 24 real commits, with duplicate edges and edges a rebuild does not have. Its graphs must equal a cold build over the patched snapshot |
+| **Gated** | RT-198: the exact row-level patch, built only if RT-M15 shows the re-warm window still costs answers. Measured here, it is not cheaper than the indexed rebuild: 0.82–1.53 s against 0.56–0.93 s |
+| **Intent kept** | RT-199: ADR-041 decision 3's "invalidated per package instead of per watermark" is amended to what is built. I21 and I51 stand unchanged: the re-warm is a build at the new watermark, never an entry carried across an ingest |
+| **Reading** | RT-M15: K2 re-read under commit traffic. The answered share must be at or above 50%, and watermark evictions left un-re-warmed must fall from O1504's 67% of graphstore evictions to under 10% |
+| **Refused** | Re-keying an entry from the old watermark to the new one on a "no change" ingest, and any patch whose equality with a rebuild is not proven by a test (§18.6) |
+
+### 18.1 Intent that applies
+
+- **I21.** Derived graphs are keyed by the store watermark only and never carried across ingests; a new watermark
+  evicts. The re-warm keeps this to the letter. The old entry is evicted, and the new entry is a fresh build from
+  the store at the new watermark. Nothing built under the old watermark serves a reader of the new one. A row-level
+  patch (RT-198) would derive the new entry from the old one. It stays behind a gate: it needs I21 amended ("an
+  entry derived from the previous watermark's entry plus the changed rows, proven equal to a rebuild") in the same
+  commit as the patch, which this design does not make.
+- **I51.** Every derived cache is a memo group: byte-accounted, evicted on a watermark move, trimmed at shed,
+  dropped at refuse. Re-warmed entries are ordinary `Get`s into the same groups, under the same budget. No group is
+  added.
+- **I38.** A re-warm that does not run, or fails, is counted and named (`rewarm_skipped{reason}`,
+  `rewarm_failed`), never silent. A reader then sees today's cold-graph partial (O1446).
+- **I53 and RT-191 (no doomed flights).** Unchanged. The hook keeps declining a build it cannot finish. The re-warm
+  runs with no deadline on the refresh worker, so RT-191 never declines it.
+- **ADR-041 decision 3** asks for "the call-graph cache invalidated per package instead of per watermark". SU-4
+  built that for the one-file refresh, which does not move the watermark (`memo.PatchPackage`). §18.3 shows the
+  per-package patch is neither exact nor cheap on this repository. RT-199 amends the clause to what this design
+  builds. Decision 4 (typed edges stay package-granular until the next ingest) is unchanged.
+- **ADR-047 decision 4** (read work dies with its caller; only ingest and single-flighted memo builds run detached)
+  and **decision 7** (one cache registry). The re-warm is a memo build run by the ingest's own job, so both hold.
+- **The table freeze.** Everything here is in memory. No table, column, cache group or memo file is added. The
+  constructor index lives only during a build. The re-warm adds no goroutine, queue or job kind: it runs inside
+  the existing refresh job's `Run`, on the queue's one worker, after `IngestService` returns and before the job
+  ends. Whether the freeze's "no new background job" reaches work added to an existing job is the owner's call
+  (§18.9, Q1).
+- **Fired conditions.** RT-M14's K2 fired on its watermark branch (O1504), and this design is its follow-up. No
+  `Revisit when` of ADR-047 fires here: nothing changes the ladder, marks, host triggers or the cache budget, so
+  RT-M1's window is not restarted.
+
+### 18.2 What a watermark move changes
+
+A service's memo scope is `Scope{Store, Service, Watermark}`, where the watermark is `store.WatermarkOf(meta)` =
+`IndexedCommit@IndexedAt`, plus a suppression token when one applies (`client.MemoScope`). `IndexedAt` is set
+from the clock by every completed ingest (`fusion.(*Pipeline).Ingest`). **So every ingest moves the watermark,
+even one that changes no row**: three of the 24 measured ingests changed no symbol row.
+
+The rows an ingest can change:
+
+| Rows | Changed by | Read by |
+|---|---|---|
+| `observations` (symbols, their `calls`) | pass 2 for each file whose stat or hash moved (`PurgeSource` then `PutObservations`), and the purge of each file gone from discovery (`Report.Deleted`) | `ListAllSymbols` → the `snapshot` group |
+| `typed_edges` | the typed pass, per Go package whose content hash moved (`TypedEdgeReport.PackagesLoaded`); SCIP import | `TypedEdges` → the `typed_edges` group |
+| `file_stats`, `service_summary`, `observation_calls`, service refs, docs, centrality | their own passes | not the graph groups |
+
+The entries a move evicts are every entry of the `(store, service)` pair (`memo.EvictStoreService`, called by the
+refresh job after `IngestService` at `internal/mcp/autorefresh.go:147`, by the `ingest` tool and by SCIP import):
+
+| Group | Key | Built from | Cold cost on this repository (median, this VM) |
+|---|---|---|---|
+| `snapshot` | scope | `ListAllSymbols` plus `newSnapshot`'s name and callee indexes | 0.39 + 0.18 s |
+| `typed_edges` | scope | `TypedEdges` | 0.64 s |
+| `graphstore` syntax | scope, kind | `callgraph.Build(snapshot)` | 21.2 s |
+| `graphstore` both | scope, kind | `Build` + `AddTypedEdges` | 21.5 s |
+| `graphstore` resolved | scope, kind | `buildIndexes` + resolved typed edges | 0.68 s |
+| `product_reach` | scope, kind | `ProductEntryReach(graph)` | 0.14 s |
+
+`blast_radius`, `symbol_context` and the navigation tools load the snapshot, the typed edges and all three graphs
+(`loadNavGraphsAt`). About 44 s of serial work is lost on each move, and 42.7 s of it is the two `Build` calls.
+
+### 18.3 Can each entry be patched from the changed rows?
+
+**Snapshot.** Yes, by file: take the old nodes, drop the changed and deleted files' nodes, add the new rows. But
+`Build` resolves duplicate keys by "final observation wins", so a patched snapshot must also reproduce the load's
+node order. The saving is at most the load, 0.37–0.48 s.
+
+**Typed edges.** Yes, by package, because the typed pass already writes them per package. The saving is at most
+the load, 0.58–0.76 s.
+
+**Syntax graph.** A changed file changes its own nodes' outgoing edges. It also changes every unchanged caller
+whose call strings resolve through an index entry that changed. Resolution (`Graph.resolve`) reads, in order:
+
+1. the constructor-scoped lookup for `<import-path>#.Method`, which takes the unique `.Method` in that directory;
+2. an exact key;
+3. the caller's own package (same-package binding);
+4. `byName` (bare names unique in the whole service);
+5. `byPkgName`;
+6. `byDirName`;
+7. `bySuffix`, then `byDotSuffix` (component suffixes unique in the whole service).
+
+So the reach is **one hop and service-wide**. It is one hop because resolution never chains: a caller's edge
+depends only on its own call string and the indexes. It is service-wide because uniqueness is global. Adding a
+function `Close` anywhere makes every bare-name `Close` call in the service unresolved, whatever its package or
+import graph. The exact recomputation is:
+
+- re-resolve every caller in a changed file;
+- re-resolve every caller with a call string whose resolution path reads a touched key (added, removed, or in a
+  changed file), a changed index entry, or a touched `.Method` suffix;
+- keep every other caller's callee list.
+
+That is the scoped patch the reading measured: 0–7,258 callers re-resolved (median 58), identical to a rebuild on
+24 of 24 commits. **But it is not cheaper.** Rebuilding the five name indexes over the new node set (0.33–0.75 s)
+and diffing them against the old (0.28–0.54 s) are each O(nodes), and they alone cost more than an indexed `Build`
+resolving every edge (0.56–0.93 s). A patch could beat the rebuild only by keeping the indexes incrementally and
+holding a reverse index from call string to callers. That index costs memory on every resident graph (220k call
+strings here) to save about half a second per move. RT-198 is gated on a reading that shows the half second
+matters.
+
+**Both graph.** The syntax graph plus `AddTypedEdges` over all typed edges (0.38–0.64 s). `AddTypedEdges` also
+drops syntax-only method guesses in every file the typed pass resolved (`dropTypedFileGuesses`), a rule over the
+whole typed file set. A per-package typed patch would have to re-derive that set. Re-running it over all typed
+edges is the measured, exact choice.
+
+**Resolved graph.** `buildIndexes` plus the resolved typed edges: 0.61–1.06 s. It has no syntax resolution to
+save, so it is rebuilt.
+
+**Product reach.** A whole-graph walk from the product entry points (0.12–0.19 s). Any edge can change it, so it
+is recomputed. It is cheap.
+
+**The existing per-package patch.** `Graph.ReplacePackage` (SU-4, run by `memo.PatchPackage` on a one-file
+refresh) differed from a rebuild on 13 of 24 commits and took up to 54 s on a 241-file commit. It has three
+defects:
+
+- it adds a duplicate-key node's edges twice;
+- it selects by `Package` name across directories, and binds duplicate keys "first in the list" where `Build`
+  uses "final observation wins";
+- it never re-resolves other packages' callers.
+
+Its comment's "never a WRONG edge" does not hold. Its cost is the constructor scan again: every call string it
+re-resolves pays the O(nodes) loop. This is in scope because the one-file refresh feeds the same resident graph
+the hooks read (RT-197).
+
+### 18.4 The design
+
+#### 18.4.1 Constructor-scoped resolution through an index (RT-195)
+
+`resolveCtorScoped` scans `g.nodes` for each `<import-path>#.Method` string. There are 3,845–3,882 such strings
+against 64–69k nodes, about 250 million name checks per build. `Build` instead builds one map, directory to
+`.Method` suffix to keys, over the method-shaped nodes. A lookup tries the import path itself and each of its
+`/`-boundary suffixes, with the same rule as the scan: exactly one match is an edge; zero, or two different keys,
+are nothing. The map lives for one `Build` and is not stored on the `Graph`, so the resident graph does not grow.
+`ReplacePackage`, while it lives, keeps the scan.
+
+Cost: 0.56–0.93 s against 17.1–25.3 s. The scan's share of the build is 95.9–97.4%. Equality holds on 25 of 25
+snapshots for both `Build` and `BuildBoth`. RT-195's test keeps the old scan as its oracle, over generated node sets
+with colliding directories, nested import paths and same-named methods, and over the fauxtown fixture.
+
+#### 18.4.2 Re-warm what the ingest evicted (RT-196)
+
+The refresh job's `Run` (`NewRefreshQueueLogged`) today calls `evictServiceCaches` after `IngestService`. The
+change:
+
+1. **Before the ingest,** record which of the service's entries are resident at the current scope: the snapshot,
+   the typed edges, and each graph kind and product-reach kind (`memo.HasGraphs` generalised to name the kinds).
+   Only what a reader built is re-warmed. A service nobody has read stays cold, so the re-warm never grows the
+   footprint past what the registry held before the move.
+2. **After the ingest succeeds and the eviction runs,** if the daemon's level is `normal`, take the new scope
+   (`navScopeNoEnsure`) and run the same loads the readers run (`serviceSnapshotAt`, `memo.TypedFor`,
+   `memo.GraphForTyped` per recorded kind, `memo.ProductReachFor` per recorded kind) under the worker's context
+   with no deadline. These are ordinary single-flighted `Get`s, so a reader arriving meanwhile joins the flight
+   instead of starting a second build.
+3. **At `shed`,** no re-warm runs. The shed trim already cut the registry to half its budget, and one rebuild
+   flight is admitted process-wide; the next reader may take that token. At `refuse`, none runs either: the refuse
+   drop cancels flights. A failed ingest re-warms nothing (`rewarm_skipped{ingest_failed}`): it may have written
+   some rows under the old watermark, so the next reader builds as it does today.
+4. **Counters.** `fathom_cache_events_total{group,event}` gains the events `rewarmed`, `rewarm_skipped` (with the
+   level) and `rewarm_failed`. RT-M15 reads them beside `evictions{watermark}`.
+
+Cost, at the median on this VM: 0.39 + 0.18 (snapshot) + 0.64 (typed) + 0.67 (syntax) + 0.67 + 0.45 (both) + 0.68
+(resolved) + 3 × 0.14 (reach), about 4.1 s of CPU on the refresh worker. It runs once per watermark move of a
+service someone reads, against today's about 44 s paid by the first reader of every move. On O1504's managed
+daemon, 170 graphstore watermark evictions in 40.3 h bound the moves at 4.2 an hour, so at most
+about 17 s of CPU an hour.
+
+**The window.** Between the eviction and the end of the re-warm, a reader finds no resident entry. With no flight
+in progress RT-191 declines a 500 ms hook, and with a flight running the hook joins it until its deadline. On this
+VM the window is about 4 s per move. Readers also see the new watermark from the ingest's final commit, which is
+before the job's eviction, and some may start the build first; the single flight makes that harmless. RT-M15
+measures what share of hook calls fall in the window. RT-198 is the remedy only if that share matters.
+
+#### 18.4.3 The one-file refresh's patch must equal a rebuild (RT-197)
+
+`memo.PatchPackage` keeps its snapshot patch, which is exact when the package's rows are replaced whole and the
+node order is the store's. It stops calling `ReplacePackage` for the syntax and both graphs, and instead rebuilds
+them from the patched snapshot with the indexed `Build` in the same call. That costs 0.56–0.93 s for syntax plus
+0.38–0.64 s for typed, against `ReplacePackage`'s 0.17–0.47 s on a one-package change, up to 54 s on a large one.
+`ReplacePackage` and its comment go. If the in-handler rebuild measurably lengthens `/refresh-file` past its hook
+budget, the scoped patch of §18.3 (0.82–1.53 s) is the alternative. Either one must pass the property test in §18.6.
+
+#### 18.4.4 The row-level patch, gated (RT-198)
+
+`(*Graph).PatchFiles(changed, newNodes)` is the scoped patch of §18.3: it re-resolves only the affected callers,
+keeps the indexes incrementally, and uses a call-string-to-callers index built with the graph. It is built only if
+RT-M15 reads under 50% answered with RT-196 in place, and the declined hook calls fall inside re-warm windows. It
+is kept only if its measured cost, including the reverse index's bytes under `EstimatedBytes`, beats the indexed
+rebuild on the same 24-commit series. I21 is amended in its commit, not before.
+
+### 18.5 Concurrency with in-flight readers
+
+- **Readers at the old watermark.** A `*Graph` handed out is read-only and never mutated (`GraphFor`'s contract).
+  A reader holding the old graph finishes on it. The eviction drops the registry's reference, not the reader's.
+- **Flights at the old watermark.** A flight still building at the old watermark completes for its waiters. Its
+  result is not cached, because the registry has seen a newer watermark for the service
+  (`noteWatermarkLocked`/`insertLocked`), as today.
+- **Readers at the new watermark during the re-warm.** They join the re-warm's flight (`Group.Get` finds
+  `g.flights[key]`). A reader with a deadline leaves at its deadline without cancelling it, because the re-warm's
+  own waiter stays until the build ends.
+- **A one-file patch during the re-warm.** `Group.Update` invalidates a flight in progress for its key
+  (`invalidateFlightLocked`). The re-warm's waiter still gets its value, which is never cached, and the next reader
+  rebuilds. No stale graph is cached.
+- **A second ingest of the same service.** The refresh queue runs one job per service, and a request while it runs
+  sets `dirty` for exactly one follow-up. Re-warms of one service are therefore serial, and each one targets the
+  watermark its own ingest wrote.
+
+### 18.6 Correctness: patched or re-warmed equals rebuilt
+
+The property: **for every scope, any graph a reader gets equals `callgraph.Build`/`BuildBoth`/`BuildResolved` over
+`ListAllSymbols` and `TypedEdges` at that scope.** Equal means the same node keys, the same sorted callee and caller
+lists for every key, the same typed edge kinds, and the same `typedFiles` and `instantiates`.
+
+- **RT-195's test** compares the indexed `Build` with the scan (kept as a test oracle) over generated node sets
+  (seeded and deterministic) and fauxtown.
+- **RT-196's test** ingests a fixture, reads the graphs, applies a commit that adds a same-named function in
+  another package (the service-wide ambiguity case) and a file deletion, runs the refresh job, and then asserts
+  three things: the entries are resident at the new scope without a reader building them; each equals a cold
+  build at that scope; and none was re-warmed for a scope no reader had built.
+- **RT-197's test** applies a one-file refresh that hits each of the three `ReplacePackage` defects (a
+  duplicate-key `init`, two `package main` directories, a same-key build-tagged pair) and asserts that the patched
+  snapshot equals a fresh `ListAllSymbols` and that the graphs equal a cold build over it.
+- **RT-198's test** (only if built) is a property test. From a seeded generator it draws a node set and a sequence
+  of file-level edits (add, delete, rename, change calls, add a same-named symbol elsewhere), and it asserts after
+  each edit that `PatchFiles` equals `Build`. The 24-commit series from the reading is re-run as its measured
+  check.
+
+No test reads the clock or depends on map order: the generators are seeded and every comparison sorts.
+
+### 18.7 Failure fallback
+
+Eviction as today is the fallback at every step. If a re-warm load fails (a store read error, the refuse drop
+cancelling its flight, a level change mid-run), it leaves no entry and counts `rewarm_failed`; the next reader
+builds as it does now and answers the cold-graph partial while it cannot. A re-warm never holds the ingest slot:
+`tenancy.AcquireIngestSlot` is released before it starts, and a backfill waiting on the slot does not wait on the
+re-warm. If RT-M15 reads the re-warm itself as a cause of shed entries (§18.8, K7), the level check moves to "re-warm
+only below 0.6 × the shed mark". If that still does not hold, RT-196 is reverted to evict-only, its counters kept.
+
+### 18.8 Kill criteria
+
+Pre-registered with the rows:
+
+- **(K6)** RT-195's indexed `Build` ever differs from the scan on any generated or fauxtown input: the index is
+  wrong. Fix the index, never the oracle.
+- **(K7)** During RT-M15, any shed entry within 10 s after a re-warm started: the re-warm runs only below
+  0.6 × the shed mark. A second such entry reverts RT-196 to evict-only.
+- **(K8)** RT-M15 reads under 50% answered:
+  - If the declined calls fall in re-warm windows, build RT-198.
+  - If they fall outside them, the graph left for another reason (budget, shed, refuse, idle). Read `evictions`
+    by reason as K2 does; the re-warm is not the lever.
+- **(K9)** RT-198, once built, costs more than the indexed rebuild at the median of the 24-commit series: refuse
+  it, and record the reading.
+
+### 18.9 Owner questions
+
+- **Q1.** Does the table freeze's "no new background job" cover work added to the existing refresh job's `Run`,
+  on its one worker? This design assumes not, because no goroutine, queue, timer or job kind is added. If it does,
+  RT-196 waits for the freeze to lift, and RT-195 alone takes each cold rebuild from about 44 s to about 4 s per
+  reader here.
+- **Q2.** RT-197 changes the latency of `/refresh-file` when a graph is resident: a rebuild of about 1–1.6 s
+  instead of `ReplacePackage`'s median 1.23 s, with a tail of up to 54 s. Is that within the pre-edit hook's
+  budget for the refresh, or does RT-197 take the scoped patch?
+
+**Decision models (2026-10-26, §18).** None applies (ADR-073). Every choice in §18 is a deterministic function of
+what the registry and the store hold:
+- which entries were resident before the move;
+- the ladder's level;
+- `resolve`'s fixed lookup order.
+
+No typed question through the port would improve on that. A model could guess which services to re-warm, but the
+resident set already says exactly that, at no cost. The fallback with provider `none` is the design itself. The
+opt-out is eviction as today (K7, K8). RT-M15 and K9 are the measurements that keep or kill each part.

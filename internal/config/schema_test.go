@@ -165,6 +165,10 @@ bad31: #Config & {
 bad32: #Config & {
 	typed: skip_modules: "calibration/**"
 }`},
+		{"[ingest] go_network that is not a bool (ADR-083)", `
+badIngest1: #Config & {
+	ingest: go_network: "yes"
+}`},
 		{"[readouts] mode outside off, observe, lean, rich (RO-15)", `
 bad37: #Config & {
 	readouts: mode: "loud"
@@ -244,6 +248,14 @@ badGatePreflight: #Config & {
 		{"[hooks] prompt_definitions is not a bool", `
 badPromptDefinitions: #Config & {
 	hooks: prompt_definitions: "yes"
+}`},
+		{"[guards] egress outside off|warn|enforce", `
+badEgressMode: #Config & {
+	guards: egress: "deny"
+}`},
+		{"[guards] egress_allow naming an empty host", `
+badEgressAllow: #Config & {
+	guards: egress_allow: [""]
 }`},
 		{"[hooks] read_outline_hint is not a bool", `
 badReadOutlineHint: #Config & {

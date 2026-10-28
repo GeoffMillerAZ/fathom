@@ -1,0 +1,27 @@
+# Controller copies this onto a disposable run branch, which is never merged.
+name: Azure Policy authored Linux x64 probe
+on:
+  push:
+    branches: ['tools/azure-policy-probe-run']
+permissions:
+  contents: read
+jobs:
+  native-probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Probe with private diagnostics
+        id: probe
+        shell: bash
+        run: bash calibration/oracles/azure-policy/run_probe_workflow.sh
+      - name: Upload only validated counts, hashes and flags
+        if: always() && steps.probe.outputs.validated == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7 (Node 24)
+        with:
+          name: azure-policy-probe-receipt
+          path: ${{ runner.temp }}/azure-policy-public/receipt.json
+          if-no-files-found: error
+          retention-days: 1

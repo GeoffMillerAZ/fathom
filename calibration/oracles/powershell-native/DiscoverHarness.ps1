@@ -119,8 +119,9 @@ function Get-OracleDefinitionOnly([string]$Path) {
         if (-not $part) { continue }
         foreach ($statement in $part.Statements) {
             if ($statement -is [Management.Automation.Language.IfStatementAst]) {
-                # Definition-file preambles may test a variable and dot-source
-                # their declared original support files. Never run test commands.
+                # Recognise the original preamble shape without executing it.
+                # The loader compiles top-level function bodies only; neither
+                # this conditional nor any transitive dot-source can run.
                 $commands = @($statement.FindAll({ param($n) $n -is [Management.Automation.Language.CommandAst] }, $true))
                 $unsafe = @($commands | Where-Object { $_.GetCommandName() -ne 'Get-Variable' -and $_.InvocationOperator -ne 'Dot' })
                 $bodies = @($statement.Clauses | ForEach-Object { $_.Item2 })
@@ -137,4 +138,24 @@ function Get-OracleDefinitionOnly([string]$Path) {
         }
     }
     return $true
+}
+
+function Get-OracleDeclaringClosure([string]$QueryPath, $Inventory, [string[]]$RunnerFiles, [string]$RootManifest) {
+    $paths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $null = $paths.Add($QueryPath)
+    foreach ($file in $RunnerFiles) { $null = $paths.Add($file) }
+    # Follow source declarations, including a refused test body's declarations;
+    # this is a provenance closure, not a claim that its commands executed.
+    do {
+        $changed = $false
+        foreach ($d in $Inventory) {
+            $targetFile = ($d.target -split '#')[0]
+            if ($paths.Contains($targetFile) -or $d.declaring_files.Overlaps($paths) -or $d.target -eq $RootManifest) {
+                if ($ids.Add($d.id)) { $changed = $true }
+                $null = $paths.Add($targetFile)
+            }
+        }
+    } while ($changed)
+    return ,$ids
 }

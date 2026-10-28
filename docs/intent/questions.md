@@ -8,12 +8,13 @@ need to?") has no written answer; it decides whether F2 (public release) is prom
 dropped and what the A/B verdict (G2) is for. Evidence added 2026-09-27
 (`docs/assessments/2026-09-27-agentic-coding-landscape.md`): free-only tools struggled (Roo Code shut down, Vibe
 Kanban found no business model, Continue was absorbed by Cursor), the money went to review and governance (fathom's
-lane), and stars followed one-command packaging more than depth. Answerable by: owner.
+lane), and stars followed one-command packaging more than depth. 2026-10-28: "product for others" keeps ADR-084's
+frame; "force multiplier only" narrows it to the owner's fleet. Answerable by: owner.
 
 **Q5. The threat model.** The fleet's source is served unauthenticated on loopback to any
 local process (`docs/vision/20` §7 Q2). Accept single-user in writing, or make law 9
-hardening a goal before any second adopter? Blocks: F8, F15, `domain.md` assumption 2.
-Answerable by: owner.
+hardening a goal before any second adopter? Blocks: F8, F15, `domain.md` assumption 2, and every hosted channel
+(ADR-084 decision 6: a hosted reviewer or SRE agent that needs a reachable, token-authenticated fathom). Answerable by: owner.
 
 **Q16. Should honesty-debt counts ever leave the machine?** Only through the existing
 sanitized research bundle, opt-in, as counts by kind (law 13). Blocks: EP-23's fleet
@@ -134,3 +135,14 @@ optional spot-check of E2's frontier labels, and the H2 phrase labels RJ-D1 need
 more), asked only after EXP-M5 reads KEEP. Answerable by the owner. 2026-10-17: EXP-M4 read CLOSED, so stage 2 stopped
 and its spend is not asked (JP-14 is back behind J0); Q-DM5 alone is open. Q-DM1 to Q-DM4, Q-DM6 and Q-DM7 were answered
 2026-10-16 and live in ADR-073. Delete this entry when both are answered.
+
+**Q38. Who confirms the key items of the understanding bench's owner-built gap bank (ADR-085)?** The bank fills the
+types the prereg's item count leaves short of the power analysis's N (T3 why-questions at least). Proposed: no gap-bank
+item counts toward a primary metric until a person confirms it. Blocks: PU-B2's bank and PU-M1's gap types.
+Answerable by: owner.
+
+**Q39. The API cap for the understanding, ORCA-bench and reviewer readings (PU-M1, PU-M2, PU-M3, PU-M7).** Proposed: one
+cap for all four, the LAB-37 shakedown first, no claim from the shakedown. Blocks: those readings. Answerable by: owner.
+
+**Q40. May a guide name a third-party meaning-search tool if arm A3 wins T1?** Proposed: yes, as documentation with its
+reading cited, never bundled. Blocks: F95's promotion. Answerable by: owner.

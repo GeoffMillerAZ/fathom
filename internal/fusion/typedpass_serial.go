@@ -155,14 +155,19 @@ func sampleProcessHeapDuringPass(fn func(), inflight func() int) passHeap {
 	return h
 }
 
-// typedPassLine is the typed-edge pass's summary line (RT-46).
+// typedPassLine is the typed-edge pass's summary line (RT-46); the packages
+// it skipped are counted by reason (EW-81).
 func typedPassLine(service string, rep TypedEdgeReport, h passHeap) string {
 	packages := rep.PackagesLoaded + rep.PackagesCached
+	skipped := ""
+	if rep.PackagesSkipped > 0 {
+		skipped = fmt.Sprintf(", %d skipped: %s", rep.PackagesSkipped, FormatTypedSkipCounts(rep.Skips))
+	}
 	edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
 	// "edges" is what this pass WROTE: a package whose content hash is
 	// unchanged keeps its stored edges and contributes none here, so an
 	// all-cached pass reads "0 edges written", never a bare "0 edges" over
 	// a graph that still holds every edge.
-	return fmt.Sprintf("fusion: typed-edge pass %q: %d packages (%d re-resolved, %d unchanged and reused), %d edges written, process heap during pass %.1f MiB with up to %d in-flight tickets (the whole process, not the pass's own cost), %s\n",
-		service, packages, rep.PackagesLoaded, rep.PackagesCached, edges, float64(h.Peak)/(1024*1024), h.MaxInFlight, rep.Duration)
+	return fmt.Sprintf("fusion: typed-edge pass %q: %d packages (%d re-resolved, %d unchanged and reused%s), %d edges written, process heap during pass %.1f MiB with up to %d in-flight tickets (the whole process, not the pass's own cost), %s\n",
+		service, packages, rep.PackagesLoaded, rep.PackagesCached, skipped, edges, float64(h.Peak)/(1024*1024), h.MaxInFlight, rep.Duration)
 }

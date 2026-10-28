@@ -1,0 +1,76 @@
+{
+  "schema": "slang-search-rule-r4-gr10",
+  "registered_on": "2026-10-26",
+  "authority": "Owner ruling G-R10: complete ParameterBlock, preregister README/topic searches before running, retain every repository already found, and explicitly disclose the incomplete shader-attribute route. NP-Q5 still prohibits implementation.",
+  "supersedes_for_current_boundary": [
+    {
+      "path": "search-rule-r2.json",
+      "sha256": "781f18c472b33df4173a8dc9ed8268f098adb7ec27fc6e8737fcb2cdca73541d"
+    },
+    {
+      "path": "search-rule-r3.json",
+      "sha256": "bafa9b8cdf6c4485a28084fa1bf347cb1f91890aa5fd410f3a1d05b3b7911ad8"
+    },
+    {
+      "path": "search-protocol-r3a.json",
+      "sha256": "b2896b47a70f57116a94afe144780b8c1cfef387c965b0c6fd847a42fd8f5aad"
+    }
+  ],
+  "boundary_in_plain_words": "The candidate set is the retained r2 set and all prior discoveries, the complete size-partitioned ParameterBlock code search, and the complete README/topic repository queries below. The shader-attribute code route is incomplete: it reported39040 files and only the recorded pages were read under a10requests/minute limit. No claim to cover every Slang project or every project with100stars follows.",
+  "repository_queries": [
+    {
+      "id": "readme-compiler",
+      "query": "\"shader-slang\" in:readme"
+    },
+    {
+      "id": "readme-shader",
+      "query": "slang shader in:readme"
+    },
+    {
+      "id": "topic-slang",
+      "query": "topic:slang"
+    },
+    {
+      "id": "topic-shader-slang",
+      "query": "topic:shader-slang"
+    }
+  ],
+  "reach": "For each repository query append a stars: range covering at least100stars. Query-hit stars are captured at search time; later star drift does not remove a captured candidate. Code-only discoveries use their recorded metadata star count; all previously found repositories remain visible, with below-reach dispositions as applicable. All18 named seeds and all22 previously verified new eligible projects (sixnvpro plus16additional) remain in the candidate set at their frozen pins.",
+  "pagination_protocol": {
+    "endpoint": "GET https://api.github.com/search/repositories?q={urlencoded_base_query_plus_star_and_optional_created_range}&sort=stars&order=desc&per_page=100&page=1",
+    "initial_disjoint_star_ranges": [
+      [
+        100,
+        199
+      ],
+      [
+        200,
+        499
+      ],
+      [
+        500,
+        999
+      ],
+      [
+        1000,
+        9999
+      ],
+      [
+        10000,
+        99999
+      ],
+      [
+        100000,
+        2147483647
+      ]
+    ],
+    "split": "If total_count>100 split the inclusive star range at floor((lo+hi)/2), lower half first. If an exact star value still has>100 matches, split by inclusive created date range1970-01-01..2100-12-31, at integer day midpoint, using created:lo..hi. If an exact star/day still exceeds100, stop incomplete; no ranked truncation or new partition without a dated amendment.",
+    "certify": "A leaf is complete only when HTTP200, incomplete_results=false, total_count<=100, len(items)==total_count, unique repository IDs and public-only items. Each leaf is one page; source-index and star movements can produce cross-leaf duplicates, which are unioned rather than dropped.",
+    "errors": "Honor rate resets. Preserve error responses and retry identical requests at most three attempts; uncertified leaves block freeze. Record every exact request/range/status/hash/count and repository identity, never source content or people."
+  },
+  "candidate_union": "Union complete ParameterBlock repository identities, all completed repository-query leaves, all18 named seeds, the retained18 r2 rows, and every public repository observed in r3/r3a attempts including incomplete shader-attribute pages. Every identity has one disposition and all discovery sources; duplicates never remove a project. Preserve already pinned metadata; newly discovered projects use the inherited latest-public-release or full-HEAD rule before tree/license evaluation.",
+  "eligibility": "Inherit whole-project exact lowercase.slang/.slangh regular files, duplicate occurrences retained, OSI root grant, selected-files1..5000 and selected-bytes<=50000000, GPU Slang language proof from pinned primary docs/build metadata, diagnostic compiler role, explicit zero/license/wrong-language/size/below-reach dispositions. Ambiguous/unretrievable candidates stop freeze. No parser/compiler result may affect membership.",
+  "holdout": "Re-derive largest eligible whole-project holdout from the completed union, tie by repository identity. Retain all its selected files outside primary/canonical aggregation; report blob overlap rather than deduplicate. Primary and holdout separately must meet5% ERROR-or-MISSING and0.1% faults; the weaker result caps any future level or change note. All rates remain unmeasured.",
+  "required_disclosure": "Assessment and any ceiling repeat this search boundary in plain words, including shader-attribute total_count39040,10requests/minute and the actual pages read. The scope is a bounded candidate search, not reach-complete or an atomic GitHub snapshot. Inherited r3 registry-followup wording is historical; the User-Agent retry has already completed and the403 cause is recorded as missing header.",
+  "freeze_order": "Commit this dated rule BEFORE executing any of these README/topic repository requests. Complete ParameterBlock and every leaf of these four repository queries, dispose the entire union and bind source hashes before re-freezing. No Slang shader-body download, parsing, native/compiler execution, oracle run, level or product implementation is authorized."
+}

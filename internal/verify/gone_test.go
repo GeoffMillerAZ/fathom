@@ -24,6 +24,7 @@ type fakeGoneEvidence struct {
 	corpus    []CorpusFile
 	nonTest   []GoneReferent
 	test      []GoneReferent
+	unindexed string
 }
 
 func (f fakeGoneEvidence) IndexAtHead() (bool, string)   { return f.atHead, f.atHeadWhy }
@@ -36,6 +37,7 @@ func (f fakeGoneEvidence) CorpusFiles([]string) []CorpusFile {
 func (f fakeGoneEvidence) TypedCallers(symbol, pkg string) ([]GoneReferent, []GoneReferent) {
 	return f.nonTest, f.test
 }
+func (f fakeGoneEvidence) CallersUnindexed(symbol, pkg string) string { return f.unindexed }
 
 func cleanGone() fakeGoneEvidence {
 	return fakeGoneEvidence{atHead: true, modOK: true}
@@ -321,3 +323,21 @@ func TestEvaluateGone_ContractRefusals(t *testing.T) {
 }
 
 func intp(n int) *int { return &n }
+
+// TestEvaluateGone_CallersUnindexedIsWithheld: an empty referent set over
+// references the index does not record (a Go struct field's) is Unknown
+// naming the reason, never a Pass on zero; a referent found still fails.
+func TestEvaluateGone_CallersUnindexedIsWithheld(t *testing.T) {
+	const why = "Config.Default is a Go struct field and field references are not indexed: no referent set proves it unreferenced"
+	ev := cleanGone()
+	ev.unindexed = why
+	task := Task{ID: "G-1", Gone: "callers Config.Default"}
+	c, label := EvaluateGone(task, ev)
+	if c.Status != Unknown || label != "gone-unknown" || !strings.Contains(c.Detail, why) {
+		t.Fatalf("empty referents on an unindexed target = %+v (%s), want Unknown naming %q", c, label, why)
+	}
+	ev.nonTest = []GoneReferent{{File: "p/use.go", Line: 3}}
+	if c, label := EvaluateGone(task, ev); c.Status != Fail || label != "gone-not-proven" {
+		t.Fatalf("a referent found = %+v (%s), want the row to fail", c, label)
+	}
+}

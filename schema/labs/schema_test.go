@@ -36,12 +36,12 @@ func fixture(t *testing.T, name string) (cue.Value, map[string]any) {
 	if err := value.Decode(&data); err != nil {
 		t.Fatal(err)
 	}
-	definition := map[string]string{"lab": "#Lab", "scenario": "#Case", "result": "#Result", "labNA": "#Lab", "scenarioRedacted": "#Case", "resultDecision": "#Result", "resultDecisionOther": "#Result"}[name]
+	definition := map[string]string{"lab": "#Lab", "scenario": "#Case", "result": "#Result", "labNA": "#Lab", "scenarioRedacted": "#Case", "resultDecision": "#Result", "resultDecisionOther": "#Result", "resultPlugin": "#Result", "resultReplay": "#Result"}[name]
 	return v.LookupPath(cue.ParsePath(definition)), data
 }
 
 func TestLabSchemaValid(t *testing.T) {
-	for _, name := range []string{"lab", "scenario", "result", "labNA", "scenarioRedacted", "resultDecision", "resultDecisionOther"} {
+	for _, name := range []string{"lab", "scenario", "result", "labNA", "scenarioRedacted", "resultDecision", "resultDecisionOther", "resultPlugin", "resultReplay"} {
 		t.Run(name, func(t *testing.T) { fixture(t, name) })
 	}
 }

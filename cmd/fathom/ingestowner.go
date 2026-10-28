@@ -46,3 +46,14 @@ func ingestOwnerProbe(ops daemonOps) func(pid int, started time.Time) bool {
 		return alive
 	}
 }
+
+// newIngestOwnerProbe is the probe `fathom ingest`, serve-http and
+// serve-mcp install (fusion.InstallIngestOwnerProbe, GDEV-02: an ingest
+// beside another live process's uncommitted ingest of the service is
+// refused by name), and serve-http and serve-mcp also give
+// mcp.SetIngestOwnerProbe. `fathom watch`, `ingest-diff` and
+// `platform-ingest` do not install it yet: their ingests are not refused. A package
+// variable so a test answers liveness without a real process.
+var newIngestOwnerProbe = func() func(pid int, started time.Time) bool {
+	return ingestOwnerProbe(realDaemonOps{})
+}

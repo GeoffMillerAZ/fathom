@@ -4,7 +4,11 @@
 # the archives and checksums.txt to that release; the notes `gh release
 # create` wrote are kept (release.mode: keep-existing). workflow_dispatch
 # re-runs a tag whose first attempt failed. The only credential is the
-# workflow's GITHUB_TOKEN; nothing is signed or notarized.
+# workflow's GITHUB_TOKEN. Nothing is signed or notarized, but the archives and
+# checksums.txt carry a build-provenance attestation (SLSA, via GitHub's
+# Sigstore), starting with the first release after v0.23.0:
+# `gh attestation verify <archive> --repo GeoffMillerAZ/fathom --signer-workflow GeoffMillerAZ/fathom/.github/workflows/release.yml`.
+# Permissions are none at the workflow level and granted per job.
 name: release
 
 on:
@@ -17,8 +21,7 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency:
   group: release-${{ github.event.release.tag_name || inputs.tag }}
@@ -29,17 +32,22 @@ jobs:
     name: GoReleaser (darwin + linux)
     runs-on: macos-14
     timeout-minutes: 60
+    permissions:
+      contents: write # upload assets to the existing release
+      id-token: write # keyless signing of the attestation
+      attestations: write # store the attestation
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ env.TAG }}
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
+          cache: false # the attested build must not restore a cache shared with CI
 
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
@@ -49,3 +57,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ env.TAG }}
+
+      # GoReleaser's output directory comes from .goreleaser.yaml so the
+      # attested subjects cannot drift from where the archives are written.
+      - name: Resolve GoReleaser dist
+        id: dist
+        run: echo "path=$(sed -n 's/^dist:[[:space:]]*//p' .goreleaser.yaml)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            ${{ steps.dist.outputs.path }}/checksums.txt
+            ${{ steps.dist.outputs.path }}/fathom_*.tar.gz

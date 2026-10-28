@@ -250,6 +250,8 @@ salt (`bundle.LoadOrCreateSalt`, `HashService`). Points carry tool names and sha
 A3 cells are live wired sessions with known tasks, so the labs also read the funnel over their transcripts, with the
 task's gold tool as eligible, at no extra spend (LAB-39).
 
+Replay v0 reads any `Read` that names a line range as a re-read of a cited range, and any `read_source` call that names one the same way. That is an assumption, not evidence: the transcript keeps shape classes, not text, so it cannot show the range was cited. The `read_source` recall read this way is the share of ranged reads that went through the verb, and it is only an estimate of firing at cited re-reads until a reading checks the assumption (LAB-M0a).
+
 ### 4.5 Forks and text knobs
 
 A fork case is a short prefix and a request. Cases are sampled from every stratum of decision points, not only the

@@ -1,0 +1,172 @@
+{
+  "automation_checks": {
+    "approved_runner": "ubuntu-24.04",
+    "command": "python3 -I -B calibration/oracles/dxc-ast/scope-replay/test_replay.py -v",
+    "dxc_pin_unchanged": true,
+    "final_local_review": "no findings",
+    "native_replay_run": false,
+    "result": "PASS",
+    "staged_secret_scan": "zero findings; no baseline",
+    "tests": 19
+  },
+  "execution_cwd": "repository root; resolves current dialect manifests",
+  "final_focused_suite": {
+    "command": "bash scripts/fathom-go.sh test -race -count=1 -run 'TestScoreToolOracle.*Scope|TestCmdLangOracle.*Scope|TestCmdLangRegradeCallScopeUnaffectedReadings' ./cmd/indexbench",
+    "duration_seconds": 14.04,
+    "result": "PASS"
+  },
+  "focused_test": {
+    "command": "bash scripts/fathom-go.sh test -race -count=1 -run 'TestScoreToolOracleUndeclaredScopeNoOp|TestCmdLangRegradeCallScopeUnaffectedReadings' ./cmd/indexbench",
+    "coverage": "Native SQL nonempty/empty neutral calls, CUDA compiler call_sites and CUDA active_lines shapes; synthetic neutral paths; real producer source identities above, not native runtime execution.",
+    "result": "PASS"
+  },
+  "hlsl": {
+    "committed_call_recall": 0.9859,
+    "committed_level": "L3",
+    "committed_measured_files": 644,
+    "committed_scope_files": 543,
+    "status": "requires real Linux replay; not cleared by this receipt"
+  },
+  "indexbench": {
+    "go_version": "go1.27.3",
+    "platform": "darwin/arm64",
+    "sha256": "d1771cf776740539cbd53574e4b8cb02905ae0a66ad4d0c70e690005cebd4efc",
+    "source_commit": "6db920e72898abb20bf86c22652b401902e34598",
+    "vcs_modified": false
+  },
+  "mutations": [
+    {
+      "failed_subcases": [
+        "native SQL empty calls",
+        "CUDA compiler call sites",
+        "CUDA preprocessor"
+      ],
+      "failure": "unscoped companion incorrectly trips duplicate calls-family refusal",
+      "file": "cmd/indexbench/langoracle.go",
+      "mutant": "Replace len(tf.Scope)>0 with len(inScope)>0 in the calls-family guard",
+      "result": "FAIL"
+    },
+    {
+      "failed_subcases": [
+        "native SQL nonempty calls"
+      ],
+      "failure": "call_fathom grows from 1 to 2 after adding an unrelated measured file",
+      "file": "cmd/indexbench/langoracle.go",
+      "mutant": "Unconditionally expand call coverage to all measured files instead of only explicit scope",
+      "result": "FAIL"
+    }
+  ],
+  "producer_sources": [
+    {
+      "neutral_scope_declared": false,
+      "path": "calibration/oracles/sql-native/sql_native.py",
+      "sha256": "1de905e86b98fcc9f6befcceff395f3d727d379a7089ff583ebcd1a72cffaa22"
+    },
+    {
+      "neutral_scope_declared": false,
+      "path": "calibration/oracles/clang-calls/main.go",
+      "sha256": "824d5ab61025b2750584907185ab9875b8866b32e57dab4d9170640b4a063856"
+    },
+    {
+      "neutral_scope_declared": false,
+      "path": "calibration/oracles/scip-clang/preproc/main.go",
+      "sha256": "8175a209dd8a53bb3ea8673b04bab925fd8ef0ebdf18ad20ea0057b1fab54548"
+    }
+  ],
+  "publication": "Counts, hashes and repo-relative source identifiers only; no raw notes, subject content or file inventories.",
+  "readings": [
+    {
+      "call_counts": {
+        "call_fathom": 17,
+        "call_fathom_in_truth": 17,
+        "call_truth": 17,
+        "call_truth_found": 17
+      },
+      "call_precision_after": 1,
+      "call_precision_before": 1,
+      "call_recall_after": 1,
+      "call_recall_before": 1,
+      "dialect": "sql",
+      "level_after": "L2",
+      "level_before": "L2",
+      "measured_files": 31,
+      "preserved_fields_sha256": "4c14ddaefa6e5321b7e389cbae663e4533815a1784fcee4b288a79c17debfa36",
+      "producer_declares_neutral_scope": false,
+      "reading": "docs/bench/readings/lang/sql.json",
+      "reading_sha256": "46b4a4b0005d15c67be34d2630661164e3b46fd617b52a1e4a02940528cdc764",
+      "result": "cleared under G-R7 by stored-count regrade plus undeclared-scope no-op proof; no fresh native oracle replay claimed",
+      "scope_count_delta": null,
+      "scope_count_note": "No declared neutral scope in the producer; absent is not an explicit empty scope.",
+      "subject_count": 2,
+      "unchanged_fields": [
+        "level_met",
+        "grade",
+        "metrics",
+        "counts",
+        "subjects",
+        "required_kinds",
+        "tenancy"
+      ]
+    },
+    {
+      "call_counts": {
+        "call_fathom": 3309,
+        "call_fathom_in_truth": 3273,
+        "call_truth": 3283,
+        "call_truth_found": 3273
+      },
+      "call_precision_after": 0.9891,
+      "call_precision_before": 0.9891,
+      "call_recall_after": 0.997,
+      "call_recall_before": 0.997,
+      "dialect": "cuda",
+      "level_after": "none",
+      "level_before": "none",
+      "measured_files": 225,
+      "preserved_fields_sha256": "c151dc210b7a3425a5676e241d014cefbbfb805bdbb27c5d7108842f32ceb928",
+      "producer_declares_neutral_scope": false,
+      "reading": "docs/bench/readings/lang/cuda.json",
+      "reading_sha256": "a22a8a177c5b848c18b3956d96e073d48ba3f26a3f686e44cdc18c09d9ea9f09",
+      "result": "cleared under G-R7 by stored-count regrade plus undeclared-scope no-op proof; no fresh native oracle replay claimed",
+      "scope_count_delta": null,
+      "scope_count_note": "No declared neutral scope in the producer; absent is not an explicit empty scope.",
+      "subject_count": 1,
+      "unchanged_fields": [
+        "level_met",
+        "grade",
+        "metrics",
+        "counts",
+        "subjects",
+        "required_kinds",
+        "tenancy"
+      ]
+    }
+  ],
+  "required_checks": [
+    {
+      "command": "bash scripts/fathom-go.sh run ./third_party/agentic-kit/cmd/release-notes -check",
+      "result": "PASS"
+    },
+    {
+      "command": "bash scripts/check-merge-debris.sh",
+      "result": "PASS"
+    },
+    {
+      "command": "bash scripts/fathom-go.sh test -count=1 -run TestNoOrgSpecificNames ./cmd/fathom",
+      "duration_seconds": 2.324,
+      "result": "PASS"
+    },
+    {
+      "command": "bash scripts/check-merge-debris.sh --staged",
+      "result": "PASS"
+    }
+  ],
+  "restoration": {
+    "focused_restored_race": "PASS, 6.529s",
+    "production_source_diff": "empty"
+  },
+  "reviewed_branch_head": "6467206d82eda4891d79da2365fc582b8678a9cd",
+  "schema": "g-r7-scope-no-op-receipt-v1",
+  "scope_semantics_commit": "28500244823f822936cc5f616b6f5d30eb999876",
+  "source_main": "6db920e72898abb20bf86c22652b401902e34598"
+}

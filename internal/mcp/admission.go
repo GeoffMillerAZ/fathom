@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -152,15 +153,34 @@ func (s *Server) admitToolCall(ctx context.Context, te toolEntry, args json.RawM
 	tk, ref := s.gate.Admit(actx, req)
 	if ref != nil {
 		if top {
-			if sink, ok := ctx.Value(refusalSinkKey{}).(*refusalSink); ok {
-				sink.mu.Lock()
-				sink.ref = ref
-				sink.mu.Unlock()
-			}
+			setRefusal(ctx, ref)
 		}
 		return ctx, nil, busyError(ref)
 	}
 	return tk.Context(), tk, nil
+}
+
+// setRefusal records ref on ctx's refusal sink (nil clears it); a ctx with
+// no sink (stdio, a test) is left alone.
+func setRefusal(ctx context.Context, ref *tenancy.Refusal) {
+	if sink, ok := ctx.Value(refusalSinkKey{}).(*refusalSink); ok {
+		sink.mu.Lock()
+		sink.ref = ref
+		sink.mu.Unlock()
+	}
+}
+
+// handlerRefusal is an admitted handler's own refusal (GDEV-08: the ingest
+// tool's refresh-gate, ingest-slot and concurrent-ingest refusals) in the
+// admission wire format: -32050 with the §3.4 data keys, recorded on the
+// HTTP sink so POST /rpc answers 503 with Retry-After and the refusal's
+// scope. A call settle turns into an abandonment clears the sink again: a
+// call that did not end refused never answers 503. Handler refusals are
+// not counted in fathom_rejected_total (admission's own count): the call
+// was admitted, and its call-log row and fathom_calls_total say refused.
+func handlerRefusal(ctx context.Context, ref *tenancy.Refusal) *rpcError {
+	setRefusal(ctx, ref)
+	return busyError(ref)
 }
 
 // settleCall names how a call ended and releases its ticket: a call the
@@ -177,6 +197,7 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 		result, rpcErr = nil, ab
 		meta.outcome, release = outcomeAbandonedByGovernor, tenancy.OutcomeAbandoned
 		tenancy.RecordAbandoned(tool, tenancy.AbandonGovernor)
+		setRefusal(ctx, nil)
 	case tk != nil && ctx.Err() != nil:
 		cause := "the client went away"
 		why := tenancy.AbandonClient
@@ -188,6 +209,11 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 		result, rpcErr = nil, &rpcError{Code: ErrCodeInternal, Message: "abandoned: " + cause + "; " + tool + " did not finish and no partial answer is served",
 			Data: map[string]any{"outcome": string(tenancy.OutcomeAbandoned), "cause": cause}}
 		meta.outcome, release = string(tenancy.OutcomeAbandoned), tenancy.OutcomeAbandoned
+		setRefusal(ctx, nil)
+	case rpcErr != nil && rpcErr.Code == ErrCodeBusy:
+		// A handler's own refusal (handlerRefusal): named refused, as an
+		// admission refusal is, never error.
+		meta.outcome, release = string(tenancy.OutcomeRefused), tenancy.OutcomeRefused
 	case rpcErr != nil:
 		meta.outcome, release = string(tenancy.OutcomeError), tenancy.OutcomeError
 	case tk != nil && tk.Stopped():
@@ -206,6 +232,50 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 	return result, rpcErr, partial, meta
 }
 
+// admittedCall is what runAdmitted hands back to dispatch: the settled
+// answer, and the collector and refresh notes the envelope renders.
+type admittedCall struct {
+	result    any
+	rpcErr    *rpcError
+	partial   map[string]any
+	meta      callMeta
+	collector *scope.Collector
+	refreshed *refreshNotes
+}
+
+// runAdmitted owns an admitted call from admission to settle (GDEV-08):
+// the setup dispatch runs under the ticket (the collector, the refresh
+// notes, the citation reads, which call the backend), the handler, and
+// settleCall. One deferred settle and one recover cover all of it, so a
+// panic anywhere in that window answers the named error runHandler gives
+// and the ticket's slot, in-flight entry and running count are released;
+// with no gate (a nil ticket, serve-mcp) the recover still keeps the
+// stdio loop alive. ctx is the ticket's (the requester's, detached for
+// ingest, when there is no gate): settle reads its end and its cause.
+func (s *Server) runAdmitted(ctx context.Context, te toolEntry, args json.RawMessage, tk *tenancy.Ticket) (a admittedCall) {
+	settleCtx := ctx
+	defer func() {
+		if v := recover(); v != nil {
+			a.result, a.rpcErr = nil, panicError(te.desc.Name, v)
+		}
+		a.result, a.rpcErr, a.partial, a.meta = s.settleCall(settleCtx, te.desc.Name, tk, a.result, a.rpcErr)
+	}()
+	ctx, a.collector = scope.WithCollector(ctx)
+	// RT-150: a read whose auto-refresh was deferred says so.
+	ctx, a.refreshed = withRefreshNotes(ctx)
+	if citationTool(te.desc.Name) {
+		ctx = context.WithValue(ctx, citationReadsKey{}, newCitationReads(ctx, s.backend, serviceOfArgs(args), s.RefreshQueue()))
+	}
+	a.result, a.rpcErr = runHandler(ctx, te, args)
+	return a
+}
+
+// panicError is the named error a panic in an admitted call answers.
+func panicError(tool string, v any) *rpcError {
+	return &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("internal error: %s panicked: %v", tool, v),
+		Data: map[string]any{"outcome": string(tenancy.OutcomeError), "panic": fmt.Sprint(v)}}
+}
+
 // runHandler runs one tool handler and turns a panic into a named error,
 // so the settle that follows always releases the admission ticket (its
 // slot, in-flight entry and running count). net/http's conn.serve would
@@ -214,8 +284,7 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 func runHandler(ctx context.Context, te toolEntry, args json.RawMessage) (result any, rpcErr *rpcError) {
 	defer func() {
 		if v := recover(); v != nil {
-			result, rpcErr = nil, &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("internal error: %s panicked: %v", te.desc.Name, v),
-				Data: map[string]any{"outcome": string(tenancy.OutcomeError), "panic": fmt.Sprint(v)}}
+			result, rpcErr = nil, panicError(te.desc.Name, v)
 		}
 	}()
 	// RT-122 (§13.4): the handler's goroutine — and every goroutine it

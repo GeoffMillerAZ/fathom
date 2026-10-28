@@ -24,6 +24,59 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.24.0] — 2026-10-27
+
+Release impact: major (pre-1.0: breaking bumps minor)
+
+### Breaking
+
+- The go commands fathom runs on its own now run offline (ADR-083), so a module cache that lacks a repository's dependencies leaves the Go typed pass degraded: ingest exits 1 with "ingest degraded" and names the module. Run `go mod download` in each Go module, or set `[ingest] go_network = true` in `~/.fathom/config.toml`; see [the upgrade note](docs/upgrades/0.24.0-loopback-offline-go.md).
+- The daemon answers loopback peers only, and `serve-http` rebinds a non-loopback `--addr` or `[daemon].addr` (and an installed plist's wide address) to `127.0.0.1`, so a LAN, container or VM client is refused. Run `fathom daemon install --reconcile` from your own terminal; see [the upgrade note](docs/upgrades/0.24.0-loopback-offline-go.md).
+
+### Added
+
+- Add dormant HLSL replay automation with pinned public inputs, paired main/control regrading and complete reading diffs. SQL and CUDA compatibility remains unchanged under the no-scope producer contract.
+- Record reproducible OpenCL native grammar screening and its retained-pool refusal proposal. A semicolonless grammar repair improves the fixed pool from 63/386 to 53/386 failures, firing the G-R6 intermediate trigger while native admission remains unmet. The reused holdout is diagnostic; no OpenCL support level is claimed.
+- Record a preregistered Slang triage search with all 466 candidate dispositions. Keep non-subject identities numeric, disclose the incomplete shader search and Falcor lineage, and require separate primary and holdout gates. Preserve preregistration hashes and critic attestations across the privacy squash. Implementation remains gated on the owner's lane-count decision; no Slang level is claimed.
+- `fathom labs corpus` cuts this repository's local Claude Code transcripts into salted, per-session decision points under `workspace/labs/sessions/` and prints aggregates only, naming every line it could not use. `fathom labs fire` reads the per-surface firing funnel (fires, false fires, recall and specificity with Wilson intervals) and with `--write` appends replay rows to `docs/bench/labs-ledger.jsonl`; neither asks the daemon or reaches the network.
+- A `schema/labs` replay row carries a `replay` block (the corpus sha256 and the fathom commit that read it) instead of the arm pins, since a past session's pins are not knowable.
+- `fathom ingest` stops by name on SIGINT or SIGTERM, reporting how far it got and what the store holds (`--json`: `outcome: "cancelled"`, `signal`, `counts_partial`), and exits 130 or 143, so a Go parent now reads that code where the process used to die by the signal. A cancel before the first write puts the previous `ingest_state` row back (RT-109).
+- An ingest beside another live process's uncommitted ingest of the same service is refused by name (`fathom ingest` exits 1 with `outcome: "busy"`, `owner_pid` and `owner_started_at`; the daemon's `ingest` tool answers class-scoped), and auto-refresh defers instead of queueing a second ingest. `fathom watch`, `ingest-diff` and `platform-ingest` do not check yet.
+- The egress guard (`egress-guard` and `guard-pre-web` capabilities, ADR-083) adds one advisory line before a Bash command or a Claude Code `WebFetch`/`WebSearch` that sends data to a host off `[guards] egress_allow`. `[guards] egress` is `"warn"` by default, `"enforce"` denies, `"off"` silences it.
+- It is a string-match tripwire, not data-loss prevention: a command built at run time, Codex web search and MCP calls, and Claude Code's MCP fetch and browser tools pass it (limits in `docs/security.md`).
+- The user sets the mode and the user-only allowlist; a repository may tighten the mode and never loosen it, and only `~/.fathom/capabilities.cue` may switch `egress-guard` off. `fathom doctor`'s `egress_guard` row warns when the guard is off.
+- Migration: run `fathom init` (or `fathom fleet reconcile --apply`) to wire the new Claude Code `PreToolUse` `WebFetch|WebSearch` entry, then list the hosts you push and fetch to in `egress_allow`, or set `egress = "off"`.
+- Simulink models (`.slx`, `.mdl`) extract at L2 (good): blocks by full path, signal lines as references, model references to the model of that name (L3 deferred). A `.slx` is read in memory under the caps of ADR-021 (amended); a model the reader refuses is counted on the ingest report (`models-refused`, JSON `models_refused`) with one stderr line naming the file.
+
+### Changed
+
+- OpenCL C bench replays accept explicit pinned compiler profiles and record their archive, platform and pin-file identity.
+- A language or tool format's L3 now needs at least 20 references in the denominator of each graded cross-file metric; a thinner metric caps L3, and the reason shows in `docs/languages.md` (`grade.L3_reason`). Eight tool formats now read L2 instead of L3 on thin evidence (JSON Schema, OpenTelemetry Collector, Protocol Buffers, Kong, Kustomize, nginx, Taskfile and HAProxy), with their extraction unchanged.
+- `fathom version` on a binary built without a VCS revision (`go install`) reports `(module vX, sum h1:...)` instead of `(revision unknown)`. `version --json` and `/statusz` build info gain `module_version` and `module_sum`.
+- Correct Bash oracle evidence with a released SCIP producer and native runtime and namespace probes, preserving measured tiers and disclosing incomplete coverage and observer effects.
+- Crossplane L1 reads good instead of excellent because its definitions are graded at tier C; the full 244-file scope remeasures at 428/428 definitions, 86/86 references and 33/33 cross-file references, and L3 stays good.
+- Kustomize reads L1 excellent to good on the wider native population (eight no-op definitions) and L3 unmet to excellent, measured on 35 cross-file references across five pinned repositories under the 20-reference L3 evidence rule.
+- The HLSL call reading is regraded after the paired Linux replay: explicitly scoped zero-call files add 39 false positives, lowering call precision from 0.9656 to 0.956, with recall, L3 and scope unchanged.
+
+### Fixed
+
+- A panic between admission and settle no longer leaks the call's admission slot for the life of serve-http or kills serve-mcp's stdio loop; it answers `internal error: <tool> panicked` as a panicking handler does.
+- The `ingest` tool's refresh-gate refusals now answer the documented §3.4 admission wire format (JSON-RPC -32050, HTTP 503 with `Retry-After` and `X-Fathom-Busy-Scope`) instead of -32600 with HTTP 200. The contract is unchanged, so this is a fix rather than a Breaking change: a client that matched -32600 for these refusals should match -32050.
+- The lifecycle gate's refusal body gains `in_flight` and `outcome: "refused"`, matching the admission path's.
+- `fathom doctor` reads Python steps in hook, stdio and pre-push gate wrappers statically (scripts, `python -m`, `uv run` and similar launchers, Python shebangs) instead of failing them: a literal `fathom` spawn reads configured (indirect) or PASS, an unsettled one reads `unknown` naming file, line and cause, and a script that starts nothing is named in the FAIL. Nothing is executed.
+- The Go typed pass names every package it skips with one reason (test main, test-only, connector scope, build constraints, outside ./...) and every Go directory no module load covers, with counts that add up to the packages seen. `fathom ingest`, its `--json` and the MCP `ingest` tool's `typed_edges` report them (`packages_skipped`, `skipped`, `not_loaded`).
+- A Go package whose every file imports "C" now keeps its typed edges; TypedEdgeEpoch 8 re-runs the typed pass once for every stored Go service.
+- PowerShell oracle measurements recognise module-expression scope, avoid executing transitive definition-file setup, and disclose all helper crossings and shadowed origins without changing canonical grades.
+- The edit hook no longer labels a file of an indexed repository a `worktree` when the repository is opened through a symlinked path (for example macOS `/var` or `/tmp`). The destination class and clone fold now compare canonical paths on both sides.
+
+### Security
+
+- The go commands fathom runs on its own run with `GOPROXY=off`, `GOSUMDB=off`, `GONOPROXY=,`, `GOTELEMETRY=off` and `GOTOOLCHAIN=local`, and `-mod=mod` is dropped from `GOFLAGS`, so `go list` never rewrites a repository's `go.mod` or `go.sum` (ADR-083).
+- `fathom receipt verify` runs under the same offline environment whatever `go_network` says, with `GOWORK=off` and `-mod=readonly`: a `GOPRIVATE` dependency no longer goes to its version control, and a `toolchain` line is never fetched.
+- Release archives and `checksums.txt` carry a build-provenance attestation, starting with the first release after v0.23.0. The release workflow grants permissions per job with every third-party action pinned by commit SHA. Verify a download with `gh attestation verify <archive> --repo GeoffMillerAZ/fathom --signer-workflow GeoffMillerAZ/fathom/.github/workflows/release.yml`.
+- The daemon refuses a request whose peer address is not loopback with 403 and the named reason, so a network peer can no longer reach `/rpc` by sending `Host: 127.0.0.1`.
+- `fathom daemon install` writes `--addr 127.0.0.1:7575` and refuses a non-loopback `--addr` (exit 2), since remote serving needs token auth, which fathom does not have. The new doctor row `daemon_bind` FAILs on a wide plist or a running non-loopback listener and WARNs on a wide `[daemon].addr`.
+
 ## [0.23.0] — 2026-10-26
 
 Release impact: minor

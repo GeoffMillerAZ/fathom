@@ -26,6 +26,7 @@ func NewGoExtractor() *GoExtractor { return &GoExtractor{} }
 //   - func   → KindGoFunc   (Package = file package name)
 //   - method → KindGoMethod (Package = receiver type name, Name = "ReceiverType.MethodName")
 //   - type struct → KindGoType
+//   - struct field → KindGoField (Package = owner type, Name = "Owner.Field")
 //   - type interface → KindGoInterface
 //   - var → KindGoVar     (a package-level name, exported or not; never `_`)
 //   - const → KindGoConst (likewise)
@@ -193,6 +194,7 @@ func (g *GoExtractor) genDeclNodes(
 				EndLine:  endPos.Line,
 				Tier:     core.TierVerified,
 			})
+			nodes = append(nodes, structFieldNodes(service, relPath, fset, ts)...)
 		}
 
 	case token.CONST:

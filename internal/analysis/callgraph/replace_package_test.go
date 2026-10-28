@@ -7,6 +7,7 @@ package callgraph
 // changed package and everything that calls into it.
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -117,5 +118,100 @@ func TestInvalidatePackage_TypedEdgesOnly(t *testing.T) {
 	g2 := c.Graph("svc", "wm1", build)
 	if g2.edgeKind[a1Key+"\x00"+a2Key] != core.EdgeDirect {
 		t.Errorf("typed edge A1->A2 not recorded after typed-edges-only InvalidatePackage")
+	}
+}
+
+// A refresh of either file declaring Config replays the whole owner package.
+// The field remains queryable by its full key but cannot hide the method from
+// bare-name or package-name call resolution.
+func TestReplacePackageGoFieldCollisionMatchesBuild(t *testing.T) {
+	method := core.SymbolNode{Service: "svc", Package: "Config", Name: "Config.Load", Kind: core.KindGoMethod, FilePath: "a/config.go"}
+	field := core.SymbolNode{Service: "svc", Package: "Config", Name: "Config.Load", Kind: core.KindGoField, FilePath: "b/config.go"}
+	caller := core.SymbolNode{Service: "svc", Package: "app", Name: "Call", Kind: core.KindGoFunc, FilePath: "app/main.go", Calls: []string{"Config.Load"}}
+	nodes := []core.SymbolNode{method, field, caller}
+	fresh := Build(nodes)
+	patched := fresh.ReplacePackage("Config", []core.SymbolNode{method, field}, nil)
+	for _, name := range []string{"Config.Load", "Config.Config.Load"} {
+		want := Canonical(fresh, name)
+		if want != method.Key() {
+			t.Fatalf("Build canonical %q = %q, want method %q", name, want, method.Key())
+		}
+		if got := Canonical(patched, name); got != want {
+			t.Errorf("patched canonical %q = %q, Build = %q", name, got, want)
+		}
+	}
+	if got := Canonical(patched, field.Key()); got != field.Key() {
+		t.Errorf("field full-key lookup = %q, want %q", got, field.Key())
+	}
+	if got, want := patched.callees[caller.Key()], fresh.callees[caller.Key()]; !slices.Equal(got, want) {
+		t.Errorf("patched call edges = %v, Build = %v", got, want)
+	}
+}
+
+func TestReplacePackageGoFieldNeverSyntaxCallTarget(t *testing.T) {
+	field := core.SymbolNode{Service: "svc", Package: "Owner", Name: "Owner.Run", Kind: core.KindGoField, FilePath: "pkg/owner.go"}
+	caller := core.SymbolNode{Service: "svc", Package: "sample", Name: "Call", Kind: core.KindGoFunc, FilePath: "pkg/call.go", Calls: []string{"Run", "x.Run", "sample.Owner.Run", field.Key(), "example.com/pkg#.Run"}}
+	nodes := []core.SymbolNode{field, caller}
+	fresh := Build(nodes)
+	patched := fresh.ReplacePackage("sample", []core.SymbolNode{caller}, nil)
+	if got, want := patched.EdgeCount(), fresh.EdgeCount(); got != want {
+		t.Errorf("patched edge count = %d, Build = %d", got, want)
+	}
+	if got := patched.EdgeCount(); got != 0 {
+		t.Errorf("field fabricated %d call edges after refresh", got)
+	}
+	patched = fresh.ReplacePackage("Owner", []core.SymbolNode{field}, nil)
+	if key, ok := patched.byPkgName["Owner.Owner.Run"]; ok {
+		t.Errorf("field entered package call index after refresh: %q", key)
+	}
+	if key, ok := patched.byName["Owner.Run"]; ok {
+		t.Errorf("field entered bare-name call index after refresh: %q", key)
+	}
+}
+
+func TestReplacePackageMethodFieldKindTransitionMatchesBuild(t *testing.T) {
+	method := core.SymbolNode{Service: "svc", Package: "Owner", Name: "Owner.Run", Kind: core.KindGoMethod, FilePath: "pkg/owner.go"}
+	field := method
+	field.Kind = core.KindGoField // same full key, different call-target class
+	localCaller := core.SymbolNode{Service: "svc", Package: "Owner", Name: "Call", Kind: core.KindGoFunc, FilePath: "pkg/call.go", Calls: []string{"x.Run"}}
+	otherCaller := core.SymbolNode{Service: "svc", Package: "sample", Name: "Other", Kind: core.KindGoFunc, FilePath: "sample/call.go", Calls: []string{method.Key()}}
+
+	methodNodes := []core.SymbolNode{method, localCaller, otherCaller}
+	fieldNodes := []core.SymbolNode{field, localCaller, otherCaller}
+	methodGraph := Build(methodNodes)
+	fieldGraph := Build(fieldNodes)
+	if methodGraph.EdgeCount() != 2 || fieldGraph.EdgeCount() != 0 {
+		t.Fatalf("fixture edges: method = %d, field = %d; want 2 and 0", methodGraph.EdgeCount(), fieldGraph.EdgeCount())
+	}
+
+	toField := methodGraph.ReplacePackage("Owner", []core.SymbolNode{field, localCaller}, nil)
+	if got, want := toField.EdgeCount(), fieldGraph.EdgeCount(); got != want {
+		t.Errorf("method to field edges = %d, Build = %d", got, want)
+	}
+	for _, name := range []string{"Owner.Run", "Owner.Owner.Run", field.Key()} {
+		if got, want := Canonical(toField, name), Canonical(fieldGraph, name); got != want {
+			t.Errorf("method to field canonical %q = %q, Build = %q", name, got, want)
+		}
+	}
+	if got, want := toField.callees[otherCaller.Key()], fieldGraph.callees[otherCaller.Key()]; !slices.Equal(got, want) {
+		t.Errorf("method to field other-package calls = %v, Build = %v", got, want)
+	}
+	if key, ok := toField.bySuffix["Run"]; ok && key.key == field.Key() {
+		t.Errorf("field retained suffix call alias %q", key.key)
+	}
+
+	// A caller inside the patched package is re-resolved when the field
+	// becomes a method again. Other packages' newly resolvable calls follow
+	// ReplacePackage's documented bounded-staleness contract.
+	reverseBefore := Build([]core.SymbolNode{field, localCaller})
+	reverseFresh := Build([]core.SymbolNode{method, localCaller})
+	toMethod := reverseBefore.ReplacePackage("Owner", []core.SymbolNode{method, localCaller}, nil)
+	if got, want := toMethod.EdgeCount(), reverseFresh.EdgeCount(); got != want {
+		t.Errorf("field to method edges = %d, Build = %d", got, want)
+	}
+	for _, name := range []string{"Owner.Run", "Owner.Owner.Run", method.Key()} {
+		if got, want := Canonical(toMethod, name), Canonical(reverseFresh, name); got != want {
+			t.Errorf("field to method canonical %q = %q, Build = %q", name, got, want)
+		}
 	}
 }

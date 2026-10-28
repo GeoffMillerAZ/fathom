@@ -15,7 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
@@ -36,12 +38,99 @@ func Hello() string {
 func Lonely() {}
 `
 
+// exportReceiptFixtureBSrc is pkg/b.go: a second file calling Greet, a
+// struct field with a use of it, an interface method call, and a call
+// that matches a package function by name alone.
+const exportReceiptFixtureBSrc = `package pkg
+
+// Wave calls Greet from a second file.
+func Wave() string { return Greet() }
+
+// Config carries a field.
+type Config struct{ N int }
+
+// Size reads Config.N.
+func Size(c Config) int { return c.N }
+
+// Speak reaches Say only through the Greeter interface.
+func Speak(g Greeter) string { return g.Say() }
+
+// Echo is a package function.
+func Echo() string { return "echo" }
+
+// Shadow calls its parameter, which shadows Echo: a name-matching syntax
+// edge binds the call to the package function, go/types does not.
+func Shadow(Echo func() string) string { return Echo() }
+`
+
+// exportReceiptFixtureCSrc is pkg/c.go: an interface and its one
+// implementer, whose Say no static call in pkg/b.go names, and a constant
+// and a variable.
+const exportReceiptFixtureCSrc = `package pkg
+
+// Greeter says something.
+type Greeter interface{ Say() string }
+
+// En is a Greeter.
+type En struct{}
+
+// Say answers in English.
+func (En) Say() string { return "hello" }
+
+// Limit is a constant.
+const Limit = 3
+
+// Spare is a package variable.
+var Spare = Limit
+`
+
+// exportReceiptFixtureTestSrc reaches Hello and, through it, Greet, and
+// a helper in its own file; TestSpeak reaches Speak, and En.Say only
+// through the interface; TestSay reaches En.Say through the interface
+// alone; TestShadow reaches Shadow, and Echo by name alone.
+const exportReceiptFixtureTestSrc = `package pkg
+
+import "testing"
+
+func TestHello(t *testing.T) {
+	if Hello() != "hi" {
+		t.Fatal("no greeting")
+	}
+	settle()
+}
+
+// settle is a test-file helper: reached, but never what a test certifies.
+func settle() {}
+
+func TestSpeak(t *testing.T) {
+	if Speak(En{}) != "hello" {
+		t.Fatal("no answer")
+	}
+}
+
+func TestShadow(t *testing.T) {
+	if Shadow(func() string { return "x" }) != "x" {
+		t.Fatal("no echo")
+	}
+}
+
+func TestSay(t *testing.T) {
+	var g Greeter = En{}
+	if g.Say() != "hello" {
+		t.Fatal("no answer")
+	}
+}
+`
+
 func exportReceiptFixture(t *testing.T) (root, storePath string) {
 	t.Helper()
 	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer suppression reaches the run
 	repo := newSelfSkipGitRepo(t)
 	repo.writePlan("go.mod", "module example.invalid/rcpt\n\ngo 1.22\n")
 	repo.writePlan("pkg/a.go", exportReceiptFixtureSrc)
+	repo.writePlan("pkg/b.go", exportReceiptFixtureBSrc)
+	repo.writePlan("pkg/c.go", exportReceiptFixtureCSrc)
+	repo.writePlan("pkg/a_test.go", exportReceiptFixtureTestSrc)
 	repo.commitAll("a")
 	storePath = filepath.Join(t.TempDir(), "s.sqlite")
 	var out, errBuf bytes.Buffer
@@ -95,11 +184,11 @@ func TestCmdExportReceipt(t *testing.T) {
 	}
 
 	callers, _ := exportReceipt(t, storePath, "--symbol", "Greet", "--kind", "callers")
-	if len(callers.Callers) != 1 || !strings.HasSuffix(callers.Callers[0], "Hello") {
-		t.Fatalf("callers = %v, want Hello", callers.Callers)
+	if len(callers.Callers) != 2 || !strings.HasSuffix(callers.Callers[0], "Hello") || !strings.HasSuffix(callers.Callers[1], "Wave") {
+		t.Fatalf("callers = %v, want Hello and Wave", callers.Callers)
 	}
-	if len(callers.Facts) != 1 || callers.Facts[0].Kind != receipt.FactCaller || !strings.Contains(callers.Facts[0].Anchors[0].Excerpt, "return Greet()") {
-		t.Errorf("caller facts = %+v, want Hello's anchored definition", callers.Facts)
+	if len(callers.Facts) != 2 || callers.Facts[0].Kind != receipt.FactCaller || !strings.Contains(callers.Facts[0].Anchors[0].Excerpt, "return Greet()") {
+		t.Errorf("caller facts = %+v, want Hello's and Wave's anchored definitions", callers.Facts)
 	}
 
 	none, _ := exportReceipt(t, storePath, "--symbol", "Lonely", "--kind", "callers")
@@ -130,6 +219,48 @@ func TestCmdExportReceipt(t *testing.T) {
 	}
 }
 
+// TestExportReceiptWithholdsGoFieldReferences: field references are not
+// indexed, so neither a callers nor a references receipt is exported for
+// a Go struct field; its definition still is.
+func TestExportReceiptWithholdsGoFieldReferences(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	for _, kind := range []string{"callers", "references"} {
+		t.Run(kind, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "N", "--kind", kind}, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			if want := "a " + kind + " receipt is withheld"; !strings.Contains(errBuf.String(), want) {
+				t.Errorf("refusal = %q, want %q", errBuf.String(), want)
+			}
+		})
+	}
+	if def, _ := exportReceipt(t, storePath, "--symbol", "N"); def.File != "pkg/b.go" {
+		t.Errorf("field definition file = %q, want pkg/b.go", def.File)
+	}
+}
+
+// TestExportReceiptWithholdsNonFunctionReferences: receipt verify's
+// go/types oracle declares and counts uses of functions and methods only,
+// so a references receipt for a type, a constant or a variable is
+// withheld rather than exported to fail verify.
+func TestExportReceiptWithholdsNonFunctionReferences(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	for _, symbol := range []string{"Config", "Limit", "Spare"} {
+		t.Run(symbol, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", symbol, "--kind", "references"}, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			for _, want := range []string{"not a Go function or method", "a references receipt is withheld"} {
+				if !strings.Contains(errBuf.String(), want) {
+					t.Errorf("refusal = %q, want %q", errBuf.String(), want)
+				}
+			}
+		})
+	}
+}
+
 // TestCmdExportReceiptRefusesUnknownKind: a kind the export does not build
 // is a usage error, never an empty receipt.
 func TestCmdExportReceiptRefusesUnknownKind(t *testing.T) {
@@ -139,6 +270,9 @@ func TestCmdExportReceiptRefusesUnknownKind(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("a refused export wrote %q", out.String())
+	}
+	if want := "want symbol_location, callers, references or certification"; !strings.Contains(errBuf.String(), want) {
+		t.Errorf("refusal = %q, want it to name every kind (%q)", errBuf.String(), want)
 	}
 }
 
@@ -299,5 +433,320 @@ func TestCmdExportReceiptRedactHelp(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "[--no-excerpts] [--keep-service] [-o FILE]") {
 		t.Error("export receipt summary omits --keep-service")
+	}
+}
+
+// certTarget is a certification target as internal/certify resolves it:
+// a rule names symbols and certify scopes the claim to the files of those
+// the test reaches; an invariant or incident names no symbol and certify
+// scopes the claim to its doc file (reach is vacuous).
+type certTarget struct {
+	kind, id string
+	symbols  []string // the target symbols the test reaches
+	doc      string   // a symbol-less target's file
+}
+
+// seedCertification writes one certifications-layer claim per test name
+// to storePath, each certifying target with the scope certify writes: the
+// test's file plus the target's files.
+func seedCertification(t *testing.T, storePath string, target certTarget, tests ...string) {
+	t.Helper()
+	ctx := context.Background()
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	obs, err := st.QueryObservations(ctx, "rcpt", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := func(name string) core.SymbolNode {
+		for _, o := range obs {
+			if n := o.ToSymbolNode(); n.Name == name {
+				return n
+			}
+		}
+		t.Fatalf("the index holds no %s", name)
+		return core.SymbolNode{}
+	}
+	var claims []core.SemanticClaim
+	for _, test := range tests {
+		tn := node(test)
+		scope := []string{tn.FilePath}
+		for _, sym := range target.symbols {
+			scope = append(scope, node(sym).FilePath)
+		}
+		if target.doc != "" {
+			scope = append(scope, target.doc)
+		}
+		slices.Sort(scope)
+		scope = slices.Compact(scope)
+		meta, err := json.Marshal(certify.Meta{
+			Test: test, Strength: "asserts", State: "live", RunDigest: "run-" + test,
+			TestSymbolKey: tn.Key(), TargetKind: target.kind, TargetID: target.id, TestFile: tn.FilePath,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		subject := target.kind + ":" + target.id
+		claims = append(claims, core.SemanticClaim{
+			ClaimID: core.ClaimID(certify.Layer, certify.Kind, subject, tn.Key()), ServiceID: "rcpt",
+			Layer: certify.Layer, Kind: certify.Kind, Subject: subject, Rule: test + " certifies " + subject,
+			Scope: scope, Tier: core.TierVerified, Status: core.ClaimFresh,
+			ReproKey: tn.Key(), CompiledAt: time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), Meta: meta,
+		})
+	}
+	if err := st.PutClaims(ctx, claims, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func verifyReceiptFile(t *testing.T, root, path string) (int, string) {
+	t.Helper()
+	var out, errBuf bytes.Buffer
+	code := run([]string{"receipt", "verify", "--repo", root, path}, &out, &errBuf)
+	return code, out.String() + errBuf.String()
+}
+
+// TestExportReceiptAllKindsRequireCleanAndBars: each of the four kinds,
+// exported from exportReceiptFixture, verifies with exit 0 and stays under
+// the 256 KB bar; after an edit to the work tree --require-clean exits 1
+// and names the uncommitted path.
+func TestExportReceiptAllKindsRequireCleanAndBars(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-fixture", symbols: []string{"Greet"}}, "TestHello")
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		kind string
+		args []string
+	}{
+		{"symbol_location", []string{"--symbol", "Greet"}},
+		{"callers", []string{"--symbol", "Greet"}},
+		{"references", []string{"--symbol", "Greet"}},
+		{"certification", []string{"--test", "TestHello", "--target", "R-fixture"}},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			path := filepath.Join(dir, tc.kind+".json")
+			args := append([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", tc.kind, "--require-clean", "-o", path}, tc.args...)
+			start := time.Now()
+			var out, errBuf bytes.Buffer
+			if code := run(args, &out, &errBuf); code != 0 {
+				t.Fatalf("export exit %d: %s", code, errBuf.String())
+			}
+			elapsed := time.Since(start)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("%s receipt: %d bytes, exported in %s", tc.kind, len(data), elapsed)
+			if len(data) > 256<<10 {
+				t.Errorf("%s receipt is %d bytes, over the 256 KB bar", tc.kind, len(data))
+			}
+			var r receipt.ExportedReceipt
+			if err := json.Unmarshal(data, &r); err != nil {
+				t.Fatal(err)
+			}
+			if string(r.Kind) != tc.kind || len(r.Facts) == 0 {
+				t.Fatalf("receipt = %+v, want a %s receipt with facts", r, tc.kind)
+			}
+			if tc.kind == "certification" {
+				if r.Test != "pkg/pkg.TestHello" || r.Target != "rule:R-fixture" || r.Strength != "asserts" || r.RunDigest != "run-TestHello" {
+					t.Errorf("certification envelope = %+v", r.Receipt)
+				}
+				if len(r.Reached) != 2 || !strings.HasSuffix(r.Reached[0], ".Greet") || !strings.HasSuffix(r.Reached[1], ".Hello") {
+					t.Errorf("reached = %v, want Greet and Hello", r.Reached)
+				}
+				if len(r.Facts) != 3 {
+					t.Errorf("facts = %+v, want the test's and each reached symbol's definition", r.Facts)
+				}
+			}
+			// Wave calls Greet from pkg/b.go: the file set comes from the
+			// edges, not from the declaring file alone.
+			if tc.kind == "references" && strings.Join(r.Files, ",") != "pkg/a.go,pkg/b.go" {
+				t.Errorf("files = %v, want pkg/a.go and pkg/b.go", r.Files)
+			}
+			if code, msg := verifyReceiptFile(t, root, path); code != 0 {
+				t.Errorf("receipt verify exit %d:\n%s", code, msg)
+			}
+		})
+	}
+
+	// The index reads the edited bytes: its anchor is uncommitted.
+	if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte(exportReceiptFixtureSrc+"\n// edited\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"ingest", "--service", "rcpt", "--path", root, "--store", storePath}, &out, &errBuf); code != 0 {
+		t.Fatalf("re-ingest exit %d: %s", code, errBuf.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	path := filepath.Join(dir, "dirty.json")
+	code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "Greet", "--require-clean", "-o", path}, &out, &errBuf)
+	if code != 1 || !strings.Contains(errBuf.String(), "pkg/a.go") {
+		t.Fatalf("--require-clean on a dirty tree: exit %d, stderr %q; want 1 naming pkg/a.go", code, errBuf.String())
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("--require-clean wrote no output before refusing: %v", err)
+	}
+	errBuf.Reset()
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--symbol", "Greet", "-o", path}, &out, &errBuf); code != 0 {
+		t.Errorf("without --require-clean a dirty tree exports: exit %d: %s", code, errBuf.String())
+	}
+}
+
+// TestExportReceiptReferencesTamperedFile: a file added to an exported
+// references receipt is a difference.
+func TestExportReceiptReferencesTamperedFile(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	r, _ := exportReceipt(t, storePath, "--symbol", "Greet", "--kind", "references")
+	r.Files = append(r.Files, "pkg/a_test.go")
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "tampered.json")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, msg := verifyReceiptFile(t, root, path); code != 1 || !strings.Contains(msg, "pkg/a_test.go") {
+		t.Errorf("tampered references receipt: exit %d, want 1 naming pkg/a_test.go:\n%s", code, msg)
+	}
+}
+
+// TestExportReceiptSkipsInterfaceDispatch: receipt verify's go/types
+// oracle counts identifier uses and static calls, never an interface
+// dispatch. Speak's g.Say() is not a reference to En.Say, and TestSpeak
+// does not statically reach it, so neither receipt claims it, and both
+// verify.
+func TestExportReceiptSkipsInterfaceDispatch(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-speak", symbols: []string{"Speak", "En.Say"}}, "TestSpeak")
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		kind string
+		args []string
+	}{
+		{"references", []string{"--symbol", "En.Say"}},
+		{"certification", []string{"--test", "TestSpeak", "--target", "R-speak"}},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			path := filepath.Join(dir, tc.kind+".json")
+			var out, errBuf bytes.Buffer
+			if code := run(append([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", tc.kind, "-o", path}, tc.args...), &out, &errBuf); code != 0 {
+				t.Fatalf("export exit %d: %s", code, errBuf.String())
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var r receipt.ExportedReceipt
+			if err := json.Unmarshal(data, &r); err != nil {
+				t.Fatal(err)
+			}
+			if tc.kind == "references" && strings.Join(r.Files, ",") != "pkg/c.go" {
+				t.Errorf("files = %v, want pkg/c.go alone", r.Files)
+			}
+			if tc.kind == "certification" && (len(r.Reached) != 1 || !strings.HasSuffix(r.Reached[0], ".Speak")) {
+				t.Errorf("reached = %v, want Speak alone", r.Reached)
+			}
+			if code, msg := verifyReceiptFile(t, root, path); code != 0 {
+				t.Errorf("receipt verify exit %d:\n%s", code, msg)
+			}
+		})
+	}
+}
+
+// TestExportReceiptCertificationIgnoresSyntaxEdges: Shadow's Echo() calls
+// a parameter that matches the package function Echo by name alone. The
+// syntax graph binds it, go/types does not, so the certification reach is
+// Shadow without Echo, and it verifies.
+func TestExportReceiptCertificationIgnoresSyntaxEdges(t *testing.T) {
+	root, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-shadow", symbols: []string{"Shadow", "Echo"}}, "TestShadow")
+	path := filepath.Join(t.TempDir(), "shadow.json")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification", "--test", "TestShadow", "--target", "R-shadow", "-o", path}, &out, &errBuf); code != 0 {
+		t.Fatalf("export exit %d: %s", code, errBuf.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var r receipt.ExportedReceipt
+	if err := json.Unmarshal(data, &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Reached) != 1 || !strings.HasSuffix(r.Reached[0], ".Shadow") {
+		t.Errorf("reached = %v, want Shadow alone", r.Reached)
+	}
+	if code, msg := verifyReceiptFile(t, root, path); code != 0 {
+		t.Errorf("receipt verify exit %d:\n%s", code, msg)
+	}
+}
+
+// TestExportReceiptCertificationDispatchOnlyReach: a rule target the
+// test reaches only through an interface dispatch has symbols in scope,
+// so its reach is not vacuous; the refusal names the dispatch instead.
+func TestExportReceiptCertificationDispatchOnlyReach(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "rule", id: "R-say", symbols: []string{"En.Say"}}, "TestSay")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification", "--test", "TestSay", "--target", "R-say"}, &out, &errBuf); code != 1 || out.Len() != 0 {
+		t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+	}
+	if msg := errBuf.String(); !strings.Contains(msg, "interface dispatch") || strings.Contains(msg, "vacuous") {
+		t.Errorf("refusal = %q, want it to name the interface dispatch, not a vacuous reach", msg)
+	}
+}
+
+// TestExportReceiptCertificationVacuousReach: an invariant or incident
+// target names no symbol, so certify's scope is the test file plus a doc
+// file. The test's own helpers are not what it certifies, so the export
+// refuses rather than claim them as the reach.
+func TestExportReceiptCertificationVacuousReach(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "invariant", id: "I-fixture", doc: "docs/intent/invariants.md"}, "TestHello")
+	seedCertification(t, storePath, certTarget{kind: "incident", id: "INC-fixture", doc: "docs/intent/incidents.md"}, "TestHello")
+	for _, target := range []string{"I-fixture", "INC-fixture"} {
+		t.Run(target, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			if code := run([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification", "--test", "TestHello", "--target", target}, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			if want := "reach is vacuous"; !strings.Contains(errBuf.String(), want) {
+				t.Errorf("refusal = %q, want %q", errBuf.String(), want)
+			}
+		})
+	}
+}
+
+// TestExportReceiptCertificationClaimChoice: --test and --target must pick
+// exactly one claim; none or several is an error naming the candidates.
+func TestExportReceiptCertificationClaimChoice(t *testing.T) {
+	_, storePath := exportReceiptFixture(t)
+	seedCertification(t, storePath, certTarget{kind: "invariant", id: "I-one", doc: "docs/intent/invariants.md"}, "TestHello")
+	seedCertification(t, storePath, certTarget{kind: "invariant", id: "I-two", doc: "docs/intent/invariants.md"}, "TestHello")
+	for _, tc := range []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{"missing", []string{"--test", "TestHello", "--target", "I-none"}, []string{"no certification", "TestHello → invariant:I-one", "TestHello → invariant:I-two"}},
+		{"ambiguous", []string{"--test", "TestHello"}, []string{"2 certifications", "TestHello → invariant:I-one", "TestHello → invariant:I-two"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out, errBuf bytes.Buffer
+			args := append([]string{"export", "receipt", "--service", "rcpt", "--store", storePath, "--kind", "certification"}, tc.args...)
+			if code := run(args, &out, &errBuf); code != 1 || out.Len() != 0 {
+				t.Fatalf("exit %d, stdout %q; want 1 and nothing written", code, out.String())
+			}
+			for _, w := range tc.want {
+				if !strings.Contains(errBuf.String(), w) {
+					t.Errorf("error %q does not name %q", errBuf.String(), w)
+				}
+			}
+		})
 	}
 }

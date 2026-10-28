@@ -1,0 +1,123 @@
+{
+  "candidate_metrics": {
+    "call_precision": 0.9254,
+    "call_recall": 0.9241,
+    "def_mapping": 0.9345,
+    "file_edge_precision": 0.9956,
+    "file_edge_recall": 0.703,
+    "import_resolution": 1,
+    "kind_agreement": 0.9999,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9994,
+    "sym_recall": 0.9991,
+    "typed_recall": 0.9889
+  },
+  "canonical_reading_sha256": "161b1664bf0ac3c5af69023b035f22f9a598cd637735dbe8cc62d6a10379fdec",
+  "code_commit": "5b8d6a2a6124ec5cf84f3909c1ffa0231f8b1511",
+  "ctags_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+  "independent_reading_sha256": "41ea3f8573287bfb6d311de9dc520aab1bd3888d1ff0afb01cb3cad95cf368f5",
+  "independent_reproducer_equal": true,
+  "indexbench_sha256": "fe15fab595579ab7a7b5ec03a5e385ff9a07af55d5e1c63b3df86e46024af22e",
+  "main_commit": "de6c46e2456f5131b4b6d5287d75157c1d3930bc",
+  "measurement_scope": "complete pinned canonical Go subjects, all tests, no package/file filters; repeated independent producer indexes and identical grade counts",
+  "phases": [
+    {
+      "exit": 0,
+      "launch_load": 4.40673828125,
+      "phase": "build-indexbench",
+      "seconds": 3.59
+    },
+    {
+      "exit": 0,
+      "launch_load": 4.7744140625,
+      "phase": "canonical-producer-cli",
+      "seconds": 46.612
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.0615234375,
+      "phase": "canonical-grade-cli",
+      "seconds": 5.041
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.77685546875,
+      "phase": "canonical-producer-cobra",
+      "seconds": 0.821
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.77685546875,
+      "phase": "canonical-grade-cobra",
+      "seconds": 0.605
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.77685546875,
+      "phase": "canonical-retime",
+      "seconds": 2.009
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.77685546875,
+      "phase": "independent-producer-cli",
+      "seconds": 1.431
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.95458984375,
+      "phase": "independent-grade-cli",
+      "seconds": 4.283
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.95458984375,
+      "phase": "independent-producer-cobra",
+      "seconds": 0.237
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.95458984375,
+      "phase": "independent-grade-cobra",
+      "seconds": 0.612
+    },
+    {
+      "exit": 0,
+      "launch_load": 5.9580078125,
+      "phase": "independent-retime",
+      "seconds": 1.957
+    }
+  ],
+  "same_oracle_baseline_metrics": {
+    "call_precision": 0.9254,
+    "call_recall": 0.9241,
+    "def_mapping": 0.5891,
+    "file_edge_precision": 0.9956,
+    "file_edge_recall": 0.703,
+    "import_resolution": 1,
+    "kind_agreement": 0.9998,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9994,
+    "sym_recall": 0.9986,
+    "typed_recall": 0.6714
+  },
+  "same_oracle_calls_and_files_unchanged": true,
+  "scip_go_sha256": "daab5aab501e35578e3fcfd86df439d9f65030a42c823645de7b97523ba928dd",
+  "scip_go_version": "0.2.7",
+  "subjects": [
+    {
+      "commit": "45ffa3c668f7105e92089220d42aa64c9acbd11c",
+      "scip_bytes": 22978332,
+      "scip_sha256": "883e1b36bfede07d533b29f45c152b8b8d0afc14ccd11045a153ea366c0165e4",
+      "subject": "cli/cli"
+    },
+    {
+      "commit": "40b5bc1437a564fc795d388b23835e84f54cd1d1",
+      "scip_bytes": 1654467,
+      "scip_sha256": "63474e6b68f48955a135601585caaca23efb44a4d5beda4501b15886eb0db7e0",
+      "subject": "spf13/cobra"
+    }
+  ]
+}

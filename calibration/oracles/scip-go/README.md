@@ -17,3 +17,34 @@ disclosed). A function referenced as a value stays a call pair, as the Go extrac
 Go's predeclared functions and conversions (`len`, `append`, `make`, `string(x)`) have no symbol, so the
 pairs fathom records for them (1,440 on cli/cli) are absent from the truth: a verified oracle deficiency,
 disclosed in the reading. Definitions carry an `enclosing_range` except where noted in the reading (D5).
+
+## C-R11 field-only measurement
+
+The current audit uses Go 1.27.3 with scip-go 0.2.7 and Universal Ctags 6.2.1.
+Run from each clean, pinned module, with tests included and no package filter:
+
+```sh
+"$SCIP_GO" index --module-root=. --module-version="$SUBJECT_SHA" \
+  --go-version=go1.27.3 --repository-remote="$SUBJECT_REMOTE" \
+  --output "$SCIP_OUTPUT" ./...
+```
+
+For cli/cli, SUBJECT_SHA is 45ffa3c668f7105e92089220d42aa64c9acbd11c and
+SUBJECT_REMOTE is github.com/cli/cli; for cobra they are
+40b5bc1437a564fc795d388b23835e84f54cd1d1 and github.com/spf13/cobra.
+Then run from the Fathom checkout:
+
+```sh
+go run ./cmd/indexbench lang-oracle -dialect go -subject "$SUBJECT_ROOT" \
+  -subject-name "$SUBJECT_NAME" -ctags "$CTAGS_BINARY" \
+  -scip "$SCIP_OUTPUT" -out "$GO_READING" -commit "$FROZEN_FATHOM_COMMIT"
+go run ./cmd/indexbench lang-retime -reading "$GO_READING" \
+  -subject "cli/cli=$CLI_ROOT" -subject "spf13/cobra=$COBRA_ROOT" -runs 3 -write
+```
+
+Both canonical subjects feed the same reading. Repeat the producer/index/grade
+sequence into fresh outputs as the independent reading. The adoption protocol
+freezes those results before the separately pinned Gin holdout. All runs use
+isolated Go caches, GOWORK=off, GOFLAGS=-p=2, GOMAXPROCS=2, nice 10 and a
+one-minute launch load no greater than 9. Raw producer indexes remain private;
+public evidence retains counts, hashes and source/build identities only.

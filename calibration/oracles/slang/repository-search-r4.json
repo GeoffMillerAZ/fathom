@@ -1,0 +1,1591 @@
+{
+  "boundary": "The candidate set is the retained r2 set and all prior discoveries, the complete size-partitioned ParameterBlock code search, and the complete README/topic repository queries below. The shader-attribute code route is incomplete: it reported39040 files and only the recorded pages were read under a10 requests/minute limit. No claim to cover every Slang project or every project with100stars follows.",
+  "complete": true,
+  "private_receipt": "workspace/tmp/slang-repositories-r4/repository-hit-repositories.json",
+  "queries": [
+    {
+      "captured_hits": 14,
+      "complete": true,
+      "id": "readme-compiler",
+      "initial_star_ranges": [
+        [
+          100,
+          199
+        ],
+        [
+          200,
+          499
+        ],
+        [
+          500,
+          999
+        ],
+        [
+          1000,
+          9999
+        ],
+        [
+          10000,
+          99999
+        ],
+        [
+          100000,
+          2147483647
+        ]
+      ],
+      "leaf_count": 6,
+      "query": "\"shader-slang\" in:readme",
+      "unique_repositories": 14
+    },
+    {
+      "captured_hits": 96,
+      "complete": true,
+      "id": "readme-shader",
+      "initial_star_ranges": [
+        [
+          100,
+          199
+        ],
+        [
+          200,
+          499
+        ],
+        [
+          500,
+          999
+        ],
+        [
+          1000,
+          9999
+        ],
+        [
+          10000,
+          99999
+        ],
+        [
+          100000,
+          2147483647
+        ]
+      ],
+      "leaf_count": 6,
+      "query": "slang shader in:readme",
+      "unique_repositories": 96
+    },
+    {
+      "captured_hits": 13,
+      "complete": true,
+      "id": "topic-slang",
+      "initial_star_ranges": [
+        [
+          100,
+          199
+        ],
+        [
+          200,
+          499
+        ],
+        [
+          500,
+          999
+        ],
+        [
+          1000,
+          9999
+        ],
+        [
+          10000,
+          99999
+        ],
+        [
+          100000,
+          2147483647
+        ]
+      ],
+      "leaf_count": 6,
+      "query": "topic:slang",
+      "unique_repositories": 13
+    },
+    {
+      "captured_hits": 0,
+      "complete": true,
+      "id": "topic-shader-slang",
+      "initial_star_ranges": [
+        [
+          100,
+          199
+        ],
+        [
+          200,
+          499
+        ],
+        [
+          500,
+          999
+        ],
+        [
+          1000,
+          9999
+        ],
+        [
+          10000,
+          99999
+        ],
+        [
+          100000,
+          2147483647
+        ]
+      ],
+      "leaf_count": 6,
+      "query": "topic:shader-slang",
+      "unique_repositories": 0
+    }
+  ],
+  "registered_rule": {
+    "commit": "f052015bd3f6a640f43b9257c8ae0975b4ae1bf0",
+    "path": "search-rule-r4.json",
+    "sha256": "0b475fa273babfe964220b76da97c62c371b05a9cc26549b9a676b72f4e34b9f",
+    "historical_ordering_record": "preregistration-provenance.json"
+  },
+  "repositories": [
+    {
+      "repository_id": 53864797,
+      "disposition": "zero-population",
+      "stars_observed": 1538,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1148238996,
+      "disposition": "zero-population",
+      "stars_observed": 418,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1419746236,
+      "disposition": "zero-population",
+      "stars_observed": 2253,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 322511965,
+      "disposition": "zero-population",
+      "stars_observed": 246,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "AlDanial/cloc",
+      "id": 42029482,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 23624,
+      "repository_id": 42029482
+    },
+    {
+      "repository_id": 1306446403,
+      "disposition": "zero-population",
+      "stars_observed": 147,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 381546263,
+      "disposition": "zero-population",
+      "stars_observed": 1847,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 29603903,
+      "disposition": "wrong-language",
+      "stars_observed": 133,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 599235328,
+      "disposition": "zero-population",
+      "stars_observed": 255,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 114652532,
+      "disposition": "zero-population",
+      "stars_observed": 107,
+      "sources": [
+        "topic-slang"
+      ]
+    },
+    {
+      "repository_id": 7347134,
+      "disposition": "zero-population",
+      "stars_observed": 642,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 99509127,
+      "disposition": "zero-population",
+      "stars_observed": 2096,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 277155531,
+      "disposition": "zero-population",
+      "stars_observed": 845,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 85263957,
+      "disposition": "zero-population",
+      "stars_observed": 212,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "compute-toys/compute.toys",
+      "id": 625826870,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 198,
+      "repository_id": 625826870
+    },
+    {
+      "full_name": "crossgl/crosstl",
+      "id": 795144462,
+      "sources": [
+        "readme-shader",
+        "topic-slang"
+      ],
+      "stars_observed": 1566,
+      "repository_id": 795144462
+    },
+    {
+      "repository_id": 59918068,
+      "disposition": "zero-population",
+      "stars_observed": 171,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 259667262,
+      "disposition": "zero-population",
+      "stars_observed": 152,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1166102148,
+      "disposition": "zero-population",
+      "stars_observed": 47565,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 149930721,
+      "disposition": "zero-population",
+      "stars_observed": 4805,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 595852933,
+      "disposition": "zero-population",
+      "stars_observed": 221,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "dust-engine/dust",
+      "id": 345777856,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 132,
+      "repository_id": 345777856
+    },
+    {
+      "repository_id": 1080157453,
+      "disposition": "zero-population",
+      "stars_observed": 3954,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1049409985,
+      "disposition": "zero-population",
+      "stars_observed": 682,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 663573391,
+      "disposition": "zero-population",
+      "stars_observed": 3239,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1305248057,
+      "disposition": "zero-population",
+      "stars_observed": 186,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 722499443,
+      "disposition": "license-excluded",
+      "stars_observed": 138,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "floatymonkey/slang-rs",
+      "id": 765405407,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 117,
+      "repository_id": 765405407
+    },
+    {
+      "repository_id": 135613400,
+      "disposition": "zero-population",
+      "stars_observed": 741,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "gameknife/gkNextEngine",
+      "id": 809302876,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 256,
+      "repository_id": 809302876
+    },
+    {
+      "repository_id": 163723400,
+      "disposition": "zero-population",
+      "stars_observed": 211,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1210451137,
+      "disposition": "zero-population",
+      "stars_observed": 651,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "harry7557558/vksplat",
+      "id": 1202978679,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 161,
+      "repository_id": 1202978679
+    },
+    {
+      "full_name": "Hekbas/Luth",
+      "id": 931158872,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 166,
+      "repository_id": 931158872
+    },
+    {
+      "repository_id": 175968569,
+      "disposition": "zero-population",
+      "stars_observed": 172,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 410402492,
+      "disposition": "wrong-language",
+      "stars_observed": 459,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "Ipotrick/Daxa",
+      "id": 351141577,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 619,
+      "repository_id": 351141577
+    },
+    {
+      "repository_id": 773194739,
+      "disposition": "zero-population",
+      "stars_observed": 164,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 775074564,
+      "disposition": "zero-population",
+      "stars_observed": 1078,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 1126941279,
+      "disposition": "zero-population",
+      "stars_observed": 104,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 51259427,
+      "disposition": "wrong-language",
+      "stars_observed": 239,
+      "sources": [
+        "topic-slang"
+      ]
+    },
+    {
+      "repository_id": 64712541,
+      "disposition": "zero-population",
+      "stars_observed": 115,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 218773739,
+      "disposition": "zero-population",
+      "stars_observed": 2288,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 688691303,
+      "disposition": "license-excluded",
+      "stars_observed": 437,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 226871160,
+      "disposition": "zero-population",
+      "stars_observed": 315,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "KohakuBlueleaf/PixelOE",
+      "id": 778816697,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 539,
+      "repository_id": 778816697
+    },
+    {
+      "repository_id": 512733015,
+      "disposition": "wrong-language",
+      "stars_observed": 192,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "leotmp/no_gfx_api",
+      "id": 1118353567,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 321,
+      "repository_id": 1118353567
+    },
+    {
+      "repository_id": 98048747,
+      "disposition": "zero-population",
+      "stars_observed": 931,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 689344,
+      "disposition": "zero-population",
+      "stars_observed": 14449,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 685996384,
+      "disposition": "zero-population",
+      "stars_observed": 1243,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 720606887,
+      "disposition": "zero-population",
+      "stars_observed": 363,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 27709800,
+      "disposition": "zero-population",
+      "stars_observed": 143,
+      "sources": [
+        "topic-slang"
+      ]
+    },
+    {
+      "repository_id": 308317827,
+      "disposition": "wrong-language",
+      "stars_observed": 4354,
+      "sources": [
+        "readme-shader",
+        "topic-slang"
+      ]
+    },
+    {
+      "repository_id": 1237448423,
+      "disposition": "zero-population",
+      "stars_observed": 141,
+      "sources": [
+        "topic-slang"
+      ]
+    },
+    {
+      "repository_id": 338788079,
+      "disposition": "zero-population",
+      "stars_observed": 2780,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 227191356,
+      "disposition": "zero-population",
+      "stars_observed": 782,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "MichaelMoroz/slang-splat",
+      "id": 1153231724,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 274,
+      "repository_id": 1153231724
+    },
+    {
+      "repository_id": 1376032408,
+      "disposition": "zero-population",
+      "stars_observed": 403,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 80874333,
+      "disposition": "zero-population",
+      "stars_observed": 1173,
+      "sources": [
+        "topic-slang"
+      ]
+    },
+    {
+      "full_name": "moonlovelj/Nyx",
+      "id": 1029628188,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 159,
+      "repository_id": 1029628188
+    },
+    {
+      "full_name": "MrDrElliot/LuminaEngine",
+      "id": 888666476,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 550,
+      "repository_id": 888666476
+    },
+    {
+      "full_name": "nv-tlabs/wosx",
+      "id": 1257589810,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 153,
+      "repository_id": 1257589810
+    },
+    {
+      "repository_id": 920294782,
+      "disposition": "license-excluded",
+      "stars_observed": 334,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 614936862,
+      "disposition": "zero-population",
+      "stars_observed": 120,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "nvidiagameworks/falcor",
+      "id": 98350667,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 3263,
+      "repository_id": 98350667
+    },
+    {
+      "repository_id": 25343291,
+      "disposition": "zero-population",
+      "stars_observed": 402,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "nvpro-samples/nvpro_core2",
+      "id": 1012491846,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 145,
+      "repository_id": 1012491846
+    },
+    {
+      "full_name": "nvpro-samples/vk_gltf_renderer",
+      "id": 225621170,
+      "sources": [
+        "readme-shader",
+        "topic-slang"
+      ],
+      "stars_observed": 435,
+      "repository_id": 225621170
+    },
+    {
+      "full_name": "nvpro-samples/vk_mini_samples",
+      "id": 423511757,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 377,
+      "repository_id": 423511757
+    },
+    {
+      "full_name": "nvpro-samples/vk_minimal_latest",
+      "id": 895517676,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 380,
+      "repository_id": 895517676
+    },
+    {
+      "repository_id": 772340272,
+      "disposition": "zero-population",
+      "stars_observed": 231,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "PaoloMazzon/Vulkan2D",
+      "id": 286360560,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 243,
+      "repository_id": 286360560
+    },
+    {
+      "repository_id": 731469197,
+      "disposition": "zero-population",
+      "stars_observed": 243,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 376275755,
+      "disposition": "zero-population",
+      "stars_observed": 496,
+      "sources": [
+        "topic-slang"
+      ]
+    },
+    {
+      "full_name": "qian-o/Zenith.NET",
+      "id": 1008779288,
+      "sources": [
+        "readme-shader",
+        "topic-slang"
+      ],
+      "stars_observed": 185,
+      "repository_id": 1008779288
+    },
+    {
+      "repository_id": 1086165112,
+      "disposition": "zero-population",
+      "stars_observed": 1006,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "rohan-sawhney/fcpw",
+      "id": 239527374,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 491,
+      "repository_id": 239527374
+    },
+    {
+      "full_name": "saschawillems/vulkan",
+      "id": 37821236,
+      "sources": [
+        "readme-shader",
+        "topic-slang"
+      ],
+      "stars_observed": 12190,
+      "repository_id": 37821236
+    },
+    {
+      "full_name": "sebbbi/NoGraphicsAPI",
+      "id": 1352493419,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 1663,
+      "repository_id": 1352493419
+    },
+    {
+      "full_name": "shader-slang/neural-shading-s25",
+      "id": 1017479079,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 191,
+      "repository_id": 1017479079
+    },
+    {
+      "repository_id": 93882897,
+      "disposition": "diagnostic-role",
+      "stars_observed": 5762,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "shader-slang/slang-rhi",
+      "id": 846627057,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 218,
+      "repository_id": 846627057
+    },
+    {
+      "full_name": "shader-slang/slangpy",
+      "id": 912798934,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ],
+      "stars_observed": 156,
+      "repository_id": 912798934
+    },
+    {
+      "repository_id": 921676948,
+      "disposition": "zero-population",
+      "stars_observed": 262,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 553320196,
+      "disposition": "wrong-language",
+      "stars_observed": 193,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 253717148,
+      "disposition": "zero-population",
+      "stars_observed": 112,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 207245092,
+      "disposition": "zero-population",
+      "stars_observed": 10891,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 150248562,
+      "disposition": "zero-population",
+      "stars_observed": 1296,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 53779687,
+      "disposition": "zero-population",
+      "stars_observed": 653,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 40586793,
+      "disposition": "zero-population",
+      "stars_observed": 1202,
+      "sources": [
+        "readme-compiler",
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 371776599,
+      "disposition": "zero-population",
+      "stars_observed": 426,
+      "sources": [
+        "readme-compiler",
+        "readme-shader",
+        "topic-slang"
+      ]
+    },
+    {
+      "repository_id": 774255323,
+      "disposition": "zero-population",
+      "stars_observed": 836,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 928685141,
+      "disposition": "zero-population",
+      "stars_observed": 301,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 54681855,
+      "disposition": "zero-population",
+      "stars_observed": 5099,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "wrapperup/rivet-engine",
+      "id": 1061090880,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 111,
+      "repository_id": 1061090880
+    },
+    {
+      "repository_id": 565900522,
+      "disposition": "zero-population",
+      "stars_observed": 3700,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "repository_id": 462527806,
+      "disposition": "zero-population",
+      "stars_observed": 109,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "z3y/glim",
+      "id": 1204932116,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 206,
+      "repository_id": 1204932116
+    },
+    {
+      "full_name": "zeux/meshoptimizer",
+      "id": 67768325,
+      "sources": [
+        "readme-shader"
+      ],
+      "stars_observed": 8632,
+      "repository_id": 67768325
+    },
+    {
+      "repository_id": 1418748024,
+      "disposition": "wrong-language",
+      "stars_observed": 133,
+      "sources": [
+        "readme-shader"
+      ]
+    },
+    {
+      "full_name": "Zydak/Vulkan-Path-Tracer",
+      "id": 773820341,
+      "sources": [
+        "topic-slang"
+      ],
+      "stars_observed": 456,
+      "repository_id": 773820341
+    },
+    {
+      "repository_id": 599291044,
+      "disposition": "zero-population",
+      "stars_observed": 112,
+      "sources": [
+        "readme-shader"
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "bytes": 43932,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 8,
+      "query": "\"shader-slang\" in:readme stars:100..199",
+      "query_id": "readme-compiler",
+      "rate_remaining": "28",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00001.json",
+      "requested_at_utc": "2026-10-26T23:20:01.055348+00:00",
+      "sha256": "25b588405aed76b080ff06f5a8edd6a859278b38abb14e99c2a4616c4706f91a",
+      "split": null,
+      "stars": [
+        100,
+        199
+      ],
+      "total_count": 8,
+      "url": "https://api.github.com/search/repositories?q=%22shader-slang%22%20in%3Areadme%20stars%3A100..199&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 11466,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 2,
+      "query": "\"shader-slang\" in:readme stars:200..499",
+      "query_id": "readme-compiler",
+      "rate_remaining": "27",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00002.json",
+      "requested_at_utc": "2026-10-26T23:20:03.365614+00:00",
+      "sha256": "97baf407b4f1b5080007a111fad9a17e063bcd99b7dace3ab0c8eb1d86d7ac00",
+      "split": null,
+      "stars": [
+        200,
+        499
+      ],
+      "total_count": 2,
+      "url": "https://api.github.com/search/repositories?q=%22shader-slang%22%20in%3Areadme%20stars%3A200..499&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "\"shader-slang\" in:readme stars:500..999",
+      "query_id": "readme-compiler",
+      "rate_remaining": "26",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00003.json",
+      "requested_at_utc": "2026-10-26T23:20:05.672399+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        500,
+        999
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=%22shader-slang%22%20in%3Areadme%20stars%3A500..999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 15952,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 3,
+      "query": "\"shader-slang\" in:readme stars:1000..9999",
+      "query_id": "readme-compiler",
+      "rate_remaining": "25",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00004.json",
+      "requested_at_utc": "2026-10-26T23:20:07.981407+00:00",
+      "sha256": "a6d9f850ff1678351839600d193dde9ab119d48ae488e61aa8f4199e3abac188",
+      "split": null,
+      "stars": [
+        1000,
+        9999
+      ],
+      "total_count": 3,
+      "url": "https://api.github.com/search/repositories?q=%22shader-slang%22%20in%3Areadme%20stars%3A1000..9999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 5432,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 1,
+      "query": "\"shader-slang\" in:readme stars:10000..99999",
+      "query_id": "readme-compiler",
+      "rate_remaining": "24",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00005.json",
+      "requested_at_utc": "2026-10-26T23:20:10.287393+00:00",
+      "sha256": "f9b5215dd568001c49893ac472287e8659dd4261e5d7801aeb79f2ff1839e7b9",
+      "split": null,
+      "stars": [
+        10000,
+        99999
+      ],
+      "total_count": 1,
+      "url": "https://api.github.com/search/repositories?q=%22shader-slang%22%20in%3Areadme%20stars%3A10000..99999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "\"shader-slang\" in:readme stars:100000..2147483647",
+      "query_id": "readme-compiler",
+      "rate_remaining": "23",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00006.json",
+      "requested_at_utc": "2026-10-26T23:20:12.593794+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        100000,
+        2147483647
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=%22shader-slang%22%20in%3Areadme%20stars%3A100000..2147483647&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 157030,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 29,
+      "query": "slang shader in:readme stars:100..199",
+      "query_id": "readme-shader",
+      "rate_remaining": "22",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00007.json",
+      "requested_at_utc": "2026-10-26T23:20:14.903843+00:00",
+      "sha256": "ebcc9c6f66f0a9007390549ed3f9c7eabce32cf9781292957fbd34350f79d582",
+      "split": null,
+      "stars": [
+        100,
+        199
+      ],
+      "total_count": 29,
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Areadme%20stars%3A100..199&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 153722,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 28,
+      "query": "slang shader in:readme stars:200..499",
+      "query_id": "readme-shader",
+      "rate_remaining": "21",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00008.json",
+      "requested_at_utc": "2026-10-26T23:20:17.210681+00:00",
+      "sha256": "91d738ad6e671d23844938fb721dfbe222e921118a3a919550da9895223369c2",
+      "split": null,
+      "stars": [
+        200,
+        499
+      ],
+      "total_count": 28,
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Areadme%20stars%3A200..499&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 67623,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 12,
+      "query": "slang shader in:readme stars:500..999",
+      "query_id": "readme-shader",
+      "rate_remaining": "20",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00009.json",
+      "requested_at_utc": "2026-10-26T23:20:19.519631+00:00",
+      "sha256": "ca021eeeca49ceefb0758e822a860ada3eca95f8265851448380d789b91bccf7",
+      "split": null,
+      "stars": [
+        500,
+        999
+      ],
+      "total_count": 12,
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Areadme%20stars%3A500..999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 121057,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 22,
+      "query": "slang shader in:readme stars:1000..9999",
+      "query_id": "readme-shader",
+      "rate_remaining": "19",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00010.json",
+      "requested_at_utc": "2026-10-26T23:20:21.827438+00:00",
+      "sha256": "7368084ce4b5ba5ba092ee024d523a59feaad1fc3692f5a3d311362ce2e8aaa9",
+      "split": null,
+      "stars": [
+        1000,
+        9999
+      ],
+      "total_count": 22,
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Areadme%20stars%3A1000..9999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 27550,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 5,
+      "query": "slang shader in:readme stars:10000..99999",
+      "query_id": "readme-shader",
+      "rate_remaining": "18",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00011.json",
+      "requested_at_utc": "2026-10-26T23:20:24.137501+00:00",
+      "sha256": "aa41ea1f15fb5b63118d4525329326ee6cd1d2aa8ae2619f973b3d3699c24db6",
+      "split": null,
+      "stars": [
+        10000,
+        99999
+      ],
+      "total_count": 5,
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Areadme%20stars%3A10000..99999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "slang shader in:readme stars:100000..2147483647",
+      "query_id": "readme-shader",
+      "rate_remaining": "17",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00012.json",
+      "requested_at_utc": "2026-10-26T23:20:26.441885+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        100000,
+        2147483647
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=slang%20shader%20in%3Areadme%20stars%3A100000..2147483647&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 21466,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 4,
+      "query": "topic:slang stars:100..199",
+      "query_id": "topic-slang",
+      "rate_remaining": "16",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00013.json",
+      "requested_at_utc": "2026-10-26T23:20:28.749927+00:00",
+      "sha256": "f1b8d579c7f25c81ea7f4b0860a3e2977dea2c87b563ee4fed8a1cf24ac02f65",
+      "split": null,
+      "stars": [
+        100,
+        199
+      ],
+      "total_count": 4,
+      "url": "https://api.github.com/search/repositories?q=topic%3Aslang%20stars%3A100..199&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 29485,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 5,
+      "query": "topic:slang stars:200..499",
+      "query_id": "topic-slang",
+      "rate_remaining": "15",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00014.json",
+      "requested_at_utc": "2026-10-26T23:20:31.059903+00:00",
+      "sha256": "d207f9e2c957010699c3fdb27d0602160ea3de4e1671bcbf343314aea401ec1c",
+      "split": null,
+      "stars": [
+        200,
+        499
+      ],
+      "total_count": 5,
+      "url": "https://api.github.com/search/repositories?q=topic%3Aslang%20stars%3A200..499&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:slang stars:500..999",
+      "query_id": "topic-slang",
+      "rate_remaining": "14",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00015.json",
+      "requested_at_utc": "2026-10-26T23:20:33.369959+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        500,
+        999
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Aslang%20stars%3A500..999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 16338,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 3,
+      "query": "topic:slang stars:1000..9999",
+      "query_id": "topic-slang",
+      "rate_remaining": "13",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00016.json",
+      "requested_at_utc": "2026-10-26T23:20:35.680006+00:00",
+      "sha256": "a156b9fbf8d681c2f878de5dca49846e42a853210a44a7605a8f0d4aa3e2d0fe",
+      "split": null,
+      "stars": [
+        1000,
+        9999
+      ],
+      "total_count": 3,
+      "url": "https://api.github.com/search/repositories?q=topic%3Aslang%20stars%3A1000..9999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 5489,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 1,
+      "query": "topic:slang stars:10000..99999",
+      "query_id": "topic-slang",
+      "rate_remaining": "12",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00017.json",
+      "requested_at_utc": "2026-10-26T23:20:37.988478+00:00",
+      "sha256": "169111f53f2c19c2ce512f8cc81dbb105640299a35c6abb0ac6fee23ec4a26c0",
+      "split": null,
+      "stars": [
+        10000,
+        99999
+      ],
+      "total_count": 1,
+      "url": "https://api.github.com/search/repositories?q=topic%3Aslang%20stars%3A10000..99999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:slang stars:100000..2147483647",
+      "query_id": "topic-slang",
+      "rate_remaining": "11",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00018.json",
+      "requested_at_utc": "2026-10-26T23:20:40.292064+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        100000,
+        2147483647
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Aslang%20stars%3A100000..2147483647&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:shader-slang stars:100..199",
+      "query_id": "topic-shader-slang",
+      "rate_remaining": "10",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00019.json",
+      "requested_at_utc": "2026-10-26T23:20:42.602112+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        100,
+        199
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Ashader-slang%20stars%3A100..199&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:shader-slang stars:200..499",
+      "query_id": "topic-shader-slang",
+      "rate_remaining": "9",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00020.json",
+      "requested_at_utc": "2026-10-26T23:20:44.909954+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        200,
+        499
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Ashader-slang%20stars%3A200..499&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:shader-slang stars:500..999",
+      "query_id": "topic-shader-slang",
+      "rate_remaining": "8",
+      "rate_reset_utc": "1793056848",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00021.json",
+      "requested_at_utc": "2026-10-26T23:20:47.211039+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        500,
+        999
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Ashader-slang%20stars%3A500..999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:shader-slang stars:1000..9999",
+      "query_id": "topic-shader-slang",
+      "rate_remaining": "29",
+      "rate_reset_utc": "1793056909",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00022.json",
+      "requested_at_utc": "2026-10-26T23:20:49.519843+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        1000,
+        9999
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Ashader-slang%20stars%3A1000..9999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:shader-slang stars:10000..99999",
+      "query_id": "topic-shader-slang",
+      "rate_remaining": "28",
+      "rate_reset_utc": "1793056909",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00023.json",
+      "requested_at_utc": "2026-10-26T23:20:51.829890+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        10000,
+        99999
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Ashader-slang%20stars%3A10000..99999&sort=stars&order=desc&per_page=100&page=1"
+    },
+    {
+      "bytes": 55,
+      "certified": true,
+      "created": null,
+      "http_status": 200,
+      "incomplete_results": false,
+      "item_count": 0,
+      "query": "topic:shader-slang stars:100000..2147483647",
+      "query_id": "topic-shader-slang",
+      "rate_remaining": "27",
+      "rate_reset_utc": "1793056909",
+      "raw_path": "workspace/tmp/slang-repositories-r4/raw/00024.json",
+      "requested_at_utc": "2026-10-26T23:20:54.130153+00:00",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "split": null,
+      "stars": [
+        100000,
+        2147483647
+      ],
+      "total_count": 0,
+      "url": "https://api.github.com/search/repositories?q=topic%3Ashader-slang%20stars%3A100000..2147483647&sort=stars&order=desc&per_page=100&page=1"
+    }
+  ],
+  "schema": "slang-repository-search-r4",
+  "union_count": 103,
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private.",
+  "unrecorded_attempts": [
+    {
+      "count": 3,
+      "approximate_requested_at_utc": "2026-10-26T23:19:28Z through 2026-10-26T23:19:32Z",
+      "status": "Responses overwritten by the recorded rerun; outcomes and hashes unknown. Do not infer successful or empty results.",
+      "after_registered_rule": true
+    },
+    {
+      "count": 1,
+      "approximate_requested_at_utc": "2026-10-26T23:19:49Z",
+      "kind": "manual check",
+      "query": "\"shader-slang\" in:readme stars:100..199",
+      "page": 1,
+      "http_status": 200,
+      "total_count": 8,
+      "item_count": 8,
+      "incomplete_results": false,
+      "same_repository_id_set_as_recorded_leaf": true,
+      "saved_http_transcript_sha256": "a17622c66c328c8514be063df1bf36f94ffa357981c04f813eae5776686e9db4",
+      "saved_http_transcript_bytes": 45403,
+      "saved_transcript": "workspace/tmp/slang-repositories-r4/gh-test.txt",
+      "after_registered_rule": true
+    }
+  ],
+  "attempt_accounting": {
+    "recorded_certified_leaf_requests": 24,
+    "overwritten_initial_requests": 3,
+    "preserved_manual_check_requests": 1,
+    "known_requests_including_unrecorded_attempts": 28,
+    "ordering": "All four additional requests followed the dated rule commit. The first three outcomes are unavailable; no new candidate or result is inferred from them."
+  }
+}

@@ -29,6 +29,18 @@ Wiring and execution are separate evidence states:
   Doctor reads scripts and the selected Task or lefthook entry, at most two
   wrapper levels and 64 KiB total per command inspection. It never executes them.
   Dynamic commands, unreadable wrappers and deeper chains report `unknown`.
+  Python steps are read the same way, statically and never run: a script given
+  to `python`, `python3` or `python3.N` (interpreter flags that change nothing
+  are skipped), an executable `.py` file, an extensionless file whose `#!` names
+  python, `python -m a.b` resolved from the repository root, and the same behind
+  `uv`, `poetry`, `pipenv`, `pdm`, `hatch` or `rye` `run`. Only a closed set of
+  spawn calls (`subprocess.run`, `call`, `check_call`, `check_output`, `Popen`,
+  `getoutput`, `getstatusoutput`, `os.system`, `os.popen`, `os.exec*`) counts,
+  with argv built from literals or a name bound once by a plain assignment (one
+  hop). Anything else that mentions fathom (a computed argv, a non-standard-
+  library import, `exec`, `cwd=`, a spawn form doctor does not read) reports
+  `unknown`, naming the file, line and cause. A read file that starts nothing
+  is named in the FAIL it supports. node, ruby and perl scripts remain `unknown`.
 - `firing`: the separate `hooks_firing` row has execution evidence from the
   existing call or hook log. A configured command alone never establishes this.
   `surface_traffic` independently reports observed MCP usage.
@@ -86,7 +98,11 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 (process-lifetime counters — "since this daemon process started"). Later rows:
 `capabilities` (red only when something switched on is failing to deliver), `concerns`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
-`user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
+`user_scope_guard`, `egress_guard` (ADR-083: WARN when the egress guard is off, set to
+enforce with enforcement off, or when a config file does not load (the row names it),
+naming the harness's own boundary — Claude Code's
+`permissions.deny` and sandbox network allowlist, Codex's sandbox network setting),
+`guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
 `project` (every `.fathom/*.cue` key with its file, status and entry count; a key fathom does not
 read warns; a file that does not parse, a key its reader refuses or two files setting one key fail),
 `service_roots` (EW-20, O127: `list_services`' recorded root for every registered service is stat'ed; a
@@ -146,6 +162,15 @@ names the span they cover) and `disk_retention` (`fathom
 gc`'s dry run: reclaimable bytes by class and the largest classes, what it only reports,
 and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
 hooks line reads the same latency log, the CPU medians included.
+
+`daemon_bind` (ADR-083) reads the installed plist, the same census and the user config:
+it FAILs when the plist passes a non-loopback `--addr` or a running serve-http listens
+beyond loopback, because the daemon has no authentication. The remedy is `fathom daemon
+install --reconcile` for the plist, a kickstart for the managed daemon, or `kill <pid>`
+for a scratch one. It WARNs when the user config's `[daemon].addr` is not loopback
+(serve-http binds `127.0.0.1` on that port in its place) and when it cannot read the
+installed plist, a `LaunchAgents` plist whose file name names fathom, or the user config,
+naming the error.
 
 Exit `0` no confirmed failure (including runs with `unknown`, `timeout`, `warn` or
 `skipped` rows); `1` at least one check failed; `2` doctor itself could not
