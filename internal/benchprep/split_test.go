@@ -58,7 +58,7 @@ func TestSplitHeldOutPrecedence(t *testing.T) {
 		{"declared dev by id", splitTask("D1", splitRepoA, "2026-01-01T00:00:00Z"), "dev"},
 		{"declared dev by id beats a later merged_at", splitTask("D1", splitRepoA, "2026-06-01T00:00:00Z"), "dev"},
 		{"declared dev by derivation path", devByPath, "dev"},
-		{"post-cutoff on a dev repo", splitTask("P1", splitRepoA, "2026-03-11T00:00:00Z"), "post-cutoff"},
+		{"a post-cutoff date on a dev repo stays dev", splitTask("P1", splitRepoA, "2026-03-11T00:00:00Z"), "dev"},
 		{"post-cutoff on a held-out repo", splitTask("P2", splitRepoB, "2026-04-01T12:00:00Z"), "post-cutoff"},
 		{"same day is not later", splitTask("S1", splitRepoB, "2026-03-10T23:59:59Z"), "held-out"},
 		{"UTC next day from a local cutoff day is later", splitTask("U1", splitRepoB, "2026-03-10T23:30:00-05:00"), "post-cutoff"},
@@ -590,10 +590,10 @@ func TestSplitHeldOutOrderIndependence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SplitHeldOut: %v", err)
 	}
-	if ids := splitIDs(t, want, "dev"); !reflect.DeepEqual(ids, []string{"D1", "D2", "D3", "D4"}) {
+	if ids := splitIDs(t, want, "dev"); !reflect.DeepEqual(ids, []string{"D1", "D2", "D3", "D4", "P2"}) {
 		t.Fatalf("fixture dev = %v", ids)
 	}
-	if ids := splitIDs(t, want, "post-cutoff"); !reflect.DeepEqual(ids, []string{"P1", "P2"}) {
+	if ids := splitIDs(t, want, "post-cutoff"); !reflect.DeepEqual(ids, []string{"P1"}) {
 		t.Fatalf("fixture post-cutoff = %v", ids)
 	}
 

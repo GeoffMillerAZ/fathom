@@ -694,9 +694,11 @@ scenariobench split -corpus <corpus.json> [-manifests calibration/bench.d] \
 computes a corpus's splits (`benchprep.SplitHeldOut`, BX-54). Each task id
 lands in exactly one of dev, held-out, post-cutoff or unassigned, in this
 order: a declared dev task (its id is in a dev set of the record, or its
-`derivation` names a dev set's path) is dev; otherwise a task whose UTC
-`merged_at` date is later than its repository's `fresh_after` is
-post-cutoff; otherwise it takes its repository's manifest `split`.
+`derivation` names a dev set's path) is dev; otherwise a task on a repository
+whose split is not dev, with a UTC `merged_at` date later than that
+repository's `fresh_after`, is post-cutoff; otherwise it takes its
+repository's manifest `split`. A dev repository's fresh task stays dev:
+fathom tunes on dev repositories, so the task is not new to fathom.
 Repositories match through `NormaliseRepoURL`, so URL case and the
 `git@`/`https` forms agree. A repository with no manifest, or a manifest
 with no `split`, leaves its tasks unassigned, named with the reason. A

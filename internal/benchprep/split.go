@@ -120,9 +120,11 @@ func sortAssignments(a []RepoAssignment) {
 //     "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T01").
 //     The task is dev. Dev wins over a post-cutoff date: a declared dev task is
 //     never post-cutoff.
-//  2. Post-cutoff: the UTC calendar date of merged_at (time.RFC3339, then
-//     .UTC(), compared as 2006-01-02) is later than the repository's fresh_after.
-//     The same day is not later.
+//  2. Post-cutoff: the repository's split is not dev, and the UTC calendar
+//     date of merged_at (time.RFC3339, then .UTC(), compared as 2006-01-02) is
+//     later than its fresh_after. The same day is not later. A dev repository
+//     contributes no post-cutoff task: fathom tunes on it (D25), so a fresh
+//     task there is new to the model but not to fathom, and stays dev.
 //  3. Repository split: the task takes its repository's assignment ("dev" or
 //     "held-out").
 //  4. Unassigned: the repository has no assignment ("no manifest") or its
@@ -226,7 +228,7 @@ func SplitHeldOut(tasks []scenariobench.Task, repos []RepoAssignment, dev []DevS
 			buckets[splitNameDev] = append(buckets[splitNameDev], task.ID)
 			continue
 		}
-		if assigned && assignment.FreshAfter != "" && mergedDate != "" && mergedDate > assignment.FreshAfter {
+		if assigned && assignment.Split != splitNameDev && assignment.FreshAfter != "" && mergedDate != "" && mergedDate > assignment.FreshAfter {
 			buckets[splitNamePostCutoff] = append(buckets[splitNamePostCutoff], task.ID)
 			continue
 		}

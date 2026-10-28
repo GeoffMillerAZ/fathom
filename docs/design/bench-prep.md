@@ -302,7 +302,9 @@ therefore off in every arm, and every reading says so.
    listed. The per-subject A0 pass rate is reported, and a subject above 50% leaves the primary (ADR-031's own
    trigger, applied per subject).
 3. **Post-cutoff slices.** Once Q2 pins the model, its training cutoff sets each subject's `fresh_after`. The
-   post-cutoff slice is a reported stratum, and the held-out split prefers it. Most dataset tasks predate any
+   post-cutoff slice is a reported stratum, and the held-out split prefers it. A dev repository contributes no
+   post-cutoff task (ruled 2026-10-28, BX-54): fathom tunes on dev repositories, so a fresh task there is new to
+   the model but not to fathom, and it stays dev. Most dataset tasks predate any
    cutoff and their patches are public, which compresses headroom toward a null; the per-subject A0 rate makes
    that visible (correction 10).
 4. **Patches stay out of the tree.** Gold patches are always fetched and checked by sha256. Test patches for
