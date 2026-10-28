@@ -2,16 +2,19 @@ package contextbench
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 // The bench ledger is the committed history of every context-bench run: one
@@ -21,8 +24,12 @@ import (
 // that belongs in git, because a benchmark nobody outside the run can see is
 // a claim, not evidence.
 //
-// One row per run — not per task — keeps it readable for years and makes
-// "has this regressed?" a diff rather than an archaeology exercise.
+// One row per (run, criterion) — not per task — keeps it readable for years
+// and makes "has this regressed?" a diff rather than an archaeology exercise.
+// A run may be scored under several criteria (README "Re-scoring"), so the
+// key is (run_id, evaluation.criterion_id), never the run id alone (NP-B9):
+// CheckLedgerKeys names a key that is empty or repeated, and AppendLedger
+// refuses a row whose key the ledger already holds.
 
 // LedgerRow is one committed context-bench run.
 type LedgerRow struct {
@@ -211,18 +218,83 @@ func NewLedgerRow(runID, generatedAt, commit, corpus, model string, p PairedSumm
 	}
 }
 
+// LedgerLine is one ledger row with the 1-based file line it was read from,
+// so a key check can name where an offending row lives.
+type LedgerLine struct {
+	Line int
+	Row  LedgerRow
+}
+
+// CheckLedgerKeys returns an error naming, in line order, every row whose
+// (run_id, evaluation.criterion_id) key is empty or repeats an earlier
+// row's key, with the line of the earlier row. Nil means every key is
+// present and unique (NP-B9).
+func CheckLedgerKeys(lines []LedgerLine) error {
+	sorted := append([]LedgerLine(nil), lines...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Line < sorted[j].Line })
+	type key struct{ run, criterion string }
+	seen := map[key]int{}
+	var problems []string
+	for _, l := range sorted {
+		// Keys compare trimmed, so "r1 " cannot pass as a second key for r1.
+		k := key{strings.TrimSpace(l.Row.RunID), strings.TrimSpace(l.Row.Evaluation.CriterionID)}
+		switch {
+		case k.run == "":
+			problems = append(problems, fmt.Sprintf("line %d: empty run_id", l.Line))
+		case k.criterion == "":
+			problems = append(problems, fmt.Sprintf("line %d: run %s has an empty evaluation.criterion_id", l.Line, k.run))
+		default:
+			if first, ok := seen[k]; ok {
+				problems = append(problems, fmt.Sprintf("line %d: key (%s, %s) repeats line %d", l.Line, k.run, k.criterion, first))
+				continue
+			}
+			seen[k] = l.Line
+		}
+	}
+	if len(problems) > 0 {
+		return fmt.Errorf("ledger keys (run_id, evaluation.criterion_id): %s", strings.Join(problems, "; "))
+	}
+	return nil
+}
+
 // AppendLedger appends one row to the JSONL ledger at path, creating the
 // file if it does not exist. The parent directory must already exist.
+// Under an exclusive lock (the labs.AppendLabResult pattern) it parses every
+// existing line, refusing over a corrupt one by its line number, and runs
+// CheckLedgerKeys over the existing rows plus the new one; only a clean
+// check appends, so a refused row leaves the file byte for byte unchanged
+// (a row with an empty key is refused before the file is opened, so a
+// refusal never creates one). A key collision already in the file blocks
+// every append until an operator resolves it: the ledger is never written
+// past a state it cannot vouch for.
 func AppendLedger(path string, row LedgerRow) error {
 	line, err := json.Marshal(row)
 	if err != nil {
 		return fmt.Errorf("marshaling ledger row %s: %w", row.RunID, err)
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err := CheckLedgerKeys([]LedgerLine{{Line: 1, Row: row}}); err != nil {
+		return fmt.Errorf("refusing to append run %s under %q to ledger %s: %w", row.RunID, row.Evaluation.CriterionID, path, err)
+	}
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("opening ledger %s: %w", path, err)
 	}
 	defer f.Close()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return fmt.Errorf("locking ledger %s: %w", path, err)
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+
+	existing, lastLine, unterminated, err := readLedgerLines(f, path)
+	if err != nil {
+		return fmt.Errorf("refusing to append to ledger: %w", err)
+	}
+	if err := CheckLedgerKeys(append(existing, LedgerLine{Line: lastLine + 1, Row: row})); err != nil {
+		return fmt.Errorf("refusing to append run %s under %q to ledger %s: %w", row.RunID, row.Evaluation.CriterionID, path, err)
+	}
+	if unterminated {
+		line = append([]byte{'\n'}, line...)
+	}
 	if _, err := f.Write(append(line, '\n')); err != nil {
 		return fmt.Errorf("appending to ledger %s: %w", path, err)
 	}
@@ -235,6 +307,20 @@ func AppendLedger(path string, row LedgerRow) error {
 // loader that skipped what it could not read would report a shorter,
 // healthier history than the truth (ADR-027).
 func LoadLedger(path string) ([]LedgerRow, error) {
+	lines, err := LoadLedgerLines(path)
+	if err != nil {
+		return nil, err
+	}
+	var rows []LedgerRow
+	for _, l := range lines {
+		rows = append(rows, l.Row)
+	}
+	return rows, nil
+}
+
+// LoadLedgerLines is LoadLedger keeping each row's file line, the input
+// CheckLedgerKeys names offenders by.
+func LoadLedgerLines(path string) ([]LedgerLine, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -243,27 +329,35 @@ func LoadLedger(path string) ([]LedgerRow, error) {
 		return nil, fmt.Errorf("opening ledger %s: %w", path, err)
 	}
 	defer f.Close()
+	lines, _, _, err := readLedgerLines(f, path)
+	return lines, err
+}
 
-	var rows []LedgerRow
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	lineNo := 0
-	for sc.Scan() {
-		lineNo++
-		text := strings.TrimSpace(sc.Text())
-		if text == "" {
-			continue
+// readLedgerLines parses every non-blank line of r. It also returns the last
+// line number read and whether the file ends without a newline, so an
+// append can terminate that line before adding its own.
+func readLedgerLines(r io.Reader, path string) (lines []LedgerLine, lastLine int, unterminated bool, err error) {
+	br := bufio.NewReader(r)
+	for {
+		b, rerr := br.ReadBytes('\n')
+		if rerr != nil && rerr != io.EOF {
+			return nil, 0, false, fmt.Errorf("reading ledger %s: %w", path, rerr)
 		}
-		var r LedgerRow
-		if err := json.Unmarshal([]byte(text), &r); err != nil {
-			return nil, fmt.Errorf("ledger %s line %d: %w", path, lineNo, err)
+		if len(b) > 0 {
+			lastLine++
+			unterminated = b[len(b)-1] != '\n'
+			if text := bytes.TrimSpace(b); len(text) > 0 {
+				var row LedgerRow
+				if e := json.Unmarshal(text, &row); e != nil {
+					return nil, 0, false, fmt.Errorf("ledger %s line %d: %w", path, lastLine, e)
+				}
+				lines = append(lines, LedgerLine{Line: lastLine, Row: row})
+			}
 		}
-		rows = append(rows, r)
+		if rerr == io.EOF {
+			return lines, lastLine, unterminated, nil
+		}
 	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("reading ledger %s: %w", path, err)
-	}
-	return rows, nil
 }
 
 // RenderLedgerMarkdown renders the ledger as a table in file order (oldest

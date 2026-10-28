@@ -826,11 +826,15 @@ type CellResult struct {
 	// MCP server is registered under Surface's own literal name, so a
 	// later `score` recompute needs this, not ArmSurface, to know which
 	// tool prefix to count.
-	Surface      string `json:"surface,omitempty"`
-	Borrowed     bool   `json:"borrowed,omitempty"`
-	SourceRunID  string `json:"source_run_id,omitempty"`
-	RunID        string `json:"run_id"`
-	StartedAt    string `json:"started_at"`
+	Surface     string `json:"surface,omitempty"`
+	Borrowed    bool   `json:"borrowed,omitempty"`
+	SourceRunID string `json:"source_run_id,omitempty"`
+	RunID       string `json:"run_id"`
+	StartedAt   string `json:"started_at"`
+	// PreregSHA256 is the sha256 of the prereg file `run -prereg` ran this
+	// cell under (BX-62). It is provenance, not a cell-key invariant (D2):
+	// "" for a cell run without a prereg, and a borrowed cell keeps its own.
+	PreregSHA256 string `json:"prereg_sha256,omitempty"`
 	WorktreePath string `json:"worktree_path,omitempty"`
 	// Gold is the task's own gold record, persisted so `scenariobench
 	// score` can recompute PlanCoverage/ContractDrift later without
