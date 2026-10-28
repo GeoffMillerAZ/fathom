@@ -64,6 +64,18 @@ type Arm struct {
 	Env     map[string]string `json:"env,omitempty"`
 	// Prediction is the pre-registered expectation for this arm, per corpus.
 	Prediction string `json:"prediction,omitempty"`
+	// Declares lists the parity fields (ParityFields, parity.go) this arm
+	// declares as its INTENDED difference from the baseline arm:
+	// CheckArmParity (BX-60) reports a differing field the arm declares as
+	// Declared and one it does not as Undeclared (a FAIL). PreregArms
+	// (BX-59) fills it later; nothing reads it at run time. omitempty,
+	// deliberately and like Criterion.Paired's json:"-": an arm without
+	// declarations marshals byte-identically to before this field existed,
+	// so CorpusSHA256 / CanonicalCorpusSHA256 / armContentHash, and every
+	// committed cell key derived from them, stay unchanged
+	// (TestCommittedCorporaHashesUnchangedByDeclares pins it). Keep it the
+	// LAST field of Arm.
+	Declares []string `json:"declares,omitempty"`
 }
 
 // Mode is how sessions are shaped.
