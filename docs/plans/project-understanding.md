@@ -63,7 +63,7 @@ decision 6). Lanes: controller, owner, cloud, codex, api.
 
 ### $0 pre-readings
 
-- [ ] (op) PU-M0: precision of 100 live intent doc links sampled by seed, each labelled by a person, and coverage on a seeded sample of product functions; PASS at a Wilson 95% lower bound of precision of at least 0.85; FAIL keeps doc links a labelled secondary and holds the why card (lane: owner, then controller) {id: PU-M0, oracle: lexical, path: docs/bench/readings/understanding/link-precision.md, pattern: "^PU-M0 verdict: (PASS|FAIL)"}
+- [ ] (op) PU-M0: precision of 100 live intent doc links sampled by seed, each labelled by a person, and coverage on a seeded sample of product functions; PASS at a Wilson 95% lower bound of precision of at least 0.85; FAIL keeps doc links a labelled secondary in the intent trace (lane: owner, then controller) {id: PU-M0, oracle: lexical, path: docs/bench/readings/understanding/link-precision.md, pattern: "^PU-M0 verdict: (PASS|FAIL)"}
 - [ ] (op) PU-M5: the status-edge backtest over 12 months of git history of `ADR.md` and `docs/intent/`, every transition classed legal or illegal against the vocabulary; 2 or more illegal edges revive PU-X20 (lane: codex) {id: PU-M5, oracle: lexical, path: docs/bench/readings/intent/status-edge-backtest.md, pattern: "^PU-M5 reading: ", needs: PU-L3}
 
 ## P1: the intent trace and the baselines (2026-11-17 to 2026-12-15)
@@ -98,7 +98,7 @@ decision 6). Lanes: controller, owner, cloud, codex, api.
 
 ### The why card, on its trigger (design section 5.2)
 
-- [ ] `BuildWhyCard` for a symbol: binding plan rows with their last recorded verdicts and commits, certifying and covering tests, one pointer line to `obligations`, opt-in provenance (at most 3 commits, never an author); never calls `VerifyPlan` and never re-runs rule selection; built only when PU-M1 shows a T3 or T4 gap and PU-M0 reads PASS, else refused with both readings cited (lane: codex) {id: PU-W6, symbol: BuildWhyCard, package: internal/intent, reachable_from: TestBuildWhyCardReadsStoredVerdictsOnly, needs: "PU-M1,PU-M0,PU-W2"}
+- [ ] `BuildWhyCard` for a symbol: binding plan rows with their last recorded verdicts and commits, certifying and covering tests, one pointer line to `obligations`, opt-in provenance (at most 3 commits, never an author); never calls `VerifyPlan` and never re-runs rule selection; built only when PU-M1 shows a T3 or T4 gap, else refused with the reading cited (lane: codex) {id: PU-W6, symbol: BuildWhyCard, package: internal/intent, reachable_from: TestBuildWhyCardReadsStoredVerdictsOnly, needs: "PU-M1,PU-W2"}
 - [ ] `symbol_context` gains `include: ["why"]`, additive and inside its byte cap, its schema byte cost stated against ADR-053's default-surface cap, with `docs/mcp-tools.md` updated in the same change (lane: codex) {id: PU-W7, symbol: symbolContextIncludeWhy, package: internal/mcp, reachable_from: TestSymbolContextIncludeWhyAdditiveAndCapped, needs: PU-W6}
 - [ ] The lab card `calibration/labs.d/lab-why-card.yaml`: the plugin with and without `include: why`, a firing criterion and the helped metric (ADR-082 decision 5) (lane: controller) {id: PU-W8, oracle: lexical, path: calibration/labs.d/lab-why-card.yaml, pattern: "^id: lab-why-card$", needs: PU-W7}
 

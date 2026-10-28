@@ -150,10 +150,10 @@ and one pointer line: "what governs this file: `obligations` (ADR-077)". It neve
 rule selection. Provenance (at most 3 commits touching the symbol's lines: sha, date, subject, ticket ids by a
 configured pattern, never an author) is opt-in and one bounded git read.
 
-It is built only when both hold: PU-M1 shows a T3 or T4 gap, meaning A0 and A1 miss items that a binding row or record
-would answer, and PU-M0 (the link pre-reading) passes. ADR-053's default-surface schema cap is 9,000 bytes and measured
-8,339 on 2026-09-29, so about 660 bytes remain. PU-W7 states the parameter's byte cost, and the card ships behind a lab
-card (PU-W8) because description text moves tool use.
+It is built only when PU-M1 shows a T3 or T4 gap, meaning A0 and A1 miss items that a binding row or record would
+answer. It carries no doc links, so PU-M0 (the link pre-reading) gates only the trace's doc-link label. ADR-053's
+default-surface schema cap is 9,000 bytes and measured 8,339 on 2026-09-29, so about 660 bytes remain. PU-W7 states the
+parameter's byte cost, and the card ships behind a lab card (PU-W8) because description text moves tool use.
 
 ## 6. Drift signals and the deferred project map
 
@@ -231,7 +231,7 @@ detectable effect reads `underpowered`.
 
 | Id | Measures | Baseline | KEEP bar (fixed in the prereg before data) | CUT or kill effect | Phase, cost |
 |---|---|---|---|---|---|
-| PU-M0 | Precision of 100 sampled live intent links; coverage on a seeded sample of product functions | About 8 of 25 sampled exact-tier links named common words | Wilson 95% lower bound of precision at least 0.85 | Doc links stay a labelled secondary; the why card waits | P0, $0, about 1 person-hour |
+| PU-M0 | Precision of 100 sampled live intent links; coverage on a seeded sample of product functions | About 8 of 25 sampled exact-tier links named common words | Wilson 95% lower bound of precision at least 0.85 | Doc links stay a labelled secondary in the trace | P0, $0, about 1 person-hour |
 | PU-M1 | A1 against A0, RepoProbe slice plus MULocBench's config subset plus the owner gap bank | Home bench 41 against 44 at 1.81x tokens (not comprehension) | A1 above A0 on T4 at the prereg's MDE, Holm-adjusted, paired interval excluding 0, tokens at most 1.25x A0 | A lost type is published as a loss; G46 fails | P1, API on the owner's cap |
 | PU-M2 | ORCA-bench code-bearing tasks, one agent with and without fathom | None | Anchor match on the benchmark's root-cause key above the without arm at the MDE | Evidence cards not positioned for RCA | P2, API |
 | PU-M3 | A2 against A1 on T3; A3 against A1 on T1 | PU-M1 | A2 above A1 on T3 at the MDE; A3 above A1 on T1 promotes F95 | `include: why` leaves under a `gone:` row; program kill if PU-M1 also null | P2, API |
