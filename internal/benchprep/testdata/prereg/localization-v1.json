@@ -1,0 +1,39 @@
+{
+  "id": "localization-v1",
+  "strata": ["non-lexical", "lexical"],
+  "arms": ["A1", "A2"],
+  "baseline_arm": "A1",
+  "hypotheses": [
+    {
+      "id": "H4",
+      "statement": "The surface increases localization accuracy on non-lexical tasks.",
+      "predictions": [
+        {"stratum": "non-lexical", "arm": "A2", "direction": "increase"},
+        {"stratum": "lexical", "arm": "A2", "direction": "null", "equivalence_margin": 0.05}
+      ],
+      "primary_metric": "hit@3",
+      "minimum_effect_of_interest": 0.10,
+      "n": 120,
+      "test": "paired-mean-difference"
+    }
+  ],
+  "alpha": 0.05,
+  "multiplicity_correction": {"method": "holm", "family": ["H4"]},
+  "three_outcome_rule": {
+    "confirmed": "lower_bound_above_zero",
+    "refuted": "upper_bound_below_mei",
+    "inconclusive": "otherwise",
+    "tie": "refuted",
+    "predicted_null": {
+      "equivalent": "90_percent_interval_inside_symmetric_margin",
+      "harm": "95_percent_upper_bound_below_zero_counts_as_loss",
+      "inconclusive": "otherwise",
+      "above_delta": "unexpected_effect_not_win"
+    }
+  },
+  "turn_cap": 30,
+  "cost_cap_usd": 100,
+  "seed": 42,
+  "exclusions": ["A0 hit@3 in at least two of three trials"],
+  "deviation_log": []
+}

@@ -36,7 +36,10 @@ type ScenarioLedgerRow struct {
 	// over the sha-keyed lookup and falls back to the sha lookup only when
 	// a row carries no CriterionID (every row filed before this field
 	// existed). Empty for such old rows — never guessed at.
-	CriterionID    string   `json:"criterion_id,omitempty"`
+	CriterionID string `json:"criterion_id,omitempty"`
+	// PreregSHA256 is the prereg sha every cell filed on this row shares
+	// (BX-62); "" when the run's cells carry none.
+	PreregSHA256   string   `json:"prereg_sha256,omitempty"`
 	TaskID         string   `json:"task_id"`
 	Category       Category `json:"category"`
 	Arm            string   `json:"arm"`

@@ -202,6 +202,8 @@ type cellPlan struct {
 	// cells on more than one surface; the ledger step may read them all,
 	// naming every surface it used. `run` and `plan` key on the first.
 	altKeys []string
+	// preregSHA is `run -prereg`'s sha, stamped on the cell (BX-62).
+	preregSHA string
 }
 
 func planCells(c scenariobench.Corpus, cf cellFlags, trials int, corpusSHA string) []cellPlan {
@@ -525,6 +527,7 @@ func cmdRun(args []string) int {
 	fakeStreams := fs.String("fake-streams", "", "-harness fake: JSON map of \"<task>/<arm>[/<role>]\" to a file name under -fake-streams-dir")
 	parallelArms := fs.Bool("parallel-arms", false, "run one task's arms concurrently (RC-16) — each cell prepares its own worktree and, when wired, its own scratch daemon on an independently allocated port, so nothing is shared between them; default off")
 	rescoreLost := fs.Bool("rescore-lost", false, "wave N18 defect 2: never launch a session — for each selected cell, re-score it from the raw streams a PRIOR run already wrote to -raw-dir instead. Only a cell with no stored record, or (with -rescore-reason) one whose stored record's own instrument_defect matches, is touched; every other cell is left alone (borrowed). A task whose oracle needs a live worktree is reported not rescorable")
+	preregPath := fs.String("prereg", "", "docs/bench/prereg/<id>.json this run is preregistered under (BX-62): refused unless committed, unchanged from HEAD and in a clean tree; its sha256 is stamped on every cell")
 	rescoreReason := fs.String("rescore-reason", "", "with -rescore-lost: also re-score a cell whose STORED record's own instrument_defect equals this string (default \"\": only cells with no stored record at all are rescored)")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
@@ -594,6 +597,16 @@ func cmdRun(args []string) int {
 	onlyTasks := splitCommaSet(*only)
 	armFilter := scenariobench.ArmSelection(*onlyArm, *arms)
 	cells := planCells(corpus, cf, *trials, sha)
+	if *preregPath != "" {
+		preregSHA, err := checkRunPrereg(*preregPath, *root, *cellsDir, *rescoreLost, cells)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+			return 2
+		}
+		for i := range cells {
+			cells[i].preregSHA = preregSHA
+		}
+	}
 
 	ctx := context.Background()
 	anyFailed := false
@@ -975,6 +988,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		AgentDiffPath:           diffPath,
 		RunID:                   runID,
 		StartedAt:               "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
+		PreregSHA256:            cp.preregSHA,
 		WorktreePath:            wt.Path,
 		SubjectClone:            wt.SubjectClone,
 		BaseCommit:              cp.task.Subject.BaseCommit,
@@ -1671,6 +1685,16 @@ func cmdLedger(args []string) int {
 		}
 	}
 
+	var filed []scenariobench.CellResult
+	for _, group := range byTaskArm {
+		filed = append(filed, group...)
+	}
+	preregSHA, err := ledgerPreregStamp(filed)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+		return 2
+	}
+
 	var rows []scenariobench.ScenarioLedgerRow
 	var allCells []scenariobench.CellResult
 	keys := make([]key, 0, len(byTaskArm))
@@ -1705,6 +1729,7 @@ func cmdLedger(args []string) int {
 			Arm:            k.arm,
 			ModelID:        *cf.modelID,
 			HarnessVersion: *cf.harnessVersion,
+			PreregSHA256:   preregSHA,
 		}
 		// AggregateRowReadings is the single source of truth for a row's
 		// own Readings (every count summed, every ratio averaged with its
