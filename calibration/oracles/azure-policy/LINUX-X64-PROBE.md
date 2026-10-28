@@ -319,3 +319,33 @@ and diagnostic run before READY, then the admitted vendor probe.
 python3 -B -m unittest discover -s calibration/oracles/azure-policy -p 'test_*.py' -v
 python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out "$RUNNER_TEMP/controls"
 ```
+
+
+## Admitted rerun result: ceiling (run 40504219895)
+
+GitHub Actions run 40504219895 ran the admitted probe on ubuntu-22.04 x64 at the
+reviewed workflow. Receipt: `probe-receipt-run40504219895.json`, committed
+byte-for-byte and validated by the receipt contract. It shows:
+
+- Status `probe_complete_requires_analysis`, `native_executed: true`, native
+  returncode 0. Isolation held: loopback-only network namespace, filesystem
+  read-only outside the output directory, `..` writes refused, capabilities
+  dropped, clean shutdown.
+- `initialize` succeeded with capability keys `experimental` and `workspace`;
+  `definition_provider` and `reference_provider` are false.
+- `definition`, `references` and the cache command each return JSON-RPC error
+  -32601 (method not found).
+- The `valid`, `unknown_parameter` and `changed_input_fact` evaluations each
+  return HTTP 500 with identical sha256 and byte count, so the offline
+  evaluator fails the same way for every input.
+- The earlier SIGXFSZ came from the .NET double-mapper (`dotnet_doublemapper`)
+  asking `ftruncate` for a 2 TiB extent. The 256 MiB per-process limit refuses
+  it and the runtime absorbs the refusal (returncode 0).
+
+Reading: this native route supplies no definition or reference oracle and no
+working offline evaluation. It cannot raise Azure Policy above its current
+level, which is a ceiling. No calibration was measured and no tier was granted.
+
+Trigger to revisit: an extension release that advertises `definitionProvider`
+or `referencesProvider`, or an offline evaluation that returns HTTP 200 with
+input-dependent bytes for the `valid` variant.

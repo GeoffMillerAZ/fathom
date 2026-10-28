@@ -132,3 +132,13 @@ EFBIG/SIGXFSZ attribution where observed, and a mandatory authored Linux
 tracing regression. N3-m1 refuses a stacked namespace root. See
 [the current runner contract](LINUX-X64-PROBE.md#t-r13a-rerun-finite-child-bound-and-write-attribution).
 No new native API success, reading or tier is claimed before that rerun.
+
+Result of the admitted rerun (run 40504219895, receipt
+`probe-receipt-run40504219895.json`): the vendor ran under isolation, advertises
+no definition or reference provider, answers `definition`, `references` and the
+cache command with -32601, and its offline evaluator returns HTTP 500 with
+identical bytes for every variant. This route is a ceiling: it supplies no
+definition or reference oracle and no working offline evaluation. Revisit on an
+extension release advertising `definitionProvider` or `referencesProvider`, or
+an offline evaluation returning 200 with input-dependent bytes. Details in
+[LINUX-X64-PROBE.md](LINUX-X64-PROBE.md).
