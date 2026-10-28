@@ -454,7 +454,7 @@ ingest time.
 
 ## ADR-018 — Plan grammar v2 + reconciler verbs: SDD state is derived, never driven
 
-**Status.** Accepted; pilot KEEP 2026-08-26; amended 2026-09-28 (done means proven AND wired); note 2026-09-29 (the 41 waivers re-audited; the pre-push gate reads the pushed range).
+**Status.** Accepted; pilot KEEP 2026-08-26; amended 2026-09-28 (done means proven AND wired); note 2026-09-29 (the 41 waivers re-audited; the pre-push gate reads the pushed range); amended 2026-10-28 (ADR-087: a status vocabulary for intent records).
 
 **Context.** The 2026-07 excellence review (docs/vision/09) examined "should
 SDD be a deterministically driven state machine in CUE?" against the July-2026
@@ -584,6 +584,8 @@ with it.
 75 active plans (keys `schema/plan` does not declare), and no gate checks the round trip. Plan CUE stays output, never
 authored; `docs/plans/intent-v2.md` IV-6 completes `schema/plan` and gates a round trip over every active plan, which
 restores the claim.
+
+**Amended 2026-10-28 (ADR-087): a status vocabulary for intent records is not a lifecycle that drives process.** The rejected "authored transition tables and lifecycle enums" stands for tables that drive process. ADR-087 adds a closed CUE vocabulary that parses the statuses authors already write on decisions, incidents, futures and goals, and three conditions `fathom intent audit` checks at the current commit. It judges no edge between commits, writes no state and drives nothing: verify's contract applied to records. Edge judgment waits on ADR-087's backtest.
 
 ## Amendment to ADR-014 (2026-07-16, surfaces week-1)
 
@@ -6224,3 +6226,198 @@ reads below its threshold with its oracle available for two releases; the consum
 - Egress guard false-positive reports outweigh catches: narrow the pack, or move the default to `off`.
 - `internal/shellcmd` reads eval's literal argument or a function body: 4e's unreadable set shrinks and the deny question reopens for the rest.
 - Codex hooks expose web or MCP tool events, or Claude Code exposes MCP fetch or browser URLs at PreToolUse in a stable shape: 4g's reach widens to them.
+
+## ADR-084: Project understanding is staffed at decision moments: fathom is the evidence layer agents and people call to be right about a codebase, and no understanding claim precedes a won reading (2026-10-28)
+
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** product / strategy. Design: `docs/design/project-understanding.md`. Vision: `docs/vision/45-the-understanding-layer.md`. Plan: `docs/plans/project-understanding.md` (PU-). Goals: G46, G47, G48. Roadmap: `docs/vision/38-proof-layer-roadmap.md` section 9.17. Assessment: `docs/assessments/2026-10-28-project-understanding.md`. Amends `docs/design/product-vision.md` section 3, row "Governed onboarding / comprehension" (dated). Reads ADR-011, ADR-041, ADR-049 decisions 2 and 8, ADR-053, ADR-055, ADR-069, ADR-073, ADR-082 and ADR-083 as constraints.
+
+**Context.** On 2026-10-28 the owner asked for fathom to become the code and project understanding tool, far better for code, Well-Architected, operational, compliance and risk reviews and for incident work. Product vision had recorded comprehension as "staffed never": no decision moment and no attached consumer. Both reasons changed. In 2026 code reviewers, SRE agents and portals opened MCP and skills slots (vendor-claimed: Copilot code review GA 2026-07-29, Bugbot 2026-04-08, Azure SRE Agent 2026-03-10). The research now measures understanding at decision moments: a repair, a review, an incident. No surveyed product combines oracle-graded facts, re-checkable receipts and intent checked against code. Fathom also cannot yet show it helps an agent: the newest home-bench row is 41 successes against grep's 44 at 1.81x tokens, change tasks are a published null, and `repo_map` is labelled orientation-only.
+
+**Decision.**
+1. *The frame.* Fathom competes in code and project understanding as the evidence layer agents and people call when they need to be right about a codebase. Every answer is deterministic, oracle-graded where a grade exists, and carries a receipt. Its own surfaces (CLI verbs, MCP tools, files, SARIF, hooks) serve agents and people alike.
+2. *What it does not become.* A wiki generator, a reviewer, an RCA agent, a chat surface or a semantic search engine. Every non-goal stays.
+3. *Staffed at decision moments.* Product vision's "Governed onboarding / comprehension: staffed never" becomes "staffed at decision moments, measured, cut on the understanding bench's kill". F30's do-not-build list (a tour, a curriculum, generated prose) stands.
+4. *Measure first.* No "leading understanding tool" claim appears in the README, release notes or guides until a won reading exists for that question type (ADR-085). Every new understanding surface lives or dies by its question type.
+5. *Layer, never rebuild.* Meaning search, scanners, SCIP indexers, GRC tools, risk tierers, reviewers and SRE agents integrate through MCP, skills, SARIF, receipts and files. New answers ride CLI verbs and additive parameters of registered tools; no MCP tool is added (law 4, ADR-053).
+6. *Channels in phases 0 to 2 are local.* Agents on the same machine (Claude Code, Codex, Cursor) reach fathom over loopback MCP, skills and hooks. CI reaches it through the `fathom` CLI, which writes SARIF and receipts on the runner. Hosted agents that need a remote fathom (Copilot code review's hosted runner, Bugbot, hosted AI SRE agents) are gated on Q5, the threat model that token authentication needs. ADR-083's loopback-only rule stands. This is a dependency, not a plan row.
+7. *The table freeze is not amended.* Phases 0 to 2 need no table, column, cache or background job. Phase 3 waits on RT-M1 PASS or the owner's answer to NP-Q1.
+
+**Decision models.** None applies at this level. The typed questions live in ADR-085 (a secondary grader) and ADR-086 (prose intent links), each off by default (I60), never a primary metric and never a fact (I62).
+
+**Alternatives rejected.**
+- *A generated code wiki.* Stale prose without citation validation, and model-built graphs miss files. Wins if: a public evaluation shows generated wiki answers keep checklist precision of at least 0.9 across 30 days of commits.
+- *Head-on with free code-graph MCP servers as the lead story.* Stars follow packaging and free-only tools die. Wins if: the owner answers Q4 "force multiplier only" and picks adoption volume as the measure.
+- *Embeddings in fathom.* Wins if: vision 31's paired concept-query bench passes (F13).
+- *Keep "staffed never".* Leaves the ask and the new consumers unserved. Wins if: the program kill below fires.
+- *Remote channels now, behind a token.* Wins if: Q5 is answered "hardening before a second adopter" and a hosted consumer asks in writing.
+
+**Consequences.** The product-vision row is amended. The understanding bench is phase 0's deliverable. README positioning changes only after a won reading. Owner hours for key confirmation and a capped API budget (Q38, Q39) are the binding inputs, inside the next-phase plan's 40% bench and experiments share.
+
+**Revisit when.**
+- The program kill: on 2027-03-31, if PU-M1 and PU-M3 both read an adequately powered null on every preregistered primary type, decisions 3 and 4 revert, every understanding parameter leaves under a `gone:` row and the product-vision row returns to byproduct. An underpowered or unread reading never fires the kill; it keeps every understanding claim withheld, and the owner decides whether to fund the sample or stop.
+- The local channels go unused: zero fathom calls in review runs of the owner's own repositories over 60 days, read from call logs the CI runs upload as artifacts. Decision 1 narrows to the coding-agent channel.
+- Q5 is answered: decision 6 opens a remote channel through a new record.
+- Q4 is answered "force multiplier only": decision 1 narrows to the owner's fleet.
+
+## ADR-085: The understanding bench: public benchmarks first, a deterministic anchor match as the primary metric, a power analysis and Holm correction per question type, run on the benchmarks' own repositories (2026-10-28)
+
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** process / measurement. Design: `docs/design/project-understanding.md` section 8. Plan rows: PU-B0 to PU-B4 and the PU-M readings. Goal: G46. Reads LAB-R1 (no model judge on a primary metric), ADR-082 (feature labs and the labs ledger) and the next-phase plan's preregistration rule (NP-B1 to NP-B8, NP-B12) as constraints.
+
+**Context.** No measured basis exists for an understanding claim. SWE-bench Verified is contaminated: models name the buggy file from the issue text up to 76% of the time, and one agent resolved 19.25% on SWE-bench Live against 43.20% on Verified. Public, independent sets now exist for the question types the owner named: RepoProbe (ASE 2026, 500 expert-validated questions from 50 repositories, graded by a checklist through a model judge), ORCA-bench (1,079 root-cause tasks with source access), GitHub ReviewBench (2026-10-05, 219 PRs from 187 repositories in 19 languages, open data and runner), MULocBench (1,100 issues that include config, docs and build locations) and ApacheJIT (a public just-in-time defect corpus). Bench prep's subject pipeline (BX-M1) has most of its rows open. A first draft of this bench used 20 owner-written questions per type and a +0.10 bar; at a plausible paired standard deviation of 0.25 to 0.35 its 95% half-width is 0.11 to 0.15 (estimate), so it could not exclude zero.
+
+**Decision.**
+1. *Five question types, reported separately, losses included.* T1 locate ("where does X live"), T2 flow and orientation ("how does X work"), T3 why ("which decision or constraint explains X"), T4 impact ("what must change or breaks if X changes"), T5 config ("what config, IaC or manifest governs X at run time").
+2. *Public benchmarks first.* RepoProbe for understanding questions, ORCA-bench for incident root cause, GitHub ReviewBench for code review (Martian's offline set as a secondary), MULocBench for non-code localization, ApacheJIT for change risk. An owner-built bank fills only the types none covers: T3 why-questions drawn from public repositories' own decision records, and IaC and Kubernetes T5 questions if MULocBench's config subset is too small. Each benchmark's licence, version and answer-key provenance is recorded in the prereg before any data.
+3. *The primary metric is deterministic.* An anchor match (a file, a symbol, a line range or a record id) against an independent oracle (SCIP or ctags, never fathom) or against the benchmark's own key. A review finding is met when its file and line fall inside the gold finding's hunk. A checklist item is met when the answer cites an anchor the oracle resolved from the symbols and paths the reference answer names. A benchmark's own model-judge score is reported beside it, labelled secondary.
+4. *A model never labels the primary key.* An agent-drafted key item counts only after a person confirms it; a reading on unconfirmed items is labelled "model-drafted key" and cannot read KEEP. The anchor grader is new (RepoProbe grades with a model judge), so before any reading counts it must agree with person labels at Cohen's kappa of at least 0.6 on at least 100 items and must fail an empty-answer stub and a cite-the-central-symbols stub.
+5. *Power and multiplicity before data.* Every prereg carries a power analysis that sets N for the effect it claims, from the LAB-37 shakedown's variance and NP-B12's power table, and states its minimum detectable effect. It preregisters one primary type per arm (A1 against A0: T4; A2 against A1: T3; A3 against A1: T1), applies Holm correction across the other types, and stratifies subjects by language with the typed-language stratum primary. A reading that cannot reach its minimum detectable effect reads `underpowered`, never CUT, and never fires a program kill.
+6. *Arms.* A0 grep and the harness's own tools; A1 fathom's default surface; A2 A1 plus the intent trace and, once built, the why card; A3 A1 plus a third-party meaning-search MCP server named in the prereg. Same harness and model, paired by question, at least two seeds, a leak audit and an exclusion ledger, with $/answered and tokens reported first-class.
+7. *Decoupled from bench prep's subject pipeline.* The bench runs on the public benchmarks' own repositories at pinned commits and does not wait on BX-M1 or the subject manifests. Results go to the labs ledger, one row per key. Readings are plan rows the lexical or ledger oracle verifies. NP-B1 to NP-B8 still apply to every claim run, and bars are fixed in a prereg file before data and amended only before data.
+
+**Decision models.** One secondary site: a `predicate` "does this answer sentence assert checklist item I?", with the provider named in the reading. With provider `none` grading is the deterministic anchor match alone. Opt-out: `[decide] provider = none`. The site is kept as a secondary grader only at a Wilson 95% lower bound of at least 0.85 for both TPR and TNR on at least 100 person-labelled items; it never changes a primary verdict (LAB-R1, I62).
+
+**Alternatives rejected.**
+- *SWE-bench Verified resolve rate as the primary.* Contaminated. Wins if: never as a primary.
+- *A benchmark's own model judge as the primary grader.* LAB-R1. Wins if: never as a primary.
+- *Fathom-authored questions or keys.* Self-grading. Wins if: never.
+- *One scalar understanding score.* It hides losses. Wins if: never.
+- *Running on bench prep's subjects first.* It couples the bench to the subject pipeline's open rows. Wins if: BX-M1 is proven and a question type needs a subject no public benchmark covers.
+- *Twenty questions per type with a +0.10 bar.* Underpowered. Wins if: the shakedown's variance shows that n reaches the stated minimum detectable effect.
+
+**Consequences.** The first readings spend API budget on the owner's cap (Q39) and person hours on key confirmation and grader validation (Q38). The bench's readings take an experiment slot inside the 40% bench and experiments share; the roadmap names what they displace.
+
+**Revisit when.**
+- The anchor grader's agreement with person labels falls under kappa 0.6: fix the grader before any reading counts.
+- A benchmark changes its key during a run: pin the key revision and re-read.
+- Two adequately powered readings show A0 at or above A1 on every primary type: ADR-084's program kill applies.
+- A public benchmark with an independent key appears for T3: it replaces the owner-built why bank.
+
+## ADR-086: The intent trace first: `fathom why <record>` walks a record to plan rows, symbols and receipts; the symbol why card is additive to `symbol_context` and reads stored verdicts; drift reuses `staleness_report`; the project map is deferred (2026-10-28)
+
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** product / architecture. Design: `docs/design/project-understanding.md` sections 5 and 6. Plan rows: PU-W1 to PU-W8, PU-C1, PU-C2, PU-I1, PU-I2. Goals: G46, G47. Reuses plan grammar v2 contracts, ADR-077's rule selector and `fathom intent adr-rules`, KR-6 (`doc_links`), KR-7 (doc drift, served as `staleness_report`'s `doc_drift` section), the verify ledger and the router's sensitive-surface table.
+
+**Context.** The pieces of project understanding exist, and nothing composes them. Plan-row contracts bind the work of a record to symbols (3,804 rows in 97 plans). ADR-077 already ranks a `doc_links` row as the strongest scope evidence for what governs a file. Intent doc links are sparse and noisy: live links from `ADR.md` and `docs/intent/` reach 587 distinct symbol names of about 71,000, about 8 of 25 sampled exact-tier links named common words, and link targets are bare names (measured 2026-10-28). `staleness_report` already serves drifted and dangling doc bindings. `fathom plans status` abandoned 9 of 96 plans at the daemon deadline on 2026-10-28, so computing verify inside a point request would repeat the abandon. A controlled study across agents found repository overviews unhelpful, and the thesis tombstones pre-summarized code.
+
+**Decision.**
+1. *The intent trace is built first.* `fathom why <record-id>` (a decision, invariant, goal, future or plan-row id) walks the record to the plan rows that cite it, their symbol and package contracts, the symbols those resolve to, and their receipts, deterministically. Its sources rank: plan-row contracts first (dense); ADR-077 rules and accepted `intent adr-rules` proposals second; `doc_links` last, each such link labelled with its confidence after the common-name guard and package qualification. Verdicts come from the verify ledger, labelled "as of" their commit, and are never computed in the request. It has `--json`, and the observatory's intent tab renders it.
+2. *The symbol why card is additive to `symbol_context`.* An opt-in `include: ["why"]` inside the tool's byte cap lists the plan rows that bind the symbol with their last recorded verdict and its commit, the certifying and covering tests, and a pointer to `obligations` for what governs the file. It never computes verify inline and never re-selects governing rules (ADR-077 owns that). It is built only after the baseline reading shows a T3 or T4 gap fathom can close and the link pre-reading passes. Its byte cost is stated against ADR-053's default-surface schema cap, and it ships behind a lab arm (ADR-082).
+3. *Drift reuses `staleness_report`.* Drifted and dangling intent bindings (ID1, ID2) are its `doc_drift` section unchanged, measured by KR-M2. One missing signal is added: ID3, a path the router's sensitive-surface table names that changed in a range with no governing record linked, served through `review_diff` and `fathom intent audit`. A goal-plan-code break read from verify history (ID5) is deferred until the verify ledger stops admitting rows from scratch plans.
+4. *The project map is deferred* to F94, promoted only by the bench's T2 reading. The finding that repository overviews do not help stands until fathom's own reading says otherwise.
+5. *Absence is a lower bound* (I38): "no governing record linked (searched N units at commit C)", never "ungoverned"; an unreadable corpus reads `not computed`.
+6. *Pull only.* Nothing new is injected at the edit or the prompt (I35 unchanged). No new tool, table or committed copy.
+
+**Decision models.** One site, not built in this program: a `predicate` "does intent span S govern symbol X?" for prose mentions exact linking cannot resolve. Off by default. With provider `none`, the trace uses plan-row contracts and exact links only. When on, its answers appear in a separate list labelled judgment, never among the bound symbols (I62). It is kept only at a Wilson lower bound of at least 0.90 precision on 100 person-labelled pairs and only if A2 with the site beats A2 without it on T3.
+
+**Alternatives rejected.**
+- *The why card first, its governing section built from `doc_links`.* Measured sparse and noisy, and a second "what governs X" answer that can disagree with `obligations`. Wins if: the link pre-reading reads a Wilson lower bound of precision of at least 0.85 and the section is ADR-077's selector output.
+- *Verify verdicts computed per request.* Deadline abandons. Wins if: a cold p95 of verify per bound row is measured under the point-class deadline.
+- *A project map now.* Overviews do not help. Wins if: F94's Promote when fires.
+- *A committed project-map file or per-component model summaries.* K5, F65 and the thesis tombstone. Wins if: F65's own trigger, and never as a source.
+- *A new `explain` tool.* Law 4. Wins if: ADR-053's own test.
+- *Why lines at the edit.* 5.7% of served rules were relevant. Wins if: a lab shows helped after AD-M1 reads PASS.
+- *New drift signals for drifted and dangling bindings.* They duplicate `staleness_report` and KR-M2. Wins if: never.
+
+**Consequences.** One CLI verb (`fathom why`), one observatory section, one `review_diff` and `intent audit` signal (ID3), and, if its trigger fires, one additive `symbol_context` parameter. The trace's value is unmeasured until PU-M3 reads A2 on T3. Its literature support is anchored intent (artifact-anchored claims beat prose notes, for a smaller model on generated repositories), not the repair study's failure diagnoses.
+
+**Revisit when.**
+- The link pre-reading reads under its bar: doc links stay a labelled secondary in the trace and the why card waits.
+- PU-M3 reads A2 no better than A1 on T3 with adequate power: `include: why` leaves under a `gone:` row, and the trace stays as an intent-maintenance verb.
+- The verify ledger admits only registered roots: ID5 is reconsidered.
+- RT-M1 reads PASS and plan-row contracts prove lossy as links: an intent-binding table may be proposed by a new record.
+
+## ADR-087: Intent record statuses get a CUE vocabulary, three conditions at HEAD and an unparsed count; markdown stays the source, edge judgment waits on a backtest, kit lifecycles are input only (2026-10-28)
+
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** process / architecture. Design: `docs/design/project-understanding.md` section 7. Plan rows: PU-L1 to PU-L9, PU-M4, PU-M5. Goal: G47. Amends ADR-018 (a dated note). Extends ADR-074 decision 5 and gives its R1 wins-if an instrument. Reads ADR-040, ADR-074's rejected alternatives, the CUE non-goal, Q20 and agentic-kit 0021 as constraints.
+
+**Context.** The owner asked on 2026-10-17 and again on 2026-10-24 for vision, goals and specs as CUE state machines, queryable by models and enforced deterministically. Three records declined CUE as the authoring source, each with a wins-if: agentic-kit 0021, ADR-074 R1 and an adopter platform repository's own structured-intent decision. The wins-if has not fired: structured bytes measured 2026-10-28 are 28% for goals, 7.5% to 13.7% for futures and 38% for plan rows, against 50%. Its other condition, more than five field-vet failures a month, has no instrument, because the gate refuses a bad field before commit and leaves no trace. Kit libraries use the pattern for runtime records (agentic-kit's workflow engine, correction ledger, intake triage and claim lifecycle, and a review kit's finding lifecycle): CUE declares the vocabulary and Go owns the law. No repository authored goals or specs as CUE state machines. Every gap measured today is checkable at the current commit: decision statuses in four spellings with superseded-by links never checked, 9 of 36 goal bets past review with no keep or kill recorded, and 1 of 9 incident outcomes pending with the outcome rule unchecked. In 30 days of `ADR.md` history the one accepted-to-superseded edge had a resolving successor, so no edge-only violation was found.
+
+**Decision.**
+1. *Markdown stays the authoring source* for vision, goals, futures, questions, decisions and plans. CUE as the source stays rejected until its wins-if fires.
+2. *A CUE status vocabulary* for intent-record statuses, in schema/intent/status.cue, embedded byte-identical: a closed status set for each kind (decision, incident, future, goal), at most six states each, and conditions that are never states (Amended, ReviewDue). The vocabulary names the agentic-kit decision lifecycle version it was taken from, so an adopter on another kit version is not flagged. The normalizer folds spellings and never rewrites a file.
+3. *Three lifecycle conditions* in `fathom intent audit`, computable at the current commit, with `--json` and SARIF: SupersederResolves (a superseded record names a successor that resolves), OutcomeResolves (a closed incident's Outcome names an invariant, test, record or plan row that resolves) and ReviewRecorded (a goal past its review date carries a dated keep or kill line). They are advisory and gate nothing in this program.
+4. *Two counts make the CUE wins-if measurable*: unparsed status lines per kind with file and line, and the structured-bytes share per kind, both in `intent audit --json`. ADR-074's K1 and K6 measure other things and are not triggers here. The field-vet failure instrument is dropped: refused failures leave no trace.
+5. *Edge judgment between git endpoints is deferred* behind a $0 backtest over 12 months of git history, and is built only if the backtest finds at least 2 illegal transitions.
+6. *No transition rows in the intent ledger.* ADR-074 rejected review stamps in the intent ledger, and that rejection stands.
+7. *Kit lifecycles are input formats.* agentic-kit's workflow engine, correction ledger and intake triage, and a review kit's finding lifecycle, are read by schema version, an unknown version refused by name, and never re-authored (ADR-040).
+8. *ADR-018 stands.* Its rejected "authored transition tables and lifecycle enums" covers tables that drive process. A parse vocabulary over statuses authors already write, checked at HEAD, is verify's contract applied to records. ADR-018 carries a dated note.
+
+**Decision models.** A candidate `predicate`: "does this prose Outcome line name a durable artifact?". With provider `none`, OutcomeResolves answers every case an id or path lookup can, and the rest reads `not computed`, never guessed. Opt-out: the whole design runs at provider `none`. No site is built, because stage 0's predicates measured at or below baseline (ADR-074).
+
+**Alternatives rejected.**
+- *CUE as the canonical source.* Wins if: a kind passes 50% structured bytes, or its unparsed-status count exceeds five a month for two months.
+- *A lifecycle law judging status edges between the merge-base and HEAD, with transition rows in the ledger.* Every measured gap is checkable at HEAD and no edge-only violation was found. Wins if: the backtest finds at least 2 illegal edges in 12 months, and the new record answers ADR-074's rejected review stamps.
+- *A field-vet failure counter.* Refused failures leave no trace. Wins if: gate receipts start carrying step outcomes.
+- *Repository-authored tables.* Wins if: a second evaluator exists and a repository needs a lifecycle fathom lacks (Q20).
+- *TLA+ for intent records.* Models write semantically correct TLA+ 8.6% of the time, and documents have no run time to check. Wins if: never for intent records.
+- *No change.* Leaves the HEAD gaps unchecked. Wins if: PU-M4 reads KILL.
+
+**Consequences.** `fathom intent audit` gains kind `lifecycle`, an unparsed-status count and a structured-share figure. The overdue goal reviews and the pending incident outcome become named conditions. Nothing gates.
+
+**Revisit when.**
+- PU-M4 reads KILL: the three conditions are removed and the vocabulary stays as documentation.
+- PU-M5 finds at least 2 illegal edges in 12 months: edge judgment is designed by a new record that answers ADR-074's rejected review stamps.
+- A kind passes 50% structured bytes, or its unparsed-status count exceeds five a month for two months: that kind may become CUE-authored under the non-goal's own revisit.
+- A second evaluator exists: the vocabulary moves to agentic-kit (Q20).
+- agentic-kit changes its decision lifecycle: the vocabulary is re-pinned.
+
+## ADR-088: Review kinds share one evidence contract: code review is precision-first and author-facing, readiness rides the evidence plane, compliance is evidence only, risk is a feature file (2026-10-28)
+
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** product / architecture. Design: `docs/design/project-understanding.md` section 4. Plan rows: PU-V1, PU-V2, PU-R1, PU-M6 to PU-M8, PU-M10. Goal: G48. Builds on ADR-069 and its platform amendment, which own the evidence plane, the review kit's authority and the external tierer; this record adds only what they lack. Reads ADR-040, ADR-055 and ADR-063 as constraints.
+
+**Context.** The evidence plane covers Well-Architected and readiness review (ADR-069). Code review has no precision measurement, compliance has no stated role for fathom, and change risk has concern deltas (PLT-5) but no structural feature export. The research is consistent: the best public review tool reached F1 19.38% at 16.65% precision (SWR-Bench), PRs reviewed only by review agents merged at 45.2% against 68.4% with human review, one in-the-wild study found 36.4% of comments accepted, and AI patches shown to reviewers slowed reviews by over 5% while showing them to authors only removed the slowdown. Meta's risk tiering captured 27.9% of SEVs at the riskiest 10% of diffs with a calibrated model fed structural features.
+
+**Decision.**
+1. *One evidence contract.* Every finding or fact a review kind uses carries an anchor, a coverage statement and a receipt, and an absence carries its read set (I38).
+2. *Code review is precision-first and author-facing.* Fathom's findings are structural and anchored and go to the author or the author's agent through MCP, SARIF or a check, never as reviewer comments. A finding kind is shown at default prominence only above its measured precision floor (PU-M6). RVU-1 to RVU-5 land before any review reading.
+3. *Well-Architected, architecture and readiness* ride the WAE- and PLT- plans unchanged.
+4. *Compliance is evidence production only*: trace packs, fact and join receipts, governance SARIF, and imported scanner findings at their producer's tier. A scanner delta is never reported as a fix without the fact delta (71.4% of scanner-passing IaC repairs left the vulnerability in place).
+5. *Risk is a feature file for the adopter's tierer.* `fathom review --since B --risk-features FILE` writes one row per touched symbol: fan-in, cross-service reach with its tier, covering and certifying tests touched or not, concern deltas and governing records touched. Information only: no band, no model, no gate, no author field.
+6. *Channels* are ADR-084 decision 6's: local agents and CI now, hosted reviewers after Q5.
+
+**Decision models.** None new. Suppression of a kind is computed from PU-M6, not judged. A `predicate` "is this reviewer comment supported by the index?" is recorded as F96 and not built.
+
+**Alternatives rejected.**
+- *Fathom as a reviewer.* Wins if: ADR-055's own triggers fire.
+- *Findings shown to human reviewers by default.* Wins if: a reviewer-facing lab shows helped.
+- *A risk model, band or gate in fathom.* The tierer owns calibration on an organization's own history. Wins if: never in the product.
+- *Compliance catalogs, crosswalks, SSP or POA&M output.* Wins if: an adopter without a policy kit asks in writing.
+
+**Consequences.** One new CLI output (the risk feature file) and four readings. No review verdict enters fathom.
+
+**Revisit when.**
+- PU-M6 finds no kind at its floor: review output is unchanged and reviewer guidance says unproven.
+- PU-M7 reads KEEP: the reviewer pairing is promoted in the README.
+- PU-M8 reads CUT: the risk feature file leaves under a `gone:` row.
+- A named compliance consumer asks in writing for OSCAL or Gemara output (F93).
+- Q5 is answered: hosted reviewers per ADR-084.
+
+## ADR-089: Incidents: evidence cards with grounded causal paths for an external agent, "real-time" only after a passing cold p95, and never mitigation (2026-10-28)
+
+**Status.** Accepted 2026-10-28 (owner-architect rulings on the design pass). **Type.** product / architecture. Design: `docs/design/project-understanding.md` section 4. Plan rows: PU-M2, PU-M9. Rides G37 and the IM- plan. Builds on ADR-069 decision 8 and ADR-058; reads the non-goal "No first-party chat or incident command center" as a constraint.
+
+**Context.** The owner asked for real-time incident mitigation and prevention. Deterministic evidence cards read by a model beat agents reading raw telemetry (EviRCA: 40.6% to 43.9% against 15.2% on OpenRCA). Code plus service graphs raised RCA accuracy up to 6.3 times on 30 incidents (PRAXIS). General coding agents now beat bespoke RCA agents. Agents name a correct service in 76.0% of cases and ground it in a verified causal path in only 61.5% (OpenRCA 2.0). Removing source access lowers accuracy for every model on ORCA-bench, whose code-bearing tasks are public. Fathom's `localize` hook timed out 200 of 223 calls under load. Mitigation by fathom collides with the non-goal, ADR-069 decision 8, IM-X3 and IM-X9.
+
+**Decision.**
+1. *Four phases*: prevention, detection to context, mitigation support and post-incident learning, each with its surface in the design.
+2. *The unit is an evidence card*: a `join` receipt whose anchors form the causal path (symptom, route or handler, callee, client config), so a consumer can grade "grounded". No new receipt kind.
+3. *Consumers are external general agents* through MCP and the `fathom-investigate` skill. No fathom RCA agent and no model ranking of suspects.
+4. *"Real-time" is a latency claim* allowed only after PU-M9 and IM-M5 read a cold p95 of at most 3 s, a warm p95 of at most 1 s and zero abandons, measured off the operator's working host with the load recorded. Until then the docs say "context source".
+5. *Fathom never mitigates*: it never executes, proposes or records a mitigation.
+6. *The grounded-path value is measured now* on ORCA-bench's code-bearing tasks, the same agent with and without fathom, an anchor match against the benchmark's key as the primary metric (PU-M2).
+
+**Decision models.** A candidate `choice` "which candidate change most likely caused this?" is refused in fathom: the external agent ranks. With provider `none`, the deterministic suspect list of the incident-maps design is the only list, labelled "not cause", and it is built only if IM-M0 reads BUILD. Opt-out: not applicable.
+
+**Alternatives rejected.**
+- *Fathom as the mitigating actor.* Wins if: the non-goal's own trigger fires and a consumer asks.
+- *Attaching to ops systems.* Wins if: IM-M1 shows git-invisible causes at 20% or more, through ADR-058.
+- *Model-ranked suspects.* Wins if: IM-M0 reads BUILD and a consumer with at least 200 labelled incidents exists.
+- *Waiting for incident maps before any RCA reading.* ORCA-bench already provides source access. Wins if: never.
+
+**Consequences.** One reading moves forward (PU-M2), and no incident surface is added beyond the skill. ADR-087's OutcomeResolves condition checks the post-incident loop.
+
+**Revisit when.**
+- PU-M9 and IM-M5 pass: the real-time claim is allowed.
+- PU-M2 reads CUT with adequate power: evidence cards are not positioned for RCA.
+- IM-M0 reads BUILD, or IM-M1 shows git-invisible causes at 20% or more.
+- At least 15 to 20 resolved findings exist and a consumer asks (the non-goal's trigger).
+- Q5 is answered: hosted SRE agents per ADR-084.
