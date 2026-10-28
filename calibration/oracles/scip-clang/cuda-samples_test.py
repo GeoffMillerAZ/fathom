@@ -31,7 +31,7 @@ class CUDAReadingNotes(unittest.TestCase):
         stand = next(n for n in updated['notes'] if 'stand in for a function' in n)
         self.assertIn('the predicted 38th extern "C" function is in eigenvalues/util.h, a header the dialect does not own', stand)
         throughput = next(n for n in updated['notes'] if ': throughput read ' in n)
-        self.assertIn('median run 3 (wall 1.05)', throughput)
+        self.assertIn('median run 1 (wall 1.42)', throughput)
         self.assertIn('equal CPU rates retain run order', throughput)
         self.assertEqual(module.refresh_notes(copy.deepcopy(updated)), updated)
 
