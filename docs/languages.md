@@ -131,7 +131,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 41 | 0 | 4 | 12 | 11 | 1 | 5 | 0 | 8 | 25 | 10 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| T2 | tool format | 32 | 0 | 11 | 12 | 0 | 1 | 0 | 0 | 8 | 17 | 12 |
+| T2 | tool format | 32 | 0 | 10 | 13 | 0 | 1 | 0 | 0 | 8 | 18 | 13 |
 | T3 | tool format | 18 | 0 | 5 | 12 | 0 | 0 | 0 | 0 | 1 | 16 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 4 | 2 | 0 | 0 | 0 | 0 | 1 | 6 | 5 |
@@ -140,7 +140,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | T7 | tool format | 4 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 2 |
 | **Total** | language | 45 | 0 | 4 | 14 | 11 | 1 | 5 | 0 | 10 | 26 | 10 |
-| **Total** | tool format | 74 | 0 | 30 | 33 | 0 | 1 | 0 | 0 | 10 | 52 | 29 |
+| **Total** | tool format | 74 | 0 | 29 | 34 | 0 | 1 | 0 | 0 | 10 | 53 | 30 |
 
 ### T1
 
@@ -206,7 +206,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Composer manifests (composer.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | L3 (L1 good, L2 excellent, L3 good) | L1 good: sym_precision 0.9554 < 0.98 |
 | CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
-| Protocol Buffers (.proto) | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 11 references, under 20) | L3 not met: evidence: 11 references, under 20 |
+| Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | GraphQL schemas and operations (.graphql .gql) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | JSON Schema documents | tool format | L3 | L2 (L1 good, L2 good; L3 unmet, evidence: 3 references, under 20) | L3 not met: evidence: 3 references, under 20 |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 14 references, under 20) | L3 not met: evidence: 14 references, under 20 |
@@ -307,8 +307,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 11; tool formats at target 60)
-Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 11/10; tool formats at target 60/30
+Milestone M1 reached (languages at L1 42, L1 excellent 30, L2 37, L3 28, L4 11; tool formats at target 61)
+Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25, at L3 28/14, at L4 11/10; tool formats at target 61/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -364,7 +364,7 @@ Milestone M2 progress: languages at L1 42/45, at L1 excellent 30/35, at L2 37/25
 | MATLAB (.m by sniff) | language | tags | acristoffers/tree-sitter-matlab (MIT) | L1 | L1 (L1 excellent) | B miss-hit-core 0.9.44 | — | 2026-10-25 | at target (LB-Q-matlab) |
 | CMake (CMakeLists.txt, *.cmake) | tool format | tags | uyha/tree-sitter-cmake (MIT (verify at pin)) | L3 | none (measured) | A cmake 4.4.3 (File API codemodel-v2, --trace-expand json-v1); B universal-ctags 6.2.1 | syntax | 2026-10-01 | LB-Q-cmake |
 | Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | L2 (L1 good, L2 good) | C ppi-calls PPI 1.270; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-perl) |
-| Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 excellent; L3 unmet, evidence: 11 references, under 20) | A protoc 34.1 | syntax | 2026-10-01 | LB-Q-protobuf |
+| Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A protoc 34.1 | syntax | 2026-10-27 | at target (LB-Q-protobuf) |
 | GDScript (.gd) | language | tags | PrestonKnopp/tree-sitter-gdscript (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-gdscript |
 | GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A graphql-js 16.14.2 | syntax | 2026-10-20 | at target (LB-Q-graphql) |
 | Elixir (.ex .exs) | language | tags | elixir-lang/tree-sitter-elixir (Apache-2.0) | L3 | L3 (L1 excellent, L2 good, L3 good) | B elixir-ast Elixir 1.19.6 Code.string_to_quoted/2 (OTP 29); C tree-sitter-tags:elixir-tags.scm py-tree-sitter 0.25.2, tree-sitter-elixir 0.3.5 | syntax | 2026-10-19 | at target (LB-Q-elixir) |

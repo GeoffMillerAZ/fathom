@@ -1,0 +1,1 @@
+{"excluded_fathom_defs":0,"excluded_files_measured":0,"excluded_xref_fathom":0,"fathom_defs":980,"graded":false,"measured_files":91,"miss_causes":{"qualified_package_differs_from_directory":1,"transitive_public_import_not_followed":8},"xref_fathom":96,"xref_found":96,"xref_truth":105}

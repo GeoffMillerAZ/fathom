@@ -1,0 +1,44 @@
+[
+  {
+    "subject": 0,
+    "tracked_proto": 13,
+    "measured_proto": 10,
+    "measured_bytes": 16113,
+    "excluded_proto": 3,
+    "excluded_testdata": 3,
+    "native_pairs": 0,
+    "eligible_native_pairs": 0,
+    "excluded_native_pairs": 0,
+    "compiler_refusals": 0,
+    "extra_definitions": 0,
+    "extras_in_compiler_refused_files": 0
+  },
+  {
+    "subject": 1,
+    "tracked_proto": 156,
+    "measured_proto": 118,
+    "measured_bytes": 478546,
+    "excluded_proto": 38,
+    "excluded_testdata": 0,
+    "native_pairs": 11,
+    "eligible_native_pairs": 11,
+    "excluded_native_pairs": 0,
+    "compiler_refusals": 30,
+    "extra_definitions": 0,
+    "extras_in_compiler_refused_files": 0
+  },
+  {
+    "subject": 2,
+    "tracked_proto": 92,
+    "measured_proto": 91,
+    "measured_bytes": 739062,
+    "excluded_proto": 1,
+    "excluded_testdata": 1,
+    "native_pairs": 106,
+    "eligible_native_pairs": 105,
+    "excluded_native_pairs": 1,
+    "compiler_refusals": 2,
+    "extra_definitions": 6,
+    "extras_in_compiler_refused_files": 6
+  }
+]

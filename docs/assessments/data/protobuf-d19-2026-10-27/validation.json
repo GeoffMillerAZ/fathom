@@ -1,0 +1,85 @@
+{
+  "python_tests": 6,
+  "compiler_context_regressions": 2,
+  "compiler_context_mutants": 2,
+  "all_mutants_restored_green": true,
+  "tenancy_lint_passed": true,
+  "focused_race_suites_passed": true,
+  "reading_roundtrip_and_recursive_canonical_passed": true,
+  "release_notes_check_passed": true,
+  "merge_debris_check_passed": true,
+  "adr011_check_passed": true,
+  "strict_scratch_verification": {
+    "commit": "8e29e92cc",
+    "ingest_exit": 0,
+    "verify_exit": 0,
+    "total": 797,
+    "claimed": 569,
+    "verified": 569,
+    "failing": 0,
+    "plan": "docs/plans/language-breadth.md",
+    "strict": true,
+    "since": "origin/main",
+    "main": "3118be853"
+  },
+  "engine_changes": false,
+  "epoch_changes": false,
+  "before": {
+    "L3": "unmet",
+    "xref_truth": 11,
+    "xref_fathom": 11
+  },
+  "after": {
+    "L3": "excellent",
+    "xref_truth": 116,
+    "xref_fathom": 107
+  },
+  "sources": [
+    {
+      "path": "calibration/oracles/protoc-descriptors/main.go",
+      "sha256": "5d173243b6618d2f2be947fd4474834b7439104393c573a37bbed6c7a6119e92"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/main_test.go",
+      "sha256": "c0006c1bd1ec4f18da139b3ee214737180c9317843ec7f818446be7d70317269"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/d19/context_mutants.py",
+      "sha256": "7aac641cf70c1dc57225f7ceb4b6b4329c3e395e538d856131f016edfb739ec0"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/d19/prepare.py",
+      "sha256": "806d40cffb6a519e64399b9272d0bcce7dcbf0af20364da0d72e560c7afe6770"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/d19/replay.py",
+      "sha256": "489df1198ccd75bc61a0bccb3cd203b5f1ce85724b62dd30a54a59f6d2a598f5"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/d19/test_prepare.py",
+      "sha256": "a050607216a5cc560ec8afed3db904dc167f45f20e6b57701419fa638ff38e3a"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/d19/test_replay.py",
+      "sha256": "7df9e8e8f17c90b9b2da5452ea6a58b286422b449d8d211fe1e7c98ceecde2cf"
+    },
+    {
+      "path": "calibration/oracles/protoc-descriptors/d19/protocol-r1.json",
+      "sha256": "7c788481456d0ce38ad84147515c36f6ca1462d93403adea039f1a4cc0318da2"
+    },
+    {
+      "path": "calibration/corpus.d/protobuf.yaml",
+      "sha256": "430b99cf1ff4470e7289c50e74cf9e754034270a4d0a53fbd68948d0454d80b8"
+    },
+    {
+      "path": "docs/bench/readings/lang/protobuf.json",
+      "sha256": "6203c959dc601e780db48ea9a7e58539d95bd1e29a644fc220dc5f155d78e74e"
+    },
+    {
+      "path": "calibration/bench/tools/protobuf-d19/main.go",
+      "sha256": "78c75c1b1b3a97c86ef88f7f315822b31e058f7ccb4226d76336feefb8185812"
+    }
+  ],
+  "measured_extractor_commit": "a6137cd1c",
+  "followup": "T-R17 all six findings; strict final-head result required before READY and recorded in STATUS/LOG"
+}
