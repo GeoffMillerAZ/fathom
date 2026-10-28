@@ -718,7 +718,30 @@ writes the record: the `Held-out split sha256:` lines are the controller's
 (BX-11). An unreadable or absent manifest directory or record exits 2.
 
 `scenariobench run -heldout-read <prereg id>` (BX-29's wiring) is not built
-yet: it waits on the prereg loader (`LoadPrereg`, BX-62) landing on main.
+yet. The prereg loader it needs (`LoadPrereg`, BX-62) is on main; the run must
+also read the prereg's `.md` for its `Prereg <id> v<n> signed` line, which
+`LoadPrereg` does not load.
+
+## Preregistered runs (BX-62, BX-88)
+
+```sh
+scenariobench run -prereg docs/bench/prereg/<id>.json ...
+scenariobench outcome -prereg docs/bench/prereg/<id>.json -run-id <run> [-ledger docs/bench/scenarios-ledger.jsonl]
+```
+
+`run -prereg` loads the prereg against `#Prereg` (`schema/bench`) and refuses a
+prereg outside `docs/bench/prereg/`, one that differs from HEAD, a dirty tree, a
+`-root` other than the prereg repository's top level, `-rescore-lost`, and a
+stored cell run under another prereg or none. It stamps the prereg's sha256 on
+every cell and ledger row as `prereg_sha256`; `run` stamps `started_at` on every
+cell, and `ledger` stamps the run's `first_cell_at` from it.
+
+`outcome` refuses (exit 2) a run whose prereg was last committed after its
+first cell started, whose prereg sha differs from its rows, or whose rows lack
+`prereg_sha256` or `first_cell_at`. A run that passes reads as a no-read (exit
+3) until `ClassifyOutcome` lands (NP-B1). The commit date is the committer
+date, so rewriting the prereg's commit after a run (a rebase or cherry-pick)
+reads as committed after the first cell: a refusal in the safe direction.
 
 ## Instrument truth
 

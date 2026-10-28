@@ -80,7 +80,7 @@ func cmdOutcome(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench outcome: refused: the prereg's repository is a shallow clone, so its history cannot date %s; unshallow it first\n", *preregPath)
 		return 2
 	}
-	logged, err := preregGitOutput(dir, "log", "-1", "--format=%cI", "--", filepath.Base(resolved))
+	logged, err := preregGitOutput(dir, "log", "-1", "--no-show-signature", "--format=%cI", "--", filepath.Base(resolved))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench outcome: %v\n", err)
 		return 2
