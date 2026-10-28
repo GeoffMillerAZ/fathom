@@ -82,7 +82,8 @@ decision 6). Lanes: controller, owner, cloud, codex, api.
 - [ ] Doc-link targets from intent units are package-qualified where the unit names a package, and a name-only target defined in at least the configured count of places is labelled `name-only`, never dropped (lane: codex) {id: PU-C2, symbol: qualifyIntentLinkTargets, package: internal/docindex, reachable_from: TestIntentLinkTargetsQualifiedAndLabelled}
 - [ ] ID3: a path the router's sensitive-surface table names that changed in a range with no governing record linked is named with the path, the range and the units searched; `fathom intent audit` lists it (lane: codex) {id: PU-I1, symbol: ungovernedSensitiveChanges, package: internal/intent, reachable_from: TestUngovernedSensitiveChangesNamesPathAndRange}
 - [ ] `review_diff` and `fathom review --since` carry ID3 as information, never a gate, with `docs/mcp-tools.md` updated in the same change (lane: codex) {id: PU-I2, symbol: reviewSensitiveSurfaceDimension, package: internal/review, reachable_from: TestReviewSensitiveSurfaceDimensionNeverGates, needs: PU-I1}
-- [ ] The use case `docs/use-cases/project-understanding.md` (I36) with its `## Maintained` line naming `fathom why`, and its row in the use-case index (lane: cloud) {id: PU-U1, oracle: lexical, path: docs/use-cases/project-understanding.md, pattern: "^## Maintained", needs: PU-W4}
+- [ ] The use case `docs/use-cases/project-understanding.md` (I36) with its `## Maintained` line naming `fathom why` (lane: cloud) {id: PU-U1, oracle: lexical, path: docs/use-cases/project-understanding.md, pattern: "^## Maintained", needs: PU-W4}
+- [ ] The use case's row in the use-case index (lane: cloud) {id: PU-U2, oracle: lexical, path: docs/use-cases/README.md, pattern: "project-understanding[.]md"}
 
 ### Readings
 
