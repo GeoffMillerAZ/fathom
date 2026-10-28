@@ -56,7 +56,10 @@ class ReviewProbeTest(unittest.TestCase):
         self.assertNotIn('Operation not permitted',json.dumps(receipt))
 
     def test_required_kernel_control_failure_refuses_before_prepare(self):
-        self.launch_refusal(controls_failed=True)
+        receipt=self.launch_refusal(controls_failed=True)
+        self.assertEqual('ValueError',receipt['failure_class'])
+        self.assertFalse(receipt['native_executed'])
+        self.assertEqual('required_authored_controls_failed',receipt.get('failure_detail'))
 
     def test_preflight_timeout_never_publishes_argv_or_path(self):
         error = subprocess.TimeoutExpired(['/private/identity/probe', '/private/identity/input'], 10)
@@ -74,6 +77,7 @@ class ReviewProbeTest(unittest.TestCase):
         good['status'] = 'probe_refused'
         validate(good, probe.CONTRACT)
         for key, value in [('reason', '/private/person'), ('failure_class', 'person'),
+                           ('failure_detail', '/private/person/control'),
                            ('capability_keys', ['../../person']), ('worker_returncode', True),
                            ('initialize', {'unknown': '/private/person'})]:
             with self.subTest(key=key), self.assertRaises(ValueError):
@@ -129,7 +133,7 @@ class ReviewProbeTest(unittest.TestCase):
                 with patch.object(probe,'enable_loopback'), patch.object(probe,'isolate_filesystem'), patch.object(probe.socket,'if_nameindex',return_value=[(1,'lo')]), patch('sys.argv',['preflight',str(probe.HERE),str(out/'worker'),str(root/'cache'),str(root)]):
                     exec(compile(code,'authored-preflight','exec'),{})
 
-    def launched_worker(self, *, poison=False, timeout=False):
+    def launched_worker(self, *, poison=False, timeout=False, invalid_trace=False, contradicted_trace=False):
         from unittest.mock import MagicMock
         from receipt_contract import validate
         with tempfile.TemporaryDirectory() as d, ExitStack() as stack:
@@ -140,16 +144,23 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.os,'getloadavg',return_value=(0,0,0)))
             stack.enter_context(patch.object(probe.os,'nice'))
             stack.enter_context(patch.object(probe.shutil,'disk_usage',return_value=SimpleNamespace(free=30*1024**3)))
+            stack.enter_context(patch.object(probe,'trace_identity',return_value=dict(sha256='0'*64,version=[5,16])))
+            stack.enter_context(patch.object(probe.resource,'setrlimit'))
+            original_is_file=Path.is_file
+            stack.enter_context(patch.object(Path,'is_file',lambda p: True if str(p)=='/usr/bin/strace' else original_is_file(p)))
             stack.enter_context(patch.object(probe.shutil,'which',return_value='/usr/bin/unshare'))
             stack.enter_context(patch.object(probe.subprocess,'run',return_value=SimpleNamespace(returncode=0)))
             stack.enter_context(patch.object(probe,'prepare'))
             verify=stack.enter_context(patch.object(probe,'verify'))
             copied=stack.enter_context(patch.object(probe,'copy_payload'))
+            if timeout: stack.enter_context(patch.object(probe,'TIMEOUT',0.001))
+            if invalid_trace: stack.enter_context(patch.object(probe,'diagnostics',side_effect=ValueError('authored incomplete trace')))
+            else: stack.enter_context(patch.object(probe,'diagnostics',return_value=dict(files=[],largest_private_file=None,files_over_previous_limit=0,sigxfsz_observed=False,limit_file=None,correlated_limit_files=0,vendor_exec_observed=not contradicted_trace,native_returncode=None if contradicted_trace else 0,files_truncated=False,omitted_file_events=0,snapshot_truncated=False)))
             process=MagicMock(pid=12345)
             def finish(*args,**kwargs):
                 if timeout and kwargs.get('timeout'):
                     raise subprocess.TimeoutExpired(['/private/vendor'],180)
-                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15)
+                receipt=probe.receipt_base();receipt.update(status='native_probe_failed',failed_stage='initialize',native_executed=True,filesystem_readonly_outside_out=True,vendor_capabilities_dropped=True,filesystem_dotdot_writes_refused=True,filesystem_write_probes=15,native_returncode=0,initialize=probe.summary({'error':{'code':-1}}),stderr_bytes=0,stderr_sha256='0'*64,lsp_bytes=0,lsp_sha256='0'*64)
                 if poison:receipt['arbitrary_vendor_field']='/private/person'
                 (out/'worker'/'receipt.json').write_text(json.dumps(receipt))
                 return 2
@@ -198,6 +209,7 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe.resource,'setrlimit'))
             stack.enter_context(patch.object(probe,'kill_group'))
             process=MagicMock(returncode=0)
+            process.stderr=__import__('io').BytesIO(b'')
             stack.enter_context(patch.object(probe.subprocess,'Popen',return_value=process))
             lsp=MagicMock()
             def response(ident,*args):
@@ -207,7 +219,10 @@ class ReviewProbeTest(unittest.TestCase):
             stack.enter_context(patch.object(probe,'LSP',return_value=lsp))
             evaluations=[dict(variant=v,http_status=200,sha256='0'*64,bytes=2) for v in ['valid','unknown_parameter','changed_input_fact']]
             stack.enter_context(patch.object(probe,'evaluate_controls',return_value=evaluations))
-            self.assertEqual(2,probe.worker(Path(d)/'payload',out))
+            reader,writer=probe.os.pipe()
+            try:
+                self.assertEqual(2,probe.worker(Path(d)/'payload',out,trace_fd=writer))
+            finally:probe.os.close(reader)
             receipt=json.loads((out/'receipt.json').read_text())
             self.assertEqual('native_probe_failed',receipt['status'])
             self.assertEqual('shutdown',receipt['failed_stage'])
@@ -260,3 +275,39 @@ class ReviewProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/'receipt.json';path.write_bytes(b' '*(MAX_RECEIPT+1))
             with self.assertRaisesRegex(ValueError,'cap'):read_receipt(path,probe.CONTRACT)
+
+    def test_invalid_diagnostic_preserves_validated_native_outcome(self):
+        receipt=self.launched_worker(invalid_trace=True)
+        self.assertEqual('native_probe_failed',receipt['status'])
+        self.assertEqual('initialize',receipt['failed_stage'])
+        self.assertTrue(receipt['native_executed'])
+        self.assertEqual(0,receipt['native_returncode'])
+        self.assertEqual(-1,receipt['initialize']['error_code'])
+        self.assertEqual(0,receipt['stderr_bytes'])
+        self.assertEqual(0,receipt['lsp_bytes'])
+        self.assertEqual('refused',receipt['diagnostic_status'])
+        self.assertIsNone(receipt['write_diagnostics'])
+
+    def test_missing_strace_refuses_before_prepare(self):
+        with tempfile.TemporaryDirectory() as directory,ExitStack() as stack:
+            root=Path(directory).resolve();out=root/'out'
+            stack.enter_context(patch('sys.argv',['probe','-cache',str(root/'cache'),'-out',str(out)]))
+            stack.enter_context(patch.object(probe.platform,'system',return_value='Linux'))
+            stack.enter_context(patch.object(probe.platform,'machine',return_value='x86_64'))
+            stack.enter_context(patch.object(probe.os,'getloadavg',return_value=(0,0,0)))
+            stack.enter_context(patch.object(probe.shutil,'disk_usage',return_value=SimpleNamespace(free=30*1024**3)))
+            stack.enter_context(patch.object(probe.shutil,'which',return_value='/usr/bin/unshare'))
+            stack.enter_context(patch.object(probe.subprocess,'run',return_value=SimpleNamespace(returncode=0)))
+            stack.enter_context(patch.object(Path,'is_file',return_value=False))
+            prepare=stack.enter_context(patch.object(probe,'prepare'))
+            self.assertEqual(2,probe.main());prepare.assert_not_called()
+            receipt=json.loads((out/'receipt.json').read_text())
+            self.assertEqual('tracing',receipt['failed_stage']);self.assertFalse(receipt['native_executed'])
+
+    def test_contradicted_trace_publishes_refusal_without_native_claim(self):
+        value=self.launched_worker(contradicted_trace=True)
+        self.assertEqual('contradicted',value['diagnostic_status'])
+        self.assertEqual('probe_refused',value['status']);self.assertEqual('tracing',value['failed_stage'])
+        self.assertIsNone(value['native_executed']);self.assertIsNone(value['native_returncode'])
+        self.assertEqual(-1,value['initialize']['error_code'])
+        self.assertEqual(0,value['stderr_bytes']);self.assertEqual(0,value['lsp_bytes'])

@@ -169,3 +169,149 @@ and admits only its count/hash to the receipt. These controller observations
 are narrower than the mandatory real Linux PID/mount/write regression. That
 regression and vendor execution still await the T-R11 run after review. This
 fixture closes the prior READY evidence gap; no tier or reading changes.
+
+## T-R13/T-R13a receipt follow-up and N3-m1
+
+Actual public run 40407284519 on ubuntu-22.04 executed the vendor after all
+isolation checks, including 15 write denials. Initialization failed with
+EOFError, native -25 (SIGXFSZ), zero stderr and zero LSP bytes. Preserve the
+original receipt and original v2 schema; their replay test binds the receipt
+hash. Launcher, filesystem-helper and authored-input hashes match d938ba273.
+The first failing file and a sufficient bound are unknown; 8 MiB FSIZE is a
+working hypothesis. Canonical C counts remain 55,711/55,714 definitions and
+21,137/21,137 references. No native grade, ENGINE, EPOCH or L3 change follows.
+
+T-R13a authorizes one rerun with vendor-child FSIZE 256 MiB, launcher/trace/
+stderr/LSP outputs 8 MiB and receipt 128 KiB. Preparation retains its existing
+pinned download/member bounds. Raw trace is collected outside writable scratch;
+the tracer stays outside the vendor's nested PID/proc view and no trace writer
+is inherited. An authored PID1 preserves ordinary vendor signal semantics.
+Private scratch remains the sole writable filesystem area, with capabilities
+dropped. The outer parser publishes only bounded HOME/TMP relative filenames,
+sizes and successful syscall byte counts, anonymous fixed classes for other targets, the largest
+final private file and the exact EFBIG-plus-SIGXFSZ target when identifiable.
+A final size/request above 8 MiB identifies rerun candidates; it does not prove
+the original untraced cause. Mmap stores, successful write bytes, requested
+allocation extent and final logical size remain separate. See LINUX-X64-PROBE.md
+for source links, caps, privacy and the complete v3 field contract.
+
+N3-m1 now refuses a stacked namespace root; its authored regression protects
+against hiding real submounts. New controls also cover unfinished/resumed trace
+calls, deleted memfd targets, signal-only ambiguity, relative path allowlists,
+symlink snapshots and oversized/replaced logs. Row 64+1 and directory 256+1 preserve explicit partial diagnostics; relative
+path 512+1 is redacted. Generic capture cap+1 refuses diagnostics, while receipt
+read/write cap overflow refuses the publication unit. The new real Linux regression runs the production child chain on
+an authored five-byte TMP file, then requires exact EFBIG/SIGXFSZ attribution
+after lowering only that process's limit. Both Linux controls must run with no
+skips on the runner; local ARM skips exactly those two and grants no Linux proof.
+Twelve mutants fail then restore GREEN: read-only enforcement, capabilities,
+hidden mounts, dot-dot spellings, stacked-root refusal, lost limit attribution,
+lost byte counts, absent nested PID isolation, an 8 MiB vendor bound, leaked
+absolute-path identity, incoherent row limits and discarded worker outcomes.
+
+Local T-R13a validation after B1/m1/m2: 85 Python tests, 83 passed and the two designated
+Linux kernel tests skipped off Linux; all twelve FAIL-to-GREEN mutants pass.
+The control summary binds 26 source files, and the launcher manifest verifies
+32 checksums. Release-note, staged/unstaged merge-debris and ADR-011 checks pass.
+No Linux vendor rerun occurred locally. Reproduce the suite and mutations with
+`python3 -B calibration/oracles/azure-policy/probe_filesystem_controls.py -out workspace/artifacts/azure-policy-t13-controls`.
+The controller reviews this follow-up before running the instrumented probe.
+
+
+### Receipt review B1, m1 and m2 (2026-10-27)
+
+All per-path hashes are removed, including relative ones. Only allowlisted HOME/TMP
+names relative to scratch are admitted; outside paths and memfd labels are reduced
+to fixed classes. No hash or byte count of the raw trace is public. This avoids a
+second root-dependent identity channel. Two differently sized scratch and external
+HOME roots produce byte-identical full public receipts in an authored regression.
+
+The row cap is 64 and the validator remains 128 KiB. The maximum-shaped closed
+receipt (all optional worker fields, maximum path lengths, counters, rows and
+largest/limit records) encodes to 65,528 bytes against 131,072 in a focused test. Overflow of row or
+snapshot capacity reports partial coverage and omitted events. Unsafe names and
+relative syscall targets are redacted individually. The largest inspected HOME/TMP
+file survives row overflow; a capped snapshot does not assert a global largest.
+Parser-integrity failure explicitly refuses only the diagnostic and preserves the
+validated native outcome, including initialize stage and return code. No inference
+about the earlier SIGXFSZ file is made. The first real receipt and its frozen schema
+remain byte-identical. Linux controls and the vendor rerun remain the controller's
+runner work, not locally measured evidence.
+
+
+### T-R14 receipt recheck n1, n2 and n3 (2026-10-27)
+
+Noncanonical decoded HOME/TMP path components retain distinct private raw-key
+rows with null public names. Every dot-dot spelling uses `other`; the symlink-plus-dot-dot
+regression prevents lexical normalization from attributing an outside write to
+HOME. No raw key or path hash is serialized.
+
+Parser refusal continues to preserve validated worker evidence. A parsed trace
+missing the vendor exec or exit has the distinct `contradicted` outcome. It
+sets both `native_executed` (unknown, not non-execution) and `native_returncode`
+to null, and refuses the probe at
+`tracing`, and retains parsed diagnostics plus initialize/stderr/LSP summaries.
+The closed schema rejects a contradiction carrying a native execution claim.
+A differing wrapper return code alone is not contradiction: traced native exit
+remains authoritative. Direct publication and the mocked launcher path cover
+this distinction, and the retained-claim mutant fails before restoring GREEN.
+
+Snapshot selection takes lexical names before the 4,096 inspected-entry cap,
+independent of readdir order. It retains at most 4,097 entries in memory while
+scanning names to EOF under the workflow's ten-minute job timeout, without statting
+unselected entries. Exact 4,096, cap+1, reverse-order 4,098 and trace-target 64+1
+regressions cover truncation; the snapshot-cap mutant fails then restores GREEN.
+Local suite: 92 tests, 90 pass and two designated Linux kernel skips; fourteen
+mutants restore GREEN. The 26 source pins and 32 checksums are refreshed. The
+maximum-shaped receipt remains 65,528 bytes under 131,072. No Go file or plan
+lexical input changed, so neither X-R10 conditional check is triggered. No
+reading, tier, frozen first receipt or frozen schema changed; the sole vendor
+rerun still requires controller review and the Linux runner.
+
+
+### Receipt recheck 2 n4 and n5 (2026-10-27)
+
+Raw row keys apply only to redacted HOME/TMP targets. Every `other` target,
+including dot-dot and all noncanonical outside spellings, collapses by fixed
+kind. An authored trace with 195 outside spellings (65 each with dot, empty or
+dot-dot components) followed by one HOME write retains exactly two rows, all
+five HOME bytes and no overflow. EFBIG distinctness still uses its separate
+private key; no identity is serialized.
+
+The corrected ruling defines withdrawal as unknown: contradicted diagnostics
+publish `native_executed: null`, `native_returncode: null`. The schema and direct
+and launcher tests enforce null and reject both true and false; the existing
+retained-claim mutant still turns the test red. Local validation is 93 tests,
+91 passing and two designated Linux skips, fourteen mutants restored GREEN,
+26 source pins and 32 checksums. Frozen first receipt/schema remain unchanged;
+no Linux vendor rerun or calibration claim is made.
+
+
+### T-R15/T-R16 authored Linux control setup (2026-10-27)
+
+The vendor did not execute in run40487438655: its committed counts/flags-only
+receipt reports filesystem_controls/ValueError/native_executed false. T-R15
+leaves the admitted native rerun unspent. Controller diagnostic run40494795380
+located one error among 93 authored tests, in the real Linux file-size control;
+the boundary suite then refused as designed. No native measurement or tier is
+claimed by either refusal.
+
+A source-level setup defect is reproduced before the fix: mount_readonly changes
+cwd to scratch root, while the nested child launch did not restore private HOME.
+The actual relative open tmp/limit-control therefore raises ENOENT, before its
+write/ftruncate/signal. A regression encodes that error as exit66 for both launch
+modes; explicit child cwd=home yields exit0 and the expected five-byte file.
+The relative target is retained, and absolute-fd decoding independently keeps
+the expected tmp area and home/tmp/limit-control attribution. No parser contract,
+redaction rule, namespace or resource guard is loosened.
+
+Control assertion errors now carry only compared relative-path/count/flag fields
+(native/outer returncodes, exec/signal/overflow flags, limit-file identity/extent,
+expected file write/final byte counts) in test diagnostics, never in a receipt.
+The launcher receipt adds only a fixed authored-control failure-detail enum;
+free text and paths are rejected. The full maximum-shaped receipt is 65,585 bytes.
+Local 97-test validation has 95 passes and the two mandatory Linux skips; 15
+mutants, including omission of child cwd, must fail then restore green. The
+candidate is **awaiting the controller's same two Linux diagnostic commands**,
+not READY. No vendor rerun is permitted before both pass on its sha. See the
+[runner contract](../../calibration/oracles/azure-policy/LINUX-X64-PROBE.md#t-r15t-r16-authored-control-refusal-and-diagnostic-gate).
