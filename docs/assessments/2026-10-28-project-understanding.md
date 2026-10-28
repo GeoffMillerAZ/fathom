@@ -135,7 +135,7 @@ Read 2026-10-28 from vendor pages, changelogs, open benchmarks and preprints. No
 | Area | What 2026 showed | Grade and date |
 |---|---|---|
 | Channels | MCP and skills became the reviewer and SRE agent integration contract: Copilot code review skills and MCP GA 2026-07-29; Bugbot MCP 2026-04-08; Azure SRE Agent GA with MCP connectors 2026-03-10; Spotify Portal Soundcheck MCP actions 2026-04-21; AWS Well-Architected Agent with an MCP server, preview 2026-10-01 | claimed by a vendor |
-| Context engines | Absorbed or dying: Cursor agreed to buy Graphite (2025-12-19), Tricentis is acquiring Tabnine (2026-07-30), Bloop shut down (2026-04-10) | claimed by a vendor, partly secondary |
+| Context engines | Absorbed or dying: Cursor agreed to buy Graphite (2025-12-19), Tricentis acquired Tabnine (2026-07-30), Bloop shut down (2026-04-10) | claimed by a vendor, partly secondary |
 | Graph MCPs | GitNexus about 47.7k stars, CodeGraph about 70k (aggregator snapshots, October 2026). Codebase-Memory: answer quality 0.83 against 0.92 for a file-exploring agent at about 10x fewer tokens (arXiv 2603.27277, its own authors) | secondary; measured by the authors |
 | Structural tools | Roughly double grep-only localization for 4-8B models; the gain falls to 4-5 points at 32B; agents chain graph expansions in 12-14% of episodes (arXiv 2610.33958, 2026-10-25) | measured |
 | Meaning search | Cursor: +12.5% QA accuracy, best combined with grep (2025-11-06). Paparats gains on meaning questions only | claimed by a vendor |
@@ -165,24 +165,28 @@ Retrieved 2026-10-28. Many 2026 items are preprints. Strength grades the method.
    fault localization lowered pass@1 in 17 of 18 settings). Its oracle table used one model: gold file +0.8 pp, gold
    symbol +2.8 pp, bug cause +4.4 pp, both +6.6 pp. The "bug cause" was generated with the gold patch, so it supports
    review and incident evidence cards, not cards about design rationale. High for the negative result.
-3. **Evidence first, then a general agent, wins RCA** (EviRCA 40.6 to 43.9% against 15.2%; PRAXIS up to 6.3x accuracy
-   on 30 incidents; general agents now beat bespoke RCA agents). Medium.
-4. **Precision decides review adoption** (SWR-Bench best F1 19.38%; review-agent-only PRs merged at 45.2% against
-   68.4% for human review; Uber 65% addressed after suppressing low-value kinds; patches shown to reviewers slowed
-   reviews over 5%, shown to authors only, not). High for the production telemetry.
+3. **Evidence first, then a general agent, wins RCA** (EviRCA, arXiv 2609.19825, 2026-09-17: 40.6 to 43.9% against
+   15.2%; PRAXIS, DSN 2026, arXiv 2512.22113 v3 2026-04-29: up to 6.3x accuracy on 30 incidents; general agents now
+   beat bespoke RCA agents, arXiv 2608.25661, 2026-08-26). Medium.
+4. **Precision decides review adoption** (SWR-Bench, arXiv 2509.01494 v2, 2025: best F1 19.38%; review-agent-only PRs
+   merged at 45.2% against 68.4% for human review, MSR 2026, arXiv 2604.03196; Uber's uReview, 2025-08-12: 65%
+   addressed after suppressing low-value kinds; patches shown to reviewers slowed reviews over 5%, shown to authors
+   only, not, MetaMateCR, arXiv 2507.13499, 2025-07-17). High for the production telemetry.
 5. **Structure should feed a calibrated risk tierer, not replace it** (Meta: logistic regression captured 27.9% of
    SEVs at the riskiest 10% of diffs; DRS-OSS ROC-AUC 0.895 on ApacheJIT). High for scale, medium for causality.
 6. **Deterministic AST graphs beat LLM-extracted graphs, and non-code artifacts are where everyone is weak** (an LLM
-   graph missed 377 files; MULocBench: config, docs and build localization under 40% Acc@5). Medium.
+   graph missed 377 files; MULocBench, arXiv 2509.25242, 2025-09-26: config, docs and build localization under 40%
+   Acc@5). Medium.
 7. **Context narrow and just in time; repository overviews do not help** (the AGENTS.md study across agents: no
    success gain, over 20% cost; augmented tool descriptions +5.85 pp at +67% steps). Anchored claims with separate
-   freshness beat prose notes (EA-Graph), but for a smaller model on generated repositories, the larger model at
-   ceiling. High for the overview result.
+   freshness beat prose notes (EA-Graph, arXiv 2608.04278, 2026-08-04), but for a smaller model on generated
+   repositories, the larger model at ceiling. High for the overview result.
 8. **Conformance checking against a spec works; LLM-written formal specs do not yet** (best 8.6% semantically correct
    TLA+; AWS's PObserve checks production logs against a P spec; 71.4% of scanner-passing IaC repairs left the
    vulnerability, TerraProbe). High.
 9. **Benchmarks overstate** (the buggy file named from the issue text up to 76% of the time; one agent 19.25% on
-   SWE-bench Live against 43.20% on Verified; RepoProbe grades comprehension by a checklist, with a model judge). High.
+   SWE-bench Live against 43.20% on Verified; RepoProbe, ASE 2026, arXiv 2608.04783, grades comprehension by a
+   checklist, with a model judge). High.
 10. **Intent extraction works for explicit, code-inferable links and fails on rationale; specs are checked mainly at
     completion, not continuously** (980 ADRs from 109 repositories; doc-to-code trace F1 about 80% with phantom
     links). Medium.
