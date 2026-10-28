@@ -630,6 +630,64 @@ A turn cap is itself something the bench is measuring, not a fixed
 constant: change it deliberately, and note the change here, never
 silently.
 
+### Rendered arm parity (BX-60)
+
+`TestLookupsVSCorpus_CompetitorStanzaParity` checks the text of the
+competitors' stanzas. `scenariobench parity` checks what each arm actually
+renders, and complements that test:
+
+```sh
+scenariobench parity -corpus <corpus.json> [-baseline <arm>] [-task <id>] \
+  [-tree <local dir>] [-json]
+```
+
+It renders the baseline (default: the corpus criterion's `control` arm) and
+every other arm through `RenderArm`, each into its own scratch copy of one
+local tree: an empty directory by default, or `-tree`, copied (never cloned
+or fetched; `.git`, symlinks and other non-regular entries are not copied
+and are named on stderr). It then compares seven fields
+(`scenariobench.CheckArmParity`):
+
+- `prompt`: the task prompt, the instruction files the render leaves in the
+  tree, and any appended system text the notes file does not explain;
+- `tools`: the rendered allowed and disallowed tools;
+- `settings`: the rendered `settings.json`, the MCP config, and `env` apart
+  from a model override;
+- `notes_file`: `notes_file`, its system text and the `NOTES.md` it seeds;
+- `turn_cap`: the task's `sessions.max_turns`, equal for every arm of a task;
+- `model`: the run's `-model`, plus an `env` model override such as
+  `ANTHROPIC_MODEL`;
+- `tree`: the tree each worktree starts from (its sha256 is printed), plus
+  the arm's `setup` compared as data. A `setup` line is never executed: it is
+  shell and may fetch.
+
+An arm lists its intended differences in `declares` (for example
+`"declares": ["tools"]`); the key is omitted when empty, so no corpus or cell
+key changes. Each arm reads PASS, FAIL naming every undeclared field that
+differs, or INCOMPLETE naming every field it could not render. The exit code
+is 0 when every arm passes, 1 on any FAIL and 2 on INCOMPLETE with no FAIL;
+an unknown `declares` entry, baseline or task exits 2. Offline, a wired arm
+reads INCOMPLETE: `RenderArm` refuses a wired arm whose tree lacks the hooks
+`fathom init` writes, and `parity` never writes a stand-in. A `-tree`
+prepared the way a run prepares a wired cell is needed to read one. Nothing
+spends: no session, daemon or harness starts.
+
+## Held-out reads (NP-B2, BX-29)
+
+`docs/bench/heldout-reads.md` records the dev (tuning) sets, the held-out
+splits and every read of a held-out split; its header defines each line
+and who writes it. A split's identity is `SplitSHA256`: the sha256 of its
+task ids sorted ascending, each followed by a newline. The home corpus
+(`testdata/contextbench/tasks-home.json`, 13 tasks) is declared a dev set
+there; a test fails when its ids stop hashing to that line, so a 14th task
+needs a deliberate update of the line. `RecordHeldOutRead`
+(`internal/benchprep`) appends one `Read:` line per held-out read and
+refuses a second read of a split until the controller demotes it, a read
+of a demoted split, and a split with no committed `Held-out split sha256:`
+line. The `scenariobench split` verb (BX-54) and `scenariobench run
+-heldout-read <prereg id>` (BX-29's wiring) are not built yet: they wait on
+the subject-manifest loader and the prereg loader landing on main.
+
 ## Instrument truth
 
 A wired or MCP-carrying arm's cell is only a reading if the tools it was
