@@ -335,7 +335,9 @@ ADR-034).
 A prereg is two committed files: `docs/bench/prereg/<id>.md` (prose, signed by the controller) and
 `docs/bench/prereg/<id>.json` (the machine-evaluable criterion, validated by `#Prereg`, the precedent of BC-6). Its
 sha256 is stamped on every ledger row, and `scenariobench run -prereg` refuses a dirty tree or a file that differs
-from HEAD.
+from HEAD. `scenariobench outcome` refuses a run whose prereg was last committed after the run's first cell started
+(`first_cell_at`), whose prereg sha differs from the one on any of its rows, or whose rows lack either stamp, and
+reads a run that passes as a no-read until `ClassifyOutcome` exists (BX-88).
 
 Each prereg fixes, before any data under it: hypotheses, strata and arms; a prediction per arm including the
 predicted nulls; the primary metric and its minimum effect of interest (MEI); the equivalence margin δ for each

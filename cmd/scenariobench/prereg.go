@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/benchprep"
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
@@ -173,6 +175,21 @@ func ledgerPreregStamp(cells []scenariobench.CellResult) (string, error) {
 	}
 	if len(byStamp) <= 1 {
 		for stamp := range byStamp {
+			if stamp == "" {
+				return "", nil
+			}
+			// A prereg row's first_cell_at is read from its cells, so every
+			// stamped cell needs a readable started_at (BX-88).
+			var unreadable []string
+			for _, c := range cells {
+				if _, err := time.Parse(time.RFC3339, c.StartedAt); err != nil {
+					unreadable = append(unreadable, fmt.Sprintf("%s/%s/t%d (started_at %q)", c.TaskID, c.Arm, c.Trial, c.StartedAt))
+				}
+			}
+			if len(unreadable) > 0 {
+				sort.Strings(unreadable)
+				return "", fmt.Errorf("refusing to file prereg cells without a readable started_at, so first_cell_at cannot be known: %s", strings.Join(unreadable, "; "))
+			}
 			return stamp, nil
 		}
 		return "", nil
@@ -195,6 +212,30 @@ func ledgerPreregStamp(cells []scenariobench.CellResult) (string, error) {
 	return "", fmt.Errorf("refusing to file cells run under %d different preregs (prereg_sha256): %s", len(stamps), strings.Join(parts, "; "))
 }
 
+// preregFirstCellAt is a prereg row's first_cell_at: the earliest started_at
+// over its cells, borrowed ones included, in RFC3339 UTC; "" for a row with
+// no prereg stamp, filed as before. ledgerPreregStamp has already refused a
+// stamped cell whose started_at does not parse.
+func preregFirstCellAt(preregSHA string, group []scenariobench.CellResult) string {
+	if preregSHA == "" {
+		return ""
+	}
+	var first time.Time
+	for _, c := range group {
+		at, err := time.Parse(time.RFC3339, c.StartedAt)
+		if err != nil {
+			continue
+		}
+		if first.IsZero() || at.Before(first) {
+			first = at
+		}
+	}
+	if first.IsZero() {
+		return ""
+	}
+	return first.UTC().Format(time.RFC3339)
+}
+
 type preregStatusEntry struct{ code, path string }
 
 // preregStatusEntries parses `git status --porcelain=v1 -z`; a rename or
@@ -208,7 +249,7 @@ func preregStatusEntries(out string) []preregStatusEntry {
 			continue
 		}
 		e := preregStatusEntry{code: f[:2], path: f[3:]}
-		if e.code[0] == 'R' || e.code[0] == 'C' {
+		if strings.ContainsAny(e.code, "RC") {
 			i++
 		}
 		entries = append(entries, e)
@@ -216,10 +257,16 @@ func preregStatusEntries(out string) []preregStatusEntry {
 	return entries
 }
 
+const preregGitTimeout = 2 * time.Minute
+
 // preregGitOutput runs one local git subcommand in dir under the scrubbed
 // environment and returns its stdout.
 func preregGitOutput(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	// Local subcommands only; the bound keeps a wedged repository from
+	// hanging the refusal.
+	ctx, cancel := context.WithTimeout(context.Background(), preregGitTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
 	cmd.Env = scenariobench.GitEnv()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

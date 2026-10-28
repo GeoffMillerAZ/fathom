@@ -767,6 +767,10 @@ func stickyInstrumentFaultMessage(lostReason string) (msg string, sticky bool) {
 // leaves it as time.Now.
 var ledgerClock = time.Now
 
+// cellClock stamps CellResult.StartedAt when a cell starts, before subject
+// preparation (BX-88; the SB-19 follow-up). Injected like ledgerClock.
+var cellClock = time.Now
+
 type cellOutcome struct {
 	cp         cellPlan
 	borrowed   bool
@@ -825,6 +829,7 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 }
 
 func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID string) (scenariobench.CellResult, error) {
+	startedAt := cellClock().UTC().Format(time.RFC3339)
 	wt, err := scenariobench.PrepareSubject(ctx, cp.task, arm, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("%w: %v", errSubjectPrep, err)
@@ -987,7 +992,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		PlanPath:                planPath,
 		AgentDiffPath:           diffPath,
 		RunID:                   runID,
-		StartedAt:               "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
+		StartedAt:               startedAt,
 		PreregSHA256:            cp.preregSHA,
 		WorktreePath:            wt.Path,
 		SubjectClone:            wt.SubjectClone,
@@ -1730,6 +1735,7 @@ func cmdLedger(args []string) int {
 			ModelID:        *cf.modelID,
 			HarnessVersion: *cf.harnessVersion,
 			PreregSHA256:   preregSHA,
+			FirstCellAt:    preregFirstCellAt(preregSHA, group),
 		}
 		// AggregateRowReadings is the single source of truth for a row's
 		// own Readings (every count summed, every ratio averaged with its
