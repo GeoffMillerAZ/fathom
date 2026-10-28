@@ -1,6 +1,6 @@
 # The bench ledger
 
-Every context-bench run, in git, one line each. `ledger.jsonl` is the record;
+Every context-bench run, in git, one line per run and criterion. `ledger.jsonl` is the record;
 this file renders it (`task bench-ledger`, free) and explains how to read it.
 
 Raw transcripts and per-task scores stay under `workspace/artifacts/context-bench/`
