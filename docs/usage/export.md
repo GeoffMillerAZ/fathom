@@ -39,12 +39,22 @@ one — is a later, separate decision; not built here.
 #### `export receipt` — share an anchored symbol answer
 
 ```sh
-fathom export receipt --service <id> --symbol <name> [--kind symbol_location|callers] [--store <path>] [--no-excerpts] [--keep-service] [-o receipt.json]
+fathom export receipt --service <id> --symbol <name> [--kind symbol_location|callers|references] [--store <path>] [--no-excerpts] [--keep-service] [--require-clean] [-o receipt.json]
+fathom export receipt --service <id> --kind certification [--test <name>] [--target <id>] [...]
 ```
 
 Writes a receipt as JSON to stdout, or to `-o` when supplied. The default kind
 is `symbol_location`; `callers` includes caller facts or an absence with its
-read set. Anchors identify the indexed commit and repository-relative source.
+read set. `references` writes, for a Go function or method, the declaring file
+and the file of each direct call or value use, each a whole-file `reference`
+fact; any other symbol is withheld, and a method value taken through an
+interface can still over-claim, which verify reports as a DIFFERENCE.
+`certification` takes no `--symbol`: `--test` and `--target` pick one
+certifications-layer claim, and the receipt lists the target-file symbols the
+test reaches over direct calls. A target that names no symbol (an invariant,
+an incident) is refused, since its reach is vacuous. Anchors identify the
+indexed commit and repository-relative source. `--require-clean` still writes
+the receipt, then exits 1 naming each anchor that is not committed.
 `fathom receipt verify --repo <checkout> receipt.json` checks the saved answer.
 
 Exported receipts replace the service name with `@`, including the service
