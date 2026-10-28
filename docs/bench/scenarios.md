@@ -684,9 +684,39 @@ needs a deliberate update of the line. `RecordHeldOutRead`
 (`internal/benchprep`) appends one `Read:` line per held-out read and
 refuses a second read of a split until the controller demotes it, a read
 of a demoted split, and a split with no committed `Held-out split sha256:`
-line. The `scenariobench split` verb (BX-54) and `scenariobench run
--heldout-read <prereg id>` (BX-29's wiring) are not built yet: they wait on
-the subject-manifest loader and the prereg loader landing on main.
+line.
+
+```sh
+scenariobench split -corpus <corpus.json> [-manifests calibration/bench.d] \
+  [-record docs/bench/heldout-reads.md] [-root <dir>] [-out <path>] [-json]
+```
+
+computes a corpus's splits (`benchprep.SplitHeldOut`, BX-54). Each task id
+lands in exactly one of dev, held-out, post-cutoff or unassigned, in this
+order: a declared dev task (its id is in a dev set of the record, or its
+`derivation` names a dev set's path) is dev; otherwise a task whose UTC
+`merged_at` date is later than its repository's `fresh_after` is
+post-cutoff; otherwise it takes its repository's manifest `split`.
+Repositories match through `NormaliseRepoURL`, so URL case and the
+`git@`/`https` forms agree. A repository with no manifest, or a manifest
+with no `split`, leaves its tasks unassigned, named with the reason. A
+declared dev task on a held-out repository, and a malformed `merged_at`, are
+refused. With no `fresh_after` in any manifest the post-cutoff slice is
+empty and reads `pending Q2`. Per P1 language (go, python, typescript; a
+`node` toolchain reads typescript) the dev and held-out repository counts
+come from the manifests, against 3 + 3, and each shortfall is printed, not
+refused.
+
+It prints one `<split> sha256: <hex> (<n> tasks)` line per split, then the
+unassigned, undated and dropped tasks and every shortfall, and writes the
+result to `workspace/bench/splits/<corpus file stem>.json` (scratch, never
+read back). `-manifests`, `-record` and `-out` resolve against the
+repository root (`-root`, else the git top level), never the cwd. It never
+writes the record: the `Held-out split sha256:` lines are the controller's
+(BX-11). An unreadable or absent manifest directory or record exits 2.
+
+`scenariobench run -heldout-read <prereg id>` (BX-29's wiring) is not built
+yet: it waits on the prereg loader (`LoadPrereg`, BX-62) landing on main.
 
 ## Instrument truth
 
