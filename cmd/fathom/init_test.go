@@ -101,8 +101,8 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 	}
 	hooksObj, _ := settingsTree["hooks"].(map[string]any)
 	preArr, _ := hooksObj["PreToolUse"].([]any)
-	if len(preArr) != 4 {
-		t.Fatalf("PreToolUse groups = %d, want 4 (Edit|Write|MultiEdit + Bash + Grep|Glob|Read + ^(Agent|Task)$): %v", len(preArr), preArr)
+	if len(preArr) != 5 {
+		t.Fatalf("PreToolUse groups = %d, want 5 (Edit|Write|MultiEdit + Bash + Grep|Glob|Read + ^(Agent|Task)$ + WebFetch|WebSearch): %v", len(preArr), preArr)
 	}
 	gotMatchers := map[string]bool{}
 	for _, g := range preArr {
@@ -117,7 +117,7 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 	if !gotMatchers["Edit|Write|MultiEdit"] || !gotMatchers["Bash"] {
 		t.Errorf("PreToolUse matchers = %v, want both Edit|Write|MultiEdit and Bash", gotMatchers)
 	}
-	for _, matcher := range []string{"Grep|Glob|Read", "^(Agent|Task)$"} {
+	for _, matcher := range []string{"Grep|Glob|Read", "^(Agent|Task)$", "WebFetch|WebSearch"} {
 		if !gotMatchers[matcher] {
 			t.Errorf("PreToolUse matchers = %v, missing %s", gotMatchers, matcher)
 		}
@@ -437,8 +437,8 @@ func TestMergeHookSettings_SkipsUserScopeWiring(t *testing.T) {
 			t.Errorf("PostToolUse group 1 matcher = %v, want completed lookups", lookupGroup["matcher"])
 		}
 		pre, _ := hooksObj["PreToolUse"].([]any)
-		if len(pre) != 4 {
-			t.Fatalf("PreToolUse groups = %d, want 4 (guard/discovery/spawn groups, genuinely missing)", len(pre))
+		if len(pre) != 5 {
+			t.Fatalf("PreToolUse groups = %d, want 5 (guard/discovery/spawn/web-egress groups, genuinely missing)", len(pre))
 		}
 		mergedStr := string(merged)
 		if !strings.Contains(mergedStr, testBinPath+" edit-hook --pre") {

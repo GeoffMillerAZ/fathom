@@ -195,7 +195,8 @@ func (e *Engine) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge,
 // name alone, and a bare type declaration is never what "(*T).M" syntax
 // means. Ordinary (non-parenthesized) queries are completely unaffected:
 // normalizeReceiverSyntax is a no-op for them, and the existing
-// alphabetical-by-Name ordering is unchanged.
+// alphabetical-by-Name ordering is unchanged (Go struct fields after every
+// other kind, C-R14).
 //
 // RT-85: the candidates are a point lookup over the (service_id, symbol)
 // index (ObservationsForSymbol), never the service's whole observation set.
@@ -253,7 +254,12 @@ func findSymbolIn(obs []core.Observation, name, qname string) []core.SymbolNode 
 		}
 	}
 
+	// C-R14: a same-named Go struct field ranks after every function,
+	// method and type, so the first row is never a field the name shadows.
 	sort.Slice(nodes, func(i, j int) bool {
+		if fi, fj := nodes[i].Kind == core.KindGoField, nodes[j].Kind == core.KindGoField; fi != fj {
+			return fj
+		}
 		return nodes[i].Name < nodes[j].Name
 	})
 	return nodes

@@ -99,6 +99,44 @@ type Daemon struct {
 type Guards struct {
 	GitSafety *bool // nil = shipped command pack enabled; false opts out
 	Enforce   *bool // nil = unset at every layer; caller applies its own default (true)
+	// Egress is the egress guard's mode (ADR-083): "off", "warn" or
+	// "enforce"; "" is unset at every layer, which EgressMode reads as
+	// warn. The user layer sets it; a later layer only tightens it (off <
+	// warn < enforce), so a repository can never loosen what the user set.
+	// EgressSource is the layer whose value is in effect ("" when unset).
+	Egress       string
+	EgressSource Source
+	// EgressAllow are the hosts the egress guard lets through. User-only:
+	// a repository's list is dropped by name (scope.go).
+	EgressAllow []string
+}
+
+// The egress guard's modes, loosest first.
+const (
+	EgressOff     = "off"
+	EgressWarn    = "warn"
+	EgressEnforce = "enforce"
+)
+
+// EgressMode is the egress guard's mode in effect: the configured value, or
+// warn when no layer sets one.
+func (g Guards) EgressMode() string {
+	if g.Egress == "" {
+		return EgressWarn
+	}
+	return g.Egress
+}
+
+// egressRank orders the modes from loosest to strictest; an unknown value
+// ranks with warn, the default.
+func egressRank(mode string) int {
+	switch mode {
+	case EgressOff:
+		return 0
+	case EgressEnforce:
+		return 2
+	}
+	return 1
 }
 
 // Findings configures the findings-loop's governed external import
@@ -568,6 +606,28 @@ type Typed struct {
 	SkipModules []string
 }
 
+// Ingest configures how ingest runs the language toolchains (schema.cue
+// #Ingest, ADR-083). GoNetwork lets the go commands fathom runs on its own
+// use the inherited GOPROXY and GOSUMDB; false (the default) runs them with
+// GOPROXY=off and GOSUMDB=off (internal/goenv). User scope only: a
+// repository's copy is dropped and named (scope.go).
+type Ingest struct {
+	GoNetwork bool
+}
+
+// UserGoNetwork reports the user layer's `[ingest] go_network` (ADR-083),
+// read from ~/.fathom/config.toml alone: a repository can never reopen the
+// module network. An absent, unreadable or invalid file reads as false, so
+// a broken config never opens it.
+func UserGoNetwork() bool {
+	path := DefaultUserPath()
+	if path == "" {
+		return false
+	}
+	l, err := Load(path, "")
+	return err == nil && l.Config.Ingest.GoNetwork
+}
+
 // Receipts configures what a portable receipt states about the repository
 // it was produced in (schema.cue #Receipts). RepositoryURI is the absolute
 // URI a receipt's SARIF names in versionControlProvenance; "" (the
@@ -592,6 +652,7 @@ type Config struct {
 	Receipts       Receipts
 	Gate           Gate
 	Typed          Typed
+	Ingest         Ingest
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon

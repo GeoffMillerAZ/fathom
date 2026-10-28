@@ -35,6 +35,9 @@ const (
 	FactCaller FactKind = "caller"
 	// FactAbsence: the reads found none; the fact carries its read set.
 	FactAbsence FactKind = "absence"
+	// FactReference: the subject, a repo-relative file, mentions the
+	// receipt's symbol; the anchor is the whole file.
+	FactReference FactKind = "reference"
 )
 
 // ExportInput is the only channel by which data reaches BuildReceipt.
@@ -152,7 +155,7 @@ func BuildReceipt(in ExportInput) (ExportedReceipt, error) {
 
 func buildFact(fi FactInput, noExcerpts bool) (Fact, error) {
 	switch fi.Kind {
-	case FactDefinition, FactCaller, FactAbsence:
+	case FactDefinition, FactCaller, FactAbsence, FactReference:
 	default:
 		return Fact{}, fmt.Errorf("receipt: fact kind %q is not one an exported receipt carries", fi.Kind)
 	}

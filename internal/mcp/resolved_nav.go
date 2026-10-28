@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
@@ -347,9 +348,31 @@ func blastRadiusResolved(g *navGraphs, changedFiles []string, includeHeuristic b
 		maxSymbols = defaultBlastSymbols
 	}
 	graph, filter := g.pick(includeHeuristic)
+	excludedFields := make(map[string]bool)
+	changed := make(map[string]bool, len(changedFiles))
+	for _, f := range changedFiles {
+		changed[f] = true
+	}
+	changedFieldsByKey := make(map[string]changedFieldRow)
+	for _, n := range g.Nodes {
+		if n.Kind != core.KindGoField {
+			continue
+		}
+		key := n.Key()
+		excludedFields[key] = true
+		if changed[n.FilePath] {
+			changedFieldsByKey[key] = changedFieldRow{Key: key, Depth: 0, Changed: true, Note: "field references not indexed"}
+		}
+	}
+	changedFields := make([]changedFieldRow, 0, len(changedFieldsByKey))
+	for _, row := range changedFieldsByKey {
+		changedFields = append(changedFields, row)
+	}
+	sort.Slice(changedFields, func(i, j int) bool { return changedFields[i].Key < changedFields[j].Key })
 	res := impact.BlastRadiusBounded(graph, g.Nodes, changedFiles, impact.Options{
-		MaxDepth:   maxDepth,
-		MaxSymbols: maxSymbols,
+		MaxDepth:    maxDepth,
+		MaxSymbols:  maxSymbols,
+		ExcludeKeys: excludedFields,
 	})
 	res.EdgeFilter = filter
 	listed := make(map[string]bool, len(res.Symbols))
@@ -358,7 +381,8 @@ func blastRadiusResolved(g *navGraphs, changedFiles []string, includeHeuristic b
 	}
 	return boundedBlast{
 		BoundedResult: res,
-		Buckets:       blastBucketsOf(graph, g.Nodes, changedFiles, maxDepth, listed),
+		Buckets:       blastBucketsExcluding(graph, g.Nodes, changedFiles, maxDepth, listed, excludedFields),
+		ChangedFields: changedFields,
 	}
 }
 
@@ -366,5 +390,6 @@ func blastRadiusResolved(g *navGraphs, changedFiles []string, includeHeuristic b
 // over the same graph and the same bounds — never a wider walk.
 type boundedBlast struct {
 	impact.BoundedResult
-	Buckets []blastBucket
+	Buckets       []blastBucket
+	ChangedFields []changedFieldRow
 }

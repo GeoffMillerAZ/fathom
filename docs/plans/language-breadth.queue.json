@@ -2166,11 +2166,13 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "a reference validator's $ref resolution (tier A)"
+      "@apidevtools/json-schema-ref-parser 16.0.5 (independent third-party resolver, tier C under P-T1)"
     ],
     "calibration_subjects": [
       "SchemaStore/schemastore",
-      "json-schema-org/JSON-Schema-Test-Suite"
+      "json-schema-org/JSON-Schema-Test-Suite",
+      "radiantearth/stac-spec",
+      "oasis-open/cti-stix2-json-schemas"
     ],
     "depends_on": [
       "LB-F8",
@@ -2184,7 +2186,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-json-schema",
     "worker_model": "sonnet",
-    "notes": "new; $defs/definitions, properties; $ref edges local and cross-file"
+    "notes": "D19 replay 2026-10-27: four complete preregistered subject scopes; L1/L2 good at C under P-T1, L3 unmet with 3 scored pairs; 291 more Fathom pairs unattested and unscored (SchemaStore 107, STAC 14, STIX 170). New STAC/STIX physical targets resolve as URL reads and are not attested in the existing file-pair unit; no URL rewrites or population trimming. See docs/assessments/2026-10-27-tools-json-schema-d19.md. T-R18: precision 1 applies only to 3 scored pairs; its denominator is under 20 only because absent oracle families omit those 291 pairs. Neither true nor false without identifier-aware attestation; no empty family/instrument-rule change."
   },
   {
     "id": "scala",
@@ -2634,7 +2636,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067)",
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067); 2026-10-26 L1/L2 native audit: pinned owner Declarative Converter accepts all 23 canonical inputs (753 model nodes, 747 positioned); no absent-offline-evaluator ceiling. Full dialect definition/range/pair mapping remains unbuilt; existing 163 definitions and 133 pairs stay C, no new tier or L3 change. See calibration/oracles/jenkinsfile/NATIVE.md and the dated tools-jenkins-native assessment",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (@Library shared-library and load file edges); oracle gains the Jenkins declarative linter (tier A, ruling W4, a local controller in the measuring harness only)"
   },
   {
@@ -3350,7 +3352,7 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "crossplane beta validate (tier A, offline schemas)"
+      "independent yaml.v3 walk (tier C, full canonical scope; native schema validation is calibration only)"
     ],
     "calibration_subjects": [
       "crossplane/crossplane (examples subpath)",
@@ -6164,6 +6166,39 @@
     "notes": "GDEV-10 groundwork only. Derived file ownership, scopes and declared references follow documented Unity 2021+ rules. No native oracle reading or support grade claimed."
   },
   {
+    "id": "simulink",
+    "name": "Simulink models (.slx, .mdl)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:archive/zip + encoding/xml (.slx), the .mdl brace tree",
+    "licence": "n/a",
+    "oracle": [
+      "walk.py (tier C: zipfile and xml.parsers.expat, start and end lines; the graded oracle, which copies the Go reader's decisions, so it shows agreement); cross-checks run 2026-10-25 under workspace/tools, ungraded, summarized in calibration/oracles/simulink-walk/CROSSCHECK.md: miss-hit-core 0.9.44 s_parser (GPL-3, .slx only, reproduced in round 3: 163 of 178 parsed, 15 Thermodynamics models refused by its parser; all 36,203 of its blocks agree, 105 of them only by a trailing line break fathom reads as a space; fathom adds 3,660 chart-internal blocks it folds), mathworks/data-explorer-core v1.46.0 (BSD-3, parseModel over all 194 models, unreproduced in round 3's VM: SID and path for the 8,544 blocks it reports agree, 7,651 byte for byte, 893 differing only by its display labels; 9 of 9 model references); no tool checked the signal lines; rustylink and SLX2MDL did not run"
+    ],
+    "calibration_subjects": [
+      "WEC-Sim/WEC-Sim v7.1.0 a23d2993 (subpath; 19 .slx, 15 distinct; MOST_Lib.slx 5.97 MB is oversize)",
+      "Thermodynamics v1.3.1 ce9bc73d (40)",
+      "LADAC main 1a295a82 (97, GPL)",
+      "Firmament-Autopilot/FMT-Model master 70984e23 (22)",
+      "etherlab-examples master 491f9375 (16 .mdl, 15 distinct)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "language-breadth.simulink.md#LB-F587"
+    ],
+    "wave": 6,
+    "engine": "native",
+    "plan_row": "LB-Q-simulink",
+    "worker_model": "sonnet",
+    "notes": "new, outside 18.3's tiers (owner ruling 2026-10-24 (a)); a .slx is read only through ADR-021 (1)'s 2026-10-24 amendment (match.container); block names hold spaces, line breaks and '/', so the dialect compares names whole (name_match identity); L3 tries resolve entity-name with to_kind before a new mode, same-named models in several directories ambiguous; tier C only (owner ruling (d)), which caps every level at good; MATLAB code a model calls is a handoff for the reading's notes, never an LB-Q-simulink-matlab row; throughput counts compressed bytes",
+    "retargeted": "2026-10-25 (owner rulings S-R6, S-R7, round 2): L3 counts only with at least 20 resolvable model references across at least 2 subjects; the subjects hold 2 (one subject, 7 more ambiguous), and simulink/blog 2e4bde16 (BSD-3) would add 9, so the item reads L2 good and LB-Q-simulink-rest carries L3 deferred; the oracle text says what ran; PID_MATLAB_Learn dropped from the subjects: no repository of that name resolved to commit 0029fffe, so it was never measured"
+    },
+    {
     "id": "python-manifests",
     "name": "Python dependency manifests (requirements*.txt, constraints*.txt, setup.cfg, Pipfile, poetry.lock, uv.lock, environment.yml)",
     "kind": "tooling",

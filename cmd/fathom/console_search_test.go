@@ -63,6 +63,72 @@ func TestConsoleSearch_SymbolsMatchEveryTokenWithExactTotals(t *testing.T) {
 	}
 }
 
+func TestConsoleSearch_FieldsFollowCallablesAndTypes(t *testing.T) {
+	entries := []consoleSymbolEntry{
+		newSymbolEntry("charge", "GoField", "billing", "billing.go:1"),
+		newSymbolEntry("validateCharge", "GoFunc", "billing", "billing.go:2"),
+		newSymbolEntry("ChargeHandler", "GoMethod", "billing", "billing.go:3"),
+		newSymbolEntry("ChargeSchema", "GoType", "billing", "billing.go:4"),
+	}
+	for i := 0; i < 200; i++ {
+		entries = append(entries, newSymbolEntry(fmt.Sprintf("chargeField%03d", i), "GoField", "billing", fmt.Sprintf("billing.go:%d", i+5)))
+	}
+	sets := map[string]symbolSource{"billing": entrySlice(entries)}
+	lookup := func(tokens []string, limit int) ([]console.SearchResult, int, error) {
+		r, total := rankSymbolEntries([]string{"billing"}, sets, tokens, limit)
+		return r, total, nil
+	}
+	// C-R14: the bounded lookup and SearchWith's final sort must agree;
+	// even an exact field name cannot evict a weaker callable or type.
+	for _, result := range []console.SearchResults{
+		console.SearchWith(console.SearchIndex{Symbols: lookup}, "charge", console.SearchOptions{PerGroup: 8}),
+		console.SearchWith(console.SearchIndex{Symbols: lookup}, "charge", console.SearchOptions{Group: console.GroupSymbols, PerGroup: 8}),
+	} {
+		if len(result.Groups) != 1 {
+			t.Fatalf("groups = %+v, want symbols", result.Groups)
+		}
+		group := result.Groups[0]
+		if group.Total != len(entries) || len(group.Results) != 8 {
+			t.Fatalf("symbols = %d of %d, want 8 of %d", len(group.Results), group.Total, len(entries))
+		}
+		for _, check := range []struct {
+			want  string
+			score int
+		}{{"ChargeHandler", 80}, {"ChargeSchema", 80}, {"validateCharge", 40}} {
+			found := false
+			for i, row := range group.Results {
+				if row.Title == check.want {
+					found = true
+					if row.Score != check.score {
+						t.Errorf("%s score = %d, want unchanged text score %d", check.want, row.Score, check.score)
+					}
+					for j := 0; j < i; j++ {
+						if strings.HasPrefix(group.Results[j].Subtitle, "GoField in ") {
+							t.Errorf("field %q outranks %s: %+v", group.Results[j].Title, check.want, group.Results)
+						}
+					}
+				}
+			}
+			if !found {
+				t.Errorf("%s evicted by fields: %+v", check.want, group.Results)
+			}
+		}
+		if len(group.Results) >= 4 && group.Results[3].Title != "charge" {
+			t.Errorf("field text relevance lost: first field = %q, want exact match charge", group.Results[3].Title)
+		}
+	}
+	fieldOnly := console.SearchWith(console.SearchIndex{Symbols: lookup}, "fieldonly", console.SearchOptions{PerGroup: 8})
+	if fieldOnly.Total != 0 {
+		t.Fatalf("unexpected field-only fixture match: %+v", fieldOnly)
+	}
+	fieldEntry := newSymbolEntry("fieldOnly", "GoField", "billing", "billing.go:999")
+	sets["billing"] = entrySlice(append(entries, fieldEntry))
+	fieldOnly = console.SearchWith(console.SearchIndex{Symbols: lookup}, "fieldonly", console.SearchOptions{PerGroup: 8})
+	if fieldOnly.Total != 1 || len(fieldOnly.Groups) != 1 || len(fieldOnly.Groups[0].Results) != 1 || fieldOnly.Groups[0].Results[0].Title != "fieldOnly" {
+		t.Fatalf("field-only query must remain discoverable: %+v", fieldOnly)
+	}
+}
+
 func TestConsoleSearch_BoundedReachableAndHonest(t *testing.T) {
 	f := newConsoleFixture(t)
 
@@ -88,13 +154,64 @@ func TestConsoleSearch_BoundedReachableAndHonest(t *testing.T) {
 	if !strings.Contains(page, `href="/search?group=symbols&amp;q=e"`) {
 		t.Fatalf("a capped group must link to all of its matches:\n%.2000s", page)
 	}
-	env := f.pageJSON(t, "/search?q=e&group=symbols")
-	var res console.SearchResults
-	if err := json.Unmarshal(env.Model, &res); err != nil {
-		t.Fatal(err)
+	// C-R14: Total names all reachable rows, not the first page's 50 rows.
+	// Walk every JSON and HTML page so a truthful count and working links
+	// remain coupled when this fixture gains symbols.
+	seen := map[string]bool{}
+	var total int
+	for n := 1; ; n++ {
+		path := searchHref("e", console.GroupSymbols, n)
+		env := f.pageJSON(t, path)
+		var res console.SearchResults
+		if err := json.Unmarshal(env.Model, &res); err != nil {
+			t.Fatal(err)
+		}
+		if len(res.Groups) != 1 || res.Groups[0].Group != console.GroupSymbols {
+			t.Fatalf("page %d groups = %+v, want symbols", n, res.Groups)
+		}
+		group := res.Groups[0]
+		if n == 1 {
+			total = group.Total
+			if total <= searchGroupPageSize {
+				t.Fatalf("fixture has %d symbols; need multiple pages", total)
+			}
+		}
+		wantRows := searchGroupPageSize
+		if remaining := total - (n-1)*searchGroupPageSize; remaining < wantRows {
+			wantRows = remaining
+		}
+		if group.Total != total || res.Total != total || len(group.Results) != wantRows || res.Offset != (n-1)*searchGroupPageSize {
+			t.Errorf("page %d = %d rows, group total %d, result total %d, offset %d; want %d, %d, %d, %d", n, len(group.Results), group.Total, res.Total, res.Offset, wantRows, total, total, (n-1)*searchGroupPageSize)
+		}
+		_, _, htmlPage := f.get(t, path)
+		if got := strings.Count(htmlPage, `data-search-kind="symbol"`); got != len(group.Results) {
+			t.Errorf("page %d HTML has %d symbols, JSON has %d", n, got, len(group.Results))
+		}
+		for _, row := range group.Results {
+			key := row.Service + "/" + row.Title + "/" + row.Ref
+			if seen[key] {
+				t.Errorf("page %d repeats %s", n, key)
+			}
+			seen[key] = true
+			if !strings.Contains(htmlPage, ">"+html.EscapeString(row.Title)+"</span>") {
+				t.Errorf("page %d HTML lacks %s", n, row.Title)
+			}
+		}
+		if n > 1 && !strings.Contains(htmlPage, `href="`+html.EscapeString(searchHref("e", console.GroupSymbols, n-1))+`" rel="prev"`) {
+			t.Errorf("page %d lacks previous link", n)
+		}
+		if n*searchGroupPageSize >= total {
+			if strings.Contains(htmlPage, `rel="next"`) {
+				t.Errorf("last page %d links to a nonexistent next page", n)
+			}
+			break
+		}
+		if !strings.Contains(htmlPage, `href="`+html.EscapeString(searchHref("e", console.GroupSymbols, n+1))+`" rel="next"`) {
+			t.Errorf("page %d lacks next link", n)
+		}
 	}
-	if len(res.Groups) != 1 || res.Groups[0].Group != console.GroupSymbols || len(res.Groups[0].Results) != res.Groups[0].Total || res.Groups[0].Total <= console.DefaultPerGroup {
-		t.Errorf("the symbols group page = %+v, want every match of the one group", res.Groups)
+	if len(seen) != total {
+		t.Errorf("all pages have %d unique symbols, published Total is %d", len(seen), total)
 	}
 
 	// The kit's empty state, not a bare paragraph.

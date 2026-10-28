@@ -1,0 +1,28 @@
+{
+  "schema": "slang-queue-entry-proposal-v1",
+  "status": "triage only, owner/controller review; not canonical queue activation",
+  "item": {
+    "id": "slang",
+    "name": "Slang GPU shaders (.slang, .slangh)",
+    "kind": "language",
+    "tier": "T3 proposed",
+    "target_level": "L2 proposed; higher levels only if an independent native oracle proves them",
+    "grammar_candidates": "grammar-candidates.json",
+    "oracle_candidates": "oracle-candidates.json",
+    "population_rule": "pool-rule.json",
+    "search_rule": "search-rule-r4.json",
+    "subject_inventory": "subject-search-r4.json"
+  },
+  "order": "G-R1 OpenCL precedes Slang. Controller currently authorizes triage only; NP-Q5 (how many language lanes to keep) must be answered before implementation.",
+  "implementation_allowed": false,
+  "implemented_behavior": "None. No dialect, grammar lock/blob, classification map, canonical corpus, reading or generated tracker change.",
+  "oracle_tiers": "Unassigned until output and context validation. Reconstructed compiler invocations cap at tier B. Native semantic output needs actual untranslated subject context and coverage proof for tier A; a native binary name alone gives no tier upgrade. Same-grammar queries cap at tier C.",
+  "method": "Prefer official Slang declaration/reflection/source-location API, AST dump and AST-backed slangd navigation; qualify end ranges, written call sites and resolved import edges before adapter work. Reuse existing langbench schema/scope/tier rules; no new runtime service. Runtime coverage is executed subset only.",
+  "activation": "Controller owns canonical queue/plan rows. This proposal changes neither.",
+  "population_status": "Metadata only: all 466 candidates have dispositions, with 48 eligible whole projects. Primary: 47 projects, 2,752 files and 14,417,219 bytes. Separate Falcor holdout: 461 files and 2,951,994 bytes. All 18 old pins and 22 previously verified new pins remain fixed. Per-file license terms and checkout fidelity remain admission checks; no measurements.",
+  "future_gate": "Primary and holdout must separately meet at most 5% ERROR-or-MISSING files and at most 0.1% faults on the same frozen grammar revision. Report both; the weaker group caps any level or change note.",
+  "search_boundary": "Complete ParameterBlock and four README/topic repository queries, plus earlier queries, named seeds and all historical discoveries. The shader-attribute route is incomplete: one distinct page (page 1, 100 of 39,040 reported file hits from 51 repositories), requested five times with narrowing size ranges that returned byte-identical responses. GitHub allowed 10 code requests per minute. No r3a shader-attribute requests followed. The reported total is search output, not a verified count of real attributes. This bounded discovery is neither reach-complete nor an atomic snapshot.",
+  "future_ceiling_scope": "No Slang level or ceiling is measured. Any future ceiling must state this search boundary plainly. The shader-attribute route is incomplete: one distinct page (page 1, 100 of 39,040 reported file hits from 51 repositories), requested five times with narrowing size ranges that returned byte-identical responses. GitHub allowed 10 code requests per minute. No r3a shader-attribute requests followed. The reported total is search output, not a verified count of real attributes. This bounded discovery is neither reach-complete nor an atomic snapshot.",
+  "holdout_overlap": "Falcor shares 17 exact Git blobs with ReSTIR_PT and 239 with Area-ReSTIR, or 240 distinct primary-shared blobs. Four primary projects carry 587 selected files under Falcor trees. No occurrence is removed. The holdout is not fully independent of the primary. Future readings must report holdout beside primary rates with and without these four whole projects.",
+  "publication_identity_policy": "X-R9: admitted subject slugs and pins remain public. Non-subject discovery rows use only numeric GitHub repository ids, counts, dispositions and response hashes. Original names and raw API records remain private."
+}

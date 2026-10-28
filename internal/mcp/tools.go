@@ -383,6 +383,17 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			result["cross_service_callers"] = cross
 		}
 		summary := findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth, len(typedCallers))
+		var fieldGraph *callgraph.Graph
+		var fieldNodes []core.SymbolNode
+		if navErr == nil {
+			fieldGraph, fieldNodes = navs.Syntax, navs.Nodes
+		}
+		if goFieldTarget(ctx, backend, p.Service, p.Symbol, fieldGraph, fieldNodes) {
+			// Field references are not indexed: its callers are unknown,
+			// never none.
+			result["field_references_indexed"] = false
+			summary = capSummary(fmt.Sprintf("callers of %s are unknown: field references are not indexed; %d recorded caller%s", p.Symbol, len(wireCallers), pluralS(len(wireCallers))))
+		}
 		if navErr != nil {
 			summary += "; " + navLoadNote(p.Service, navErr) + " (direct syntax callers only)"
 		}
@@ -440,17 +451,21 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if p.Name == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_symbol: name required"}
 		}
-		nodes, err := backend.FindSymbol(ctx, p.Service, p.Name)
+		match, err := resolveSymbolMatches(ctx, backend, p.Service, p.Name, func() ([]core.SymbolNode, error) {
+			return serviceSymbols(ctx, backend, p.Service)
+		}, false)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		if len(nodes) > 0 {
+		nodes := match.Nodes
+		if match.Via == "exact" {
 			resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(nodes)), "matched_via": "exact"}
 			// SB-5: an exact hit on a single Go interface additionally
-			// carries its implementers (H1-T06's question in one call).
-			if len(nodes) == 1 && nodes[0].Kind == core.KindGoInterface {
+			// carries its implementers (H1-T06's question in one call). A
+			// same-named struct field never hides the one interface.
+			if one := core.WithoutShadowingFields(nodes, p.Name); len(one) == 1 && one[0].Kind == core.KindGoInterface {
 				if all, allErr := serviceSymbols(ctx, backend, p.Service); allErr == nil {
-					if impls := implementationsOf(ctx, backend, p.Service, nodes[0], all); len(impls) > 0 {
+					if impls := implementationsOf(ctx, backend, p.Service, one[0], all); len(impls) > 0 {
 						resp["implementations"] = impls
 					}
 				}
@@ -458,27 +473,18 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			return resp, nil
 		}
 
-		// Exact tier missed — degrade over the service's symbol list. Fallback
-		// errors never fail the lookup; the answer is just "no match".
-		var all []core.SymbolNode
-		if listed, listErr := serviceSymbols(ctx, backend, p.Service); listErr == nil {
-			all = listed
-			if ci, ciTotal := caseFoldMatches(all, p.Name); len(ci) > 0 {
-				resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(ci)), "matched_via": "case_insensitive"}
-				if el := elisionFor(len(ci), ciTotal, "name match before package match, then name/file/line/kind", "narrow with the exact name, or a package-qualified query (pkg.Name)"); el != nil {
-					resp["truncated"] = true
-					resp["elided"] = el
-				}
-				return resp, nil
+		all := match.All
+		if match.Via == "case_insensitive" || match.Via == "substring" {
+			resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(nodes)), "matched_via": match.Via}
+			ordering, narrow := "name match before package match, then name/file/line/kind", "narrow with the exact name, or a package-qualified query (pkg.Name)"
+			if match.Via == "substring" {
+				ordering, narrow = "shortest name first, then name/file/line/kind", "narrow the query, or ask for the exact/qualified name"
 			}
-			if sub, total := substringMatches(all, p.Name); len(sub) > 0 {
-				resp := map[string]any{"symbols": markSymbolDTOs(ctx, backend, p.Service, toNodeDTOs(sub)), "matched_via": "substring"}
-				if el := elisionFor(len(sub), total, "shortest name first, then name/file/line/kind", "narrow the query, or ask for the exact/qualified name"); el != nil {
-					resp["truncated"] = true
-					resp["elided"] = el
-				}
-				return resp, nil
+			if el := elisionFor(len(nodes), match.Total, ordering, narrow); el != nil {
+				resp["truncated"] = true
+				resp["elided"] = el
 			}
+			return resp, nil
 		}
 
 		// Full miss: did_you_mean suggestions, never matches. Edit-distance

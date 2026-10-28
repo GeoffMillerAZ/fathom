@@ -1,0 +1,170 @@
+{
+  "schema": "slang-search-rule-r3",
+  "registered_on": "2026-10-26",
+  "status": "preregistered-before-enumeration; no new request or measurement executed",
+  "authority": "Metadata-only Slang triage under NP-Q5. This record must be committed before executing its searches. No parser, compiler, oracle, grade, generated file, canonical queue, or product change is authorized.",
+  "purpose": "Close the primary-language blind spot with two GPU-Slang token searches, union their repository identities with the existing closed r2 set and dated named review seeds, then refreeze before any shader measurement.",
+  "searches": [
+    {
+      "id": "github-language",
+      "source": "GitHub Search Repositories API",
+      "query": "language:Slang stars:>=100",
+      "request": "GET https://api.github.com/search/repositories?q=language%3ASlang%20stars%3A%3E%3D100&sort=stars&order=desc&per_page=100&page={page}",
+      "pages": "Fetch page 1 through the first empty page or the page containing the final item according to total_count, at most pages 1-10. Save every raw response, URL, HTTP status, SHA-256, total_count, incomplete_results, returned count, and ordered full_name list. A short page before the declared end is an error."
+    },
+    {
+      "id": "github-name-description",
+      "source": "GitHub Search Repositories API",
+      "query": "slang shader in:name,description stars:>=100",
+      "request": "GET https://api.github.com/search/repositories?q=slang%20shader%20in%3Aname%2Cdescription%20stars%3A%3E%3D100&sort=stars&order=desc&per_page=100&page={page}",
+      "pages": "Fetch page 1 through the first empty page or the page containing the final item according to total_count, at most pages 1-10; this replaces the prior first-10-only search. Save the same receipt fields as github-language."
+    }
+  ],
+  "github_completion_rule": "GitHub search exposes at most 1,000 results per query. If total_count exceeds 1,000, page 10 is full while more results remain, any page reports incomplete_results=true, pagination/total_count is inconsistent, or HTTP/API/rate failure prevents exhaustion, stop without freezing a pool. Resume the same requests after rate recovery; unauthenticated rate limits never count as candidate exclusions. Do not silently tighten query, select top-ranked hits, or claim completeness from a partial result. De-duplicate by GitHub repository identity and record every search occurrence.",
+  "named_seed_list": [
+    {
+      "repository_id": 93882897,
+      "reason": "Compiler and diagnostic boundary from prior subject-search.json"
+    },
+    {
+      "repository": "shader-slang/slang-rhi",
+      "primary_source": "https://github.com/shader-slang/slang-rhi",
+      "reason": "Prior subject-search.json candidate"
+    },
+    {
+      "repository": "shader-slang/slangpy",
+      "primary_source": "https://github.com/shader-slang/slangpy",
+      "reason": "Prior subject-search.json candidate"
+    },
+    {
+      "repository": "shader-slang/slangpy-samples",
+      "primary_source": "https://github.com/shader-slang/slangpy-samples",
+      "reason": "Prior subject-search.json candidate missing from the prior search results"
+    },
+    {
+      "repository": "shader-slang/slang-torch",
+      "primary_source": "https://github.com/shader-slang/slang-torch",
+      "reason": "Prior subject-search.json candidate missing from the prior search results"
+    },
+    {
+      "repository_id": 860597035,
+      "reason": "Prior zero-population candidate"
+    },
+    {
+      "repository": "NVIDIAGameWorks/Falcor",
+      "primary_source": "https://github.com/NVIDIAGameWorks/Falcor",
+      "reason": "Prior production holdout missing from the prior search results"
+    },
+    {
+      "repository": "google/slang-gaussian-rasterization",
+      "primary_source": "https://github.com/google/slang-gaussian-rasterization",
+      "reason": "Prior independent candidate missing from the prior search results"
+    },
+    {
+      "repository": "shader-slang/neural-shading-s25",
+      "primary_source": "https://github.com/shader-slang/neural-shading-s25",
+      "reason": "Prior subject-search.json candidate"
+    },
+    {
+      "repository": "SaschaWillems/Vulkan",
+      "primary_source": "https://github.com/SaschaWillems/Vulkan",
+      "reason": "Independent Vulkan sample population identified by the r1 critic; evaluate the whole pinned project"
+    },
+    {
+      "repository": "KhronosGroup/Vulkan-Samples",
+      "primary_source": "https://github.com/KhronosGroup/Vulkan-Samples",
+      "reason": "Independent Vulkan sample population identified by the r1 critic; evaluate the whole pinned project"
+    },
+    {
+      "repository": "nvpro-samples/vk_raytracing_tutorial_KHR",
+      "primary_source": "https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR",
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    },
+    {
+      "repository": "nvpro-samples/vk_gaussian_splatting",
+      "primary_source": "https://github.com/nvpro-samples/vk_gaussian_splatting",
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    },
+    {
+      "repository": "nvpro-samples/vk_gltf_renderer",
+      "primary_source": "https://github.com/nvpro-samples/vk_gltf_renderer",
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    },
+    {
+      "repository": "nvpro-samples/vk_minimal_latest",
+      "primary_source": "https://github.com/nvpro-samples/vk_minimal_latest",
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    },
+    {
+      "repository": "nvpro-samples/vk_mini_samples",
+      "primary_source": "https://github.com/nvpro-samples/vk_mini_samples",
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    },
+    {
+      "repository": "nvpro-samples/nvpro_core2",
+      "primary_source": "https://github.com/nvpro-samples/nvpro_core2",
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    },
+    {
+      "repository_id": 688691303,
+      "reason": "Known secondary-language omission identified by binding critic-m3 round-two review dated 2026-10-26; inspect pin, entire population and license before measurement."
+    }
+  ],
+  "candidate_union": "Retain all18 disposed r2 repositories as frozen historical metadata inputs; union every repository from completed secondary-language token searches, the existing repository queries and all18 named seeds. Record every source occurrence and every below-reach/excluded hit. No result-selected additions or removals.",
+  "pin_rule": "Reuse previously frozen r2 pins unchanged, with explicit historical provenance. For every newly discovered or review-seeded repository, resolve latest published release to full commit, otherwise full default-branch HEAD, before tree/license work. Never follow moving refs during measurement. Record source/date and any release/default-branch distinction; unresolved retrieval stops complete freeze.",
+  "metadata_rule": "At the pinned commit, fetch the complete recursive Git tree. Require truncated=false; otherwise use deterministic tree-by-tree traversal until every entry is accounted for or stop incomplete. Count regular Git blobs only, preserving distinct path occurrences. Selected population is every exact lowercase .slang or .slangh regular file in the entire repository. Count selected files and selected blob bytes. Symlinks and gitlinks are counted separately but not followed. No subpath, parse-result, compiler-success, filename, or file-size filtering. Record root license expression and pinned license blob hash; inspect per-file terms before admission. Metadata only; do not fetch shader bodies or measure.",
+  "eligibility": {
+    "language": "Confirm shader-slang GPU Slang from repository primary documentation or pinned metadata. Same-suffix RetroArch shader packs, SystemVerilog slang, and other languages receive wrong-language disposition, with evidence; suffix or GitHub language label alone is insufficient.",
+    "license": "Pinned root terms must provide an OSI-approved grant (including an OSI-approved base with a permissive exception). Missing terms or a non-OSI grant receive license-excluded with the concrete evidence, never an inferred permission. Conflicting or ambiguous terms receive unresolved-stop pending clarification. Per-file conflicting terms are an admission stop before measurement, never an outcome-based file removal.",
+    "size": "At least one selected regular file; at most 5,000 selected files and at most 50,000,000 selected blob bytes across the whole repository. The size ceiling applies to selected suffix content, not all repository files, so a roughly 90 MB Vulkan-Samples repository can qualify without trimming paths. No arbitrary whole-checkout byte limit changes membership; if retrieval is impractical, record an operational stop and seek a metadata-preserving retrieval method before measurement.",
+    "role": "Nonempty eligible production, application, and sample projects enter the candidate measurement population. The compiler implementation and its intentional regression fixtures are diagnostic by predeclared role; an empty specification repository is zero-population. No project becomes diagnostic because its grammar rate is hard."
+  },
+  "disposition_record": "Emit one row for every union repository, including every search hit and seed, with full_name, sources/page/rank, pin and metadata receipts, language evidence, root/per-file license state, selected count/bytes, and exactly one final disposition: eligible-primary, eligible-holdout, diagnostic-role, wrong-language, zero-population, license-excluded, size-excluded, or unresolved-stop. Record all applicable exclusion reasons in addition to the final disposition. A missing disposition or unresolved-stop prevents complete freeze. A code-only hit below100stars is below-reach; retained r2/named seeds stay visible. Copies/forks are identified from public metadata; duplicates remain in any eligible whole-project population.",
+  "role_assignment": "After all eligible metadata are frozen, reserve the eligible production/application/sample repository with the largest selected-file count as one whole-project holdout (tie: lexicographically smallest full_name); all other eligible projects are primary. Publish the identity, pin, counts, and zero/duplicate blob overlap. Both groups retain every selected file and are measured separately on the same frozen grammar revision. The holdout never enters canonical shards or primary aggregation.",
+  "future_gate": "At most 5% ERROR-or-MISSING files and at most 0.1% faults on the whole fixed primary pool AND separately on the whole fixed holdout. Report both rates and per-project counts beside any proposed level or change note; no level may claim more than either group supports. Independent reading, coverage, and performance proof remain additional requirements. No measurement is authorized by this preregistration.",
+  "related_source_followup_unexecuted": [
+    {
+      "source": "crates.io registry",
+      "requests": [
+        "GET https://crates.io/api/v1/crates/tree-sitter-slang",
+        "GET https://crates.io/api/v1/crates/shader-slang",
+        "GET https://crates.io/api/v1/crates?q=slang"
+      ],
+      "request_header": "Descriptive User-Agent required; prior headerless HTTP 403 is an access gap, not negative evidence",
+      "purpose": "Record grammar package and compiler Rust binding as distinct packages, while treating compiler bindings as the own-toolchain oracle family"
+    },
+    {
+      "source": "PyPI registry",
+      "requests": [
+        "GET https://pypi.org/pypi/slangpy/json"
+      ],
+      "purpose": "Record the compiler Python binding as an own-toolchain wrapper, not an independent oracle"
+    }
+  ],
+  "freeze_order": "Commit this dated r3 amendment first. Only then execute content search, collect and dispose every repository, derive updated roles from the complete metadata set, and commit the r3 inventory and pool digests. No implementation, shader-content download, parsing or compiler run before NP-Q5. Do not change the existing pool while enumeration is incomplete.",
+  "reach_boundary": "Prospective stars>=100 for content-search hits and repository queries, plus the named seeds and retained r2 set. The language qualifier is primary-language-only; secondary-language discovery uses the two preregistered GPU Slang tokens with explicit code-index limitations. This is a bounded search, never reach-complete.",
+  "amendment": {
+    "reason": "Binding round-two M3: repository language search sees primary language only, so add content-based secondary-language discovery before any re-enumeration.",
+    "supersedes": "search-rule-r2.json",
+    "previous_sha256": "781f18c472b33df4173a8dc9ed8268f098adb7ec27fc6e8737fcb2cdca73541d",
+    "unchanged_constraints": "OSI root grant, whole-project exact selected suffix population, selected-file/byte ceilings, metadata-only triage, separate primary and holdout gates and NP-Q5 are retained."
+  },
+  "secondary_language_searches": [
+    {
+      "id": "code-parameterblock",
+      "query": "extension:slang ParameterBlock"
+    },
+    {
+      "id": "code-shader-attribute",
+      "query": "extension:slang \"[shader(\""
+    }
+  ],
+  "secondary_language_search_protocol": {
+    "endpoint": "GET https://api.github.com/search/code?q={urlencoded_query_plus_size_slice}&per_page=100&page={page}",
+    "authentication": "Use authenticated read-only GitHub code search, via the configured connector or CLI credentials. Never print credentials, fetch text-match snippets or persist subject content. Public metadata only. A 401 is a missing authentication capability, not a search miss.",
+    "size_partition": "For each token start at size:0..2147483647. Probe page1. If total_count exceeds1000, recursively split the inclusive integer range at floor((lo+hi)/2), visiting lower half first, until every nonempty leaf has at most1000 hits. Query every leaf through its final page at100/page. If a one-byte size still exceeds1000, stop incomplete and seek a further preregistered partition before freeze. No ranked truncation.",
+    "completeness": "Require incomplete_results=false, stable total_count across a leaf and the exact reported number of items. Retry an unchanged query on temporary/rate errors; a persistent access/index/page-cap gap blocks claiming the route completed. Save request, response bytes/hash, counts and repository identities, omitting source text and file inventories publicly.",
+    "union": "De-duplicate repositories by GitHub identity across both tokens and all leaves. Resolve metadata for every distinct code-hit repository; apply stars>=100 at this enumeration and existing language/license/size/role rules. Every distinct hit receives a disposition including below-reach. Seed and old-r2 members remain explicitly included.",
+    "scope_limit": "Code search covers only GitHub-indexed default-branch files and the two selected tokens. A repository with neither token, unindexed files or unsupported file size can be missed. No claim to enumerate all Slang repositories or all secondary-language use."
+  }
+}

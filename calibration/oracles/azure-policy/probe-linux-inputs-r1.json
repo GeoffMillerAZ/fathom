@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "id": "/providers/Microsoft.Authorization/policyDefinitions/probe",
+    "name": "probe",
+    "type": "Microsoft.Authorization/policyDefinitions",
+    "properties": {
+      "mode": "All",
+      "parameters": {
+        "kind": {
+          "type": "String",
+          "defaultValue": "Microsoft.Storage/storageAccounts"
+        },
+        "unused": {
+          "type": "String",
+          "defaultValue": "kept"
+        }
+      },
+      "policyRule": {
+        "if": {
+          "field": "type",
+          "equals": "[parameters('kind')]"
+        },
+        "then": {
+          "effect": "audit"
+        }
+      }
+    }
+  },
+  "resource": {
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/probe/providers/Microsoft.Storage/storageAccounts/probe",
+    "name": "probe",
+    "type": "Microsoft.Storage/storageAccounts",
+    "location": "eastus",
+    "properties": {}
+  },
+  "variants": [
+    "valid",
+    "unknown_parameter",
+    "changed_input_fact"
+  ],
+  "expected": "Capture native responses; these are preregistered controls, not asserted successful evaluations or a complete binding population.",
+  "assignment": {
+    "id": "/providers/Microsoft.Authorization/policyAssignments/probe",
+    "name": "probe",
+    "type": "Microsoft.Authorization/policyAssignments",
+    "properties": {
+      "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/probe",
+      "parameters": {
+        "kind": {
+          "value": "Microsoft.Storage/storageAccounts"
+        }
+      }
+    }
+  }
+}

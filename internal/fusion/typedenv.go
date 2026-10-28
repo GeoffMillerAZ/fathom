@@ -32,7 +32,7 @@ package fusion
 // parallelism ceiling (default 2, never above an inherited -p;
 // FATHOM_TOOLCHAIN_PROCS moves or lifts it) — never a flag that changes
 // build semantics (no -mod, no tags); an inherited GOFLAGS is otherwise
-// kept as it was.
+// kept as it was, except an inherited -mod=mod, which ADR-083 drops (below).
 //
 // K22 (wave lf2, LB-F341, O654 point 3): every automatic `go` invocation —
 // the typed pass's packages.Load (ingest, the daemon's auto-refresh), `go
@@ -46,9 +46,22 @@ package fusion
 // named failure (TypedEdgeStatus.Reason). cgo is untouched: its flag safety
 // is the go command's own allowlist, which fathom does not re-implement.
 // The explicit verbs a user types keep the user's environment: `fathom
-// doctor --stranger` (the repository's scripts/stranger-check.sh), `fathom
-// receipt verify --run-tests` (go test) and a `fathom rules gen-test` test
-// the user's own go test runs (layerrules.BuildIndex).
+// doctor --stranger` (the repository's scripts/stranger-check.sh) and
+// `fathom receipt verify --run-tests` (go test, offline on its own terms,
+// internal/receiptverify).
+//
+// ADR-083 (internal/goenv): the typed pass also never reaches the module
+// network or writes the repository. TypedEdgeEnv carries GOPROXY=off,
+// GOSUMDB=off, GONOPROXY="," (no GOPRIVATE module goes straight to its
+// version control) and GOTELEMETRY=off, and sets GOFLAGS to the effective
+// value (the environment's, or else the GOENV file's) without -mod=mod and
+// never empty (-mod=vendor, -mod=readonly and every other flag kept), so a
+// cloned repository's dependencies are read from the module cache or the
+// pass fails with the missing module named (typed_missingmodules.go); the
+// user's own `[ingest] go_network = true` passes the inherited GOPROXY,
+// GOSUMDB and GONOPROXY through. layerrules.BuildIndex, which a `fathom
+// rules gen-test` test runs inside the user's go test, uses the same
+// environment.
 
 import (
 	"context"
@@ -59,6 +72,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/goenv"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -77,14 +91,25 @@ import (
 // better answer than a fabricated path.
 //
 // Later entries win in exec's environment, so appending is enough; the
-// inherited entries are kept so nothing else (PATH, HOME, GOTOOLCHAIN,
-// proxy settings) is silently dropped. RT-106: the toolchain caps
-// (GOFLAGS -p, GOMAXPROCS; at most 2 by default) are applied last.
+// inherited entries are kept so nothing else (PATH, HOME) is silently
+// dropped. ADR-083: the offline overrides (goenv.Apply: GOPROXY=off,
+// GOSUMDB=off and GONOPROXY="," unless the user's go_network says
+// otherwise, GOTELEMETRY=off, GOFLAGS without -mod=mod and never empty)
+// come next. RT-106: the toolchain caps (GOFLAGS -p,
+// GOMAXPROCS; at most 2 by default) are applied after them.
 //
 // K22: GOTOOLCHAIN=local is the very last entry, after the caps.
 func TypedEdgeEnv() []string {
-	return append(backgroundToolchainEnv(repairedGoEnv("GOWORK=off", "GOPACKAGESDRIVER=off")), goToolchainLocal)
+	return append(backgroundToolchainEnv(goenv.Apply(repairedGoEnv("GOWORK=off", "GOPACKAGESDRIVER=off"))), goToolchainLocal)
 }
+
+// ToolchainPathEnv is the environment with GOPATH, GOCACHE and GOMODCACHE
+// repaired to absolute paths (TypedEdgeEnv's repair ladder) and nothing else
+// added: no offline overrides, no caps, and so no `go env GOFLAGS` query. A
+// caller that reads only those three paths (daemon install) runs no go
+// command that needs GOFLAGS, which under a fake HOME would write the go
+// telemetry counters there.
+func ToolchainPathEnv() []string { return repairedGoEnv() }
 
 // goToolchainLocal pins the go command to the toolchain on PATH (K22): no
 // automatic invocation switches to, or downloads, a toolchain a
@@ -277,6 +302,14 @@ type TypedEdgeStatus struct {
 	DiscoveryGaps          int
 	DiscoveryGapFiles      []string
 	EdgesDroppedOutOfScope int
+	// PackagesSkipped, Skips and NotLoaded carry the run's skips (EW-83,
+	// O1506: TypedEdgeReport's fields of the same name). In memory only:
+	// noteTypedEdgeStatus never persists them (the table freeze), so a
+	// status replayed from the store (Persisted) has none and every surface
+	// omits them rather than read 0.
+	PackagesSkipped int
+	Skips           []TypedSkip
+	NotLoaded       []TypedSkip
 	// Persisted is true when this status was NOT recorded by this process
 	// (TypedEdgeStatus fell back to the store, DG-10) — the daemon has not
 	// ingested this service since it last started, but a previous process

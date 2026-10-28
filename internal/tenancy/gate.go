@@ -147,7 +147,21 @@ type Refusal struct {
 	Level      string
 	RetryAfter time.Duration
 	InFlight   []string
+	// classScoped marks a refusal that reaches only its class although
+	// its code says nothing of scope (a handler's store-distress refusal:
+	// writes are refused, reads still served). Never a wire key.
+	classScoped bool
 }
+
+// WithClassScope marks r class-scoped and returns it.
+func (r *Refusal) WithClassScope() *Refusal {
+	r.classScoped = true
+	return r
+}
+
+// ClassScoped reports whether r was marked class-scoped (WithClassScope);
+// the code-derived scope still applies when it was not.
+func (r *Refusal) ClassScoped() bool { return r.classScoped }
 
 // Outcome is how a ticket ended (§13.3's call-log outcome).
 type Outcome string

@@ -72,8 +72,10 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		}
 	}
 	newKeySet := make(map[string]bool, len(newNodes))
+	newByKey := make(map[string]core.SymbolNode, len(newNodes))
 	for _, n := range newNodes {
 		newKeySet[n.Key()] = true
+		newByKey[n.Key()] = n
 	}
 
 	var oldKeys []string
@@ -96,6 +98,9 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 	if typedEdges == nil {
 		for _, k := range oldKeys {
 			n := ng.nodes[k]
+			if replacement, ok := newByKey[k]; ok && replacement.Kind == core.KindGoField {
+				continue // old method edges cannot become field out-edges
+			}
 			for _, callee := range ng.callees[k] {
 				if kind, ok := ng.edgeKind[k+"\x00"+callee]; ok {
 					keptTyped = append(keptTyped, core.Edge{FromService: n.Service, FromFile: n.FilePath, FromSymbol: k, ToSymbol: callee, Kind: kind})
@@ -104,9 +109,15 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		}
 	}
 
+	callTargetClassChanged := false
 	for _, k := range oldKeys {
 		n := ng.nodes[k]
-		surviving := newKeySet[k] // the same key reappears in newNodes
+		replacement := newByKey[k]
+		classChanged := newKeySet[k] && (n.Kind == core.KindGoField) != (replacement.Kind == core.KindGoField)
+		if classChanged {
+			callTargetClassChanged = true
+		}
+		surviving := newKeySet[k] && !classChanged // a field/method transition changes call-target identity
 
 		// Strip this old node's own outgoing edges (both syntax and typed
 		// — they share the same adjacency maps) so they can be re-derived
@@ -131,9 +142,9 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 			continue
 		}
 
-		// Genuinely removed: strip edges FROM other (untouched) nodes
-		// INTO this key — otherwise they would dangle, pointing at a
-		// symbol no longer in ng.nodes.
+		// Removed or changed call-target class: strip edges FROM other
+		// nodes INTO this key. In particular, a method becoming a field
+		// keeps its full key queryable but cannot keep old incoming calls.
 		for _, caller := range ng.callers[k] {
 			ng.callees[caller] = removeOne(ng.callees[caller], k)
 			delete(ng.edgeKind, caller+"\x00"+k)
@@ -146,7 +157,7 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		if len(ng.byNameAll[n.Name]) == 0 {
 			delete(ng.byNameAll, n.Name)
 		}
-		if n.Package != "" {
+		if n.Package != "" && n.Kind != core.KindGoField {
 			// Only nodes with Package == pkg can ever contribute to this
 			// composite key (the key string embeds the package), so
 			// deleting it here is always correct, never a false negative
@@ -163,20 +174,26 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 	for _, n := range newNodes {
 		ng.nodes[n.Key()] = n
 	}
+	if callTargetClassChanged {
+		// A same-key field/method transition removes or adds this key to
+		// suffix lookup. Rebuild both suffix indexes for that rare case so
+		// ambiguous candidates are counted exactly as in Build.
+		ng.buildSuffixIndex()
+	}
 
 	// byPkgName for pkg's own new nodes: safe to compute purely from
 	// newNodes (no outside package can share a "pkg.Name" composite key —
 	// see the package doc comment).
 	pkgNameCounts := map[string]int{}
 	for _, n := range newNodes {
-		if n.Package == pkg {
+		if n.Package == pkg && n.Kind != core.KindGoField {
 			pkgNameCounts[n.Package+"."+n.Name]++
 		}
 	}
 	for _, n := range newNodes {
 		touchedNames[n.Name] = true
 		ng.byNameAll[n.Name] = appendSortedUnique(ng.byNameAll[n.Name], n.Key())
-		if n.Package == pkg && pkgNameCounts[n.Package+"."+n.Name] == 1 {
+		if n.Package == pkg && n.Kind != core.KindGoField && pkgNameCounts[n.Package+"."+n.Name] == 1 {
 			ng.byPkgName[n.Package+"."+n.Name] = n.Key()
 		}
 		// byDirName is deliberately NOT populated for new nodes: unlike
@@ -186,12 +203,23 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 	}
 
 	// byName is global ambiguity — recompute it, but ONLY for the names
-	// this call actually touched, using byNameAll (which already holds
-	// every node sharing that name, in or out of pkg) as the true count.
+	// this call actually touched. byNameAll holds every node sharing that
+	// name, while only non-field nodes count as call targets.
 	for name := range touchedNames {
 		keys := ng.byNameAll[name]
-		if len(keys) == 1 {
-			ng.byName[name] = keys[0]
+		var target string
+		for _, key := range keys {
+			if ng.nodes[key].Kind == core.KindGoField {
+				continue
+			}
+			if target != "" {
+				target = ""
+				break
+			}
+			target = key
+		}
+		if target != "" {
+			ng.byName[name] = target
 		} else {
 			delete(ng.byName, name)
 		}
@@ -205,6 +233,9 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 			calleeKey := ng.resolve(n, raw)
 			if calleeKey == "" {
 				continue
+			}
+			if ng.nodes[calleeKey].Kind == core.KindGoField {
+				continue // a field definition is not a syntax call target
 			}
 			if _, dup := seen[calleeKey]; dup {
 				continue

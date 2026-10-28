@@ -707,7 +707,9 @@ func resolveSymbol(nodes []core.SymbolNode, symbol string) string {
 // O12): the exact same tier cascade (exact key, bare name, "svc::pkg.Name",
 // suffix — the first tier that matches ANYTHING decides the answer, exactly
 // as resolveSymbol always has), but instead of collapsing an ambiguous tier
-// to a bare "", it returns every node that tier matched.
+// to a bare "", it returns every node that tier matched. Within a tier a Go
+// struct field never shadows a same-named method, func or type
+// (core.WithoutShadowingFields).
 //
 // ok is true only when exactly one node resolved (candidates then holds
 // that one node) — the unchanged, unambiguous case. ok is false in two
@@ -731,6 +733,7 @@ func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidat
 			byName = append(byName, n)
 		}
 	}
+	byName = core.WithoutShadowingFields(byName, symbol)
 	if len(byName) == 1 {
 		return byName[0].Key(), byName, true
 	}
@@ -749,6 +752,7 @@ func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidat
 				byQualified = append(byQualified, n)
 			}
 		}
+		byQualified = core.WithoutShadowingFields(byQualified, symbol)
 		if len(byQualified) == 1 {
 			return byQualified[0].Key(), byQualified, true
 		}
@@ -765,6 +769,7 @@ func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidat
 			bySuffix = append(bySuffix, n)
 		}
 	}
+	bySuffix = core.WithoutShadowingFields(bySuffix, symbol)
 	if len(bySuffix) == 1 {
 		return bySuffix[0].Key(), bySuffix, true
 	}

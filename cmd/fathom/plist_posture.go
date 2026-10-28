@@ -262,7 +262,11 @@ type plistPostureReport struct {
 	Direct bool
 	// Label is the Label key: what launchd sets XPC_SERVICE_NAME to.
 	Label string
-	// Drift lists each tenancy key that differs from schema 2, sorted.
+	// Addr is serve-http's --addr ("" when the plist passes none: the
+	// daemon then listens on [daemon].addr, else loopback).
+	Addr string
+	// Drift lists each tenancy key that differs from schema 2, and a wide
+	// --addr (ADR-083), sorted.
 	Drift []string
 }
 
@@ -307,6 +311,10 @@ func plistPosture(raw []byte) (plistPostureReport, error) {
 		}
 		if !plistArgsHaveManaged(args) {
 			rep.Drift = append(rep.Drift, "ProgramArguments: no --managed (want serve-http --managed)")
+		}
+		_, rep.Addr, _, _ = plistAddrArg(args)
+		if rep.Addr != "" && !hostIsLoopback(rep.Addr) {
+			rep.Drift = append(rep.Drift, wideAddrDrift(rep.Addr))
 		}
 	} else {
 		rep.Drift = append(rep.Drift, "ProgramArguments: absent")
@@ -387,12 +395,27 @@ func reconcilePlist(raw []byte, adopt bool) ([]byte, []string, error) {
 		edits = append(edits, plistEdit{at, at, ws + "<string>--managed</string>"})
 		changes = append(changes, "ProgramArguments: + --managed after serve-http")
 	}
-	if loc := plistMarkerRe.FindIndex(raw); loc != nil {
-		edits = append(edits, plistEdit{int64(loc[0]), int64(loc[1]), plistSchemaMarker})
-	} else {
-		edits = append(edits, plistEdit{p.dictOpen, p.dictOpen, "\n" + indent + plistSchemaMarker})
+	// ADR-083: a wide --addr moves to loopback on the same port; the daemon
+	// has no authentication.
+	if args, ok := p.entry("ProgramArguments"); ok && args.Kind == "array" {
+		if node, addr, inline, found := plistAddrArg(args); found && !hostIsLoopback(addr) {
+			to := loopbackAddrFor(addr)
+			text := to
+			if inline {
+				text = strings.TrimSuffix(node.Text, addr) + to
+			}
+			edits = append(edits, plistEdit{node.Start, node.End, plistStringXML(text)})
+			changes = append(changes, fmt.Sprintf("ProgramArguments: --addr %s → %s (loopback; the daemon has no authentication)", addr, to))
+		}
 	}
-	changes = append(changes, fmt.Sprintf("schema marker: %d → %d", post.Schema, plistSchemaCurrent))
+	if post.Schema < plistSchemaCurrent {
+		if loc := plistMarkerRe.FindIndex(raw); loc != nil {
+			edits = append(edits, plistEdit{int64(loc[0]), int64(loc[1]), plistSchemaMarker})
+		} else {
+			edits = append(edits, plistEdit{p.dictOpen, p.dictOpen, "\n" + indent + plistSchemaMarker})
+		}
+		changes = append(changes, fmt.Sprintf("schema marker: %d → %d", post.Schema, plistSchemaCurrent))
+	}
 	if inserts.Len() > 0 {
 		edits = append(edits, plistEdit{p.dictEnd, p.dictEnd, plistInsertPrefix(raw, p.dictEnd) + inserts.String()})
 	}

@@ -12,7 +12,7 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import sys
 
@@ -24,6 +24,8 @@ _TRIAGE_SPEC.loader.exec_module(triage)
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 PINNED_RESOURCE_HEADERS = ("opencl-c-base.h", "opencl-c.h")
+HISTORICAL_PINS_SCHEMA = "opencl-c-triage-pins-v1"
+PORTABLE_PINS_SCHEMA = "opencl-c-compiler-pins-v1"
 
 
 def sha256_file(path):
@@ -178,7 +180,7 @@ def _compile_manifest(entries, snapshot_root):
 
 
 def generate(*, subject, commit, clang, clang_sha256, resource_dir, out,
-             expected_header_sha256=None):
+             expected_header_sha256=None, compiler_identity=None):
     """Capture, snapshot, and synthesize the database; return its public receipt."""
     subject = Path(subject).resolve()
     clang = Path(clang).resolve()
@@ -239,6 +241,8 @@ def generate(*, subject, commit, clang, clang_sha256, resource_dir, out,
             "content_sha256": sorted(row["sha256"] for row in header_rows),
         },
     }
+    if compiler_identity is not None:
+        public["compiler"]["pins"] = compiler_identity
     private_dir = out / "private"
     private_dir.mkdir()
     (private_dir / "tracked-before.stage-z").write_bytes(before.stage_raw)
@@ -259,6 +263,7 @@ def generate(*, subject, commit, clang, clang_sha256, resource_dir, out,
         "untracked_rows_after": after.untracked_rows,
         "resource_headers": header_rows,
         "compile_roots": [path.as_posix() for path in compile_relatives],
+        "compiler_pins": compiler_identity,
     }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     # Summary last: its presence means the snapshot, database, and private
     # evidence all completed successfully.
@@ -267,14 +272,73 @@ def generate(*, subject, commit, clang, clang_sha256, resource_dir, out,
     return public
 
 
-def _load_compiler_pins():
-    pins = json.loads(Path(__file__).with_name("pins.json").read_text(encoding="utf-8"))
+def _load_compiler_pins(path=None):
+    selected = Path(path) if path is not None else Path(__file__).with_name("pins.json")
+    raw = triage._read_regular_no_follow(selected)
+    try:
+        pins = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("compiler pins must be UTF-8 JSON") from exc
+    if not isinstance(pins, dict):
+        raise ValueError("compiler pins must contain an object")
+
+    explicit = path is not None
+    expected_schema = PORTABLE_PINS_SCHEMA if explicit else HISTORICAL_PINS_SCHEMA
+    if pins.get("schema") != expected_schema:
+        raise ValueError(f"compiler pins schema must be {expected_schema}")
     compiler = pins.get("compiler", {})
+    if not isinstance(compiler, dict):
+        raise ValueError("compiler pins lack a compiler object")
+    version = compiler.get("version")
     binary = compiler.get("binary_sha256")
     headers = compiler.get("resource_header_sha256")
-    if not SHA256_RE.fullmatch(binary or "") or not isinstance(headers, dict) or not headers:
-        raise ValueError("pins.json lacks complete compiler pins")
-    return binary, headers
+    if not isinstance(version, str) or not version:
+        raise ValueError("compiler pins lack a compiler version")
+    if not isinstance(binary, str) or not SHA256_RE.fullmatch(binary):
+        raise ValueError("compiler pins lack a valid compiler SHA-256")
+    if not isinstance(headers, dict) or set(headers) != set(PINNED_RESOURCE_HEADERS):
+        raise ValueError("compiler pins lack the exact resource header pins")
+    if any(not isinstance(value, str) or not SHA256_RE.fullmatch(value)
+           for value in headers.values()):
+        raise ValueError("compiler pins contain an invalid resource header SHA-256")
+
+    identity = {
+        "schema": expected_schema,
+        "profile": "historical-apple-clang",
+        "compiler_version": version,
+        "pin_file_sha256": hashlib.sha256(raw).hexdigest(),
+    }
+    if explicit:
+        profile = pins.get("profile")
+        platform = pins.get("platform")
+        archive = pins.get("archive")
+        if not isinstance(profile, str) or not profile:
+            raise ValueError("portable compiler pins lack a profile")
+        if (not isinstance(platform, dict)
+                or any(not isinstance(platform.get(key), str) or not platform[key]
+                       for key in ("os", "arch"))):
+            raise ValueError("portable compiler pins lack complete platform identity")
+        if (not isinstance(archive, dict)
+                or any(not isinstance(archive.get(key), str) or not archive[key]
+                       for key in ("name", "url", "sha256"))
+                or not SHA256_RE.fullmatch(archive["sha256"] or "")):
+            raise ValueError("portable compiler pins lack complete archive identity")
+        member = compiler.get("archive_member")
+        if (not isinstance(member, str) or not member or member == "."
+                or "\\" in member or "\x00" in member
+                or PurePosixPath(member).is_absolute()
+                or ".." in PurePosixPath(member).parts
+                or str(PurePosixPath(member)) != member):
+            raise ValueError("portable compiler pins lack a canonical compiler archive member")
+        identity.update({
+            "profile": profile,
+            "platform": {key: platform[key] for key in ("os", "arch")},
+            # Fetch URLs may contain credentials or expiring query tokens. The
+            # public identity needs only the archive name and content digest.
+            "archive": {key: archive[key] for key in ("name", "sha256")},
+            "compiler_archive_member": member,
+        })
+    return binary, headers, identity
 
 
 def _validated_out(value, parser, subject):
@@ -297,6 +361,7 @@ def main(argv=None):
     parser.add_argument("--clang", required=True, type=Path)
     parser.add_argument("--clang-sha256", required=True)
     parser.add_argument("--resource-dir", required=True, type=Path)
+    parser.add_argument("--compiler-pins", type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args(argv)
     if not triage.FULL_SHA_RE.fullmatch(args.commit):
@@ -304,9 +369,9 @@ def main(argv=None):
     if not SHA256_RE.fullmatch(args.clang_sha256):
         parser.error("--clang-sha256 must be 64 lowercase hexadecimal characters")
     out = _validated_out(args.out, parser, args.subject)
-    pinned_compiler, pinned_headers = _load_compiler_pins()
+    pinned_compiler, pinned_headers, pin_identity = _load_compiler_pins(args.compiler_pins)
     if args.clang_sha256 != pinned_compiler:
-        raise ValueError("--clang-sha256 does not match pins.json compiler pin")
+        raise ValueError("--clang-sha256 does not match compiler pin")
     public = generate(
         subject=args.subject,
         commit=args.commit,
@@ -315,6 +380,7 @@ def main(argv=None):
         resource_dir=args.resource_dir,
         out=out,
         expected_header_sha256=pinned_headers,
+        compiler_identity=pin_identity,
     )
     print(json.dumps(public, sort_keys=True))
     return 0

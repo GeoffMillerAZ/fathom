@@ -378,6 +378,15 @@ func (p *Parser) call(name string, args ...uint64) ([]uint64, error) {
 	return res, nil
 }
 
+// hardBackstop resolves ParseHardBackstop: zero means 2x ParseTimeout (20s
+// at the 10s product default).
+func hardBackstop() time.Duration {
+	if ParseHardBackstop > 0 {
+		return ParseHardBackstop
+	}
+	return 2 * ParseTimeout
+}
+
 // bounded runs op under the ParseHardBackstop wall-clock bound, abandoning
 // it (and this Parser) on expiry. op wraps the guest work whose runtime is
 // a function of untrusted input — the parse call, and the whole query match
@@ -389,10 +398,7 @@ func (p *Parser) call(name string, args ...uint64) ([]uint64, error) {
 // only touches op-local state plus construction-time-immutable Parser
 // fields, so abandonment does not race with the caller.
 func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
-	backstop := ParseHardBackstop
-	if backstop <= 0 {
-		backstop = 2 * ParseTimeout
-	}
+	backstop := hardBackstop()
 
 	type opResult struct {
 		val any

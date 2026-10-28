@@ -14,7 +14,7 @@ import (
 
 // Release is the fathom release `fathom version` prints and the MCP
 // initialize serverInfo.version reports: one constant, so the two agree.
-const Release = "v0.23.0"
+const Release = "v0.24.0"
 
 var (
 	once    sync.Once
@@ -66,6 +66,12 @@ type Stamp struct {
 	Revision string
 	Dirty    bool
 	BuiltAt  string
+	// ModuleVersion and ModuleSum are the main module's version and go.sum
+	// hash from debug.BuildInfo. A `go install pkg@version` build carries no
+	// VCS revision but does carry these, so they are the provenance of the
+	// binary when Revision is empty. "(devel)" reads as "".
+	ModuleVersion string
+	ModuleSum     string
 }
 
 var (
@@ -81,18 +87,33 @@ func Read() Stamp {
 		if !ok {
 			return
 		}
-		for _, s := range bi.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				stamp.Revision = s.Value
-			case "vcs.modified":
-				stamp.Dirty = s.Value == "true"
-			case "vcs.time":
-				stamp.BuiltAt = s.Value
-			}
-		}
+		stamp = FromBuildInfo(bi)
 	})
 	return stamp
+}
+
+// FromBuildInfo derives a Stamp from a build info; a nil bi yields the zero
+// Stamp. Split from Read so tests can supply a fake build info.
+func FromBuildInfo(bi *debug.BuildInfo) Stamp {
+	var st Stamp
+	if bi == nil {
+		return st
+	}
+	for _, s := range bi.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			st.Revision = s.Value
+		case "vcs.modified":
+			st.Dirty = s.Value == "true"
+		case "vcs.time":
+			st.BuiltAt = s.Value
+		}
+	}
+	if v := bi.Main.Version; v != "" && v != "(devel)" {
+		st.ModuleVersion = v
+		st.ModuleSum = bi.Main.Sum
+	}
+	return st
 }
 
 // SameRevision reports whether two revision strings name the same commit:

@@ -22,6 +22,9 @@
   ],
   "facts": [
     {"from": "PrometheusAlertingRule", "select": "$.labels", "key": "labels", "map": true},
+    {"from": "PrometheusAlertingRule", "select": "$.for", "key": "for"},
+    {"from": "PrometheusAlertingRule", "select": "$.keep_firing_for", "key": "keep_firing_for"},
+    {"from": "PrometheusAlertingRule", "select": "$.annotations", "key": "annotations", "map": true},
     {"from": "PrometheusRuleGroup", "select": "$.labels", "key": "labels", "map": true}
   ]
 }

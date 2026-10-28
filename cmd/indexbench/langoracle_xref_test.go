@@ -113,7 +113,7 @@ func TestCmdLangOracleGoModXrefs(t *testing.T) {
 	}
 	// The grade, not level_met: level_met also needs the tenancy floor (1 MB/s of
 	// CPU), which three tiny files under the race detector do not reach.
-	for lvl, g := range map[string]string{"L1": r.Grade.L1, "L2": r.Grade.L2, "L3": r.Grade.L3} {
+	for lvl, g := range map[string]string{"L1": r.Grade.L1, "L2": r.Grade.L2, "L3": l3OnAmpleEvidence(t, r)} {
 		if g != "excellent" {
 			t.Errorf("grade %s = %q, want excellent\n%s", lvl, g, raw)
 		}
@@ -175,8 +175,8 @@ func TestCmdLangOracleTagsToolFormatXrefs(t *testing.T) {
 	if r.Counts[langbench.CntXrefTruth] != 2 || r.Counts[langbench.CntXrefFathom] != 2 {
 		t.Errorf("xref counts %v, want 2 truth (A and Get to b.proto) and 2 found", r.Counts)
 	}
-	if r.Grade.L3 != langbench.GradeExcellent {
-		t.Errorf("grade.L3 = %q, want excellent\n%s", r.Grade.L3, raw)
+	if g := l3OnAmpleEvidence(t, r); g != langbench.GradeExcellent {
+		t.Errorf("grade.L3 = %q, want excellent\n%s", g, raw)
 	}
 	if !bytes.Contains(raw, []byte("1 oracle cross-references on files fathom does not read")) {
 		t.Errorf("out-of-scope cross-reference not disclosed:\n%s", raw)
@@ -280,8 +280,8 @@ func TestCmdLangOracleJenkinsXrefs(t *testing.T) {
 	if r.Counts[langbench.CntXrefTruth] != 2 || r.Counts[langbench.CntXrefFathom] != 2 {
 		t.Errorf("xref counts %v, want 2 truth and 2 found (the load and the library step from the Jenkinsfile)", r.Counts)
 	}
-	if r.Grade.L3 != langbench.GradeGood {
-		t.Errorf("grade.L3 = %q, want good (tier C)\n%s", r.Grade.L3, raw)
+	if g := l3OnAmpleEvidence(t, r); g != langbench.GradeGood {
+		t.Errorf("grade.L3 = %q, want good (tier C)\n%s", g, raw)
 	}
 	for _, want := range []string{
 		"2 oracle cross-references on files fathom does not read",

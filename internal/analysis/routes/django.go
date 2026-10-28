@@ -2,10 +2,11 @@ package routes
 
 // django.go — the Django and Django REST framework route reader (LB-F333,
 // wave c2 item phppy), and the small Python reader it, fastapi.go and
-// flask.go share: a tokenizer (indentation, string prefixes, f-strings,
-// implicit joining inside brackets) and a recursive-descent parser for the
-// statement and expression subset a urls.py or an application module is
-// written in. Nothing is imported or executed.
+// flask.go share: internal/pysyntax's tokenizer (indentation, string
+// prefixes, f-strings, implicit joining inside brackets) and a
+// recursive-descent parser for the statement and expression subset a
+// urls.py or an application module is written in. Nothing is imported or
+// executed.
 //
 // What the Django reader reads, at module level (and in if/try branches):
 //
@@ -37,6 +38,8 @@ import (
 	"bytes"
 	"regexp"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/pysyntax"
 )
 
 func init() {
@@ -44,20 +47,20 @@ func init() {
 }
 
 // ---------------------------------------------------------------------
-// Python tokenizer
+// Python tokenizer: internal/pysyntax, adapted to the parser's token types
 // ---------------------------------------------------------------------
 
 type pyTokKind uint8
 
 const (
-	qtEOF pyTokKind = iota
-	qtName
-	qtNumber
-	qtString
-	qtOp
-	qtNewline
-	qtIndent
-	qtDedent
+	qtEOF     = pyTokKind(pysyntax.EOF)
+	qtName    = pyTokKind(pysyntax.Name)
+	qtNumber  = pyTokKind(pysyntax.Number)
+	qtString  = pyTokKind(pysyntax.String)
+	qtOp      = pyTokKind(pysyntax.Op)
+	qtNewline = pyTokKind(pysyntax.Newline)
+	qtIndent  = pyTokKind(pysyntax.Indent)
+	qtDedent  = pyTokKind(pysyntax.Dedent)
 )
 
 // pyStrPart is one piece of a string literal: literal text, or an
@@ -75,270 +78,21 @@ type pyTok struct {
 	line  int
 }
 
-var pyOps = []string{
-	"**=", "//=", ">>=", "<<=", "...", "->", ":=", "**", "//", "<<", ">>", "<=", ">=", "==", "!=",
-	"+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "@=",
-}
-
-func isPyIdentStart(c byte) bool {
-	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0x80
-}
-
-func isPyIdentChar(c byte) bool { return isPyIdentStart(c) || (c >= '0' && c <= '9') }
-
-// lexPython tokenizes src the way Python's tokenizer does, as far as a
-// parser of declarations needs: NEWLINE ends a logical line outside
-// brackets, INDENT and DEDENT bracket a suite, comments and blank lines are
-// dropped.
+// lexPython is pysyntax.Lex in the parser's token types. Routes reads what
+// the tokens say and ignores the incompleteness issues.
 func lexPython(src []byte) []pyTok {
-	var toks []pyTok
-	indents := []int{0}
-	line := 1
-	depth := 0
-	i, n := 0, len(src)
-	atLineStart := true
-	for i < n {
-		if atLineStart && depth == 0 {
-			col := 0
-			j := i
-			for j < n && (src[j] == ' ' || src[j] == '\t' || src[j] == '\f') {
-				if src[j] == '\t' {
-					col = (col/8 + 1) * 8
-				} else {
-					col++
-				}
-				j++
+	in, _ := pysyntax.Lex(src)
+	toks := make([]pyTok, len(in))
+	for i, t := range in {
+		toks[i] = pyTok{kind: pyTokKind(t.Kind), text: t.Text, line: t.Line}
+		if t.Parts != nil {
+			toks[i].parts = make([]pyStrPart, len(t.Parts))
+			for j, p := range t.Parts {
+				toks[i].parts[j] = pyStrPart{lit: p.Lit, dyn: p.Dyn, expr: p.Expr}
 			}
-			if j >= n {
-				break
-			}
-			if src[j] == '\n' || src[j] == '\r' || src[j] == '#' {
-				for j < n && src[j] != '\n' {
-					j++
-				}
-				if j < n {
-					line++
-					j++
-				}
-				i = j
-				continue
-			}
-			if src[j] == '\\' && j+1 < n && (src[j+1] == '\n' || src[j+1] == '\r') {
-				i = j
-				atLineStart = false
-				continue
-			}
-			if col > indents[len(indents)-1] {
-				indents = append(indents, col)
-				toks = append(toks, pyTok{kind: qtIndent, line: line})
-			}
-			for col < indents[len(indents)-1] {
-				indents = indents[:len(indents)-1]
-				toks = append(toks, pyTok{kind: qtDedent, line: line})
-			}
-			i = j
-			atLineStart = false
-		}
-		c := src[i]
-		switch {
-		case c == '\n':
-			if depth == 0 {
-				toks = append(toks, pyTok{kind: qtNewline, line: line})
-				atLineStart = true
-			}
-			line++
-			i++
-		case c == ' ' || c == '\t' || c == '\r' || c == '\f':
-			i++
-		case c == '#':
-			for i < n && src[i] != '\n' {
-				i++
-			}
-		case c == '\\' && i+1 < n && (src[i+1] == '\n' || (src[i+1] == '\r' && i+2 < n && src[i+2] == '\n')):
-			if src[i+1] == '\r' {
-				i++
-			}
-			i += 2
-			line++
-		case isPyIdentStart(c):
-			j := i
-			for j < n && isPyIdentChar(src[j]) {
-				j++
-			}
-			word := string(src[i:j])
-			if j < n && (src[j] == '\'' || src[j] == '"') && len(word) <= 2 && strings.Trim(strings.ToLower(word), "rbuf") == "" {
-				parts, ni, nl := lexPyString(src, j, strings.ToLower(word))
-				toks = append(toks, pyTok{kind: qtString, parts: parts, line: line})
-				line += nl
-				i = ni
-				continue
-			}
-			toks = append(toks, pyTok{kind: qtName, text: word, line: line})
-			i = j
-		case c == '\'' || c == '"':
-			parts, ni, nl := lexPyString(src, i, "")
-			toks = append(toks, pyTok{kind: qtString, parts: parts, line: line})
-			line += nl
-			i = ni
-		case c >= '0' && c <= '9' || (c == '.' && i+1 < n && src[i+1] >= '0' && src[i+1] <= '9'):
-			j := i + 1
-			for j < n && (isPyIdentChar(src[j]) || src[j] == '.') {
-				j++
-			}
-			toks = append(toks, pyTok{kind: qtNumber, text: string(src[i:j]), line: line})
-			i = j
-		default:
-			op := string(c)
-			for _, o := range pyOps {
-				if bytes.HasPrefix(src[i:], []byte(o)) {
-					op = o
-					break
-				}
-			}
-			switch op {
-			case "(", "[", "{":
-				depth++
-			case ")", "]", "}":
-				if depth > 0 {
-					depth--
-				}
-			}
-			toks = append(toks, pyTok{kind: qtOp, text: op, line: line})
-			i += len(op)
 		}
 	}
-	if len(toks) > 0 && toks[len(toks)-1].kind != qtNewline {
-		toks = append(toks, pyTok{kind: qtNewline, line: line})
-	}
-	for len(indents) > 1 {
-		indents = indents[:len(indents)-1]
-		toks = append(toks, pyTok{kind: qtDedent, line: line})
-	}
-	return append(toks, pyTok{kind: qtEOF, line: line})
-}
-
-// lexPyString reads a string literal at i (its quote) with the given
-// prefix letters, returning its parts, the index after it and the number
-// of newlines it spans.
-func lexPyString(src []byte, i int, prefix string) ([]pyStrPart, int, int) {
-	raw := strings.Contains(prefix, "r")
-	fstr := strings.Contains(prefix, "f")
-	q := src[i]
-	triple := i+2 < len(src) && src[i+1] == q && src[i+2] == q
-	if triple {
-		i += 3
-	} else {
-		i++
-	}
-	nl := 0
-	var body []byte
-	n := len(src)
-	for i < n {
-		c := src[i]
-		if c == '\\' && i+1 < n {
-			body = append(body, c, src[i+1])
-			if src[i+1] == '\n' {
-				nl++
-			}
-			i += 2
-			continue
-		}
-		if c == q {
-			if !triple {
-				i++
-				break
-			}
-			if i+2 < n && src[i+1] == q && src[i+2] == q {
-				i += 3
-				break
-			}
-		}
-		if c == '\n' {
-			if !triple {
-				break
-			}
-			nl++
-		}
-		body = append(body, c)
-		i++
-	}
-	decode := func(s string) string {
-		if raw || !strings.Contains(s, "\\") {
-			return s
-		}
-		var b strings.Builder
-		for k := 0; k < len(s); k++ {
-			if s[k] != '\\' || k+1 >= len(s) {
-				b.WriteByte(s[k])
-				continue
-			}
-			k++
-			switch s[k] {
-			case 'n':
-				b.WriteByte('\n')
-			case 't':
-				b.WriteByte('\t')
-			case 'r':
-				b.WriteByte('\r')
-			case '\\', '\'', '"':
-				b.WriteByte(s[k])
-			case '\n':
-			default:
-				b.WriteByte('\\')
-				b.WriteByte(s[k])
-			}
-		}
-		return b.String()
-	}
-	if !fstr {
-		return []pyStrPart{{lit: decode(string(body))}}, i, nl
-	}
-	var parts []pyStrPart
-	var lit strings.Builder
-	for k := 0; k < len(body); k++ {
-		c := body[k]
-		if c == '{' && k+1 < len(body) && body[k+1] == '{' {
-			lit.WriteByte('{')
-			k++
-			continue
-		}
-		if c == '}' && k+1 < len(body) && body[k+1] == '}' {
-			lit.WriteByte('}')
-			k++
-			continue
-		}
-		if c == '{' {
-			d := 0
-			j := k
-			for j < len(body) {
-				if body[j] == '{' {
-					d++
-				} else if body[j] == '}' {
-					d--
-					if d == 0 {
-						break
-					}
-				}
-				j++
-			}
-			if lit.Len() > 0 {
-				parts = append(parts, pyStrPart{lit: decode(lit.String())})
-				lit.Reset()
-			}
-			expr := string(body[k+1 : min(j, len(body))])
-			if cut := strings.IndexAny(expr, "!:="); cut > 0 && !strings.Contains(expr[:cut], "[") {
-				expr = expr[:cut]
-			}
-			parts = append(parts, pyStrPart{dyn: true, expr: strings.TrimSpace(expr)})
-			k = j
-			continue
-		}
-		lit.WriteByte(c)
-	}
-	if lit.Len() > 0 {
-		parts = append(parts, pyStrPart{lit: decode(lit.String())})
-	}
-	return parts, i, nl
+	return toks
 }
 
 // ---------------------------------------------------------------------

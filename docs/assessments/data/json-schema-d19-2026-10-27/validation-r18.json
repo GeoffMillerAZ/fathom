@@ -1,0 +1,50 @@
+{
+  "ruling": "T-R18",
+  "reviewed_parent": "b6abd86a2",
+  "native_truth_hashes_unchanged_all_four": true,
+  "family_rule_unchanged": true,
+  "empty_xref_family_supplied": false,
+  "scored_pairs": 3,
+  "unattested_unscored_fathom_pairs": 291,
+  "all_fathom_pairs": 294,
+  "unattested_by_subject": [
+    107,
+    0,
+    14,
+    170
+  ],
+  "independence": "structural argv/source review; no dynamic independence control claimed",
+  "single_capture_conditions": "nice10,load<=6,free>=20GiB,private caches,no daemon; one final capture per subject,not median3",
+  "pair_counter_race_tests": 2,
+  "tenancy_lint": "passed",
+  "reading_roundtrip_recursive_canonical": "passed",
+  "release_notes_debris_adr011": "passed",
+  "generated_tracker_test": "expected red, confirmed; controller regenerates docs/languages.md at integration under F2",
+  "strict_verification": "required on final clean commit before READY; result recorded in lane STATUS/LOG",
+  "sources": [
+    {
+      "path": "calibration/oracles/json-schema/measure_d19.py",
+      "sha256": "68917f59e26fe9afbf491f8918021b12842ad3fddb8adccd28a9a00bc89a9b27"
+    },
+    {
+      "path": "calibration/oracles/json-schema/controls_d19.py",
+      "sha256": "f225cd827f227c046d25b2ec1ea76639a6c34c71e81f9e7ce6264896b3734c4a"
+    },
+    {
+      "path": "calibration/oracles/json-schema/fathom-pairs/main.go",
+      "sha256": "3f7102b8fb1be0b428886a8110fbc1b88bda7be59166ac891fb44f580d12982c"
+    },
+    {
+      "path": "calibration/oracles/json-schema/fathom-pairs/main_test.go",
+      "sha256": "2324872e70c86ffa830d3aaf494bb85a740212a6fbd12f098c402d5833006b9f"
+    },
+    {
+      "path": "calibration/oracles/json-schema/json_schema_oracle.mjs",
+      "sha256": "d0ee6ebf4ff965804cd5973aa70fd4c51b73a845e4f97b1d9d1f3b7cbf8f749d"
+    },
+    {
+      "path": "docs/bench/readings/lang/json-schema.json",
+      "sha256": "232b86d3206c0b30b36d7e1f591710a92a8f377c7ebbf77c9a70de5ce7241eb5"
+    }
+  ]
+}

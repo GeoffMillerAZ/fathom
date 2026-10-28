@@ -1,24 +1,222 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
 const retimeNotePrefix = "throughput (design 1.9 T1, T2)"
-const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write]"
+const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write] [-load-log <workspace/file.json>]"
+const retimeReadingCap = 16 << 20
+
+type retimeLoadRun struct {
+	Number     int     `json:"number"`
+	RateMBCPUS float64 `json:"rate_mb_cpu_s"`
+	LoadBefore float64 `json:"load_before"`
+	LoadAfter  float64 `json:"load_after"`
+}
+
+type retimeLoadObserver struct {
+	read  func() (float64, error)
+	start float64
+}
+
+var retimeLoadReader = retimeOneMinuteLoad
+var retimeProductIdentityReader = retimeProductIdentity
+
+type retimeProduct struct {
+	revision     string
+	binarySHA256 string
+}
+
+func retimeProductIdentity() (retimeProduct, error) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return retimeProduct{}, fmt.Errorf("product build info unavailable")
+	}
+	var revision, modified string
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.modified":
+			modified = setting.Value
+		}
+	}
+	if revision == "" || modified != "false" {
+		return retimeProduct{}, fmt.Errorf("product VCS identity missing or modified")
+	}
+	path, err := os.Executable()
+	if err != nil {
+		return retimeProduct{}, err
+	}
+	hash, err := retimeBoundedBinarySHA(path)
+	if err != nil {
+		return retimeProduct{}, err
+	}
+	return retimeProduct{revision: revision, binarySHA256: hash}, nil
+}
+
+func retimeBoundedBinarySHA(path string) (string, error) {
+	const maxBinaryBytes = 128 << 20
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	stat, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
+	if !stat.Mode().IsRegular() || stat.Size() > maxBinaryBytes {
+		return "", fmt.Errorf("product executable is not a regular file at most 128 MiB")
+	}
+	h := sha256.New()
+	n, err := io.Copy(h, io.LimitReader(f, maxBinaryBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if n > maxBinaryBytes {
+		return "", fmt.Errorf("product executable exceeds 128 MiB")
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func (o *retimeLoadObserver) before() error {
+	var err error
+	o.start, err = o.read()
+	return err
+}
+
+func (o *retimeLoadObserver) after(number int, rate float64) (retimeLoadRun, error) {
+	end, err := o.read()
+	return retimeLoadRun{Number: number, RateMBCPUS: rate, LoadBefore: o.start, LoadAfter: end}, err
+}
+
+func retimeOneMinuteLoad() (float64, error) {
+	var raw []byte
+	var err error
+	switch runtime.GOOS {
+	case "darwin":
+		ctx, cancel := context.WithTimeout(context.Background(), retimeProbeTimeout)
+		defer cancel()
+		raw, err = exec.CommandContext(ctx, "sysctl", "-n", "vm.loadavg").Output()
+	case "linux":
+		raw, err = os.ReadFile("/proc/loadavg")
+	default:
+		return 0, fmt.Errorf("one-minute load is unavailable on %s", runtime.GOOS)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("one-minute load unavailable: %w", err)
+	}
+	fields := strings.Fields(strings.Trim(strings.TrimSpace(string(raw)), "{} "))
+	if len(fields) == 0 {
+		return 0, fmt.Errorf("one-minute load missing")
+	}
+	load, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil || load < 0 || math.IsNaN(load) || math.IsInf(load, 0) {
+		return 0, fmt.Errorf("invalid one-minute load %q", fields[0])
+	}
+	return load, nil
+}
+
+// openRetimeLoadLog reserves a new regular file under the current checkout's
+// workspace. Every parent from workspace to the file must already exist and
+// be a real directory, so a symlink cannot redirect the log elsewhere.
+func openRetimeLoadLog(path, workspace string) (*os.File, error) {
+	workspace, err := filepath.Abs(workspace)
+	if err != nil {
+		return nil, err
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	rel, err := filepath.Rel(workspace, path)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("load log must be a new file under workspace/")
+	}
+	parent := filepath.Dir(path)
+	for dir := parent; ; dir = filepath.Dir(dir) {
+		info, err := os.Lstat(dir)
+		if err != nil {
+			return nil, fmt.Errorf("load log parent: %w", err)
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("load log parent is not a regular directory: %s", dir)
+		}
+		if dir == workspace {
+			break
+		}
+	}
+	return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+}
+
+func retimeSHA(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// retimeBoundedReading parses and hashes exactly the same bounded snapshot.
+func retimeBoundedReading(path string) (langbench.Reading, string, error) {
+	var reading langbench.Reading
+	f, err := os.Open(path)
+	if err != nil {
+		return reading, "", err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, retimeReadingCap+1))
+	if err != nil {
+		return reading, "", err
+	}
+	if len(data) > retimeReadingCap {
+		return reading, "", fmt.Errorf("reading exceeds 16 MiB")
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&reading); err != nil {
+		return reading, "", fmt.Errorf("%s: %w", path, err)
+	}
+	return reading, retimeSHA(data), nil
+}
+
+// retimeProbeTimeout bounds the short host probes lang-retime runs (the load
+// average and the checkout root), so a hung subprocess cannot stall a retime.
+const retimeProbeTimeout = 10 * time.Second
+
+func retimeWorkspaceRoot() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), retimeProbeTimeout)
+	defer cancel()
+	root, err := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", fmt.Errorf("checkout root unavailable: %w", err)
+	}
+	workspace := filepath.Join(strings.TrimSpace(string(root)), "workspace")
+	if err := exec.CommandContext(ctx, "git", "-C", strings.TrimSpace(string(root)), "check-ignore", "-q", "--", "workspace/").Run(); err != nil {
+		return "", fmt.Errorf("checkout workspace is not git-ignored: %w", err)
+	}
+	return workspace, nil
+}
 
 func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("lang-retime", flag.ContinueOnError)
@@ -26,6 +224,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	path := fs.String("reading", "", "reading to re-time (required)")
 	runs := fs.Int("runs", 3, "number of runs (at least 3)")
 	write := fs.Bool("write", false, "save the re-timed reading")
+	loadLog := fs.String("load-log", "", "write per-run one-minute system load and throughput to a new workspace JSON file")
 	tenancyOnly := fs.Bool("tenancy-only", false, "check identity on the timing run's own facts only (sha, a clean tree, files, bytes, faults, parse errors), for a reading whose counts were measured on a different scope than its tenancy block; the note says so")
 	var subjects multiFlag
 	fs.Var(&subjects, "subject", "recorded subject name=checkout directory (repeatable, required for every subject)")
@@ -47,7 +246,14 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		roots[name] = dir
 	}
 	refuse := func(err error) int { fmt.Fprintln(stderr, "lang-retime: refused:", err); return 1 }
-	r, err := loadReading(*path)
+	var readingBefore string
+	var r langbench.Reading
+	var err error
+	if *loadLog != "" {
+		r, readingBefore, err = retimeBoundedReading(*path)
+	} else {
+		r, err = loadReading(*path)
+	}
 	if err != nil {
 		return refuse(err)
 	}
@@ -58,6 +264,29 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		if roots[sub.Name] == "" {
 			fmt.Fprintf(stderr, "lang-retime: missing -subject mapping for %s\n", sub.Name)
 			return 2
+		}
+	}
+	var loadFile *os.File
+	loadLogSaved := false
+	var product retimeProduct
+	if *loadLog != "" {
+		workspace, rootErr := retimeWorkspaceRoot()
+		if rootErr != nil {
+			return refuse(rootErr)
+		}
+		loadFile, err = openRetimeLoadLog(*loadLog, workspace)
+		if err != nil {
+			return refuse(err)
+		}
+		defer func() {
+			loadFile.Close()
+			if !loadLogSaved {
+				os.Remove(*loadLog)
+			}
+		}()
+		product, err = retimeProductIdentityReader()
+		if err != nil {
+			return refuse(err)
 		}
 	}
 	ctx := context.Background()
@@ -97,7 +326,14 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	}
 	timings := make([]timedRun, *runs)
 	values := make([]string, *runs)
+	var loadRuns []retimeLoadRun
+	loadObserver := retimeLoadObserver{read: retimeLoadReader}
 	for run := range timings {
+		if loadFile != nil {
+			if err := loadObserver.before(); err != nil {
+				return refuse(fmt.Errorf("run %d before: %w", run+1, err))
+			}
+		}
 		timed := timedRun{subjects: make([]langbench.Subject, len(r.Subjects)), number: run + 1}
 		var totalBytes int64
 		var cpuMS float64
@@ -143,6 +379,13 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		timed.throughput = math.Round(float64(totalBytes)/1e6/(cpuMS/1000)*100) / 100
 		timings[run] = timed
 		values[run] = fmt.Sprintf("run %d: %.2f MB/CPU-s", run+1, timed.throughput)
+		if loadFile != nil {
+			observed, err := loadObserver.after(run+1, timed.throughput)
+			if err != nil {
+				return refuse(fmt.Errorf("run %d after: %w", run+1, err))
+			}
+			loadRuns = append(loadRuns, observed)
+		}
 	}
 	sort.SliceStable(timings, func(i, j int) bool { return timings[i].throughput < timings[j].throughput })
 	// For an even number of runs choose the upper central run: timings must
@@ -183,6 +426,30 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		if err := os.WriteFile(*path, data, 0644); err != nil {
 			return refuse(err)
 		}
+	}
+	if loadFile != nil {
+		_, readingAfter, err := retimeBoundedReading(*path)
+		if err != nil {
+			return refuse(err)
+		}
+		log := struct {
+			Schema              string          `json:"schema"`
+			ReadingBeforeSHA256 string          `json:"reading_before_sha256"`
+			ReadingAfterSHA256  string          `json:"reading_after_sha256"`
+			OS                  string          `json:"os"`
+			Arch                string          `json:"arch"`
+			ProductRevision     string          `json:"product_revision"`
+			ProductBinarySHA256 string          `json:"product_binary_sha256"`
+			ProductModified     bool            `json:"product_modified"`
+			Runs                []retimeLoadRun `json:"runs"`
+		}{"fathom-lang-retime-load-v1", readingBefore, readingAfter, runtime.GOOS, runtime.GOARCH, product.revision, product.binarySHA256, false, loadRuns}
+		if err := json.NewEncoder(loadFile).Encode(log); err != nil {
+			return refuse(err)
+		}
+		if err := loadFile.Close(); err != nil {
+			return refuse(err)
+		}
+		loadLogSaved = true
 	}
 	for _, value := range values {
 		fmt.Fprintln(stdout, value)

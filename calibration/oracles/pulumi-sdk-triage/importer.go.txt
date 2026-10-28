@@ -1,0 +1,134 @@
+// Draft helper: copy to a .go file inside this module and run only after
+// runner.py has created a fresh, sandboxed static index. Counts, never names.
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/scip"
+	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
+	"google.golang.org/protobuf/proto"
+)
+
+type counts struct {
+	NativeOccurrences int `json:"native_occurrences"`
+	DirectEdges       int `json:"direct_edges"`
+	UnresolvedEdges   int `json:"unresolved_edges"`
+}
+
+func sdk(symbol string) string {
+	for _, name := range []string{"aws", "azure-native", "gcp"} {
+		if strings.Contains(symbol, "@pulumi/"+name+" ") {
+			return name
+		}
+	}
+	return ""
+}
+
+func digest(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
+
+func normalizedIndexDigest(idx *scippb.Index) (string, error) {
+	if idx.Metadata == nil {
+		return "", fmt.Errorf("index metadata missing")
+	}
+	// Preserve the original index for import; normalize only the public identity.
+	public := proto.Clone(idx).(*scippb.Index)
+	public.Metadata.ProjectRoot = "file:///subject"
+	raw, err := (proto.MarshalOptions{Deterministic: true}).Marshal(public)
+	if err != nil {
+		return "", err
+	}
+	return digest(raw), nil
+}
+
+func run(dir string) error {
+	src, err := os.ReadFile(filepath.Join(dir, "index.ts"))
+	if err != nil {
+		return err
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "index.scip"))
+	if err != nil {
+		return err
+	}
+	// The current ordinary TypeScript dialect, not the old combined JS helper.
+	e, err := extractor.NewTSExtractor("typescript")
+	if err != nil {
+		return err
+	}
+	nodes, err := e.Extract("pulumi-triage", "index.ts", src)
+	if err != nil {
+		return err
+	}
+	imported, err := scip.ImportIndex("pulumi-triage", raw, nodes)
+	if err != nil {
+		return err
+	}
+	idx := &scippb.Index{}
+	if err := proto.Unmarshal(raw, idx); err != nil {
+		return err
+	}
+	normalizedDigest, err := normalizedIndexDigest(idx)
+	if err != nil {
+		return err
+	}
+	bySDK := map[string]*counts{
+		"aws": {}, "azure-native": {}, "gcp": {},
+	}
+	for _, doc := range idx.Documents {
+		for _, occurrence := range doc.Occurrences {
+			if name := sdk(occurrence.Symbol); name != "" {
+				bySDK[name].NativeOccurrences++
+			}
+		}
+	}
+	for _, pkg := range imported.Packages {
+		for _, edge := range pkg.Edges {
+			name := sdk(edge.ToSymbol)
+			if name == "" {
+				continue
+			}
+			switch edge.Kind {
+			case core.EdgeDirect:
+				bySDK[name].DirectEdges++
+			case core.EdgeUnresolved:
+				bySDK[name].UnresolvedEdges++
+			default:
+				return fmt.Errorf("unexpected imported edge kind")
+			}
+		}
+	}
+	result := struct {
+		SourceSHA256           string             `json:"source_sha256"`
+		NormalizedIndexSHA256  string             `json:"normalized_index_sha256"`
+		IndexNormalization     string             `json:"index_normalization"`
+		ExtractedNodes         int                `json:"extracted_nodes"`
+		Documents              int                `json:"documents"`
+		SDKs                   map[string]*counts `json:"sdks"`
+		LibraryImportIndexOnly bool               `json:"library_import_index_only"`
+		FullIngestMeasured     bool               `json:"full_ingest_measured"`
+		Report                 scip.Report        `json:"report"`
+	}{digest(src), normalizedDigest, "Metadata.project_root=file:///subject; deterministic protobuf encoding", len(nodes), imported.Report.Documents, bySDK, true, false, imported.Report}
+	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: importer <fresh-scratch>")
+		os.Exit(2)
+	}
+	if err := run(os.Args[1]); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

@@ -1,0 +1,205 @@
+{
+  "scope": "R-D19 same-frozen-SCIP Go regrade after main 440a94365 merge; field-only implementation unchanged; no SCIP producer, new holdout, or K17 cost rerun",
+  "merged_commit": "78d38fbaafd1af5dcb5a51bd147b2e0d8fdf60ca",
+  "main_commit": "440a94365",
+  "indexbench_sha256": "505fd13c6e87bea8c004adb860826be8503c33661cf0f330ed72319065cfeb28",
+  "ctags_sha256": "9b836bce8bc0065bf34dbf437edb8fd69ea6960a7e1e2c1efe462774a3660830",
+  "scip_go_version": "0.2.7",
+  "go_version": "1.27.3",
+  "frozen_indexes_sha256": {
+    "cli.scip": "883e1b36bfede07d533b29f45c152b8b8d0afc14ccd11045a153ea366c0165e4",
+    "cobra.scip": "63474e6b68f48955a135601585caaca23efb44a4d5beda4501b15886eb0db7e0",
+    "cli-independent.scip": "7a392698ab454a2226f7ebbe6c1ca53efd281d820b7d0e1ad71eb42915d393aa",
+    "cobra-independent.scip": "c64d082419914ee1e7f01f7151c91988b8330aebb2de60b6b7e33724b3470d90",
+    "gin.scip": "89e05dc56a8bdd3ecaf87780c226ec3c75b271b46f271c225a40ae9f2df00497"
+  },
+  "measured_raw_readings_sha256": {
+    "canonical": "5b14ff6acbd38f31375a89ad68f3d448730ea5246c1264d9de3f15c82126fede",
+    "independent": "ae5c952c634605bc897eb63e51548e6a35edcb1bd34d5d5c80d7ef01e0ddf9c9",
+    "gin": "028160ad3d1d3bc6dd8a088f5af35795425456709ea1004b7dc4878b6c2f6d44"
+  },
+  "published_readings_sha256": {
+    "canonical": "0358fc8fc68155b696c0ad77a0b32fef74ed10b6228567391d499ba732728862",
+    "independent": "35d857ded9bbfe57d44ad487072cf801f6a2c64fc25586d6fa0f85f9f89ec2b1",
+    "gin": "2ff2542b249a7485676115915ee102c4cc275cfa2a0ec7aee6c83c307be32a73"
+  },
+  "canonical_independent_equal": true,
+  "counts_metrics_grades_equal_to_wave_c": true,
+  "d19_l3_denominators": {
+    "canonical_and_independent": {
+      "file_edge_precision": 3158,
+      "file_edge_recall": 4472,
+      "import_resolution": 359
+    },
+    "spent_gin": {
+      "file_edge_precision": 170,
+      "file_edge_recall": 251,
+      "import_resolution": 6
+    }
+  },
+  "d19_min_references": 20,
+  "phases": [
+    {
+      "phase": "build-indexbench",
+      "exit": 0,
+      "launch_load": 8.61474609375,
+      "seconds": 8.663
+    },
+    {
+      "phase": "canonical-grade-cli",
+      "exit": 0,
+      "launch_load": 8.654296875,
+      "seconds": 5.686
+    },
+    {
+      "phase": "canonical-grade-cobra",
+      "exit": 0,
+      "launch_load": 8.361328125,
+      "seconds": 0.6
+    },
+    {
+      "phase": "canonical-retime",
+      "exit": 0,
+      "launch_load": 8.361328125,
+      "seconds": 2.014
+    },
+    {
+      "phase": "independent-grade-cli",
+      "exit": 0,
+      "launch_load": 8.01171875,
+      "seconds": 4.359
+    },
+    {
+      "phase": "independent-grade-cobra",
+      "exit": 0,
+      "launch_load": 8.01171875,
+      "seconds": 0.6
+    },
+    {
+      "phase": "independent-retime",
+      "exit": 0,
+      "launch_load": 7.8505859375,
+      "seconds": 2.081
+    },
+    {
+      "phase": "gin-grade",
+      "exit": 0,
+      "launch_load": 7.8505859375,
+      "seconds": 1.066
+    },
+    {
+      "phase": "gin-retime",
+      "exit": 0,
+      "launch_load": 7.8505859375,
+      "seconds": 0.458
+    }
+  ],
+  "results": {
+    "canonical": {
+      "level_met": "L4",
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "good"
+      },
+      "metrics": {
+        "call_precision": 0.9254,
+        "call_recall": 0.9241,
+        "def_mapping": 0.9345,
+        "file_edge_precision": 0.9956,
+        "file_edge_recall": 0.703,
+        "import_resolution": 1,
+        "kind_agreement": 0.9999,
+        "range_agreement": 1,
+        "signature_coverage": 1,
+        "sym_precision": 0.9994,
+        "sym_recall": 0.9991,
+        "typed_recall": 0.9889
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "throughput_mb_s": 20.93,
+        "throughput_basis": "cpu",
+        "wall_throughput_mb_s": 24.84,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    "independent": {
+      "level_met": "L4",
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "excellent",
+        "L4": "good"
+      },
+      "metrics": {
+        "call_precision": 0.9254,
+        "call_recall": 0.9241,
+        "def_mapping": 0.9345,
+        "file_edge_precision": 0.9956,
+        "file_edge_recall": 0.703,
+        "import_resolution": 1,
+        "kind_agreement": 0.9999,
+        "range_agreement": 1,
+        "signature_coverage": 1,
+        "sym_precision": 0.9994,
+        "sym_recall": 0.9991,
+        "typed_recall": 0.9889
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "throughput_mb_s": 20.38,
+        "throughput_basis": "cpu",
+        "wall_throughput_mb_s": 24.37,
+        "max_file_ms": 5,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    "gin": {
+      "level_met": "L4",
+      "grade": {
+        "L1": "excellent",
+        "L2": "excellent",
+        "L3": "good",
+        "L4": "excellent"
+      },
+      "metrics": {
+        "call_precision": 0.9146,
+        "call_recall": 0.9861,
+        "def_mapping": 0.9744,
+        "file_edge_precision": 0.9235,
+        "file_edge_recall": 0.6255,
+        "import_resolution": 1,
+        "kind_agreement": 1,
+        "range_agreement": 1,
+        "signature_coverage": 1,
+        "sym_precision": 1,
+        "sym_recall": 1,
+        "typed_recall": 0.9889
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "throughput_mb_s": 16.29,
+        "throughput_basis": "cpu",
+        "wall_throughput_mb_s": 20.46,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  },
+  "prior_wave_c_receipt_sha256": "d17d1e7984362924234f3b78d71850c9bcb68ac03ae534303a41e644b636e683",
+  "previous_lane_published_readings_sha256": {
+    "canonical": "1216dab62ba25cf78bc5f13fa15fbc4765cd89649353cb3f3410f092c153cd85",
+    "independent": "3fe42e0a83d891c32b288deae5f21c6118d0195578d717841a028251c168728d",
+    "gin": "bb6f0c57a87ba42b9d0b0f312ffff0311485c6ee615db07ef9b9add6e104da00"
+  },
+  "previous_lane_commit": "a1c7109fab9173634c54e901b313f14e15f92dc5"
+}

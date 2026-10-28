@@ -77,7 +77,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
 	var skillsFlag optionalStringFlag
-	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
+	fs.Var(&skillsFlag, "skills", "install the eleven shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/offload/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	noUserWritesFlag := fs.Bool("no-user-writes", false, "preview user configuration, ignore, prompts and PATH shim writes; operational state is still written to the state directory; --harness none requires each user-scope write to be requested explicitly")
 	harnessFlag := fs.String("harness", "", initHarnessUsage)

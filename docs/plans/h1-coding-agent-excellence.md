@@ -28,7 +28,7 @@ retained only for context — the test_reaches
 method-edge gap; the tests exist, the static edge doesn't yet.)
 
 - [x] Claims schema: semantic_claims/claim_links/compile_runs/claim_events [ADR-016] {symbol: SQLiteStore.PutClaims, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls; re-anchored from DuckStore.PutClaims when SS-8/ADR-025 deleted that backend"}
-- [x] Obligations compiler with compile-time anchor + scope verification [ADR-016] {symbol: Compile}
+- [x] Obligations compiler with compile-time anchor + scope verification [ADR-016] {symbol: Compile, package: internal/semantic}
 - [x] Post-ingest citation sweep flips stale claims [ADR-016] {symbol: Sweep}
 - [x] Obligations serving, zero-output-on-clean [ADR-016] {symbol: ObligationsFor}
 - [x] Obligations + compile_layer MCP tools on their surfaces [ADR-016] {symbol: registerSemanticTools}

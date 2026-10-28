@@ -129,6 +129,16 @@ package config
 #Guards: {
 	git_safety?: bool // default on; project or user may opt out of the shipped pack
 	enforce?: bool
+	// egress is the egress guard's mode (ADR-083): warn (the default)
+	// injects one advisory line, enforce denies while guard enforcement
+	// is on, off silences it. A repository may tighten the user's mode,
+	// never loosen it. String matching is a tripwire, not data-loss
+	// prevention.
+	egress?: "off" | "warn" | "enforce"
+	// egress_allow names the hosts the egress guard lets through: an exact
+	// host, "*.example.com" for its subdomains, or "s3://bucket" /
+	// "gs://bucket" for a storage bucket. User-only (scope.go).
+	egress_allow?: [...string & !=""]
 }
 
 // #Findings configures the findings-loop's governed external import
@@ -453,6 +463,17 @@ package config
 	skip_modules?: [...(string & !="")]
 }
 
+// #Ingest configures how ingest runs the language toolchains (ADR-083).
+// go_network = true lets the go commands fathom runs on its own (the typed
+// pass at ingest and in the daemon, the toolchain shim, ask's loads, the
+// layer-rules import graph) use the inherited GOPROXY and GOSUMDB; unset or
+// false they run with GOPROXY=off and GOSUMDB=off, so a cold module cache
+// fails the typed pass with a named reason instead of a download. User scope
+// only: a repository's .fathom/config.toml cannot set it.
+#Ingest: {
+	go_network?: bool
+}
+
 // #Gate configures local gate evidence; acceptance defaults off.
 #Gate: {
 	accept_receipts?: bool
@@ -568,6 +589,7 @@ package config
 	receipts?:  #Receipts
 	gate?:      #Gate
 	typed?:     #Typed
+	ingest?:    #Ingest
 	tenancy?:   #Tenancy
 	readouts?:  #Readouts
 	shell?:     #Shell

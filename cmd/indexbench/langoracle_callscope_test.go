@@ -174,12 +174,15 @@ func TestCmdLangOracleDefinitionsOnlyBesideCalls(t *testing.T) {
 	}
 }
 
-// Recorded-count regrade is a compatibility check for the committed SQL and
-// PHP readings. It does not rerun extraction or their independent oracles.
+// Recorded-count regrade is a compatibility check for the committed SQL,
+// PHP and CUDA readings. It does not rerun extraction or their independent oracles.
 func TestCmdLangRegradeCallScopeUnaffectedReadings(t *testing.T) {
-	for _, dialect := range []string{"sql", "php"} {
+	// The CLI resolves dialect manifests relative to the repository root.
+	// Match the actual stored-count receipt instead of stale incumbent fallbacks.
+	t.Chdir(filepath.Join("..", ".."))
+	for _, dialect := range []string{"sql", "php", "cuda"} {
 		t.Run(dialect, func(t *testing.T) {
-			source := filepath.Join("..", "..", "docs", "bench", "readings", "lang", dialect+".json")
+			source := filepath.Join("docs", "bench", "readings", "lang", dialect+".json")
 			raw, err := os.ReadFile(source)
 			if err != nil {
 				t.Fatal(err)
@@ -202,7 +205,8 @@ func TestCmdLangRegradeCallScopeUnaffectedReadings(t *testing.T) {
 			}
 			if before.LevelMet != after.LevelMet || !reflect.DeepEqual(before.Grade, after.Grade) ||
 				!reflect.DeepEqual(before.Metrics, after.Metrics) || !reflect.DeepEqual(before.Counts, after.Counts) ||
-				!reflect.DeepEqual(before.Subjects, after.Subjects) || !reflect.DeepEqual(before.Tenancy, after.Tenancy) {
+				!reflect.DeepEqual(before.Subjects, after.Subjects) || !reflect.DeepEqual(before.Tenancy, after.Tenancy) ||
+				!reflect.DeepEqual(before.RequiredKinds, after.RequiredKinds) {
 				t.Fatalf("stored-count regrade changed %s: before level=%s grade=%+v metrics=%v counts=%v; after level=%s grade=%+v metrics=%v counts=%v",
 					dialect, before.LevelMet, before.Grade, before.Metrics, before.Counts,
 					after.LevelMet, after.Grade, after.Metrics, after.Counts)

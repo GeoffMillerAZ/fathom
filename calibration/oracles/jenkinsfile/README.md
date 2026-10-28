@@ -1,7 +1,6 @@
 # JenkinsfileAstDump — the jenkinsfile dialect's tier-C oracle
 
-LB-Q-jenkinsfile (wave c3, item jenkins). Universal-ctags has no Groovy parser and no tool evaluates
-a Jenkinsfile offline (a Jenkins controller would, with every plugin its steps name), so the oracle is
+LB-Q-jenkinsfile (wave c3, item jenkins). The existing canonical oracle uses
 the Groovy compiler itself: `org.apache.groovy:groovy` 4.0.33 (Apache-2.0, the POM's licence and the
 jar's `META-INF/LICENSE`; sha256 `5240a9151289115e4d447d6b6d4cb9ac8a9fc6374e079714dfeeffda42323be8`,
 Maven Central), stopping at the CONVERSION phase: the AST as written, nothing resolved, so a Jenkins
@@ -54,3 +53,15 @@ at good.
 
 The oracle agrees with the dialect's five hand-written goldens entry for entry
 (`internal/extractor/dialects/jenkinsfile/testdata`).
+
+
+## L1/L2 native audit (2026-10-26)
+
+The earlier no-offline-evaluator premise is withdrawn. [NATIVE.md](NATIVE.md)
+measures Jenkins's own Declarative Converter/ModelAST on all 23 canonical L1/L2
+inputs: 753 model nodes, 747 positioned, zero final refusals after private parser
+configuration. These are not dialect definition/pair metrics; the canonical
+163 definitions and 133 pairs stay C. Full native mapping is unbuilt work.
+The native bundle, authored controls, five-source candidate audit and counts-only
+receipt are committed beside this README. Existing oracle documentation above
+remains the recipe used by the canonical board. No L3 grade changes here.
