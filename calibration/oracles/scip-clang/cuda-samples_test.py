@@ -33,7 +33,29 @@ class CUDAReadingNotes(unittest.TestCase):
         throughput = next(n for n in updated['notes'] if ': throughput read ' in n)
         self.assertIn('median run 1 (wall 1.72)', throughput)
         self.assertIn('equal CPU rates retain run order', throughput)
+        self.assertIn('development-class re-time replaces it (T2)', throughput)
         self.assertEqual(module.refresh_notes(copy.deepcopy(updated)), updated)
+
+    def test_retime_note_decides_the_throughput_check(self):
+        spec = importlib.util.spec_from_file_location('cuda_notes', HERE / 'cuda-reading-notes.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        reading = json.loads((HERE.parents[2] / 'docs/bench/readings/lang/cuda.json').read_text())
+        retime = next(n for n in reading['notes'] if n.startswith('throughput (design 1.9 T1, T2): '))
+        # Without the re-time, the VM median must be the reading's throughput.
+        vm = copy.deepcopy(reading)
+        vm['notes'].remove(retime)
+        vm['tenancy']['throughput_mb_s'], vm['tenancy']['wall_throughput_mb_s'] = 1.69, 1.72
+        note = next(n for n in module.refresh_notes(vm)['notes'] if ': throughput read ' in n)
+        self.assertIn(', 1.69, is this reading (', note)
+        vm['tenancy']['throughput_mb_s'] = 2.19
+        with self.assertRaisesRegex(ValueError, 'recorded median does not match'):
+            module.refresh_notes(vm)
+        # With it, the re-time's median must be the reading's throughput.
+        bad = copy.deepcopy(reading)
+        bad['tenancy']['throughput_mb_s'] = 1.69
+        with self.assertRaisesRegex(ValueError, 're-time median does not match'):
+            module.refresh_notes(bad)
 
 
 class CUDADatabaseLocation(unittest.TestCase):
