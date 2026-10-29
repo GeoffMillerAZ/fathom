@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-27",
+  "scope": "Official compiler already supplies P-T1 A; no generic absence ceiling",
+  "sources_searched": [
+    {
+      "group": "own toolchain",
+      "sources": [
+        "calibration/oracles/protoc-descriptors/README.md",
+        "https://github.com/protocolbuffers/protobuf/releases/tag/v34.1"
+      ],
+      "result": "Existing descriptor/source_code_info and dependency dump route from official protoc34.1; native A. No runtime call tracing required for the declaration/import/type-descriptor unit."
+    },
+    {
+      "group": "SCIP/LSIF",
+      "sources": [
+        "https://github.com/scip-code/scip#tools-using-scip",
+        "https://lsif.dev/",
+        "GitHub repository search scip-protobuf",
+        "GitHub repository search scip-proto"
+      ],
+      "result": "The producer search finds Sourcegraph scip-protobuf, not an absent-tool ceiling. README reports protobuf3-only testing and a real protoc plugin producer; not executed. Other search hits include mirrors and separate protoc-gen-scip projects; none treated as a missing canonical compiler route."
+    },
+    {
+      "group": "language servers",
+      "sources": [
+        "GitHub repository search protobuf language server",
+        "https://github.com/bufbuild/buf-language-server"
+      ],
+      "result": "Archived Buf language server and several independent protols implementations exist. Not run; the existing owner compiler is the actual binding oracle, so no language-server absence claim."
+    },
+    {
+      "group": "package registry/parser/AST",
+      "sources": [
+        "calibration/oracles/protoc-descriptors/go.mod",
+        "https://github.com/bufbuild/protocompile/releases/tag/v0.14.1"
+      ],
+      "result": "Existing projection decodes official descriptors with google.golang.org/protobuf v1.33.0. Independent protocompile v0.14.1 is a real alternative compiler library, not executed and no reason to replace the owner compiler for this measurement."
+    },
+    {
+      "group": "runtime tracing and introspection",
+      "sources": [
+        "https://github.com/protocolbuffers/protobuf/blob/v34.1/src/google/protobuf/compiler/command_line_interface.cc",
+        "calibration/oracles/protoc-descriptors/main.go"
+      ],
+      "result": "Official CLI advertises descriptor_set_out, include_source_info and dependency_out. Existing projection uses official descriptors for declaration/type/import evaluation. This is compiler introspection for the IDL unit, not runtime execution or a source line scanner."
+    }
+  ]
+}

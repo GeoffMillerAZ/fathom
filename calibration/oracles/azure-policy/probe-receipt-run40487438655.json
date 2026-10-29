@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "candidate": "AzurePolicy.azurepolicyextension/0.2.6",
+  "rid": "linux-x64",
+  "status": "probe_refused",
+  "native_executed": false,
+  "script_sha256": "33c505685e70f08571cc07184d3fb66b6101114b53911d59d821d5c087c41c1c",
+  "filesystem_script_sha256": "5a92046d8a66c33e41a4500baf012e729274689a72850d044188010eed4f30d0",
+  "inputs_sha256": "aa05ab0ab25d46ac51b133710ca053d8236cc022c7df22cb648029c5f387ca5b",
+  "payload_manifest_sha256": "53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4",
+  "isolation": "linux_user_net_pid_mount_namespaces",
+  "failed_stage": "filesystem_controls",
+  "kernel_capabilities": {
+    "apparmor_restrict_unprivileged_userns": 0,
+    "unprivileged_userns_clone": 1,
+    "max_user_namespaces": 63801
+  },
+  "calibration_measured": false,
+  "tier_granted": false,
+  "diagnostics_script_sha256": "ad088cd43e93d61acfe94110e13e6f3d6c97dab6aba3e3327a6b3c9f39320770",
+  "vendor_script_sha256": "83f706b0f8f91b739978ac2c805dff342499cb27262f3fa39a6a95424c6f98fb",
+  "tracing_script_sha256": "90564c159f15f57d4902d8bdd60592368eab6746c8ced7e08e1bb005715856f7",
+  "vendor_file_limit_bytes": 268435456,
+  "launcher_file_limit_bytes": 8388608,
+  "trace_limit_bytes": 8388608,
+  "receipt_limit_bytes": 131072,
+  "failure_class": "ValueError",
+  "preflight_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "preflight_stderr_bytes": 0
+}

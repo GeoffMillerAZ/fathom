@@ -1,0 +1,81 @@
+{
+  "canonical_scope_retained": true,
+  "unrestricted_subject": {
+    "files": 156,
+    "counts": {
+      "callables": 1135,
+      "callables_signed": 1135,
+      "fathom_defs": 1202,
+      "kind_equal": 1164,
+      "matched": 1164,
+      "oracle_defs": 1164,
+      "range_eligible": 1164,
+      "range_ok": 1164,
+      "ref_fathom": 435,
+      "ref_fathom_in_truth": 435,
+      "ref_truth": 435,
+      "ref_truth_found": 435,
+      "xref_fathom": 11,
+      "xref_fathom_in_truth": 11,
+      "xref_truth": 11,
+      "xref_truth_found": 11
+    },
+    "metrics": {
+      "ref_precision": 1,
+      "ref_recall": 1,
+      "sym_precision": 0.9684,
+      "sym_recall": 1,
+      "xref_precision": 1,
+      "xref_recall": 1
+    },
+    "grade": {
+      "L1": "good",
+      "L2": "excellent",
+      "L3": "unmet",
+      "L4": "not-applicable",
+      "L3_reason": "evidence: 11 references, under 20"
+    }
+  },
+  "excluded_population": {
+    "files": 38,
+    "fathom_defs": 56,
+    "xref_fathom": 0,
+    "additional_native_matched_defs": 18,
+    "additional_fathom_extras": 38
+  },
+  "unrestricted_pooled": {
+    "counts": {
+      "callables": 1997,
+      "callables_signed": 1997,
+      "fathom_defs": 2228,
+      "kind_equal": 2184,
+      "matched": 2184,
+      "oracle_defs": 2184,
+      "range_eligible": 2184,
+      "range_ok": 2184,
+      "ref_fathom": 1228,
+      "ref_fathom_in_truth": 1228,
+      "ref_truth": 1228,
+      "ref_truth_found": 1228,
+      "xref_fathom": 107,
+      "xref_fathom_in_truth": 107,
+      "xref_truth": 116,
+      "xref_truth_found": 107
+    },
+    "metrics": {
+      "ref_precision": 1,
+      "ref_recall": 1,
+      "sym_precision": 0.9803,
+      "sym_recall": 1,
+      "xref_precision": 1,
+      "xref_recall": 0.9224
+    },
+    "grade": {
+      "L1": "excellent",
+      "L2": "excellent",
+      "L3": "excellent",
+      "L4": "not-applicable"
+    }
+  },
+  "effect": "standalone L1 excellent to good; pooled L1 and L3 remain excellent"
+}

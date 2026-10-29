@@ -48,3 +48,20 @@
   until the switch.
 - `references.scm` (LB-F74, LB-F77, wave lc): written in this repository; no upstream query adapted
   (a type reference with its package path).
+
+
+## D19 phase 2 replay (2026-10-27)
+
+The earlier measurements above are historical. The current dialect reading moves
+L3 unmet to excellent under D19, with official protoc34.1 tier-A recall107/116
+and precision107/107. Both old pins/restrictions remain; the complete official
+source-proto scope at v34.1 was preregistered before native/Fathom results. The
+src import root is represented by the corpus subpath, with verified subject SHA.
+L1/L2 remain excellent:2166 matched native definitions,6 extra definitions in
+compiler-refused files,1214 local pairs all matched. No query, grammar, dispatch,
+rpc signature, shared ENGINE or epoch changes. The old needs-strategy/L3-unmeasured
+wording is superseded by LB-F56/LB-F77 and this reading; the dispatch/signature
+triggers remain open. Full native population, exclusions, exact tracked manifests,
+compiler identities, controls and reproduction commands are in
+`docs/assessments/2026-10-27-tools-protobuf-d19.md` and
+`calibration/oracles/protoc-descriptors/d19/protocol-r1.json`.

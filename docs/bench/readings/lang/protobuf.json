@@ -2,16 +2,15 @@
   "dialect": "protobuf",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "unmet",
-    "L4": "not-applicable",
-    "L3_reason": "evidence: 11 references, under 20"
+    "L3": "excellent",
+    "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "99c3c7d3",
+  "measured_at": "2026-10-27",
+  "fathom_commit": "a6137cd1c",
   "extractor": "dialect",
   "subjects": [
     {
@@ -52,9 +51,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 56.093,
-        "extract_cpu_ms": 56.842,
-        "max_file_ms": 13,
+        "extract_ms": 57.822,
+        "extract_cpu_ms": 58.677,
+        "max_file_ms": 12,
         "peak_module_pages": 287,
         "compiled_bytes": 0
       }
@@ -95,10 +94,55 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 2.048,
-        "extract_cpu_ms": 2.1540000000000004,
+        "extract_ms": 2.004,
+        "extract_cpu_ms": 2.0759999999999996,
         "max_file_ms": 0,
         "peak_module_pages": 269,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "protocolbuffers/protobuf",
+      "sha": "4b0c3aacf0657fbf38253b38918d3358dd4319ec",
+      "files": 91,
+      "bytes": 739062,
+      "counts": {
+        "callables": 822,
+        "callables_signed": 822,
+        "fathom_defs": 980,
+        "kind_equal": 974,
+        "matched": 974,
+        "oracle_defs": 974,
+        "range_eligible": 974,
+        "range_ok": 974,
+        "ref_fathom": 758,
+        "ref_fathom_in_truth": 758,
+        "ref_truth": 758,
+        "ref_truth_found": 758,
+        "xref_fathom": 96,
+        "xref_fathom_in_truth": 96,
+        "xref_truth": 105,
+        "xref_truth_found": 96
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "enum",
+        "message",
+        "rpc",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 75.62699999999994,
+        "extract_cpu_ms": 76.285,
+        "max_file_ms": 14,
+        "peak_module_pages": 297,
         "compiled_bytes": 0
       }
     }
@@ -113,10 +157,10 @@
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.9972,
     "sym_recall": 1,
     "xref_precision": 1,
-    "xref_recall": 1
+    "xref_recall": 0.9224
   },
   "metric_tiers": {
     "ref_precision": "A",
@@ -139,53 +183,55 @@
     "service"
   ],
   "counts": {
-    "callables": 1126,
-    "callables_signed": 1126,
-    "fathom_defs": 1192,
-    "kind_equal": 1192,
-    "matched": 1192,
-    "oracle_defs": 1192,
-    "range_eligible": 1192,
-    "range_ok": 1192,
-    "ref_fathom": 456,
-    "ref_fathom_in_truth": 456,
-    "ref_truth": 456,
-    "ref_truth_found": 456,
-    "xref_fathom": 11,
-    "xref_fathom_in_truth": 11,
-    "xref_truth": 11,
-    "xref_truth_found": 11
+    "callables": 1948,
+    "callables_signed": 1948,
+    "fathom_defs": 2172,
+    "kind_equal": 2166,
+    "matched": 2166,
+    "oracle_defs": 2166,
+    "range_eligible": 2166,
+    "range_ok": 2166,
+    "ref_fathom": 1214,
+    "ref_fathom_in_truth": 1214,
+    "ref_truth": 1214,
+    "ref_truth_found": 1214,
+    "xref_fathom": 107,
+    "xref_fathom_in_truth": 107,
+    "xref_truth": 116,
+    "xref_truth_found": 107
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 8.38,
+    "throughput_mb_s": 9,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 8.51,
-    "max_file_ms": 13,
-    "peak_module_pages": 287,
+    "wall_throughput_mb_s": 9.11,
+    "max_file_ms": 14,
+    "peak_module_pages": 297,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F77): xref_recall 1 and xref_precision 1 (11 of 11 oracle cross-file references, all in protovalidate; grpc-go has none), from 0: an import resolves under buf.yaml's module roots (v2 modules[].path: proto/protovalidate, proto/protovalidate-testing; a v1 buf.yaml's own directory; buf.work.yaml's directories; manifest imports.module_roots buf), and a type reference is read with its package (imports.type_paths package-dir: other_package.Embed.Enumerated is the nested enum Embed.Enumerated of the file whose directory ends in the segment other_package, an unqualified one is looked up in the file's own package first), so yet_another_package.Embed.Enumerated and other_package.Embed.Enumerated reach their own files. The import strategy now resolves protovalidate's imports at the module roots where the repository root resolved 0 of 123",
     "bufbuild/protovalidate: 40 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "bufbuild/protovalidate: 6 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
-    "bufbuild/protovalidate: protoc rejects 30 of its 156 .proto files because an import names a file outside the repository (29 under proto/protovalidate-testing/tests/migrate import protoc-gen-validate's validate/validate.proto; examples/cel_field_presence.proto imports googleapis' google/type/postal_address.proto), so -only measures the 118 files it compiles under the buf module roots, e2e and the examples (tests/migrate is left out whole: 8 of its files compile)",
+    "bufbuild/protovalidate: Cross-reference unit: distinct source file/referring definition/target file from owner descriptors; target symbol name dropped; public-import and package-directory misses are retained, not adjudicated.",
+    "bufbuild/protovalidate: D19 full preregistered replay; owner protoc34.1 A; no dispatch/signature/ENGINE changes",
+    "bufbuild/protovalidate: Owner compiler refuses 30/156 inputs: 25 missing external validation dependency, 1 missing external address dependency, 3 unknown native option and 1 duplicate option. The inherited -only omits 38 files; unrestricted diagnostic measures 56 Fathom definitions and zero Fathom cross-file pairs on them. Standalone L1 becomes good; pooled L1 and L3 remain excellent.",
+    "bufbuild/protovalidate: Timing is a single final capture per subject at nice10,load<=6,free>=20GiB,private caches,no daemon; not a median of three or a speedup claim.",
     "bufbuild/protovalidate: restricted to proto/protovalidate/**, proto/protovalidate-testing/buf/**, proto/protovalidate-testing/tests/example/**, e2e/**, examples/[^c]*.proto, examples/c[^e]*.proto, examples/ce[^l]*.proto, examples/cel[^_]*.proto, examples/cel_[^f]*.proto, examples/cel_f[^i]*.proto, examples/cel_field_[^p]*.proto, examples/cel_field_presence_*.proto (-only; the files outside are a disclosed gap, not measured)",
-    "cross-checks, unscored: buf build 1.70.0 (the repository's buf.yaml workspace, offline, decoded by the same program with -image) writes the same 919 definitions, 287 references, 42 imports and 11 cross-file references as protoc on the 37 files its workspace holds; universal-ctags 6.2.1 (Protobuf, tier B) matches 1,188 of the 1,192 definitions both ways (sym_recall and sym_precision .9966)",
     "grpc/grpc-go: 22 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "lang-parity against protoextract.go (both subjects, protovalidate unrestricted): sym_recall .9967 to 1, sym_precision .9363 to .9696, ref_recall 0 to 1, level_met none to L2; verdict REFUSED because the target (L3) is not met, so the incumbent stays dispatched (design section 11 step 2) and the dialect is built beside it",
-    "lang-parity is not re-run here: the dispatch switch (protoextract.go to the dialect) and the rpc Signature contract are not this wave item's; the dialect's L3 now meets the target the 2026-10-01 verdict (REFUSED, L3 unmet) was refused on",
-    "oracle: protoc (libprotoc 34.1, tier A, the format's reference compiler) compiles each file with --include_source_info through calibration/oracles/protoc-descriptors, under the subject's buf module roots and the repository root; definitions are messages (nested ones and proto2 groups; the synthetic map-entry messages are not written), enums, services and rpcs at their source_code_info spans; references are (enclosing message or rpc, type) for every message- or enum-typed field, map value, oneof member and extension field declared in a message, and an rpc's request and response",
+    "grpc/grpc-go: Cross-reference unit: distinct source file/referring definition/target file from owner descriptors; target symbol name dropped; public-import and package-directory misses are retained, not adjudicated.",
+    "grpc/grpc-go: D19 full preregistered replay; owner protoc34.1 A; no dispatch/signature/ENGINE changes",
+    "grpc/grpc-go: No compiler refusals on all 13 inputs; no missed cross-file pairs or extra definitions.",
+    "grpc/grpc-go: Timing is a single final capture per subject at nice10,load<=6,free>=20GiB,private caches,no daemon; not a median of three or a speedup claim.",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "range, not gated for a tool format: every matched definition's end line equals protoc's span end (1,192 of 1,192); every rpc and message carries a Signature",
-    "re-run 2026-10-01: grpc/grpc-go v1.84.0 (e84aa5ab, 13 files compiled, 10 measured) and bufbuild/protovalidate v1.2.2 (4baed765, 126 of 156 compiled, 118 measured under the same -only restriction) against libprotoc 34.1; L1 and L2 re-read identically (1,192 definitions, 456 pairs, all 1). buf build 1.70.0 over protovalidate's own workspace, decoded with -image, writes 919 definitions, 310 references, 44 imports and 12 cross-file references (unscored; the 287/42/11 of the first run were not reproduced, the definitions are the same 919)",
-    "regraded at 12a00f853 from the recorded subject counts (harness rules only; extraction as measured at 99c3c7d3)",
-    "regraded at 5b802bc2 from the recorded subject counts (harness rules only; extraction as measured at 99c3c7d3)",
-    "the incumbent's rpc Signature is the request and response type names joined by an arrow, text no source spells; a tags-engine Signature is the definition's own source up to its body (design section 3.3), so the dialect's is the rpc as written (rpc SayHello (HelloRequest) returns (HelloResponse)) and protoextract_test.go's signature case holds for the incumbent only (TestProtobufDialectRPCSignature)",
+    "protocolbuffers/protobuf: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "protocolbuffers/protobuf: 3 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "protocolbuffers/protobuf: Cross-reference unit: distinct source file/referring definition/target file from owner descriptors; target symbol name dropped; public-import and package-directory misses are retained, not adjudicated.",
+    "protocolbuffers/protobuf: D19 full preregistered replay; owner protoc34.1 A; no dispatch/signature/ENGINE changes",
+    "protocolbuffers/protobuf: Owner compiler refuses 2/92 inputs for one dependency outside the fixed source scope. Their 6 extra Fathom definitions (4 messages,2 enums) remain precision errors. All 9 missed eligible file pairs remain: 8 transitive public-import targets not followed,1 qualified package differs from its directory.",
+    "protocolbuffers/protobuf: Timing is a single final capture per subject at nice10,load<=6,free>=20GiB,private caches,no daemon; not a median of three or a speedup claim.",
     "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
   ],
-  "disposition": "met: target L3, met L3 excellent (wave lc, fathom 99c3c7d3: buf module roots and package-qualified type paths, LB-F77) on grpc/grpc-go v1.84.0 (10 files) and bufbuild/protovalidate v1.2.2 (118 files under -only): L1 excellent (sym_recall 1, sym_precision 1, 1,192 definitions), L2 excellent (ref_recall 1, ref_precision 1, 456 pairs), L3 excellent (xref_recall 1, xref_precision 1, 11 of 11; was 0) against protoc 34.1 (tier A). Not dispatched: protoextract.go stays live until the dispatch switch and the rpc Signature decision (the incumbent's arrow-joined Signature is not a source span) are taken (LB-Q-protobuf-rest)."
+  "disposition": null
 }

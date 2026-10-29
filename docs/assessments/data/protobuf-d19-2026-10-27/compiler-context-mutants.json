@@ -1,0 +1,15 @@
+{
+  "oracle_source_sha256": "5d173243b6618d2f2be947fd4474834b7439104393c573a37bbed6c7a6119e92",
+  "mutations": [
+    {
+      "mutant": "compiler_context",
+      "test": "TestReferenceDestinationKeepsCompilerContexts",
+      "restored_green": true
+    },
+    {
+      "mutant": "root_precedence",
+      "test": "TestDescriptorFileUsesCompilerRootPrecedence",
+      "restored_green": true
+    }
+  ]
+}

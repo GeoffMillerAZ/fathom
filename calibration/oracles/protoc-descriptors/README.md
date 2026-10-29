@@ -1,7 +1,7 @@
 # protoc-descriptors — tier-A protobuf oracle (definitions, references, imports)
 
 protoc is protobuf's reference compiler (design §1.3, tier A: "the format's reference parser"). This program compiles
-every `.proto` file of a subject on its own with `protoc --include_source_info --descriptor_set_out=<f>`, decodes the
+every `.proto` file of a subject on its own with `protoc --include_source_info --include_imports --descriptor_set_out=<f>`, decodes the
 `FileDescriptorSet` protoc writes (`google.golang.org/protobuf/types/descriptorpb`) and writes the neutral oracle file
 `indexbench lang-oracle -tool-oracle` reads. Its own Go module; bench-only, never a product dependency.
 
@@ -24,8 +24,8 @@ What it writes, every line from `source_code_info` spans (first line, last line)
   member, map value (attributed to the message holding the map, not to the synthetic entry) and extension field declared
   inside a message, and an rpc's request and response. A group field (the group declares its type in place), a map
   field's own entry type, a file-level extension (nothing encloses it) and an `extend`'s target are not references.
-- `imports`: every import statement whose path protoc resolved to a file of the subject, at the statement's line; a
-  well-known (`google/protobuf/*`) or external import is not written.
+- `imports`: every import statement whose path protoc resolved to a file of the subject, at the statement's line; an import outside the subject is not written, including an external well-known
+  (`google/protobuf/*`) dependency. Well-known files inside the fixed subject scope are eligible.
 - `cross_references`: a reference whose type protoc resolved to a definition in another file of the subject.
 
 First runs (2026-09-29, libprotoc 34.1, buf 1.70.0): grpc/grpc-go v1.84.0, 13 files compiled (10 measured: discovery
@@ -40,3 +40,37 @@ Re-run 2026-10-01 (wave lb remeasure, fathom fdd2bb59, libprotoc 34.1, buf 1.70.
 now scores the oracle's `cross_references` (LB-F56): xref_recall 0 of 11 (all protovalidate), xref_precision unmeasured — the file
 resolver draws no edge for a buf workspace's module-rooted imports (O274; module roots are wave 3's). `buf build` over protovalidate's
 workspace decoded with `-image` gives 919 definitions, 310 references, 44 imports and 12 cross-file references.
+
+
+## D19 replay (2026-10-27)
+
+The canonical recipe and earlier runs above remain the reference history. The
+current native-first replay is preregistered by `d19/protocol-r1.json` and driven
+by `d19/prepare.py` and `d19/replay.py`. Official protoc34.1 retains both old pins
+and adds its complete source-proto scope at the genuine src import root. It
+compiles229/261 inputs (32 refusals disclosed) and enumerates117 distinct native
+cross-file pairs before discovery scope. The reading scores116 eligible pairs,
+finding107, and predicts107, all correct. L3 moves unmet to excellent under D19;
+L1/L2 stay excellent. This calibrates the dialect alongside the still-dispatched
+incumbent; it does not change dispatch or rpc signatures. See
+`docs/assessments/2026-10-27-tools-protobuf-d19.md` for per-subject counts,
+exclusions and runnable commands. Raw source/file lists remain private.
+
+D19 correctness amendment: imported descriptors identify type destinations within
+each independent compiler invocation, using its own import-root precedence; only
+the root descriptor emits declarations. The previous global type-name map could
+conflate duplicate names in independent fixtures. A four-file native control, two
+Go regression tests and two FAIL→GREEN mutants prove this correction. All three
+fixed subject populations were replayed from that corrected instrument; no source
+file, existing exclusion or metric threshold changed.
+
+T-R17 disclosure follow-up: the current 30 protovalidate refusals are25 missing
+external validation dependencies,1 missing address dependency,3 unknown options
+and1 duplicate option; the blanket migration-dependency description in the older
+run notes is superseded for this replay. The2 official-source refusals share an
+out-of-scope fixture dependency. An unrestricted diagnostic measures all38 files
+the inherited restriction excludes:56 Fathom definitions,0 file pairs. Standalone
+L1 is good; pooled L1 remains excellent at2184/2228 and L3 is unchanged. The9
+misses are8 public-import re-export paths and1 package-directory mismatch. These
+disclosures and single-capture conditions are generated in the reading by the
+compare driver's notes, not hand edits.

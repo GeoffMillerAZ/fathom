@@ -210,7 +210,7 @@ adoption or an external-consumer reading. A binding alone does not establish use
   context has a snippet and an empty `observed_by` list. No monitor selection,
   retry-chain or code-to-config join was demonstrated.
 - **L2. Receipts and deltas:** `export receipt --kind fact` is rejected with
-  "want symbol_location or callers". Fact and join receipts, the multi-kind
+  "want symbol_location, callers, references or certification". Fact and join receipts, the multi-kind
   inventory, its basis/coverage classes and the concern-delta file are unbuilt.
   Their descriptions above are consumer contracts, not working export commands.
 - **L3. Verification:** exporting the Python definition receipt succeeds.

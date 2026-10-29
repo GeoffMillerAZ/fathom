@@ -1,0 +1,105 @@
+{
+  "id": "protobuf-d19-r1",
+  "date": "2026-10-27",
+  "base": "3118be853",
+  "scope": "L3 evidence replay only; no ENGINE, dispatch, rpc signature, grammar, epoch, generated tracker or plan-box changes",
+  "before": {
+    "pre_D19_L3": "excellent",
+    "current_L3": "unmet",
+    "xref_truth": 11,
+    "xref_fathom": 11,
+    "reading_sha256": "599f9ecdc2b956c011bd1f07ef2603505bb6ca057a49a86bd61ee95a6f42ef7b",
+    "corpus_sha256": "98eff52882eb18da8ca68cacbc037c051cdbad27480f92090389e8a4703e1fae"
+  },
+  "oracle": {
+    "name": "protoc",
+    "version": "34.1",
+    "tier": "A",
+    "authority": "format owner reference compiler, P-T1",
+    "license": "BSD-3-Clause",
+    "source_commit": "4b0c3aacf0657fbf38253b38918d3358dd4319ec",
+    "asset": "protoc-34.1-osx-aarch_64.zip",
+    "url": "https://github.com/protocolbuffers/protobuf/releases/download/v34.1/protoc-34.1-osx-aarch_64.zip",
+    "sha256": "2c7e92b8b578916937df132b3032e2e8e6c170862ecf7a8333094a6f3d03650c",
+    "projection": "Owner descriptors/source_code_info, including imported descriptor locations per individual compiler invocation; keep root-file declaration projection and existing file/from/to-file scoring unit. No Fathom-selected native truth."
+  },
+  "population": [
+    {
+      "repository": "grpc/grpc-go",
+      "sha": "e84aa5ab15d1d2b29d54f838312ad490cb7551a8",
+      "license": "Apache-2.0",
+      "scopes": [
+        "**/*.proto",
+        "**/buf.yaml",
+        "**/buf.gen.yaml",
+        "**/buf.work.yaml"
+      ],
+      "subpath": ".",
+      "role": "existing canonical",
+      "only": null
+    },
+    {
+      "repository": "bufbuild/protovalidate",
+      "sha": "4baed765070e580226a0a30bf2a357cc027dc1f7",
+      "license": "Apache-2.0",
+      "scopes": [
+        "**/*.proto",
+        "**/buf.yaml",
+        "**/buf.gen.yaml",
+        "**/buf.work.yaml",
+        "**/buf.lock"
+      ],
+      "subpath": ".",
+      "role": "existing canonical",
+      "only": "proto/protovalidate/**, proto/protovalidate-testing/buf/**, proto/protovalidate-testing/tests/example/**, e2e/**, examples/[^c]*.proto, examples/c[^e]*.proto, examples/ce[^l]*.proto, examples/cel[^_]*.proto, examples/cel_[^f]*.proto, examples/cel_f[^i]*.proto, examples/cel_field_[^p]*.proto, examples/cel_field_presence_*.proto"
+    },
+    {
+      "repository": "protocolbuffers/protobuf",
+      "sha": "4b0c3aacf0657fbf38253b38918d3358dd4319ec",
+      "license": "BSD-3-Clause",
+      "scopes": [
+        "src/google/protobuf/**/*.proto",
+        "src/google/protobuf/*.proto"
+      ],
+      "subpath": "src",
+      "role": "new canonical candidate, not a holdout",
+      "only": null
+    }
+  ],
+  "selection": "Complete tracked proto populations at fixed scopes, including zero-reference files, native refusals and mismatches. Official source adds all 92 protos under src/google/protobuf known from the source tree before compiler/Fathom results. Measurement root is the genuine src proto import root, represented by corpus subpath src and verified subject-sha. No source edits, generated references, renamed files, accuracy filtering or denominator-driven reselection.",
+  "d19": {
+    "minimum_per_metric": 20,
+    "recall_denominator": "xref_truth",
+    "precision_denominator": "xref_fathom",
+    "subject_minimum": null
+  },
+  "limits": {
+    "files_per_subject": 4096,
+    "source_file_bytes": 33554432,
+    "source_bytes_per_subject": 536870912,
+    "archive_bytes": 8388608,
+    "archive_members": 128,
+    "archive_member_bytes": 33554432,
+    "archive_expanded_bytes": 134217728,
+    "oracle_artifact_bytes": 67108864,
+    "subject_timeout_seconds": 300
+  },
+  "controls": [
+    "Exact design13.3.1 before/after tracked-set manifests, counts/hashes only public",
+    "Full compiler populations before Fathom; preserve external compiler refusals and existing ingest exclusions",
+    "Authored input-reference change changes native file target; perturb actual Fathom output without changing raw truth",
+    "No oracle tier or projection change; native independence and existing protobuf goldens/races",
+    "Per-subject/pooled numerators, denominators and tier caps; source-set reconciliation; strict Reading serialization",
+    "X-R2/X-R3/X-R5 and X-R10 scratch strict verification of lexical consumers before READY"
+  ],
+  "resources": "One nice10 heavy job; load<=6/free>=20GiB checked first; private caches/TMP; no Docker/global install/paid call; prune measured subjects/builds",
+  "instrument_amendment": {
+    "date": "2026-10-27",
+    "stage": "after preliminary replay, before corrected full replay",
+    "reason": "Joint compilation exposed independently valid duplicate qualified type names. An authored four-file control proved the old global type-location map cross-bound a caller to an unimported file. Resolve from each successful compiler invocation including import descriptors and native root precedence; image mode retains its joint-image lookup.",
+    "population_unchanged": true,
+    "grading_thresholds_unchanged": true,
+    "product_engine_unchanged": true,
+    "required": "Freeze instrument correction, demonstrate context/root-order mutants RED then GREEN, rebuild and rerun all three native populations before fresh Fathom comparisons; preliminary reading is not final evidence."
+  }
+}

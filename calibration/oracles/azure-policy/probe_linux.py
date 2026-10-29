@@ -26,6 +26,9 @@ from audit_extension import HERE
 from prepare_native import prepare
 from receipt_contract import SCHEMA, read_receipt, validate, write_receipt
 from filesystem_isolation import isolate_filesystem, restricted_command
+from write_tracing import BoundedCapture, trace_identity, trace_command
+from write_diagnostics import diagnostics, MAX_TRACE
+from vendor_exec import VENDOR_LIMIT, vendor_command
 
 CONTRACT = json.loads(SCHEMA.read_text())
 
@@ -100,7 +103,7 @@ def failure_class(error):
 
 
 def receipt_base():
-    return dict(schema_version=2, candidate='AzurePolicy.azurepolicyextension/0.2.6',
+    return dict(schema_version=3, candidate='AzurePolicy.azurepolicyextension/0.2.6',
                 rid='linux-x64', status='pending', native_executed=False,
                 script_sha256=digest(Path(__file__).read_bytes()),
                 filesystem_script_sha256=digest(Path(__file__).with_name('filesystem_isolation.py').read_bytes()),
@@ -108,7 +111,31 @@ def receipt_base():
                 payload_manifest_sha256=json.loads(PIN.read_text())['manifest_sha256'],
                 isolation='linux_user_net_pid_mount_namespaces', failed_stage=None,
                 kernel_capabilities=kernel_capabilities(),
-                calibration_measured=False, tier_granted=False)
+                calibration_measured=False, tier_granted=False,
+                diagnostics_script_sha256=digest(Path(__file__).with_name('write_diagnostics.py').read_bytes()),
+                vendor_script_sha256=digest(Path(__file__).with_name('vendor_exec.py').read_bytes()),
+                tracing_script_sha256=digest(Path(__file__).with_name('write_tracing.py').read_bytes()),
+                vendor_file_limit_bytes=VENDOR_LIMIT, launcher_file_limit_bytes=LIMIT,
+                trace_limit_bytes=MAX_TRACE, receipt_limit_bytes=128*1024)
+
+
+def attach_diagnostics(receipt, trace, scratch, trace_tool):
+    """Parse refusal preserves worker evidence; a parsed contradiction withdraws it."""
+    receipt.update(trace_tool=trace_tool,trace_within_cap=len(trace.encode('utf-8','surrogateescape'))<=MAX_TRACE)
+    try:
+        written=diagnostics(trace,scratch)
+        if receipt.get('native_executed') is True:
+            if not written['vendor_exec_observed'] or written['native_returncode'] is None:
+                receipt.update(write_diagnostics=written,diagnostic_status='contradicted',
+                               native_executed=None,native_returncode=None,
+                               status='probe_refused',failed_stage='tracing')
+                return receipt
+            receipt['trace_writer_hidden_from_vendor']=True
+            receipt['native_returncode']=written['native_returncode']
+        receipt.update(write_diagnostics=written,diagnostic_status='partial' if written['files_truncated'] or written['snapshot_truncated'] else 'complete')
+    except Exception as error:
+        receipt.update(write_diagnostics=None,diagnostic_status='refused',diagnostic_failure_class=failure_class(error))
+    return receipt
 
 
 def enable_loopback():
@@ -238,6 +265,17 @@ def private_log(path, data):
         target.write(data)
 
 
+def read_private_log(path):
+    import stat
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    with os.fdopen(fd,'rb') as source:
+        if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            raise ValueError('private log must be regular')
+        value=source.read(LIMIT+1)
+    if len(value)>LIMIT: raise ValueError('private log exceeds output cap')
+    return value
+
+
 def log_error(out, error):
     try:
         private_log(out / 'probe-error.log', (repr(error) + '\n').encode())
@@ -259,20 +297,21 @@ def publish_receipt(receipt, out, publish, contract):
             if len(data) > LIMIT:
                 raise ValueError('preflight log exceeds cap')
             receipt.update(preflight_stderr_sha256=digest(data), preflight_stderr_bytes=len(data))
-        write_receipt(out / 'receipt.json', receipt, contract)
+        write_receipt(out / 'receipt.json', receipt, contract, public=True)
         if publish:
-            write_receipt(publish, receipt, contract)
+            write_receipt(publish, receipt, contract, public=True)
     except Exception as error:
-        receipt.update(status='receipt_invalid', failure_class=failure_class(error), failed_stage='receipt')
+        receipt=receipt_base()
+        receipt.update(status='receipt_invalid', native_executed=None, failure_class=failure_class(error), failed_stage='receipt')
         log_error(out, error)
         # Even a private-tail failure must publish an outer-generated refusal.
         # Private and public locations are outside the writable worker mount.
         try:
-            write_receipt(out / 'receipt.json', receipt, contract)
+            write_receipt(out / 'receipt.json', receipt, contract, public=True)
         except OSError:
             pass
         if publish:
-            write_receipt(publish, receipt, contract)
+            write_receipt(publish, receipt, contract, public=True)
     return 0 if receipt['status'] == 'probe_complete_requires_analysis' else 2
 
 
@@ -281,14 +320,14 @@ def copy_payload(payload, destination, pin):
     verify(destination, pin)
 
 
-def worker(payload, out, protected=None):
+def worker(payload, out, protected=None, trace_fd=None):
     # Measure isolation before any vendor byte executes, even for manual calls.
     if os.getpid() != 1 or socket.if_nameindex() != [(1, 'lo')]:
         raise ValueError('worker requires PID1 and loopback-only network namespace')
     filesystem_flags = isolate_filesystem(out, protected)
     enable_loopback()
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (LIMIT, LIMIT))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (LIMIT, VENDOR_LIMIT))
     home = out / 'home'
     home.mkdir()
     (home / 'tmp').mkdir()
@@ -300,9 +339,17 @@ def worker(payload, out, protected=None):
     receipt.update(status='native_probe_failed', netns_loopback_only=True,
                    measured_interfaces=1, shutdown_clean=False, failed_stage='execution')
     receipt.update(filesystem_flags)
+    if trace_fd is None or trace_fd < 3:
+        raise ValueError('launcher-owned trace pipe required')
     with (out / 'native-stderr.log').open('wb') as stderr, (out / 'lsp-raw.jsonl').open('wb') as raw:
-        process = subprocess.Popen(restricted_command([payload / 'PolicyLanguageServer']), stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE, stderr=stderr, cwd=home, env=env, start_new_session=True)
+        command = trace_command('/usr/bin/strace',trace_fd,vendor_command(home,payload))
+        try:
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, cwd=home, env=env, start_new_session=True,
+                                       pass_fds=(trace_fd,))
+        finally:
+            os.close(trace_fd)
+        errors = BoundedCapture(process.stderr, stderr, LIMIT)
         receipt['native_executed'] = True
         lsp = None
         try:
@@ -361,13 +408,19 @@ def worker(payload, out, protected=None):
         finally:
             # Kill the normal-path group too. The enclosing PID namespace's
             # init exit then kills descendants that escaped with setsid.
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                pass
             kill_group(process)
             process.wait()
             if lsp:
                 lsp.thread.join(timeout=1)
-            receipt['native_returncode'] = process.returncode
+            receipt['tracer_returncode'] = process.returncode
+            receipt['native_returncode'] = process.returncode  # outer trace replaces this before publication
+            errors.check()
     for key, filename in [('stderr', 'native-stderr.log'), ('lsp', 'lsp-raw.jsonl')]:
-        value = (out / filename).read_bytes()
+        value = read_private_log(out / filename)
         receipt[key + '_sha256'] = digest(value)
         receipt[key + '_bytes'] = len(value)
     write_receipt(out / 'receipt.json', receipt, CONTRACT)
@@ -383,6 +436,7 @@ def main():
     parser.add_argument('-publish', type=Path, help='separate validated receipt destination')
     parser.add_argument('--namespace-worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--protected-dir', type=Path, action='append', help=argparse.SUPPRESS)
+    parser.add_argument('--trace-fd', type=int, help=argparse.SUPPRESS)
     parser.add_argument('--controls-failed', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     cache, out = args.cache.resolve(), args.out.resolve()
@@ -390,7 +444,7 @@ def main():
     if args.namespace_worker:
         if os.environ.get('FATHOM_PRIVATE_NETNS') != '1':
             raise SystemExit('namespace worker requires the isolated launcher')
-        return worker(payload, out, args.protected_dir)
+        return worker(payload, out, args.protected_dir, args.trace_fd)
     if (out.exists() or out == cache or cache in out.parents or out in cache.parents or
             args.min_free_gib < 1 or args.max_load <= 0):
         parser.error('fresh separate directories and valid positive resource floors required')
@@ -403,7 +457,9 @@ def main():
     contract = copy.deepcopy(CONTRACT)
     identity = {key: receipt[key] for key in ['schema_version', 'candidate', 'rid', 'script_sha256', 'filesystem_script_sha256',
                                             'inputs_sha256', 'payload_manifest_sha256', 'isolation',
-                                            'calibration_measured', 'tier_granted']}
+                                            'calibration_measured', 'tier_granted', 'diagnostics_script_sha256', 'vendor_script_sha256',
+                                            'tracing_script_sha256', 'vendor_file_limit_bytes', 'launcher_file_limit_bytes',
+                                            'trace_limit_bytes', 'receipt_limit_bytes']}
     stage = 'platform'
     try:
         if platform.system() != 'Linux' or platform.machine() not in ('x86_64', 'amd64'):
@@ -452,7 +508,13 @@ def main():
                 raise ValueError('namespace import, filesystem or loopback preflight refused')
         stage = 'filesystem_controls'
         if args.controls_failed:
+            # Fixed authored enum, never an exception message or private path.
+            receipt['failure_detail']='required_authored_controls_failed'
             raise ValueError('required authored kernel controls failed')
+        stage = 'tracing'
+        if not Path('/usr/bin/strace').is_file():
+            raise ValueError('runner strace required; no install or untraced fallback')
+        trace_tool = trace_identity()
         current_nice = os.getpriority(os.PRIO_PROCESS, 0)
         if current_nice < 10:
             os.nice(10 - current_nice)
@@ -463,23 +525,45 @@ def main():
         stage = 'verification'
         verify(payload, pin)
         copy_payload(payload, scratch / 'payload', pin)
+        # Preparation has separately pinned archive/member bounds. From native
+        # launch onward, the launcher enforces 8 MiB while its child can raise
+        # only to the finite 256 MiB hard ceiling.
+        resource.setrlimit(resource.RLIMIT_CORE,(0,0))
+        resource.setrlimit(resource.RLIMIT_FSIZE,(LIMIT,VENDOR_LIMIT))
         stage = 'worker'
         command = namespace + ['--', sys.executable, '-B', str(Path(__file__).resolve()), '-cache', str(scratch), '-out', str(scratch), '--namespace-worker']
         for directory in protected:
             command += ['--protected-dir', str(directory)]
-        process = subprocess.Popen(command, env=clean, start_new_session=True, stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL)
-        try:
-            code = process.wait(timeout=TIMEOUT)
-        except subprocess.TimeoutExpired:
-            kill_group(process)
-            process.wait()
-            receipt.update(status='probe_timeout', native_executed=None, failed_stage='worker')
-        else:
-            receipt.update(status='namespace_worker_failed', native_executed=None, worker_returncode=code,
-                           failed_stage='worker')
-        finally:
-            kill_group(process)
+        reader, writer = os.pipe()
+        command += ['--trace-fd', str(writer)]
+        with (out / 'native-trace.log').open('xb') as trace:
+            capture = BoundedCapture(os.fdopen(reader, 'rb'), trace, MAX_TRACE)
+            try:
+                process = subprocess.Popen(command, env=clean, start_new_session=True, stdout=subprocess.DEVNULL,
+                                           stderr=subprocess.DEVNULL, pass_fds=(writer,))
+            finally:
+                os.close(writer)
+            try:
+                end = time.monotonic() + TIMEOUT
+                while True:
+                    if capture.overflow or capture.error:
+                        stage = 'tracing'
+                        raise ValueError('trace capture failed or exceeded cap')
+                    remaining = end - time.monotonic()
+                    if remaining <= 0: raise subprocess.TimeoutExpired(command, TIMEOUT)
+                    try:
+                        code = process.wait(timeout=min(0.2, remaining)); break
+                    except subprocess.TimeoutExpired:
+                        continue
+                receipt.update(status='namespace_worker_failed', native_executed=None, worker_returncode=code,
+                               failed_stage='worker')
+            except subprocess.TimeoutExpired:
+                receipt.update(status='probe_timeout', native_executed=None, failed_stage='worker')
+            finally:
+                kill_group(process)
+                process.wait()
+                stage = 'tracing'
+                capture.check()
         if receipt['status'] != 'probe_timeout' and (scratch / 'receipt.json').exists():
             stage = 'receipt'
             try:
@@ -492,6 +576,9 @@ def main():
             except Exception as error:
                 receipt.update(status='receipt_invalid', failure_class=failure_class(error), failed_stage='receipt')
                 log_error(out, error)
+        stage = 'tracing'
+        raw_trace = (out / 'native-trace.log').read_bytes()
+        attach_diagnostics(receipt,raw_trace.decode('utf-8','surrogateescape'),scratch,trace_tool)
     except Exception as error:
         receipt.update(status='probe_refused', failure_class=failure_class(error), failed_stage=stage)
         log_error(out, error)

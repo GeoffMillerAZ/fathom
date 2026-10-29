@@ -84,14 +84,26 @@ def read_receipt(path, schema, identity=None):
     return value
 
 
-def write_receipt(path, value, schema):
+def write_receipt(path, value, schema, public=False):
     validate(value, schema)
+    if public and value.get('native_executed') is True:
+        for key in ['write_diagnostics','diagnostic_status','trace_within_cap','trace_tool']:
+            if key not in value: raise ValueError('public native receipt lacks outer diagnostics')
+        diagnostic=value['write_diagnostics']
+        if value['diagnostic_status']=='refused':
+            if diagnostic is not None or 'diagnostic_failure_class' not in value:
+                raise ValueError('diagnostic refusal must be explicit')
+        elif (diagnostic is None or not diagnostic['vendor_exec_observed'] or
+              diagnostic['native_returncode']!=value.get('native_returncode') or
+              value.get('trace_writer_hidden_from_vendor') is not True):
+            raise ValueError('public native receipt disagrees with outer trace')
+    raw=(json.dumps(value,indent=2)+'\n').encode()
+    if len(raw)>MAX_RECEIPT: raise ValueError('receipt exceeds cap')
     fd, name = tempfile.mkstemp(prefix='.receipt-validated.', suffix='.tmp', dir=path.parent)
     temporary = Path(name)
     try:
-        with os.fdopen(fd, 'w') as target:
-            json.dump(value, target, indent=2)
-            target.write('\n')
+        with os.fdopen(fd, 'wb') as target:
+            target.write(raw)
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)

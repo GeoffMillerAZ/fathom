@@ -24,6 +24,18 @@ type SubjectTenancy struct {
 	MaxFileMS       int64   `json:"max_file_ms"`
 	PeakModulePages int     `json:"peak_module_pages"`
 	CompiledBytes   int64   `json:"compiled_bytes"`
+	// CompileDB is the identity of the compile databases an include-path
+	// dialect's extraction read; nil for other dialects and for readings
+	// recorded before it existed.
+	CompileDB *CompileDBIdentity `json:"compile_db,omitempty"`
+}
+
+// CompileDBIdentity mirrors fusion.CompileDBIdentity: databases read, their
+// translation units, and a root-independent fingerprint ("" with none).
+type CompileDBIdentity struct {
+	Databases   int    `json:"databases"`
+	Entries     int    `json:"entries"`
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // NewReading starts an empty reading for a dialect.

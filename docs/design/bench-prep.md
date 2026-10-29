@@ -302,7 +302,9 @@ therefore off in every arm, and every reading says so.
    listed. The per-subject A0 pass rate is reported, and a subject above 50% leaves the primary (ADR-031's own
    trigger, applied per subject).
 3. **Post-cutoff slices.** Once Q2 pins the model, its training cutoff sets each subject's `fresh_after`. The
-   post-cutoff slice is a reported stratum, and the held-out split prefers it. Most dataset tasks predate any
+   post-cutoff slice is a reported stratum, and the held-out split prefers it. A dev repository contributes no
+   post-cutoff task (ruled 2026-10-28, BX-54): fathom tunes on dev repositories, so a fresh task there is new to
+   the model but not to fathom, and it stays dev. Most dataset tasks predate any
    cutoff and their patches are public, which compresses headroom toward a null; the per-subject A0 rate makes
    that visible (correction 10).
 4. **Patches stay out of the tree.** Gold patches are always fetched and checked by sha256. Test patches for
@@ -335,12 +337,18 @@ ADR-034).
 A prereg is two committed files: `docs/bench/prereg/<id>.md` (prose, signed by the controller) and
 `docs/bench/prereg/<id>.json` (the machine-evaluable criterion, validated by `#Prereg`, the precedent of BC-6). Its
 sha256 is stamped on every ledger row, and `scenariobench run -prereg` refuses a dirty tree or a file that differs
-from HEAD.
+from HEAD. `scenariobench outcome` refuses a run whose prereg was last committed after the run's first cell started
+(`first_cell_at`), whose prereg sha differs from the one on any of its rows, or whose rows lack either stamp, and
+reads a run that passes as a no-read until `ClassifyOutcome` exists (BX-88).
 
 Each prereg fixes, before any data under it: hypotheses, strata and arms; a prediction per arm including the
 predicted nulls; the primary metric and its minimum effect of interest (MEI); the equivalence margin δ for each
 predicted-null stratum; alpha 0.05 with Holm across the prereg's primaries; n from the power table; the turn cap; the
-cost cap; the seed; exclusions; and a deviation log.
+cost cap; the seed; exclusions; and a deviation log. The prereg's `deviation_log` holds only entries made before
+sign-off (BX-65's review answers). A deviation after the first cell goes to `docs/bench/prereg/<id>.deviations.md`,
+which the provenance checks neither hash nor date, so the signed prereg never changes once data exists under it
+(ruled 2026-10-28: committing a deviation into the prereg would move its sha and commit date past `first_cell_at`
+and refuse the run for good; the code change is a BX-63 prerequisite).
 
 **Three outcomes (correction 2).** For a predicted-win primary, on the Holm-adjusted interval:
 

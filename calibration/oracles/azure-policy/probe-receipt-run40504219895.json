@@ -1,0 +1,192 @@
+{
+  "schema_version": 3,
+  "candidate": "AzurePolicy.azurepolicyextension/0.2.6",
+  "rid": "linux-x64",
+  "status": "probe_complete_requires_analysis",
+  "native_executed": true,
+  "script_sha256": "82edc77e044fe2f31e3fba946ee13dda441c730e31bd0790c2b2fc4379f9db64",
+  "filesystem_script_sha256": "5a92046d8a66c33e41a4500baf012e729274689a72850d044188010eed4f30d0",
+  "inputs_sha256": "aa05ab0ab25d46ac51b133710ca053d8236cc022c7df22cb648029c5f387ca5b",
+  "payload_manifest_sha256": "53ab1997c413e02553a8f0b03225cfaed65b53fc7779ba003e10ec4ab67c1ac4",
+  "isolation": "linux_user_net_pid_mount_namespaces",
+  "failed_stage": null,
+  "kernel_capabilities": {
+    "apparmor_restrict_unprivileged_userns": 0,
+    "unprivileged_userns_clone": 1,
+    "max_user_namespaces": 2147483647
+  },
+  "calibration_measured": false,
+  "tier_granted": false,
+  "diagnostics_script_sha256": "ad088cd43e93d61acfe94110e13e6f3d6c97dab6aba3e3327a6b3c9f39320770",
+  "vendor_script_sha256": "5806abc1f2da37b687b742139605d24b3f46e1dbd6906160de8c965519a97cb2",
+  "tracing_script_sha256": "90564c159f15f57d4902d8bdd60592368eab6746c8ced7e08e1bb005715856f7",
+  "vendor_file_limit_bytes": 268435456,
+  "launcher_file_limit_bytes": 8388608,
+  "trace_limit_bytes": 8388608,
+  "receipt_limit_bytes": 131072,
+  "netns_loopback_only": true,
+  "measured_interfaces": 1,
+  "shutdown_clean": true,
+  "filesystem_readonly_outside_out": true,
+  "vendor_capabilities_dropped": true,
+  "filesystem_dotdot_writes_refused": true,
+  "filesystem_write_probes": 15,
+  "initialize": {
+    "sha256": "acac3d3644156460d46d1a6493a47b5925afddc6c95753fea73bee84084ba3ae",
+    "bytes": 257,
+    "result_type": "dict",
+    "error_code": null,
+    "result_count": 2
+  },
+  "capability_keys": [
+    "experimental",
+    "workspace"
+  ],
+  "unknown_capability_keys": 0,
+  "reference_provider": false,
+  "definition_provider": false,
+  "cache_command": {
+    "sha256": "0908b90c010ec46a01c76a64434e399f076622cfe8308adaf1953c8c269d5122",
+    "bytes": 104,
+    "result_type": "NoneType",
+    "error_code": -32601,
+    "result_count": null
+  },
+  "definition": {
+    "sha256": "06da7752425b1462aba2ec294f4ea7a2469bef731d5f26c66342239d5fa46d8e",
+    "bytes": 103,
+    "result_type": "NoneType",
+    "error_code": -32601,
+    "result_count": null
+  },
+  "references": {
+    "sha256": "148b4f53fd49ed30f09f418e2e4b62b6b04fbb863e39e31339c63e5e97da136c",
+    "bytes": 103,
+    "result_type": "NoneType",
+    "error_code": -32601,
+    "result_count": null
+  },
+  "evaluations": [
+    {
+      "variant": "valid",
+      "http_status": 500,
+      "sha256": "a461bd4047c7f7743e538fd2d1164eb7b37285d80e1d274a7c11f5383613d58f",
+      "bytes": 2746
+    },
+    {
+      "variant": "unknown_parameter",
+      "http_status": 500,
+      "sha256": "a461bd4047c7f7743e538fd2d1164eb7b37285d80e1d274a7c11f5383613d58f",
+      "bytes": 2746
+    },
+    {
+      "variant": "changed_input_fact",
+      "http_status": 500,
+      "sha256": "a461bd4047c7f7743e538fd2d1164eb7b37285d80e1d274a7c11f5383613d58f",
+      "bytes": 2746
+    }
+  ],
+  "tracer_returncode": 0,
+  "native_returncode": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_bytes": 0,
+  "lsp_sha256": "80a85ce645b481cdb5c9ee4547fe7dea6564171b91ba690bd68fc92167bdf828",
+  "lsp_bytes": 20797,
+  "trace_tool": {
+    "sha256": "38a5c75cb29dd85ddd7780d54f5bf595554d7a1b5c42524b23065f5dc4c4b01d",
+    "version": [
+      5,
+      16
+    ]
+  },
+  "trace_within_cap": true,
+  "trace_writer_hidden_from_vendor": true,
+  "write_diagnostics": {
+    "files": [
+      {
+        "area": "home",
+        "relative_path": "home/.aspnet/DataProtection-Keys/bc267f81-eef9-46f8-93de-00751554387d.tmp",
+        "kind": "generic",
+        "observed_write_bytes": 1000,
+        "largest_requested_extent_bytes": 1000,
+        "exceeds_previous_limit": false,
+        "final_size_bytes": null,
+        "final_type": "absent",
+        "unlinked": false
+      },
+      {
+        "area": "home",
+        "relative_path": "home/.aspnet/DataProtection-Keys/key-aa6c0ec7-b184-45e1-8524-3ca3b639fd57.xml",
+        "kind": "generic",
+        "observed_write_bytes": 0,
+        "largest_requested_extent_bytes": null,
+        "exceeds_previous_limit": false,
+        "final_size_bytes": 1000,
+        "final_type": "regular",
+        "unlinked": false
+      },
+      {
+        "area": "home",
+        "relative_path": "home/probe.policydefinition.json",
+        "kind": "generic",
+        "observed_write_bytes": 0,
+        "largest_requested_extent_bytes": null,
+        "exceeds_previous_limit": false,
+        "final_size_bytes": 575,
+        "final_type": "regular",
+        "unlinked": false
+      },
+      {
+        "area": "other",
+        "relative_path": null,
+        "kind": "dotnet_doublemapper",
+        "observed_write_bytes": 0,
+        "largest_requested_extent_bytes": 2199023255552,
+        "exceeds_previous_limit": true,
+        "final_size_bytes": null,
+        "final_type": "absent",
+        "unlinked": true
+      },
+      {
+        "area": "tmp",
+        "relative_path": "home/tmp/Microsoft/ApplicationInsights/be53b558f1eb7f8d62ea9c8eac5b5564aae6a320e1e7160a5514ba530291c4d7/c1lvtcgq.0vs",
+        "kind": "generic",
+        "observed_write_bytes": 1,
+        "largest_requested_extent_bytes": 1,
+        "exceeds_previous_limit": false,
+        "final_size_bytes": null,
+        "final_type": "absent",
+        "unlinked": false
+      }
+    ],
+    "largest_private_file": {
+      "area": "home",
+      "relative_path": "home/.aspnet/DataProtection-Keys/key-aa6c0ec7-b184-45e1-8524-3ca3b639fd57.xml",
+      "kind": "generic",
+      "observed_write_bytes": 0,
+      "largest_requested_extent_bytes": null,
+      "exceeds_previous_limit": false,
+      "final_size_bytes": 1000,
+      "final_type": "regular",
+      "unlinked": false
+    },
+    "files_over_previous_limit": 1,
+    "files_truncated": false,
+    "omitted_file_events": 0,
+    "snapshot_truncated": false,
+    "sigxfsz_observed": true,
+    "limit_file": {
+      "area": "other",
+      "relative_path": null,
+      "kind": "dotnet_doublemapper",
+      "operation": "ftruncate",
+      "requested_extent_bytes": 2199023255552
+    },
+    "correlated_limit_files": 1,
+    "vendor_exec_observed": true,
+    "native_returncode": 0
+  },
+  "diagnostic_status": "complete",
+  "preflight_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "preflight_stderr_bytes": 0
+}

@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-27",
+  "candidates": [
+    {
+      "name": "protoc",
+      "version": "34.1",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/protocolbuffers/protobuf/releases/tag/v34.1",
+      "disposition": "actual owner A compiler, pinned by archive checksum; full replay pending"
+    },
+    {
+      "name": "scip-protobuf",
+      "version": "f16eb8c3fb0d103e06f7a3207b95f41eb9c28d28",
+      "license": "Apache-2.0",
+      "source": "candidate-search-r1.json, SCIP/LSIF source group",
+      "disposition": "real producer; README tested protobuf3 only, last repository push2023-08-08, archive flagfalse; maintenance eligibility not adjudicated. Untried alternative; no failure or stronger-authority need asserted over existing native A."
+    },
+    {
+      "name": "buf-language-server",
+      "version": "8e42e5e2e24f6480652ff74ecc074cd2f1f95b66",
+      "license": "Apache-2.0",
+      "source": "https://github.com/bufbuild/buf-language-server",
+      "disposition": "archived; untried independent format analyzer, not format owner or maintained SCIP evidence"
+    },
+    {
+      "name": "protocompile",
+      "version": "v0.14.1",
+      "license": "not independently checked at this pin; not executed",
+      "source": "https://github.com/bufbuild/protocompile/releases/tag/v0.14.1",
+      "disposition": "real compiler library; untried independent alternative. Existing reference compiler already grades native descriptors."
+    },
+    {
+      "name": "google.golang.org/protobuf",
+      "version": "v1.33.0",
+      "license": "BSD-3-Clause",
+      "source": "https://pkg.go.dev/google.golang.org/protobuf@v1.33.0",
+      "disposition": "existing official descriptor decoder in the bench projection; definitions/references originate in protoc, not this decoder or Fathom"
+    }
+  ]
+}

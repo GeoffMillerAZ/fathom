@@ -24,6 +24,44 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Unreleased changes wait as fragments under docs/changelog/unreleased/; the release ritual folds them here.
 
+## [0.25.0] — 2026-10-28
+
+Release impact: minor
+
+### Added
+
+- `scenariobench parity -corpus <path> [-baseline <arm>] [-task <id>] [-tree <dir>] [-json]` renders every arm into a scratch copy of one local tree and reads PASS, FAIL (an undeclared difference in prompt, tools, settings, notes file, turn cap, model or tree) or INCOMPLETE per arm, exiting 0, 1 or 2. Scenario corpus arms accept an optional `declares` list of intended differences; an arm without it marshals unchanged.
+- `scenariobench split -corpus <path>` assigns each task to dev, held-out, post-cutoff or unassigned from the subject manifests and the held-out record, prints each split's task-id sha256 with every shortfall, unassigned and undated task, and writes the result under `workspace/bench/splits/`.
+- `docs/bench/heldout-reads.md` records dev sets, held-out splits and held-out reads, and declares the 13-task home corpus a dev set by the sha256 of its sorted task ids.
+- `scenariobench run -prereg docs/bench/prereg/<id>.json` loads the prereg against `#Prereg` and refuses a prereg outside `docs/bench/prereg/`, one that differs from HEAD, a dirty tree, a `-root` other than the prereg repository's top level, `-rescore-lost`, and a stored cell run under another prereg or none. It stamps the prereg's sha256 on every cell and ledger row as `prereg_sha256` (BX-62).
+- `scenariobench outcome -prereg -ledger -run-id` refuses (exit 2) a run whose prereg was last committed after its first cell started, whose prereg sha differs from its rows, or whose rows lack `prereg_sha256` or `first_cell_at`, and a run that passes reads as a no-read (exit 3) until `ClassifyOutcome` lands (BX-88, NP-B1). `run` now stamps `started_at` on every cell, with or without a prereg, and `ledger` stamps `first_cell_at` from it.
+- `scenariobench vet` vets each `calibration/bench.d` subject against C1 to C7 from operator-prepared clones, offline, and writes `workspace/bench/vet/<name>.json` with each criterion's status and evidence (criteria: docs/design/bench-prep.md). Any failure refuses a subject, and any pending criterion keeps it pending.
+- Index named Go struct fields as owner-qualified symbols, including unexported and embedded fields.
+- Keep functions, methods and types ahead of Go fields in console search and `find_symbol`, resolve a name a field shares to the function, method or type in plan-row verification, `symbol_context`, map anchors and receipts (the field's own `Owner.Field` still names it), and show changed fields separately from the traversable impact radius with their unindexed-reference limit.
+- `fathom export receipt --kind references` writes, for a Go function or method, the declaring file and the file of each direct call or value use, each a whole-file `reference` fact that `fathom receipt verify` checks by its git rung. Any other symbol is withheld, and a method value taken through an interface can still over-claim, which verify reports as a DIFFERENCE.
+- `fathom export receipt --kind certification` (`--test`/`--target` pick one certifications-layer claim) writes the target-file symbols the test reaches over direct calls. A target that names no symbol, such as an invariant or incident, is refused because its reach is vacuous.
+- `fathom export receipt --require-clean` writes the receipt, then exits 1 naming each anchor that is not committed.
+- The prometheus dialect reads an alerting rule's `for`, `keep_firing_for` and annotations (`annotations.<name>`) as facts, and the alertmanager dialect a route's `group_wait`, `group_interval` and `repeat_interval`, each at its key's line with the value as written. Ingest stores them as `EntityFact` rows and `symbol_context` serves them under `facts`.
+- `symbol_context` serves an entity's stored facts under the additive `facts` field (anchored rows plus coverage): a Kubernetes workload's `K8sFact` rows, and the `EntityFact` rows ingest now stores for a Prometheus rule or Alertmanager route, as `docs/mcp-tools.md` details. The extractor epoch changes, so the first ingest after upgrading re-extracts every file once.
+
+### Changed
+
+- Correct JSON Schema's independent resolver to tier C: L1 and L2 grade good, while the full four-subject replay leaves L3 unmet with three scored pairs and 291 additional Fathom pairs unattested and unscored under the existing instrument.
+- Protobuf dialect calibration reaches L3 excellent under D19 on three fixed subjects, with native compiler recall107/116 and precision107/107; runtime dispatch remains unchanged.
+- The contextbenchscore `ledger` and `backfill` verbs refuse, with exit 2 and the ledger left unchanged, a row whose (run_id, criterion) the bench ledger already holds or any append to a ledger with an unparseable line, so `scripts/context-bench.sh --resume` of a run already filed under its criterion now ends in a ledger error (NP-B9, BX-87).
+- Crossplane's P-T1 plan qualification checks the committed reading's grades, accuracy, oracle tiers and population counts, and its evidence stays reproducible after the row is checked. Mutation controls show that a downgraded reading fails verification.
+- `review_diff` builds one call graph per cold review instead of three, and `test_impact`, `resolution`, `layers` and the receipt read it, so a refresh landing mid-review no longer makes them disagree with the verdict. A graph that fails to load is not rebuilt in the same call (`test_impact` names the failure instead of "no symbols indexed"), and a review's `suppressed` count counts each hidden symbol once.
+
+### Fixed
+
+- `blast_radius kind:"rename"` and `test_impact` on a bare name several definitions share answer `ambiguous: true` with the candidate keys and ask for a qualified name, instead of "0 call sites — nothing to rename" or "no tests reach"; `fathom refactor plan` refuses such a target naming its definitions instead of rendering an import plan.
+- Resolve Go field deletion targets through symbol lookup name matching, including bare names and field/method collisions, and disclose that field references are not indexed.
+- Withhold the zero-caller proof for a Go field: `gone: callers` rows read Unknown, `fathom export receipt --kind callers` refuses, `blast_radius kind:"rename"`, `find_callers` and `test_impact` report `field_references_indexed: false` with call sites or tests unknown, and `symbol_context` shows the not-indexed note in place of callers and tests. A changed field is no longer reported as an untested gap.
+- A bare function or method name a Go field shares resolves again in the call graph, so rename, `fathom refactor plan`, `test_impact` and reachability find it, and `localize` no longer seeds a struct field from a function name. The prompt hook counts a definition and its same-named field as one, and `fathom refactor plan Owner.Field` seeds its ratchets lexically from `.Field` selectors and says field references are not indexed.
+- Bash oracle reports disclose executed shebang scripts skipped by dotted-basename discovery and give a clear original-path requirement when an archived capture is replayed elsewhere.
+- Bash receipt checks require historical reading provenance across inherited notes-only refreshes, preserve inherited guards, require historical revisions in HEAD's ancestry, reject revision swaps, and label operator-attested file counts.
+- `fathom intent audit` no longer refuses a nested service as cross-repo when the repository is opened through a symlinked path and the service's directory does not exist on this host. A missing path now resolves the symlinks of its deepest existing ancestor before roots are compared.
+
 ## [0.24.0] — 2026-10-27
 
 Release impact: major (pre-1.0: breaking bumps minor)
