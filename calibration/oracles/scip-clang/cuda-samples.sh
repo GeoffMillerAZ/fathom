@@ -18,12 +18,17 @@
 #      __CUDA_ARCH__); the two runs' active lines and includes are unioned into preproc.json;
 #   4. a clang CUDA host-only translation of each .cu entry (cuda-compdb.py's flags over the entry's own -I, -isystem
 #      and -D) at <work-dir>/compile_commands.json: scip-clang 0.4.0 does not read nvcc entries, so the
-#      index, clang-calls and clang-ast-defs read it, and the last two are written at -tier B;
+#      index, clang-calls and clang-ast-defs read it, and the last two are written at -tier B; it is copied to
+#      <work-dir>/subject/build/compile_commands.json, where fathom's include-path resolver reads it (round 5 R5-1),
+#      each entry naming its --target, and published subject-relative at
+#      docs/bench/readings/lang/compdb/cuda.compile_commands.json for lang-retime -compile-db (round 7 R7-1);
 #   5. indexbench lang-oracle over the one subject, <runs> times (default 3) at one commit, readings kept apart
 #      (ruling C-R5: the median throughput is the one committed); the measured set (the subject's .cu and .cuh files,
 #      the dialect's extensions) is listed at <work-dir>/measured-files.txt, must agree with each reading's file count
 #      and bytes, and its count, bytes and the sha256 of the sorted list are a note of the reading (round 5 C5-R2), so
 #      a re-timed clone can be proven to measure the same files.
+# Memory (round 3 R3-1): one decoded translation-unit AST in the clang-ast-defs step peaks near 12.4 GB, so a host
+# under about 26 GB of memory needs AST_DEFS_JOBS=1 (default 2).
 set -euo pipefail
 clone=$(cd "$1" && pwd) cuda=$(cd "$2" && pwd) tools=$(cd "$3" && pwd) work=$4 runs=${5:-3}
 repo=$(cd "$(dirname "$0")/../../.." && pwd)
@@ -205,6 +210,56 @@ EOF
 if [ "$scip_tier" = A ]; then # the samples' own clang build compiles: its database, untranslated, is the index's
   cp "$work/build-clang/compile_commands.json" "$work/compile_commands.json"
 fi
+# Round 5 R5-1: the database the index reads is also written at <work-dir>/subject/build, where fathom's include-path
+# resolver reads it (internal/fusion/compdb.go), as an adopter's CMake build puts it; a work-dir-only database leaves
+# the resolver without it (round 4 R3-3: import_resolution 1 -> .9722, file_edge_recall .8809 -> .3047).
+# Round 7 R7-1: every entry names the target this run compiles for (--target, clang's own triple, so no oracle reads a
+# different compile), and the reading's compile_db records an explicit target, never the measuring host's default.
+# The same database is published subject-relative at $companion for indexbench lang-retime -compile-db: `directory`
+# relative to the subject root, `file` and include paths relative to it, toolkit paths and the output dropped.
+target=$(clang++ -print-target-triple)
+companion="$repo/docs/bench/readings/lang/compdb/cuda.compile_commands.json"
+python3 - "$work" "$subj" "$target" "$companion" <<'EOF'
+import json, os, shlex, sys
+work, subj, target, companion = sys.argv[1:5]
+db = json.load(open(os.path.join(work, "compile_commands.json")))
+pub = []
+for e in db:
+    a = shlex.split(e["command"])
+    if not any(x == "-target" or x.startswith("--target=") for x in a):
+        a = a[:1] + ["--target=" + target] + a[1:]
+    e["command"] = shlex.join(a)
+    d = e["directory"]
+    inside = lambda p: os.path.relpath(p, subj) == "." or not os.path.relpath(p, subj).startswith("..")
+    out, i = [os.path.basename(a[0])], 1
+    while i < len(a):
+        x = a[i]
+        if x == "-o" and i + 1 < len(a):
+            i += 2; continue
+        if x.startswith("--cuda-path="):
+            i += 1; continue
+        flag = next((f for f in ("-isystem", "-iquote", "-idirafter", "-I") if x.startswith(f)), None)
+        if flag:
+            sep = x == flag
+            v = a[i + 1] if sep else x[len(flag):]
+            p = os.path.join(d, v)
+            if inside(p):
+                r = os.path.relpath(p, d)
+                out += [flag, r] if sep else [flag + r]
+            i += 2 if sep else 1; continue
+        if os.path.isabs(x) and inside(x):
+            x = os.path.relpath(x, d)
+        out.append(x); i += 1
+    pub.append({"directory": os.path.relpath(d, subj), "file": os.path.relpath(os.path.join(d, e["file"]), d),
+                "command": shlex.join(out)})
+json.dump(db, open(os.path.join(work, "compile_commands.json"), "w"), indent=1)
+os.makedirs(os.path.join(subj, "build"), exist_ok=True)
+json.dump(db, open(os.path.join(subj, "build", "compile_commands.json"), "w"), indent=1)
+os.makedirs(os.path.dirname(companion), exist_ok=True)
+with open(companion, "w") as f:
+    json.dump(pub, f, indent=1)
+    f.write("\n")
+EOF
 export PATH="$cuda/bin:$PATH"
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-device.json" -tier A > "$work/preproc-device.json" )
 ( cd "$here/preproc" && go run . -subject "$subj" -compdb "$work/nvcc-host.json" -tier A > "$work/preproc-host.json" )
@@ -231,7 +286,7 @@ out["imports"] = [json.loads(i) for i in sorted(imps)]
 out["version"] = a.get("version", "") + " (nvcc device and host passes, unioned)"
 json.dump(out, open(os.path.join(w, "preproc.json"), "w"), indent=1)
 EOF
-bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$work" "$work/index.scip" "$scip_tier" 4
+bash "$here/run.sh" "$tools/bin/scip-clang" "$subj" "$subj/build" "$work/index.scip" "$scip_tier" 4
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-host.json" )
 ( cd "$repo/calibration/oracles/clang-calls" && go run . -subject "$subj" -compdb "$work/clang-device.json" -jobs 4 -tier "$scip_tier" > "$work/clang-calls-device.json" )
 python3 - "$work" <<'EOF'
@@ -246,7 +301,7 @@ out["version"] = h.get("version", "") + " (clang CUDA host and device-only passe
 json.dump(out, open(os.path.join(w, "clang-calls.json"), "w"), indent=1)
 print("clang-calls:", len(h.get("call_sites", [])), "host,", len(d.get("call_sites", [])), "device,", len(out["call_sites"]), "unioned", file=sys.stderr)
 EOF
-( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs 2 -tier "$scip_tier" > "$work/preproc.ranges.json" )
+( cd "$repo/calibration/oracles/clang-ast-defs" && go run . -subject "$subj" -compdb "$work/compile_commands.json" -jobs "${AST_DEFS_JOBS:-2}" -tier "$scip_tier" > "$work/preproc.ranges.json" )
 
 # The driver's own record of how the subject was measured (round 3 A4): never a hand edit of the reading.
 note=$(python3 - "$work" "$scip_tier" <<'EOF'

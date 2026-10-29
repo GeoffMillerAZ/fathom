@@ -102,6 +102,9 @@ func TestCommittedReadingsAreCanonical(t *testing.T) {
 		if d.IsDir() && d.Name() == "parity" {
 			return fs.SkipDir // a parity reading is langparity's own shape, not a Reading
 		}
+		if d.IsDir() && d.Name() == "compdb" {
+			return fs.SkipDir // a subject-relative compile database for lang-retime -compile-db, not a Reading
+		}
 		if d.IsDir() || filepath.Ext(path) != ".json" {
 			return err
 		}

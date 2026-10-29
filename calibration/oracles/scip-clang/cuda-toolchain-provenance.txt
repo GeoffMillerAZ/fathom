@@ -1,0 +1,89 @@
+# The toolchain of the wave-3 CUDA re-measure (cuda-samples.sh with AST_DEFS_JOBS=1, fathom 5d95ac2f), fetched
+# unprivileged into workspace/tools, never committed. One line per download: URL, sha256.
+# Round 5 (R5-2, fathom d4d92f872) reinstalled the same toolchain from these downloads, each sha256 rechecked.
+# Round 6 (fathom 67cba1b5) refetched all 64 downloads listed here, each sha256 rechecked (every one matched), and
+# reinstalled the same toolchain from them.
+# Round 7 (fathom 246d758b) refetched the same 64 downloads, each sha256 rechecked (every one matched), and
+# reinstalled the same toolchain from them (micromamba from explicit file lists of the downloaded packages).
+#
+# Direct downloads (GitHub releases):
+https://github.com/mamba-org/micromamba-releases/releases/download/2.3.3-0/micromamba-linux-64 9496f94a8b78c536573c93d946ec9bba74bd9ff79ee55aaa4b546e30db8f511b
+https://github.com/mamba-org/micromamba-releases/releases/download/2.3.3-0/micromamba-linux-64.sha256 (the release's own digest of the line above; it matches)
+https://github.com/sourcegraph/scip-clang/releases/download/v0.4.0/scip-clang-x86_64-linux 06fd18c576f979a726c651594644ec4a35db4f471f2160b3f72eb89fa6001784
+#
+# conda-forge packages micromamba 2.3.3 installed (sha256 from each package's conda-meta record). The CUDA prefix:
+# cuda-version 12.9, cuda-nvcc-tools, cuda-nvvm-tools, cuda-crt, cuda-nvcc-dev_linux-64 and cuda-nvcc-impl 12.9.86
+# (nvcc reports V12.9.86; the -dev and -impl pair carry fatbinary_section.h, which the configure step's compiler-id
+# build needs), the README's -dev header set, libnvjitlink 12.9.86, and jansson. The conda layout keeps cicc at
+# <prefix>/nvvm, so targets/x86_64-linux/nvvm links to it, where nvcc.profile's CICC_PATH reads.
+# The ctags prefix: universal-ctags (conda-forge snapshot 6.2.20261011, `ctags --version` 6.2.0, +json), the version
+# the committed reading names.
+https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda 1dd3fffd892081df9726d7eb7e0dea6198962ba775bd88842135a4ddb4deb3c9
+https://conda.anaconda.org/conda-forge/linux-64/cccl-2.8.2-h7ab4013_0.conda 0b419894748995a213eacba0bd8a96ceef857e1b75b4b3b0d0b5c599f73d129d
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cccl-12.9.27-ha770c72_0.conda 501d37608d6f2fa5eff6270d782fd84cd3a8375aff23548dd16a1eae5149b176
+https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda 1dd3fffd892081df9726d7eb7e0dea6198962ba775bd88842135a4ddb4deb3c9
+https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_10.conda 1a0d382c515ebf55f8ee1f38c8b81bc95af5c2acc42ad53b66bc5df932032f96
+https://conda.anaconda.org/conda-forge/linux-64/cccl-2.8.2-h7ab4013_0.conda 0b419894748995a213eacba0bd8a96ceef857e1b75b4b3b0d0b5c599f73d129d
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cccl-12.9.27-ha770c72_0.conda 501d37608d6f2fa5eff6270d782fd84cd3a8375aff23548dd16a1eae5149b176
+https://conda.anaconda.org/conda-forge/linux-64/cuda-crt-12.9.86-h69a702a_6.conda 9325d475c7812ce6e20c59c84f3530779e3a2308e959118be2a4955b3381184e
+https://conda.anaconda.org/conda-forge/linux-64/cuda-crt-tools-12.9.86-ha770c72_2.conda 2da9964591af14ba11b2379bed01d56e7185260ee0998d1a939add7fb752db45
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cudart-12.9.79-h5888daf_0.conda 57d1294ecfaf9dc8cdb5fc4be3e63ebc7614538bddb5de53cfd9b1b7de43aed5
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cudart-dev-12.9.79-h5888daf_0.conda 04d8235cb3cb3510c0492c3515a9d1a6053b50ef39be42b60cafb05044b5f4c6
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cudart-static-12.9.79-h5888daf_0.conda 6261e1d9af80e1ec308e3e5e2ff825d189ef922d24093beaf6efca12e67ce060
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cupti-12.9.79-h676940d_2.conda c6c5ba6456af7ab6580868bc9c25b57fddde819d59458d3dea28b3d9b162a9fd
+https://conda.anaconda.org/conda-forge/linux-64/cuda-cupti-dev-12.9.79-h676940d_2.conda 7eb782b6fc7e63b1a25054669169a5cc97a7ebf2bda2122f9227ba5f592a93aa
+https://conda.anaconda.org/conda-forge/linux-64/cuda-driver-dev-12.9.79-h5888daf_0.conda 1aed57d1c2473f989c06a1aee16c7b017875ddf0dc58149192aee47632aab6d4
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvcc-impl-12.9.86-h85509e4_2.conda 961cf20d411b7685cd744e6c6ed35efea547d095c62151d6f3053d9931bb994d
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvcc-tools-12.9.86-he02047a_2.conda 0e849be7b5e4832ca218ec2c48a9ba3a15a984f629e2e54f38a53f4f57220341
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvrtc-12.9.86-hecca717_1.conda 68f81268c25befa9b70dc49af469ab0eb131960e3700b9a4edb46a32da343a28
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvrtc-dev-12.9.86-hecca717_1.conda ae620051c16eabf7720a47c5115634d64f7703d32124555ad0afccfd4b8d7cf4
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvtx-12.9.79-hecca717_1.conda b16600e48ef3247366b83d5f195852fcefbc4d52bb245f82a632c7129d1d6283
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvtx-dev-12.9.79-ha770c72_1.conda 59eb7c81f26d939f1d41e20a322106f2f9bd4f9ff3214caed469cb08528a5b3e
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvvm-impl-12.9.86-h4bc722e_2.conda f4d34556174e4faa9d374ba2244707082870e1bbc1bb441ad3d9d2cea37da6af
+https://conda.anaconda.org/conda-forge/linux-64/cuda-nvvm-tools-12.9.86-h4bc722e_2.conda 45f5e881ed0d973132a5475a0b5c066db6e748ef3a831a14dba8374b252e0067
+https://conda.anaconda.org/conda-forge/linux-64/cuda-profiler-api-12.9.79-h7938cbb_1.conda 4f679dfbf2bf2d17abb507f31b0176c0e3572337b5005b9e36179948a53988ac
+https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-py310h44b86e0_2.conda 9f07834f0c546ab14d885ce0366285f61f44e326c0edd1fc63b8294e113ae432
+https://conda.anaconda.org/conda-forge/linux-64/jansson-2.15.1-h280c20c_0.conda e138c68824c8661e55f3184c489fe1db425c06ffae1a37edc780bcb92cde9058
+https://conda.anaconda.org/conda-forge/linux-64/libcublas-12.9.2.10-h676940d_0.conda 16666002786d59dd7d62ddbeffe08c4118d882c986c6bf72443c7f983c24fb0a
+https://conda.anaconda.org/conda-forge/linux-64/libcublas-dev-12.9.2.10-h676940d_0.conda 3a68ef147c0a7fdd59286e49c4dd1a03be9ea6180b12ee5324ecd555c17419bb
+https://conda.anaconda.org/conda-forge/linux-64/libcufft-11.4.1.4-hecca717_1.conda 62d4214c182c89cfb02271a42eaac56a41f50bbbea3b0d795a8e33f167a39a4e
+https://conda.anaconda.org/conda-forge/linux-64/libcufft-dev-11.4.1.4-hecca717_1.conda 1cec99c995b321f4184075194bf0306584092e5ac4bdd39c48a22b56b0ab3cee
+https://conda.anaconda.org/conda-forge/linux-64/libcurand-10.3.10.19-h676940d_1.conda 3d40daf956b220cc367a6306ede1e259446fb844051bcfed87c46539cc1aaf03
+https://conda.anaconda.org/conda-forge/linux-64/libcurand-dev-10.3.10.19-h676940d_1.conda b506f93e7bea6d0e060f09f4bac6db3f57586084ac309db0d44b3756f5b0bc80
+https://conda.anaconda.org/conda-forge/linux-64/libcusolver-11.7.5.82-h676940d_2.conda 8691cf6b1585cf6251663029e00485da5a912f6ca0ff7e5c31a6d8d604b29253
+https://conda.anaconda.org/conda-forge/linux-64/libcusolver-dev-11.7.5.82-h676940d_2.conda f2a974af90ecf6e47c2780741b5351c5f21d20bf6b9fb4448966f07d23ad27b8
+https://conda.anaconda.org/conda-forge/linux-64/libcusparse-12.5.10.65-hecca717_2.conda 7b511549a22df408d36dadbeabdfd9c35b124d9d6f000b29ffcbe4b38b7faeb7
+https://conda.anaconda.org/conda-forge/linux-64/libcusparse-dev-12.5.10.65-hecca717_2.conda c6d7ec3ccef6dce988c3acc93198973ec9ff5aa9ffe99e07dd953c2d3b409a3b
+https://conda.anaconda.org/conda-forge/linux-64/libgcc-16.2.0-ha9f2e26_7.conda e031634c3a928f9594eba868bc46ef5230d6571a364a0c63215b06c4563bfcea
+https://conda.anaconda.org/conda-forge/linux-64/libgomp-16.2.0-he0feb66_7.conda 92a0bb350c7be6a4eedcb4e111c60aefd176018e6b1c009a6e025dbe9bbcd758
+https://conda.anaconda.org/conda-forge/linux-64/libiconv-1.18-h0cb94f2_3.conda f943117edb9cd4d9c61cc972eee5a34291dc55ea7a6e9e38da104995841cbcb6
+https://conda.anaconda.org/conda-forge/linux-64/liblzma-5.8.3-hb03c661_1.conda 9787df8c22a59c9a70d3e5a10db9ad663485e75e9ccc3f09bd092cb7b95e0dab
+https://conda.anaconda.org/conda-forge/linux-64/libnpp-12.4.1.87-h676940d_1.conda 7e4859e56a5d2580ddece24ff252566dfdf182e15de036c18539d9c803fd37a5
+https://conda.anaconda.org/conda-forge/linux-64/libnpp-dev-12.4.1.87-h676940d_1.conda b9e26d97398e023170d7e20135b8fe8cbc562173f3424dfe516c93065398ad65
+https://conda.anaconda.org/conda-forge/linux-64/libnvjitlink-12.9.86-hecca717_2.conda 3b1c851f4fc42d347ce1c1606bdd195343a47f121e0fceb7a1f1e5aa1d497da9
+https://conda.anaconda.org/conda-forge/linux-64/libnvjpeg-12.4.0.76-hecca717_1.conda 14a57af0552fc9a4c929b4e278d05f9d431ee733264fac8e72eac9086509fad0
+https://conda.anaconda.org/conda-forge/linux-64/libnvjpeg-dev-12.4.0.76-ha770c72_1.conda 176801dbaf23ebbb3b43e1c41d6adf9fa6c507abc00beb8a43d84825ade695cb
+https://conda.anaconda.org/conda-forge/linux-64/libnvptxcompiler-dev-12.9.86-ha770c72_2.conda 1e7a7b34f8639a5feb75ba864127059e4d83edfe1a516547f0dbb9941e7b8f8b
+https://conda.anaconda.org/conda-forge/linux-64/libseccomp-2.6.1-h7cc23a3_2.conda 36b717f86c1f5c1fe56733c4e0b964c602ec4621f686c3e7ce651a651b0c991b
+https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-16.2.0-h934c35e_7.conda fa7018298629fc429971fffd6ecba3d27a7b02e4e890d6a93ea01ffebe8cb745
+https://conda.anaconda.org/conda-forge/linux-64/libxml2-16-2.15.4-hf3af7cc_1.conda d1906463070c21f3215cd5de93164f31c44d5bac6ae9b5d8f5adf42b1e304039
+https://conda.anaconda.org/conda-forge/linux-64/libxml2-2.15.4-h7df9aa5_1.conda 8c32be9e8720bc413d2b4267517459d7d71fad4a5f398a2aa8319b6d7b8a00e6
+https://conda.anaconda.org/conda-forge/linux-64/libzlib-1.3.2-h25fd6f3_3.conda eb8a0db0aa570124f7d2a93d7c7f596e3390df5e047818d873baad32985fc736
+https://conda.anaconda.org/conda-forge/linux-64/pcre2-10.47-h8b3dc9c_1.conda 9ebb10a4eb3be51ae67d85c679f5a7a50cb040ed25c783e6331a225ea09991d4
+https://conda.anaconda.org/conda-forge/linux-64/universal-ctags-6.2.20261011.0-hf32d8a9_0.conda d30b2d90bab68bd2cb17f56a41bd2d581f004906466e580426c5c20df1430786
+https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-hebe6cf0_3.conda d164dfa75ecd538f6fd68765defcc06aa875bc697b9b215362d79a2a73125dd0
+https://conda.anaconda.org/conda-forge/noarch/cuda-cccl_linux-64-12.9.27-ha770c72_0.conda 2ee3b9564ca326226e5cda41d11b251482df8e7c757e333d28ec75213c75d126
+https://conda.anaconda.org/conda-forge/noarch/cuda-crt-dev_linux-64-12.9.86-ha770c72_2.conda e6257534c4b4b6b8a1192f84191c34906ab9968c92680fa09f639e7846a87304
+https://conda.anaconda.org/conda-forge/noarch/cuda-cudart-dev_linux-64-12.9.79-h3f2d84a_0.conda ffe86ed0144315b276f18020d836c8ef05bf971054cf7c3eb167af92494080d5
+https://conda.anaconda.org/conda-forge/noarch/cuda-cudart-static_linux-64-12.9.79-h3f2d84a_0.conda d435f8a19b59b52ce460ee3a6bfd877288a0d1d645119a6ba60f1c3627dc5032
+https://conda.anaconda.org/conda-forge/noarch/cuda-cudart_linux-64-12.9.79-h3f2d84a_0.conda 6cde0ace2b995b49d0db2eefb7bc30bf00ffc06bb98ef7113632dec8f8907475
+https://conda.anaconda.org/conda-forge/noarch/cuda-driver-dev_linux-64-12.9.79-h3f2d84a_0.conda a15574d966e73135a79d5e6570c87e13accdb44bd432449b5deea71644ad442c
+https://conda.anaconda.org/conda-forge/noarch/cuda-nvcc-dev_linux-64-12.9.86-he91c749_2.conda a1672a34439a72869de9e011e935d41b62fc8dfb1a2700e85ed8a7a129b79981
+https://conda.anaconda.org/conda-forge/noarch/cuda-nvvm-dev_linux-64-12.9.86-ha770c72_2.conda 522722dcaffd133e0c7500c69dc70e21ac34d6762dcbaabfe847439f944028f0
+https://conda.anaconda.org/conda-forge/noarch/cuda-version-12.9-h4f385c5_3.conda 5f5f428031933f117ff9f7fcc650e6ea1b3fef5936cf84aa24af79167513b656
+https://conda.anaconda.org/conda-forge/noarch/libnvptxcompiler-dev_linux-64-12.9.86-ha770c72_2.conda 17952c32eac197a59c119fdf3fb6f08c6a29c225a80bae141ac904ad212b87dd
+#
+# Also fetched, not used by the run: universal-ctags 6.2.1's source tarball (this VM's permission policy refused the
+# source build, so the conda-forge binary above stands in), and the go1.27.3 toolchain and the module graph from
+# proxy.golang.org for the unprivileged `go run` steps (checked against go.sum and sum.golang.org by the go command).
+https://github.com/universal-ctags/ctags/releases/download/v6.2.1/universal-ctags-6.2.1.tar.gz 2c63efe9e0e083dc50e6fdd8c5414781cc8873d8c8940cf553c01870ed962f8c
