@@ -1,0 +1,497 @@
+[
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/asyncAPI/asyncAPI.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/asyncAPI/asyncAPI.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/clock/clock.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/clock/clock.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/fp16ScalarProduct/fp16ScalarProduct.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/fp16ScalarProduct/fp16ScalarProduct.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/matrixMul/matrixMul.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/matrixMul/matrixMul.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/mergeSort/mergeSort.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/mergeSort/mergeSort.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleAWBarrier/simpleAWBarrier.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleAWBarrier/simpleAWBarrier.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleAssert/simpleAssert.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleAssert/simpleAssert.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleAtomicIntrinsics/simpleAtomicIntrinsics.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleAtomicIntrinsics/simpleAtomicIntrinsics.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleAttributes/simpleAttributes.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleAttributes/simpleAttributes.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleCallback/simpleCallback.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleCallback/simpleCallback.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleCooperativeGroups/simpleCooperativeGroups.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleCooperativeGroups/simpleCooperativeGroups.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleCubemapTexture/simpleCubemapTexture.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleCubemapTexture/simpleCubemapTexture.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleHyperQ/simpleHyperQ.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleHyperQ/simpleHyperQ.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleIPC/simpleIPC.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleIPC/simpleIPC.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleLayeredTexture/simpleLayeredTexture.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleLayeredTexture/simpleLayeredTexture.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleMultiGPU/simpleMultiGPU.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleMultiGPU/simpleMultiGPU.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleOccupancy/simpleOccupancy.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleOccupancy/simpleOccupancy.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleP2P/simpleP2P.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleP2P/simpleP2P.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simplePitchLinearTexture/simplePitchLinearTexture.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simplePitchLinearTexture/simplePitchLinearTexture.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simplePrintf/simplePrintf.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simplePrintf/simplePrintf.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleTemplates/simpleTemplates.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleTemplates/simpleTemplates.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleTexture/simpleTexture.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleTexture/simpleTexture.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleVoteIntrinsics/simpleVoteIntrinsics.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleVoteIntrinsics/simpleVoteIntrinsics.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/simpleZeroCopy/simpleZeroCopy.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/simpleZeroCopy/simpleZeroCopy.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/systemWideAtomics/systemWideAtomics.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/systemWideAtomics/systemWideAtomics.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/template/template.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/template/template.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/0_Introduction/vectorAdd/vectorAdd.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/0_Introduction/vectorAdd/vectorAdd.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/1_Utilities/topologyQuery/topologyQuery.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/1_Utilities/topologyQuery/topologyQuery.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/MC_EstimatePiInlineP/src/piestimator.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/2_Concepts_and_Techniques/MC_EstimatePiInlineP/inc -c Samples/2_Concepts_and_Techniques/MC_EstimatePiInlineP/src/piestimator.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/MC_EstimatePiInlineQ/src/piestimator.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/2_Concepts_and_Techniques/MC_EstimatePiInlineQ/inc -c Samples/2_Concepts_and_Techniques/MC_EstimatePiInlineQ/src/piestimator.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/MC_EstimatePiP/src/piestimator.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/2_Concepts_and_Techniques/MC_EstimatePiP/inc -c Samples/2_Concepts_and_Techniques/MC_EstimatePiP/src/piestimator.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/MC_EstimatePiQ/src/piestimator.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/2_Concepts_and_Techniques/MC_EstimatePiQ/inc -c Samples/2_Concepts_and_Techniques/MC_EstimatePiQ/src/piestimator.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/MC_SingleAsianOptionP/src/pricingengine.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/2_Concepts_and_Techniques/MC_SingleAsianOptionP/inc -c Samples/2_Concepts_and_Techniques/MC_SingleAsianOptionP/src/pricingengine.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/convolutionSeparable/convolutionSeparable.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/convolutionSeparable/convolutionSeparable.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/convolutionTexture/convolutionTexture.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/convolutionTexture/convolutionTexture.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/dct8x8/dct8x8.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/dct8x8/dct8x8.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/eigenvalues/bisect_large.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/eigenvalues/bisect_large.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/eigenvalues/bisect_small.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/eigenvalues/bisect_small.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/eigenvalues/bisect_util.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/eigenvalues/bisect_util.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/eigenvalues/main.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/eigenvalues/main.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/histogram/histogram256.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/histogram/histogram256.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/histogram/histogram64.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/histogram/histogram64.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/inlinePTX/inlinePTX.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/inlinePTX/inlinePTX.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/interval/interval.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/2_Concepts_and_Techniques/interval -c Samples/2_Concepts_and_Techniques/interval/interval.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/radixSortThrust/radixSortThrust.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/radixSortThrust/radixSortThrust.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/reduction/reduction_kernel.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/reduction/reduction_kernel.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/scalarProd/scalarProd.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/scalarProd/scalarProd.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/scan/scan.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/scan/scan.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/segmentationTreeThrust/segmentationTree.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/segmentationTreeThrust/segmentationTree.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/sortingNetworks/bitonicSort.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/sortingNetworks/bitonicSort.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/streamOrderedAllocation/streamOrderedAllocation.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/streamOrderedAllocation/streamOrderedAllocation.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/streamOrderedAllocationIPC/streamOrderedAllocationIPC.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/streamOrderedAllocationIPC/streamOrderedAllocationIPC.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/2_Concepts_and_Techniques/streamOrderedAllocationP2P/streamOrderedAllocationP2P.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/2_Concepts_and_Techniques/streamOrderedAllocationP2P/streamOrderedAllocationP2P.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/StreamPriorities/StreamPriorities.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/StreamPriorities/StreamPriorities.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/bf16TensorCoreGemm/bf16TensorCoreGemm.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/bf16TensorCoreGemm/bf16TensorCoreGemm.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/binaryPartitionCG/binaryPartitionCG.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/binaryPartitionCG/binaryPartitionCG.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/cdpAdvancedQuicksort/cdpBitonicSort.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/cdpAdvancedQuicksort/cdpBitonicSort.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/cdpBezierTessellation/BezierLineCDP.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/cdpBezierTessellation/BezierLineCDP.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/cdpSimplePrint/cdpSimplePrint.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/cdpSimplePrint/cdpSimplePrint.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/cdpSimpleQuicksort/cdpSimpleQuicksort.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/cdpSimpleQuicksort/cdpSimpleQuicksort.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/cudaCompressibleMemory/saxpy.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/cudaCompressibleMemory/saxpy.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/cudaTensorCoreGemm/cudaTensorCoreGemm.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/cudaTensorCoreGemm/cudaTensorCoreGemm.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/dmmaTensorCoreGemm/dmmaTensorCoreGemm.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/dmmaTensorCoreGemm/dmmaTensorCoreGemm.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/graphConditionalNodes/graphConditionalNodes.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/graphConditionalNodes/graphConditionalNodes.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/graphMemoryFootprint/graphMemoryFootprint.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/graphMemoryFootprint/graphMemoryFootprint.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/graphMemoryNodes/graphMemoryNodes.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/graphMemoryNodes/graphMemoryNodes.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/immaTensorCoreGemm/immaTensorCoreGemm.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/immaTensorCoreGemm/immaTensorCoreGemm.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/jacobiCudaGraphs/jacobi.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/jacobiCudaGraphs/jacobi.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/newdelete/newdelete.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/newdelete/newdelete.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/simpleCudaGraphs/simpleCudaGraphs.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/simpleCudaGraphs/simpleCudaGraphs.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/tf32TensorCoreGemm/tf32TensorCoreGemm.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/tf32TensorCoreGemm/tf32TensorCoreGemm.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/3_CUDA_Features/warpAggregatedAtomicsCG/warpAggregatedAtomicsCG.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/3_CUDA_Features/warpAggregatedAtomicsCG/warpAggregatedAtomicsCG.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/conjugateGradientCudaGraphs/conjugateGradientCudaGraphs.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/conjugateGradientCudaGraphs/conjugateGradientCudaGraphs.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/conjugateGradientMultiBlockCG/conjugateGradientMultiBlockCG.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/conjugateGradientMultiBlockCG/conjugateGradientMultiBlockCG.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/conjugateGradientMultiDeviceCG/conjugateGradientMultiDeviceCG.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/conjugateGradientMultiDeviceCG/conjugateGradientMultiDeviceCG.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/simpleCUFFT/simpleCUFFT.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/simpleCUFFT/simpleCUFFT.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/simpleCUFFT_2d_MGPU/simpleCUFFT_2d_MGPU.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/simpleCUFFT_2d_MGPU/simpleCUFFT_2d_MGPU.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/simpleCUFFT_MGPU/simpleCUFFT_MGPU.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/simpleCUFFT_MGPU/simpleCUFFT_MGPU.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/4_CUDA_Libraries/simpleCUFFT_callback/simpleCUFFT_callback.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/4_CUDA_Libraries/simpleCUFFT_callback/simpleCUFFT_callback.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/BlackScholes/BlackScholes.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/BlackScholes/BlackScholes.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/FDTD3d/src/FDTD3dGPU.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -ISamples/5_Domain_Specific/FDTD3d/inc -c Samples/5_Domain_Specific/FDTD3d/src/FDTD3dGPU.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/HSOpticalFlow/flowCUDA.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/HSOpticalFlow/flowCUDA.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/MonteCarloMultiGPU/MonteCarlo_kernel.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/MonteCarloMultiGPU/MonteCarlo_kernel.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/NV12toBGRandResize/bgr_resize.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/NV12toBGRandResize/bgr_resize.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/NV12toBGRandResize/nv12_resize.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/NV12toBGRandResize/nv12_resize.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/NV12toBGRandResize/nv12_to_bgr_planar.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/NV12toBGRandResize/nv12_to_bgr_planar.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/NV12toBGRandResize/utils.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/NV12toBGRandResize/utils.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/SobolQRNG/sobol_gpu.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/SobolQRNG/sobol_gpu.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/binomialOptions/binomialOptions_kernel.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/binomialOptions/binomialOptions_kernel.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/convolutionFFT2D/convolutionFFT2D.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/convolutionFFT2D/convolutionFFT2D.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/dwtHaar1D/dwtHaar1D.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/dwtHaar1D/dwtHaar1D.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/fastWalshTransform/fastWalshTransform.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/fastWalshTransform/fastWalshTransform.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/p2pBandwidthLatencyTest/p2pBandwidthLatencyTest.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/p2pBandwidthLatencyTest/p2pBandwidthLatencyTest.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/quasirandomGenerator/quasirandomGenerator_kernel.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/quasirandomGenerator/quasirandomGenerator_kernel.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/5_Domain_Specific/stereoDisparity/stereoDisparity.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/5_Domain_Specific/stereoDisparity/stereoDisparity.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/6_Performance/LargeKernelParameter/LargeKernelParameter.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/6_Performance/LargeKernelParameter/LargeKernelParameter.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/6_Performance/UnifiedMemoryPerf/commonKernels.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/6_Performance/UnifiedMemoryPerf/commonKernels.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/6_Performance/UnifiedMemoryPerf/matrixMultiplyPerf.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/6_Performance/UnifiedMemoryPerf/matrixMultiplyPerf.cu"
+ },
+ {
+  "directory": ".",
+  "file": "Samples/6_Performance/cudaGraphsPerfScaling/cudaGraphPerfScaling.cu",
+  "command": "clang++ --target=x86_64-pc-linux-gnu -x cuda --cuda-host-only -nocudalib -Wno-unknown-cuda-version -std=c++17 -ICommon -c Samples/6_Performance/cudaGraphsPerfScaling/cudaGraphPerfScaling.cu"
+ }
+]
