@@ -68,7 +68,8 @@ class CUDADatabaseLocation(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in subject.iterdir()), ['k.cu'])
             # Round 5 R5-1: the database is written at <work>/subject/build, where fathom's
             # include-path resolver reads it (internal/fusion/compdb.go), as an adopter's CMake build puts it.
-            publish = re.search(r'\nmkdir -p "\$subj/build".*?\n', driver).group().strip()
+            publish = re.search(r'\n(python3 - "\$work" "\$subj" "\$target" "\$companion" <<\'EOF\'\n.*?\nEOF)\n', driver, re.S).group(1)
+            env.update(target='x86_64-pc-linux-gnu', companion=str(work / 'compdb' / 'cuda.compile_commands.json'))
             subprocess.run(['bash', '-eu', '-c', publish], env=env, check=True)
             resolved = subject / 'build' / 'compile_commands.json'
             self.assertEqual(json.loads(resolved.read_text()), json.loads(database.read_text()))
@@ -94,6 +95,50 @@ class CUDADatabaseLocation(unittest.TestCase):
                 subprocess.run(['bash', '-eu', '-c', line], env=env, check=True)
                 args = capture.read_text().splitlines()
                 self.assertEqual(args[args.index('-compdb') + 1], str(database))
+
+    def test_explicit_target_and_companion(self):
+        # Round 7 R7-1: every entry of the database fathom's resolver reads names the target the run
+        # compiles for, so the reading's compile_db records an explicit target, not the host default; the
+        # same database is published subject-relative, without a toolkit path, for lang-retime -compile-db.
+        driver = DRIVER.read_text()
+        publish = re.search(r'\n(python3 - "\$work" "\$subj" "\$target" "\$companion" <<\'EOF\'\n.*?\nEOF)\n', driver, re.S).group(1)
+        self.assertIn('companion="$repo/docs/bench/readings/lang/compdb/cuda.compile_commands.json"', driver)
+        self.assertRegex(driver, r'\ntarget=\$\(clang\+\+ -print-target-triple\)')
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            subject = work / 'subject'
+            (subject / 'Samples' / 'a' / 'inc').mkdir(parents=True)
+            cuda = work / 'cuda'
+            src = subject / 'Samples' / 'a' / 'k.cu'
+            cmd = ['clang++', '-x', 'cuda', '--cuda-path=' + str(cuda), '--cuda-host-only', '-I' + str(cuda / 'include'),
+                   '-I', str(subject / 'Samples' / 'a' / 'inc'), '-isystem', str(cuda / 'targets' / 'include'),
+                   '-I' + str(subject / 'Common'), '-DX=1', '-c', str(src), '-o', '/dev/null']
+            entries = [{'directory': str(subject), 'file': str(src), 'command': ' '.join(cmd)},
+                       {'directory': str(subject), 'file': str(subject / 'b.cu'),
+                        'command': 'clang++ --target=x86_64-unknown-linux-gnu -c %s' % (subject / 'b.cu')}]
+            (work / 'compile_commands.json').write_text(json.dumps(entries))
+            companion = work / 'out' / 'cuda.compile_commands.json'
+            env = dict(os.environ, work=str(work), subj=str(subject), target='x86_64-pc-linux-gnu', companion=str(companion))
+            subprocess.run(['bash', '-eu', '-c', publish], env=env, check=True)
+            database = json.loads((work / 'compile_commands.json').read_text())
+            resolved = json.loads((subject / 'build' / 'compile_commands.json').read_text())
+            self.assertEqual(resolved, database)
+            first = database[0]['command'].split()
+            self.assertEqual(first[:2], ['clang++', '--target=x86_64-pc-linux-gnu'])
+            self.assertEqual(first[2:], cmd[1:])
+            # an entry that already names a target keeps it, once
+            self.assertEqual(database[1]['command'].split().count('--target=x86_64-unknown-linux-gnu'), 1)
+            self.assertNotIn('--target=x86_64-pc-linux-gnu', database[1]['command'])
+            published = json.loads(companion.read_text())
+            self.assertEqual(published[0], {'directory': '.', 'file': 'Samples/a/k.cu', 'command': ' '.join(
+                ['clang++', '--target=x86_64-pc-linux-gnu', '-x', 'cuda', '--cuda-host-only', '-I', 'Samples/a/inc',
+                 '-ICommon', '-DX=1', '-c', 'Samples/a/k.cu'])})
+            self.assertEqual(published[1]['file'], 'b.cu')
+            text = companion.read_text()
+            self.assertNotIn(str(work), text)
+            self.assertFalse(any(t.startswith('/') for e in published for t in e['command'].split()))
+            self.assertEqual(sorted(str(p.relative_to(subject)) for p in subject.rglob('*') if p.is_file()),
+                             ['build/compile_commands.json'])
 
     def test_ast_defs_jobs(self):
         # Round 3 R3-1: one decoded translation-unit AST peaks near 12.4 GB, so a small host
