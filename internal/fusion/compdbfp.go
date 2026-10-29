@@ -48,6 +48,16 @@ func CompileDBFingerprint(root string) (CompileDBIdentity, error) {
 		lines = append(lines, ce.file+"\tquote="+strings.Join(ce.quote, ",")+"\tangle="+strings.Join(ce.angle, ",")+"\tdefs="+strings.Join(defs, ","))
 	}
 	sort.Strings(lines)
+	// Header roots are the unions in first-seen entry order, and the target
+	// drives guard evaluation and call binding: both are inputs.
+	kind := "explicit"
+	if db.hostTarget {
+		kind = "host-default"
+	}
+	lines = append(lines,
+		"target="+db.target+" ("+kind+")",
+		"quote-union="+strings.Join(db.quoteUnion, ","),
+		"angle-union="+strings.Join(db.angleUnion, ","))
 	sum := sha256.Sum256([]byte(strings.Join(lines, "\n") + "\n"))
 	id.Fingerprint = hex.EncodeToString(sum[:])
 	return id, nil

@@ -26,7 +26,7 @@ import (
 )
 
 const retimeNotePrefix = "throughput (design 1.9 T1, T2)"
-const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write] [-compile-db <file>] [-load-log <workspace/file.json>]"
+const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write] [-compile-db name=<file>] [-load-log <workspace/file.json>]"
 const retimeReadingCap = 16 << 20
 
 type retimeLoadRun struct {
@@ -226,7 +226,8 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	write := fs.Bool("write", false, "save the re-timed reading")
 	loadLog := fs.String("load-log", "", "write per-run one-minute system load and throughput to a new workspace JSON file")
 	tenancyOnly := fs.Bool("tenancy-only", false, "check identity on the timing run's own facts only (sha, a clean tree, files, bytes, faults, parse errors), for a reading whose counts were measured on a different scope than its tenancy block; the note says so")
-	compileDB := fs.String("compile-db", "", "companion compile_commands.json whose directory and paths are relative to the subject root; written to <subject>/build/compile_commands.json before measuring (refused when a different database is already there), for a subject checkout that lacks the recorded build directory")
+	var compileDBs multiFlag
+	fs.Var(&compileDBs, "compile-db", "subject name=companion compile_commands.json (repeatable), written to <subject>/build/compile_commands.json while measuring, for a checkout that lacks the recorded build directory. In the companion, `directory` is relative to the subject root and `file` and -I paths are relative to `directory`; absolute ones are refused. Refused when a different database is already there or build/compile_commands.json is not gitignored; the file is removed on exit")
 	var subjects multiFlag
 	fs.Var(&subjects, "subject", "recorded subject name=checkout directory (repeatable, required for every subject)")
 	fs.Usage = func() { fmt.Fprintln(stderr, retimeUsage); fs.PrintDefaults() }
@@ -291,13 +292,6 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	ctx := context.Background()
-	if *compileDB != "" {
-		for _, sub := range r.Subjects {
-			if err := retimeInstallCompileDB(*compileDB, roots[sub.Name]); err != nil {
-				return refuse(fmt.Errorf("%s: -compile-db: %w", sub.Name, err))
-			}
-		}
-	}
 	spec, source, err := resolveBenchSpec(r.Dialect, "")
 	if err != nil {
 		return refuse(err)
@@ -310,6 +304,33 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		return refuse(err)
 	}
 	defer closeExtractor()
+	companions := map[string]string{}
+	for _, value := range compileDBs {
+		name, file := splitNamed(value)
+		if name == "" || file == "" {
+			return refuse(fmt.Errorf("-compile-db requires name=file"))
+		}
+		known := false
+		for _, sub := range r.Subjects {
+			known = known || sub.Name == name
+		}
+		if !known {
+			return refuse(fmt.Errorf("-compile-db: unknown subject %q", name))
+		}
+		if companions[name] != "" {
+			return refuse(fmt.Errorf("-compile-db: subject %q named twice", name))
+		}
+		companions[name] = file
+	}
+	for _, sub := range r.Subjects {
+		if file := companions[sub.Name]; file != "" {
+			cleanup, err := retimeInstallCompileDB(ctx, file, roots[sub.Name], sub.Name)
+			if err != nil {
+				return refuse(err)
+			}
+			defer cleanup()
+		}
+	}
 	// Subject order is only a traversal order; the saved reading retains its order.
 	order := make([]int, len(r.Subjects))
 	for i := range order {
@@ -572,43 +593,67 @@ func retimeCompileDBDiff(recorded, measured langbench.Subject, notes []string) [
 	return nil
 }
 
-// retimeInstallCompileDB writes the companion database src, with its relative
-// directories made absolute against root, to root/build/compile_commands.json.
-// A different database already there is a refusal.
-func retimeInstallCompileDB(src, root string) error {
+// retimeInstallCompileDB writes the companion database src, with its
+// subject-relative directories made absolute against root, to
+// root/build/compile_commands.json. A different database already there, an
+// absolute companion path, or a build/ that git does not ignore is a refusal.
+// The returned cleanup removes what this call wrote.
+func retimeInstallCompileDB(ctx context.Context, src, root, name string) (func(), error) {
+	noop := func() {}
 	raw, err := os.ReadFile(src)
 	if err != nil {
-		return err
+		return noop, fmt.Errorf("-compile-db: %w", err)
 	}
 	var entries []map[string]any
 	if err := json.Unmarshal(raw, &entries); err != nil {
-		return fmt.Errorf("%s: %w", src, err)
+		return noop, fmt.Errorf("-compile-db: %s: %w", src, err)
 	}
 	abs, err := filepath.Abs(root)
 	if err != nil {
-		return err
+		return noop, err
 	}
-	for _, en := range entries {
+	for i, en := range entries {
 		dir, _ := en["directory"].(string)
-		if !filepath.IsAbs(dir) {
-			en["directory"] = filepath.Join(abs, dir)
+		if filepath.IsAbs(dir) {
+			return noop, fmt.Errorf("-compile-db: %s entry %d has an absolute directory; publish the database subject-relative", src, i+1)
 		}
+		if f, _ := en["file"].(string); filepath.IsAbs(f) {
+			return noop, fmt.Errorf("-compile-db: %s entry %d has an absolute file; publish the database subject-relative", src, i+1)
+		}
+		en["directory"] = filepath.Join(abs, dir)
 	}
 	out, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
-		return err
+		return noop, err
 	}
 	dst := filepath.Join(abs, "build", "compile_commands.json")
 	if have, err := os.ReadFile(dst); err == nil {
 		if bytes.Equal(have, out) {
-			return nil
+			return noop, nil
 		}
-		return fmt.Errorf("a different compile database already exists at %s", dst)
+		return noop, fmt.Errorf("-compile-db: a different compile database already exists at %s", dst)
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
+	buildDir := filepath.Dir(dst)
+	_, statErr := os.Stat(buildDir)
+	madeDir := os.IsNotExist(statErr)
+	cleanup := func() {
+		os.Remove(dst)
+		if madeDir {
+			os.Remove(buildDir)
+		}
 	}
-	return os.WriteFile(dst, out, 0o644)
+	if err := os.MkdirAll(buildDir, 0o755); err != nil {
+		return noop, err
+	}
+	if err := os.WriteFile(dst, out, 0o644); err != nil {
+		cleanup()
+		return noop, err
+	}
+	if err := exec.CommandContext(ctx, "git", "-C", abs, "check-ignore", "-q", "build/compile_commands.json").Run(); err != nil {
+		cleanup()
+		return noop, fmt.Errorf("-compile-db: build/compile_commands.json is not gitignored in %s; the re-time would dirty the checkout", name)
+	}
+	return cleanup, nil
 }
 
 // retimeMachineClass never includes machine identity or raw command output.

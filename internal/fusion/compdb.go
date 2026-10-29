@@ -50,6 +50,8 @@ type compDB struct {
 	host       cMacroEnv       // the target's predefined macros (cguards.go), nil when unprofiled
 	commonDefs cMacroEnv       // the -D/-U flags every entry agrees on
 	guardMemo  map[string]cMacroEnv
+	target     string // the effective target platform (cTargetOf, else the host's)
+	hostTarget bool   // target is the host default, no entry named one
 }
 
 // compDBDirs are the repo-relative directories a compile database is looked
@@ -71,7 +73,9 @@ func (e *resolveEnv) compDatabase() *compDB {
 		}
 		if target == "" {
 			target = cHostGOOS
+			db.hostTarget = true
 		}
+		db.target = target
 		db.host = cHostEnv(target)
 		all := make([]int, len(db.entries))
 		for i := range all {
