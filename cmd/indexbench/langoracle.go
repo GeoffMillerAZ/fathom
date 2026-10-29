@@ -733,6 +733,13 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	}
 	sub := langbench.Subject{Name: name, SHA: sha, Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
+	if lang, ok := importLang(spec.Manifest.ID); ok && includePathLang(lang) {
+		id, err := fusion.CompileDBFingerprint(root)
+		if err != nil {
+			return res, fmt.Errorf("compile database identity: %w", err)
+		}
+		sub.Tenancy.CompileDB = &langbench.CompileDBIdentity{Databases: id.Databases, Entries: id.Entries, Fingerprint: id.Fingerprint}
+	}
 	var files []string
 	var nodes []core.SymbolNode
 	var srcFiles []core.SourceFile

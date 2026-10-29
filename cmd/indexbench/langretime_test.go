@@ -361,7 +361,7 @@ func TestRetimeMovedDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	diff := strings.Join(retimeIdentityDiff(r.Subjects[0], measured.subject, false), "\n")
+	diff := strings.Join(retimeIdentityDiff(r.Subjects[0], measured.subject, nil, false), "\n")
 	for _, want := range []string{"counts.fathom_defs", "counts.callables", "counts.callables_signed", "excluded_by_kind.fathom:MovedDefinition"} {
 		if !strings.Contains(diff, want) {
 			t.Errorf("missing %q in diff: %s", want, diff)

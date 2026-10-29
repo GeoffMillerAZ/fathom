@@ -953,7 +953,7 @@ reading says so. Criterion, pre-registered: jenkinsfile.json reads `level_met` L
   the floor is re-measured on the development-machine class before a refusal, a -rest row or a level cites
   throughput, and the reading names its machine class, never a host. A cloud reading above the floor stands, since
   the slower machine can only understate it. MATLAB is the first case: 0.71 in the VM, 2.22 on the class.
-  Use `indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write]` to re-time with identity checks and every run disclosed.
+  Use `indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write]` to re-time with identity checks and every run disclosed. The identity check compares the recorded `compile_db` (gitignored build databases an include-path dialect read) first; pass `-compile-db <file>` to install a companion database on a checkout that lacks it.
   Revisit when a reading set measured on Linux CI is needed, or a user reports ingest slower than the floor on a
   Linux host; then each reading is normalized by a control dialect measured in the same session instead.
 

@@ -26,7 +26,7 @@ import (
 )
 
 const retimeNotePrefix = "throughput (design 1.9 T1, T2)"
-const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write] [-load-log <workspace/file.json>]"
+const retimeUsage = "usage: indexbench lang-retime -reading <reading.json> -subject <name>=<dir> [-subject ...] [-runs 3] [-write] [-compile-db <file>] [-load-log <workspace/file.json>]"
 const retimeReadingCap = 16 << 20
 
 type retimeLoadRun struct {
@@ -226,6 +226,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 	write := fs.Bool("write", false, "save the re-timed reading")
 	loadLog := fs.String("load-log", "", "write per-run one-minute system load and throughput to a new workspace JSON file")
 	tenancyOnly := fs.Bool("tenancy-only", false, "check identity on the timing run's own facts only (sha, a clean tree, files, bytes, faults, parse errors), for a reading whose counts were measured on a different scope than its tenancy block; the note says so")
+	compileDB := fs.String("compile-db", "", "companion compile_commands.json whose directory and paths are relative to the subject root; written to <subject>/build/compile_commands.json before measuring (refused when a different database is already there), for a subject checkout that lacks the recorded build directory")
 	var subjects multiFlag
 	fs.Var(&subjects, "subject", "recorded subject name=checkout directory (repeatable, required for every subject)")
 	fs.Usage = func() { fmt.Fprintln(stderr, retimeUsage); fs.PrintDefaults() }
@@ -290,6 +291,13 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	ctx := context.Background()
+	if *compileDB != "" {
+		for _, sub := range r.Subjects {
+			if err := retimeInstallCompileDB(*compileDB, roots[sub.Name]); err != nil {
+				return refuse(fmt.Errorf("%s: -compile-db: %w", sub.Name, err))
+			}
+		}
+	}
 	spec, source, err := resolveBenchSpec(r.Dialect, "")
 	if err != nil {
 		return refuse(err)
@@ -364,7 +372,7 @@ func cmdLangRetime(args []string, stdout, stderr io.Writer) int {
 			if measured.subject.SHA != original.SHA {
 				return measurementRefusal(fmt.Errorf("sha changed during measurement"))
 			}
-			if diff := retimeIdentityDiff(original, measured.subject, *tenancyOnly); len(diff) > 0 {
+			if diff := retimeIdentityDiff(original, measured.subject, r.Notes, *tenancyOnly); len(diff) > 0 {
 				return measurementRefusal(fmt.Errorf("\n  %s\nextraction changed; the reading needs a full re-measure, not a re-time", strings.Join(diff, "\n  ")))
 			}
 			t := measured.subject.Tenancy
@@ -474,8 +482,11 @@ func retimeCleanSubject(ctx context.Context, root string) error {
 // retimeIdentityDiff lists what differs between the recorded and the
 // re-measured extraction identity. tenancyOnly stops after the tenancy run's
 // own facts, for a reading whose counts were scored on another scope.
-func retimeIdentityDiff(recorded, measured langbench.Subject, tenancyOnly bool) []string {
-	var diff []string
+func retimeIdentityDiff(recorded, measured langbench.Subject, notes []string, tenancyOnly bool) []string {
+	// The compile database comes first: it is an input the subject's clean
+	// checkout may lack (a gitignored build directory) and the cause of any
+	// include-resolution difference below.
+	diff := retimeCompileDBDiff(recorded, measured, notes)
 	compare := func(field string, a, b any) {
 		if fmt.Sprint(a) != fmt.Sprint(b) {
 			diff = append(diff, fmt.Sprintf("%s: recorded %v -> measured %v", field, a, b))
@@ -525,6 +536,79 @@ func retimeIdentityDiff(recorded, measured langbench.Subject, tenancyOnly bool) 
 		compare("excluded_by_kind."+k, recorded.ExcludedByKind[k], measured.ExcludedByKind[k])
 	}
 	return diff
+}
+
+// retimeCompileDBDiff compares the compile databases the recorded extraction
+// read with the ones this checkout offers. A legacy reading has no identity,
+// only the include-path note's database count.
+func retimeCompileDBDiff(recorded, measured langbench.Subject, notes []string) []string {
+	if measured.Tenancy == nil || measured.Tenancy.CompileDB == nil {
+		return nil
+	}
+	m := measured.Tenancy.CompileDB
+	if recorded.Tenancy != nil && recorded.Tenancy.CompileDB != nil {
+		rec := recorded.Tenancy.CompileDB
+		if rec.Fingerprint == m.Fingerprint && rec.Databases == m.Databases {
+			return nil
+		}
+		short := func(fp string) string {
+			if fp == "" {
+				return "none"
+			}
+			return fp[:min(12, len(fp))]
+		}
+		return []string{fmt.Sprintf("compile_db: recorded %s (%d database(s)) -> measured %s (%d database(s))", short(rec.Fingerprint), rec.Databases, short(m.Fingerprint), m.Databases)}
+	}
+	re := regexp.MustCompile("^" + regexp.QuoteMeta(recorded.Name) + `: include-path resolution read (\d+) compile database\(s\)`)
+	for _, note := range notes {
+		if g := re.FindStringSubmatch(note); g != nil {
+			n, err := strconv.Atoi(g[1])
+			if err == nil && n != m.Databases {
+				return []string{fmt.Sprintf("compile_db: reading's note records %d database(s), measured %d", n, m.Databases)}
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
+// retimeInstallCompileDB writes the companion database src, with its relative
+// directories made absolute against root, to root/build/compile_commands.json.
+// A different database already there is a refusal.
+func retimeInstallCompileDB(src, root string) error {
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	var entries []map[string]any
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return fmt.Errorf("%s: %w", src, err)
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return err
+	}
+	for _, en := range entries {
+		dir, _ := en["directory"].(string)
+		if !filepath.IsAbs(dir) {
+			en["directory"] = filepath.Join(abs, dir)
+		}
+	}
+	out, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(abs, "build", "compile_commands.json")
+	if have, err := os.ReadFile(dst); err == nil {
+		if bytes.Equal(have, out) {
+			return nil
+		}
+		return fmt.Errorf("a different compile database already exists at %s", dst)
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, out, 0o644)
 }
 
 // retimeMachineClass never includes machine identity or raw command output.
