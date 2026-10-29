@@ -98,9 +98,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 4,
-        "extract_ms": 1466.5620000000008,
-        "extract_cpu_ms": 1487.9920000000004,
-        "max_file_ms": 117,
+        "extract_ms": 1204.0980000000004,
+        "extract_cpu_ms": 1147.8129999999992,
+        "max_file_ms": 98,
         "peak_module_pages": 575,
         "compiled_bytes": 0,
         "compile_db": {
@@ -242,10 +242,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 4,
-    "throughput_mb_s": 1.69,
+    "throughput_mb_s": 2.19,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.72,
-    "max_file_ms": 117,
+    "wall_throughput_mb_s": 2.09,
+    "max_file_ms": 98,
     "peak_module_pages": 575,
     "compiled_bytes": 0
   },
@@ -286,7 +286,8 @@
     "import_resolution: 36 of 36 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.6545 (36 of 55) and recall 1 (36 of 36); 19 of 1111 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 226 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "regraded at 246d758b from the recorded subject counts (harness rules only; extraction as measured at 246d758b)",
-    "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier B)"
+    "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier B)",
+    "throughput (design 1.9 T1, T2): darwin/arm64 Apple M4; run 1: 2.17 MB/CPU-s; run 2: 2.19 MB/CPU-s; run 3: 2.53 MB/CPU-s; median run 2: 2.19 MB/CPU-s; every other field is the original measurement at its recorded fathom_commit 246d758b"
   ],
   "disposition": null
 }
