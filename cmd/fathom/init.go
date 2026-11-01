@@ -120,7 +120,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// HP-13: the harness decides WHICH vehicles init writes — never more
 	// than the descriptor declares, never a user-global file — and a
 	// descriptor past its demotion clock is refused with the reason.
-	targets, err := initTargetsFor(*harnessFlag, time.Now())
+	targets, err := initTargetsFor(*harnessFlag, harnessNow())
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1

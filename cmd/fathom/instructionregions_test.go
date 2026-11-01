@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
@@ -43,7 +42,7 @@ func TestInstructionRegionsWriteAgentsMDOnlyForEveryHarness(t *testing.T) {
 	for _, id := range append(harness.IDs(), initHarnessNone) {
 		t.Run(id, func(t *testing.T) {
 			root := t.TempDir()
-			targets, err := initTargetsFor(id, time.Now())
+			targets, err := initTargetsFor(id, harnessNow())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -241,7 +240,7 @@ func TestRewireRemovesFathomsRegionWhenTheAdopterImportsAgentsMD(t *testing.T) {
 func TestInitGeminiWritesContextFileNameNotAGeminiStanza(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
-	targets, err := initTargetsFor(harness.GeminiCLI, time.Now())
+	targets, err := initTargetsFor(harness.GeminiCLI, harnessNow())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +289,7 @@ func TestInitKeepsTheStanzaWhenClaudeAndAgentsAreOneFile(t *testing.T) {
 			if err := os.Symlink(c.target, filepath.Join(root, filepath.FromSlash(c.link))); err != nil {
 				t.Fatal(err)
 			}
-			targets, err := initTargetsFor(harness.ClaudeCode, time.Now())
+			targets, err := initTargetsFor(harness.ClaudeCode, harnessNow())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -344,7 +343,7 @@ func TestRewireKeepsTheStanzaOfALinkedPair(t *testing.T) {
 // stanza stays unread by Gemini and init must say so and name the fix,
 // never "written above".
 func TestGeminiNoteReadsTheSettingItClaims(t *testing.T) {
-	targets, err := initTargetsFor(harness.GeminiCLI, time.Now())
+	targets, err := initTargetsFor(harness.GeminiCLI, harnessNow())
 	if err != nil {
 		t.Fatal(err)
 	}

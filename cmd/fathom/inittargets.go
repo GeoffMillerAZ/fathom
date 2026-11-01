@@ -51,6 +51,12 @@ type initTargets struct {
 // initTargetsFor resolves --harness into targets. "" ⇒ claude-code. now
 // drives the demotion clock (vision 25 §5): an unverified descriptor 60
 // days past its codec landing is refused here, before any write.
+// harnessNow is the demotion clock `init --harness` and `fathom harness` read
+// (harness.DemotionDue, vision 25 §5). A codec's landing date is fixed data,
+// so the tests pin this clock rather than let the real one cross the window
+// (the time bomb internal/AGENTS.md names; gemini-cli's crossed on 2026-11-01).
+var harnessNow = time.Now
+
 func initTargetsFor(id string, now time.Time) (initTargets, error) {
 	if id == "" {
 		id = harness.ClaudeCode

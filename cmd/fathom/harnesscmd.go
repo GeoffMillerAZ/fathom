@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
@@ -115,7 +114,7 @@ func cmdHarnessList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, string(data))
 		return 0
 	}
-	now := time.Now()
+	now := harnessNow()
 	fmt.Fprintf(stdout, "%-12s %-4s %-6s %-9s %-22s %s\n", "ID", "TIER", "CODEC", "HOOKS", "STANZA", "VERIFIED")
 	for _, d := range harness.All() {
 		codec := d.Codec
@@ -159,7 +158,7 @@ func cmdHarnessCapabilities(args []string, stdout, stderr io.Writer) int {
 	} else {
 		descs = harness.All()
 	}
-	now := time.Now()
+	now := harnessNow()
 	if *jsonOut {
 		type entry struct {
 			ID              string                  `json:"id"`

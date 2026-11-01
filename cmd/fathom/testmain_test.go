@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/testisolate"
@@ -46,6 +47,10 @@ func TestMain(m *testing.M) {
 	if role := os.Getenv(testHelperEnv); role != "" {
 		os.Exit(runTestHelper(role))
 	}
+	// Every codec landed by 2026-09-02 and demotes after 60 unverified days;
+	// the tests that run an unverified harness test its codec, not the clock
+	// (harness.DemotionDue has its own tests with an injected now).
+	harnessNow = func() time.Time { return time.Date(2026, 9, 12, 12, 0, 0, 0, time.UTC) }
 	testisolate.Main(m, func(root string) error {
 		cacheRoot := filepath.Join(root, "cache")
 		if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
