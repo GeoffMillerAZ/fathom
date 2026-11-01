@@ -188,9 +188,16 @@ tasks:
         mkdir -p workspace/tmp
         shardout=$(mktemp workspace/tmp/test-shards-out.XXXXXX)
         bash scripts/scratch-home.sh bash scripts/temp-path-canary.sh bash scripts/test-shards.sh >"$shardout" 2>&1 & shards=$!
-        bash scripts/scratch-home.sh bash scripts/temp-path-canary.sh {{.GO}} test -race -p 4 $pkgs || rc=$?
+        pkgout=$(mktemp workspace/tmp/test-pkgs-out.XXXXXX)
+        rcfile=$(mktemp workspace/tmp/test-pkgs-rc.XXXXXX)
+        { bash scripts/scratch-home.sh bash scripts/temp-path-canary.sh {{.GO}} test -race -p 4 $pkgs 2>&1; echo $? >"$rcfile"; } | tee "$pkgout"
+        [ "$(cat "$rcfile")" = 0 ] || rc=1
         wait $shards || rc=1
-        cat "$shardout"; rm -f "$shardout"
+        cat "$shardout"
+        # TQ-37 (ADR-090): a failing suite scores the local selection, one
+        # advisory line; it never changes this step's verdict.
+        [ "$rc" = 0 ] || bash scripts/test-boundary.sh "$pkgout" "$shardout"
+        rm -f "$shardout" "$pkgout" "$rcfile"
         exit $rc
 
   perfgate:
@@ -200,6 +207,14 @@ tasks:
   simulink-gate:
     desc: The Simulink reader's memory and CPU bounds (internal/extractor TestReadSimulinkModelHeapBound, TestSimulinkHashburnCPU, TestSimulinkResolveHashWork) WITHOUT -race - they measure a child's peak resident set and CPU time, which under -race are the race detector's, so they skip there; this step, in validate:unleased, is where they run (S5-R4)
     cmds: ["bash scripts/scratch-home.sh {{.GO}} test -count=1 -run '^(TestReadSimulinkModelHeapBound|TestSimulinkHashburnCPU|TestSimulinkResolveHashWork)$' ./internal/extractor"]
+
+  test:affected:
+    desc: "Run the tests the diff since the merge-base with origin/main can reach or read (TQ-35, ADR-090): `fathom tests select --safe` over the call graph, the observed test inputs (task test:inputs) and new tests in changed test files, with task t's isolation; fails open to task test. Advisory: the pre-push gate still runs everything (SINCE=<ref> overrides the base)"
+    cmds: ["bash scripts/test-affected.sh {{if .SINCE}}--since {{.SINCE}}{{end}} {{.CLI_ARGS}}"]
+
+  test:inputs:
+    desc: "Observe which repository files each Go test reads (TQ-32, ADR-090): the whole suite once without -race, with Go's testlog per package and per top-level test for packages that run 20s or more, into workspace/artifacts/test-inputs for tests select --inputs. About 20 minutes and 290 MB here; rerun after tests that read files change"
+    cmds: ["bash scripts/test-inputs.sh {{.CLI_ARGS}}"]
 
   test:weights:
     desc: Re-measure cmd/fathom's per-test seconds into scripts/test-shards.weights.tsv (the shard balance of `task test`) from one go test -race -json run
@@ -342,6 +357,7 @@ tasks:
         bash scripts/boundary-hooks_test.sh
         bash scripts/ci-boundary_test.sh
         bash scripts/targeted-tasks_test.sh
+        bash scripts/test-affected_test.sh
         bash scripts/build-cache_test.sh
         bash scripts/deploy-wait_test.sh
         bash scripts/gate-lease_test.sh

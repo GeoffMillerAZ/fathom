@@ -137,6 +137,17 @@ fathom tests select --since origin/main --service myapp \
   --profile unit=workspace/cov/unit.out
 ```
 
+**What tests read.** A test that globs docs, reads a changelog or walks the
+source tree reaches the changed file through no call edge. For Go, observe the
+files each test opens once (`go test -exec` with Go's own testlog, the record
+`go test`'s cache keys on; this repository's `task test:inputs` writes
+`workspace/artifacts/test-inputs`) and `--inputs <dir>` joins it: a changed
+file selects every test seen reading it, and a package observed only whole
+runs whole (ADR-090, TQ-33). Untracked files, both sides of a rename and new
+tests in changed test files count too (TQ-34). A read through a subprocess is
+not observed; the full suite at the push boundary catches what selection
+misses.
+
 Ranking, in priority order:
 
 1. **Direct reach before dispatch-mediated reach.** A test whose call site
@@ -239,4 +250,4 @@ criterion uses.
 
 ## Maintained
 
-This doc covers: `review_diff` (`coverage_profile`, `coverage_profiles` args), `fathom review` (`--coverage-profile`), `fathom tests coverage` (`--profile`, `--service`, `--diff`, `--json`, `--mutation`), `fathom tests select` (`--since`, `--safe`, `--profile`, `--json`), `fathom verify` (`--mutation`, `--strict-mutation`). Update it when these change.
+This doc covers: `review_diff` (`coverage_profile`, `coverage_profiles` args), `fathom review` (`--coverage-profile`), `fathom tests coverage` (`--profile`, `--service`, `--diff`, `--json`, `--mutation`), `fathom tests select` (`--since`, `--safe`, `--profile`, `--inputs`, `--store`, `--json`), `fathom verify` (`--mutation`, `--strict-mutation`). Update it when these change.

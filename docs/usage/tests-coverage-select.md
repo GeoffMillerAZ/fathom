@@ -8,7 +8,7 @@ fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
 fathom tests select --since <ref> [--safe [--skip-stdlib-dispatch]] [--profile [layer=]<file>...] \
-  [--service <id>] [--store <path>] [--json]
+  [--inputs <dir>] [--service <id>] [--store <path>] [--json]
 ```
 
 `tests coverage` joins one or more `go test -coverprofile` files (each
@@ -58,6 +58,30 @@ tests are selected. A replay ledger at
 `workspace/artifacts/tests-select/replay.jsonl`, when present, adds a
 measured predicted catch-rate — never a fabricated one.
 
+**What tests read (TQ-31 to TQ-37, ADR-090).** A test that walks the tree, globs `docs/plans` or
+reads `CHANGELOG.md` reaches the changed file through no call edge. `task test:inputs` observes
+the files each Go test opens or stats (Go's own testlog, per package, and per top-level test for a
+package that runs 20 s or more) into `workspace/artifacts/test-inputs`, and `--inputs` (that
+directory by default) joins it: a changed file selects every test seen reading it; an added,
+deleted or renamed file also selects every test that opened the deepest directory that already
+existed; a package runs whole (`"whole": true` and `go test ./<pkg>` in `invocations`) when it was
+observed only whole, when its log saw a read no test's own log explains, or when its log is not
+whole (`partial_packages`). `--json` carries
+the matches under `inputs`, with the observation's commit and `commits_behind_head`; with no
+observation, stderr says so and how to make one. The changed files include untracked files and
+both sides of a rename, and a `Test` function in a changed test file that the index does not
+hold yet is selected by name (`new_tests`). With no `--store`, the verb reads the store the
+daemon records, then `[daemon].store`, then the workspace default, and `--json` names it under
+`store`. A read made through a subprocess is not in the observation. `--record=false` keeps a
+selection nobody runs (the gate's boundary score) out of the time-saved ledger.
+
+`task test:affected` runs this selection for the diff since the merge-base with origin/main,
+with `task t`'s isolation, and runs `task test` instead when fathom is missing, the selection
+fails, or there is no observation; a changed shell script also runs `task scripts-check`. The
+pre-push gate still runs everything;
+when its `task test` fails, it prints `tests select boundary: K of M failing test(s) selected`
+and appends the row to `workspace/artifacts/tests-select/boundary.jsonl`.
+
 | Flag (`tests coverage`) | Default | Description |
 |---|---|---|
 | `--profile` | (required unless `--foreign`; repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
@@ -74,6 +98,8 @@ measured predicted catch-rate — never a fabricated one.
 | `--safe` | `false` | also select every test that statically reaches a changed symbol, beside the certifying-first set |
 | `--skip-stdlib-dispatch` | `false` | with `--safe`, leave out the tests that reach a changed symbol only through a dispatch into `error.Error`, `fmt.Stringer.String` or `fmt.GoStringer.GoString` (counted on stderr either way) |
 | `--profile` | (none, repeatable) | Go cover profile(s); enables the coverage ranking tie-break |
+| `--inputs` | `<repo>/workspace/artifacts/test-inputs` | observed test inputs (`task test:inputs`); a changed file selects the tests seen reading it |
+| `--record` | `true` | append the selection's time saved to `workspace/artifacts/tests-select/time-saved.jsonl` |
 | `--service` | resolved from cwd | Service ID |
-| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+| `--store` | the daemon's recorded store, then `[daemon].store`, then `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--json` | `false` | Emit JSON instead of a table |

@@ -88,10 +88,12 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	var profileFlags profileFlagValues
 	fs.Var(&profileFlags, "profile", "Go cover profile from 'go test -coverprofile', as `[layer=]path` (repeatable); when supplied, corroborating statement coverage over a test's reached symbols is used as a ranking tie-break (see cmdTestsSelect's doc comment)")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
-	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
+	storePath := fs.String("store", "", "store path (.sqlite/.db) (default: the store the daemon records, then [daemon].store, then workspace/db/fathom.sqlite)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
 	safe := fs.Bool("safe", false, "also select every test that statically reaches a changed symbol, beside the minimal certifying-first set")
 	skipStdlibDispatch := fs.Bool("skip-stdlib-dispatch", false, "with --safe, leave out a test that reaches a changed symbol only through a dispatch into error's Error, fmt.Stringer's String or fmt.GoStringer's GoString (counted on stderr either way)")
+	record := fs.Bool("record", true, "append the selection's time saved to workspace/artifacts/tests-select/time-saved.jsonl (false for a selection nobody runs, such as the gate's boundary score)")
+	inputsDir := fs.String("inputs", "", "directory of observed test inputs (Go testlogs that task test:inputs writes); a changed file selects the tests seen reading it (default: workspace/artifacts/test-inputs)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -120,9 +122,13 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 		}
 	}
 
-	st, err := store.Open(*storePath)
+	// TQ-36: the index the daemon serves, not a workspace file that an
+	// earlier ingest left behind (the default read a 14-day-old index and
+	// selected nothing, 2026-10-31).
+	ks := resolveKnowledgeStore(*storePath, "")
+	st, err := openKnowledgeStore(ks)
 	if err != nil {
-		fmt.Fprintf(stderr, "error: open store %q: %v\n", *storePath, err)
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 	defer st.Close()
@@ -142,18 +148,13 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 	typed, _ := c.TypedEdges(ctx, svc) // best effort: absent for a fixture/module with no typed pass
 
-	out, gerr := gitRunner("diff", "--name-only", *since)
+	// TQ-34: untracked files and both sides of a rename are changes too.
+	changes, gerr := testsSelectChanges(gitRunner, *since)
 	if gerr != nil {
 		fmt.Fprintf(stderr, "error: git diff --name-only %s: %v\n", *since, gerr)
 		return 1
 	}
-	var changedFiles []string
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			changedFiles = append(changedFiles, line)
-		}
-	}
+	changedFiles := changedPaths(changes)
 
 	// TQ-21: a changed file a //go:embed directive embeds stands for the
 	// embedding variable and the functions that read it.
@@ -203,6 +204,17 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 		}
 	}
 	gap.AffectedTests = addSrcReadTests(nodes, gap.AffectedTests, srcTests)
+	// TQ-33: the tests observed reading a changed file, and (TQ-34) the new
+	// tests in changed test files.
+	// The default is under the root the changed paths are relative to, as
+	// every other read of this verb is.
+	dir := *inputsDir
+	if dir == "" {
+		dir = filepath.Join(testsSelectRoot, "workspace", "artifacts", "test-inputs")
+	}
+	ins := selectByInputs(dir, testsSelectRoot, nodes, changes, gitRunner)
+	fmt.Fprintln(stderr, inputSelectionNote(ins))
+	gap.AffectedTests = addSrcReadTests(nodes, gap.AffectedTests, ins.Tests)
 
 	var coverageSyms []coverage.SymbolLayerCoverage
 	if len(profiles) > 0 {
@@ -217,7 +229,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// advisory tie-break, not the selection itself).
 	claims, _ := c.ClaimsForService(ctx, svc, certify.Layer)
 	ranked = rankCertifyingFirst(ranked, certifyingTestKeys(nodes, claims, changedFiles))
-	invocations := groupTestInvocations(nodes, ranked)
+	invocations := mergeInputInvocations(groupTestInvocations(nodes, ranked), ins)
 	replay := loadTestSelectReplay(workspacePath("artifacts/tests-select/replay.jsonl"))
 
 	// T4: the certifying-first selection, its time saved (TQ-16w), and the
@@ -228,10 +240,10 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 		sel.Tests = dropSafeOnlyTests(sel, dispatchOnly.Tests)
 	}
 	if *safe {
-		sel.Tests = unionSorted(sel.Tests, srcTests)
+		sel.Tests = unionSorted(unionSorted(sel.Tests, srcTests), ins.Tests)
 	}
 	view := buildCertifyingSelectionView(ctx, st, svc, nodes, sel, *safe)
-	if view.SavedKnown {
+	if view.SavedKnown && *record {
 		row := timeSavedRow{
 			At: testsSelectNow().UTC().Format(time.RFC3339), Service: svc, Since: *since, Safe: *safe,
 			Selected: len(sel.Tests), Skipped: len(sel.Skipped),
@@ -244,7 +256,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 
 	if *jsonOut {
-		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view, testsSelectNotes{index: index, dispatchOnly: dispatchOnly, dispatchSelected: !*skipStdlibDispatch})
+		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view, testsSelectNotes{index: index, dispatchOnly: dispatchOnly, dispatchSelected: !*skipStdlibDispatch, inputs: &ins, store: ks})
 	}
 	renderCertifyingSelectionText(stdout, *since, view)
 	renderTestsSelectTable(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0)
@@ -265,6 +277,8 @@ type testsSelectNotes struct {
 	index            testsSelectIndex
 	dispatchOnly     impact.StdlibDispatchOnly
 	dispatchSelected bool
+	inputs           *inputSelection // TQ-33/TQ-34: what the observed inputs and changed test files added
+	store            knowledgeStore  // TQ-36: the store read and the rule that chose it
 }
 
 // testsSelectIndexOf reads the service's indexed commit from the store and
@@ -495,7 +509,8 @@ func rankCertifyingFirst(ranked []rankedTest, certifying map[string]bool) []rank
 type testInvocation struct {
 	Package string
 	Tests   []string // bare Go test function names, sorted
-	Command string   // "go test ./<Package> -run '^(TestA|TestB)$'"
+	Whole   bool     // every test in the package: its package-wide observation read a changed file (TQ-33)
+	Command string   // "go test ./<Package> -run '^(TestA|TestB)$'", or "go test ./<Package>" when Whole
 }
 
 // groupTestInvocations groups ranked's tests by their package directory,
@@ -671,11 +686,15 @@ func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invoc
 	}
 	invItems := make([]any, len(invocations))
 	for i, inv := range invocations {
-		invItems[i] = map[string]any{
+		item := map[string]any{
 			"package": inv.Package,
 			"tests":   nonNilStrList(inv.Tests),
 			"command": inv.Command,
 		}
+		if inv.Whole {
+			item["whole"] = true
+		}
+		invItems[i] = item
 	}
 	gapItems := make([]any, len(gap))
 	for i, g := range gap {
@@ -694,6 +713,13 @@ func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invoc
 			m["holds_head"] = idx.Commit == idx.Head
 		}
 		payload["index"] = m
+	}
+	if notes.store.Path != "" {
+		payload["store"] = map[string]any{"path": notes.store.Path, "rule": notes.store.Rule}
+	}
+	if notes.inputs != nil {
+		payload["inputs"] = inputSelectionJSON(*notes.inputs)
+		payload["new_tests"] = newTestsJSON(*notes.inputs)
 	}
 	if d := notes.dispatchOnly; len(d.Tests) > 0 {
 		payload["stdlib_dispatch_only"] = map[string]any{"methods": nonNilStrList(d.Methods), "tests": nonNilStrList(d.Tests), "selected": notes.dispatchSelected}
