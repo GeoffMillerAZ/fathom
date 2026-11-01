@@ -109,6 +109,49 @@ For `contract_drift {pkg, from, to}`: the tests that statically reach our consum
 changed or removed `pkg:` symbols. "Run these before merging the bump", with the symbols each
 test exercises.
 
+### T9. What tests read, and the local loop (ADR-090)
+
+T4 selects by what a test calls. A test that walks the source tree, globs `docs/plans` or reads
+`CHANGELOG.md` reaches the changed file through no call edge and, for 1,209 of 1,359 reads in
+this repository's tests, through no literal TQ-24 can match. Such tests failed seven of the nine
+pre-push gates that failed on a test from 2026-10-26 to 10-31, and `tests select --safe` named the
+failing test for none of the six triggers that reproduce.
+
+- **The observation.** `task test:inputs` (`scripts/test-inputs.sh`) runs the suite once
+  without `-race` and asks every test binary for Go's testlog (`-test.testlogfile`, the record
+  `go test`'s own cache keys on: each open, stat, getenv and chdir through package os), through
+  `go test -exec`. A package that ran 20 s or more is run again test by test from one
+  `go test -c` binary, four processes at a time, one log per top-level test. Output:
+  `workspace/artifacts/test-inputs/` (`meta.json` with the commit, `pkg/<dir>/_package.log`,
+  `pkg/<dir>/_test.<Name>.log`), replaced whole. `internal/analysis/testinputs` reads it. It
+  is a named file source, never a store table, and it records one run at one commit: about 20
+  minutes and 290 MB on this repository. A read a test makes through a subprocess (a Python script
+  it runs, a test binary re-run as a helper) is not in it: TQ-M8 read four of six triggers for that
+  reason (TQ-40).
+- **The join.** A changed file selects every test seen opening or stat'ing it. An added,
+  deleted or renamed file also selects every test that opened the deepest directory that already
+  existed at `--since`. A package runs whole (`go test ./<pkg>`, `"whole": true`) when it was
+  observed only whole, when its log saw a read no test's own log explains, or when its log is not
+  whole (missing, or cut short by a panic or an exit; `partial_packages`). The changed files include
+  untracked files and both sides of a rename. A Test function in a changed test file that the
+  index does not hold is selected by name (`new_tests`). With no `--store`, the selection reads
+  the store the daemon records, and the JSON names it (`store`).
+- **The runner.** `task test:affected` (`scripts/test-affected.sh`) selects for the diff since
+  the merge-base with origin/main and runs it with `task t`'s isolation. It widens on doubt: no
+  fathom, a failed or unreadable select, or no observation (a Go edit too: a test may walk the
+  source tree) runs `task test`, and a changed shell script also runs `task scripts-check`. A
+  linked worktree reads the main checkout's observation. Fathom selects; the
+  repository's task runs (ADR-043 §2).
+- **The oracle.** The push gate still runs everything. When `task test` fails,
+  `scripts/test-boundary.sh` scores the selection for the change range against the failing
+  tests, prints `tests select boundary: K of M failing test(s) selected` and appends a row to
+  `workspace/artifacts/tests-select/boundary.jsonl`. A miss names a dependency kind fathom does
+  not see (TQ-M7).
+- **Not built.** A content-hash result cache (Go's test cache is one at package level, the CI
+  kit's `InputKey` at the package closure), a package resolver (ADR-063 O1), a runner verb, and
+  a second test registry. The manifest's declared `inputs` checked against observed reads
+  (TQ-38) and the gate's own results as attested runs (TQ-39) are deferred rows with triggers.
+
 ## 4. Tenancy and cost
 
 Churn and centrality are computed at ingest and stored per symbol (additive columns or a side
@@ -125,6 +168,8 @@ T4 reads certificates for the changed symbols only.
 | TQ-M3 | coverage ingested for at least 5 languages (Go plus four T3 formats), blocks joined to symbols |
 | TQ-M4 | T7 measured: flaky certificates counted over 30 days; every live certificate's run bound to a commit |
 | TQ-M5 | the portfolio on this repository: counts per class, and a human check of 10 orphans and 10 redundant pairs |
+| TQ-M7 | T9 at the boundary: every failing pre-push `task test` over 14 days scored; recall 1.0 over at least 10 failing tests, each miss filed with the dependency kind it names |
+| TQ-M8 | T9 on the six reproducible triggers of the failed gates of 2026-10-26 to 10-31: the failing test selected for at least five, against none before |
 
 ## 6. Jev, weighed
 

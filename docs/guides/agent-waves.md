@@ -66,19 +66,18 @@ renders them; most rows carry none.
   doc index at all is refused), so an empty answer from the shared daemon proves nothing until it
   has re-ingested.
 
-## Select tests before a whole-package run (EW-11)
+## Select tests before a whole-package run (EW-11, TQ-35)
 
-Before any whole-package run (`go test ./...`, `./cmd/fathom`), a worker runs
-`fathom tests select --since <base> --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom`
-and runs the `go test` commands it prints. The store is the worker's scratch ingest, refreshed after
-its last commit: the shared daemon's index holds `origin/main`, so without `--store` the diff's
-symbols are not in it and nothing is selected. The verb names the commit its index holds when that
-is not HEAD. It leads with the certifying-first set, the fewest tests
-that re-prove every live certificate the diff touches (TQ-15w, TQ-16w, SR-50). With no live
-certificates that set is empty, so add `--safe`, which also selects every test that statically
-reaches a changed symbol (one that reaches it only through `error.Error`, `fmt.Stringer.String` or
-`fmt.GoStringer.GoString` dispatch is counted, and `--skip-stdlib-dispatch` leaves it out), and every test that reads a changed file's source by a literal path (a
-`filepath.Glob("../store/*.go")` through go/parser; a dynamic path is counted, not matched). The whole-package run is the gate's, once, at the end.
+Before any whole-package run (`go test ./...`, `./cmd/fathom`), a worker runs `task test:affected`,
+in a clone with its own scratch ingest `task test:affected -- --store "$FATHOM_CACHE_ROOT/verify.sqlite"`
+(the shared daemon's index holds `origin/main`). It selects for the diff since the merge-base with
+origin/main, untracked files included: the tests that reach a changed symbol (`tests select --safe`),
+the tests Go's testlog saw reading a changed file (TQ-33: the main checkout's
+`workspace/artifacts/test-inputs`, which a linked worktree reads too; a clone passes `--inputs <dir>`
+or runs `task test:inputs`), and the new tests in changed test files. It runs them with `task t`'s
+isolation, and runs `task test` instead when it cannot select. The whole-package run is the gate's,
+once, at the end; when the gate's suite fails, it prints how many of the failing tests the selection
+had named (TQ-37), and a miss is worth a `fathom observe`.
 
 ## The gate and the push
 
