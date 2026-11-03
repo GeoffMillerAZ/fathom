@@ -1,5 +1,9 @@
 # IaC provider schemas: local evidence before typed claims
 
+**Superseded in part by ADR-091 (2026-11-02):** the provider-schema typed layer described here (the authored manifest, the
+persisted declaration closure, the tooling-L4 policy) is replaced by `docs/design/iac-facts.md`. The binding rules carry over
+there. Terraform L3, Kustomize, Crossplane calibration and the oracle triage below still stand.
+
 Design for issue #55, approved by the controller and merged as PR #59. The
 current provider-schema follow-up is design and probe only, based on main
 `4e7eea67a`. It changes no reading or product behavior and authorizes no schema

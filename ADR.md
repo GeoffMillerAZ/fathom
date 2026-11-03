@@ -6466,3 +6466,43 @@ reads below its threshold with its oracle available for two releases; the consum
 - TQ-M7 reads recall 1.0 over 30 days and at least 20 failures: weigh selection in CI through the CI kit (P3B-119) and the hash cache above.
 - A second repository wants `task test:affected`: the runner moves to agentic-kit.
 - The table freeze lifts (RT-M1 PASS): weigh storing the observation with the index.
+
+## ADR-091: IaC provider facts come from read-only catalogs joined at query time, not from the dependency plane (2026-11-02)
+
+**Status.** Accepted 2026-11-02 (owner-directed, owner-architect design). **Type.** product / architecture. Design: `docs/design/iac-facts.md`. Plan: `docs/plans/iac-facts.md` (IF-). Goal G49. Evidence: `docs/assessments/2026-11-02-iac-facts-probe.md`, `docs/assessments/2026-10-26-iac-provider-schema-feasibility.md`. Amends the placement in ruling I-R5, ADR-050 decisions 4 and 8 for this one ecosystem, and I56's second clause.
+
+**Request (2026-11-02).** "understanding Terraform and Pulumi is one thing, but understand the major providers, like the AWS provider and the GCP provider and the Azure provider and the Kubernetes provider and things like that, I would think would add far better capability."
+
+**Context.** I-R5 deferred the provider-schema typed layer to the dependency program G18 until G18 accepted a representation and the owner reprioritized it. The owner has. The other half cannot fire usefully: ADR-050 reads dependency facts from what the toolchain left on disk, and an IaC provider on disk is a compiled binary whose schema comes only from executing it, which I56 forbids. The deferred design also asked an operator to author a hashed manifest per root, and to persist declarations behind a table freeze that holds. And a 2026-11-02 probe found the fact an agent most needs is not in the export: `tofu providers schema -json` and a bridged Pulumi schema carry no replacement fact for `random_id.byte_length`, while `tofu show -json` on a plan reports `replace_paths: [["byte_length"]]` with no cloud involved.
+
+**Decision.**
+1. *Seven facts, not a grade.* Attribute existence and type, required arguments, sensitive, deprecated, forces replacement, the replacement cascade over the repository's references, and upgrade impact between two versions. The last three are the point: a static answer to what a change does, with no credentials and no state.
+2. *A catalog is a read-only input.* A deterministic zip of pruned, content-addressed resource schemas keyed by provider source and version, holding names, types and flags, without description prose. It lives in one operator-filled directory.
+3. *Read at query time, stored nowhere.* One fact is a point read: one version index and one blob, under I48's point ceiling. Binding and the cascade read lockfiles and referring files, so they are budgeted tree-class work with stated caps that reports a lower bound. No table, column, cache, memo or background job. Ingest does not change. This holds under the table freeze and needs no RT-M1 pass. ADR-050 decision 8's rule against link computation on a request path stays for materialized links, and this bounded, unstored read is the stated exception.
+4. *No new egress.* A catalog arrives only as a local file: `fathom iac add <path>` after the operator downloads it with their own tools, or `fathom iac import` of an operator's own export. The product has no download path and never runs a provider, `init`, a plan or a registry client, so I14 is untouched. I56's second clause now also names catalogs.
+5. *Maintainers build catalogs.* `cmd/iaccatalog`, outside the product binary, runs the export and scans the provider's tagged source for replacement facts, and CI publishes catalogs with attestations.
+6. *Exact version or say so.* `locked` from the lockfile, `constraint-matched` from `required_providers` and labelled, `ambiguous` counted, `unbound` with no facts. Never a silent nearest version.
+7. *No new MCP tool.* Facts arrive on `symbol_context`, `review_diff` and `blast_radius`. Any edit-time hook line waits for a labs card. `fathom iac` manages catalogs only, because `fathom providers` already means decision models and "provider pack" already means a kit's pack.
+8. *The board does not move.* Terraform stays L3 under ADR-048. IaC facts have their own readings against native tools, so no tooling-L4 amendment is needed.
+9. *Order.* Terraform with AWS, AzureRM, Google, Kubernetes and Helm; then the Kubernetes API and CRDs for manifests; then Pulumi YAML, TypeScript and Python. A measured phase 0 can stop it (IF-M0).
+
+**Decision models.** None applies: whether an attribute exists, forces replacement or changed between versions is read from a contract or computed over it, so a model could only guess what the data records (I62). Provider `none` is the whole feature, and adding no catalog is the opt-out.
+
+**Alternatives rejected.**
+- *Persist declarations in the dependency plane (IAC-7, IAC-8, IAC-12).* Needs SG-36, SG-37 and tables, and has nothing on disk to read without executing a binary. Wins if: a query-time read cannot meet IF-P1's bars, or a second consumer needs a joinable store after RT-M1 passes.
+- *An operator export plus an authored manifest as the only path.* No adopter runs it, so nothing fires. `fathom iac import` keeps the path for private providers without the manifest. Wins if: never as the default.
+- *Execute the provider or `terraform` from the product.* Forbidden by I56, I14. Wins if: never.
+- *A `--from <url>` download in the product.* I56 would allow it with an operator-named source, but I14 lists the only off-host egress and this is not on it. Wins if: operators report the two-step fetch as a real barrier.
+- *Embed catalogs in the binary.* Tens of megabytes per version for every adopter, most of whom use one cloud. Wins if: IF-P1 reads a small enough total and the telemetry shows most adopters use all three.
+- *Serve registry docs.* The registries' own MCP servers do. A catalog holds no prose. Wins if: never.
+- *Terraform L4 on the board (IAC-16).* A grade for what `validate` already answers. Wins if: a typed edge store exists and an agent benefit is measured.
+- *Cover CloudFormation, Crossplane, CDK, Bicep and IAM now.* No present need beats the first five providers. F97 holds them.
+
+**Consequences.** Provider work no longer waits on G18, RT-M1 or an L4 policy. Fathom takes on a maintained data pipeline: a catalog goes stale with each provider release, and an unbound version answers nothing, so IF-P6 must read how often exact binding would fire before anything is built on it. Replacement facts from a source scan are a static floor: a `CustomizeDiff` can force a replacement the scan cannot see, and answers say so. G18 is unchanged for ecosystems whose sources are readable. IAC-7, IAC-8, IAC-10, IAC-12, IAC-14 and IAC-16 and GAP1-33 close as superseded.
+
+**Revisit when.**
+- IF-M0 reads no-go on catalog size, version coverage or facts 5 to 7: redesign or stop.
+- IF-M2 reads below its bar for a provider: that provider serves facts 1 to 4 only.
+- IF-M6 reads a powered null: cut the agent surfaces and keep the CLI and `review_diff`.
+- A registry or tool publishes replacement facts in its schema export: drop the source scan.
+- RT-M1 passes and a consumer needs a joinable declaration store: weigh the dependency plane again.

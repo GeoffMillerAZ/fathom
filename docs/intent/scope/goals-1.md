@@ -82,6 +82,7 @@ dependency rows of `docs/plans/system-graph.md` are proven and SG-M4 (upgrade im
 npm, PyPI, Maven and Cargo at precision at least 0.9 on the seeded-upgrade corpus) and SG-M5
 (the dependency API index is shared fleet-wide, one index per package version, within the
 memory budget, with no network access) read PASS.
+IaC providers are out of this goal: a provider on disk is a binary, so ADR-091 (G49) serves them from catalogs.
 {bet: dependencies, instrument: "fathom plans status", threshold: "SG-M4 upgrade-impact precision at least 0.9 in 5 ecosystems; SG-M5 one shared index per package version, footprint within budget, zero dials", review: 2027-01-31}
 
 **G19. Spec interop and the certified proof tier (ADR-049).** Done when:

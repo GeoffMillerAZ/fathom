@@ -1,4 +1,4 @@
-# Scope: current goals, G39 to G48
+# Scope: current goals, G39 to G49
 
 Part of the scope router, `../scope.md` (the goal index, the compatibility surface and every section's member).
 
@@ -59,3 +59,10 @@ precision above the arm without it at the prereg's minimum detectable effect, re
 margin, run only with the finding kinds PU-M6 kept at their precision floor. A powered null fails the goal.
 Kill: PU-M6 finds no kind at its floor, or PU-M7 reads a powered null, by 2027-03-15.
 {bet: review-precision, instrument: "fathom verify", threshold: "row PU-G48 verifies: the PU-M7 reading's verdict line reads KEEP", review: 2027-01-31}
+
+**G49. An agent changing infrastructure code knows what the change does before any plan runs (ADR-091).**
+Done when: `docs/plans/iac-facts.md` phases 1 and 2 are proven for AWS, AzureRM, Google, Kubernetes and Helm, and IF-M1 (facts 1 to 4 against
+`tofu validate`, precision at least 0.99, recall at least 0.95), IF-M2 (forces replacement against `replace_paths`, precision at least 0.95, recall
+at least 0.90) and IF-M3 (upgrade impact on mined bump commits, precision at least 0.9) read PASS. Kill: IF-M0 reads no-go, or IF-M6 reads a powered
+null, which cuts the agent surfaces and keeps the CLI and `review_diff`.
+{bet: iac-facts, instrument: "fathom plans status", threshold: "IF-M1, IF-M2 and IF-M3 read PASS for the first five providers", review: 2027-02-28}

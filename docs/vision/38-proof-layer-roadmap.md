@@ -228,6 +228,13 @@ screen, and Rust in peers, where no source published a Rust-versus-Go benchmark)
 Each wave closes with its measurement rows (the `-M` rows of each plan) read and committed,
 honest either way.
 
+### 9.2a IaC facts (added 2026-11-02, ADR-091, G49)
+
+Owner-directed and outside the wave table: provider contracts for AWS, Azure, GCP, Kubernetes and Helm, then the Kubernetes
+API and CRDs, then Pulumi, joined to the repository at its locked version (`docs/design/iac-facts.md`, plan IF-). It needs no
+table, so it does not wait on RT-M1, and it moves IaC providers out of wave 3's dependency work (SG-30 to SG-40), because a
+provider on disk is a binary with nothing to read. Phase 0 is a go or no-go at $0. Target: phases 1 and 2 read by 2027-02-28.
+
 ### 9.3 G15's ladder, named
 
 N5 asked to raise the milestone ladder. Vision 37 §5 already defines M2 (45 languages at L1

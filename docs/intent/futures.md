@@ -111,3 +111,4 @@ no member defines, and one defined twice.
 | F94 | The project map: computed components with their governing records, owners, coverage and levels | `futures/f92-f97.md` |
 | F95 | A named meaning-search pairing in the adoption docs | `futures/f92-f97.md` |
 | F96 | Review-comment verification: another reviewer's anchors resolved against the index | `futures/f92-f97.md` |
+| F97 | Contract catalogs beyond Terraform, Kubernetes and Pulumi: other IaC tools, a cross-tool resource identity, IAM actions, action and chart inputs | `futures/f92-f97.md` |
