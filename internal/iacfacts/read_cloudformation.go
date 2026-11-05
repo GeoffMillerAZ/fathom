@@ -72,10 +72,25 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 			Tool: ToolCloudFormation, Mode: ModeManaged, Type: typ.value, Name: p.key.value,
 			Span: p.span, Multiplicity: Multiplicity{Kind: MultiSingle},
 		}
+		hasCond := false
 		for _, cp := range p.val.pairs {
-			if cp.key.value == "Condition" && cp.val.kind == nodeScalar {
-				r.Multiplicity = cr.condition(cp.val, cp.span)
+			if cp.key.value != "Condition" {
+				continue
 			}
+			hasCond = true
+			if cp.val.kind == nodeScalar && cp.val.tag == "" {
+				r.Multiplicity = cr.condition(cp.val, cp.span)
+			} else {
+				// An alias, a mapping or a tagged value: which condition applies is not known.
+				r.Multiplicity = Multiplicity{Kind: MultiCondition, Class: ClassUnknown, Span: cp.span}
+				set.SyntaxErrors++
+			}
+		}
+		if !hasCond && p.val.hasMerge() {
+			// `<<: *base` may carry the Condition, so the multiplicity reads as an unknown condition and not as
+			// single. It is not counted as a syntax error: a merge beside Properties of the resource's own counts
+			// nothing (TestReadSectionShapesAreNeverSilent), and the unknown class is what discloses it.
+			r.Multiplicity = Multiplicity{Kind: MultiCondition, Class: ClassUnknown, Span: p.span}
 		}
 		if props := p.val.get("Properties"); props == nil && p.val.hasMerge() {
 			// `<<: *base` may carry the Properties; the merge is not expanded, so every attribute is unknown.
@@ -85,9 +100,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 			ires, intrinsic := cr.classifyIntrinsic(props, 0)
 			switch {
 			case !intrinsic && props.kind == nodeMap:
-				for _, pp := range props.pairs {
-					w.walk(pp.val, pp.key.value, pp.span, &r.Attrs, 0)
-				}
+				w.walkPairs(props, "", props.span, &r.Attrs, 0)
 			case props.kind == nodeScalar && props.typ == "null":
 				// `Properties:` with nothing under it sets nothing.
 			default:
@@ -105,6 +118,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		}
 		set.Resources = append(set.Resources, r)
 	}
+	set.SyntaxErrors += w.unread
 	sort.Strings(set.Dropped)
 	sortSet(set)
 	return set, nil
@@ -147,6 +161,18 @@ func (c *cfnReader) spend() bool {
 	return true
 }
 
+// charge counts n copied items against the same budget as first visits and reports whether it still holds.
+func (c *cfnReader) charge(n int) bool {
+	if c.over {
+		return false
+	}
+	if c.nodes += n; c.nodes > MaxReadVisits {
+		c.over = true
+		return false
+	}
+	return true
+}
+
 // condition reads a resource's Condition: the multiplicity is the condition, with the
 // class of its definition.
 func (c *cfnReader) condition(name *node, span Span) Multiplicity {
@@ -154,6 +180,11 @@ func (c *cfnReader) condition(name *node, span Span) Multiplicity {
 	if def := c.conds.get(name.value); def != nil {
 		if res, ok := c.classifyIntrinsic(def, 0); ok {
 			m.Class = res.class
+			// Each resource that names the condition keeps its own copy of the references, so the copies are
+			// charged: refs x resources is otherwise unbounded by anything the walk counts.
+			if !c.charge(len(res.refs)) {
+				return m
+			}
 			m.Refs = append(m.Refs, res.refs...)
 		} else {
 			m.Class = ClassUnknown

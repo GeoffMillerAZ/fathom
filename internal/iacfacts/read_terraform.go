@@ -121,11 +121,16 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	}
 	env := &tfEnv{vars: map[string]*tfVar{}, locals: map[string]hclsyntax.Expression{},
 		overVars: map[string]bool{}, overLocals: map[string]bool{}}
+	// Overrides are collected after every base file, whatever their names sort to, since a sensitive-only override
+	// changes the variable the base declares.
+	for _, f := range files {
+		if !f.override {
+			env.collect(f)
+		}
+	}
 	for _, f := range files {
 		if f.override {
 			env.collectOverrides(f)
-		} else {
-			env.collect(f)
 		}
 	}
 	r := newTFReader(newConfig(opts), env)
@@ -320,6 +325,11 @@ func (e *tfEnv) collectOverrides(pf *tfParsed) {
 		for _, n := range pf.jsonOver.vars {
 			e.overVars[n] = true
 		}
+		for n, secret := range pf.jsonOver.secret {
+			if v, ok := e.vars[n]; ok {
+				v.secret = secret
+			}
+		}
 		for _, n := range pf.jsonOver.locals {
 			e.overLocals[n] = true
 		}
@@ -330,6 +340,15 @@ func (e *tfEnv) collectOverrides(pf *tfParsed) {
 		case b.Type == "variable" && len(b.Labels) == 1:
 			if _, ok := b.Body.Attributes["default"]; ok {
 				e.overVars[b.Labels[0]] = true
+			}
+			// The override's sensitive or ephemeral replaces the base's: only the literal false clears it, and an
+			// expression the reader cannot tell from true counts as true, as it does in the base.
+			if v, ok := e.vars[b.Labels[0]]; ok {
+				for _, flag := range []string{"sensitive", "ephemeral"} {
+					if a, ok := b.Body.Attributes[flag]; ok {
+						v.secret = !isFalseLiteral(a.Expr) || pf.suspect(a.SrcRange)
+					}
+				}
 			}
 		case b.Type == "locals":
 			for name := range b.Body.Attributes {

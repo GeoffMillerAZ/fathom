@@ -24,14 +24,19 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 	// chain at the top of a file or of a block body, and is whitespace inside any other bracket.
 	chains := []int{0}
 	var kinds []hclsyntax.TokenType
-	splats, run := 0, 0
+	// quest counts, per bracket level, the `?` whose `:` has not come yet, and ctl the template `%{if}` and `%{for}`
+	// directives whose end has not come yet. The parser recurses once per pending `?` and copies the diagnostics of
+	// every level below it, and does the same for an open directive, so both nest like brackets. quests is their sum.
+	quest := []int{0}
+	var ctlBase []int
+	splats, run, quests, ctl := 0, 0, 0, 0
 	endChain := func() {
 		top := len(chains) - 1
 		splats -= chains[top]
 		chains[top] = 0
 	}
 	tooDeep := func() error {
-		if len(kinds)+run+splats > MaxDepth {
+		if len(kinds)+run+splats+quests+ctl > MaxDepth {
 			return limitErr(file, fmt.Sprintf("operators, splats and brackets nest past %d deep", MaxDepth))
 		}
 		return nil
@@ -56,6 +61,17 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 			run = 0
 			kinds = append(kinds, t.Type)
 			chains = append(chains, 0)
+			quest = append(quest, 0)
+			if t.Type == hclsyntax.TokenTemplateControl && i+1 < len(tokens) && tokens[i+1].Type == hclsyntax.TokenIdent {
+				switch string(tokens[i+1].Bytes) {
+				case "if", "for":
+					ctl++
+				case "endif", "endfor":
+					if ctl > 0 {
+						ctl--
+					}
+				}
+			}
 			if err := tooDeep(); err != nil {
 				return nil, nil, err
 			}
@@ -65,6 +81,33 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 				endChain()
 				kinds = kinds[:len(kinds)-1]
 				chains = chains[:len(chains)-1]
+				quests -= quest[len(quest)-1]
+				quest = quest[:len(quest)-1]
+			}
+		case hclsyntax.TokenQuestion:
+			endChain()
+			run = 0
+			quest[len(quest)-1]++
+			quests++
+			if err := tooDeep(); err != nil {
+				return nil, nil, err
+			}
+		case hclsyntax.TokenColon:
+			endChain()
+			run = 0
+			if top := len(quest) - 1; quest[top] > 0 {
+				quest[top]--
+				quests--
+			}
+		case hclsyntax.TokenOQuote, hclsyntax.TokenOHeredoc:
+			// A directive left open in a template ends with it.
+			run = 0
+			ctlBase = append(ctlBase, ctl)
+		case hclsyntax.TokenCQuote, hclsyntax.TokenCHeredoc:
+			run = 0
+			if n := len(ctlBase); n > 0 {
+				ctl = ctlBase[n-1]
+				ctlBase = ctlBase[:n-1]
 			}
 		case hclsyntax.TokenBang, hclsyntax.TokenMinus:
 			endChain()
@@ -77,9 +120,12 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 		case hclsyntax.TokenNewline:
 			if len(kinds) == 0 || kinds[len(kinds)-1] == hclsyntax.TokenOBrace {
 				endChain()
+				top := len(quest) - 1
+				quests -= quest[top]
+				quest[top] = 0
 			}
 		case hclsyntax.TokenDot, hclsyntax.TokenIdent, hclsyntax.TokenNumberLit, hclsyntax.TokenStar,
-			hclsyntax.TokenOQuote, hclsyntax.TokenCQuote, hclsyntax.TokenQuotedLit:
+			hclsyntax.TokenQuotedLit:
 			// Steps and index keys a traversal chain continues through.
 			run = 0
 		default:

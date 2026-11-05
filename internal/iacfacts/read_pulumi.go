@@ -74,9 +74,7 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 			ires, handled := pr.classifyNode(props, 0)
 			switch {
 			case !handled && props.kind == nodeMap:
-				for _, pp := range props.pairs {
-					w.walk(pp.val, pp.key.value, pp.span, &r.Attrs, 0)
-				}
+				w.walkPairs(props, "", props.span, &r.Attrs, 0)
 			case props.kind == nodeScalar && props.typ == "null":
 				// `properties:` with nothing under it sets nothing.
 			default:
@@ -94,6 +92,7 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 		}
 		set.Resources = append(set.Resources, r)
 	}
+	set.SyntaxErrors += w.unread
 	sort.Strings(set.Dropped)
 	sortSet(set)
 	return set, nil

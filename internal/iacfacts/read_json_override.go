@@ -1,6 +1,9 @@
 package iacfacts
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // tfJSONOver is what a .tf.json or .tofu.json override file names. The reader does not read the JSON syntax, but an
 // override file changes what the other files declare, so the names it holds are enough to read those unknown: the
@@ -8,6 +11,41 @@ import "encoding/json"
 type tfJSONOver struct {
 	vars, locals []string
 	res          []Resource
+	// secret maps a variable the override sets sensitive or ephemeral to whether it ends up secret.
+	secret map[string]bool
+}
+
+// jsonOverrideBody reads the keys of a resource or module override body into res: the meta-arguments, and every
+// other key as an attribute or nested block that reads unknown. A `dynamic` key names the blocks it generates, so
+// each label is an attribute of its own and the key itself is not.
+func jsonOverrideBody(file string, bodies []map[string]json.RawMessage, res *Resource) {
+	for _, body := range bodies {
+		for _, k := range sortedKeys(body) {
+			switch k {
+			case "count":
+				res.Multiplicity = Multiplicity{Kind: MultiCount, Class: ClassUnknown, Span: Span{File: file}}
+			case "for_each":
+				res.Multiplicity = Multiplicity{Kind: MultiForEach, Class: ClassUnknown, Span: Span{File: file}}
+			case "provider":
+				if s, ok := jsonString(body[k]); ok {
+					res.Provider = s
+				}
+			case "dynamic":
+				dyn, ok := jsonObjects(body[k])
+				if !ok {
+					res.Attrs = append(res.Attrs, Attr{Path: k, Class: ClassUnknown, Span: Span{File: file}})
+					continue
+				}
+				for _, labels := range dyn {
+					for _, label := range sortedKeys(labels) {
+						res.Attrs = append(res.Attrs, Attr{Path: label, Class: ClassUnknown, Span: Span{File: file}})
+					}
+				}
+			default:
+				res.Attrs = append(res.Attrs, Attr{Path: k, Class: ClassUnknown, Span: Span{File: file}})
+			}
+		}
+	}
 }
 
 // readJSONOverride reads the names an override file in the JSON syntax holds. It returns nil for a file that is not
@@ -40,25 +78,28 @@ func readJSONOverride(file string, src []byte) *tfJSONOver {
 							return nil
 						}
 						res := Resource{Tool: ToolTerraform, Mode: kind.mode, Type: typ, Name: name, Multiplicity: Multiplicity{Kind: MultiSingle}}
-						for _, body := range bodies {
-							for _, k := range sortedKeys(body) {
-								switch k {
-								case "count":
-									res.Multiplicity = Multiplicity{Kind: MultiCount, Class: ClassUnknown, Span: Span{File: file}}
-								case "for_each":
-									res.Multiplicity = Multiplicity{Kind: MultiForEach, Class: ClassUnknown, Span: Span{File: file}}
-								case "provider":
-									if s, ok := jsonString(body[k]); ok {
-										res.Provider = s
-									}
-								default:
-									res.Attrs = append(res.Attrs, Attr{Path: k, Class: ClassUnknown, Span: Span{File: file}})
-								}
-							}
-						}
+						jsonOverrideBody(file, bodies, &res)
 						ov.res = append(ov.res, res)
 					}
 				}
+			}
+		}
+	}
+	if raw, ok := top["module"]; ok {
+		// A module call has one label, so its name is the first key.
+		blocks, ok := jsonObjects(raw)
+		if !ok {
+			return nil
+		}
+		for _, byName := range blocks {
+			for _, name := range sortedKeys(byName) {
+				bodies, ok := jsonObjects(byName[name])
+				if !ok {
+					return nil
+				}
+				res := Resource{Tool: ToolTerraform, Mode: ModeModule, Type: "module", Name: name, Multiplicity: Multiplicity{Kind: MultiSingle}}
+				jsonOverrideBody(file, bodies, &res)
+				ov.res = append(ov.res, res)
 			}
 		}
 	}
@@ -76,6 +117,15 @@ func readJSONOverride(file string, src []byte) *tfJSONOver {
 				for _, body := range bodies {
 					if _, has := body["default"]; has {
 						ov.vars = append(ov.vars, name)
+					}
+					for _, flag := range []string{"sensitive", "ephemeral"} {
+						if v, has := body[flag]; has {
+							if ov.secret == nil {
+								ov.secret = map[string]bool{}
+							}
+							// Only the literal false clears the flag, as for HCL.
+							ov.secret[name] = string(bytes.TrimSpace(v)) != "false"
+						}
 					}
 				}
 			}

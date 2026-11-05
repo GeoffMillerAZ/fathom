@@ -783,6 +783,8 @@ type treeWalker struct {
 	emitter
 	file     string
 	classify func(n *node, depth int) (readRes, bool)
+	// unread counts the mappings whose entries could not all be read.
+	unread int
 }
 
 func (w *treeWalker) walk(n *node, path string, span Span, out *[]Attr, depth int) {
@@ -803,9 +805,7 @@ func (w *treeWalker) walk(n *node, path string, span Span, out *[]Attr, depth in
 			w.emitLit(out, path, span, map[string]any{})
 			return
 		}
-		for _, p := range n.pairs {
-			w.walk(p.val, joinPath(path, p.key.value), p.span, out, depth+1)
-		}
+		w.walkPairs(n, path, span, out, depth+1)
 	case nodeSeq:
 		if len(n.items) == 0 {
 			w.emitLit(out, path, span, []any{})
@@ -818,6 +818,25 @@ func (w *treeWalker) walk(n *node, path string, span Span, out *[]Attr, depth in
 		w.emit(w.file, out, path, readRes{class: ClassLiteral, val: n.scalarValue(), hasV: w.cfg.values}, span)
 	default:
 		w.emit(w.file, out, path, readRes{class: ClassUnknown}, span)
+	}
+}
+
+// walkPairs walks the entries of a mapping. A YAML merge key (`<<: *base`) may carry any key, and a Fn::Transform
+// beside other keys (AWS::Include) may add any, so neither can be read from the entries shown: the mapping gets one
+// unknown attribute at its own path and is counted in unread, which the caller adds to the syntax errors. Absence
+// is never silent: a check for a key must not see it as unset.
+func (w *treeWalker) walkPairs(n *node, path string, span Span, out *[]Attr, childDepth int) {
+	hidden := false
+	for _, p := range n.pairs {
+		if p.key.kind == nodeScalar && (p.key.value == "<<" || (p.key.value == "Fn::Transform" && len(n.pairs) > 1)) {
+			hidden = true
+			continue
+		}
+		w.walk(p.val, joinPath(path, p.key.value), p.span, out, childDepth)
+	}
+	if hidden {
+		w.emit(w.file, out, path, readRes{class: ClassUnknown}, span)
+		w.unread++
 	}
 }
 
