@@ -86,7 +86,11 @@ type DialectInfo struct {
 	ID string `json:"id"`
 	// Kind is "language" or "tooling".
 	Kind string `json:"kind"`
-	// Engine is how the dialect is read: tags, doc, tags+doc or native.
+	// Engine is what reads the dialect: tags (a tree-sitter grammar and its
+	// queries), doc (the document engine), tags+doc, or native (a Go reader
+	// wired by hand, such as CMake, proto, nginx or Kubernetes). It is the
+	// engine of the extractor the Reader dispatches to, which for a few
+	// dialects is not the one their manifest declares.
 	Engine string `json:"engine"`
 	// Matches is the sorted extensions, basenames and globs the dialect claims.
 	Matches []string `json:"matches"`
@@ -302,7 +306,7 @@ type Result struct {
 	// symbols, references and facts above are what it did read, and Notes says
 	// why. False means no engine reported a failure, which is not a promise
 	// that every construct was read: the tree-sitter dialects recover from a
-	// syntax error without reporting it, and the line scanners (SQL, CMake,
+	// syntax error without reporting it, and the line scanners (CMake,
 	// templ) have no failure concept. A policy tool that must not pass a file
 	// it could not read should refuse when Incomplete is true.
 	Incomplete bool `json:"incomplete"`

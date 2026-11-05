@@ -87,7 +87,7 @@ Rules:
    Kubernetes (an embedded document too), Helm, generic JSON and TOML, proto, notebook, nginx, Caddy, HAProxy, Rego and go.mod
    readers, a tree-sitter injected range that failed, and a Go extractor's error set it. Two kinds of engine report nothing:
    the tree-sitter grammars recover from a syntax error without reporting it (the pinned grammar blobs export no `has_error`),
-   and the line scanners (SQL, CMake, templ) have no failure concept. For them `false` means no engine reported a failure, which
+   and the line scanners (CMake, templ) have no failure concept. For them `false` means no engine reported a failure, which
    the type documents. The decode failure travels on an internal field (`DocResult.Incomplete`,
    `ReportingExtractor`) that only the door reads, so the product's behavior and node output do not change: routing parity is
    byte-identical.

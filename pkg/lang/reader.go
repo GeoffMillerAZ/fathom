@@ -114,13 +114,14 @@ func New(opts ...Option) (r *Reader, err error) {
 		linked[name] = true
 		routerOpts = append(routerOpts, fam.Options()...)
 	}
-	dialects, err := dialectInfos(levels, linked)
-	if err != nil {
-		return nil, err
-	}
 	router, err := langroute.NewRouter(routerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("lang: %w", err)
+	}
+	dialects, err := dialectInfos(levels, linked, router.Exts())
+	if err != nil {
+		router.Close()
+		return nil, err
 	}
 	rd := &Reader{router: router, maxFile: cfg.maxFile, levels: levels, dialects: dialects}
 	if cfg.packFS != nil || len(cfg.natives) > 0 {
@@ -607,7 +608,7 @@ func (res *Result) addSiblingNote(path string, siblings []string) {
 
 // dialectInfos lists the manifest dialects, the native Go extractor, the
 // generic JSON and TOML readers and the templ reader.
-func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]DialectInfo, error) {
+func dialectInfos(levels map[string]levelRow, linked map[string]bool, exts map[string]extractor.Extractor) ([]DialectInfo, error) {
 	ds, err := extractor.LoadDialects()
 	if err != nil {
 		return nil, fmt.Errorf("lang: %w", err)
@@ -648,7 +649,11 @@ func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]Dialect
 				set[strings.ToLower(e)] = true
 			}
 		}
-		out = append(out, newDialectInfo(levels, d.ID, d.Kind, d.Engine, set))
+		engine := d.Engine
+		if e := dispatchedEngine(exts, d); e != "" {
+			engine = e
+		}
+		out = append(out, newDialectInfo(levels, d.ID, d.Kind, engine, set))
 	}
 	out = append(out, newDialectInfo(levels, "go", "language", "native", map[string]bool{".go": true}))
 	// The generic readers read the .json and .toml files no dialect claims, and
@@ -660,6 +665,43 @@ func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]Dialect
 		newDialectInfo(levels, langroute.Templ, "language", "native", map[string]bool{".templ": true}))
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
+}
+
+// dispatchedEngine is the engine of the extractor the router dispatches the
+// dialect's basenames and extensions to, when it dispatches all of them to one
+// kind: a manifest declares an engine, but a few dialects (CMake, proto) are
+// read by a Go reader wired by hand, and Engine says what reads the file. It is
+// "" when the router holds no entry for the dialect's keys, or its entries
+// differ (a header router sends C and C++ to different readers), and the
+// manifest's engine stands.
+func dispatchedEngine(exts map[string]extractor.Extractor, d extractor.Dialect) string {
+	keys := append([]string(nil), d.Match.Basenames...)
+	for _, e := range d.Match.Extensions {
+		keys = append(keys, strings.ToLower(e))
+	}
+	found := ""
+	for _, k := range keys {
+		e, ok := exts[k]
+		if !ok {
+			continue
+		}
+		var class string
+		switch e.(type) {
+		case *extractor.TSExtractor:
+			class = "tags"
+		case *extractor.TagsDocExtractor:
+			class = "tags+doc"
+		case *extractor.DocExtractor:
+			class = "doc"
+		default:
+			class = "native"
+		}
+		if found != "" && found != class {
+			return ""
+		}
+		found = class
+	}
+	return found
 }
 
 func newDialectInfo(levels map[string]levelRow, id, kind, engine string, matches map[string]bool) DialectInfo {
