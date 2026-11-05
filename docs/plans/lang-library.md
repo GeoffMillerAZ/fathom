@@ -17,7 +17,7 @@ A commit that moves code behind a claimed row re-anchors that row in the same co
 - [x] File classifiers move to the leaf `internal/langclass`, importing only `core` and the standard library, with forwarding functions left in `internal/connector` {id: LL-5, symbol: LanguageForPath, package: internal/langclass}
 - [x] `readout` builds a router, not a Pipeline, and no longer imports `internal/fusion` {id: LL-6, symbol: newOutlineRouter, package: internal/readout, needs: LL-4}
 - [x] CUE extraction moves behind a registration, so `internal/extractor` compiles without `cuelang.org/go`, and the product registers it {id: LL-7, symbol: RegisterCUE, package: internal/extractor/cuelang, needs: LL-4}
-- [ ] (op) ctl: routing parity: nodes for every dialect fixture and the fauxtown corpus at the base commit match byte for byte through `ExtractForBench` and `ReingestFile`, and `DispatchTable` is unchanged {id: LL-M2, oracle: lexical, path: docs/bench/readings/lang-library/m2-parity.md, pattern: "^LL-M2 verdict:", needs: "LL-4,LL-5,LL-6,LL-7"}
+- [x] (op) ctl: routing parity: nodes for every dialect fixture and the fauxtown corpus at the base commit match byte for byte through `ExtractForBench` and `ReingestFile`, and `DispatchTable` is unchanged {id: LL-M2, oracle: lexical, path: docs/bench/readings/lang-library/m2-parity.md, pattern: "^LL-M2 verdict:", needs: "LL-4,LL-5,LL-6,LL-7"}
 
 ## Phase 2: the door
 
