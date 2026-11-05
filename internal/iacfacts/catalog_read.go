@@ -105,7 +105,7 @@ func readIaCCatalog(path string, req IaCCatalogRequest, lim IaCLimits) (IaCCatal
 		return zero, scanRefusal(err, "blob "+digest, lim)
 	}
 	if !hit {
-		return zero, refuse(RefuseNotFound, "blob %s has no path %q", digest, joinPath(req.Path))
+		return zero, refuse(RefuseNotFound, "blob %s has no path %q", digest, joinDots(req.Path))
 	}
 	if err := bs.drain(); err != nil {
 		return zero, scanRefusal(err, "blob "+digest, lim)
@@ -115,11 +115,11 @@ func readIaCCatalog(path string, req IaCCatalogRequest, lim IaCLimits) (IaCCatal
 	}
 	val := bs.capBuf
 	if !json.Valid(val) {
-		return zero, corruptf("blob %s holds malformed JSON at %q", digest, joinPath(req.Path))
+		return zero, corruptf("blob %s holds malformed JSON at %q", digest, joinDots(req.Path))
 	}
 	return IaCCatalogFact{
 		Catalog: filepath.Base(path), Source: m.Source, Version: req.Version, Kind: req.Kind, Type: req.Type,
-		Digest: digest, Path: joinPath(req.Path), Value: val,
+		Digest: digest, Path: joinDots(req.Path), Value: val,
 	}, nil
 }
 

@@ -8,16 +8,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // catalogSuffix ends every installed catalog's file name.
 const catalogSuffix = ".iaccat.zip"
-
-// IaCCatalogDir is where installed catalogs live: $FATHOM_HOME/iac. The product fills it only from a local file on
-// an operator's command (`fathom iac add`, `fathom iac import`) and never from the network (I56).
-func IaCCatalogDir() string { return fathomhome.Path("iac") }
 
 // IaCCatalogInfo describes one installed catalog.
 type IaCCatalogInfo struct {

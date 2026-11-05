@@ -169,4 +169,4 @@ type IaCCatalogFact struct {
 	Value []byte
 }
 
-func joinPath(p []string) string { return strings.Join(p, ".") }
+func joinDots(p []string) string { return strings.Join(p, ".") }

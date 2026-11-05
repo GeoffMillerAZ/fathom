@@ -13,8 +13,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/iacfacts"
 )
+
+// iacCatalogDir is where installed catalogs live: $FATHOM_HOME/iac. internal/iacfacts takes the directory in so its
+// import closure stays free of fathomhome (lang-library section 4). The product fills it only from a local file on an
+// operator command and never from the network (I56).
+func iacCatalogDir() string { return fathomhome.Path("iac") }
 
 // cmdIaC dispatches `fathom iac add|import|list|remove`.
 func cmdIaC(args []string, stdout, stderr io.Writer) int {
@@ -86,7 +92,7 @@ func cmdIaCAdd(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: fathom iac add <catalog file> [--json]   (a local path only: fetch the file with your own tools first)")
 		return 1
 	}
-	info, err := iacfacts.AddIaCCatalog(iacfacts.IaCCatalogDir(), lead)
+	info, err := iacfacts.AddIaCCatalog(iacCatalogDir(), lead)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -136,7 +142,7 @@ func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 		}
 		in = append(in, iacfacts.IaCImportInput{Version: v, Path: p})
 	}
-	info, stats, err := iacfacts.ImportIaCExports(iacfacts.IaCCatalogDir(), in, iacfacts.IaCWriterOptions{Licence: *licence, Tool: *tool})
+	info, stats, err := iacfacts.ImportIaCExports(iacCatalogDir(), in, iacfacts.IaCWriterOptions{Licence: *licence, Tool: *tool})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -159,7 +165,7 @@ func cmdIaCList(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	cats, bad := iacfacts.ListIaCCatalogs(iacfacts.IaCCatalogDir(), *digest)
+	cats, bad := iacfacts.ListIaCCatalogs(iacCatalogDir(), *digest)
 	if *jsonOut {
 		out := struct {
 			Catalogs []iacCatalogJSON  `json:"catalogs"`
@@ -177,7 +183,7 @@ func cmdIaCList(args []string, stdout, stderr io.Writer) int {
 		return writeIaCJSON(stdout, stderr, out)
 	}
 	if len(cats) == 0 && len(bad) == 0 {
-		fmt.Fprintf(stdout, "no IaC catalogs in %s — `fathom iac add <file>` installs one, `fathom iac import <export>` builds one\n", iacfacts.IaCCatalogDir())
+		fmt.Fprintf(stdout, "no IaC catalogs in %s — `fathom iac add <file>` installs one, `fathom iac import <export>` builds one\n", iacCatalogDir())
 		return 0
 	}
 	for _, c := range cats {
@@ -214,7 +220,7 @@ func cmdIaCRemove(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: fathom iac remove <catalog name>   (names: `fathom iac list`)")
 		return 1
 	}
-	name, err := iacfacts.RemoveIaCCatalog(iacfacts.IaCCatalogDir(), lead)
+	name, err := iacfacts.RemoveIaCCatalog(iacCatalogDir(), lead)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
