@@ -11,7 +11,8 @@ TemplateURL or Location); SamFunctionProvider reports each function's CodeUri an
 SAM transform has applied Globals. Neither resolves a handler to a file and symbol (the runtime does that
 when it invokes), so this probe grades the part of the truth the CLI can report: the nested-template edges,
 and, per handler edge, that the function exists and that its CodeUri directory holds the file the truth
-names. It prints one JSON object of counts.
+names. A function whose CodeUri is the template's own directory holds every file under it, so those are counted
+apart as sam_codeuri_root:handler and are not a directory match. It prints one JSON object of counts.
 """
 import argparse
 import collections
@@ -56,7 +57,11 @@ def main():
                 n["sam_function:handler"] += 1
                 base = os.path.dirname(path)
                 code = os.path.normpath(os.path.join(base, f.codeuri or "."))
-                if os.path.normpath(c["to_path"]).startswith(code + os.sep) or code == ".":
+                if code == ".":
+                    # A CodeUri that is the template's own directory holds every file under it, so the check
+                    # says nothing. Count it apart, and never as a directory match.
+                    n["sam_codeuri_root:handler"] += 1
+                elif os.path.normpath(c["to_path"]).startswith(code + os.sep):
                     n["sam_codeuri_holds_file:handler"] += 1
     print(json.dumps(dict(sorted(n.items())), indent=1))
 
