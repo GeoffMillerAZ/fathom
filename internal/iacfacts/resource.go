@@ -261,6 +261,41 @@ func sortedRefs(refs []string) []string {
 	return out[:w]
 }
 
+// unionRefs merges reference lists into one sorted, duplicate-free list. A list handed over more than once, the
+// memoized answer for a definition used many times, is merged once, so a structure that repeats one part n times
+// costs the part's size and not n times it.
+func unionRefs(lists ...[]string) []string {
+	var all []string
+	var seen map[*string]int
+	for i, l := range lists {
+		if len(l) == 0 {
+			continue
+		}
+		if len(lists) > 16 {
+			if seen == nil {
+				seen = map[*string]int{}
+			}
+			if seen[&l[0]] >= len(l) {
+				continue
+			}
+			seen[&l[0]] = len(l)
+		} else {
+			dup := false
+			for _, e := range lists[:i] {
+				if len(e) >= len(l) && &e[0] == &l[0] {
+					dup = true
+					break
+				}
+			}
+			if dup {
+				continue
+			}
+		}
+		all = append(all, l...)
+	}
+	return sortedRefs(all)
+}
+
 // emitter collects attributes under the bounds, for every reader.
 type emitter struct {
 	cfg   config

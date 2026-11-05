@@ -655,8 +655,9 @@ func foldRes(parts []readRes) readRes {
 	out := readRes{class: ClassLiteral, hasV: true}
 	anyDef, anyUnknown, allRef := false, false, len(parts) > 0
 	allLitDef := true
-	for _, p := range parts {
-		out.refs = append(out.refs, p.refs...)
+	lists := make([][]string, len(parts))
+	for i, p := range parts {
+		lists[i] = p.refs
 		out.vsize += partSize(p)
 		out.big = out.big || p.big
 		if !p.hasV {
@@ -679,6 +680,7 @@ func foldRes(parts []readRes) readRes {
 			allRef = false
 		}
 	}
+	out.refs = unionRefs(lists...)
 	switch {
 	case anyUnknown:
 		out.class = ClassUnknown

@@ -325,7 +325,7 @@ func (c *cfnReader) collectRefs(n *node, depth int) []string {
 }
 
 func (c *cfnReader) collectRefsOnce(n *node, depth int) []string {
-	var out []string
+	var lists [][]string
 	if r, ok := c.classifyIntrinsic(n, depth); ok {
 		name, arg, _ := intrinsic(n)
 		switch {
@@ -335,14 +335,14 @@ func (c *cfnReader) collectRefsOnce(n *node, depth int) []string {
 			// The classification already read the whole argument.
 			return sortedRefs(r.refs)
 		}
-		out = append(out, r.refs...)
+		lists = append(lists, r.refs)
 		n = arg
 	}
 	for _, p := range n.pairs {
-		out = append(out, c.collectRefs(p.val, depth+1)...)
+		lists = append(lists, c.collectRefs(p.val, depth+1))
 	}
 	for _, it := range n.items {
-		out = append(out, c.collectRefs(it, depth+1)...)
+		lists = append(lists, c.collectRefs(it, depth+1))
 	}
-	return sortedRefs(out)
+	return unionRefs(lists...)
 }
