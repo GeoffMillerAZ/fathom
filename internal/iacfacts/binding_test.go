@@ -418,7 +418,7 @@ func TestBindingReadsARealOpenTofuLockfile(t *testing.T) {
 
 // M15: a host other than the two default registries reads unbound against a public catalog.
 func TestBindingPrivateRegistryHostNeedsItsOwnCatalog(t *testing.T) {
-	src := "registry.corp.example/hashicorp/aws"
+	src := "registry.mirror.example/hashicorp/aws"
 	m := fstest.MapFS{
 		"main.tf":    file("terraform {\n  required_providers {\n    aws = { source = \"" + src + "\" }\n  }\n}\nresource \"aws_vpc\" \"v\" {}\n"),
 		LockfileName: lock(src, "5.100.0"),
@@ -427,7 +427,7 @@ func TestBindingPrivateRegistryHostNeedsItsOwnCatalog(t *testing.T) {
 	if b.Status != BindUnbound || b.Version != "" || b.Catalog != "" || b.Locked != "5.100.0" {
 		t.Fatalf("a private host must not bind a public catalog: %+v", b)
 	}
-	if d := strings.Join(b.Disclosures, "|"); !strings.Contains(d, "registry.corp.example") || strings.Contains(d, "IF-P2") {
+	if d := strings.Join(b.Disclosures, "|"); !strings.Contains(d, "registry.mirror.example") || strings.Contains(d, "IF-P2") {
 		t.Fatalf("%v", b.Disclosures)
 	}
 	own := append([]IaCCatalogInfo{fxCat(src, "5.99.0", "5.100.0")}, awsCatalogs...)
@@ -436,7 +436,7 @@ func TestBindingPrivateRegistryHostNeedsItsOwnCatalog(t *testing.T) {
 	}
 	// the same holds without a lockfile.
 	m2 := fstest.MapFS{"main.tf": m["main.tf"]}
-	if b = bindBlock(m2, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_vpc"}); b.Status != BindUnbound || !strings.Contains(strings.Join(b.Disclosures, "|"), "registry.corp.example") {
+	if b = bindBlock(m2, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_vpc"}); b.Status != BindUnbound || !strings.Contains(strings.Join(b.Disclosures, "|"), "registry.mirror.example") {
 		t.Fatalf("%+v", b)
 	}
 }
