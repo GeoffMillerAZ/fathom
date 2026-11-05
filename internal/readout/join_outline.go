@@ -18,7 +18,9 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
+	"github.com/geoffmilleraz/fathom/internal/fathomformat"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
@@ -122,8 +124,8 @@ func Outline(ctx context.Context, path, text string) (lines []string, missed boo
 var errNoOutline = errors.New("no outline")
 
 // joinOutline is the outline join, a pure function over (path, text): it runs
-// the extractor the indexer dispatches for path (fusion's per-file entry,
-// ExtractForBench: ingest's gates and dispatch, no store) over text and
+// the extractor the indexer dispatches for path (the router's per-file entry,
+// ExtractFile: ingest's gates and dispatch, no store) over text and
 // returns a header and one line per top-level symbol, `A-B kind name`, in
 // line order. A symbol is top-level when no other symbol's range holds it;
 // a node spanning the whole file (a module) holds nothing. The language
@@ -197,19 +199,37 @@ func joinOutline(path, text string) ([]string, error) {
 // outlinePipe is the in-process extraction pipeline, built once per process
 // on first use (no store, no connector); outlineMu serialises its use.
 var (
-	outlineOnce sync.Once
-	outlinePipe *fusion.Pipeline
-	outlineMu   sync.Mutex
+	outlineOnce   sync.Once
+	outlineRouter *langroute.Router
+	outlineErr    error
+	outlineMu     sync.Mutex
 )
+
+// newOutlineRouter is the router the outline runs: the language registrations
+// plus CUE, Timoni and fathom's own formats, the same dispatch the indexer
+// runs, built without the pipeline (no store, no connector, no LLM), so the
+// readout does not import internal/fusion (ADR-092, LL-6).
+func newOutlineRouter() (*langroute.Router, error) {
+	return langroute.NewRouter(
+		langroute.WithCUE(cuelang.NewCUEExtractor()),
+		langroute.WithTimoni(cuelang.NewTimoniExtractor()),
+		langroute.WithFormats(fathomformat.Dispatch),
+	)
+}
 
 // extractOutline runs the indexer's per-file dispatch over one file.
 func extractOutline(rel string, src []byte) ([]core.SymbolNode, error) {
-	outlineOnce.Do(func() { outlinePipe = fusion.New(nil, nil, fusion.Config{}) })
+	outlineOnce.Do(func() { outlineRouter, outlineErr = newOutlineRouter() })
+	if outlineErr != nil {
+		return nil, outlineErr
+	}
 	outlineMu.Lock()
 	defer outlineMu.Unlock()
-	// The service names the file, so the sibling index the dispatch keeps
-	// per service is this file's alone.
-	ex, err := outlinePipe.ExtractForBench(outlineService+":"+rel, []core.SourceRef{{Service: outlineService, Path: rel}}, rel, src)
+	// The sibling index is this file's alone.
+	idx := func() *langroute.SiblingIndex {
+		return langroute.BuildSiblingIndex([]core.SourceRef{{Service: outlineService, Path: rel}})
+	}
+	ex, err := outlineRouter.ExtractFile(nil, outlineService+":"+rel, idx, rel, src)
 	if err != nil {
 		return nil, err
 	}
