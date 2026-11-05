@@ -30,12 +30,9 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
-// Scope names one service's state: the store it lives in (so two stores
-// holding a same-named service never share an entry), the service, and
-// the store watermark.
-type Scope struct {
-	Store, Service, Watermark string
-}
+// Scope names one service's state. It stays defined in memo because
+// pkg/client's MemoScope returns it.
+type Scope = memo.Scope
 
 type snapKey struct{ Scope }
 

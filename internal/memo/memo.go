@@ -57,6 +57,13 @@ const (
 // to (§5, [tenancy.caches] shed_trim).
 const DefaultShedTrim = 0.5
 
+// Scope names one service's state: the store it lives in (so two stores
+// holding a same-named service never share an entry), the service, and
+// the store watermark.
+type Scope struct {
+	Store, Service, Watermark string
+}
+
 // Scoped is implemented by keys that belong to one service at one store
 // watermark. A WatermarkScoped group requires it: a key whose watermark is
 // empty is built but never cached (I21), and a key naming a newer

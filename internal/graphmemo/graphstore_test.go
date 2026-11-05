@@ -138,7 +138,7 @@ func TestGraphStore_OneGraphPerServiceWatermark(t *testing.T) {
 	}
 }
 
-// TestSnapshot_NameIndexSharedByReaders is RT-75 (§5): one immutable
+// TestGraphSnapshot_NameIndexSharedByReaders is RT-75 (§5): one immutable
 // snapshot per (store, service, watermark) serves every reader — a
 // case-insensitive name index and a callee index answer point questions
 // without a scan, lowered fields are stored once, and readers that sort
@@ -146,7 +146,7 @@ func TestGraphStore_OneGraphPerServiceWatermark(t *testing.T) {
 // loader the product's readers call (the MCP navigation memo and the
 // console's graph store), and pins that the loader's extra value rides on
 // the one shared snapshot.
-func TestSnapshot_NameIndexSharedByReaders(t *testing.T) {
+func TestGraphSnapshot_NameIndexSharedByReaders(t *testing.T) {
 	isolateGraphStore(t)
 	ctx := context.Background()
 	var loads atomic.Int32
