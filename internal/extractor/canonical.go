@@ -1,6 +1,9 @@
 package extractor
 
-import "sync"
+import (
+	"sort"
+	"sync"
+)
 
 var (
 	canonicalOnce  sync.Once
@@ -34,8 +37,9 @@ func CanonicalKind(sk string) (canonical string, ok bool) {
 }
 
 // nativeCanonical is the canonical kind of each SourceKind an extractor with no
-// dialect manifest emits: the native Go extractor, which has none, and the
-// generic JSON and TOML readers. The Go rows are the Go incumbent manifest's
+// dialect manifest emits: the native Go extractor, which has none, the
+// generic JSON and TOML readers and the templ reader (a component, script or css
+// block is a function-like definition). The Go rows are the Go incumbent manifest's
 // (internal/langbench/incumbents.json, which TestNativeCanonicalMatchesGoIncumbent
 // holds the table to). Only the language library's door reads this table:
 // CanonicalKind, which the product's passes read, is unchanged.
@@ -43,11 +47,13 @@ var nativeCanonical = map[string]string{
 	"GoFunc": "function", "GoMethod": "method", "GoField": "field", "GoType": "struct",
 	"GoInterface": "interface", "GoConst": "constant", "GoVar": "variable",
 	"JSONKey": "key", "TOMLKey": "key", "TOMLTable": "section",
+	"TemplComponent": "function",
 }
 
 // noCanonical are the kinds that have no canonical meaning, each with the
 // reason, so an empty Canonical is a decision on this list and never an
-// omission. TestDoorCanonicalCoversFixtures fails on an empty one not listed.
+// omission. TestFixturesHoldTheResultContract (pkg/lang) fails on an empty one not
+// listed, and on a listed one no fixture emits.
 var noCanonical = map[string]string{
 	"K8sFact":           "a fact a workload writes, an observation of the file and never a definition (ADR-067)",
 	"TerraformProvider": "a provider configuration declares no entity a reference names",
@@ -69,4 +75,14 @@ func DoorCanonicalKind(sk string) (canonical string, ok bool) {
 func HasNoCanonical(sk string) (reason string, ok bool) {
 	reason, ok = noCanonical[sk]
 	return reason, ok
+}
+
+// NoCanonicalKinds is the kinds HasNoCanonical lists, sorted.
+func NoCanonicalKinds() []string {
+	out := make([]string, 0, len(noCanonical))
+	for k := range noCanonical {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

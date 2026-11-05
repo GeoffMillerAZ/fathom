@@ -68,6 +68,7 @@ var ownSamples = map[string]struct{ path, src string }{
 	"package-json":     {"package.json", `{"name":"web","version":"1.0.0","scripts":{"build":"tsc"}}`},
 	"python-packaging": {"pyproject.toml", "[project]\nname = \"x\"\nversion = \"1\"\n"},
 	"unity-asmdef":     {"Assets/Core.asmdef", `{"name":"Core","references":[]}`},
+	"templ":            {"ui/a.templ", "package ui\n\ntempl A() {\n\t<p>x</p>\n}\n"},
 }
 
 // F3: Dialects lists what Extract can read. Each listed dialect reads a sample
@@ -218,6 +219,15 @@ func TestFixturesHoldTheResultContract(t *testing.T) {
 	for kind := range empty {
 		if _, ok := extractor.HasNoCanonical(kind); !ok {
 			t.Errorf("kind %s reads an empty Canonical and is not on the no-canonical list", kind)
+		}
+	}
+	// The list cannot go stale: each kind on it is emitted by a fixture and
+	// reads empty. (A declared kind no fixture emits cannot read empty either:
+	// CanonicalKind answers from the manifest, and checkDialect refuses a kind
+	// whose canonical is outside the closed list when the manifest loads.)
+	for _, kind := range extractor.NoCanonicalKinds() {
+		if !empty[kind] {
+			t.Errorf("kind %s is on the no-canonical list and no fixture emits it with an empty Canonical", kind)
 		}
 	}
 	for _, want := range []string{"GoFunc", "GoType", "GoField", "GoConst", "GoMethod", "GoVar", "GoInterface", "JSONKey", "TOMLKey", "TOMLTable"} {

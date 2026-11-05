@@ -235,8 +235,8 @@ func TestFlatFilesWithBracketsAreNotRefused(t *testing.T) {
 // nothing, or only junk, to emit.
 func TestReadFileAlwaysHasADialect(t *testing.T) {
 	r := newReader(t)
-	for _, path := range []string{"img/web.pkr.hcl", "img/prod.pkrvars.hcl", "jobs/web.nomad.hcl", "build/docker-bake.hcl", "live/terragrunt.hcl"} {
-		for name, src := range map[string]string{"empty": "", "comment": "# nothing here\n", "junk": "}}}}}"} {
+	for _, path := range alwaysDialectPaths {
+		for name, src := range map[string]string{"empty": "", "comment": "# nothing here\n", "junk": "}}}}}", "section": "global\n  maxconn 10\n"} {
 			t.Run(path+"/"+name, func(t *testing.T) {
 				got := extract(t, r, path, src)
 				if got.Skipped != "" {
@@ -250,11 +250,24 @@ func TestReadFileAlwaysHasADialect(t *testing.T) {
 	}
 }
 
+// alwaysDialectPaths is one path per dispatch shape the Reader routes by: an
+// extension, a basename, a glob, a content sniff, a shebang, a tool kind, a
+// document engine, a native reader and a generic reader.
+var alwaysDialectPaths = []string{
+	"img/web.pkr.hcl", "img/prod.pkrvars.hcl", "jobs/web.nomad.hcl", "build/docker-bake.hcl", "live/terragrunt.hcl", "infra/main.tf", "infra/prod.tfvars",
+	"haproxy.cfg", "conf/app.cfg", "etc/nginx.conf", "conf/site.conf", "Caddyfile", "Caddyfile.prod", "etc/nginx/sites-enabled/default", "a.Caddyfile",
+	"bin/run", "a.m", "a.h", "a.cc", "a.go", "a.py", "a/b.ts", "page.html", "App.vue",
+	"go.mod", "go.work", "Cargo.toml", "package.json", "data.json", "data.toml", "tsconfig.json", "azuredeploy.json",
+	"docker-compose.yml", "k/deploy.yaml", "stack.yaml", "data.yaml", ".github/workflows/ci.yml", "chart/Chart.yaml", "chart/values.yaml", "kustomization.yaml",
+	"api/x.proto", "nb/a.ipynb", "p.rego", "proxysql.cnf", "pom.xml", "x.cue", "Dockerfile", "Makefile", "x.sql", "CMakeLists.txt", "x.templ", "x.cmake",
+	"README.md", "x.sh", "x.rb", "x.java", "x.rs", "x.c", "x.cs", "x.lua", "x.kt", "x.swift", "x.ini", "x.xml", "x.jsonc",
+}
+
 // F11: a Go named type that is not a struct is not canonically a struct.
 func TestGoTypeCanonicalFollowsTheDeclaration(t *testing.T) {
 	r := newReader(t)
 	got := extract(t, r, "a/a.go", "package a\n\ntype S struct{ F int }\ntype N int\ntype A = string\ntype Fn func()\ntype I interface{ M() }\ntype G = struct{}\n")
-	want := map[string]string{"S": "struct", "N": "type_alias", "A": "type_alias", "Fn": "type_alias", "I": "interface", "G": "type_alias"}
+	want := map[string]string{"S": "struct", "N": "type", "A": "type_alias", "Fn": "type", "I": "interface", "G": "type_alias"}
 	seen := 0
 	for _, s := range got.Symbols {
 		if w, ok := want[s.Name]; ok {

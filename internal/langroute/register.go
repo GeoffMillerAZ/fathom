@@ -771,6 +771,13 @@ func registerProxyDialects(r *Router, ds []extractor.Dialect) {
 // nothing — an ambiguous file never reaches an extractor (the ingest gate
 // counts it before dispatch).
 func (r *Router) sniffedExtractor(relPath string, content []byte) (extractor.Extractor, bool) {
+	e, _, ok := r.sniffedRoute(relPath, content)
+	return e, ok
+}
+
+// sniffedRoute is sniffedExtractor and the id of the dialect classification
+// gave the file to.
+func (r *Router) sniffedRoute(relPath string, content []byte) (extractor.Extractor, string, bool) {
 	shebang := shebangCandidate(relPath, content)
 	ext := strings.ToLower(filepath.Ext(relPath))
 	// A case variant of a registered extension (main.Jenkinsfile beside the
@@ -779,21 +786,22 @@ func (r *Router) sniffedExtractor(relPath string, content []byte) (extractor.Ext
 	// sniff dialect) is dispatched by it, so a .PY or a .TS stays unread.
 	_, folded := r.exts[ext]
 	if !shebang && !r.sniffExt[ext] && !folded && langclass.ClassifyDialect(proxyDialectRules(), relPath, nil).Dialect == "" {
-		return nil, false
+		return nil, "", false
 	}
 	v := langclass.ClassifyDialect(DialectRules(), relPath, content)
 	switch v.By {
 	case langclass.ClassifiedBySniff, langclass.ClassifiedByGlob, langclass.ClassifiedByExtension, langclass.ClassifiedByBasename:
 	case langclass.ClassifiedByShebang:
 		if !shebang {
-			return nil, false
+			return nil, "", false
 		}
-		return r.shebangExtractor(v.Dialect)
+		e, ok := r.shebangExtractor(v.Dialect)
+		return e, v.Dialect, ok
 	default:
-		return nil, false
+		return nil, "", false
 	}
 	e, ok := r.sniffExts[v.Dialect]
-	return e, ok
+	return e, v.Dialect, ok
 }
 
 // refusedDialects are tags-engine dialects built and measured but refused by
@@ -847,36 +855,46 @@ func (r *Router) RegisterExtractor(ext string, e extractor.Extractor) {
 // and ExtractForBench so the language-breadth harness measures exactly
 // the dispatch ingest runs (LB-F23).
 func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool) {
+	e, toolKind, ok, unclassified, _ = r.resolveRoute(relPath, content, idx)
+	return
+}
+
+// resolveRoute is ResolveExtractor and the id of the dialect the route settled
+// on when only the route knows it: a file classification gave to a dialect by
+// sniff, glob or shebang ("" for every other route, whose extractor, tool kind
+// or nodes name the dialect). The language library's door reads it so a file
+// read with nothing to emit still has a dialect.
+func (r *Router) resolveRoute(relPath string, content []byte, idx *SiblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool, routeDialect string) {
 	base := filepath.Base(relPath)
 	ext := filepath.Ext(relPath)
 	if ke, kk, kok := r.checkovDispatch(relPath); kok {
-		return ke, kk, true, false // Checkov Python checks and YAML graph checks (LB-Q-checkov-policies): a manifest glob
+		return ke, kk, true, false, "" // Checkov Python checks and YAML graph checks (LB-Q-checkov-policies): a manifest glob
 	}
 	if ce, ck, cok := r.cloudPolicyDispatch(relPath, content, idx); cok {
 		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the dialect's content sniff AND a decode check, never a file an earlier signal claims.
-		return ce, ck, true, false
+		return ce, ck, true, false, ""
 	}
 	if fe, fk, fok := r.formatDispatch(relPath, content); fok {
-		return fe, fk, true, false // .fathom/config.toml and docs/plans/*.md (LB-F219): a manifest glob, plans also by content
+		return fe, fk, true, false, "" // .fathom/config.toml and docs/plans/*.md (LB-F219): a manifest glob, plans also by content
 	}
 	if ge, gk, gok := GatewayDispatch(relPath, content); gok {
 		// Envoy, Kong and Traefik configuration (LB-F104): a manifest
 		// basename or glob AND the doc spec's content sniff, never either alone.
-		return ge, gk, true, false
+		return ge, gk, true, false, ""
 	}
 	if pe, pk, pok := PolicyDispatch(relPath, content); pok {
-		return pe, pk, true, false // Kyverno and Gatekeeper files (LB-F134), before the Kubernetes verdict
+		return pe, pk, true, false, "" // Kyverno and Gatekeeper files (LB-F134), before the Kubernetes verdict
 	}
 	if ce, ck, cok := CRDispatch(relPath, content, idx); cok {
 		// Argo, Flux and Crossplane objects (LB-F149): every document of the
 		// file is one dialect's, else the file stays Kubernetes.
-		return ce, ck, true, false
+		return ce, ck, true, false, ""
 	}
 	if te, tk, tok := r.TimoniDispatch(relPath, content, idx); tok {
-		return te, tk, true, false // Timoni modules, bundles and runtimes (LB-F216): the CUE extraction plus the Timoni entities
+		return te, tk, true, false, "" // Timoni modules, bundles and runtimes (LB-F216): the CUE extraction plus the Timoni entities
 	}
 	if ke, kk, kok := r.k8sEmbedDispatch(relPath, content, idx); kok {
-		return ke, kk, true, false // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366, k8sembed.go)
+		return ke, kk, true, false, "" // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366, k8sembed.go)
 	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":
@@ -899,12 +917,12 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 				toolKind = kind
 				if kind == ToolUnclassified {
 					if ae, ak, aok := AzurePipelineDispatch(relPath, content, idx); aok {
-						return ae, ak, true, false
+						return ae, ak, true, false, ""
 					}
 					if pe, pk, pok := r.packDispatch(relPath, content); pok {
-						return pe, pk, true, false // a pack dialect claims a YAML file no built-in classified
+						return pe, pk, true, false, "" // a pack dialect claims a YAML file no built-in classified
 					}
-					return nil, kind, false, true
+					return nil, kind, false, true, ""
 				}
 				e, ok = r.toolExts[kind]
 				if !ok {
@@ -952,7 +970,7 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 			// extensionless shebang script, nginx's sites-enabled/* and
 			// Caddyfile.* are a built-in's whatever a pack glob matches, and r.owned
 			// cannot see them (design §6, "after the specific built-ins").
-			e, ok = r.sniffedExtractor(relPath, content)
+			e, routeDialect, ok = r.sniffedRoute(relPath, content)
 		}
 		if !ok && !r.owned(strings.ToLower(ext)) {
 			// The pack layer: after every specific built-in claim above, before the
@@ -965,8 +983,8 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 			e, ok = r.exts[ext]
 		}
 		if !ok && r.pack == nil {
-			e, ok = r.sniffedExtractor(relPath, content)
+			e, routeDialect, ok = r.sniffedRoute(relPath, content)
 		}
 	}
-	return e, toolKind, ok, false
+	return e, toolKind, ok, false, routeDialect
 }

@@ -84,15 +84,18 @@ Rules:
    whose family is not linked (CUE) are not listed, and a test makes every listed dialect read a sample of its own.
 8. **Incomplete.** `Result.Incomplete` is true when an engine could not fully read the file, and `Notes` carries a one-line reason
    with no stack. A policy tool that must not pass a file it could not read refuses on it. The doc engine, the HCL reader, the
-   Kubernetes, Helm and generic JSON and TOML readers, and a Go extractor's error set it. The tree-sitter dialects recover from a
-   syntax error without reporting it, and the pinned grammar blobs export no `has_error`, so for them `false` means no engine
-   reported a failure, which the type documents. The decode failure travels on an internal field (`DocResult.Incomplete`,
+   Kubernetes (an embedded document too), Helm, generic JSON and TOML, proto, notebook, nginx, Caddy, HAProxy, Rego and go.mod
+   readers, a tree-sitter injected range that failed, and a Go extractor's error set it. Two kinds of engine report nothing:
+   the tree-sitter grammars recover from a syntax error without reporting it (the pinned grammar blobs export no `has_error`),
+   and the line scanners (SQL, CMake, templ) have no failure concept. For them `false` means no engine reported a failure, which
+   the type documents. The decode failure travels on an internal field (`DocResult.Incomplete`,
    `ReportingExtractor`) that only the door reads, so the product's behavior and node output do not change: routing parity is
    byte-identical.
 9. **References.** A `Reference` has `To`, the target exactly as the dialect names it (a Go call `pkg.Func`, a Terraform `var.name`,
    a CloudFormation logical id), and `ToKey`, the `Key` of the one symbol of the same file that `To` equals by `Key` or `Name`,
    else empty (another file, an ambiguous name, a cross-file reference). `Edge` is the relation the dialect declared (`ref`,
-   `depends_on`, `uses`, `references`), `call` for a call, and `reference` for a document dialect that declares none. `Line` is
+   `depends_on`, `uses`, `references`), `call` for a call by a code reader (Go, the tree-sitter dialects, templ, Rego, notebooks), and `reference` for any other engine
+   that declares none (a CMake link, a Markdown link). `Line` is
    where the reference is written, 0 when the engine records none (calls read by the Go and tree-sitter engines). `Symbol.Key` is
    `Package.Name`, and only a Go call target is already one.
 10. **Context and the deadline.** `Extract` checks its context on entry, after dispatch settles on an extractor, and after the

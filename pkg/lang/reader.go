@@ -249,10 +249,10 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		res.Level = LevelUnmeasured
 	} else {
 		res.Dialect = langroute.DialectOfContent(ex.Extractor, ex.ToolKind, path, f.Src, ex.Nodes)
-		res.Level, _ = levelOf(r.levels, res.Dialect)
 		if res.Dialect == "" {
-			res.Level = LevelUnmeasured
+			res.Dialect = ex.RouteDialect // the route knows a file with nothing to emit (a sniffed .cfg)
 		}
+		res.Level, _ = levelOf(r.levels, res.Dialect)
 	}
 	if err != nil {
 		res.Notes = append(res.Notes, errorNote(err))
@@ -262,7 +262,7 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		res.Notes = append(res.Notes, "incomplete: "+ex.Incomplete)
 		res.Incomplete = true
 	}
-	res.fill(ex, r.canonicalKind)
+	res.fill(ex, r.canonicalKind(ex.PackDialect != ""))
 	if _, isGo := ex.Extractor.(*extractor.GoExtractor); isGo {
 		res.refineGoTypes(f.Src)
 	}
@@ -274,7 +274,8 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 
 // refineGoTypes sets the Canonical of each GoType symbol from its declaration:
 // the extractor emits one kind for a struct, a defined type (`type N int`) and
-// an alias, and the closed vocabulary tells them apart (struct, type_alias).
+// an alias, and the closed vocabulary tells them apart (struct, interface,
+// type_alias, type).
 func (res *Result) refineGoTypes(src []byte) {
 	canon := extractor.GoTypeCanonicals(src)
 	for i := range res.Symbols {
@@ -316,15 +317,19 @@ func newResult(path string) Result {
 	}
 }
 
-// canonicalKind is the closed-vocabulary kind of a source kind, over the
-// built-in dialects and the pack's.
-func (r *Reader) canonicalKind(sk string) (string, bool) {
-	if r.pack != nil {
-		if c, ok := r.pack.CanonicalKind(sk); ok {
-			return c, true
+// canonicalKind is the closed-vocabulary kind of a source kind. A pack's kind
+// table applies only to the nodes a pack dialect read (packRead), so a pack
+// that declares a built-in source kind cannot change what the built-ins read
+// as; every other node is the built-in registry's.
+func (r *Reader) canonicalKind(packRead bool) func(string) (string, bool) {
+	return func(sk string) (string, bool) {
+		if packRead && r.pack != nil {
+			if c, ok := r.pack.CanonicalKind(sk); ok {
+				return c, true
+			}
 		}
+		return extractor.DoorCanonicalKind(sk)
 	}
-	return extractor.DoorCanonicalKind(sk)
 }
 
 // skipReason maps the router's reason onto the closed set. A file the router
@@ -356,11 +361,27 @@ func symbolKey(pkg, name string) string {
 }
 
 // edgeCall is the Edge of a call; edgeReference the Edge of a same-file
-// reference from a document dialect that declared none.
+// reference an engine gave no relation for.
 const (
 	edgeCall      = "call"
 	edgeReference = "reference"
 )
+
+// callsAreCalls reports whether the node.Calls of e's extractor are calls. It
+// is a closed list: the Go and tree-sitter readers, the templ, Rego and
+// notebook readers record calls. Every other engine's Calls field is a
+// reference (a CMake target link, a Markdown link, a Kubernetes embed's
+// entity, a workflow's needs), which reads "reference" unless the engine says
+// more through DocResult.Refs. TestCallEdgesComeFromCallEngines holds the list.
+func callsAreCalls(e extractor.Extractor) bool {
+	switch e.(type) {
+	case *extractor.GoExtractor, *extractor.TSExtractor, *extractor.TagsDocExtractor,
+		*extractor.CHeaderExtractor, *extractor.TemplExtractor, *extractor.RegoExtractor,
+		*extractor.NotebookExtractor:
+		return true
+	}
+	return false
+}
 
 // fill converts the router's extraction into the public types.
 func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (string, bool)) {
@@ -400,9 +421,9 @@ func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (str
 				}
 				continue
 			}
-			edge := edgeCall
-			if ex.Doc != nil {
-				edge = edgeReference
+			edge := edgeReference
+			if ex.Doc == nil && callsAreCalls(ex.Extractor) {
+				edge = edgeCall
 			}
 			res.References = append(res.References, Reference{From: key, To: to, Edge: edge})
 		}
@@ -564,8 +585,8 @@ func (res *Result) addSiblingNote(path string, siblings []string) {
 	}
 }
 
-// dialectInfos lists the manifest dialects, the native Go extractor and the
-// generic JSON and TOML readers.
+// dialectInfos lists the manifest dialects, the native Go extractor, the
+// generic JSON and TOML readers and the templ reader.
 func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]DialectInfo, error) {
 	ds, err := extractor.LoadDialects()
 	if err != nil {
@@ -610,11 +631,13 @@ func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]Dialect
 		out = append(out, newDialectInfo(levels, d.ID, d.Kind, d.Engine, set))
 	}
 	out = append(out, newDialectInfo(levels, "go", "language", "native", map[string]bool{".go": true}))
-	// The generic readers read the .json and .toml files no dialect claims, so
-	// they are listed, unmeasured, and a file they read has a Dialect.
+	// The generic readers read the .json and .toml files no dialect claims, and
+	// templ has no manifest, so they are listed, unmeasured, and a file they read
+	// has a Dialect.
 	out = append(out,
 		newDialectInfo(levels, langroute.GenericJSON, "tooling", "native", map[string]bool{".json": true}),
-		newDialectInfo(levels, langroute.GenericTOML, "tooling", "native", map[string]bool{".toml": true}))
+		newDialectInfo(levels, langroute.GenericTOML, "tooling", "native", map[string]bool{".toml": true}),
+		newDialectInfo(levels, langroute.Templ, "language", "native", map[string]bool{".templ": true}))
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }

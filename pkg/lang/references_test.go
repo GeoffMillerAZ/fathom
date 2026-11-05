@@ -1,6 +1,7 @@
 package lang_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -110,5 +111,61 @@ func TestGoExtractorReferenceGetsAToKey(t *testing.T) {
 	dup := extract(t, r, "a/c.row", "def Main\ndef Other\ndef Other\nuses Other\n")
 	if ref := refTo(t, dup, "Other", "uses"); ref.ToKey != "" {
 		t.Errorf("an ambiguous target got a ToKey: %+v", ref)
+	}
+}
+
+// callEngines and callReaders are the readers whose Calls are calls: the
+// tree-sitter engines, and the native Go, Rego, templ and notebook readers.
+// Every other reader's same-file edge reads "reference" (or the edge its
+// dialect declares), so a CMake link or a Markdown link is not a call.
+var (
+	callEngines = map[string]bool{"tags": true, "tags+doc": true}
+	callReaders = map[string]bool{"go": true, "rego": true, "templ": true, "jupyter": true}
+)
+
+func TestCallEdgesComeFromCallEngines(t *testing.T) {
+	r := newReader(t)
+	engine := map[string]string{}
+	for _, d := range r.Dialects() {
+		engine[d.ID] = d.Engine
+	}
+	calls := map[string]bool{}
+	scan := func(path string, src []byte) {
+		got, err := r.Extract(context.Background(), lang.File{Path: path, Src: src})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, ref := range got.References {
+			if ref.Edge != "call" {
+				continue
+			}
+			calls[got.Dialect] = true
+			if !callEngines[engine[got.Dialect]] && !callReaders[got.Dialect] {
+				t.Errorf("%s (dialect %s, engine %q): reference %+v reads as a call", path, got.Dialect, engine[got.Dialect], ref)
+			}
+		}
+	}
+	for _, f := range dialectFixtures(t) {
+		scan(f.rel, f.src)
+	}
+	for _, s := range ownSamples {
+		scan(s.path, []byte(s.src))
+	}
+	scan("a.rego", []byte("package a\n\nf(x) = y if { y := g(x) }\ng(x) = x\n"))
+	scan("a.templ", []byte("package a\n\ntempl A() {\n\t@B()\n}\n\ntempl B() {\n\t<p>x</p>\n}\n"))
+	for _, want := range []string{"go", "python"} {
+		if !calls[want] {
+			t.Errorf("%s reads no call edge, so the list above was checked against nothing for it", want)
+		}
+	}
+	// CMake links and the Kubernetes embed wrapper's entities are references.
+	cm := extract(t, r, "CMakeLists.txt", "add_library(a a.c)\nadd_executable(e e.c)\ntarget_link_libraries(e PRIVATE a)\n")
+	if len(cm.References) == 0 {
+		t.Fatalf("setup: cmake reads no link: %+v", cm)
+	}
+	for _, ref := range cm.References {
+		if ref.Edge != "reference" {
+			t.Errorf("cmake link reads edge %q, want reference: %+v", ref.Edge, ref)
+		}
 	}
 }

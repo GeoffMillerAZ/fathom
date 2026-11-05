@@ -29,6 +29,10 @@ type Extraction struct {
 	// PackDialect is the id of the pack dialect that read the file, "" for a
 	// built-in one.
 	PackDialect string
+	// RouteDialect is the dialect id dispatch settled on by sniff, glob or
+	// shebang, for a file whose extractor, tool kind and nodes may name none (a
+	// file with nothing to emit): "" for every other route. The door reads it.
+	RouteDialect string
 	// Incomplete is the extractor's one-line reason it could not fully read the
 	// file, "" when it did. Only ExtractFileDoc sets it; the product's
 	// ExtractFile never does, so its behavior and node output are unchanged.
@@ -80,7 +84,7 @@ func (r *Router) extractFile(step func() error, with extractor.Extractor, servic
 	if index != nil {
 		idx = index()
 	}
-	e, tk, ok, unclassified := r.ResolveExtractor(relPath, content, idx)
+	e, tk, ok, unclassified, routeDialect := r.resolveRoute(relPath, content, idx)
 	switch {
 	case with != nil:
 		e = with
@@ -121,7 +125,7 @@ func (r *Router) extractFile(step func() error, with extractor.Extractor, servic
 			return Extraction{}, serr
 		}
 	}
-	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc, PackDialect: packDialect, Incomplete: incomplete}
+	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc, PackDialect: packDialect, Incomplete: incomplete, RouteDialect: routeDialect}
 	if counts {
 		out.TypeRefs = int(tr.TypeRefs() - before)
 	}

@@ -23,6 +23,10 @@ const (
 	GenericTOML = extractor.GenericTOMLDialect
 )
 
+// Templ is the id of the a-h/templ reader, a line scanner of the .templ
+// extension with no manifest dialect, named for the same reason.
+const Templ = "templ"
+
 // toolKindDialect names the dialect behind a tool kind whose spelling is not
 // the dialect's id.
 var toolKindDialect = map[ToolKind]string{
@@ -117,6 +121,8 @@ func DialectOf(e extractor.Extractor, tk ToolKind, relPath string, nodes []core.
 		return GenericJSON
 	case *extractor.TOMLExtractor:
 		return GenericTOML
+	case *extractor.TemplExtractor:
+		return Templ
 	}
 	if id := keyOwner[filepath.Base(relPath)]; id != "" {
 		return id

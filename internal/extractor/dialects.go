@@ -462,7 +462,7 @@ func (d *Dialect) UnmarshalJSON(b []byte) error {
 // TestCanonicalKindClosedList holds the two together.
 var canonicalKinds = []string{
 	"module", "namespace", "package", "class", "struct", "interface", "trait", "enum",
-	"enum_member", "union", "type_alias", "function", "method", "constructor", "field",
+	"enum_member", "union", "type_alias", "type", "function", "method", "constructor", "field",
 	"property", "constant", "variable", "macro", "import", "test",
 	"target", "job", "stage", "task", "step", "resource", "data_source", "output",
 	"variable_decl", "rule", "policy", "service", "rpc", "message", "table", "view",

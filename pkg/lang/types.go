@@ -55,8 +55,9 @@ type Result struct {
 	// symbols, references and facts above are what it did read, and Notes says
 	// why. False means no engine reported a failure, which is not a promise
 	// that every construct was read: the tree-sitter dialects recover from a
-	// syntax error without reporting it. A policy tool that must not pass a
-	// file it could not read should refuse when Incomplete is true.
+	// syntax error without reporting it, and the line scanners (SQL, CMake,
+	// templ) have no failure concept. A policy tool that must not pass a file
+	// it could not read should refuse when Incomplete is true.
 	Incomplete bool `json:"incomplete"`
 	// Notes disclose what the Reader could not know and that may have changed
 	// the result. Empty when nothing did.
@@ -88,7 +89,8 @@ type Symbol struct {
 	// Canonical is the closed cross-dialect vocabulary. Values only grow. It
 	// is empty for a kind that has no canonical meaning (a fact an extractor
 	// observes, for example) and for a kind of an extractor no table maps. A
-	// Go type reads struct, interface or type_alias by its declaration.
+	// Go type reads struct, interface, type_alias (type A = B) or type (a
+	// defined type such as type N int) by its declaration.
 	Canonical string `json:"canonical"`
 	Line      int    `json:"line"`
 	// EndLine is the last line, 0 when the extractor does not compute it.
@@ -113,8 +115,9 @@ type Reference struct {
 	// equals exactly one symbol's Key or Name, and empty otherwise (a target
 	// in another file, an ambiguous name, a cross-file reference).
 	ToKey string `json:"to_key"`
-	// Edge names the relation: "call" for a call, "reference" for a plain
-	// reference from a document dialect that declares no relation, and
+	// Edge names the relation: "call" for a call by a code reader (Go, the
+	// tree-sitter dialects, templ, Rego, notebooks), "reference" for a plain
+	// reference from an engine that declares no relation, and
 	// otherwise the edge the dialect declares (uses, imports, depends_on and
 	// so on). Do not branch on an Edge across dialects.
 	Edge string `json:"edge"`

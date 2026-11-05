@@ -1057,7 +1057,7 @@ Rules the schema and `TestDialectManifests` enforce:
 
 ### 2.3 Canonical kinds (closed)
 
-`module namespace package class struct interface trait enum enum_member union type_alias
+`module namespace package class struct interface trait enum enum_member union type_alias type
 function method constructor field property constant variable macro import test`
 — for languages — and `target job stage task step resource data_source output variable_decl
 rule policy service rpc message table view column selector mixin element section label

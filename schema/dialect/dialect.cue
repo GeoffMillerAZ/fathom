@@ -330,7 +330,7 @@ import "struct"
 #Canonical: #LanguageCanonical | #ToolCanonical
 
 #LanguageCanonical: "module" | "namespace" | "package" | "class" | "struct" |
-	"interface" | "trait" | "enum" | "enum_member" | "union" | "type_alias" |
+	"interface" | "trait" | "enum" | "enum_member" | "union" | "type_alias" | "type" |
 	"function" | "method" | "constructor" | "field" | "property" | "constant" |
 	"variable" | "macro" | "import" | "test"
 

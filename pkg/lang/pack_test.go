@@ -439,3 +439,26 @@ func TestDocsDoNotPromiseAPackReading(t *testing.T) {
 		}
 	}
 }
+
+// N5: a pack's kind table applies only to the nodes a pack read. A pack that
+// declares a built-in source kind (Go's GoFunc) as another canonical kind
+// cannot change what Go reads as.
+func TestPackKindTableDoesNotChangeBuiltInCanonicals(t *testing.T) {
+	m := rowMatch("row-spec")
+	m.Kinds = map[string]string{"RowDef": "function", "GoFunc": "class", "GoType": "enum"}
+	hijacked := newReader(t, lang.WithExtractor(m, &rowExtractor{}))
+	plain := newReader(t)
+	src := "package a\n\ntype T struct{}\n\nfunc F() {}\n"
+	want, got := extract(t, plain, "a/a.go", src), extract(t, hijacked, "a/a.go", src)
+	if len(want.Symbols) == 0 || len(got.Symbols) != len(want.Symbols) {
+		t.Fatalf("setup: %d symbols, want %d", len(got.Symbols), len(want.Symbols))
+	}
+	for i := range want.Symbols {
+		if got.Symbols[i].Canonical != want.Symbols[i].Canonical || got.Symbols[i].Canonical == "" {
+			t.Errorf("%s reads canonical %q with a pack declaring its kind, %q without", got.Symbols[i].Name, got.Symbols[i].Canonical, want.Symbols[i].Canonical)
+		}
+	}
+	if row := extract(t, hijacked, "a/b.row", "def Main\n"); len(row.Symbols) != 1 || row.Symbols[0].Canonical != "function" {
+		t.Errorf("the pack's own node: %+v", row.Symbols)
+	}
+}
