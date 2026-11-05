@@ -299,9 +299,23 @@ func parseTerraform(file string, src []byte) (*tfParsed, error) {
 // tfVar is a declared variable and its default, when it has one.
 type tfVar struct {
 	def hclsyntax.Expression
-	// secret marks a variable declared sensitive or ephemeral, or with an expression the reader cannot tell
-	// from true. Its default is never kept as a value, whatever the caller asks.
-	secret bool
+	// sensitive and ephemeral are the two flags, held apart. A flag is on unless it is the literal false, and an
+	// expression the reader cannot tell from true is on. An override replaces one flag and leaves the other, so
+	// only both together say whether the variable is secret.
+	sensitive, ephemeral bool
+}
+
+// secret reports whether the variable is sensitive or ephemeral. Its default is never kept as a value, whatever the
+// caller asks.
+func (v *tfVar) secret() bool { return v.sensitive || v.ephemeral }
+
+// setFlag sets one of the two flags: "sensitive" or "ephemeral".
+func (v *tfVar) setFlag(flag string, on bool) {
+	if flag == "sensitive" {
+		v.sensitive = on
+	} else {
+		v.ephemeral = on
+	}
 }
 
 // tfEnv is what ReadTerraformModule resolves against: variable defaults and locals.
@@ -325,9 +339,11 @@ func (e *tfEnv) collectOverrides(pf *tfParsed) {
 		for _, n := range pf.jsonOver.vars {
 			e.overVars[n] = true
 		}
-		for n, secret := range pf.jsonOver.secret {
+		for n, flags := range pf.jsonOver.flags {
 			if v, ok := e.vars[n]; ok {
-				v.secret = secret
+				for flag, on := range flags {
+					v.setFlag(flag, on)
+				}
 			}
 		}
 		for _, n := range pf.jsonOver.locals {
@@ -341,12 +357,14 @@ func (e *tfEnv) collectOverrides(pf *tfParsed) {
 			if _, ok := b.Body.Attributes["default"]; ok {
 				e.overVars[b.Labels[0]] = true
 			}
-			// The override's sensitive or ephemeral replaces the base's: only the literal false clears it, and an
-			// expression the reader cannot tell from true counts as true, as it does in the base.
+			// The override's sensitive replaces the base's sensitive, and its ephemeral the base's ephemeral, and
+			// neither touches the other: tofu keeps sensitive when only ephemeral is overridden to false. Only the
+			// literal false clears a flag, and an expression the reader cannot tell from true counts as true, as it
+			// does in the base.
 			if v, ok := e.vars[b.Labels[0]]; ok {
 				for _, flag := range []string{"sensitive", "ephemeral"} {
 					if a, ok := b.Body.Attributes[flag]; ok {
-						v.secret = !isFalseLiteral(a.Expr) || pf.suspect(a.SrcRange)
+						v.setFlag(flag, !isFalseLiteral(a.Expr) || pf.suspect(a.SrcRange))
 					}
 				}
 			}
@@ -373,8 +391,8 @@ func (e *tfEnv) collect(pf *tfParsed) {
 				}
 			}
 			for _, flag := range []string{"sensitive", "ephemeral"} {
-				if a, ok := b.Body.Attributes[flag]; ok && (!isFalseLiteral(a.Expr) || pf.suspect(a.SrcRange)) {
-					v.secret = true
+				if a, ok := b.Body.Attributes[flag]; ok {
+					v.setFlag(flag, !isFalseLiteral(a.Expr) || pf.suspect(a.SrcRange))
 				}
 			}
 			e.vars[b.Labels[0]] = v
@@ -906,7 +924,7 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 		secret := false
 		if root == "var" {
 			if v := r.env.vars[attr.Name]; v != nil {
-				expr, secret = v.def, v.secret
+				expr, secret = v.def, v.secret()
 			}
 		} else {
 			expr = r.env.locals[attr.Name]

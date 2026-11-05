@@ -11,8 +11,9 @@ import (
 type tfJSONOver struct {
 	vars, locals []string
 	res          []Resource
-	// secret maps a variable the override sets sensitive or ephemeral to whether it ends up secret.
-	secret map[string]bool
+	// flags maps a variable to the sensitive and ephemeral flags the override sets, each true unless the literal
+	// false. A flag the override does not name is absent, and the base's stays.
+	flags map[string]map[string]bool
 }
 
 // jsonOverrideBody reads the keys of a resource or module override body into res: the meta-arguments, and every
@@ -120,11 +121,14 @@ func readJSONOverride(file string, src []byte) *tfJSONOver {
 					}
 					for _, flag := range []string{"sensitive", "ephemeral"} {
 						if v, has := body[flag]; has {
-							if ov.secret == nil {
-								ov.secret = map[string]bool{}
+							if ov.flags == nil {
+								ov.flags = map[string]map[string]bool{}
+							}
+							if ov.flags[name] == nil {
+								ov.flags[name] = map[string]bool{}
 							}
 							// Only the literal false clears the flag, as for HCL.
-							ov.secret[name] = string(bytes.TrimSpace(v)) != "false"
+							ov.flags[name][flag] = string(bytes.TrimSpace(v)) != "false"
 						}
 					}
 				}
