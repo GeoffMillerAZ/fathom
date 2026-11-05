@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
@@ -109,4 +110,27 @@ func TestProtoRefusalCountsAngleBracketsAndFollowsSingleQuotes(t *testing.T) {
 	if why := protoRefusal([]byte(quoted)); why != "" {
 		t.Errorf("braces inside a single-quoted string are counted: %q", why)
 	}
+}
+
+// The change note says what the proto guard does with a run of tokens, and it said
+// the opposite once (MF8): a run past maxRun is refused, and the note must not
+// call it read. The refusal itself is pinned by TestProtoRefusalCountsWhatTheParserRecursesOn above.
+func TestChangeNoteSaysAProtoRunIsRefused(t *testing.T) {
+	b, err := os.ReadFile("../../docs/changelog/unreleased/lang-library-hardening.md")
+	if err != nil {
+		t.Skipf("the change note is rolled into a release: %v", err)
+	}
+	for _, sentence := range strings.Split(string(b), ". ") {
+		if !strings.Contains(sentence, "proto file") || !strings.Contains(sentence, "statement") {
+			continue
+		}
+		if !strings.Contains(sentence, "is refused") || strings.Contains(sentence, "are read, not refused") {
+			t.Errorf("the note does not say a proto run of tokens is refused: %q", sentence)
+		}
+		if why := protoRefusal([]byte("syntax = \"proto3\";\nmessage m {\n" + over(".\n"))); !strings.Contains(why, "tokens in a row") {
+			t.Errorf("the note says it is refused and the guard reads it: %q", why)
+		}
+		return
+	}
+	t.Error("the change note no longer says what happens to a proto run of tokens")
 }
