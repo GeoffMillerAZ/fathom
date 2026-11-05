@@ -162,6 +162,12 @@ func TestCUEMalformedFileKeepsWhatParses(t *testing.T) {
 	if !names["good"] {
 		t.Errorf("the well-formed field was not read: %v", names)
 	}
+	if res.Incomplete == "" || strings.Contains(res.Incomplete, "\n") {
+		t.Errorf("a file the parser reported errors for reads complete: %q", res.Incomplete)
+	}
+	if ok := extractCUE("svc", "ok.cue", []byte("package app\n\ngood: 1\n")); ok.Incomplete != "" {
+		t.Errorf("a well-formed file reads incomplete: %q", ok.Incomplete)
+	}
 }
 
 // TestCUEQualifiedImportNamesItsPackage: an import `path:pkg` binds the

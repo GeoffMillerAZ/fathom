@@ -396,9 +396,22 @@ func pythonCell(lines []string) (out []string, skip bool) {
 
 // Extract implements Extractor.
 func (x *NotebookExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := x.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when the notebook could not be read (a
+// truncated or malformed .ipynb), the reason (ReportingExtractor).
+func (x *NotebookExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	doc, ok := readNotebook(src)
-	if !ok || (doc.lang != "" && doc.lang != "python") {
-		return nil, nil
+	if !ok {
+		if len(bytes.TrimSpace(src)) == 0 {
+			return nil, "", nil
+		}
+		return nil, "notebook decode: not a complete notebook (truncated or malformed JSON)", nil
+	}
+	if doc.lang != "" && doc.lang != "python" {
+		return nil, "", nil
 	}
 	var nodes []core.SymbolNode
 	var module *core.SymbolNode
@@ -462,5 +475,5 @@ func (x *NotebookExtractor) Extract(service, relPath string, src []byte) ([]core
 		sort.Strings(m.Calls)
 		nodes = append([]core.SymbolNode{m}, nodes...)
 	}
-	return nodes, nil
+	return nodes, "", nil
 }

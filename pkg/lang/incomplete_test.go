@@ -33,6 +33,9 @@ var incompleteCases = []struct {
 	{"json", "jsonextract", "data.json", `{"a": `, `{"a": 1}`},
 	{"package.json", "docengine", "package.json", `{"name": "x", `, `{"name": "x", "version": "1.0.0"}`},
 	{"toml", "tomlextract", "data.toml", "a = \n[b\n", "a = 1\n"},
+	{"protobuf", "protoextract", "api/x.proto", "syntax = \"proto3\";\nmessage M {\n  int32 a = ;\n}\n", "syntax = \"proto3\";\nmessage M {\n  int32 a = 1;\n}\n"},
+	{"notebook", "notebook", "nb/a.ipynb", `{"cells": [{"cell_type": "code", "source": ["def f():\n", "  pass\n"]}, {"cell_ty`,
+		`{"cells": [{"cell_type": "code", "source": ["def f():\n", "  pass\n"]}], "metadata": {"language_info": {"name": "python"}}, "nbformat": 4}`},
 	{"go", "goextract", "a/a.go", "package a\nfunc F( {\n", "package a\n\nfunc F() {}\n"},
 }
 
