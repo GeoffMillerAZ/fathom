@@ -57,7 +57,7 @@ def main():
                 n["sam_function:handler"] += 1
                 base = os.path.dirname(path)
                 code = os.path.normpath(os.path.join(base, f.codeuri or "."))
-                if code == ".":
+                if code == os.path.normpath(base or "."):
                     # A CodeUri that is the template's own directory holds every file under it, so the check
                     # says nothing. Count it apart, and never as a directory match.
                     n["sam_codeuri_root:handler"] += 1
