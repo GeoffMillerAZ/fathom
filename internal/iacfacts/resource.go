@@ -336,13 +336,32 @@ func (e *emitter) emit(file string, out *[]Attr, p string, c readRes, span Span)
 	}
 	at := Attr{Path: p, Class: c.class, Refs: sortedRefs(c.refs), Span: span}
 	if e.cfg.values && c.hasV && (c.class == ClassLiteral || c.class == ClassDefaulted) {
-		if e.valBytes += partSize(c); e.valBytes > MaxTotalValueBytes {
-			e.fail(file, fmt.Sprintf("the values of one read are over %d bytes in all", MaxTotalValueBytes))
-			return
+		if !c.charged {
+			if e.valBytes += partSize(c); e.valBytes > MaxTotalValueBytes {
+				e.fail(file, fmt.Sprintf("the values of one read are over %d bytes in all", MaxTotalValueBytes))
+				return
+			}
 		}
 		at.Value = c.val
 	}
 	*out = append(*out, at)
+}
+
+// hold charges a value a reader keeps in a memo against MaxTotalValueBytes when the value is built. Emit charges the
+// values an attribute returns, but a memoized value is held whether or not any attribute keeps it: a thousand
+// locals that each build a 900 KB string, read by attributes that are expressions, are a gigabyte that no emit sees.
+//
+// It returns c marked charged: a value that is both memoized and emitted as it stands (a CloudFormation intrinsic's
+// answer) is one value, and emit does not charge it a second time.
+func (e *emitter) hold(file string, c readRes) readRes {
+	if e == nil || e.err != nil || !e.cfg.values || !c.hasV || c.charged {
+		return c
+	}
+	if e.valBytes += partSize(c); e.valBytes > MaxTotalValueBytes {
+		e.fail(file, fmt.Sprintf("the values of one read are over %d bytes in all", MaxTotalValueBytes))
+	}
+	c.charged = true
+	return c
 }
 
 // readRes is the classification of one value: its class, what it references and, when
@@ -356,6 +375,8 @@ type readRes struct {
 	// big marks a value that went past MaxValueBytes: its hasV is false, and emit refuses the input.
 	vsize int
 	big   bool
+	// charged marks a value already counted against MaxTotalValueBytes when it was built (emitter.hold).
+	charged bool
 }
 
 // partSize is the logical size of one part of a composite value.

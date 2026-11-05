@@ -58,6 +58,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		}
 	}
 	w := &treeWalker{emitter: emitter{cfg: cr.cfg}, file: filePath, classify: cr.classifyIntrinsic}
+	cr.em, cr.file = &w.emitter, filePath
 	for _, p := range res.pairs {
 		var typ *node
 		if p.val.kind == nodeMap {
@@ -141,6 +142,9 @@ type cfnReader struct {
 	refMemo   map[*node][]string
 	nodes     int
 	over      bool
+	// em and file charge the values the memo holds (emitter.hold).
+	em   *emitter
+	file string
 }
 
 // cfnClass is a memoized classifyIntrinsic answer.
@@ -228,6 +232,7 @@ func (c *cfnReader) classifyIntrinsic(n *node, depth int) (readRes, bool) {
 		return readRes{class: ClassUnknown}, true
 	}
 	res, ok := c.classifyIntrinsicOnce(n, depth)
+	res = c.em.hold(c.file, res)
 	c.classMemo[n] = cfnClass{res, ok}
 	return res, ok
 }

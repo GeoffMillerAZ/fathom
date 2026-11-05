@@ -45,6 +45,7 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 		// pulumi-yaml reads both spellings of the configuration section.
 		cfgs: nameMap(root.get("configuration"), root.get("config"))}
 	w := &treeWalker{emitter: emitter{cfg: pr.cfg}, file: filePath, classify: pr.classifyNode}
+	pr.em, pr.file = &w.emitter, filePath
 	for _, p := range res.pairs {
 		var typ *node
 		if p.val.kind == nodeMap {
@@ -129,6 +130,9 @@ type pulumiReader struct {
 	inners map[string]readRes
 	nodes  int
 	over   bool
+	// em and file charge the values the memo holds (emitter.hold).
+	em   *emitter
+	file string
 }
 
 // spend counts one node visit and reports whether the budget still holds.
@@ -260,6 +264,7 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 			}
 			delete(p.resolving, name)
 			p.inners[name] = inner
+			p.em.hold(p.file, inner)
 		}
 		out := readRes{class: inner.class, refs: []string{ref}}
 		if ref == name && inner.hasV {

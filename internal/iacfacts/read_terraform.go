@@ -926,6 +926,7 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			delete(r.resolving, key)
 			if r.cuts == cuts {
 				r.inners[key] = inner
+				r.hold(r.file, inner)
 			}
 		}
 		out := readRes{class: inner.class, refs: []string{ref}}
