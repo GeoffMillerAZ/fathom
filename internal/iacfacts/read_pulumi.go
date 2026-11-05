@@ -32,6 +32,11 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 		return set, nil
 	}
 	res := root.get("resources")
+	if res.unreadableSection() {
+		// `resources: *all`, `${v}`, a list: which resources the program declares is not known.
+		set.SyntaxErrors++
+		return set, nil
+	}
 	if res == nil || res.kind != nodeMap {
 		return set, nil
 	}
@@ -61,7 +66,11 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 				r.Provider = strings.TrimSuffix(strings.TrimPrefix(pv.value, "${"), "}")
 			}
 		}
-		if props := p.val.get("properties"); props != nil {
+		if props := p.val.get("properties"); props == nil && p.val.hasMerge() {
+			// `<<: *base` may carry the properties; the merge is not expanded, so every attribute is unknown.
+			w.emit(filePath, &r.Attrs, "", readRes{class: ClassUnknown}, p.span)
+			set.SyntaxErrors++
+		} else if props != nil {
 			ires, handled := pr.classifyNode(props, 0)
 			switch {
 			case !handled && props.kind == nodeMap:

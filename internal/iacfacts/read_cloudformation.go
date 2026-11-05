@@ -27,8 +27,16 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		return nil, err
 	}
 	set.SyntaxErrors = info.syntaxErrors()
+	if root == nil || root.kind != nodeMap {
+		return set, nil
+	}
 	res := root.get("Resources")
-	if root == nil || root.kind != nodeMap || res == nil || res.kind != nodeMap {
+	if res.unreadableSection() {
+		// `Resources: *all`, `!If`, `${v}`: which resources the template declares is not known.
+		set.SyntaxErrors++
+		return set, nil
+	}
+	if res == nil || res.kind != nodeMap {
 		return set, nil
 	}
 	cr := &cfnReader{params: map[string]cfnParam{}, conds: root.get("Conditions"),
@@ -69,7 +77,11 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 				r.Multiplicity = cr.condition(cp.val, cp.span)
 			}
 		}
-		if props := p.val.get("Properties"); props != nil {
+		if props := p.val.get("Properties"); props == nil && p.val.hasMerge() {
+			// `<<: *base` may carry the Properties; the merge is not expanded, so every attribute is unknown.
+			w.emit(filePath, &r.Attrs, "", readRes{class: ClassUnknown}, p.span)
+			set.SyntaxErrors++
+		} else if props != nil {
 			ires, intrinsic := cr.classifyIntrinsic(props, 0)
 			switch {
 			case !intrinsic && props.kind == nodeMap:

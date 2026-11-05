@@ -136,8 +136,9 @@ type ResourceSet struct {
 	Tool      string
 	Resources []Resource
 	// SyntaxErrors counts the syntax errors the parser reported, keys a mapping repeats, YAML documents after
-	// the first (which are not read), and values the reader could not walk (a root attribute with an empty
-	// path). A read still returns the resources it could parse, and an attribute it could not read is unknown.
+	// the first (which are not read), values the reader could not walk (a root attribute with an empty path),
+	// a resource section that is not a mapping (an alias, a tag or a scalar) and a resource whose merge key
+	// (`<<`) may carry its properties. A read still returns the resources it could parse, and an attribute it could not read is unknown.
 	SyntaxErrors int
 	// Dropped names the YAML or JSON entries of a resource section that were not read as resources: a
 	// Fn::ForEach, an alias, a merge-only entry, a value that is not a mapping, or one without a type. Absence

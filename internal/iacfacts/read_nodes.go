@@ -63,6 +63,38 @@ func (n *node) get(key string) *node {
 	return nil
 }
 
+// hasMerge reports whether a mapping holds a YAML merge key (`<<: *anchor`), whose entries the reader does not
+// expand: the mapping may hold more keys than its pairs show.
+func (n *node) hasMerge() bool {
+	if n == nil || n.kind != nodeMap {
+		return false
+	}
+	for _, p := range n.pairs {
+		if p.key.kind == nodeScalar && p.key.value == "<<" {
+			return true
+		}
+	}
+	return false
+}
+
+// unreadableSection reports whether n stands where a mapping of resources should and is something the reader cannot
+// expand: an alias (`*all`), a tagged value (`!If`), or a string that interpolates (`${v}`). Which resources such a
+// section declares is not known, which the reader counts as a syntax error, since a resource that is in neither
+// Resources nor Dropped must not exist in the file. A plain list or scalar declares none, and an absent or empty
+// section has none.
+func (n *node) unreadableSection() bool {
+	if n == nil {
+		return false
+	}
+	switch {
+	case n.kind == nodeAlias, n.tag != "":
+		return true
+	case n.kind == nodeScalar && n.isStr():
+		return strings.Contains(n.value, "${")
+	}
+	return false
+}
+
 // scalarValue is a scalar's value as Go sees it.
 func (n *node) scalarValue() any {
 	switch n.typ {
