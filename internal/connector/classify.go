@@ -78,3 +78,8 @@ func containsFold(list []string, ext string) bool {
 	}
 	return false
 }
+
+// ClaimedModelContainer forwards to langclass.ClaimedModelContainer.
+func ClaimedModelContainer(rules []DialectRule, relPath string, data []byte) bool {
+	return langclass.ClaimedModelContainer(rules, relPath, data)
+}
