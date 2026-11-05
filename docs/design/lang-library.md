@@ -143,12 +143,25 @@ must have one spelling. A resource's own `lifecycle` block is meta-configuration
 **Syntax errors.** A broken expression reads `unknown` and counts in `SyntaxErrors`: an attribute on a line a syntax error points at is
 `unknown`, never what the parser's recovery guessed.
 
+**Absence is never silent.** A CloudFormation `Properties` or Pulumi `properties` the reader cannot walk (an intrinsic, an alias, a list, an
+interpolation, a scalar) emits one `unknown` attribute at the root, with an empty path, and counts in `SyntaxErrors`. A resource entry that is
+not read (`Fn::ForEach`, an alias, a merge-only entry, a non-mapping, one without a type) is named in `ResourceSet.Dropped`. A repeated key and
+a YAML document after the first count in `SyntaxErrors`.
+
+**Module files.** `ReadModule` follows OpenTofu: a `.tofu` file shadows the `.tf` file of the same name, which is not read. An override file
+(`override.tf`, `*_override.tf` and the `.tofu` spellings) adds no resource. Each attribute or nested block it names reads `unknown` in the
+resource it overrides, a variable default or local it replaces reads `unknown`, and the resource is read once. The reader does not merge
+attributes.
+
 **Coverage.** Terraform (blocks, `dynamic` as `[*]`, `count`, `for_each`), CloudFormation (`Properties`, intrinsic functions, `Condition`,
 parameter defaults) and Pulumi YAML. Pulumi TypeScript and Python stay with IF-22, lane #200. Module calls read as a resource-like
 relation and are never expanded. Helm is not rendered.
 
-**Values.** `Value` is empty unless the caller passes `iac.WithValues()`. Even then, a literal on an attribute a bound contract marks
-sensitive or write-only stays withheld: a check still learns that a literal is there, which is what "no hardcoded secret" asks. The
+**Values.** `Value` is empty unless the caller passes `iac.WithValues()`. Even then, the reader itself withholds what its source marks secret, before any contract is bound:
+the default of a `sensitive` or `ephemeral` Terraform variable, a CloudFormation `NoEcho` parameter, a Pulumi `secret` configuration entry and
+`fn::secret`. A literal on an attribute a bound contract marks sensitive or write-only stays withheld too. In both cases a check still learns
+that a literal or default is there, which is what "no hardcoded secret" asks. A value past `MaxValueBytes` (1 MiB, counted as a consumer would
+serialise it) refuses the whole input. The
 product never calls `WithValues`, proven by a test that fails on any such call outside `pkg/lang`, `cmd/fathom-lang` and tests, and a
 planted sentinel appears in no store row.
 

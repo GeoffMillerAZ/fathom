@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
+	"time"
 )
 
 const cfnYAML = `AWSTemplateFormatVersion: "2010-09-09"
@@ -260,17 +262,54 @@ func TestReadCloudFormationNoPanicOnJunk(t *testing.T) {
 	}
 }
 
+// FuzzReadTemplates runs every reader on the same bytes, with and without values, and fails on a panic, an
+// error that is not ErrLimit, a read that takes over fuzzReadBudget, or a returned value outside the bounds. The
+// seeds are the shapes that once killed or hung a reader: operator and bracket runs, nested intrinsics, and
+// doubling chains of variables, locals and Sub definitions.
 func FuzzReadTemplates(f *testing.F) {
 	f.Add([]byte(cfnYAML))
 	f.Add([]byte(`{"Resources":{"A":{"Type":"T","Properties":{"X":{"Ref":"Y"}}}}}`))
 	f.Add([]byte(pulumiYAML))
 	f.Add([]byte("resource \"a\" \"b\" {\n x = var.y\n}\n"))
+	f.Add(tfWith(strings.Repeat("!", 5000) + "true"))
+	f.Add(tfWith(strings.Repeat("-", 5000) + "1"))
+	f.Add(tfWith(strings.Repeat("!-", 2500) + "1"))
+	f.Add(tfWith(strings.Repeat("(", 2000)))
+	f.Add(tfWith(strings.Repeat("-(", 100) + "1" + strings.Repeat(")", 100)))
+	f.Add([]byte(`{"Resources":{"B":{"Type":"T","Properties":{"P":` + strings.Repeat(`{"Fn::Base64":`, 100) + `"x"` + strings.Repeat("}", 100) + `}}}}`))
+	f.Add([]byte(cfnSubDoubling(30)))
+	f.Add(pulumiDoubling(40))
+	f.Add([]byte("locals {\n  l0 = \"x\"\n  l1 = \"${local.l0}${local.l0}\"\n  l2 = \"${local.l1}${local.l1}\"\n  l3 = \"${local.l2}${local.l2}\"\n}\nresource \"t\" \"n\" {\n  x = local.l3\n}\n"))
+	f.Add([]byte("resource \"t\" \"n\" {\n  x = \"abc\n  y = 1\n}\n"))
+	f.Add([]byte("Resources:\r  B:\r    Type: T\r---\rResources: {}\r"))
 	f.Fuzz(func(t *testing.T, b []byte) {
-		_, _ = ReadCloudFormationFile("f.yaml", b)
-		_, _ = ReadPulumiYAMLFile("f.yaml", b)
-		_, _ = ReadTerraformFile("f.tf", b)
+		start := time.Now()
+		for _, opts := range [][]Option{nil, {WithValues()}} {
+			sets := make([]*ResourceSet, 0, 4)
+			errs := make([]error, 0, 4)
+			add := func(set *ResourceSet, err error) { sets, errs = append(sets, set), append(errs, err) }
+			add(ReadCloudFormationFile("f.yaml", b, opts...))
+			add(ReadPulumiYAMLFile("f.yaml", b, opts...))
+			add(ReadTerraformFile("f.tf", b, opts...))
+			add(ReadTerraformModule(fstest.MapFS{"main.tf": file(string(b)), "x_override.tf": file(string(b))}, ".", opts...))
+			for i, err := range errs {
+				if err != nil && !errors.Is(err, ErrLimit) {
+					t.Fatalf("read %d: error that is not a limit: %v", i, err)
+				}
+				if err == nil && sets[i] == nil {
+					t.Fatalf("read %d: nil set and nil error", i)
+				}
+			}
+		}
+		if d := time.Since(start); d > fuzzReadBudget {
+			t.Fatalf("a read took %v, over %v", d, fuzzReadBudget)
+		}
 	})
 }
+
+// fuzzReadBudget is the wall-clock bound on all the reads of one fuzz input. The exponential shapes took
+// minutes; a linear read of a 2 MiB input takes well under a second.
+const fuzzReadBudget = 20 * time.Second
 
 func TestReadCloudFormationYAMLSpansAfterNonASCII(t *testing.T) {
 	src := "Resources:\n  A:\n    Type: T\n    Properties:\n      Desc: \"caf\u00e9 \u2603\" # note\n      Next: {a: \u00fc, b: [x, \u00fc]}\n"
