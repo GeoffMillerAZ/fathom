@@ -120,3 +120,121 @@ func TestYAMLAliasBombIsRefused(t *testing.T) {
 		}
 	})
 }
+
+// F9: nesting inside the size limit must be refused, not recursed into. Go
+// reports a stack overflow as a fatal error that recover cannot catch, so a
+// failure here ends the test binary. Each reader below died on the input
+// shown, measured at 150 KB to 1.8 MB.
+func TestDeepNestingIsRefusedNotFatal(t *testing.T) {
+	r := newReader(t)
+	rep := func(s string, n int) string { return strings.Repeat(s, n) }
+	for _, tc := range []struct{ name, path, src, ctl string }{
+		{"terraform expression", "infra/main.tf", "a = [\n" + rep("[\n", 400_000), "a = [\n[\n]\n]\n"},
+		{"terraform blocks", "infra/main.tf", rep("b {\n", 400_000), "b {\n b {\n }\n}\n"},
+		{"tfvars", "infra/prod.tfvars", "a = [\n" + rep("[\n", 900_000), "a = [1]\n"},
+		{"terragrunt", "live/terragrunt.hcl", "a = [\n" + rep("[\n", 900_000), "inputs = {\n a = [1]\n}\n"},
+		{"packer", "img/web.pkr.hcl", "a = [\n" + rep("[\n", 900_000), "source \"a\" \"b\" {\n x = [1]\n}\n"},
+		{"nomad", "jobs/web.nomad.hcl", "job \"j\" {\n" + rep("b {\n", 400_000), "job \"j\" {\n}\n"},
+		{"cargo", "crate/Cargo.toml", "a = [\n" + rep("[\n", 1_000_000), "[package]\nname = \"x\"\nversion = \"1.0.0\"\n"},
+		{"nginx", "etc/nginx.conf", rep("a {\n", 450_000), "events {}\nhttp {\n  server {\n    listen 80;\n  }\n}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.src) > 2<<20 {
+				t.Fatalf("the input is %d bytes, over the 2 MiB limit", len(tc.src))
+			}
+			ok := extract(t, r, tc.path, tc.ctl)
+			if ok.Skipped != "" || ok.Incomplete || len(ok.Notes) != 0 {
+				t.Fatalf("control: skipped %q incomplete=%v notes=%v", ok.Skipped, ok.Incomplete, ok.Notes)
+			}
+			got := extract(t, r, tc.path, tc.src)
+			if got.Skipped != "" {
+				t.Fatalf("skipped (%s), so no reader was reached", got.Skipped)
+			}
+			if !got.Incomplete || !hasReason(got.Notes) || !strings.Contains(strings.Join(got.Notes, " "), "nesting") {
+				t.Fatalf("incomplete=%v notes=%v", got.Incomplete, got.Notes)
+			}
+		})
+	}
+}
+
+// Brackets in a comment, a string or the middle of an nginx word are not
+// nesting, so a file that is long but flat reads whole.
+func TestFlatFilesWithBracketsAreNotRefused(t *testing.T) {
+	r := newReader(t)
+	flat := strings.Repeat("# [[[[[[[[[[\n", 12_000)
+	for _, tc := range []struct{ path, src string }{
+		{"infra/main.tf", flat + strings.Repeat("// {{{{{\n", 12_000) + "variable \"v\" {\n  default = \"[[[[[\"\n}\n"},
+		{"crate/Cargo.toml", flat + "[package]\nname = \"x[[[[\"\nversion = '1'\n" + "tool = '[[[[[[[[[['\n"},
+		{"etc/nginx.conf", strings.Repeat("# {{{{{{{{\n", 12_000) + "http {\n  server { return 200 \"{{{{{\"; }\n}\n"},
+	} {
+		got := extract(t, r, tc.path, tc.src)
+		if got.Skipped != "" || got.Incomplete || len(got.Symbols) == 0 {
+			t.Errorf("%s: skipped %q incomplete=%v symbols=%d notes=%v", tc.path, got.Skipped, got.Incomplete, len(got.Symbols), got.Notes)
+		}
+	}
+}
+
+// F10: a file the Reader read has a Dialect (types.go: Dialect is set unless
+// Skipped), also when its extension is shared by several dialects and it holds
+// nothing, or only junk, to emit.
+func TestReadFileAlwaysHasADialect(t *testing.T) {
+	r := newReader(t)
+	for _, path := range []string{"img/web.pkr.hcl", "img/prod.pkrvars.hcl", "jobs/web.nomad.hcl", "build/docker-bake.hcl", "live/terragrunt.hcl"} {
+		for name, src := range map[string]string{"empty": "", "comment": "# nothing here\n", "junk": "}}}}}"} {
+			t.Run(path+"/"+name, func(t *testing.T) {
+				got := extract(t, r, path, src)
+				if got.Skipped != "" {
+					return // not read, so the contract says nothing
+				}
+				if got.Dialect == "" || got.Level == "" {
+					t.Fatalf("read with dialect %q level %q: %+v", got.Dialect, got.Level, got)
+				}
+			})
+		}
+	}
+}
+
+// F11: a Go named type that is not a struct is not canonically a struct.
+func TestGoTypeCanonicalFollowsTheDeclaration(t *testing.T) {
+	r := newReader(t)
+	got := extract(t, r, "a/a.go", "package a\n\ntype S struct{ F int }\ntype N int\ntype A = string\ntype Fn func()\ntype I interface{ M() }\ntype G = struct{}\n")
+	want := map[string]string{"S": "struct", "N": "type_alias", "A": "type_alias", "Fn": "type_alias", "I": "interface", "G": "type_alias"}
+	seen := 0
+	for _, s := range got.Symbols {
+		if w, ok := want[s.Name]; ok {
+			seen++
+			if s.Canonical != w {
+				t.Errorf("type %s reads canonical %q, want %q", s.Name, s.Canonical, w)
+			}
+		}
+	}
+	if seen != len(want) {
+		t.Fatalf("read %d of %d types: %+v", seen, len(want), got.Symbols)
+	}
+}
+
+// F12: Symbol.Package is the extractor's scope, and for Go a method's and a
+// field's is its owner type. Reference.From joins on Key, so the shape is
+// pinned: a change is a Breaking change.
+func TestGoSymbolScopeIsPinned(t *testing.T) {
+	r := newReader(t)
+	got := extract(t, r, "a/a.go", "package a\n\ntype T struct{ F int }\n\nfunc (t T) M() {}\n\nfunc Fn() { T{}.M() }\n")
+	keys := map[string]string{} // name -> key|package
+	for _, s := range got.Symbols {
+		keys[s.Name] = s.Key + "|" + s.Package
+	}
+	for name, want := range map[string]string{"Fn": "a.Fn|a", "T": "a.T|a", "T.M": "T.T.M|T", "T.F": "T.T.F|T"} {
+		if keys[name] != want {
+			t.Errorf("%s reads key|package %q, want %q (all: %v)", name, keys[name], want, keys)
+		}
+	}
+	from := ""
+	for _, ref := range got.References {
+		if strings.HasSuffix(ref.To, "M") {
+			from = ref.From
+		}
+	}
+	if from != "a.Fn" {
+		t.Errorf("the call's From is %q, want a.Fn", from)
+	}
+}

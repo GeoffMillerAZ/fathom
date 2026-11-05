@@ -263,10 +263,28 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		res.Incomplete = true
 	}
 	res.fill(ex, r.canonicalKind)
+	if _, isGo := ex.Extractor.(*extractor.GoExtractor); isGo {
+		res.refineGoTypes(f.Src)
+	}
 	res.resolveTargets()
 	res.addSiblingNote(path, f.Siblings)
 	res.sort()
 	return res, nil
+}
+
+// refineGoTypes sets the Canonical of each GoType symbol from its declaration:
+// the extractor emits one kind for a struct, a defined type (`type N int`) and
+// an alias, and the closed vocabulary tells them apart (struct, type_alias).
+func (res *Result) refineGoTypes(src []byte) {
+	canon := extractor.GoTypeCanonicals(src)
+	for i := range res.Symbols {
+		if res.Symbols[i].Kind != "GoType" {
+			continue
+		}
+		if c, ok := canon[res.Symbols[i].Name]; ok {
+			res.Symbols[i].Canonical = c
+		}
+	}
 }
 
 // errorNote is the one-line Notes entry for an extractor's error: the engine

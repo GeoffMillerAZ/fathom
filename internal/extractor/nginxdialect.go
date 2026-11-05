@@ -99,6 +99,9 @@ func (x *NginxExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 // ExtractDoc implements DocResulter. Malformed input yields what its
 // well-formed statements declare and no error.
 func (x *NginxExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
+	if textTooDeep(src, "{", "}", true) {
+		return DocResult{Incomplete: errTooDeep("nginx parse")}, nil
+	}
 	tree, _ := parseNginxTree(src)
 	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath)}
 	root := path.Base(relPath)

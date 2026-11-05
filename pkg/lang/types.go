@@ -70,15 +70,25 @@ type Symbol struct {
 	// Reference.ToKey hold Keys. A dialect names a reference target as it
 	// writes it (Reference.To), which equals a Key only when the dialect
 	// writes targets the way it names definitions; ToKey is the join.
-	Key     string `json:"key"`
-	Name    string `json:"name"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	// Package is the scope the extractor groups the symbol under, and the part
+	// of Key before Name. It is the extractor's own scope, not a normalized
+	// package: for most dialects it is the directory or package a definition
+	// sits in, and for the Go extractor it is the package name for a function,
+	// type, constant and variable but the receiver type for a method and the
+	// owner type for a field (method M on type T reads Package "T", Name "T.M",
+	// Key "T.T.M"). The scope is part of Key and so of Reference.From; it is
+	// pinned by the tests and changes only as a Breaking change.
 	Package string `json:"package"`
 	// Kind is the dialect's own name for what the symbol is (for example
 	// TerraformResource). Kinds may be added and renamed as languages
 	// improve; do not branch on a Kind across dialects.
 	Kind string `json:"kind"`
 	// Canonical is the closed cross-dialect vocabulary. Values only grow. It
-	// is empty for a kind no dialect manifest declares.
+	// is empty for a kind that has no canonical meaning (a fact an extractor
+	// observes, for example) and for a kind of an extractor no table maps. A
+	// Go type reads struct, interface or type_alias by its declaration.
 	Canonical string `json:"canonical"`
 	Line      int    `json:"line"`
 	// EndLine is the last line, 0 when the extractor does not compute it.

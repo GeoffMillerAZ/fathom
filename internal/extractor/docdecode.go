@@ -477,6 +477,9 @@ func skipJSONCSpace(b []byte, j int) int {
 // `[[a.b]]` for an array-of-tables item) or a key's assignment line within
 // its table. Keys keep source order where a line is known.
 func decodeTOMLDoc(src []byte) (*docNode, error) {
+	if textTooDeep(src, "[{", "]}", false) {
+		return nil, fmt.Errorf("nesting deeper than %d is not read", maxNesting)
+	}
 	var v map[string]any
 	if err := toml.Unmarshal(src, &v); err != nil {
 		return nil, err
