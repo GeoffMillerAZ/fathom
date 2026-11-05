@@ -51,9 +51,12 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 //
 // It follows OpenTofu's file rules. A .tofu file shadows the .tf file of the same name, which
 // is not read at all. An override file (override.tf, *_override.tf, and the .tofu spellings)
-// adds no resource: every attribute or nested block it names reads unknown in the resource it
-// overrides, a variable default or local it overrides reads unknown, and the resource is read
-// once. Attributes are not merged, since the value that wins is not worth the guess.
+// adds no resource, and the resource is read once. In the resource it overrides, every attribute the base has
+// under a name the override uses reads unknown, a name being an attribute or a nested block (an empty override
+// block names it too), and every attribute the override writes under that name is added, unknown, when the base
+// has none at that path. OpenTofu replaces the base's blocks of a type whole, so an unknown base attribute may in
+// fact be absent. A variable default or local it overrides reads unknown. Attributes are not merged, since the
+// value that wins is not worth the guess.
 //
 // It skips what OpenTofu skips (dot files, editor backups). The JSON syntax (.tf.json and
 // .tofu.json) is not read: a JSON file counts one syntax error, since it declares blocks this read does not see,
@@ -132,7 +135,10 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		files = append(files, pf)
 	}
 	env := &tfEnv{vars: map[string]*tfVar{}, locals: map[string]hclsyntax.Expression{},
-		overVars: map[string]bool{}, overLocals: map[string]bool{}}
+		overVars: map[string]bool{}, overLocals: map[string]bool{}, srcs: map[string][]byte{}}
+	for _, f := range files {
+		env.srcs[f.file] = f.src
+	}
 	// Overrides are collected after every base file, whatever their names sort to, since a sensitive-only override
 	// changes the variable the base declares.
 	for _, f := range files {
@@ -369,6 +375,9 @@ type tfEnv struct {
 	// overVars and overLocals name the variable defaults and locals an override file replaces. Which value
 	// wins is not read, so a reference to one reads unknown.
 	overVars, overLocals map[string]bool
+	// srcs holds the source of each file of the module by the name its ranges carry. A local or a variable default
+	// is classified while another file is read, and the text of its literal is in its own file.
+	srcs map[string][]byte
 }
 
 // isFalseLiteral reports whether an expression is the literal false.
@@ -467,6 +476,10 @@ type tfReader struct {
 	// walk entered.
 	inners map[string]readRes
 	cuts   int
+	// varBytes is the source bytes variableRefs has walked.
+	varBytes int
+	// override is set while an override file is read, to collect the nested blocks each resource names.
+	override bool
 }
 
 func newTFReader(cfg config, env *tfEnv) *tfReader {
@@ -532,6 +545,7 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 		if r.err != nil {
 			return r.err
 		}
+		res.named = walk.blocks
 		set.Resources = append(set.Resources, res)
 	}
 	return r.err
@@ -577,10 +591,23 @@ func (r *tfReader) unreadBlock(set *ResourceSet, b *hclsyntax.Block) {
 	}
 }
 
+// segmentFits reports whether a nested block's path, prefix plus name, is inside MaxPathBytes, and fails the read when
+// it is not. Only emit checked this, after the path of every block was built, so a long block name repeated over
+// many empty blocks copied it once per block without an attribute to refuse it.
+func (r *tfReader) segmentFits(file, prefix, name string) bool {
+	if len(prefix)+1+len(name) > MaxPathBytes {
+		r.fail(file, fmt.Sprintf("an attribute path is over %d bytes", MaxPathBytes))
+		return false
+	}
+	return true
+}
+
 // tfWalk is the state of one resource walk.
 type tfWalk struct {
 	file string
 	top  bool // the walk is at the resource's own body
+	// blocks collects, in an override file, the nested blocks the resource names, empty ones too.
+	blocks []string
 }
 
 func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iters map[string]bool, depth int, out *[]Attr) {
@@ -613,6 +640,12 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 		}
 		if b.Type == "dynamic" && len(b.Labels) == 1 {
 			name := b.Labels[0]
+			if !r.segmentFits(w.file, prefix, name) {
+				return
+			}
+			if top && r.override {
+				w.blocks = append(w.blocks, name)
+			}
 			p := joinPath(prefix, name) + "[*]"
 			iterName := name
 			if ia, ok := b.Body.Attributes["iterator"]; ok {
@@ -634,6 +667,12 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 		// Every nested block segment takes [*], as tofu lists blocks, so one schema attribute has one
 		// spelling whether a resource writes one block or several. The resource's own lifecycle block is
 		// meta-configuration and not a schema block.
+		if !r.segmentFits(w.file, prefix, b.Type) {
+			return
+		}
+		if top && r.override && b.Type != "lifecycle" {
+			w.blocks = append(w.blocks, b.Type)
+		}
 		p := joinPath(prefix, b.Type)
 		if !(top && b.Type == "lifecycle") {
 			p += "[*]"
@@ -655,13 +694,16 @@ type overrideKey struct {
 type overrideIndex struct {
 	res  map[overrideKey]int
 	segs map[int]map[string][]int
-	// done marks the top segments of a base resource an override already read unknown: a second attribute of the
-	// same segment has nothing left to change, and scanning the segment again for each one is quadratic.
+	// done marks the top segments of a base resource an override already read unknown: a second override of the
+	// same segment has nothing left to mark, and scanning the segment again for each one is quadratic.
 	done map[int]map[string]bool
+	// paths holds the attribute paths of a base resource, base and added, built on first use, so an override
+	// attribute is added once however many overrides name it.
+	paths map[int]map[string]bool
 }
 
 func newOverrideIndex(set *ResourceSet) *overrideIndex {
-	ix := &overrideIndex{res: map[overrideKey]int{}, segs: map[int]map[string][]int{}, done: map[int]map[string]bool{}}
+	ix := &overrideIndex{res: map[overrideKey]int{}, segs: map[int]map[string][]int{}, done: map[int]map[string]bool{}, paths: map[int]map[string]bool{}}
 	for i := range set.Resources {
 		k := overrideKey{set.Resources[i].Mode, set.Resources[i].Type, set.Resources[i].Name}
 		if _, dup := ix.res[k]; !dup {
@@ -689,7 +731,10 @@ func (ix *overrideIndex) segments(set *ResourceSet, i int) map[string][]int {
 // attribute or nested block it names as unknown. A block with no base is ignored, as OpenTofu refuses it.
 func (r *tfReader) applyOverrides(set *ResourceSet, ix *overrideIndex, body *hclsyntax.Body) error {
 	var over ResourceSet
-	if err := r.readBody(&over, body); err != nil {
+	r.override = true
+	err := r.readBody(&over, body)
+	r.override = false
+	if err != nil {
 		return err
 	}
 	set.SyntaxErrors += over.SyntaxErrors
@@ -713,8 +758,27 @@ func (ix *overrideIndex) apply(set *ResourceSet, o Resource) {
 	if o.Provider != "" {
 		base.Provider = o.Provider
 	}
+	// An override replaces the attributes and nested blocks it names, whole. The reader does not guess the values
+	// that win: every attribute of a base resource under a name the override uses reads unknown, and every
+	// attribute the override writes under it is added, unknown, when the base has none at that path. A nested
+	// block the override writes empty names the segment too, with no attribute to say so.
+	var order []string
+	group := map[string][]Attr{}
+	for _, name := range o.named {
+		if _, ok := group[name]; !ok {
+			order = append(order, name)
+			group[name] = nil
+		}
+	}
 	for _, a := range o.Attrs {
-		ix.overrideAttr(set, i, a)
+		seg := topSegment(a.Path)
+		if _, ok := group[seg]; !ok {
+			order = append(order, seg)
+		}
+		group[seg] = append(group[seg], a)
+	}
+	for _, seg := range order {
+		ix.overrideSeg(set, i, seg, group[seg])
 	}
 }
 
@@ -726,27 +790,39 @@ func topSegment(p string) string {
 	return p
 }
 
-// overrideAttr reads unknown every attribute of base resource i under the same top segment as a, which an
-// override replaces whole when it is a nested block, and adds a when the base never set it.
-func (ix *overrideIndex) overrideAttr(set *ResourceSet, i int, a Attr) {
+// overrideSeg reads unknown every attribute of base resource i under top segment seg, once, and adds the override's
+// attributes under it that the base does not have.
+func (ix *overrideIndex) overrideSeg(set *ResourceSet, i int, seg string, attrs []Attr) {
 	r := &set.Resources[i]
-	seg := topSegment(a.Path)
-	if ix.done[i][seg] {
-		return
-	}
+	segs := ix.segments(set, i)
 	if ix.done[i] == nil {
 		ix.done[i] = map[string]bool{}
 	}
-	ix.done[i][seg] = true
-	segs := ix.segments(set, i)
-	if held := segs[seg]; len(held) > 0 {
-		for _, j := range held {
+	if !ix.done[i][seg] {
+		ix.done[i][seg] = true
+		for _, j := range segs[seg] {
 			r.Attrs[j] = Attr{Path: r.Attrs[j].Path, Class: ClassUnknown, Span: r.Attrs[j].Span}
 		}
+	}
+	if len(attrs) == 0 {
 		return
 	}
-	r.Attrs = append(r.Attrs, Attr{Path: a.Path, Class: ClassUnknown, Span: a.Span})
-	segs[seg] = append(segs[seg], len(r.Attrs)-1)
+	have := ix.paths[i]
+	if have == nil {
+		have = make(map[string]bool, len(r.Attrs)+len(attrs))
+		for _, a := range r.Attrs {
+			have[a.Path] = true
+		}
+		ix.paths[i] = have
+	}
+	for _, a := range attrs {
+		if have[a.Path] {
+			continue
+		}
+		have[a.Path] = true
+		r.Attrs = append(r.Attrs, Attr{Path: a.Path, Class: ClassUnknown, Span: a.Span})
+		segs[seg] = append(segs[seg], len(r.Attrs)-1)
+	}
 }
 
 func with(m map[string]bool, k string) map[string]bool {
@@ -879,6 +955,14 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 				return readRes{class: ClassReference, refs: src.refs}
 			}
 		}
+		if src.class == ClassExpression && refsAreVariables(x.Source) {
+			// The source's refs are all of its variables, so the splat's are those and its own steps'. Walking the
+			// whole expression again at each nested splat is quadratic in its size times its depth.
+			if steps := r.variableRefs(x.Each, iters); len(steps) > 0 {
+				return readRes{class: ClassExpression, refs: unionRefs(src.refs, steps)}
+			}
+			return readRes{class: ClassExpression, refs: src.refs}
+		}
 		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.IndexExpr, *hclsyntax.FunctionCallExpr,
 		*hclsyntax.ConditionalExpr, *hclsyntax.BinaryOpExpr,
@@ -906,6 +990,14 @@ func (r *tfReader) foldTemplate(parts []hclsyntax.Expression, iters map[string]b
 	}
 	out := foldRes(rs)
 	if out.hasV {
+		// The concat below builds a real string, kept or not: a list holding it and a reference is no literal, and
+		// drops it. Charge it first, so a template read under a thousand attributes cannot build gigabytes that no
+		// emit ever sees.
+		out = r.hold(r.file, out)
+		if r.err != nil {
+			out.hasV = false
+			return out
+		}
 		out.val, out.hasV = concatVals(rs)
 	}
 	return out
@@ -1068,9 +1160,40 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 	return readRes{class: ClassReference, refs: []string{ref}}
 }
 
+// maxVariableWalkBytes bounds the source bytes the reference search of one file walks, counting a byte once for every
+// walk that covers it.
+const maxVariableWalkBytes = 32 << 20
+
+// refsAreVariables reports whether the refs classify gave an expression of class Expression are exactly the
+// variables of that expression: true of a splat, a parenthesis around one, and of every kind classify sends to
+// variableRefs.
+func refsAreVariables(e hclsyntax.Expression) bool {
+	for {
+		p, ok := e.(*hclsyntax.ParenthesesExpr)
+		if !ok {
+			break
+		}
+		e = p.Expression
+	}
+	switch e.(type) {
+	case *hclsyntax.SplatExpr, *hclsyntax.RelativeTraversalExpr, *hclsyntax.IndexExpr, *hclsyntax.FunctionCallExpr,
+		*hclsyntax.ConditionalExpr, *hclsyntax.BinaryOpExpr, *hclsyntax.ForExpr, *hclsyntax.TemplateJoinExpr,
+		*hclsyntax.AnonSymbolExpr:
+		return true
+	}
+	return false
+}
+
 // variableRefs lists the static references an expression reads, minus the names that
 // are scopes and not things.
 func (r *tfReader) variableRefs(e hclsyntax.Expression, iters map[string]bool) []string {
+	// Every walk is charged its source span, so a shape that walks the same bytes again and again is refused by
+	// size and not by the minutes it takes.
+	rng := e.Range()
+	if r.varBytes += rng.End.Byte - rng.Start.Byte; r.varBytes > maxVariableWalkBytes {
+		r.fail(r.file, fmt.Sprintf("expressions were searched for references over %d bytes in all", maxVariableWalkBytes))
+		return nil
+	}
 	var out []string
 	for _, t := range e.Variables() {
 		switch t.RootName() {
@@ -1103,8 +1226,9 @@ func renderTraversal(t hcl.Traversal) string {
 	return sb.String()
 }
 
-// literalValue is the Go value of a literal, negated when neg. A number that is an integer in int64 range is an int64,
-// as cty holds it; any other number goes through numberValue with the text the file wrote, so 1e999 is never +Inf.
+// literalValue is the Go value of a literal, negated when neg. A number goes through numberValue with the text the
+// file wrote, the rule every reader shares, so 1e999 is never +Inf and 1.0 is a float64 as it is in CloudFormation and
+// Pulumi. Only when the text cannot be found does it fall back on cty's value, which spells 1.0 and 1 the same.
 func (r *tfReader) literalValue(lit *hclsyntax.LiteralValueExpr, neg bool) any {
 	v := lit.Val
 	if neg {
@@ -1114,23 +1238,37 @@ func (r *tfReader) literalValue(lit *hclsyntax.LiteralValueExpr, neg bool) any {
 		return ctyToGo(v)
 	}
 	bf := v.AsBigFloat()
+	// The text the file wrote, when it can be found, is read by the one rule every reader shares; cty has kept only
+	// the value, which spells 1.0 and 1 the same.
+	if src := r.sourceOf(lit.SrcRange.Filename); src != nil {
+		if rng := lit.SrcRange; rng.Start.Byte >= 0 && rng.End.Byte <= len(src) && rng.Start.Byte < rng.End.Byte {
+			if t := string(src[rng.Start.Byte:rng.End.Byte]); jsonNumberType(t) != "" {
+				if neg {
+					t = "-" + t
+				}
+				return numberValue(t)
+			}
+		}
+	}
 	if bf.IsInt() {
 		if i, acc := bf.Int64(); acc == big.Exact {
 			return i
 		}
 	}
-	text := bf.Text('g', -1)
-	if r.pf != nil {
-		if rng := lit.SrcRange; rng.Start.Byte >= 0 && rng.End.Byte <= len(r.pf.src) && rng.Start.Byte < rng.End.Byte {
-			if t := string(r.pf.src[rng.Start.Byte:rng.End.Byte]); jsonNumberType(t) != "" {
-				text = t
-				if neg {
-					text = "-" + t
-				}
-			}
-		}
+	return numberValue(bf.Text('g', -1))
+}
+
+// sourceOf is the source of the file a range names: the file being read, or another file of the module whose local or
+// default is being classified. It is nil for a file the reader does not hold, and a range must never be read against
+// the wrong file's bytes, which spell some other number at that offset.
+func (r *tfReader) sourceOf(file string) []byte {
+	if r.pf != nil && r.pf.file == file {
+		return r.pf.src
 	}
-	return numberValue(text)
+	if r.env != nil {
+		return r.env.srcs[file]
+	}
+	return nil
 }
 
 // ctyToGo converts a constant to a plain Go value. A number is read by literalValue, which has the source text.

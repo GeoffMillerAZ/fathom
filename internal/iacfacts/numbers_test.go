@@ -3,6 +3,7 @@ package iacfacts
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -96,6 +97,25 @@ func TestNumberValueRule(t *testing.T) {
 	} {
 		if got := numberValue(in); got != want {
 			t.Errorf("%q: %#v (%T), want %#v (%T)", in, got, got, want, want)
+		}
+	}
+}
+
+// IAC26: Terraform read 1.0, 1e3 and -0.0 as int64 (cty keeps the value and not the spelling) while every other reader
+// returned float64. The rule is by spelling: an integer written without a fraction or an exponent is an int64.
+func TestNumberSpellingsOfOneIntegerReadAlike(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want any
+	}{
+		{"1.0", float64(1)}, {"1e3", float64(1000)}, {"1E3", float64(1000)}, {"2.0e0", float64(2)}, {"0e5", float64(0)},
+		{"-0.0", math.Copysign(0, -1)}, {"1e18", float64(1e18)}, {"9223372036854775807", int64(9223372036854775807)},
+		{"1e19", 1e19}, {"1.50", 1.5}, {"1e-3", 0.001}, {"0", int64(0)}, {"-0", int64(0)},
+	} {
+		for reader, v := range numberReads(t, tc.text) {
+			if fmt.Sprintf("%v %T", v, v) != fmt.Sprintf("%v %T", tc.want, tc.want) {
+				t.Errorf("%s in %s: %#v (%T), want %#v (%T)", tc.text, reader, v, v, tc.want, tc.want)
+			}
 		}
 	}
 }

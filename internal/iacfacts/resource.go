@@ -116,8 +116,8 @@ type Attr struct {
 	Class Class
 	// Value is set only under WithValues, and only for literal and defaulted classes
 	// whose value could be computed without evaluating a function. A number is an int64 when it is an integer in
-	// range, a float64 when float64 holds it exactly, a json.Number with its exact text when it is finite as float64
-	// and does not fit either, and its source text as a string when it is past float64's range (1e999). The rule is
+	// range, one written without a fraction or an exponent (1 is an int64, 1.0 and 1e3 are not), a float64 when float64
+	// holds it exactly, a json.Number with its exact text when it is finite as float64 and does not fit either, and its source text as a string when it is past float64's range (1e999). The rule is
 	// the same for every tool and syntax, and json.Marshal of a Value never fails.
 	Value any
 	// Refs are the static references the value reads, sorted: var.x, aws_s3_bucket.logs.id,
@@ -132,6 +132,8 @@ type Resource struct {
 	Span                             Span
 	Attrs                            []Attr
 	Multiplicity                     Multiplicity
+	// named holds, for a resource read from a Terraform override file, the nested blocks it names, empty ones too.
+	named []string
 }
 
 // ResourceSet is what one read returned. Resources are sorted by span, attributes by
@@ -343,7 +345,9 @@ func (e *emitter) emit(file string, out *[]Attr, p string, c readRes, span Span)
 		e.fail(file, fmt.Sprintf("the attribute paths of one read are over %d bytes in all", MaxTotalPathBytes))
 		return
 	}
-	if c.big {
+	if c.big || (e.cfg.values && c.hasV && partSize(c) > MaxValueBytes) {
+		// A scalar literal read by a YAML or JSON reader never passes foldRes, which is where a composite's size is
+		// summed, so the size of the value as it stands is checked here too.
 		e.fail(file, fmt.Sprintf("a value is over %d bytes", MaxValueBytes))
 		return
 	}

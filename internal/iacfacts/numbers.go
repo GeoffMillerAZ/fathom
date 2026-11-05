@@ -10,7 +10,8 @@ import (
 // numberValue is the one rule for the Go value of a number every reader returns in Attr.Value, so the same text reads
 // the same from HCL, CloudFormation YAML, JSON and Pulumi, and json.Marshal of a value never fails:
 //
-//   - an integer that fits int64 is an int64;
+//   - an integer that fits int64 is an int64, and an integer is a number written without a fraction or an exponent:
+//     7 is int64 7, and 1.0, 1e3 and -0.0 are float64 values by the next rule;
 //   - a number float64 holds exactly is a float64 (1.5);
 //   - any other number that is finite as float64 and valid as JSON keeps its exact text as a json.Number
 //     (12345678901234567890, a long fraction, 1e-999);

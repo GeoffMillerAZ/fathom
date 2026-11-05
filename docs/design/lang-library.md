@@ -150,8 +150,9 @@ a YAML document after the first count in `SyntaxErrors`.
 
 **Module files.** `ReadModule` follows OpenTofu: a `.tofu` file shadows the `.tf` file of the same name, which is not read. An override file
 (`override.tf`, `*_override.tf` and the `.tofu` spellings) adds no resource. Each attribute or nested block it names reads `unknown` in the
-resource it overrides, a variable default or local it replaces reads `unknown`, and the resource is read once. The reader does not merge
-attributes.
+resource it overrides (an empty override block names its block too, and OpenTofu replaces the base's blocks of that type whole, so an unknown
+base attribute may be absent), and every attribute the override writes under that name is added as `unknown` when the base has none at that
+path. A variable default or local it replaces reads `unknown`, and the resource is read once. The reader does not merge attributes.
 
 **Coverage.** Terraform (blocks, `dynamic` as `[*]`, `count`, `for_each`), CloudFormation (`Properties`, intrinsic functions, `Condition`,
 parameter defaults) and Pulumi YAML. Pulumi TypeScript and Python stay with IF-22, lane #200. Module calls read as a resource-like
