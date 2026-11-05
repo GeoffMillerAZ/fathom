@@ -90,8 +90,11 @@ an operator's command. It has no download path at all:
 - `fathom iac add <path>`, after the operator fetches a release asset with their own tools (`gh release download`, `curl`).
   The digest is printed, and `gh attestation verify` is the documented check. `fathom init` may print those commands. It
   never runs them.
-- `fathom iac import <export.json>` turns the operator's own `tofu providers schema -json` into a catalog, for private
-  providers. It carries facts 1 to 4 and 7, and no replacement facts.
+- `fathom iac import <export.json>` turns the operator's own `tofu providers schema -json` for one provider into a catalog,
+  for private providers. It carries facts 1 to 4 and 7, and no replacement facts. A multi-provider export is refused, so
+  the help says to make one in a scratch directory that requires that provider, and that `--version` is the operator's
+  assertion, not checked. A catalog of the same line that is installed is merged: every release stays, the result says
+  what was added, kept, unchanged and replaced, and a release with different content is refused unless `--replace`.
 - `fathom iac list`, `fathom iac remove <name>`.
 
 **Who builds them.** `cmd/iaccatalog`, a maintainer tool outside the product binary, reads a pin list
@@ -116,6 +119,14 @@ Carried over from `docs/design/iac-provider-schemas.md`, without the authored ma
 - No catalog for the exact version: `unbound`, no facts, one disclosure naming the major line to add. Never a nearest version, labelled or not (IF-M0).
 - OpenTofu and HashiCorp registry addresses stay distinct in identity. Row IF-P2 measures whether builds at one version
   are equal, and a catalog built from one address serves the other only with the difference disclosed.
+- Addresses compare lower case. A source with no host matches a lock key on either default registry (OpenTofu writes
+  `registry.opentofu.org` for the shorthand), and an explicit host matches exactly. A catalog serves a block only on the
+  same host or between those two default registries. Any other host reads `unbound` unless a catalog for exactly that host
+  is installed.
+- Provider constraints follow OpenTofu's Ruby-style parser: `~> 5` and `~> 5.0` are `>= 5.0, < 6`. An unreadable
+  constraint reads `unbound` with the reason. Binding reads `.tofu` files and override files with the reader's shadowing.
+- A bound that hides a root (more than 16 lockfiles, a stopped lockfile search, a module walk that stopped before it saw
+  every module) refuses that answer with a reason. It never answers from the roots it did read.
 
 ## 6. Surfaces
 
@@ -159,7 +170,7 @@ the 2026-10-26 triage, so this needs no SDK store.
 
 ## 9. Bounds
 
-Catalog file 256 MiB, 500,000 zip entries, manifest and version index 4 MiB each, blob 4 MiB (IF-M0: the largest AWS type is
+Catalog file 256 MiB, 500,000 zip entries, manifest 1 MiB (amended from 4 MiB: a lookup decodes it whole, and a real one is tens of KB), version index 4 MiB, blob 4 MiB (IF-M0: the largest AWS type is
 2.43 MiB), JSON depth 64. A lookup decodes only the requested path with a streaming decoder, and one fact stays under I48's
 8 MiB point ceiling, or that one answer is refused with a reason. Per answer: binding reads at most 16 lockfiles, `review_diff` reads at most 256 blobs, and the
 cascade re-parses at most 64 referring files to depth 8, each disclosed when hit. Cap + 1 refuses the whole catalog at `add`
