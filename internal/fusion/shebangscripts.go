@@ -101,3 +101,10 @@ func (p *Pipeline) shebangScripts(ctx context.Context, refs, scripts []core.Sour
 	}
 	return nil
 }
+
+// ShebangDialect is the dialect ingest's dispatch reads relPath with by its
+// shebang alone (langroute.Router.ShebangDialect), "" when the rule does not
+// claim it. indexbench lang-oracle measures exactly these files (LB-F23).
+func (p *Pipeline) ShebangDialect(relPath string, content []byte) string {
+	return p.Router.ShebangDialect(relPath, content)
+}
