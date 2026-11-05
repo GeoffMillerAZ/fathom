@@ -106,26 +106,10 @@ func parseTerraform(file string, src []byte) (*hclsyntax.Body, int, error) {
 	if err := checkSize(file, len(src)); err != nil {
 		return nil, 0, err
 	}
-	tokens, _ := hclsyntax.LexConfig(src, file, hcl.InitialPos)
-	if len(tokens) > MaxNodes {
-		return nil, 0, limitErr(file, fmt.Sprintf("%d tokens, over %d", len(tokens), MaxNodes))
+	f, diags, err := parseHCLBounded(file, src)
+	if err != nil {
+		return nil, 0, err
 	}
-	depth := 0
-	for _, t := range tokens {
-		switch t.Type {
-		case hclsyntax.TokenOBrace, hclsyntax.TokenOBrack, hclsyntax.TokenOParen,
-			hclsyntax.TokenTemplateInterp, hclsyntax.TokenTemplateControl:
-			if depth++; depth > MaxDepth {
-				return nil, 0, limitErr(file, fmt.Sprintf("brackets nest past %d deep", MaxDepth))
-			}
-		case hclsyntax.TokenCBrace, hclsyntax.TokenCBrack, hclsyntax.TokenCParen,
-			hclsyntax.TokenTemplateSeqEnd:
-			if depth > 0 {
-				depth--
-			}
-		}
-	}
-	f, diags := hclsyntax.ParseConfig(src, file, hcl.InitialPos)
 	nerr := 0
 	for _, d := range diags {
 		if d.Severity == hcl.DiagError {

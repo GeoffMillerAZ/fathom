@@ -70,7 +70,11 @@ func (r *bindingReader) readBounded(name string) ([]byte, bool) {
 }
 
 func (r *bindingReader) parse(src []byte, name string) *hclsyntax.Body {
-	f, diags := hclsyntax.ParseConfig(src, name, hcl.InitialPos)
+	f, diags, err := parseHCLBounded(name, src)
+	if err != nil {
+		r.note("%s nests operators or brackets past the read bound and was skipped", name)
+		return nil
+	}
 	if diags.HasErrors() {
 		r.note("%s has HCL errors; blocks it parsed before the error were read", name)
 	}
