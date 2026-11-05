@@ -168,7 +168,9 @@ func (z *catZip) find(name string) (catZipEntry, bool, error) {
 }
 
 // entryReader yields an entry's bytes, checks them against the directory's size and CRC at the end, and fails
-// the moment an entry yields more than it declared.
+// the moment an entry yields more than it declared. A deflate stream returns its last bytes together with io.EOF,
+// and io.ReadFull and a bufio reader both drop an error that arrives with a full buffer, so the verdict is sticky:
+// every Read after the last bytes returns it again, and the caller that reads to the end always sees it.
 type entryReader struct {
 	r      io.Reader
 	remain uint64
@@ -176,25 +178,33 @@ type entryReader struct {
 	want   uint32
 	name   string
 	done   bool
+	err    error
 }
 
 func (e *entryReader) Read(p []byte) (int, error) {
+	if e.err != nil {
+		return 0, e.err
+	}
 	if e.done {
 		return 0, io.EOF
 	}
 	n, err := e.r.Read(p)
 	if uint64(n) > e.remain {
-		return 0, corruptf("entry %q yields more than its declared %d bytes", e.name, e.remain+uint64(n))
+		e.err = corruptf("entry %q yields more than its declared %d bytes", e.name, e.remain+uint64(n))
+		return 0, e.err
 	}
 	e.remain -= uint64(n)
 	e.crc.Write(p[:n])
 	if errors.Is(err, io.EOF) {
 		e.done = true
-		if e.remain != 0 {
-			return n, corruptf("entry %q is %d bytes short", e.name, e.remain)
+		switch {
+		case e.remain != 0:
+			e.err = corruptf("entry %q is %d bytes short", e.name, e.remain)
+		case e.crc.Sum32() != e.want:
+			e.err = corruptf("entry %q fails its CRC", e.name)
 		}
-		if e.crc.Sum32() != e.want {
-			return n, corruptf("entry %q fails its CRC", e.name)
+		if e.err != nil {
+			return n, e.err
 		}
 		return n, io.EOF
 	}

@@ -2,7 +2,9 @@ package iacfacts
 
 import (
 	"archive/zip"
+	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"os"
 	"path/filepath"
@@ -184,4 +186,63 @@ func TestAddRefusesDuplicateKeysUnknownEntriesAndStrayVersions(t *testing.T) {
 	f["versions/1.9.9.json"] = `{"resources":{"r":"` + blob + `"}}`
 	_, err := ReadIaCCatalog(writeRawCatalog(t, f), IaCCatalogRequest{Version: "1.9.9", Kind: SectionResource, Type: "r"})
 	wantRefusal(t, err, ScopeAnswer, RefuseNotFound)
+}
+
+// flipCRC flips the stored CRC of one entry in the central directory of a zip file.
+func flipCRC(t *testing.T, path, entry string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := []byte{0x50, 0x4b, 0x01, 0x02}
+	for at := 0; ; {
+		i := bytes.Index(raw[at:], sig)
+		if i < 0 {
+			t.Fatalf("no central directory record for %s", entry)
+		}
+		at += i
+		nameLen := int(binary.LittleEndian.Uint16(raw[at+28:]))
+		if string(raw[at+46:at+46+nameLen]) == entry {
+			raw[at+16] ^= 0xff
+			if err := os.WriteFile(path, raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		at += 4
+	}
+}
+
+// R7: a deflate stream hands back its last bytes together with the end of the stream, io.ReadFull and the buffered
+// scanner dropped the CRC error that came with them, and every flipped CRC read clean. A catalog written the way the
+// builder writes one (deflated) now fails on a flipped CRC in the manifest and in the version index.
+func TestFlippedCRCOnADeflatedEntryIsCorrupt(t *testing.T) {
+	blob := addrOf(hardenBlob)
+	files := func() map[string]string {
+		return map[string]string{
+			"manifest.json":       rawManifest(`"1.0.0"`),
+			"versions/1.0.0.json": `{"provider":"` + blob + `","resources":{},"data_sources":{},"ephemeral_resources":{}}`,
+			"blobs/" + blob:       hardenBlob,
+		}
+	}
+	req := IaCCatalogRequest{Version: "1.0.0", Kind: SectionProvider, Path: []string{"block", "attributes", "a", "type"}}
+	clean := writeRawCatalog(t, files())
+	if _, err := VerifyIaCCatalog(clean); err != nil {
+		t.Fatalf("the baseline must verify: %v", err)
+	}
+	if f, err := ReadIaCCatalog(clean, req); err != nil || string(f.Value) != `"string"` {
+		t.Fatalf("the baseline must read: %s %v", f.Value, err)
+	}
+	for _, entry := range []string{"manifest.json", "versions/1.0.0.json", "blobs/" + blob} {
+		p := writeRawCatalog(t, files())
+		flipCRC(t, p, entry)
+		_, err := VerifyIaCCatalog(p)
+		wantRefusal(t, err, ScopeCatalog, RefuseCorrupt)
+		_, err = ReadIaCCatalog(p, req)
+		wantRefusal(t, err, ScopeCatalog, RefuseCorrupt)
+		if _, err := ReadIaCCatalogManifest(p); err == nil && entry == "manifest.json" {
+			t.Errorf("%s: the manifest read took a flipped CRC", entry)
+		}
+	}
 }

@@ -19,9 +19,10 @@ var blobHashRE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 // ReadIaCCatalog reads one fact from the catalog at path: the manifest, one version index and one blob, and
 // closes. It keeps nothing between calls (no residency, no memo). The directory is streamed, the index and blob
 // are walked by a streaming scanner that decodes only the requested path, and every byte of the blob passes a
-// hash that must equal its address, so a fact is either exactly what the builder wrote or refused.
+// hash that must equal its address and every byte of the manifest and of the version index passes the entry's
+// CRC, so a fact is either exactly what the builder wrote or refused.
 //
-// Bounds (design section 9): a catalog file over 256 MiB, over 500,000 entries or with a manifest over 4 MiB is
+// Bounds (design section 9): a catalog file over 256 MiB, over 500,000 entries or with a manifest over 1 MiB is
 // refused whole at cap + 1. A version index over 4 MiB, a blob over 4 MiB, nesting over 64 or a fact over I48's
 // 8 MiB refuses that one answer, with a reason in the returned *IaCRefusal.
 func ReadIaCCatalog(path string, req IaCCatalogRequest) (IaCCatalogFact, error) {
