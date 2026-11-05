@@ -100,9 +100,10 @@ type Symbol struct {
 	// EndLine is the last line, 0 when the extractor does not compute it.
 	EndLine int `json:"end_line"`
 	// Signature is the declaration's text, under the rule in the package
-	// documentation: every quoted literal of a code dialect reads ***, and it
-	// is empty for a symbol of a dialect that is no code unless the symbol's
-	// Kind is one whose Signature is structure and holds no value.
+	// documentation: a code dialect on the quote-led list reads *** from its
+	// first quote on, any other code dialect reads empty, and a dialect that is
+	// no code reads empty unless the symbol's Kind is one whose Signature is
+	// structure and holds no value (and then it is cut at its first quote).
 	Signature string `json:"signature"`
 	// Tier is how the symbol was established: verified, pre-scan,
 	// doc-claimed, sme-stated or assumed.

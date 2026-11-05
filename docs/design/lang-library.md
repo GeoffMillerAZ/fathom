@@ -137,12 +137,17 @@ Rules:
     owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
 12. **Withheld values.** The door follows one rule about which of the file's own text it returns, and the rule fails closed
     (ADR-069 decision 2, ADR-065 decision 2, ADR-092). It is not a secret scanner. In a `Signature` from a code dialect
-    (`DialectInfo.Kind` `language`) every quoted literal of every quote style reads `***`, whatever its name or its place (a literal that
-    interpolates is one literal with the quotes inside its interpolation; Ruby percent literals, Elixir sigils and PHP and Ruby heredocs
-    are quote styles);
-    numbers, identifiers and unquoted text stay. A `Signature` from any other dialect is empty unless the symbol's `Kind`
+    (`DialectInfo.Kind` `language`) on a list a test holds (each entry cites the language reference rule that every string and char
+    literal form of the language opens with a quote character, possibly after identifier or sigil prefix characters) the `Signature`
+    is kept up to its first quote character (`'`, `"` or a backtick) and everything from the quote on reads `***`. There is no pairing, no
+    closer search and no per-dialect quote grammar: a quote that opens no literal (a comment's apostrophe, a digit separator, a
+    quote in a regex) cuts too, and a Rust lifetime or label is the one quote kept. Prefix characters before the quote stay.
+    Over-masking is accepted and documented; a value written before the first quote is still returned. A code dialect that is not
+    on the list withholds its `Signature` (Ruby, PHP and Elixir, whose literals include `%` forms, `?c`, heredocs and sigils, are
+    withheld), and a test fails when a code dialect is added to the built-ins without being classified. A `Signature` from a
+    dialect that is no code is empty unless the symbol's `Kind`
     (never its `Canonical`) is on `structuralKinds`, each entry with a one-line reason why its `Signature` is a keyword or
-    a declared name and holds no value; a test holds the list, so a new kind is withheld until it is listed. A `Fact` value
+    a declared name and holds no value, and what that list keeps is cut at its first quote the same way; a test holds the list, so a new kind is withheld until it is listed. A `Fact` value
     under a key whose last segment looks like a credential (password, passwd, secret, token, apikey, credential,
     private_key) reads `***`, as does a literal a fact value binds with `=`, `:=` or `:`; other `Fact` values are returned as
     written. One pass drops the userinfo of a URL, with or without its scheme, wherever a string from the file lands (a name,

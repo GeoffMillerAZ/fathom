@@ -8,3 +8,6 @@ var CredentialKey = credentialKey
 
 // StructuralCuts is the list of structural kinds whose Signature is cut.
 var StructuralCuts = structuralCuts
+
+// QuoteLed is the list of code dialects whose Signature is returned up to its first quote.
+var QuoteLed = quoteLed

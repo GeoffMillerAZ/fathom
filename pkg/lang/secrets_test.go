@@ -53,7 +53,7 @@ func TestSecretsAreWithheld(t *testing.T) {
 // A credential is withheld by the rule, not by a list of names or places: every
 // shape below read through the lists that preceded it. A script's text is not
 // returned, a Signature from a dialect that is no code is withheld unless its kind
-// is structural, and every quoted literal in a code Signature reads ***.
+// is structural, and a code Signature reads *** from its first quote on.
 func TestSecretsAreWithheldByPlace(t *testing.T) {
 	const s = "SENTINEL9f3a"
 	r := newReader(t)

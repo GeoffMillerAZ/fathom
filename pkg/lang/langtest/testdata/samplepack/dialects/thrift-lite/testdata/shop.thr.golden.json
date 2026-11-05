@@ -22,7 +22,7 @@
       "canonical": "service",
       "line": 6,
       "end_line": 9,
-      "signature": "service Shop {",
+      "signature": "",
       "tier": "verified"
     },
     {
@@ -33,7 +33,7 @@
       "canonical": "rpc",
       "line": 7,
       "end_line": 7,
-      "signature": "Order place(1: Order order)",
+      "signature": "",
       "tier": "verified"
     },
     {
@@ -44,7 +44,7 @@
       "canonical": "rpc",
       "line": 8,
       "end_line": 8,
-      "signature": "void cancel(1: i32 id)",
+      "signature": "",
       "tier": "verified"
     }
   ],

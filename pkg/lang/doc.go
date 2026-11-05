@@ -14,13 +14,20 @@
 //
 // Withheld values. This is not a secret scanner, and a Result is not promised
 // to carry no credential. It follows one rule about which of the file's own
-// text it returns, and the rule fails closed. In a Signature from a code
-// dialect (a DialectInfo of Kind "language") every quoted literal of every
-// quote style reads ***, in its own quotes, whatever its name or its place;
-// numbers, identifiers and unquoted text stay. A Signature from any other
-// dialect is empty unless the symbol's Kind is one whose Signature is
-// structure and holds no value (a keyword or a declared name, on a list this
-// package holds and its tests check), so the text of a script is never
+// text it returns, and the rule fails closed. A Signature from a code dialect (a
+// DialectInfo of Kind "language") on a list this package holds and its tests
+// check, each of whose string and char literal forms opens with a quote
+// character, is kept up to its first quote character (', " or a backtick) and
+// reads *** from there on. There is no pairing and no grammar: a quote that
+// opens no literal (a comment's apostrophe, a digit separator, a quote in a
+// regex) cuts too, and only a Rust lifetime or label is kept. Over-masking is
+// accepted; a value written before the first quote stays, and so do the
+// prefix characters of a literal (r, b, u8, R, @, $, #, f). A Signature from any
+// other code dialect is empty. A Signature from a dialect that is no code is
+// empty unless the symbol's Kind is one whose Signature is structure and holds
+// no value (a keyword or a declared name, on a list this package holds and its
+// tests check), and a Signature that list keeps is cut at its first quote the
+// same way, so the text of a script is never
 // returned and a Kind added later is withheld until it is listed. A Fact value
 // under a key whose last segment looks like a credential (password, passwd,
 // secret, token, apikey, credential, private_key, in any case or separator)

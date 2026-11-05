@@ -32,7 +32,8 @@ func (urlExtractor) Extract(_ context.Context, _ lang.File) (lang.Extracted, err
 // The userinfo of a URL is withheld wherever a string from the file lands: a
 // symbol's name, key and signature, every reference field, every unresolved
 // field and a fact's entity and value. Each field is checked on the path a Go
-// extractor takes, for a code dialect and for one that is no code.
+// extractor takes, for a code dialect (a pack dialect is on no quote-led list, so
+// its Signature is withheld) and for one that is no code.
 func TestURLUserinfoIsWithheldInEveryField(t *testing.T) {
 	for _, kind := range []string{"language", "tooling"} {
 		t.Run(kind, func(t *testing.T) {
@@ -61,8 +62,8 @@ func TestURLUserinfoIsWithheldInEveryField(t *testing.T) {
 			if kind == "tooling" && s.Signature != "" {
 				t.Errorf("a Signature of a kind nobody listed is returned from a dialect that is no code: %q", s.Signature)
 			}
-			if kind == "language" && s.Signature != `f("***") https://h.example/x` {
-				t.Errorf("a code Signature reads %q", s.Signature)
+			if kind == "language" && s.Signature != "" {
+				t.Errorf("a Signature of a code dialect on no list is returned: %q", s.Signature)
 			}
 		})
 	}
@@ -520,6 +521,129 @@ func TestStructuralSignatureEndsBeforeAValue(t *testing.T) {
 	for kind := range lang.StructuralCuts {
 		if _, ok := lang.StructuralKinds[kind]; !ok {
 			t.Errorf("%s is cut and not on the structural list", kind)
+		}
+	}
+}
+
+// The cut rule through real dialects (MF12, MF13): a quote that opens no literal
+// (a comment's apostrophe, a digit separator, a quote in a regex, a char literal,
+// a Scala symbol) and the quote styles of a raw string used to throw a pairing
+// scanner off, and the next literal came back. The Signature is cut at the first
+// quote, so no sentinel comes back whatever precedes it.
+func TestSignatureCutsAtTheFirstQuote(t *testing.T) {
+	r := newReader(t)
+	for _, tc := range []struct{ path, src string }{
+		{"a.cpp", "void f(int a = 1'000, std::string s = \"it's\", std::string t = \"QZ103\") {}\n"},
+		{"b.cpp", "class K { public: void g(int a /* it's */, const char* b = \"can't\", const char* s = \"QZ104\") {} };\n"},
+		{"c.cpp", "void h(const char* a = R\"x()\")x\", const char* s = \"QZ105\") {}\n"},
+		{"a.kt", "fun f(a: Int /* it's */, b: String = \"can't\", s: String = \"QZ41\") {}\n"},
+		{"a.cs", "class C { void F(int a /* it's */, string b = \"can't\", string s = \"QZ42\") {} }\n"},
+		{"b.cs", "class C { void F(string p = \"\"\"\"a\"\"QZ30\"\"\"\") {} }\n"},
+		{"c.cs", "class C { [A(\"\"\"\"a\"\"\"QZ31\"\"\"\")] void F() {} }\n"},
+		{"a.js", "function f(a = /'/, s = 'QZ37') {}\n"},
+		{"a.ts", "function f(a = /'/, s = 'QZ38') {}\n"},
+		{"a.jsx", "function F({a = /'/, s = 'QZ114'}) { return <a/> }\n"},
+		{"a.tsx", "function F({a = /'/, s = 'QZ118'}: P) { return <a/> }\n"},
+		{"a.scala", "object O { def f(a: Symbol = 'x, s: String = \"it's\", t: String = \"QZ117\") = 1 }\n"},
+		{"a.java", "class C { @A(x = '\"', y = \"QZ116\") void f() {} }\n"},
+		{"a.py", "def f(a=1, s='''QZ1'''):\n    pass\n"},
+		{"a.go", "package p\n\nconst K = `QZ2`\n\nfunc F(a int) {}\n"},
+		{"a.rs", "#[cfg(feature = \"QZ3\")]\nfn f<'a>(x: &'a str) {}\n"},
+		{"a.dart", "void f({String a = r'QZ4', String b = 'it\\'s'}) {}\n"},
+		// The dialects that withhold their Signature outright.
+		{"a.rb", "def f(a = ?\", s = \"QZ62\", b = ?\")\nend\n"},
+		{"b.rb", "def f(a = %|QZ33|)\nend\n"},
+		{"c.rb", "def f(a = %!QZ34!)\nend\n"},
+		{"d.rb", "def f(a = %^QZ35^)\nend\n"},
+		{"e.rb", "def f(a = %/QZ36/)\nend\n"},
+		{"a.ex", "defmodule M do\n  def f(a \\\\ ?\", s \\\\ \"QZ110\", b \\\\ ?\"), do: s\nend\n"},
+		{"a.php", "<?php\nfunction f($a /* it's */, $b = \"can't\", $s = \"QZ115\") {}\n"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			res := extract(t, r, tc.path, tc.src)
+			if res.Skipped != "" || len(res.Symbols) == 0 {
+				t.Fatalf("the source is not read: %+v", res)
+			}
+			for _, sym := range res.Symbols {
+				if strings.Contains(sym.Signature, "QZ") {
+					t.Errorf("%s returns the literal: %q", sym.Name, sym.Signature)
+				}
+			}
+		})
+	}
+}
+
+// Ruby, PHP and Elixir are code dialects no quote leads (% literals, ?c, heredocs,
+// sigils), so their Signature is withheld: empty, whatever the source.
+func TestUnclassifiedCodeDialectsWithholdTheirSignature(t *testing.T) {
+	r := newReader(t)
+	for _, tc := range []struct{ path, src string }{
+		{"a.rb", "def f(a, b = 1)\nend\n"},
+		{"a.php", "<?php\nfunction f($a, $b = 1) {}\n"},
+		{"a.ex", "defmodule M do\n  def f(a, b \\\\ 1), do: a\nend\n"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			res := extract(t, r, tc.path, tc.src)
+			if res.Skipped != "" || len(res.Symbols) == 0 {
+				t.Fatalf("the source is not read: %+v", res)
+			}
+			for _, sym := range res.Symbols {
+				if sym.Signature != "" {
+					t.Errorf("%s %s returns a Signature: %q", res.Dialect, sym.Name, sym.Signature)
+				}
+			}
+		})
+	}
+}
+
+// quoteLedForms is one function or declaration per literal form of the language,
+// each holding the sentinel, for the dialects on quoteLed that the Reader reads
+// (Swift reads as no dialect today, so its forms are in
+// TestQuoteLedDialectsCutTheirFormsDirectly): the family test of the cut rule. A
+// form is written where the dialect's Signature carries it.
+var quoteLedForms = []struct {
+	dialect, path, tmpl string // tmpl holds %s where the literal goes and %d for a unique name
+	forms               []string
+}{
+	{"python", "a.py", "def f%d(a=%s):\n    pass\n", []string{`"S"`, `'S'`, `b"S"`, `r"S"`, `f"{x}S"`, `"""S"""`, `rb'S'`, `u'S'`, `'''S'''`}},
+	{"javascript", "a.js", "function f%d(a = %s) {}\n", []string{`"S"`, `'S'`, "`S`", "`${x}S`", `/'/, s = 'S'`}},
+	{"typescript", "a.ts", "function f%d(a: string = %s): void {}\n", []string{`"S"`, `'S'`, "`S`", "`${x}S`", `/'/, s = 'S'`}},
+	{"cpp", "a.cpp", "void f%d(const char* a = %s) {}\n", []string{`"S"`, `R"(S)"`, `R"x(S)x"`, `u8"S"`, `L"S"`, `u"S"`, `U"S"`, `'S'`}},
+	{"cuda", "a.cu", "__global__ void f%d(const char* a = %s) {}\n", []string{`"S"`, `R"(S)"`, `u8"S"`, `'S'`}},
+	{"csharp", "a.cs", "class C%d { void F(string a = %s) {} }\n", []string{`"S"`, `@"S"`, `$"S"`, `$@"S"`, `"""S"""`, `""""S""""`, `'S'`}},
+	{"kotlin", "a.kt", "fun f%d(a: String = %s) {}\n", []string{`"S"`, `"""S"""`, `'S'`}},
+	{"scala", "a.scala", "object O%d { def f(a: String = %s) = a }\n", []string{`"S"`, `"""S"""`, `s"S"`, `'S'`}},
+	{"dart", "a.dart", "void f%d({String a = %s}) {}\n", []string{`'S'`, `"S"`, `r'S'`, `r"S"`, `'''S'''`, `"""S"""`}},
+	{"java", "a.java", "class C%d { void f(String a, @A(%s) int b) {} }\n", []string{`"S"`, `'S'`, "\"\"\"\n S\n \"\"\""}},
+	{"rust", "a.rs", "#[doc = %s]\nfn f%d() {}\n", []string{`"S"`, `r"S"`, `r#"S"#`, `b"S"`, `br#"S"#`, `c"S"`, `'S'`, `b'S'`}},
+	{"go", "a.go", "package p\n\nfunc F%d(a [len(%s)]int) {}\n", []string{`"S"`, "`S`"}},
+	{"c", "a.c", "static const char *K%d = %s;\nvoid g%d(const char *a) {}\n", []string{`"S"`, `L"S"`, `u8"S"`, `u"S"`, `U"S"`, `'S'`}},
+}
+
+func TestQuoteLedDialectsCutEveryLiteralForm(t *testing.T) {
+	r := newReader(t)
+	covered := map[string]bool{}
+	for _, tc := range quoteLedForms {
+		covered[tc.dialect] = true
+		for i, form := range tc.forms {
+			t.Run(fmt.Sprintf("%s/%d", tc.dialect, i), func(t *testing.T) {
+				lit := strings.ReplaceAll(form, "S", "QZ"+fmt.Sprint(900+i))
+				src := fmt.Sprintf(strings.NewReplacer("%d", "%[1]d", "%s", "%[2]s").Replace(tc.tmpl), i, lit)
+				res := extract(t, r, tc.path, src)
+				if res.Skipped != "" || len(res.Symbols) == 0 {
+					t.Fatalf("the source is not read: %+v", res)
+				}
+				for _, sym := range res.Symbols {
+					if strings.Contains(sym.Signature, "QZ") {
+						t.Errorf("%s %s returns the literal: %q", res.Dialect, sym.Name, sym.Signature)
+					}
+				}
+			})
+		}
+	}
+	for id := range lang.QuoteLed {
+		if !covered[id] && id != "swift" {
+			t.Errorf("%s is on quoteLed and the family test holds no literal form of it", id)
 		}
 	}
 }

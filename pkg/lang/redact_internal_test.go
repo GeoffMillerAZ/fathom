@@ -3,6 +3,9 @@ package lang
 import (
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 )
 
 func TestWithholdURLUserinfo(t *testing.T) {
@@ -49,54 +52,6 @@ func TestWithholdURLUserinfo(t *testing.T) {
 				t.Errorf("withholdURLUserinfo(%q)\n got %q\nwant %q", tc.in, got, tc.want)
 			}
 		})
-	}
-}
-
-// Every quoted literal of every quote style reads ***, whatever its name or its
-// place, and a quote that is never closed withholds the rest. Numbers,
-// identifiers and unquoted text stay.
-func TestMaskLiterals(t *testing.T) {
-	const s = "SENTINEL9f3a"
-	for _, tc := range []struct {
-		name, in, want string
-	}{
-		{"default", `def f(password="` + s + `"):`, `def f(password="***"):`},
-		{"typed default", `def f(a: int, api_key: str = "` + s + `"):`, `def f(a: int, api_key: str = "***"):`},
-		{"every default", `def f(mode="fast", name: str = "x"):`, `def f(mode="***", name: str = "***"):`},
-		{"single quoted", `function f(authToken: string = '` + s + `') {`, `function f(authToken: string = '***') {`},
-		{"backtick", "const f = (password = `" + s + "`) =>", "const f = (password = `***`) =>"},
-		{"bytes prefix", `def f(password=b"` + s + `"):`, `def f(password=b"***"):`},
-		{"triple quoted", `def f(password="""` + s + `"""):`, `def f(password="""***"""):`},
-		{"escaped quote", `f("a\"` + s + `")`, `f("***")`},
-		{"dictionary", `def f(cfg={"password": "` + s + `"}):`, `def f(cfg={"***": "***"}):`},
-		{"a name and a place no list holds", `const TOKEN = "` + s + `"; public $secret = '` + s + `';`, `const TOKEN = "***"; public $secret = '***';`},
-		{"an argument", `f("` + s + `", other)`, `f("***", other)`},
-		{"a named argument", `local_rule(name = "a", src = "` + s + `")`, `local_rule(name = "***", src = "***")`},
-		{"a comparison", `allow { input.x == "` + s + `" }`, `allow { input.x == "***" }`},
-		{"a function rule", `f(x) := "` + s + `"`, `f(x) := "***"`},
-		{"a set rule", `l contains "` + s + `"`, `l contains "***"`},
-		{"an enum case", `case Password = '` + s + `'`, `case Password = '***'`},
-		{"never closed", `password := "` + s, `password := "***`},
-		{"never closed single", `x = '` + s, `x = '***`},
-		{"identifiers and numbers stay", `func F(a int, b string) (n int, err error)`, `func F(a int, b string) (n int, err error)`},
-		{"empty literal", `f("")`, `f("***")`},
-		{"two literals", `f("a") + g('b')`, `f("***") + g('***')`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := maskLiterals(tc.in, nil); got != tc.want {
-				t.Errorf("maskLiterals(%q)\n got %q\nwant %q", tc.in, got, tc.want)
-			}
-		})
-	}
-	// A Rust lifetime is no literal, and a character is.
-	for in, want := range map[string]string{
-		`fn f<'a>(x: &'a str) -> &'a str`: `fn f<'a>(x: &'a str) -> &'a str`,
-		`fn f<'a>(c: char = 'x')`:         `fn f<'a>(c: char = '***')`,
-		`impl<'static> T`:                 `impl<'static> T`,
-	} {
-		if got := maskLiterals(in, rustLifetime); got != want {
-			t.Errorf("rust maskLiterals(%q)\n got %q\nwant %q", in, got, want)
-		}
 	}
 }
 
@@ -169,104 +124,10 @@ func TestScrubNote(t *testing.T) {
 	}
 }
 
-// A literal that interpolates holds quoted literals of its own, and the quote
-// styles that are no quote (percent literals, sigils, heredocs) are literals
-// too: the family of the literals rule, one case per way a delimiter hides text.
-func TestMaskLiteralsNestedAndNonQuoteStyles(t *testing.T) {
-	const s = "SENTINEL9f3a"
-	for _, tc := range []struct {
-		name, in, want string
-	}{
-		{"python 3.12 f-string with a nested quote", `def f(x=f"{d["` + s + `"]}"):`, `def f(x=f"***"):`},
-		{"csharp interpolation", `void F(string x = $"{d["` + s + `"]}")`, `void F(string x = $"***")`},
-		{"ruby interpolation", `def f(x = "a#{"` + s + `"}b")`, `def f(x = "***")`},
-		{"elixir interpolation", `def f(x \\ "a#{"` + s + `"}")`, `def f(x \\ "***")`},
-		{"kotlin template", `fun f(x: String = "a${"` + s + `"}b")`, `fun f(x: String = "***")`},
-		{"scala template", `def f(x: String = s"a${"` + s + `"}")`, `def f(x: String = s"***")`},
-		{"dart template", `void f({String x = '${"` + s + `"}'})`, `void f({String x = '***'})`},
-		{"swift interpolation", `func f(x: String = "a\(g("` + s + `"))b")`, `func f(x: String = "***")`},
-		{"js template in a template", "const f = (x = `a${`" + s + "`}b`) =>", "const f = (x = `***`) =>"},
-		{"template in a template in a template", "f(`a${`b${`" + s + "`}`}`)", "f(`***`)"},
-		{"a brace inside an interpolated string", `f("a${ {"k": "` + s + `"} }b", z)`, `f("***", z)`},
-		{"unbalanced interpolation withholds the rest", `f("a${` + s + `", z)`, `f("***`},
-		{"elixir sigil with bars", `def f(x \\ ~S|` + s + `|)`, `def f(x \\ ~S|***|)`},
-		{"elixir sigil words", `def f(x \\ ~w(` + s + ` ` + s + `)a)`, `def f(x \\ ~w(***)a)`},
-		{"elixir sigil modifiers stay", `~r/` + s + `/i`, `~r/***/i`},
-		{"ruby %w", `def f(x = %w[` + s + `])`, `def f(x = %w[***])`},
-		{"ruby %q", `def f(x = %q(` + s + `))`, `def f(x = %q(***))`},
-		{"ruby %i", `def f(x = %i[` + s + `])`, `def f(x = %i[***])`},
-		{"ruby %q nests", `def f(x = %q(a(` + s + `)b))`, `def f(x = %q(***))`},
-		{"ruby %Q interpolates", `def f(x = %Q(a#{"` + s + `"}))`, `def f(x = %Q(***))`},
-		{"ruby heredoc", `def f(x = <<~EOS ` + s + ` EOS)`, `def f(x = <<~EOS***EOS)`},
-		{"php heredoc", `function f($x = <<<EOT ` + s + ` EOT)`, `function f($x = <<<EOT***EOT)`},
-		{"php nowdoc", `function f($x = <<<'EOT' ` + s + ` EOT)`, `function f($x = <<<'EOT'***EOT)`},
-		{"unclosed heredoc withholds the rest", `function f($x = <<<EOT ` + s, `function f($x = <<<EOT***`},
-		// What is no literal stays.
-		{"percent of a name stays", `n%w[1]`, `n%w[1]`},
-		{"shift stays", `x << 3`, `x << 3`},
-		{"a destructor is no sigil", `~Foo(int x)`, `~Foo(int x)`},
-		{"a bitwise not stays", `~flags & mask`, `~flags & mask`},
-		{"an elixir map stays", `def f(%{a: 1})`, `def f(%{a: 1})`},
-		{"a plain string with a balanced brace stays inside", `f("{x}")`, `f("***")`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := maskLiterals(tc.in, nil)
-			if got != tc.want {
-				t.Errorf("maskLiterals(%q)\n got %q\nwant %q", tc.in, got, tc.want)
-			}
-		})
-	}
-}
-
-// The literal rules of each dialect: a literal with no escapes, a backtick that
-// honours one and a Ruby percent literal with no type letter end where the
-// language says, and the same text under another dialect's rules is read by the
-// plain rule (MF9).
-func TestMaskLiteralsByDialect(t *testing.T) {
-	const s = "SENTINEL9f3a"
-	for _, tc := range []struct {
-		name, dialect, in, want string
-	}{
-		{"csharp verbatim", "csharp", `string p = @"C:\temp\", string q = "` + s + `"`, `string p = @"***", string q = "***"`},
-		{"csharp interpolated verbatim", "csharp", `string p = $@"C:\{x}\", string q = "` + s + `"`, `string p = $@"***", string q = "***"`},
-		{"csharp verbatim in an attribute", "csharp", `[Obsolete(@"C:\")] [Description("` + s + `")]`, `[Obsolete(@"***")] [Description("***")]`},
-		{"csharp regular string keeps its escapes", "csharp", `string p = "a\"` + s + `"`, `string p = "***"`},
-		{"csharp raw string", "csharp", `string p = """C:\""" + "` + s + `"`, `string p = """***""" + "***"`},
-		{"kotlin raw string", "kotlin", `val p = """C:\""" + "` + s + `"`, `val p = """***""" + "***"`},
-		{"python triple quote keeps its escapes", "python", `x = """a\"""` + s + `"""`, `x = """***"""`},
-		{"cpp raw", "cpp", `const char* p = R"(a"` + s + `)"`, `const char* p = R"(***)"`},
-		{"cpp raw with a delimiter", "cpp", `auto p = u8R"x(a)"` + s + `)x", q = "` + s + `"`, `auto p = u8R"x(***)x", q = "***"`},
-		{"cpp name ending in R is no raw string", "cpp", `f(BAR"` + s + `")`, `f(BAR"***")`},
-		{"rust raw", "rust", `#[doc = r"C:\"] #[cfg(feature = "` + s + `")]`, `#[doc = r"***"] #[cfg(feature = "***")]`},
-		{"rust raw with hashes", "rust", `r#"a"` + s + `"#, "` + s + `"`, `r#"***"#, "***"`},
-		{"rust byte raw", "rust", `br##"a"#` + s + `"##`, `br##"***"##`},
-		{"rust lifetime stays", "rust", `fn f<'a>(x: &'a str, r: &str = "` + s + `")`, `fn f<'a>(x: &'a str, r: &str = "***")`},
-		{"python raw prefix keeps its escapes", "python", `x = r"a\"` + s + `"`, `x = r"***"`},
-		{"swift raw", "swift", `let p = #"C:\"#, q = "` + s + `"`, `let p = #"***"#, q = "***"`},
-		{"swift raw with a quote", "swift", `let p = ##"a"#` + s + `"##`, `let p = ##"***"##`},
-		{"dart raw", "dart", `var p = r'C:\', q = '` + s + `'`, `var p = r'***', q = '***'`},
-		{"js template escaped backtick", "javascript", "f(x = `a\\`" + s + "`, y = `" + s + "`)", "f(x = `***`, y = `***`)"},
-		{"ts template escaped backtick", "typescript", "f(x = `a\\`" + s + "`)", "f(x = `***`)"},
-		{"go raw string keeps no escapes", "go", "f(`C:\\`, \"" + s + "\")", "f(`***`, \"***\")"},
-		{"ruby bare percent paren", "ruby", `def f(x = %(` + s + `))`, `def f(x = %(***))`},
-		{"ruby bare percent bracket", "ruby", `def f(x = %[` + s + `])`, `def f(x = %[***])`},
-		{"ruby bare percent brace", "ruby", `def f(x = %{` + s + `})`, `def f(x = %{***})`},
-		{"ruby modulo stays", "ruby", `a % (b)`, `a % (b)`},
-		{"ruby modulo of a name stays", "ruby", `n%(b)`, `n%(b)`},
-		{"elixir map stays", "elixir", `def f(%{a: 1})`, `def f(%{a: 1})`},
-		{"unknown dialect reads by the plain rule", "", `f("a\"` + s + `")`, `f("***")`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := rulesFor(tc.dialect).mask(tc.in); got != tc.want {
-				t.Errorf("rulesFor(%q).mask(%q)\n got %q\nwant %q", tc.dialect, tc.in, got, tc.want)
-			}
-		})
-	}
-}
-
-// Every kind on structuralKinds has its Signature masked as a code Signature is,
-// whatever the kind: a class header holds calls with literals, a keyword
-// argument and a template (MF10). The cut kinds are cut before the mask.
+// Every kind on structuralKinds has its Signature cut at its first quote as a
+// code Signature is, whatever the kind: a class header holds calls with
+// literals, a keyword argument and a template (MF10). The cut kinds are cut
+// before the quote.
 func TestStructuralSignaturesMaskTheirLiterals(t *testing.T) {
 	const s = "SENTINEL9f3a"
 	var res Result
@@ -281,5 +142,173 @@ func TestStructuralSignaturesMaskTheirLiterals(t *testing.T) {
 		if strings.Contains(sym.Signature, s) {
 			t.Errorf("%s returns a literal: %q", sym.Kind, sym.Signature)
 		}
+	}
+}
+
+// The cut rule (ADR-092): a Signature is kept up to its first quote character and
+// reads *** from there on, with no pairing and no closer search. A quote that
+// opens no literal cuts too. In Rust a lifetime or a label stays.
+func TestCutAtQuote(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want string
+		rust           bool
+	}{
+		{"no quote", `func F(a int, b string) (n int, err error)`, `func F(a int, b string) (n int, err error)`, false},
+		{"double", `def f(password="x"):`, `def f(password=***`, false},
+		{"single", `function f(a = 'x') {`, `function f(a = ***`, false},
+		{"backtick", "const f = (a = `x`) =>", "const f = (a = ***", false},
+		{"prefix stays", `def f(a=rb"x"):`, `def f(a=rb***`, false},
+		{"sigil prefix stays", `string p = $@"x"`, `string p = $@***`, false},
+		{"hash prefix stays", `let p = #"x"#`, `let p = #***`, false},
+		{"the first quote wins", `f("a") + g('b')`, `f(***`, false},
+		{"a comment apostrophe cuts", `void g(int a /* it's */, const char* s = "x")`, `void g(int a /* it***`, false},
+		{"a digit separator cuts", `void f(int a = 1'000, std::string s = "x")`, `void f(int a = 1***`, false},
+		{"a regex quote cuts", `function f(a = /'/, s = 'x')`, `function f(a = /***`, false},
+		{"a lifetime stays", `fn f<'a>(x: &'a str, s: &str) -> &'a str`, `fn f<'a>(x: &'a str, s: &str) -> &'a str`, true},
+		{"a static lifetime stays", `impl<'static> T`, `impl<'static> T`, true},
+		{"a label stays", `'outer: loop`, `'outer: loop`, true},
+		{"a lifetime then a string", `fn f<'a>(x: &'a str, s: &str = "x")`, `fn f<'a>(x: &'a str, s: &str = ***`, true},
+		{"a char is a quote", `fn f<'a>(c: char = 'x')`, `fn f<'a>(c: char = ***`, true},
+		{"a char of a lifetime shape is a quote", `const C: char = 'a';`, `const C: char = ***`, true},
+		{"an escaped char cuts", `const C: char = '\n';`, `const C: char = ***`, true},
+		{"a lifetime at the end reads as a quote", `fn f<'a`, `fn f<***`, true},
+		{"a rust lifetime is a quote elsewhere", `fn f<'a>(x)`, `fn f<***`, false},
+		{"a rust raw string cuts at its quote", `#[doc = r#"x"#]`, `#[doc = r#***`, true},
+		{"empty", ``, ``, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cutAtQuote(tc.in, tc.rust); got != tc.want {
+				t.Errorf("cutAtQuote(%q, %v)\n got %q\nwant %q", tc.in, tc.rust, got, tc.want)
+			}
+		})
+	}
+}
+
+// withholdedCode is the code dialects that withhold their Signature, each with
+// the reason it is not on quoteLed: a literal form that does not open with a quote
+// character, or no verification yet. A code dialect is on quoteLed or here, so a
+// dialect added to the built-ins fails closed until somebody classifies it.
+var withholdedCode = map[string]string{
+	"ada":         "not verified against the Ada reference yet",
+	"astro":       "a template language over JavaScript: attribute values may be unquoted, not verified",
+	"bash":        "heredocs, $'...' and unquoted words hold values with no quote",
+	"commonlisp":  "not verified: #\\a characters and |symbols| hold text with no quote",
+	"css":         "url(x) and unquoted values hold text with no quote",
+	"cue":         "not verified against the CUE specification yet",
+	"elixir":      "sigils (~S|x|) and ?\" character literals hold text with no quote",
+	"emacs-lisp":  "?a characters hold text with no quote",
+	"glsl":        "not verified against the GLSL specification yet",
+	"hlsl":        "not verified against the HLSL reference yet",
+	"html":        "unquoted attribute values and element text hold values with no quote",
+	"jinja2":      "template text outside a tag holds values with no quote",
+	"lua":         "long brackets ([[x]]) hold a string with no quote",
+	"luau":        "long brackets ([[x]]) hold a string with no quote",
+	"matlab":      "the transpose quote and command syntax make a quote ambiguous, not verified",
+	"objective-c": "not verified against the Objective-C reference yet",
+	"perl":        "q//, qq//, heredocs and regexes hold text with no quote",
+	"php":         "heredocs (<<<EOT) hold a string with no quote",
+	"powershell":  "here-strings and unquoted arguments hold text with no quote",
+	"r":           "raw strings (r\"(x)\") and backtick names, not verified",
+	"rego":        "not verified against the Rego reference yet",
+	"ruby":        "% literals, ?c characters and heredocs hold a string with no quote",
+	"scss":        "unquoted values hold text with no quote",
+	"solidity":    "hex\"x\" and unicode\"x\" literals, not verified against the Solidity reference yet",
+	"sql":         "dollar quoting ($$x$$) holds a string with no quote",
+	"svelte":      "a template language over JavaScript: attribute values may be unquoted, not verified",
+	"tcl":         "braces ({x}) hold a string with no quote",
+	"templ":       "a template language: element text outside a tag holds values with no quote",
+	"vhdl":        "not verified against the VHDL reference yet",
+	"vimscript":   "not verified against the Vim script reference yet",
+	"vue":         "a template language over JavaScript: attribute values may be unquoted, not verified",
+	"wgsl":        "not verified against the WGSL specification yet",
+}
+
+// Every code dialect the built-ins list is on quoteLed or named in withholdedCode,
+// exactly one, with a one-line reason, and the two lists name no dialect that is
+// not a built-in code dialect (ADR-092): a dialect added to the built-ins fails
+// this test until it is classified.
+func TestEveryCodeDialectIsClassified(t *testing.T) {
+	ds, err := extractor.LoadDialects()
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := map[string]bool{"go": true, langroute.Templ: true}
+	for _, d := range ds {
+		if d.Kind == "" || d.Kind == "language" {
+			code[d.ID] = true
+		}
+	}
+	for id := range code {
+		_, led := quoteLed[id]
+		_, withheld := withholdedCode[id]
+		switch {
+		case led && withheld:
+			t.Errorf("%s is on quoteLed and on withholdedCode", id)
+		case !led && !withheld:
+			t.Errorf("%s is a code dialect that is neither on quoteLed nor named withheld", id)
+		}
+	}
+	for name, list := range map[string]map[string]string{"quoteLed": quoteLed, "withholdedCode": withholdedCode} {
+		for id, why := range list {
+			switch {
+			case !code[id]:
+				t.Errorf("%s names %s, which is no built-in code dialect", name, id)
+			case strings.TrimSpace(why) == "" || strings.Contains(why, "\n") || len(why) > 160:
+				t.Errorf("%s[%s]: the reason must be one line of at most 160 characters: %q", name, id, why)
+			}
+		}
+	}
+}
+
+// quoteLedLiterals is every literal form of every dialect on quoteLed, as the
+// language reference spells it, each holding the sentinel. They are placed in a
+// Signature by hand, so this covers the dialects the Reader does not read.
+var quoteLedLiterals = map[string][]string{
+	"c":          {`"S"`, `L"S"`, `u8"S"`, `u"S"`, `U"S"`, `'S'`, `L'S'`, `u'S'`},
+	"cpp":        {`"S"`, `R"(S)"`, `R"x(S)x"`, `u8R"(S)"`, `LR"(S)"`, `'S'`, `u8'S'`},
+	"cuda":       {`"S"`, `R"(S)"`, `R"x(S)x"`, `'S'`},
+	"csharp":     {`"S"`, `@"S"`, `$"S"`, `$@"S"`, `@$"S"`, `"""S"""`, `""""S""""`, `$$"""S"""`, `'S'`, `u8"S"u8`},
+	"dart":       {`'S'`, `"S"`, `r'S'`, `r"S"`, `'''S'''`, `"""S"""`, `'a$S'`},
+	"go":         {`"S"`, "`S`", `'S'`},
+	"java":       {`"S"`, `'S'`, "\"\"\"\nS\n\"\"\""},
+	"javascript": {`"S"`, `'S'`, "`S`", "`a${S}`", "tag`S`"},
+	"kotlin":     {`"S"`, `"""S"""`, `'S'`, `"a$S"`},
+	"python":     {`"S"`, `'S'`, `b"S"`, `r"S"`, `u"S"`, `f"S"`, `rb"S"`, `Rb"S"`, `br'S'`, `t"S"`, `"""S"""`, `'''S'''`},
+	"rust":       {`"S"`, `r"S"`, `r#"S"#`, `r##"S"##`, `b"S"`, `br#"S"#`, `c"S"`, `cr#"S"#`, `'S'`, `b'S'`},
+	"scala":      {`"S"`, `"""S"""`, `s"S"`, `f"S"`, `raw"S"`, `'S'`, `'S`},
+	"swift":      {`"S"`, `"""S"""`, `#"S"#`, `##"S"##`, `#"""S"""#`},
+	"typescript": {`"S"`, `'S'`, "`S`", "`a${S}`", "tag`S`"},
+}
+
+// Every literal form of every dialect on quoteLed, wherever it sits in a
+// Signature, is cut at its quote: nothing of it comes back, only its prefix
+// characters.
+func TestQuoteLedDialectsCutTheirFormsDirectly(t *testing.T) {
+	for id := range quoteLed {
+		forms, ok := quoteLedLiterals[id]
+		if !ok {
+			t.Errorf("%s is on quoteLed and quoteLedLiterals holds no literal form of it", id)
+			continue
+		}
+		for i, form := range forms {
+			lit := strings.ReplaceAll(form, "S", "QZ"+string(rune('0'+i%10)))
+			for _, sig := range []string{"f(a = " + lit + ", b)", "@A(" + lit + ") f()", "f(a /* it's */, b = " + lit + ")", lit} {
+				res := Result{Dialect: id, Symbols: []Symbol{{Name: "f", Package: "p", Kind: "Function", Signature: sig}}}
+				res.withhold("language")
+				if got := res.Symbols[0].Signature; strings.Contains(got, "QZ") || !strings.HasSuffix(got, redacted) {
+					t.Errorf("%s %q: read %q", id, sig, got)
+				}
+			}
+		}
+	}
+}
+
+// The userinfo of a URL written before the first quote of a Signature is dropped
+// as it is anywhere, and the cut then reads *** from the quote on.
+func TestQuoteLedSignatureDropsURLUserinfo(t *testing.T) {
+	res := Result{Dialect: "python", Symbols: []Symbol{{Name: "f", Package: "p", Kind: "Function", Signature: `def f(u=https://user:SENTINEL9f3a@h.example/x, s="y")`}}}
+	res.withhold("language")
+	if got, want := res.Symbols[0].Signature, `def f(u=https://h.example/x, s=***`; got != want {
+		t.Errorf("Signature %q, want %q", got, want)
 	}
 }
