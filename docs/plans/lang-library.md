@@ -21,14 +21,14 @@ A commit that moves code behind a claimed row re-anchors that row in the same co
 
 ## Phase 2: the door
 
-- [ ] `lang.New` builds a `Reader` from options, returning errors and never panicking {id: LL-10, symbol: New, package: pkg/lang, needs: LL-M2}
-- [ ] `Reader.Extract` returns facts for one file through public types, with a stated skip reason {id: LL-11, symbol: Reader.Extract, package: pkg/lang, needs: LL-10}
-- [ ] `Reader.Dialects` reports every dialect with its measured level, from a generated table a test holds to the readings {id: LL-12, symbol: Reader.Dialects, package: pkg/lang, needs: LL-10}
+- [x] `lang.New` builds a `Reader` from options, returning errors and never panicking {id: LL-10, symbol: New, package: pkg/lang, needs: LL-M2}
+- [x] `Reader.Extract` returns facts for one file through public types, with a stated skip reason {id: LL-11, symbol: Reader.Extract, package: pkg/lang, needs: LL-10}
+- [x] `Reader.Dialects` reports every dialect with its measured level, from a generated table a test holds to the readings {id: LL-12, symbol: Reader.Dialects, package: pkg/lang, needs: LL-10}
 - [ ] `lang.WithDialects` adds a per-Reader pack layer, merged with the built-ins before validation, its queries compiled at `New`, refused whole with a reason, injections refused, reached through `fathom-lang --pack DIR` {id: LL-13, symbol: WithDialects, package: pkg/lang, needs: LL-10}
 - [ ] `lang.WithExtractor` registers a Go extractor under the same routing rules {id: LL-14, symbol: WithExtractor, package: pkg/lang, library: true, reason: "the deliverable is the extension API Go consumers import, and a CLI cannot load Go code", needs: LL-10}
 - [ ] `langtest.CheckPack` runs a pack's validation, required kinds and goldens {id: LL-15, symbol: CheckPack, package: pkg/lang/langtest, library: true, reason: "the deliverable is the conformance API pack authors import", needs: LL-13}
 - [ ] `pkg/lang/cue` adds CUE and Timoni extraction by import {id: LL-16, symbol: Option, package: pkg/lang/cue, library: true, reason: "the deliverable is the import that opts in to CUE", needs: "LL-7,LL-10"}
-- [ ] `cmd/fathom-lang extract|dialects` prints the door as JSON, with stdlib flags only {id: LL-17, symbol: cmdExtract, package: cmd/fathom-lang, needs: LL-10}
+- [x] `cmd/fathom-lang extract|dialects` prints the door as JSON, with stdlib flags only {id: LL-17, symbol: cmdExtract, package: cmd/fathom-lang, needs: LL-10}
 - [ ] Release builds publish `fathom-lang` beside `fathom` {id: LL-18, oracle: lexical, path: .goreleaser.yaml, pattern: "cmd/fathom-lang", needs: LL-17}
 - [ ] `task deploy` installs `fathom-lang` beside `fathom` {id: LL-19, oracle: lexical, path: Taskfile.yml, pattern: "fathom-lang", needs: LL-17}
 
