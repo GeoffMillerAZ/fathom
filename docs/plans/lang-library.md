@@ -10,9 +10,9 @@ A commit that moves code behind a claimed row re-anchors that row in the same co
 
 ## Phase 1: the cuts
 
-- [ ] The plan-row extractor leaves `internal/extractor`, so the package no longer imports `internal/verify`; the product registers it {id: LL-1, symbol: NewPlanRowsExtractor, package: internal/planrowsdialect}
-- [ ] The symbol snapshot and graph store leave `internal/memo` for `internal/graphmemo`, so `memo` imports only `tenancy`, `tsengine` reaches no call graph, and I51's shed still evicts grammars with no install step {id: LL-2, symbol: SnapshotFor, package: internal/graphmemo}
-- [ ] `tsengine` names no fathom path: the compilation cache takes a directory the caller computes {id: LL-3, symbol: EnableCompilationCacheDir, package: internal/extractor/tsengine}
+- [x] The plan-row extractor leaves `internal/extractor`, so the package no longer imports `internal/verify`; the product registers it {id: LL-1, symbol: NewPlanRowsExtractor, package: internal/planrowsdialect}
+- [x] The symbol snapshot and graph store leave `internal/memo` for `internal/graphmemo`, so `memo` imports only `tenancy`, `tsengine` reaches no call graph, and I51's shed still evicts grammars with no install step {id: LL-2, symbol: GraphFor, package: internal/graphmemo}
+- [x] `tsengine` names no fathom path: the compilation cache takes a directory the caller computes {id: LL-3, symbol: EnableCompilationCacheDir, package: internal/extractor/tsengine}
 - [ ] Routing leaves the Pipeline: `Router.Resolve` owns dispatch and content gates, returns construction errors, and `fusion.Pipeline` and `ReingestFile` delegate {id: LL-4, symbol: Router.Resolve, package: internal/langroute}
 - [ ] File classifiers move to the leaf `internal/langclass`, importing only `core` and the standard library, with forwarding functions left in `internal/connector` {id: LL-5, symbol: LanguageForPath, package: internal/langclass}
 - [ ] `readout` builds a router, not a Pipeline, and no longer imports `internal/fusion` {id: LL-6, symbol: newOutlineRouter, package: internal/readout, needs: LL-4}
