@@ -1,0 +1,604 @@
+[
+  {
+    "id": "ada",
+    "level": "L1",
+    "grade": "good"
+  },
+  {
+    "id": "alertmanager",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "ansible",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "argo",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "arm-templates",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "astro",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "aws-cdk",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "aws-iam-policy",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "azure-pipelines",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "azure-policy",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "bash",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "bazel",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "bicep",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "c",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "caddyfile",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "cargo",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "checkov-policies",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "circleci",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "cloud-custodian",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "cloudformation",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "cmake",
+    "level": "none"
+  },
+  {
+    "id": "commonlisp",
+    "level": "L1",
+    "grade": "good"
+  },
+  {
+    "id": "compile-commands",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "composer",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "conan",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "cpp",
+    "level": "L4",
+    "grade": "good"
+  },
+  {
+    "id": "crossplane",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "csharp",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "css",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "cuda",
+    "level": "L4",
+    "grade": "good"
+  },
+  {
+    "id": "cue",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "dart",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "docker-compose",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "dockerfile",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "elixir",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "emacs-lisp",
+    "level": "L1",
+    "grade": "good"
+  },
+  {
+    "id": "envoy",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "fathom-concerns",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "fathom-config",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "fathom-layer-packs",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "fathom-plan-rows",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "flux",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "gatekeeper",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "git-hooks-config",
+    "level": "L1",
+    "grade": "good"
+  },
+  {
+    "id": "github-actions",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "gitlab-ci",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "glsl",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "go-mod",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "go",
+    "level": "L4",
+    "grade": "good"
+  },
+  {
+    "id": "gradle",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "grafana-dashboard",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "graphql",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "haproxy",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "hcl-tools",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "helm",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "hlsl",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "html",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "java",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "javascript",
+    "level": "L4",
+    "grade": "good"
+  },
+  {
+    "id": "jenkinsfile",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "jinja2",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "json-schema",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "jupyter",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "kong",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "kotlin",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "kubernetes",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "kustomize",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "kyverno",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "lua",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "luau",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "makefile",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "markdown",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "matlab",
+    "level": "L1",
+    "grade": "excellent"
+  },
+  {
+    "id": "maven",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "meson",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "msbuild",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "nginx",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "nix",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "objective-c",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "openapi",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "otel-collector",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "package-json",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "perl",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "pgbouncer",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "php",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "powershell",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "prisma",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "prometheus",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "protobuf",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "proxysql",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "pulumi-yaml",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "python-packaging",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "python",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "r",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "react",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "rego",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "ruby",
+    "level": "L3",
+    "grade": "good"
+  },
+  {
+    "id": "rust",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "scala",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "scss",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "serverless",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "simulink",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "solidity",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "sql",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "svelte",
+    "level": "none"
+  },
+  {
+    "id": "swift",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "tailwind",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "taskfile",
+    "level": "L2",
+    "grade": "excellent"
+  },
+  {
+    "id": "tcl",
+    "level": "none"
+  },
+  {
+    "id": "terraform",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "terragrunt",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "thrift",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "tiltfile",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "timoni",
+    "level": "L2",
+    "grade": "good"
+  },
+  {
+    "id": "traefik",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "typescript",
+    "level": "L4",
+    "grade": "excellent"
+  },
+  {
+    "id": "vcpkg",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "vhdl",
+    "level": "L1",
+    "grade": "excellent"
+  },
+  {
+    "id": "vimscript",
+    "level": "L1",
+    "grade": "excellent"
+  },
+  {
+    "id": "vue",
+    "level": "L3",
+    "grade": "excellent"
+  },
+  {
+    "id": "wgsl",
+    "level": "L2",
+    "grade": "good"
+  }
+]
