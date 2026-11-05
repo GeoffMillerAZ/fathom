@@ -177,12 +177,13 @@ func runNoDialChild(t *testing.T, mode string, extra ...string) (out string, dir
 	}
 	cmd := exec.Command(exe, "-test.run=^TestNoDialHelper$", "-test.v")
 	cmd.Dir = dirs["cwd"]
-	cmd.Env = append([]string{
-		"PATH=" + os.Getenv("PATH"),
-		"HOME=" + dirs["home"], "TMPDIR=" + dirs["tmp"], "XDG_CACHE_HOME=" + dirs["xdg"],
-		"GOCACHE=" + dirs["xdg"], "GOTMPDIR=" + dirs["tmp"],
-		noDialModeEnv + "=" + mode, "LANG_NODIAL_CACHE=" + dirs["cache"],
-	}, extra...)
+	// The parent's environment first, then the overrides: the last value of a
+	// name wins, so HOME, TMPDIR and the cache variables point into scratch.
+	cmd.Env = append(append(os.Environ(),
+		"HOME="+dirs["home"], "TMPDIR="+dirs["tmp"], "XDG_CACHE_HOME="+dirs["xdg"],
+		"GOCACHE="+dirs["xdg"], "GOTMPDIR="+dirs["tmp"],
+		noDialModeEnv+"="+mode, "LANG_NODIAL_CACHE="+dirs["cache"],
+	), extra...)
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("child (%s): %v\n%s", mode, err, b)
