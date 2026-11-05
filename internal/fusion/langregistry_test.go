@@ -44,9 +44,9 @@ func TestLanguageRegistryParity(t *testing.T) {
 	sort.Strings(missingExtractor)
 
 	if len(missingLang) > 0 {
-		t.Errorf("extractor(s) registered in fusion.New with no language classification in connector.extClassMap: %v", missingLang)
+		t.Errorf("extractor(s) registered by langroute.NewRouter with no language classification in langclass/classmap.go (extClassMap): %v", missingLang)
 	}
 	if len(missingExtractor) > 0 {
-		t.Errorf("connector classifies extension(s) with no matching extractor registered in fusion.New: %v", missingExtractor)
+		t.Errorf("connector classifies extension(s) with no matching extractor registered by langroute.NewRouter: %v", missingExtractor)
 	}
 }

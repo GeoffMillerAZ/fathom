@@ -35,8 +35,8 @@ Put shared types in `internal/core` and extend them additively.
 - **Extractor**: a new language or tool format is a dialect directory, not Go —
   follow the worker recipe (`docs/design/language-breadth.md` §13, ADR-048). Only the
   engines, L3 strategies and native typed passes are Go: a native extractor implements
-  `extractor.Extractor`, registers by extension in `fusion.New()`, adds its ext→kind in
-  `connector`, and is golden-tested.
+  `extractor.Extractor`, registers by extension in `langroute.NewRouter` (`internal/langroute/register.go`),
+  adds its ext→kind in `internal/langclass/classmap.go`, and is golden-tested.
 - **Analyzer**: a pure `internal/analysis/<name>` package over
   `[]core.SymbolNode` / `[]core.Observation`; deterministic; tested.
 - **MCP tool**: `registerTool` in `internal/mcp` with a `group`; extend the
