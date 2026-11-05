@@ -266,6 +266,7 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		res.Incomplete = true
 	}
 	res.fill(ex, r.canonicalKind(ex.PackDialect != ""))
+	res.withhold()
 	if _, isGo := ex.Extractor.(*extractor.GoExtractor); isGo {
 		res.refineGoTypes(f.Src)
 	}
