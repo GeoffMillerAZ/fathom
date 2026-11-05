@@ -2,6 +2,7 @@ package lang_test
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +81,35 @@ func TestNodeReaderFollowsAliasesAndMerges(t *testing.T) {
 			}
 			if !found {
 				t.Fatalf("the container is lost: incomplete=%v notes=%v symbols=%+v", got.Incomplete, got.Notes, got.Symbols)
+			}
+		})
+	}
+}
+
+// A Chart.yaml field the struct reads that holds a mapping is walked by yaml.v3's
+// decode before it fails with a type error: `name:` over 16,000 lines of `z: 1`
+// (112 KB) held 2.2 GB. The values the struct reads cost what the document costs.
+func TestChartFieldHoldingAMappingIsCheapToRefuse(t *testing.T) {
+	r := newReader(t)
+	body := strings.Repeat("  z: 1\n", 16_000)
+	for name, src := range map[string]string{
+		"name":                 "apiVersion: v2\nname:\n" + body + "version: 1.0.0\n",
+		"version":              "apiVersion: v2\nname: x\nversion:\n" + body,
+		"dependency name":      "apiVersion: v2\nname: x\nversion: 1.0.0\ndependencies:\n- name:\n" + strings.ReplaceAll(body, "  z", "    z"),
+		"dependency version":   "apiVersion: v2\nname: x\nversion: 1.0.0\ndependencies:\n- name: d\n  version:\n" + strings.ReplaceAll(body, "  z", "    z"),
+		"dependencies mapping": "apiVersion: v2\nname: x\nversion: 1.0.0\ndependencies:\n" + body,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var before, after runtime.MemStats
+			runtime.ReadMemStats(&before)
+			var got lang.Result
+			within(t, 30*time.Second, name, func() { got = extract(t, r, "chart/Chart.yaml", src) })
+			runtime.ReadMemStats(&after)
+			if mb := (after.TotalAlloc - before.TotalAlloc) >> 20; mb > 200 {
+				t.Errorf("allocated %d MB reading 16,000 lines", mb)
+			}
+			if !got.Incomplete || !hasReason(got.Notes) {
+				t.Errorf("read as complete: incomplete=%v notes=%v", got.Incomplete, got.Notes)
 			}
 		})
 	}

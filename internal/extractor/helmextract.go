@@ -66,14 +66,7 @@ func (h *HelmChartExtractor) ExtractReport(service, relPath string, src []byte) 
 	// yaml.v3's decode is quadratic in a mapping's keys (maxDecodeMapKeys): the
 	// mappings it would decode are the root, each dependency, and every mapping an
 	// alias or a merge brings in, wherever the anchor is written.
-	safe := yamlMapDecodeSafe(root) && yamlAliasesDecodeSafe(root)
-	if _, deps := k8sYEntry(root, "dependencies"); deps != nil {
-		if list := yamlResolve(deps); list != nil {
-			for _, d := range list.Content {
-				safe = safe && yamlMapDecodeSafe(yamlResolve(d))
-			}
-		}
-	}
+	safe := yamlMapDecodeSafe(root) && yamlAliasesDecodeSafe(root) && helmFieldsDecodeSafe(root)
 	err := errYAMLDecodeUnsafe
 	if safe {
 		err = root.Decode(&chart)
@@ -177,6 +170,55 @@ func (h *HelmChartExtractor) ExtractReport(service, relPath string, src []byte) 
 		return nodes[i].Name < nodes[j].Name
 	})
 	return nodes, "", nil
+}
+
+// helmFieldsDecodeSafe reports whether the values the chart struct reads can be
+// decoded in linear time: the decode walks a mapping that sits where a string is
+// expected (a `name:` holding 16,000 lines of `z: 1` held 2.2 GB, and failed with
+// a type error after), so each value it reads is checked as deeply as a document
+// is. A mapping it does not read (annotations, a dependency's other fields) is
+// never decoded and is not checked.
+func helmFieldsDecodeSafe(root *yaml.Node) bool {
+	value := func(m *yaml.Node, key string) bool {
+		_, v := k8sYEntry(m, key)
+		if v == nil {
+			return true
+		}
+		v = yamlResolve(v)
+		return v != nil && yamlDecodeSafe(v)
+	}
+	if !value(root, "name") || !value(root, "version") {
+		return false
+	}
+	_, deps := k8sYEntry(root, "dependencies")
+	if deps == nil {
+		return true
+	}
+	list := yamlResolve(deps)
+	if list == nil {
+		return false
+	}
+	if list.Kind != yaml.SequenceNode {
+		return yamlDecodeSafe(list) // a mapping where the list belongs
+	}
+	for _, d := range list.Content {
+		d = yamlResolve(d)
+		if d == nil || !yamlMapDecodeSafe(d) {
+			return false
+		}
+		if d.Kind != yaml.MappingNode {
+			if !yamlDecodeSafe(d) {
+				return false
+			}
+			continue
+		}
+		for _, f := range []string{"name", "version", "repository"} {
+			if !value(d, f) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // ─── HelmValuesExtractor ─────────────────────────────────────────────────────
