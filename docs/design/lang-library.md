@@ -71,8 +71,15 @@ Rules:
    and a kind with no canonical meaning (`K8sFact`, `TerraformProvider`) is on an explicit list with its reason. A test fails on an
    empty `Canonical` anywhere else.
 2. **`Siblings`** is the optional path list that YAML classification reads. Empty is legal and is disclosed when it changes a verdict.
-3. **Errors, never panics.** `lang.New` returns the error a bad variant gives. `Extract` recovers nothing it can prevent and has a
-   fuzz target.
+3. **Errors, never panics.** `lang.New` returns the error a bad variant gives. `Extract` prevents what it can, and a panic in a
+   built-in extractor that it did not prevent is that file's failure: an Incomplete reading with a one-line note ("the reader
+   failed on this input"), so one file never ends a batch. A stack overflow is fatal and cannot be recovered, so a recursive
+   parser is never handed a file nested past 10,000 levels. The count is the parser's own: the HCL and CUE guards read the tokens
+   of the lexer the parser reads (brackets, prefix operators, conditionals, splats, field labels, and the chain of selectors,
+   calls and indexes applied to a bracket), the proto guard reads the tokens of its scanner, and nginx and Caddyfile refuse in
+   the parser, which carries the block depth. A second reading of the raw text drifts from the parser, so none is kept for
+   those. A TOML document of more than 40,000 keys is refused too: go-toml's repeat check is quadratic (60,000 keys took 4 s).
+   There is a fuzz target, and a test cuts every dialect fixture at four points and fails on a panic.
 4. **Concurrency.** A `Reader` is safe for concurrent use and deterministic: equal inputs give byte-equal JSON.
 5. **Compilation cache.** The wazero runtime is process-wide, so the on-disk cache is a package function, `lang.EnableCompilationCache(dir)`. It errors on a second directory and refuses a group- or world-writable one, because the cache holds machine code (LB-F26). It is off by default.
 6. **Limits.** The product's limits apply (2 MiB file, 64 MiB module, binary and generated sniffs). `WithLimits` may lower them. No
@@ -107,6 +114,13 @@ Rules:
 11. **Value domains.** `Dialect` is "" only when nothing read the file. The generic JSON and TOML readers have ids
     (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and a level on a read one. A file
     owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
+12. **Withheld values.** A `Result` never carries a credential (ADR-069 decision 2, ADR-065 decision 2). One pass over the finished
+    `Result` drops the userinfo of a URL wherever a string from the file lands (a name, a key, a reference target or its raw
+    spelling, an unresolved target, a fact), keeping an ssh account that has no password, and masks in a `Signature` a string
+    literal bound to a name that says it holds a credential (`password`, `api_key`, `token`, `secret`, `auth`), the value of a
+    credential flag (`--password`, `--token`, `curl -u user:pass`) and an Authorization header. It is a list of patterns, not a
+    proof: a credential in a shape it does not recognise is not withheld, and the pass is tested against the shapes that leaked.
+    Iac resource values are separate and opt in (section 5).
 
 ## 4. The cuts
 

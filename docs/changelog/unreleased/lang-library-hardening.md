@@ -1,0 +1,6 @@
+### Fixed
+
+- The language library no longer ends the caller's process on a file inside the 2 MiB limit. Files nested deep through a shape the first guards did not count (a run of `!` or `-`, a conditional or a splat in HCL, an escaped brace or a quote in nginx and Caddyfile, a dotted key or a four-quote string end in TOML, proto, CUE) read `Incomplete` with the nesting named, the nginx and Caddyfile parsers refuse by their own depth, and an unclosed bracket in a Rego rule head no longer panics. A panic in a built-in extractor is now one file's `Incomplete` reading. A TOML document of more than 40,000 keys, a YAML mapping that repeats a key and a very wide YAML or document-engine mapping no longer cost quadratic time or memory.
+- A Helm template whose if/else branches repeat a key, and a notebook cell the Python reader cannot read within its budget, no longer vanish without a note: the first reads its workload, and both say what they could not read in `Notes`.
+- A `Result` no longer carries a credential: the userinfo of a URL is dropped and a string literal bound to a credential-named parameter, a credential flag and an Authorization header are masked in a `Signature`.
+- `DialectInfo.Engine` names what reads the dialect: CMake and proto read as `native`, not `tags`, and the `Result` documentation no longer calls SQL a line scanner.
