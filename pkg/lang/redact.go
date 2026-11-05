@@ -5,13 +5,16 @@ package lang
 // in a Result, and it fails closed: what it cannot tell apart it withholds.
 //
 //   - Signature, code dialect (kind "language"): every quoted literal of every
-//     quote style reads ***, whatever its name or its place: a literal that
+//     quote style reads ***, whatever its name or its place, in the spelling of
+//     the dialect (literalRules: raw, verbatim and escaped-backtick literals): a literal that
 //     interpolates is one literal with the quotes inside its interpolation, and
 //     percent literals, sigils and heredocs are quote styles. Numbers,
 //     identifiers and unquoted text stay.
 //   - Signature, any other dialect: withheld (empty) unless the symbol's kind is
 //     on structuralKinds, the list of kinds whose Signature is structure and holds
-//     no value. The default is withheld, so a kind nobody listed fails closed.
+//     no value, and what is returned has its quoted literals masked as a code
+//     Signature does (a class header holds calls). The default is withheld, so a
+//     kind nobody listed fails closed.
 //     A kind is selected by its Kind, never by its Canonical.
 //   - Fact values: a value under a key whose last segment looks like a credential
 //     reads ***, and a value bound to a literal by = := or : is masked. Other Fact
@@ -141,29 +144,79 @@ func imageScheme(scheme string) bool {
 	return s == "docker" || s == "oci"
 }
 
-// maskLiterals replaces what is between the delimiters of every literal in a
-// code signature with ***, whatever its quote style:
+// literalRules is how a dialect spells the literals the plain quote rule reads
+// wrong: a literal with no escapes (a C# verbatim string, a C++ or Rust raw
+// string, a Kotlin or Scala triple quote, a Dart `r'...'`, a Go raw string), a
+// backtick that honours a backslash (a JS or TS template, a Ruby command) and a
+// Ruby percent literal with no type letter. The reading of a dialect that names
+// none of them is the plain rule.
+type literalRules struct {
+	skip        func(s string, i int) bool // a single quote that opens no literal
+	verbatim    bool                       // C#: @"..." has no escapes
+	rawTriple   bool                       // C#, Kotlin, Scala: """...""" has no escapes
+	cppRaw      bool                       // C and C++: R"delim(...)delim"
+	rustRaw     bool                       // Rust: r"..." and r#"..."#, with b and c prefixes
+	swiftRaw    bool                       // Swift: #"..."# and #"""..."""#
+	dartRaw     bool                       // Dart: r'...' and r"..."
+	backtickEsc bool                       // JS, TS, Ruby, PHP: a backslash escapes in a backtick literal
+	bareRuby    bool                       // Ruby: %(...), %[...], %{...} and %<...> are %Q literals
+}
+
+// rulesFor is the literal rules of the dialect that read the file, "" and an
+// unknown dialect reading by the plain rule.
+func rulesFor(dialect string) literalRules {
+	switch dialect {
+	case "rust":
+		return literalRules{skip: rustLifetime, rustRaw: true}
+	case "csharp":
+		return literalRules{verbatim: true, rawTriple: true}
+	case "kotlin", "scala":
+		return literalRules{rawTriple: true}
+	case "c", "cpp", "cuda":
+		return literalRules{cppRaw: true}
+	case "swift":
+		return literalRules{swiftRaw: true}
+	case "dart":
+		return literalRules{dartRaw: true}
+	case "javascript", "typescript", "vue", "svelte", "astro", "php":
+		return literalRules{backtickEsc: true}
+	case "ruby":
+		return literalRules{backtickEsc: true, bareRuby: true}
+	}
+	return literalRules{}
+}
+
+// maskLiterals is the plain rule (rulesFor("")) with a skip function.
+func maskLiterals(s string, skip func(s string, i int) bool) string {
+	return literalRules{skip: skip}.mask(s)
+}
+
+// mask replaces what is between the delimiters of every literal in a code
+// signature with ***, whatever its quote style:
 //
 //   - double, single and backtick quotes and the triple quotes of Python, the
 //     one- or two-letter prefix of a literal (b, f, r, rb) staying where it is;
+//   - the literals the dialect reads with no escapes or with its own delimiter
+//     (literalRules): a C# `@"C:\"`, a C++ `R"x(...)x"`, a Rust `r#"..."#`;
 //   - the interpolation of a literal (`${...}` in JS, TS, Kotlin, Scala and Dart,
 //     `#{...}` in Ruby and Elixir, `\(...)` in Swift, `{...}` in a Python f-string
 //     or a C# `$"..."`), which may hold quoted literals of its own: they are part
 //     of the outer literal, and the outer literal ends at its own closing quote;
-//   - a percent literal (Ruby `%w[...]`, `%q(...)`, `%i[...]`), an Elixir sigil
-//     (`~S|...|`, `~w(...)`) and a heredoc (PHP `<<<EOT`, Ruby `<<~EOS`).
+//   - a percent literal (Ruby `%w[...]`, `%q(...)`, `%i[...]`, `%(...)`), an
+//     Elixir sigil (`~S|...|`, `~w(...)`) and a heredoc (PHP `<<<EOT`, Ruby
+//     `<<~EOS`).
 //
-// An escape (a backslash) does not end a literal, and a literal that is never
-// closed is masked to the end of the text, so a missing delimiter withholds more
-// and never less. A single quote that skip says opens no literal (a Rust
-// lifetime, an apostrophe in a sentence) is left as written.
-func maskLiterals(s string, skip func(s string, i int) bool) string {
+// An escape (a backslash) does not end a literal that has escapes, and a literal
+// that is never closed is masked to the end of the text, so a missing delimiter
+// withholds more and never less. A single quote that skip says opens no literal
+// (a Rust lifetime, an apostrophe in a sentence) is left as written.
+func (r literalRules) mask(s string) string {
 	if !strings.ContainsAny(s, "\"'`%~<") {
 		return s
 	}
 	var b strings.Builder
 	for i := 0; i < len(s); {
-		head, bodyEnd, next, ok := literalAt(s, i, skip)
+		head, bodyEnd, next, ok := r.literalAt(s, i)
 		if !ok {
 			b.WriteByte(s[i])
 			i++
@@ -184,22 +237,23 @@ func maskLiterals(s string, skip func(s string, i int) bool) string {
 // opener (the quote, `%w[`, `<<<EOT`), bodyEnd the index where its closer
 // starts (-1 when it is never closed) and next the index after the closer. next
 // is 0 when no literal opens at i.
-func literalAt(s string, i int, skip func(string, int) bool) (head, bodyEnd, next int, ok bool) {
+func (r literalRules) literalAt(s string, i int) (head, bodyEnd, next int, ok bool) {
 	switch c := s[i]; c {
 	case '"', '\'', '`':
-		if c == '\'' && skip != nil && skip(s, i) {
+		if c == '\'' && r.skip != nil && r.skip(s, i) {
 			return 0, 0, 0, false
 		}
-		n := quoteLen(s, i)
-		end := closeLiteral(s, i+n, literalSpec{closer: strings.Repeat(string(c), n), escapes: c != '`', interp: interpAt(s, i)})
-		return n, end, end + n, true
+		head, spec := r.quoteAt(s, i)
+		end := r.closeLiteral(s, i+head, spec)
+		return head, end, end + len(spec.closer), true
 	case '%':
-		if !percentOpens(s, i) {
+		head := r.percentHead(s, i)
+		if head == 0 {
 			return 0, 0, 0, false
 		}
-		open, closer := delimiters(s[i+2])
-		end := closeLiteral(s, i+3, literalSpec{open: open, closer: closer, escapes: true, interp: interpHash})
-		return 3, end, end + len(closer), true
+		open, closer := delimiters(s[i+head-1])
+		end := r.closeLiteral(s, i+head, literalSpec{open: open, closer: closer, escapes: true, interp: interpHash})
+		return head, end, end + len(closer), true
 	case '~':
 		if !sigilOpens(s, i) {
 			return 0, 0, 0, false
@@ -209,7 +263,7 @@ func literalAt(s string, i int, skip func(string, int) bool) (head, bodyEnd, nex
 			j++
 		}
 		open, closer := delimiters(s[j])
-		end := closeLiteral(s, j+1, literalSpec{open: open, closer: closer, escapes: true, interp: interpHash})
+		end := r.closeLiteral(s, j+1, literalSpec{open: open, closer: closer, escapes: true, interp: interpHash})
 		return j + 1 - i, end, end + len(closer), true
 	case '<':
 		id, headLen := heredocAt(s, i)
@@ -237,16 +291,116 @@ type literalSpec struct {
 	interp  int
 }
 
+// quoteAt is the opener length and the body of the literal that the quote at
+// s[i] opens. The characters before the quote have been written already, so the
+// prefix of a raw or verbatim literal (`@`, `R`, `r#`) is not part of head.
+func (r literalRules) quoteAt(s string, i int) (head int, spec literalSpec) {
+	c := s[i]
+	if c == '"' {
+		switch {
+		case r.cppRaw:
+			if delim, ok := cppRawDelim(s, i); ok {
+				return len(delim) + 2, literalSpec{closer: ")" + delim + `"`}
+			}
+		case r.rustRaw:
+			if hashes, ok := rustRawHashes(s, i); ok {
+				return 1, literalSpec{closer: `"` + hashes}
+			}
+		}
+	}
+	n := quoteLen(s, i)
+	spec = literalSpec{closer: strings.Repeat(string(c), n), escapes: c != '`' || r.backtickEsc, interp: interpAt(s, i)}
+	switch {
+	case r.swiftRaw && c == '"':
+		if hashes := hashesBefore(s, i); hashes != "" {
+			spec.closer += hashes
+			spec.escapes, spec.interp = false, interpNone
+		}
+	case r.dartRaw && (c == '"' || c == '\'') && i > 0 && s[i-1] == 'r' && (i == 1 || !identChar(s[i-2])):
+		spec.escapes, spec.interp = false, interpNone
+	case r.verbatim && c == '"' && verbatimPrefix(s, i):
+		spec.escapes = false
+	case r.rawTriple && c == '"' && n == 3:
+		spec.escapes = false
+	}
+	return n, spec
+}
+
+// verbatimPrefix reports a C# `@` in the prefix of the quote at i: `@"`, `$@"`
+// or `@$"`.
+func verbatimPrefix(s string, i int) bool {
+	for j := i - 1; j >= 0 && i-j <= 2 && (s[j] == '@' || s[j] == '$'); j-- {
+		if s[j] == '@' {
+			return true
+		}
+	}
+	return false
+}
+
+// hashesBefore is the run of # right before i.
+func hashesBefore(s string, i int) string {
+	j := i
+	for j > 0 && s[j-1] == '#' {
+		j--
+	}
+	return s[j:i]
+}
+
+// cppRawDelim is the delimiter of the C++ raw string whose opening quote is at
+// s[i]: `R"x(`, with an optional u8, u, U or L before the R. The delimiter is at
+// most 16 characters and holds no space, quote, parenthesis or backslash.
+func cppRawDelim(s string, i int) (string, bool) {
+	j := i - 1
+	if j < 0 || s[j] != 'R' {
+		return "", false
+	}
+	switch {
+	case j >= 2 && s[j-2:j] == "u8":
+		j -= 2
+	case j >= 1 && strings.ContainsRune("uUL", rune(s[j-1])):
+		j--
+	}
+	if j > 0 && identChar(s[j-1]) {
+		return "", false
+	}
+	for k := i + 1; k < len(s) && k <= i+17; k++ {
+		switch s[k] {
+		case '(':
+			return s[i+1 : k], true
+		case ' ', '"', ')', '\\', '\t', '\n', '\r':
+			return "", false
+		}
+	}
+	return "", false
+}
+
+// rustRawHashes is the hashes of the Rust raw string whose opening quote is at
+// s[i]: `r"`, `r#"`, `br#"`, `cr##"`.
+func rustRawHashes(s string, i int) (string, bool) {
+	hashes := hashesBefore(s, i)
+	j := i - len(hashes) - 1
+	if j < 0 || s[j] != 'r' {
+		return "", false
+	}
+	if j > 0 && (s[j-1] == 'b' || s[j-1] == 'c') {
+		j--
+	}
+	if j > 0 && identChar(s[j-1]) {
+		return "", false
+	}
+	return hashes, true
+}
+
 // closeLiteral is the index of the closer of a literal whose body starts at
 // from, -1 for none. A quote inside an interpolation belongs to the literal.
-func closeLiteral(s string, from int, spec literalSpec) int {
+func (r literalRules) closeLiteral(s string, from int, spec literalSpec) int {
 	depth := 0
 	for j := from; j < len(s); j++ {
 		c := s[j]
 		switch {
 		case c == '\\' && spec.escapes:
 			if spec.interp != interpNone && j+1 < len(s) && s[j+1] == '(' {
-				k := skipCode(s, j+2, '(', ')')
+				k := r.skipCode(s, j+2, '(', ')')
 				if k < 0 {
 					return -1
 				}
@@ -254,8 +408,8 @@ func closeLiteral(s string, from int, spec literalSpec) int {
 				continue
 			}
 			j++
-		case (c == '$' || c == '#') && j+1 < len(s) && s[j+1] == '{':
-			k := skipCode(s, j+2, '{', '}')
+		case spec.interp != interpNone && (c == '$' || c == '#') && j+1 < len(s) && s[j+1] == '{':
+			k := r.skipCode(s, j+2, '{', '}')
 			if k < 0 {
 				return -1
 			}
@@ -265,7 +419,7 @@ func closeLiteral(s string, from int, spec literalSpec) int {
 				j++ // an escaped brace
 				continue
 			}
-			k := skipCode(s, j+1, '{', '}')
+			k := r.skipCode(s, j+1, '{', '}')
 			if k < 0 {
 				return -1
 			}
@@ -285,7 +439,7 @@ func closeLiteral(s string, from int, spec literalSpec) int {
 // skipCode is the index of the bracket that closes code whose opener was just
 // before from, -1 when it is never closed. A quote in the code opens a literal
 // that is read whole.
-func skipCode(s string, from int, open, closeCh byte) int {
+func (r literalRules) skipCode(s string, from int, open, closeCh byte) int {
 	depth := 0
 	for j := from; j < len(s); j++ {
 		switch c := s[j]; c {
@@ -297,12 +451,12 @@ func skipCode(s string, from int, open, closeCh byte) int {
 			}
 			depth--
 		case '"', '\'', '`':
-			n := quoteLen(s, j)
-			end := closeLiteral(s, j+n, literalSpec{closer: strings.Repeat(string(c), n), escapes: c != '`', interp: interpAt(s, j)})
+			head, spec := r.quoteAt(s, j)
+			end := r.closeLiteral(s, j+head, spec)
 			if end < 0 {
 				return -1
 			}
-			j = end + n - 1
+			j = end + len(spec.closer) - 1
 		}
 	}
 	return -1
@@ -340,14 +494,21 @@ func isLetter(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 // identChar reports a byte an identifier holds.
 func identChar(c byte) bool { return isLetter(c) || c == '_' || c >= '0' && c <= '9' }
 
-// percentOpens reports a Ruby percent literal at i: `%` then one of q Q w W i I
-// r s x, then a delimiter, where the `%` is no modulo (it follows no identifier,
-// number or closing bracket).
-func percentOpens(s string, i int) bool {
-	if i+2 >= len(s) || !strings.ContainsRune("qQwWiIrsx", rune(s[i+1])) || !strings.ContainsRune("([{<|!/^~", rune(s[i+2])) {
-		return false
+// percentHead is the length of the opener of the Ruby percent literal at i: `%`
+// then one of q Q w W i I r s x, then a delimiter (3), or, in Ruby, `%` and a
+// bracket (2). The `%` is no modulo: it follows no identifier, number or closing
+// bracket. 0 for none.
+func (r literalRules) percentHead(s string, i int) int {
+	if i > 0 && (identChar(s[i-1]) || s[i-1] == ')' || s[i-1] == ']') {
+		return 0
 	}
-	return i == 0 || !(identChar(s[i-1]) || s[i-1] == ')' || s[i-1] == ']')
+	switch {
+	case i+2 < len(s) && strings.ContainsRune("qQwWiIrsx", rune(s[i+1])) && strings.ContainsRune("([{<|!/^~", rune(s[i+2])):
+		return 3
+	case r.bareRuby && i+1 < len(s) && strings.ContainsRune("([{<", rune(s[i+1])):
+		return 2
+	}
+	return 0
 }
 
 // sigilOpens reports an Elixir sigil at i: `~`, one letter or a run of capitals,
@@ -513,6 +674,15 @@ func scrubNote(s string) string {
 	// A parser that found a literal token names its class and then the literal
 	// itself, unquoted (CUE: `found 'IDENT' S`): the class stays, the text goes.
 	s = literalTokenRe.ReplaceAllString(s, "${1}${2}")
+	// go/parser names an identifier or a number it stopped at bare, after a comma
+	// (`expected ';', found S`), where a keyword or an operator is quoted and a
+	// string is quoted by its own quotes: the bare word is the file's text.
+	s = foundBareRe.ReplaceAllStringFunc(s, func(m string) string {
+		if word := m[len(", found "):]; word == "newline" || word == "EOF" {
+			return m
+		}
+		return ", found " + redacted
+	})
 	// A quoted punctuation mark is the grammar the parser expected (`expected ',' or
 	// ']'`), never a word of the file, and stays.
 	s = punctuationQuoteRe.ReplaceAllStringFunc(s, func(m string) string {
@@ -536,6 +706,10 @@ func scrubNote(s string) string {
 // ATTRIBUTE) after `found`, with the text of the file that follows it to the end
 // of the message or to a trailing `(and N more errors)`.
 var literalTokenRe = regexp.MustCompile(`(\bfound '[A-Z_]{3,}')[^\n]*?( \(and \d+ more errors?\))?$`)
+
+// foundBareRe is the unquoted word after `, found `: go/parser's identifier or
+// number (`expected ';', found S`).
+var foundBareRe = regexp.MustCompile(`, found [^\s'"]+`)
 
 // punctuationQuoteRe is a quote around one character that is no letter, digit or
 // space.
@@ -660,10 +834,7 @@ func credentialKey(key string) bool {
 // file, and "" when it is not known, which reads as a dialect that is no code.
 func (res *Result) withhold(dialectKind string) {
 	code := dialectKind == "language"
-	var skip func(string, int) bool
-	if res.Dialect == "rust" {
-		skip = rustLifetime
-	}
+	rules := rulesFor(res.Dialect)
 	// A Key is Package.Name (design rule 9), so it is rebuilt from the scrubbed
 	// parts: scrubbing the joined text separately can eat the package prefix
 	// (`pod.u:S@reg/i` reads as the user `pod.u`) or keep a userinfo the Name lost.
@@ -678,9 +849,9 @@ func (res *Result) withhold(dialectKind string) {
 		}
 		switch {
 		case code:
-			s.Signature = withholdURLUserinfo(maskLiterals(s.Signature, skip))
+			s.Signature = withholdURLUserinfo(rules.mask(s.Signature))
 		case structuralKind(s.Kind):
-			s.Signature = withholdURLUserinfo(structuralSignature(s.Kind, s.Signature))
+			s.Signature = withholdURLUserinfo(rules.mask(structuralSignature(s.Kind, s.Signature)))
 		default:
 			s.Signature = ""
 		}

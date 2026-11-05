@@ -342,6 +342,85 @@ func TestSignatureWithholdsNestedAndNonQuoteLiterals(t *testing.T) {
 	}
 }
 
+// A literal that has no escapes (a C# verbatim string, a C++ raw string, a Rust
+// raw string), a backtick that honours a backslash (a JS or TS template) and a
+// Ruby percent literal with no type letter end where the language says, so the
+// literal after them is masked and not returned (MF9). Each source is valid for
+// its tool.
+func TestSignatureWithholdsRawVerbatimAndEscapedBacktickLiterals(t *testing.T) {
+	r := newReader(t)
+	const s = sentinel
+	for _, tc := range []struct{ path, src string }{
+		{"a.cs", "class C {\n  void F(string p = @\"C:\\temp\\\", string q = \"" + s + "\") {}\n}\n"},
+		{"b.cs", "class C {\n  [Obsolete(@\"C:\\\")] [Description(\"" + s + "\")]\n  void G() {}\n}\n"},
+		{"a.cpp", "void f(const char* p = R\"(a\"" + s + ")\") {}\n"},
+		{"b.cpp", "void f(const char* p = u8R\"x(a)\"" + s + ")x\") {}\n"},
+		{"a.js", "function f(x = `a\\`" + s + "`, y = `" + s + "`) {}\n"},
+		{"a.ts", "function f(x: string = `a\\`" + s + "`, y: string = `" + s + "`): void {}\n"},
+		{"a.rb", "def f(x = %(" + s + "))\nend\n"},
+		{"b.rb", "def f(x = %[" + s + "])\nend\n"},
+		{"c.rb", "def f(x = %{" + s + "})\nend\n"},
+		{"a.rs", "#[doc = r\"C:\\\"]\n#[cfg(feature = \"" + s + "\")]\nfn f() {}\n"},
+		{"b.rs", "#[doc = r#\"a\"" + s + "\"#]\nfn f() {}\n"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			res := extract(t, r, tc.path, tc.src)
+			if res.Skipped != "" || len(res.Symbols) == 0 {
+				t.Fatalf("the source is not read: %+v", res)
+			}
+			for _, sym := range res.Symbols {
+				if strings.Contains(sym.Signature, s) {
+					t.Errorf("%s returns the literal: %q", sym.Name, sym.Signature)
+				}
+			}
+		})
+	}
+}
+
+// A structural kind's Signature is masked as a code Signature is: a class header
+// holds calls with literals in them (MF10). Checked through the dialect Python
+// reads the header with; TestStructuralSignaturesMaskTheirLiterals holds every
+// kind on the list.
+func TestConanRecipeHeaderMasksItsLiterals(t *testing.T) {
+	res := extract(t, newReader(t), "conanfile.py", "from conan import ConanFile\n\nclass Recipe(ConanFile, mixin(\""+sentinel+"\")):\n    name = \"x\"\n")
+	found := false
+	for _, sym := range res.Symbols {
+		if sym.Kind == "ConanRecipe" {
+			found = true
+			if strings.Contains(sym.Signature, sentinel) {
+				t.Errorf("the recipe header returns the literal: %q", sym.Signature)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no ConanRecipe symbol: %+v", res.Symbols)
+	}
+}
+
+// A parse Note names the reason and the line, never a word of the file: go/parser
+// prints the identifier or number it stopped at bare (MF11).
+func TestGoParseNotesCarryNoIdentifiers(t *testing.T) {
+	r := newReader(t)
+	for _, tc := range []struct{ name, src string }{
+		{"identifier after a var", "package p\n\nvar x = 1 " + sentinel + "\n"},
+		{"identifier after a call", "package p\n\nfunc f() {\n\tg(1) " + sentinel + "\n}\n"},
+		{"identifier among more errors", "package p\n\nvar x = 1 " + sentinel + "\nvar y = 2 " + sentinel + "a\nvar z = 3 " + sentinel + "b\n"},
+		{"number", "package p\n\nvar x = 1 99999\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := extract(t, r, "a.go", tc.src)
+			if len(got.Notes) == 0 {
+				t.Fatalf("the source reads without a note: %+v", got)
+			}
+			for _, n := range got.Notes {
+				if strings.Contains(n, sentinel) || strings.Contains(n, "99999") {
+					t.Errorf("a note echoes the file: %q", n)
+				}
+			}
+		})
+	}
+}
+
 // userinfoNameExtractor names symbols by an image reference with a userinfo, in
 // a package, and references each from its Key.
 type userinfoNameExtractor struct{}

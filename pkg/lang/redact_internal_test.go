@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -154,6 +155,9 @@ func TestScrubNote(t *testing.T) {
 		{"cue literal token", "cue parse: expected label or ':', found 'IDENT' " + s, "cue parse: expected label or ':', found '***'"},
 		{"cue literal token with a string", `cue parse: expected operand, found 'STRING' "` + s + ` x"`, "cue parse: expected operand, found '***'"},
 		{"cue literal token keeps the error count", "cue parse: expected label or ':', found 'ATTRIBUTE' @a(" + s + ") (and 5 more errors)", "cue parse: expected label or ':', found '***' (and 5 more errors)"},
+		{"go parser identifier", "extractor error: a.go:3:11: expected ';', found " + s, "extractor error: a.go:3:11: expected ';', found ***"},
+		{"go parser identifier among more errors", "extractor error: a.go:3:11: expected ';', found " + s + " (and 2 more errors)", "extractor error: a.go:3:11: expected ';', found *** (and 2 more errors)"},
+		{"go parser newline stays", "extractor error: a.go:3:11: expected ';', found newline", "extractor error: a.go:3:11: expected ';', found newline"},
 		{"cue punctuation token stays", "cue parse: unexpected ']' (and 5 more errors)", "cue parse: unexpected ']' (and 5 more errors)"},
 		{"a line number stays", "xml decode: XML syntax error on line 7: unexpected EOF", "xml decode: XML syntax error on line 7: unexpected EOF"},
 	} {
@@ -211,5 +215,71 @@ func TestMaskLiteralsNestedAndNonQuoteStyles(t *testing.T) {
 				t.Errorf("maskLiterals(%q)\n got %q\nwant %q", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+// The literal rules of each dialect: a literal with no escapes, a backtick that
+// honours one and a Ruby percent literal with no type letter end where the
+// language says, and the same text under another dialect's rules is read by the
+// plain rule (MF9).
+func TestMaskLiteralsByDialect(t *testing.T) {
+	const s = "SENTINEL9f3a"
+	for _, tc := range []struct {
+		name, dialect, in, want string
+	}{
+		{"csharp verbatim", "csharp", `string p = @"C:\temp\", string q = "` + s + `"`, `string p = @"***", string q = "***"`},
+		{"csharp interpolated verbatim", "csharp", `string p = $@"C:\{x}\", string q = "` + s + `"`, `string p = $@"***", string q = "***"`},
+		{"csharp verbatim in an attribute", "csharp", `[Obsolete(@"C:\")] [Description("` + s + `")]`, `[Obsolete(@"***")] [Description("***")]`},
+		{"csharp regular string keeps its escapes", "csharp", `string p = "a\"` + s + `"`, `string p = "***"`},
+		{"csharp raw string", "csharp", `string p = """C:\""" + "` + s + `"`, `string p = """***""" + "***"`},
+		{"kotlin raw string", "kotlin", `val p = """C:\""" + "` + s + `"`, `val p = """***""" + "***"`},
+		{"python triple quote keeps its escapes", "python", `x = """a\"""` + s + `"""`, `x = """***"""`},
+		{"cpp raw", "cpp", `const char* p = R"(a"` + s + `)"`, `const char* p = R"(***)"`},
+		{"cpp raw with a delimiter", "cpp", `auto p = u8R"x(a)"` + s + `)x", q = "` + s + `"`, `auto p = u8R"x(***)x", q = "***"`},
+		{"cpp name ending in R is no raw string", "cpp", `f(BAR"` + s + `")`, `f(BAR"***")`},
+		{"rust raw", "rust", `#[doc = r"C:\"] #[cfg(feature = "` + s + `")]`, `#[doc = r"***"] #[cfg(feature = "***")]`},
+		{"rust raw with hashes", "rust", `r#"a"` + s + `"#, "` + s + `"`, `r#"***"#, "***"`},
+		{"rust byte raw", "rust", `br##"a"#` + s + `"##`, `br##"***"##`},
+		{"rust lifetime stays", "rust", `fn f<'a>(x: &'a str, r: &str = "` + s + `")`, `fn f<'a>(x: &'a str, r: &str = "***")`},
+		{"python raw prefix keeps its escapes", "python", `x = r"a\"` + s + `"`, `x = r"***"`},
+		{"swift raw", "swift", `let p = #"C:\"#, q = "` + s + `"`, `let p = #"***"#, q = "***"`},
+		{"swift raw with a quote", "swift", `let p = ##"a"#` + s + `"##`, `let p = ##"***"##`},
+		{"dart raw", "dart", `var p = r'C:\', q = '` + s + `'`, `var p = r'***', q = '***'`},
+		{"js template escaped backtick", "javascript", "f(x = `a\\`" + s + "`, y = `" + s + "`)", "f(x = `***`, y = `***`)"},
+		{"ts template escaped backtick", "typescript", "f(x = `a\\`" + s + "`)", "f(x = `***`)"},
+		{"go raw string keeps no escapes", "go", "f(`C:\\`, \"" + s + "\")", "f(`***`, \"***\")"},
+		{"ruby bare percent paren", "ruby", `def f(x = %(` + s + `))`, `def f(x = %(***))`},
+		{"ruby bare percent bracket", "ruby", `def f(x = %[` + s + `])`, `def f(x = %[***])`},
+		{"ruby bare percent brace", "ruby", `def f(x = %{` + s + `})`, `def f(x = %{***})`},
+		{"ruby modulo stays", "ruby", `a % (b)`, `a % (b)`},
+		{"ruby modulo of a name stays", "ruby", `n%(b)`, `n%(b)`},
+		{"elixir map stays", "elixir", `def f(%{a: 1})`, `def f(%{a: 1})`},
+		{"unknown dialect reads by the plain rule", "", `f("a\"` + s + `")`, `f("***")`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := rulesFor(tc.dialect).mask(tc.in); got != tc.want {
+				t.Errorf("rulesFor(%q).mask(%q)\n got %q\nwant %q", tc.dialect, tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+// Every kind on structuralKinds has its Signature masked as a code Signature is,
+// whatever the kind: a class header holds calls with literals, a keyword
+// argument and a template (MF10). The cut kinds are cut before the mask.
+func TestStructuralSignaturesMaskTheirLiterals(t *testing.T) {
+	const s = "SENTINEL9f3a"
+	var res Result
+	for kind := range structuralKinds {
+		res.Symbols = append(res.Symbols, Symbol{Name: "N" + kind, Package: "p", Kind: kind, Signature: "header(base, mixin(\"" + s + "\"), tok='" + s + "', t=`" + s + "`)"})
+	}
+	res.withhold("tooling")
+	if len(res.Symbols) != len(structuralKinds) {
+		t.Fatalf("%d symbols, want %d", len(res.Symbols), len(structuralKinds))
+	}
+	for _, sym := range res.Symbols {
+		if strings.Contains(sym.Signature, s) {
+			t.Errorf("%s returns a literal: %q", sym.Kind, sym.Signature)
+		}
 	}
 }
