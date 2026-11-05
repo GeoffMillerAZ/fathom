@@ -34,8 +34,8 @@ func (t *TOMLExtractor) ExtractReport(service, relPath string, src []byte) ([]co
 	var m map[string]any
 	// Best effort: a partial decode is kept, and the failure is the reason.
 	reason := ""
-	if textTooDeep(src, "[{", "]}", false) {
-		return nil, errTooDeep("toml decode"), nil
+	if why := tomlRefusal(src); why != "" {
+		return nil, why, nil
 	}
 	if err := toml.Unmarshal(src, &m); err != nil {
 		reason = incompleteReason("toml decode", err)

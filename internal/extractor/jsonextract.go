@@ -39,7 +39,7 @@ func (j *JSONExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 func (j *JSONExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
 
-	if textTooDeep(src, "[{", "]}", false) {
+	if jsonTooDeep(src) {
 		return nil, errTooDeep("json decode"), nil
 	}
 	var root map[string]json.RawMessage

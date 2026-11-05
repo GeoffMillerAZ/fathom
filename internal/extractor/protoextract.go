@@ -35,6 +35,9 @@ func (p *ProtoExtractor) ExtractReport(service, relPath string, src []byte) ([]c
 	pkg := pkgFromPath(relPath)
 	var nodes []core.SymbolNode
 
+	if protoTooDeep(src) {
+		return nil, errTooDeep("proto parse"), nil
+	}
 	def, perr := proto.NewParser(bytes.NewReader(src)).Parse()
 	reason := ""
 	if perr != nil {

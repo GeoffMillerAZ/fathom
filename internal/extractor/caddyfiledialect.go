@@ -79,10 +79,10 @@ type caddyWalk struct {
 
 // ExtractDoc implements DocResulter.
 func (x *CaddyfileExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	if textTooDeep(src, "{", "}", true) {
+	tree, fixes, deep := parseCaddyTree(src)
+	if deep {
 		return DocResult{Incomplete: errTooDeep("caddyfile parse")}, nil
 	}
-	tree, fixes := parseCaddyTree(src)
 	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath), repairs: fixes, what: "caddyfile parse"}
 	root := path.Base(relPath)
 	eof := confLastLine(src)

@@ -52,7 +52,7 @@ func decodeDocReport(format string, src []byte, multi bool, yamlTags string) (ou
 		}
 		docs, partial, err = decodeYAMLDocReport(src, multi, yamlTags)
 	case "json":
-		if textTooDeep(src, "[{", "]}", false) {
+		if jsonTooDeep(src) {
 			return nil, "", tooDeepErr()
 		}
 		var n *docNode
@@ -60,7 +60,7 @@ func decodeDocReport(format string, src []byte, multi bool, yamlTags string) (ou
 		docs = []*docNode{n}
 	case "jsonc":
 		stripped := stripJSONC(src)
-		if textTooDeep(stripped, "[{", "]}", false) {
+		if jsonTooDeep(stripped) {
 			return nil, "", tooDeepErr()
 		}
 		var n *docNode
@@ -499,8 +499,8 @@ func skipJSONCSpace(b []byte, j int) int {
 // `[[a.b]]` for an array-of-tables item) or a key's assignment line within
 // its table. Keys keep source order where a line is known.
 func decodeTOMLDoc(src []byte) (*docNode, error) {
-	if textTooDeep(src, "[{", "]}", false) {
-		return nil, fmt.Errorf("nesting deeper than %d is not read", maxNesting)
+	if why := tomlRefusal(src); why != "" {
+		return nil, errors.New(why)
 	}
 	var v map[string]any
 	if err := toml.Unmarshal(src, &v); err != nil {

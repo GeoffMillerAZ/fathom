@@ -6,7 +6,6 @@ import (
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/literal"
-	"cuelang.org/go/cue/parser"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -150,8 +149,7 @@ func (c *CUEExtractor) ExtractDoc(service, relPath string, src []byte) (extracto
 // its own so a test can call it directly: Extract and ExtractDoc are method
 // names every extractor shares).
 func extractCUE(service, relPath string, src []byte) extractor.DocResult {
-	f, perr := parser.ParseFile(relPath, src)
-	reason := ""
+	f, reason, perr := parseCUE(relPath, src)
 	if perr != nil {
 		reason = cueIncomplete(perr)
 	}

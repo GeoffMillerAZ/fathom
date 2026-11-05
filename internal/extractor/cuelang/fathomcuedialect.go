@@ -37,7 +37,6 @@ import (
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/literal"
-	"cuelang.org/go/cue/parser"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -96,7 +95,7 @@ func (x *FathomCUEExtractor) ExtractDoc(service, relPath string, src []byte) (ex
 	} else {
 		res.Nodes, baseErr = x.base.Extract(service, relPath, src)
 	}
-	f, _ := parser.ParseFile(relPath, src)
+	f, _, _ := parseCUE(relPath, src)
 	if f == nil {
 		return res, baseErr
 	}

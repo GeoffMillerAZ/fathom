@@ -2,87 +2,316 @@ package extractor
 
 // nesting.go -- the recursion guard for the parsers that recurse on nesting.
 // Go reports a stack overflow as a fatal error that recover cannot catch, so
-// a file nested deep enough inside the size limit ends the caller's process:
-// hclsyntax (a Terraform, Packer, Nomad or Terragrunt file), go-toml (Cargo.toml),
-// the nginx walk and the Caddyfile parser died between 150 KB and 1.8 MB of
-// nesting. A file nested past maxNesting is refused as incomplete before it
-// reaches the parser. The guard covers JSON, JSONC, XML and libconfig too,
-// though the pinned toolchain's encoding/json refuses past its own limit and
-// the XML and libconfig decoders survived the deepest 2 MiB shape when
-// measured: the depth is a stated guarantee, so it does not rest on a runtime
-// limit that another toolchain may not have.
+// a file nested deep enough inside the size limit ends the caller's process.
+// A file nested past maxNesting is refused as incomplete before it reaches
+// the parser. What is counted is what the parser recurses on, read from the
+// parser's own lexer or from the parser itself, never from a second scan of
+// the raw text that can lose sync with it (a quote, an escaped brace, a four-
+// quote string end each did):
+//
+//   - hclsyntax (Terraform, Packer, Nomad, Terragrunt, docker-bake): the lexer's
+//     tokens, with a run of prefix operators, conditionals, splats and postfix
+//     brackets counted as levels (NestMeter); also the cue parser, in package
+//     cuelang, with the scanner driven as the parser drives it.
+//   - nginx and Caddyfile: the parsers carry the block depth and refuse by it.
+//   - proto: text/scanner in the parser's own mode.
+//   - TOML (go-toml): a scan by TOML's rules that counts brackets and the dots
+//     of a key, and bounds the key count (tomlRefusal).
+//   - JSON, JSONC, XML and libconfig: bracket scans. encoding/json refuses past
+//     its own limit and the XML and libconfig decoders survived the deepest
+//     2 MiB shape when measured; the depth is a stated guarantee, so it does
+//     not rest on a runtime limit that another toolchain may not have.
 
 import (
 	"bytes"
 	"fmt"
+	"text/scanner"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
-// maxNesting is the deepest bracket nesting a recursive parser is handed.
-const maxNesting = 10_000
+// MaxNesting is the deepest nesting a recursive parser is handed.
+const MaxNesting = 10_000
+
+const maxNesting = MaxNesting
 
 // errTooDeep is the one-line reason for a file refused for its nesting.
-func errTooDeep(what string) string {
-	return fmt.Sprintf("%s: nesting deeper than %d is not read", what, maxNesting)
+func errTooDeep(what string) string { return TooDeepReason(what) }
+
+// TooDeepReason is the one-line reason for a file refused for its nesting, for
+// the extractors outside this package that guard a parser of their own.
+func TooDeepReason(what string) string {
+	return fmt.Sprintf("%s: nesting deeper than %d is not read", what, MaxNesting)
 }
 
-// hclTooDeep reports whether src, as HCL, nests brackets, quotes, heredocs or
-// template sequences deeper than maxNesting. It counts the lexer's tokens, which
-// are iterative and know a string from code, so a bracket in a comment or a
-// string is not counted and one in an interpolation is.
+// NestMeter measures how deep a recursive-descent parser recurses on a token
+// stream, so a guard can refuse a file before the parser overflows the stack
+// (a fatal error recover cannot catch). The depth is the open brackets plus
+// the operators of the expressions they sit in: an operator whose operand is
+// parsed by calling the parser again (a prefix operator, a conditional, a field
+// label's colon, a postfix applied to a bracketed operand) is a level exactly
+// as a bracket is. A caller feeds it the tokens of the parser's own lexer, so a
+// bracket in a comment or a string is never counted and the guard cannot lose
+// sync with the parser the way a second reading of the raw text does.
+type NestMeter struct {
+	levels []nestLevel
+	outer  int // operators pending in the expressions the open brackets interrupt
+	run    int // operators pending in the expression being read
+}
+
+type nestLevel struct {
+	run  int  // the interrupted expression's pending operators
+	kind byte // the bracket that opened the level
+}
+
+func (m *NestMeter) deep() bool { return len(m.levels)+m.outer+m.run > MaxNesting }
+
+// Open enters a bracket of the given kind and reports whether the nesting is
+// now past MaxNesting.
+func (m *NestMeter) Open(kind byte) bool {
+	m.levels = append(m.levels, nestLevel{m.run, kind})
+	m.outer += m.run
+	m.run = 0
+	return m.deep()
+}
+
+// Close leaves the innermost bracket and resumes the expression it interrupted,
+// when that bracket is of the given kind. A closer that does not match the
+// innermost bracket leaves the nesting as it was: a parser never nests less than
+// the brackets nothing has matched, so a stray closer cannot hide a level.
+func (m *NestMeter) Close(kind byte) {
+	if n := len(m.levels); n > 0 && m.levels[n-1].kind == kind {
+		m.run = m.levels[n-1].run
+		m.outer -= m.run
+		m.levels = m.levels[:n-1]
+	}
+}
+
+// CloseOperand is Close for a bracket pair that is itself an operand of what
+// follows it (an index, a call's result, a splat): the pair counts as one
+// operator of the expression around it, since what is applied to it nests the
+// tree one deeper. It reports whether the nesting is now past MaxNesting.
+func (m *NestMeter) CloseOperand(kind byte) bool {
+	if m.Innermost() != kind {
+		return false
+	}
+	m.Close(kind)
+	return m.Op()
+}
+
+// Innermost is the kind of the bracket open now, or 0 at the top level.
+func (m *NestMeter) Innermost() byte {
+	if n := len(m.levels); n > 0 {
+		return m.levels[n-1].kind
+	}
+	return 0
+}
+
+// Op counts one operator in the expression being read and reports whether the
+// nesting is now past MaxNesting.
+func (m *NestMeter) Op() bool {
+	m.run++
+	return m.deep()
+}
+
+// EndExpr ends the expression being read (a comma, or a newline that separates
+// statements): its operators no longer nest the next one.
+func (m *NestMeter) EndExpr() { m.run = 0 }
+
+// hclTooDeep reports whether src, as HCL, nests deeper than maxNesting. It
+// counts the lexer's tokens, which are iterative and know a string from code,
+// so a bracket in a comment or a string is not counted and one in an
+// interpolation is. Three things recurse besides brackets: a unary operator
+// (`!` or `-`) parses its operand by calling itself, so does each `?` of a
+// conditional, and so does each `*` of a splat (`a[*].b[*].c`, whose rest nests
+// inside it), so a run of any of them is as deep as the same run of brackets.
+// A run is the operators of one expression: it ends at a comma, at a newline in
+// a block or at the top level, and when its bracket closes.
 func hclTooDeep(src []byte) bool {
 	toks, _ := hclsyntax.LexConfig(src, "nesting", hcl.Pos{Line: 1, Column: 1})
-	depth := 0
+	var m NestMeter
 	for _, t := range toks {
 		switch t.Type {
-		case hclsyntax.TokenOBrace, hclsyntax.TokenOBrack, hclsyntax.TokenOParen,
-			hclsyntax.TokenTemplateInterp, hclsyntax.TokenTemplateControl,
-			hclsyntax.TokenOQuote, hclsyntax.TokenOHeredoc:
-			if depth++; depth > maxNesting {
+		case hclsyntax.TokenOBrace:
+			if m.Open('{') {
 				return true
 			}
-		case hclsyntax.TokenCBrace, hclsyntax.TokenCBrack, hclsyntax.TokenCParen,
-			hclsyntax.TokenTemplateSeqEnd, hclsyntax.TokenCQuote, hclsyntax.TokenCHeredoc:
-			if depth > 0 {
-				depth--
+		case hclsyntax.TokenOBrack:
+			if m.Open('[') {
+				return true
+			}
+		case hclsyntax.TokenOParen:
+			if m.Open('(') {
+				return true
+			}
+		case hclsyntax.TokenTemplateInterp, hclsyntax.TokenTemplateControl:
+			if m.Open('%') {
+				return true
+			}
+		case hclsyntax.TokenOQuote:
+			if m.Open('"') {
+				return true
+			}
+		case hclsyntax.TokenOHeredoc:
+			if m.Open('<') {
+				return true
+			}
+		case hclsyntax.TokenCBrace:
+			if m.CloseOperand('{') {
+				return true
+			}
+		case hclsyntax.TokenCBrack:
+			if m.CloseOperand('[') {
+				return true
+			}
+		case hclsyntax.TokenCParen:
+			if m.CloseOperand('(') {
+				return true
+			}
+		case hclsyntax.TokenTemplateSeqEnd:
+			m.Close('%')
+		case hclsyntax.TokenCQuote:
+			m.Close('"')
+		case hclsyntax.TokenCHeredoc:
+			m.Close('<')
+		case hclsyntax.TokenBang, hclsyntax.TokenMinus, hclsyntax.TokenQuestion, hclsyntax.TokenStar:
+			if m.Op() {
+				return true
+			}
+		case hclsyntax.TokenComma:
+			m.EndExpr()
+		case hclsyntax.TokenNewline:
+			if k := m.Innermost(); k == 0 || k == '{' {
+				m.EndExpr()
 			}
 		}
 	}
 	return false
 }
 
-// textTooDeep reports whether src nests the bracket pairs in opens/closes
-// (parallel strings) deeper than maxNesting. A comment to the end of the line
-// and a quoted string are skipped, so a bracket in either is not counted. The
-// two syntaxes it serves differ: TOML (nginx false) has `#` comments anywhere,
-// single-line strings and triple-quoted multi-line ones; nginx has them only at
-// the start of a word, its strings run across lines, and a quote or `#` inside
-// a word is part of the word.
-func textTooDeep(src []byte, opens, closes string, nginx bool) bool {
+// protoTooDeep reports whether src nests { [ ( < deeper than maxNesting. It
+// counts the tokens of the scanner the proto parser reads through (the same
+// text/scanner mode, and the single-quoted string the parser re-reads with
+// comments off), so a bracket in a comment or a string is not counted and the
+// guard cannot lose sync with the parser.
+func protoTooDeep(src []byte) bool {
+	const base = scanner.ScanIdents | scanner.ScanFloats | scanner.ScanStrings | scanner.ScanRawStrings
+	var s scanner.Scanner
+	s.Init(bytes.NewReader(src))
+	s.Mode = base | scanner.ScanComments
+	s.Error = func(*scanner.Scanner, string) {}
+	var m NestMeter
+	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+		switch tok {
+		case '{', '[', '(', '<':
+			if m.Open(byte(tok)) {
+				return true
+			}
+		case '}':
+			m.Close('{')
+		case ']':
+			m.Close('[')
+		case ')':
+			m.Close('(')
+		case '>':
+			m.Close('<')
+		case '\'':
+			s.Mode = base
+			for t := s.Scan(); t != scanner.EOF && s.TokenText() != "'"; t = s.Scan() {
+			}
+			s.Mode = base | scanner.ScanComments
+		}
+	}
+	return false
+}
+
+// jsonTooDeep reports whether src nests [ and { deeper than maxNesting. A
+// comment to the end of the line and a quoted string are skipped, so a bracket
+// in either is not counted. (nginx and Caddyfile have no text guard: their
+// parsers carry the block depth and refuse by it, and TOML has tomlRefusal.)
+func jsonTooDeep(src []byte) bool {
 	depth := 0
 	for i := 0; i < len(src); i++ {
-		c := src[i]
-		wordStart := !nginx || i == 0 || indexByte(" \t\r\n;{}", src[i-1]) >= 0
-		switch {
-		case c == '#' && wordStart:
+		switch c := src[i]; {
+		case c == '#':
 			for i < len(src) && src[i] != '\n' {
 				i++
 			}
-		case (c == '"' || c == '\'') && wordStart:
-			i = skipQuoted(src, i, !nginx)
-		default:
-			if indexByte(opens, c) >= 0 {
-				if depth++; depth > maxNesting {
-					return true
-				}
-			} else if indexByte(closes, c) >= 0 && depth > 0 {
-				depth--
+		case c == '"' || c == '\'':
+			i = skipQuoted(src, i)
+		case c == '[' || c == '{':
+			if depth++; depth > maxNesting {
+				return true
 			}
+		case (c == ']' || c == '}') && depth > 0:
+			depth--
 		}
 	}
 	return false
+}
+
+// maxTOMLKeys is the most keys and tables a TOML document may hold. go-toml
+// keeps every key it has seen in a sorted list to find a repeat, so a document of
+// n keys costs n*n/2 moves: 60,000 keys took 4 s and 180,000 took 27 s, inside a
+// 2 MiB file. A real document (a lock file, a manifest, a catalogue of strings)
+// holds thousands.
+const maxTOMLKeys = 40_000
+
+// tomlRefusal is why src is not handed to the TOML decoder: it nests deeper than
+// maxNesting in any way the decoder recurses on (an array or an inline table, and
+// a dotted key, which the decoder reads as that many nested tables: `a.a.a.a = 1`,
+// `[a.a.a.a]`, `[[a.a.a.a]]`, `{a.a.a = 1}`), or it holds more than maxTOMLKeys
+// keys and tables. It is "" for a document that is read. Only the dots of a key
+// count: a float's dot does not. Comments and strings are skipped by TOML's own
+// rules (skipQuoted).
+func tomlRefusal(src []byte) string {
+	var open []byte // the brackets open now
+	dots := 0       // dots in the key being read
+	keys := 0       // keys and tables seen
+	inKey := true   // a key (or a table header) is being read, not a value
+	for i := 0; i < len(src); i++ {
+		switch c := src[i]; c {
+		case '#':
+			for i+1 < len(src) && src[i+1] != '\n' {
+				i++
+			}
+		case '"', '\'':
+			i = skipQuoted(src, i)
+		case '\n':
+			dots, inKey = 0, len(open) == 0 || open[len(open)-1] == '{'
+		case '=':
+			if inKey {
+				keys++
+			}
+			dots, inKey = 0, false
+		case ',':
+			dots, inKey = 0, len(open) > 0 && open[len(open)-1] == '{'
+		case '.':
+			if inKey {
+				dots++
+			}
+		case '{':
+			open = append(open, c)
+			dots, inKey = 0, true
+		case '[':
+			if len(open) == 0 && inKey {
+				keys++ // a table header
+			}
+			open = append(open, c)
+		case ']', '}':
+			if len(open) > 0 {
+				open = open[:len(open)-1]
+			}
+		}
+		if len(open)+dots > maxNesting {
+			return errTooDeep("toml decode")
+		}
+		if keys > maxTOMLKeys {
+			return fmt.Sprintf("toml decode: more than %d keys is not read", maxTOMLKeys)
+		}
+	}
+	return ""
 }
 
 // tooDeepErr is the error a decoder returns for a file refused for its nesting.
@@ -168,7 +397,7 @@ func libconfigTooDeep(src []byte) bool {
 		case c == '/' && i+1 < len(src) && src[i+1] == '*':
 			i = skipPast(src, i, "*/")
 		case c == '"':
-			i = skipQuoted(src, i, true)
+			i = skipQuoted(src, i)
 		case c == '(' || c == '[' || c == '{':
 			if depth++; depth > maxNesting {
 				return true
@@ -180,39 +409,34 @@ func libconfigTooDeep(src []byte) bool {
 	return false
 }
 
-func indexByte(s string, c byte) int {
-	for i := 0; i < len(s); i++ {
-		if s[i] == c {
-			return i
-		}
-	}
-	return -1
-}
-
 // skipQuoted returns the index of the last byte of the string that starts at
-// src[i]. toml selects TOML's rules (a triple quote opens a multi-line string, a
-// single-quoted string takes no escapes, no other string crosses a line);
-// otherwise a string runs to its closing quote across lines, backslash escapes
-// honoured, as nginx reads one.
-func skipQuoted(src []byte, i int, toml bool) int {
+// src[i], by TOML's rules (which JSON and libconfig strings are a subset of): a
+// triple quote opens a multi-line string that a run of three to five quotes
+// ends (the last three close it, the quotes before them are its text), a
+// single-quoted string takes no escapes, and no other string crosses a line.
+func skipQuoted(src []byte, i int) int {
 	q := src[i]
-	if toml && i+2 < len(src) && src[i+1] == q && src[i+2] == q {
+	if i+2 < len(src) && src[i+1] == q && src[i+2] == q {
 		for j := i + 3; j+2 < len(src); j++ {
 			if q == '"' && src[j] == '\\' {
 				j++
 				continue
 			}
 			if src[j] == q && src[j+1] == q && src[j+2] == q {
-				return j + 2
+				run := 3
+				for run < 5 && j+run < len(src) && src[j+run] == q {
+					run++
+				}
+				return j + run - 1
 			}
 		}
 		return len(src)
 	}
 	for j := i + 1; j < len(src); j++ {
 		switch {
-		case src[j] == '\\' && (q == '"' || !toml):
+		case src[j] == '\\' && q == '"':
 			j++
-		case src[j] == '\n' && toml:
+		case src[j] == '\n':
 			return j - 1
 		case src[j] == q:
 			return j

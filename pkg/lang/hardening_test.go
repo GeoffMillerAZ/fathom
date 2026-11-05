@@ -160,6 +160,47 @@ var deepCases = []deepCase{
 	{"caddyfile", "Caddyfile", func() string { return "a {\n" + rep("{\n", (2<<20-4)/2) }, "a.example {\n  reverse_proxy b:80\n}\n"},
 	{"pom.xml", "pom.xml", func() string { return fill("<project>\n", "<a>", 100) }, "<project><artifactId>x</artifactId><groupId>g</groupId></project>"},
 	{"proxysql.cnf (libconfig)", "proxysql.cnf", func() string { return fill("admin_variables=\n", "(", 400) }, "admin_variables=\n{\n  admin_credentials=\"admin:admin\"\n}\n"},
+
+	// The guards below were bypassable by a shape the first guard did not count:
+	// a run of prefix operators, a conditional or a splat (HCL), an escaped brace
+	// or a quote that puts a text scanner out of step with the parser (nginx and
+	// Caddyfile), a dotted key or a four-quote string end (TOML), and a parser
+	// with no guard at all (proto). Each of these killed the process.
+	{"terraform unary not", "infra/main.tf", func() string { return "a = [\n" + rep("!\n", 1_000_000) }, "a = [1]\n"},
+	{"terraform unary minus", "infra/main.tf", func() string { return "a = [\n" + rep("-\n", 1_000_000) }, "a = [1]\n"},
+	{"tfvars unary not", "infra/prod.tfvars", func() string { return "a = [\n" + rep("!\n", 1_000_000) }, "a = [1]\n"},
+	{"terragrunt unary minus", "live/terragrunt.hcl", func() string { return "a = [\n" + rep("-\n", 1_000_000) }, "inputs = {\n a = [1]\n}\n"},
+	{"packer unary not", "img/web.pkr.hcl", func() string { return "a = [\n" + rep("!\n", 1_000_000) }, "source \"a\" \"b\" {\n x = [1]\n}\n"},
+	{"nomad unary minus", "jobs/web.nomad.hcl", func() string { return "job \"j\" {\na = [\n" + rep("-\n", 1_000_000) }, "job \"j\" {\n}\n"},
+	{"docker-bake unary not", "build/docker-bake.hcl", func() string { return "a = [\n" + rep("!\n", 1_000_000) }, "target \"a\" {\n}\n"},
+	{"terraform conditional", "infra/main.tf", func() string { return "a = [\n" + rep("a ?\n", 500_000) }, "a = [1]\n"},
+	{"terraform splat", "infra/main.tf", func() string { return fill("a = [\nf(x)\n", "[*].a", 100) }, "a = [1]\n"},
+	{"terraform index chain", "infra/main.tf", func() string { return fill("a = [\nf(x)\n", "[0]", 100) }, "a = [1]\n"},
+	{"nginx escaped brace", "etc/nginx.conf", func() string { return rep("\\}{\n", 500_000) }, "events {}\nhttp {\n  server {\n    listen 80;\n  }\n}\n"},
+	{"nginx quote then brace", "etc/nginx.conf", func() string { return "\"a\"\" {\"\n" + rep("a{\n", 650_000) }, "events {}\nhttp {\n  server {\n    listen 80;\n  }\n}\n"},
+	{"caddyfile quote after a semicolon", "Caddyfile", func() string { return "a {\nb;\"\n" + rep("{\n", 1_000_000) }, "a.example {\n  reverse_proxy b:80\n}\n"},
+	{"caddyfile quote after a brace", "Caddyfile", func() string { return "a {\nb}\"\n" + rep("{\n", 1_000_000) }, "a.example {\n  reverse_proxy b:80\n}\n"},
+	{"caddyfile.prod quote after a semicolon", "Caddyfile.prod", func() string { return "a {\nb;\"\n" + rep("{\n", 1_000_000) }, "a.example {\n  reverse_proxy b:80\n}\n"},
+	{"toml dotted key", "data.toml", func() string { return oneLine("a", ".a", "=1\n") }, "a = 1\n"},
+	{"cargo dotted key", "crate/Cargo.toml", func() string { return oneLine("a", ".a", "=1\n") }, "[package]\nname = \"x\"\nversion = \"1.0.0\"\n"},
+	{"pyproject dotted key", "pyproject.toml", func() string { return oneLine("a", ".a", "=1\n") }, "[project]\nname = \"x\"\n"},
+	{"toml dotted table header", "data.toml", func() string { return oneLine("[a", ".a", "]\n") }, "a = 1\n"},
+	{"toml dotted array-of-tables header", "data.toml", func() string { return oneLine("[[a", ".a", "]]\n") }, "a = 1\n"},
+	{"toml dotted inline key", "data.toml", func() string { return oneLine("a = {a", ".a", "=1}\n") }, "a = 1\n"},
+	{"toml four-quote string end", "data.toml", func() string { return "a = [\"\"\"x\"\"\"\", [\n" + rep("[\n", 1_000_000) }, "a = 1\n"},
+	{"proto option array", "api/x.proto", func() string { return "syntax=\"proto3\";\noption (a) = [\n" + rep("[\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto option message", "api/x.proto", func() string { return "syntax=\"proto3\";\noption (a) = {\n" + rep("a: {\n", 400_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto nested messages", "api/x.proto", func() string { return "syntax=\"proto3\";\n" + rep("message M {\n", 170_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto bracket after a single-quoted slash pair", "api/x.proto", func() string { return "syntax=\"proto3\";\noption (a) = '//' [\n" + rep("[\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+}
+
+// oneLine is head, then unit repeated to fill the 2 MiB limit on a single line,
+// then tail. A file that opens with 66,000 blank lines passes the minified-file
+// check, which reads only the first 64 KiB, so a dotted key (which cannot span
+// lines) reaches its reader.
+func oneLine(head, unit, tail string) string {
+	pad := rep("\n", 66_000)
+	return pad + head + rep(unit, (2<<20-256-len(pad)-len(head)-len(tail))/len(unit)) + tail
 }
 
 const deepChildEnv = "FATHOM_DEEP_CASE"

@@ -101,10 +101,10 @@ func (x *NginxExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 // well-formed statements declare and no error; the repairs it took are
 // disclosed through DocResult.Incomplete.
 func (x *NginxExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	if textTooDeep(src, "{", "}", true) {
+	tree, fixes, deep := parseNginxTree(src)
+	if deep {
 		return DocResult{Incomplete: errTooDeep("nginx parse")}, nil
 	}
-	tree, fixes := parseNginxTree(src)
 	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath), repairs: fixes, what: "nginx parse"}
 	root := path.Base(relPath)
 	w.node(root, kindNginxConfig, "", 1, confLastLine(src))

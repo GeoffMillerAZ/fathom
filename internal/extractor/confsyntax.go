@@ -476,19 +476,29 @@ type nginxParser struct {
 	eof   int // the file's last line: an unclosed block ends there
 	close int // the line of the brace that closed the block just read
 	fixes int
+	deep  bool // a block nested past maxNesting: the parse stopped
 }
 
 // parseNginxTree reads src into statements; fixes counts the repairs (an
 // unterminated string or block, a stray brace or semicolon, a statement a
-// closing brace or the end of the file cut short).
-func parseNginxTree(src []byte) ([]*confNode, int) {
+// closing brace or the end of the file cut short). deep reports a file nested
+// past maxNesting: the parser refuses it by its own depth, the one count the
+// recursion follows, so no second reading of the text can disagree with it.
+func parseNginxTree(src []byte) (nodes []*confNode, fixes int, deep bool) {
 	toks, fixes := confLex(src, nginxSyntax)
 	p := &nginxParser{toks: toks, eof: confLastLine(src)}
-	nodes := p.block(0)
-	return nodes, fixes + p.fixes
+	nodes = p.block(0)
+	if p.deep {
+		return nil, 0, true
+	}
+	return nodes, fixes + p.fixes, false
 }
 
 func (p *nginxParser) block(depth int) []*confNode {
+	if depth > maxNesting {
+		p.deep, p.i = true, len(p.toks)
+		return nil
+	}
 	var out []*confNode
 	var cur []confTok
 	flush := func(end int) {
@@ -581,20 +591,26 @@ type caddyParser struct {
 	eof   int
 	close int
 	fixes int
+	deep  bool // a block nested past maxNesting: the parse stopped
 }
 
-// parseCaddyTree reads src into statements, with parseNginxTree's repairs.
-func parseCaddyTree(src []byte) ([]*confNode, int) {
-	if textTooDeep(src, "{", "}", true) {
-		return nil, 0 // the parser recurses per block; the caller refuses the file first
-	}
+// parseCaddyTree reads src into statements, with parseNginxTree's repairs and
+// its deep.
+func parseCaddyTree(src []byte) (nodes []*confNode, fixes int, deep bool) {
 	toks, fixes := confLex(src, caddyfileSyntax)
 	p := &caddyParser{lines: confLines(toks), eof: confLastLine(src)}
-	nodes := p.block(0)
-	return nodes, fixes + p.fixes
+	nodes = p.block(0)
+	if p.deep {
+		return nil, 0, true
+	}
+	return nodes, fixes + p.fixes, false
 }
 
 func (p *caddyParser) block(depth int) []*confNode {
+	if depth > maxNesting {
+		p.deep, p.i = true, len(p.lines)
+		return nil
+	}
 	var out []*confNode
 	for p.i < len(p.lines) {
 		ln := p.lines[p.i]

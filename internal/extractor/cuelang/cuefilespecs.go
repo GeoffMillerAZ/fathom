@@ -134,7 +134,7 @@ func IsCUEPackageEntity(s core.SymbolNode) bool {
 // `module` field, a major version suffix dropped), "" when it declares none
 // or does not parse.
 func CUEModulePath(src []byte) string {
-	f, _ := parser.ParseFile("module.cue", src)
+	f, _, _ := parseCUE("module.cue", src)
 	if f == nil {
 		return ""
 	}
