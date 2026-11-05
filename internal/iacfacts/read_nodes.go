@@ -141,13 +141,19 @@ type srcIndex struct {
 	lineChar   []int32 // global character index of each line's start
 }
 
-func newSrcIndex(file string, src []byte) *srcIndex {
+// newSrcIndex indexes src. A line ends at \n, at \r\n and at a lone \r. For YAML it also ends at NEL (U+0085), U+2028
+// and U+2029, which yaml.v3 counts as line breaks; JSON has no such breaks, so an index for JSON does not.
+func newSrcIndex(file string, src []byte, yaml bool) *srcIndex {
 	ix := &srcIndex{file: file, src: src, starts: []int{0}}
 	ascii := true
 	for i, b := range src {
-		// A line ends at \n, at \r\n and at a lone \r, which is how YAML counts lines.
-		if b == '\n' || (b == '\r' && (i+1 >= len(src) || src[i+1] != '\n')) {
+		switch {
+		case b == '\n' || (b == '\r' && (i+1 >= len(src) || src[i+1] != '\n')):
 			ix.starts = append(ix.starts, i+1)
+		case yaml && b == 0xC2 && i+1 < len(src) && src[i+1] == 0x85:
+			ix.starts = append(ix.starts, i+2)
+		case yaml && b == 0xE2 && i+2 < len(src) && src[i+1] == 0x80 && (src[i+2] == 0xA8 || src[i+2] == 0xA9):
+			ix.starts = append(ix.starts, i+3)
 		}
 		if b >= 0x80 {
 			ascii = false
@@ -270,14 +276,14 @@ func parseTemplate(file string, src []byte) (*node, tmplInfo, error) {
 		return nil, info, err
 	}
 	src = bytes.TrimPrefix(src, []byte("\xef\xbb\xbf"))
-	ix := newSrcIndex(file, src)
 	if t := bytes.TrimLeft(src, " \t\r\n"); len(t) > 0 && t[0] == '{' {
-		n, dups, err := parseJSON(ix)
+		n, dups, err := parseJSON(newSrcIndex(file, src, false))
 		if err == nil || errors.Is(err, ErrLimit) {
 			info.dupKeys = dups
 			return n, info, err
 		}
 	}
+	ix := newSrcIndex(file, src, true)
 	dec := yaml.NewDecoder(bytes.NewReader(src))
 	var doc yaml.Node
 	if err := dec.Decode(&doc); err != nil {

@@ -41,8 +41,13 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 // ReadTerraformModule reads every .tf and .tofu file directly inside dir of fsys, and
 // resolves variable defaults and locals across them: an attribute that reads var.x, or a
 // local chain ending in a variable default, is defaulted. A module call is read as a
-// relation and is never expanded, and nothing outside dir is read. Past the product's
+// relation and is never expanded, and no directory but dir is listed. Past the product's
 // limits the whole directory is refused with ErrLimit.
+//
+// A symbolic link in dir is followed, as OpenTofu follows it, so the file it names is read wherever it lies: under
+// os.DirFS that can be outside dir and outside the repository. A caller that must not read there passes an fs.FS that
+// refuses to follow links. The target is looked at before it is opened. Anything but a regular file (a directory, a
+// FIFO or device, a link that points nowhere) is not opened and counts as a syntax error.
 //
 // It follows OpenTofu's file rules. A .tofu file shadows the .tf file of the same name, which
 // is not read at all. An override file (override.tf, *_override.tf, and the .tofu spellings)
@@ -50,8 +55,7 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 // overrides, a variable default or local it overrides reads unknown, and the resource is read
 // once. Attributes are not merged, since the value that wins is not worth the guess.
 //
-// It skips what OpenTofu skips (dot files, editor backups) and follows a symbolic link to a file as OpenTofu does;
-// a link that points nowhere, or at a directory, counts as a syntax error. The JSON syntax (.tf.json and
+// It skips what OpenTofu skips (dot files, editor backups). The JSON syntax (.tf.json and
 // .tofu.json) is not read: a JSON file counts one syntax error, since it declares blocks this read does not see,
 // except that a JSON override file marks the attributes, variable defaults and locals it names as unknown.
 func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, error) {
@@ -74,6 +78,13 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	}
 	for _, n := range names {
 		p := path.Join(dir, n)
+		if link[n] {
+			// Look at the target before opening it: opening a FIFO blocks until a writer comes.
+			if st, err := fs.Stat(fsys, p); err != nil || !st.Mode().IsRegular() {
+				set.SyntaxErrors++
+				continue
+			}
+		}
 		f, err := fsys.Open(p)
 		if err != nil {
 			if link[n] {
@@ -214,6 +225,7 @@ type tfParsed struct {
 	jsonOver *tfJSONOver
 	src      []byte
 	lineAt   []int // byte offset of each line start, built on first use
+	bidx     *badLines
 }
 
 // suspect reports whether what the parser returned for rng cannot be trusted. The parser reports the first syntax
@@ -221,26 +233,57 @@ type tfParsed struct {
 // at one. An attribute a reported error touches is suspect. So is any attribute at or after the first error, unless
 // its own lines parse clean on their own, which is the one proof the recovered parse cannot give.
 func (pf *tfParsed) suspect(rng hcl.Range) bool {
-	first := 0
-	for _, b := range pf.bad {
-		last := b.End.Line
-		if b.End.Column == 1 && last > b.Start.Line {
-			last-- // a newline token ends at the start of the next line, which it does not occupy
-		}
-		if b.Filename == rng.Filename && b.Start.Line <= rng.End.Line && rng.Start.Line <= last {
+	ix := pf.badIndex()
+	if rng.Filename == pf.file {
+		// The errors whose first line is at or before the attribute's last line, and the furthest line any of them
+		// reaches: one binary search, not a scan of every error per attribute.
+		if k := sort.SearchInts(ix.starts, rng.End.Line+1); k > 0 && ix.reach[k-1] >= rng.Start.Line {
 			return true
-		}
-		if first == 0 || b.Start.Line < first {
-			first = b.Start.Line
 		}
 	}
 	if pf.nerr > 0 && len(pf.bad) == 0 {
 		return true // errors with no position: nothing is known to be clean
 	}
-	if first == 0 || rng.End.Line < first {
+	if ix.first == 0 || rng.End.Line < ix.first {
 		return false
 	}
 	return !pf.linesParseClean(rng.Start.Line, rng.End.Line)
+}
+
+// badLines indexes the lines the parser's errors touch: the first line of each error in ascending order, the
+// furthest last line among the errors up to each, and the earliest first line.
+type badLines struct {
+	starts, reach []int
+	first         int
+}
+
+func (pf *tfParsed) badIndex() *badLines {
+	if pf.bidx != nil {
+		return pf.bidx
+	}
+	type span struct{ start, last int }
+	spans := make([]span, 0, len(pf.bad))
+	for _, b := range pf.bad {
+		last := b.End.Line
+		if b.End.Column == 1 && last > b.Start.Line {
+			last-- // a newline token ends at the start of the next line, which it does not occupy
+		}
+		spans = append(spans, span{b.Start.Line, last})
+	}
+	sort.Slice(spans, func(i, j int) bool { return spans[i].start < spans[j].start })
+	ix := &badLines{starts: make([]int, len(spans)), reach: make([]int, len(spans))}
+	for i, s := range spans {
+		ix.starts[i] = s.start
+		ix.reach[i] = s.last
+		if i > 0 && ix.reach[i-1] > s.last {
+			ix.reach[i] = ix.reach[i-1]
+		}
+	}
+	if len(spans) > 0 {
+		ix.first = spans[0].start
+	}
+	pf.bidx = ix
+	return ix
 }
 
 // linesParseClean parses lines from..to of the file on their own, in a fresh parser that is not in recovery.
@@ -465,6 +508,7 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 		case b.Type == "module" && len(b.Labels) == 1:
 			res = Resource{Tool: ToolTerraform, Mode: ModeModule, Type: "module", Name: b.Labels[0]}
 		default:
+			r.unreadBlock(set, b)
 			continue
 		}
 		res.Span = spanOf(b.Range())
@@ -508,6 +552,29 @@ func providerRef(e hclsyntax.Expression) string {
 		return renderTraversal(t.Traversal)
 	}
 	return ""
+}
+
+// unreadBlock accounts for a top-level block readBody did not read as a resource, so that absence is never silent:
+// a resource, data, ephemeral or module block with the wrong number of labels, which OpenTofu refuses, counts as a
+// syntax error, and a data source inside a check block, which exists but is scoped to the check, is Dropped.
+func (r *tfReader) unreadBlock(set *ResourceSet, b *hclsyntax.Block) {
+	switch b.Type {
+	case "resource", "data", "ephemeral", "module":
+		set.SyntaxErrors++
+	case "check":
+		name := ""
+		if len(b.Labels) > 0 {
+			name = b.Labels[0]
+		}
+		for _, nb := range b.Body.Blocks {
+			switch {
+			case nb.Type == "data" && len(nb.Labels) == 2:
+				set.Dropped = append(set.Dropped, "check."+name+".data."+nb.Labels[0]+"."+nb.Labels[1])
+			case nb.Type == "data":
+				set.SyntaxErrors++
+			}
+		}
+	}
 }
 
 // tfWalk is the state of one resource walk.
@@ -588,10 +655,13 @@ type overrideKey struct {
 type overrideIndex struct {
 	res  map[overrideKey]int
 	segs map[int]map[string][]int
+	// done marks the top segments of a base resource an override already read unknown: a second attribute of the
+	// same segment has nothing left to change, and scanning the segment again for each one is quadratic.
+	done map[int]map[string]bool
 }
 
 func newOverrideIndex(set *ResourceSet) *overrideIndex {
-	ix := &overrideIndex{res: map[overrideKey]int{}, segs: map[int]map[string][]int{}}
+	ix := &overrideIndex{res: map[overrideKey]int{}, segs: map[int]map[string][]int{}, done: map[int]map[string]bool{}}
 	for i := range set.Resources {
 		k := overrideKey{set.Resources[i].Mode, set.Resources[i].Type, set.Resources[i].Name}
 		if _, dup := ix.res[k]; !dup {
@@ -622,6 +692,8 @@ func (r *tfReader) applyOverrides(set *ResourceSet, ix *overrideIndex, body *hcl
 	if err := r.readBody(&over, body); err != nil {
 		return err
 	}
+	set.SyntaxErrors += over.SyntaxErrors
+	set.Dropped = append(set.Dropped, over.Dropped...)
 	for _, o := range over.Resources {
 		ix.apply(set, o)
 	}
@@ -659,6 +731,13 @@ func topSegment(p string) string {
 func (ix *overrideIndex) overrideAttr(set *ResourceSet, i int, a Attr) {
 	r := &set.Resources[i]
 	seg := topSegment(a.Path)
+	if ix.done[i][seg] {
+		return
+	}
+	if ix.done[i] == nil {
+		ix.done[i] = map[string]bool{}
+	}
+	ix.done[i][seg] = true
 	segs := ix.segments(set, i)
 	if held := segs[seg]; len(held) > 0 {
 		for _, j := range held {
@@ -924,7 +1003,7 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 	root := t.Traversal.RootName()
 	ref := renderTraversal(t.Traversal)
 	switch root {
-	case "each", "count", "self", "path", "terraform":
+	case "each", "count", "self", "path", "terraform", "tofu":
 		return readRes{class: ClassExpression}
 	case "var", "local":
 		if len(t.Traversal) < 2 {
@@ -995,7 +1074,7 @@ func (r *tfReader) variableRefs(e hclsyntax.Expression, iters map[string]bool) [
 	var out []string
 	for _, t := range e.Variables() {
 		switch t.RootName() {
-		case "each", "count", "self", "path", "terraform":
+		case "each", "count", "self", "path", "terraform", "tofu":
 			continue
 		}
 		if iters[t.RootName()] {

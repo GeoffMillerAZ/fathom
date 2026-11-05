@@ -145,7 +145,8 @@ type ResourceSet struct {
 	// (`<<`) may carry its properties. A read still returns the resources it could parse, and an attribute it could not read is unknown.
 	SyntaxErrors int
 	// Dropped names the YAML or JSON entries of a resource section that were not read as resources: a
-	// Fn::ForEach, an alias, a merge-only entry, a value that is not a mapping, or one without a type. Absence
+	// Fn::ForEach, an alias, a merge-only entry, a value that is not a mapping, or one without a type. For
+	// Terraform it names a data source inside a check block (check.NAME.data.TYPE.NAME). Absence
 	// is never silent: a resource that is not in Resources and not in Dropped does not exist in the file.
 	Dropped []string
 }
@@ -199,6 +200,9 @@ const (
 	MaxAttrs = 1 << 18
 	// MaxPathBytes bounds one attribute path.
 	MaxPathBytes = 4096
+	// MaxTotalPathBytes bounds the paths of every attribute one read returns. MaxPathBytes and MaxAttrs alone allow
+	// a gigabyte: a deep nesting repeats its prefix in the path of every leaf, and 184 MB came from a 592 KB file.
+	MaxTotalPathBytes = 16 << 20
 )
 
 // ErrLimit is wrapped by every refusal at a limit. Its message names the limit and a
@@ -238,6 +242,7 @@ func sortSet(set *ResourceSet) {
 		})
 		r.Multiplicity.Refs = sortedRefs(r.Multiplicity.Refs)
 	}
+	sort.Strings(set.Dropped)
 	sort.SliceStable(set.Resources, func(a, b int) bool {
 		x, y := set.Resources[a], set.Resources[b]
 		if x.Span != y.Span {
@@ -309,9 +314,9 @@ func unionRefs(lists ...[]string) []string {
 type emitter struct {
 	cfg   config
 	attrs int
-	// valBytes is the running logical size of the values kept so far.
-	valBytes int
-	err      error
+	// valBytes is the running logical size of the values kept so far, and pathBytes that of the paths.
+	valBytes, pathBytes int
+	err                 error
 }
 
 func (e *emitter) fail(file, what string) {
@@ -332,6 +337,10 @@ func (e *emitter) emit(file string, out *[]Attr, p string, c readRes, span Span)
 	}
 	if e.attrs++; e.attrs > MaxAttrs {
 		e.fail(file, fmt.Sprintf("more than %d attributes", MaxAttrs))
+		return
+	}
+	if e.pathBytes += len(p); e.pathBytes > MaxTotalPathBytes {
+		e.fail(file, fmt.Sprintf("the attribute paths of one read are over %d bytes in all", MaxTotalPathBytes))
 		return
 	}
 	if c.big {
