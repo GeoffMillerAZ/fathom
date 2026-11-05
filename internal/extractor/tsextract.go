@@ -484,10 +484,11 @@ func (e *TSExtractor) noteFault(l *tsengine.Lease) {
 
 // Close releases every grammar module this extractor leased (RT-107): its
 // pooled parsers and the queries compiled inside them. The extractor stays
-// usable — the next Extract leases afresh.
+// usable — the next Extract leases afresh. Close does not take e.mu: an
+// extraction holds it for its whole parse and query, and the pool already
+// defers closing a leased module to its release, so Close never waits for a
+// parse (a caller that gave up on one at a deadline would otherwise wait for it).
 func (e *TSExtractor) Close() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
 	tsengine.CloseParsers(e.owner)
 }
 

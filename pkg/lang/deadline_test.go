@@ -55,6 +55,9 @@ func TestExtractReturnsByTheDeadlineAndSaysSo(t *testing.T) {
 	if !res.Incomplete || len(res.Symbols) != 0 || len(res.Facts) != 0 || len(res.Notes) != 1 || !strings.HasPrefix(res.Notes[0], "read-deadline:") || !strings.Contains(res.Notes[0], "100ms") {
 		t.Fatalf("an overrun reads Incomplete with one note naming the deadline and no facts: %+v", res)
 	}
+	if res.Dialect != "" || res.Level != "" || res.Skipped != "" {
+		t.Fatalf("an overrun names no dialect and no level (none answered), and is not a skip: %+v", res)
+	}
 	// The next file still reads: one overrun does not end the Reader.
 	e.unblock()
 	if got := extract(t, r, "b.row", "ok\n"); got.Incomplete || len(got.Symbols) != 1 {
@@ -140,5 +143,32 @@ func TestWithLimitsReadDeadlineOnlyLowers(t *testing.T) {
 			continue
 		}
 		r.Close()
+	}
+}
+
+// A tree-sitter read holds its extractor for the whole parse, and a hostile
+// file's parse outlives a short deadline by seconds. Close must not wait for it,
+// and a read that arrives while Close runs must not queue behind it.
+func TestCloseDoesNotWaitForAnAbandonedTreeSitterRead(t *testing.T) {
+	r := newReader(t, lang.WithLimits(lang.Limits{ReadDeadline: 200 * time.Millisecond}))
+	hostile := []byte(strings.Repeat("({[\n", 40000))
+	res, err := r.Extract(context.Background(), lang.File{Path: "a.js", Src: hostile})
+	if err != nil || !res.Incomplete {
+		t.Fatalf("the hostile file did not overrun its deadline: %+v %v", res, err)
+	}
+	closed := make(chan struct{})
+	go func() { r.Close(); close(closed) }()
+	time.Sleep(50 * time.Millisecond)
+	start := time.Now()
+	if _, err := r.Extract(context.Background(), lang.File{Path: "b.go", Src: []byte("package p\n")}); !errors.Is(err, lang.ErrClosed) {
+		t.Fatalf("a read during Close returned %v, want ErrClosed", err)
+	}
+	if took := time.Since(start); took > time.Second {
+		t.Fatalf("a read during Close waited %v", took)
+	}
+	select {
+	case <-closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Close waited for the abandoned tree-sitter read")
 	}
 }

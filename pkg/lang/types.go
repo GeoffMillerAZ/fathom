@@ -35,9 +35,10 @@ type File struct {
 // inputs give byte-equal JSON.
 type Result struct {
 	// Dialect is the id of the dialect or generic reader (generic-json,
-	// generic-toml) that read the file, and "" only when nothing read it: a
-	// skipped file. SkipNotLinked names the dialect that owns the file but is
-	// not linked into this Reader.
+	// generic-toml) that read the file, and "" only when nothing answered: a
+	// skipped file, or a read that passed its deadline (or whose process was
+	// killed), which names no dialect because none returned. SkipNotLinked
+	// names the dialect that owns the file but is not linked into this Reader.
 	Dialect string `json:"dialect"`
 	// Language is the file's language class from its path.
 	Language string `json:"language"`
@@ -49,8 +50,9 @@ type Result struct {
 	Facts      []Fact       `json:"facts"`
 	// Level is the dialect's measured level: L1 to L4, LevelNone or
 	// LevelUnmeasured. It is what readings proved about the dialect, not a
-	// promise about this file. It is "" when Skipped is set: no dialect read
-	// the file, so no level applies.
+	// promise about this file. It is "" when Skipped is set, and when a read
+	// passed its deadline or was killed: no dialect answered, so no level
+	// applies.
 	Level string `json:"level"`
 	// Incomplete is true when an engine could not fully read the file: the
 	// symbols, references and facts above are what it did read, and Notes says

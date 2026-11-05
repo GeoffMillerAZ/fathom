@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -93,7 +94,8 @@ func WithLimits(l Limits) Option {
 // is safe for concurrent use.
 type Reader struct {
 	mu       sync.RWMutex
-	closed   bool
+	closed   bool        // set under mu once in-flight reads have finished
+	closing  atomic.Bool // set first, so a read arriving during Close does not queue behind it
 	router   *langroute.Router
 	maxFile  int
 	deadline time.Duration
@@ -200,14 +202,19 @@ func (r *Reader) attachPack(cfg config) error {
 // Close releases the Reader's pooled grammar modules. It is idempotent, and
 // waits for extractions in flight, but not for a parser an Extract abandoned at
 // its deadline: that one runs until it returns on its own, its result
-// discarded, and a grammar module it holds is released when it does.
+// discarded, and a grammar module it holds is released when it does. An
+// Extract that arrives once Close has begun returns ErrClosed at once.
 func (r *Reader) Close() error {
+	r.closing.Store(true)
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	if r.closed {
+		r.mu.Unlock()
 		return nil
 	}
 	r.closed = true
+	r.mu.Unlock()
+	// Outside the lock: closing the grammar pool may wait on a parser an
+	// abandoned read still holds, and no Extract should queue behind that.
 	r.router.Close()
 	return nil
 }
@@ -252,6 +259,9 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		return Result{}, fmt.Errorf("lang: %d siblings is over the limit %d", len(f.Siblings), maxSiblings)
 	}
 	path := filepath.ToSlash(f.Path)
+	if r.closing.Load() {
+		return Result{}, ErrClosed
+	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if r.closed {
