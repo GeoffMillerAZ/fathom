@@ -394,8 +394,8 @@ func k8sYSeq(n *yaml.Node) []*yaml.Node {
 
 func k8sYScalar(n *yaml.Node) string {
 	n = yamlResolve(n)
-	if n == nil || n.Kind != yaml.ScalarNode {
-		return ""
+	if n == nil || n.Kind != yaml.ScalarNode || n.Tag == "!!null" {
+		return "" // yaml.v3's decode reads a null into a string as empty, so `namespace: null` is absent
 	}
 	return n.Value
 }

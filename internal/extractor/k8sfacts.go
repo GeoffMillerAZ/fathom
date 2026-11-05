@@ -161,18 +161,39 @@ func yamlResolve(n *yaml.Node) *yaml.Node {
 	return n
 }
 
+// yamlKeyNode is the node a mapping key stands for: an alias key is the scalar it
+// names, never its anchor's name (`*spec : x` is the key the anchor holds, which
+// `q: &spec other` made `other`), and nil when the chain is too long.
+func yamlKeyNode(n *yaml.Node) *yaml.Node {
+	return yamlResolve(n)
+}
+
 // yamlLookup is a mapping's key node and value node for key, reading the mapping
 // as YAML does: an alias is the node it names, and a `<<` merge supplies the keys
 // the mapping does not write itself (a merged sequence of mappings lets the
 // earlier one win). Of a key the mapping writes more than once, the last value
 // wins when last is set and the first otherwise. It is nil, nil for none.
+//
+// A mapping is read at most once per lookup, so a document whose anchor merges
+// itself, or whose merges fan out and meet again, costs the size of the document,
+// not a step for every path through it: a mapping read twice would find the key
+// in the same place, or not at all, both times. The depth bound stays for the
+// recursion.
 func yamlLookup(n *yaml.Node, key string, last bool, depth int) (k, v *yaml.Node) {
+	return yamlLookupSeen(n, key, last, depth, map[*yaml.Node]struct{}{})
+}
+
+func yamlLookupSeen(n *yaml.Node, key string, last bool, depth int, seen map[*yaml.Node]struct{}) (k, v *yaml.Node) {
 	n = yamlResolve(n)
 	if n == nil || n.Kind != yaml.MappingNode || depth > maxYAMLHops {
 		return nil, nil
 	}
+	if _, dup := seen[n]; dup {
+		return nil, nil
+	}
+	seen[n] = struct{}{}
 	for i := 0; i+1 < len(n.Content); i += 2 {
-		if n.Content[i].Value != key || n.Content[i].Tag == "!!merge" {
+		if kt := yamlKeyNode(n.Content[i]); kt == nil || kt.Value != key || kt.Tag == "!!merge" {
 			continue
 		}
 		k, v = n.Content[i], n.Content[i+1]
@@ -184,7 +205,7 @@ func yamlLookup(n *yaml.Node, key string, last bool, depth int) (k, v *yaml.Node
 		return k, v
 	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
-		if n.Content[i].Tag != "!!merge" {
+		if kt := yamlKeyNode(n.Content[i]); kt == nil || kt.Tag != "!!merge" {
 			continue
 		}
 		src := yamlResolve(n.Content[i+1])
@@ -196,7 +217,7 @@ func yamlLookup(n *yaml.Node, key string, last bool, depth int) (k, v *yaml.Node
 			from = src.Content
 		}
 		for _, m := range from {
-			if k, v = yamlLookup(m, key, last, depth+1); k != nil {
+			if k, v = yamlLookupSeen(m, key, last, depth+1, seen); k != nil {
 				return k, v
 			}
 		}
@@ -254,7 +275,11 @@ func yamlMapDecodeSafe(n *yaml.Node) bool {
 	}
 	seen := make(map[key]struct{}, len(n.Content)/2)
 	for i := 0; i+1 < len(n.Content); i += 2 {
-		k := key{n.Content[i].Kind, n.Content[i].Value}
+		kt := yamlKeyNode(n.Content[i])
+		if kt == nil {
+			return false
+		}
+		k := key{kt.Kind, kt.Value}
 		if _, dup := seen[k]; dup {
 			return false
 		}
