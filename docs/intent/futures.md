@@ -114,3 +114,4 @@ no member defines, and one defined twice.
 | F97 | Contract catalogs beyond Terraform, Kubernetes and Pulumi: other IaC tools, a cross-tool resource identity, IAM actions, action and chart inputs | `futures/f92-f97.md` |
 | F98 | `cmd/fathom` split into packages | `futures/f98-f99.md` |
 | F99 | Further public doors: routes, incident to code, guards, harness setup, budgets, the grading harness | `futures/f98-f99.md` |
+| F100 | A process boundary inside the Go library | `futures/f98-f99.md` |
