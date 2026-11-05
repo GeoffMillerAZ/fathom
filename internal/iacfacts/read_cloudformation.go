@@ -1,0 +1,272 @@
+package iacfacts
+
+import (
+	"errors"
+	"strings"
+)
+
+// ReadCloudFormationFile reads the resources of an AWS CloudFormation or SAM template in
+// YAML or JSON: each resource's Properties as attribute paths with classes and spans,
+// intrinsic functions (the long Fn:: form and the short YAML tags such as !Ref, !GetAtt,
+// !Sub and !If), a resource's Condition as its multiplicity, and parameter defaults. A
+// !Ref to a parameter with a default reads as defaulted, and a parameter of an SSM
+// parameter type does not, because its default is a path and not the value.
+//
+// Lists take [*] in a path. A template that does not parse reads as empty with
+// SyntaxErrors set. A template past the product's limits is refused whole with ErrLimit.
+func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*ResourceSet, error) {
+	set := &ResourceSet{Tool: ToolCloudFormation}
+	root, err := parseTemplate(filePath, src)
+	if errors.Is(err, errSyntax) {
+		set.SyntaxErrors = 1
+		return set, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	res := root.get("Resources")
+	if root == nil || root.kind != nodeMap || res == nil || res.kind != nodeMap {
+		return set, nil
+	}
+	cr := &cfnReader{params: map[string]cfnParam{}, conds: root.get("Conditions")}
+	cr.cfg = newConfig(opts)
+	if ps := root.get("Parameters"); ps != nil && ps.kind == nodeMap {
+		for _, p := range ps.pairs {
+			info := cfnParam{}
+			if def := p.val.get("Default"); def != nil && def.kind == nodeScalar {
+				info.def = def
+			}
+			if t := p.val.get("Type"); t != nil && strings.HasPrefix(t.value, "AWS::SSM::Parameter::Value<") {
+				info.indirect = true
+			}
+			cr.params[p.key.value] = info
+		}
+	}
+	w := &treeWalker{emitter: emitter{cfg: cr.cfg}, file: filePath, classify: cr.classifyIntrinsic}
+	for _, p := range res.pairs {
+		if p.val.kind != nodeMap {
+			continue
+		}
+		typ := p.val.get("Type")
+		if typ == nil || typ.kind != nodeScalar {
+			continue
+		}
+		r := Resource{
+			Tool: ToolCloudFormation, Mode: ModeManaged, Type: typ.value, Name: p.key.value,
+			Span: p.span, Multiplicity: Multiplicity{Kind: MultiSingle},
+		}
+		for _, cp := range p.val.pairs {
+			if cp.key.value == "Condition" && cp.val.kind == nodeScalar {
+				r.Multiplicity = cr.condition(cp.val, cp.span)
+			}
+		}
+		if props := p.val.get("Properties"); props != nil {
+			if _, intrinsic := cr.classifyIntrinsic(props, 0); !intrinsic && props.kind == nodeMap {
+				for _, pp := range props.pairs {
+					w.walk(pp.val, pp.key.value, pp.span, &r.Attrs, 0)
+				}
+			}
+		}
+		if w.err != nil {
+			return nil, w.err
+		}
+		set.Resources = append(set.Resources, r)
+	}
+	sortSet(set)
+	return set, nil
+}
+
+type cfnParam struct {
+	def      *node
+	indirect bool // the default is a path the service resolves, not the value
+}
+
+type cfnReader struct {
+	cfg    config
+	params map[string]cfnParam
+	conds  *node
+}
+
+// condition reads a resource's Condition: the multiplicity is the condition, with the
+// class of its definition.
+func (c *cfnReader) condition(name *node, span Span) Multiplicity {
+	m := Multiplicity{Kind: MultiCondition, Class: ClassUnknown, Refs: []string{name.value}, Span: span}
+	if def := c.conds.get(name.value); def != nil {
+		if res, ok := c.classifyIntrinsic(def, 0); ok {
+			m.Class = res.class
+			m.Refs = append(m.Refs, res.refs...)
+		} else {
+			m.Class = ClassUnknown
+		}
+	}
+	return m
+}
+
+// intrinsic reports whether n is an intrinsic function, and its normalized name (Ref,
+// GetAtt, Sub, If) and argument.
+func intrinsic(n *node) (string, *node, bool) {
+	if n == nil {
+		return "", nil, false
+	}
+	if n.tag != "" {
+		arg := *n
+		arg.tag = ""
+		return strings.TrimPrefix(n.tag, "!"), &arg, true
+	}
+	if n.kind == nodeMap && len(n.pairs) == 1 && n.pairs[0].key.kind == nodeScalar {
+		k := n.pairs[0].key.value
+		if k == "Ref" {
+			return "Ref", n.pairs[0].val, true
+		}
+		if strings.HasPrefix(k, "Fn::") {
+			return strings.TrimPrefix(k, "Fn::"), n.pairs[0].val, true
+		}
+	}
+	return "", nil, false
+}
+
+// classifyIntrinsic classifies an intrinsic function. It reports false for any other node.
+func (c *cfnReader) classifyIntrinsic(n *node, depth int) (readRes, bool) {
+	name, arg, ok := intrinsic(n)
+	if !ok {
+		return readRes{}, false
+	}
+	if depth > MaxDepth {
+		return readRes{class: ClassUnknown}, true
+	}
+	switch name {
+	case "Ref":
+		if arg.kind != nodeScalar {
+			return readRes{class: ClassUnknown}, true
+		}
+		return c.ref(arg.value), true
+	case "GetAtt":
+		switch {
+		case arg.kind == nodeScalar:
+			return readRes{class: ClassReference, refs: []string{arg.value}}, true
+		case arg.kind == nodeSeq && len(arg.items) == 2 && arg.items[0].kind == nodeScalar && arg.items[1].kind == nodeScalar:
+			return readRes{class: ClassReference, refs: []string{arg.items[0].value + "." + arg.items[1].value}}, true
+		}
+		return readRes{class: ClassExpression, refs: c.collectRefs(arg, depth+1)}, true
+	case "ImportValue":
+		if arg.kind == nodeScalar {
+			return readRes{class: ClassReference, refs: []string{"export:" + arg.value}}, true
+		}
+		return readRes{class: ClassExpression, refs: c.collectRefs(arg, depth+1)}, true
+	case "Sub":
+		return c.sub(arg, depth), true
+	case "If":
+		refs := c.collectRefs(arg, depth+1)
+		if arg.kind == nodeSeq && len(arg.items) > 0 && arg.items[0].kind == nodeScalar {
+			refs = sortedRefs(append(refs, arg.items[0].value))
+		}
+		return readRes{class: ClassExpression, refs: refs}, true
+	case "Join", "Select", "Split", "FindInMap", "Base64", "Cidr", "GetAZs", "Equals", "And", "Or", "Not",
+		"Transform", "Length", "ToJsonString", "Condition", "Contains", "EachMemberEquals", "EachMemberIn", "RefAll",
+		"ValueOf", "ValueOfAll", "Implies", "Include":
+		return readRes{class: ClassExpression, refs: c.collectRefs(arg, depth+1)}, true
+	}
+	if strings.HasPrefix(name, "ForEach::") {
+		return readRes{class: ClassExpression, refs: c.collectRefs(arg, depth+1)}, true
+	}
+	return readRes{class: ClassUnknown}, true
+}
+
+// ref classifies a Ref.
+func (c *cfnReader) ref(name string) readRes {
+	if strings.HasPrefix(name, "AWS::") {
+		return readRes{class: ClassExpression, refs: []string{name}}
+	}
+	if p, ok := c.params[name]; ok && p.def != nil && !p.indirect {
+		return readRes{class: ClassDefaulted, refs: []string{name}, val: p.def.scalarValue(), hasV: true}
+	}
+	return readRes{class: ClassReference, refs: []string{name}}
+}
+
+// sub classifies Fn::Sub: a string with ${Name} and ${Res.Attr} variables, and an
+// optional map that defines more.
+func (c *cfnReader) sub(arg *node, depth int) readRes {
+	str := arg
+	var defs *node
+	if arg.kind == nodeSeq {
+		if len(arg.items) != 2 {
+			return readRes{class: ClassUnknown}
+		}
+		str, defs = arg.items[0], arg.items[1]
+	}
+	if str.kind != nodeScalar || !str.isStr() {
+		return readRes{class: ClassUnknown}
+	}
+	var parts []readRes
+	s := str.value
+	for len(s) > 0 {
+		i := strings.Index(s, "${")
+		if i < 0 {
+			parts = append(parts, readRes{class: ClassLiteral, val: s, hasV: true})
+			break
+		}
+		if i > 0 {
+			parts = append(parts, readRes{class: ClassLiteral, val: s[:i], hasV: true})
+		}
+		s = s[i+2:]
+		j := strings.IndexByte(s, '}')
+		if j < 0 {
+			return readRes{class: ClassUnknown}
+		}
+		v := s[:j]
+		s = s[j+1:]
+		if lit, escaped := strings.CutPrefix(v, "!"); escaped {
+			parts = append(parts, readRes{class: ClassLiteral, val: "${" + lit + "}", hasV: true})
+			continue
+		}
+		if d := defs.get(v); d != nil {
+			if r, ok := c.classifyIntrinsic(d, depth+1); ok {
+				parts = append(parts, r)
+			} else if d.kind == nodeScalar {
+				parts = append(parts, readRes{class: ClassLiteral, val: d.scalarValue(), hasV: true})
+			} else {
+				parts = append(parts, readRes{class: ClassExpression})
+			}
+			continue
+		}
+		if strings.Contains(v, ".") {
+			parts = append(parts, readRes{class: ClassReference, refs: []string{v}})
+		} else {
+			parts = append(parts, c.ref(v))
+		}
+	}
+	if len(parts) == 0 {
+		return readRes{class: ClassLiteral, val: "", hasV: true}
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	out := foldRes(parts)
+	if out.hasV {
+		out.val, out.hasV = concatVals(parts)
+	}
+	return out
+}
+
+// collectRefs lists the references an intrinsic's argument reads.
+func (c *cfnReader) collectRefs(n *node, depth int) []string {
+	if n == nil || depth > MaxDepth {
+		return nil
+	}
+	var out []string
+	if r, ok := c.classifyIntrinsic(n, depth); ok {
+		out = append(out, r.refs...)
+		name, arg, _ := intrinsic(n)
+		if name == "Ref" || name == "GetAtt" || name == "Sub" || name == "ImportValue" {
+			return sortedRefs(out)
+		}
+		n = arg
+	}
+	for _, p := range n.pairs {
+		out = append(out, c.collectRefs(p.val, depth+1)...)
+	}
+	for _, it := range n.items {
+		out = append(out, c.collectRefs(it, depth+1)...)
+	}
+	return sortedRefs(out)
+}

@@ -175,31 +175,15 @@ func (e *tfEnv) collect(body *hclsyntax.Body) {
 	}
 }
 
-// tfRes is the classification of one expression.
-type tfRes struct {
-	class Class
-	refs  []string
-	val   any
-	hasV  bool
-}
-
 type tfReader struct {
-	cfg       config
+	emitter
 	env       *tfEnv
 	resolving map[string]bool
 	nodes     int
-	attrs     int
-	err       error
 }
 
 func newTFReader(cfg config, env *tfEnv) *tfReader {
-	return &tfReader{cfg: cfg, env: env, resolving: map[string]bool{}}
-}
-
-func (r *tfReader) fail(file, what string) {
-	if r.err == nil {
-		r.err = limitErr(file, what)
-	}
+	return &tfReader{emitter: emitter{cfg: cfg}, env: env, resolving: map[string]bool{}}
 }
 
 func sortedAttrs(b *hclsyntax.Body) []*hclsyntax.Attribute {
@@ -278,14 +262,14 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 			continue
 		}
 		p := joinPath(prefix, a.Name)
-		var c tfRes
+		var c readRes
 		if prefix == "lifecycle" && a.Name == "ignore_changes" {
 			c = ignoreChanges(a.Expr, r.cfg.values)
 		}
 		if c.class == "" {
 			c = r.classify(a.Expr, iters, 0)
 		}
-		r.emit(w.file, out, p, c, a.SrcRange)
+		r.emit(w.file, out, p, c, spanOf(a.SrcRange))
 	}
 	counts := map[string]int{}
 	for _, b := range body.Blocks {
@@ -311,7 +295,7 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 			}
 			inner := with(iters, iterName)
 			if fe, ok := b.Body.Attributes["for_each"]; ok {
-				r.emit(w.file, out, p, r.classify(fe.Expr, iters, 0), fe.SrcRange)
+				r.emit(w.file, out, p, r.classify(fe.Expr, iters, 0), spanOf(fe.SrcRange))
 			}
 			for _, cb := range b.Body.Blocks {
 				if cb.Type == "content" {
@@ -338,67 +322,48 @@ func with(m map[string]bool, k string) map[string]bool {
 	return out
 }
 
-func (r *tfReader) emit(file string, out *[]Attr, p string, c tfRes, rng hcl.Range) {
-	if r.err != nil {
-		return
-	}
-	if len(p) > MaxPathBytes {
-		r.fail(file, fmt.Sprintf("an attribute path is over %d bytes", MaxPathBytes))
-		return
-	}
-	if r.attrs++; r.attrs > MaxAttrs {
-		r.fail(file, fmt.Sprintf("more than %d attributes", MaxAttrs))
-		return
-	}
-	at := Attr{Path: p, Class: c.class, Refs: sortedRefs(c.refs), Span: spanOf(rng)}
-	if r.cfg.values && c.hasV && (c.class == ClassLiteral || c.class == ClassDefaulted) {
-		at.Value = c.val
-	}
-	*out = append(*out, at)
-}
-
 // ignoreChanges reads lifecycle.ignore_changes, whose bare names are keywords for
 // attribute paths, not references: [tags, ami] and all.
-func ignoreChanges(e hclsyntax.Expression, values bool) tfRes {
+func ignoreChanges(e hclsyntax.Expression, values bool) readRes {
 	var names []any
 	switch x := e.(type) {
 	case *hclsyntax.ScopeTraversalExpr:
 		if len(x.Traversal) == 1 && x.Traversal.RootName() == "all" {
-			return tfRes{class: ClassLiteral, val: "all", hasV: values}
+			return readRes{class: ClassLiteral, val: "all", hasV: values}
 		}
-		return tfRes{}
+		return readRes{}
 	case *hclsyntax.TupleConsExpr:
 		for _, el := range x.Exprs {
 			t, ok := el.(*hclsyntax.ScopeTraversalExpr)
 			if !ok {
-				return tfRes{}
+				return readRes{}
 			}
 			names = append(names, renderTraversal(t.Traversal))
 		}
 		if names == nil {
 			names = []any{}
 		}
-		return tfRes{class: ClassLiteral, val: names, hasV: values}
+		return readRes{class: ClassLiteral, val: names, hasV: values}
 	}
-	return tfRes{}
+	return readRes{}
 }
 
 // classify classifies one expression. iters are the dynamic-block iterator names in scope.
-func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth int) tfRes {
+func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth int) readRes {
 	if r.err != nil {
-		return tfRes{class: ClassUnknown}
+		return readRes{class: ClassUnknown}
 	}
 	if r.nodes++; r.nodes > MaxNodes {
 		r.fail("", fmt.Sprintf("more than %d expression nodes", MaxNodes))
-		return tfRes{class: ClassUnknown}
+		return readRes{class: ClassUnknown}
 	}
 	if depth > MaxDepth {
 		r.fail("", fmt.Sprintf("expressions nest past %d deep", MaxDepth))
-		return tfRes{class: ClassUnknown}
+		return readRes{class: ClassUnknown}
 	}
 	switch x := e.(type) {
 	case *hclsyntax.LiteralValueExpr:
-		return tfRes{class: ClassLiteral, val: ctyToGo(x.Val), hasV: r.cfg.values}
+		return readRes{class: ClassLiteral, val: ctyToGo(x.Val), hasV: r.cfg.values}
 	case *hclsyntax.TemplateExpr:
 		return r.foldTemplate(x.Parts, iters, depth)
 	case *hclsyntax.TemplateWrapExpr:
@@ -406,7 +371,7 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 	case *hclsyntax.ParenthesesExpr:
 		return r.classify(x.Expression, iters, depth+1)
 	case *hclsyntax.TupleConsExpr:
-		parts := make([]tfRes, len(x.Exprs))
+		parts := make([]readRes, len(x.Exprs))
 		for i, el := range x.Exprs {
 			parts[i] = r.classify(el, iters, depth+1)
 		}
@@ -420,9 +385,9 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 		}
 		return out
 	case *hclsyntax.ObjectConsExpr:
-		parts := make([]tfRes, 0, len(x.Items))
-		keys := make([]tfRes, len(x.Items))
-		vals := make([]tfRes, len(x.Items))
+		parts := make([]readRes, 0, len(x.Items))
+		keys := make([]readRes, len(x.Items))
+		vals := make([]readRes, len(x.Items))
 		for i, it := range x.Items {
 			keys[i] = r.classifyKey(it.KeyExpr, iters, depth+1)
 			vals[i] = r.classify(it.ValueExpr, iters, depth+1)
@@ -456,53 +421,54 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 		src := r.classify(x.Source, iters, depth+1)
 		if rel, ok := x.Each.(*hclsyntax.RelativeTraversalExpr); ok && src.class == ClassReference {
 			if _, anon := rel.Source.(*hclsyntax.AnonSymbolExpr); anon {
-				return tfRes{class: ClassReference, refs: src.refs}
+				return readRes{class: ClassReference, refs: src.refs}
 			}
 		}
-		return tfRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
+		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.IndexExpr, *hclsyntax.FunctionCallExpr,
 		*hclsyntax.ConditionalExpr, *hclsyntax.BinaryOpExpr, *hclsyntax.UnaryOpExpr,
 		*hclsyntax.ForExpr, *hclsyntax.TemplateJoinExpr, *hclsyntax.AnonSymbolExpr:
-		return tfRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
+		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	}
-	return tfRes{class: ClassUnknown}
+	return readRes{class: ClassUnknown}
 }
 
 // classifyKey classifies an object key: a bare name is the string it spells.
-func (r *tfReader) classifyKey(e hclsyntax.Expression, iters map[string]bool, depth int) tfRes {
+func (r *tfReader) classifyKey(e hclsyntax.Expression, iters map[string]bool, depth int) readRes {
 	if k, ok := e.(*hclsyntax.ObjectConsKeyExpr); ok {
 		if t, ok := k.Wrapped.(*hclsyntax.ScopeTraversalExpr); ok && len(t.Traversal) == 1 && !k.ForceNonLiteral {
-			return tfRes{class: ClassLiteral, val: t.Traversal.RootName(), hasV: r.cfg.values}
+			return readRes{class: ClassLiteral, val: t.Traversal.RootName(), hasV: r.cfg.values}
 		}
 		return r.classify(k.Wrapped, iters, depth)
 	}
 	return r.classify(e, iters, depth)
 }
 
-func (r *tfReader) foldTemplate(parts []hclsyntax.Expression, iters map[string]bool, depth int) tfRes {
-	rs := make([]tfRes, len(parts))
+func (r *tfReader) foldTemplate(parts []hclsyntax.Expression, iters map[string]bool, depth int) readRes {
+	rs := make([]readRes, len(parts))
 	for i, p := range parts {
 		rs[i] = r.classify(p, iters, depth+1)
 	}
 	out := foldRes(rs)
 	if out.hasV {
-		var sb strings.Builder
-		for _, p := range rs {
-			s, ok := p.val.(string)
-			if !ok {
-				if b, isNum := scalarString(p.val); isNum {
-					s = b
-				} else {
-					out.hasV = false
-					out.val = nil
-					return out
-				}
-			}
-			sb.WriteString(s)
-		}
-		out.val = sb.String()
+		out.val, out.hasV = concatVals(rs)
 	}
 	return out
+}
+
+// concatVals joins the string values of a template's parts.
+func concatVals(parts []readRes) (string, bool) {
+	var sb strings.Builder
+	for _, p := range parts {
+		s, ok := p.val.(string)
+		if !ok {
+			if s, ok = scalarString(p.val); !ok {
+				return "", false
+			}
+		}
+		sb.WriteString(s)
+	}
+	return sb.String(), true
 }
 
 func scalarString(v any) (string, bool) {
@@ -524,8 +490,8 @@ func scalarString(v any) (string, bool) {
 // constant is a constant, one whose every part is a constant or a default has a static
 // answer through its defaults, one made only of references is a relation, and anything
 // else is computed. One unclassifiable part makes the structure unknown.
-func foldRes(parts []tfRes) tfRes {
-	out := tfRes{class: ClassLiteral, hasV: true}
+func foldRes(parts []readRes) readRes {
+	out := readRes{class: ClassLiteral, hasV: true}
 	anyDef, anyUnknown, allRef := false, false, len(parts) > 0
 	allLitDef := true
 	for _, p := range parts {
@@ -569,19 +535,19 @@ func foldRes(parts []tfRes) tfRes {
 }
 
 // classifyTraversal classifies a reference by what its root names.
-func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[string]bool, depth int) tfRes {
+func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[string]bool, depth int) readRes {
 	root := t.Traversal.RootName()
 	ref := renderTraversal(t.Traversal)
 	switch root {
 	case "each", "count", "self", "path", "terraform":
-		return tfRes{class: ClassExpression}
+		return readRes{class: ClassExpression}
 	case "var", "local":
 		if len(t.Traversal) < 2 {
-			return tfRes{class: ClassReference, refs: []string{ref}}
+			return readRes{class: ClassReference, refs: []string{ref}}
 		}
 		attr, ok := t.Traversal[1].(hcl.TraverseAttr)
 		if !ok || r.env == nil {
-			return tfRes{class: ClassReference, refs: []string{ref}}
+			return readRes{class: ClassReference, refs: []string{ref}}
 		}
 		key := root + "." + attr.Name
 		var expr hclsyntax.Expression
@@ -593,15 +559,15 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			expr = r.env.locals[attr.Name]
 		}
 		if expr == nil {
-			return tfRes{class: ClassReference, refs: []string{ref}}
+			return readRes{class: ClassReference, refs: []string{ref}}
 		}
 		if r.resolving[key] {
-			return tfRes{class: ClassUnknown, refs: []string{ref}}
+			return readRes{class: ClassUnknown, refs: []string{ref}}
 		}
 		r.resolving[key] = true
 		inner := r.classify(expr, nil, depth+1)
 		delete(r.resolving, key)
-		out := tfRes{class: inner.class, refs: []string{ref}}
+		out := readRes{class: inner.class, refs: []string{ref}}
 		if root == "var" && inner.class == ClassLiteral {
 			out.class = ClassDefaulted
 		}
@@ -615,9 +581,9 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 		return out
 	}
 	if iters[root] {
-		return tfRes{class: ClassExpression}
+		return readRes{class: ClassExpression}
 	}
-	return tfRes{class: ClassReference, refs: []string{ref}}
+	return readRes{class: ClassReference, refs: []string{ref}}
 }
 
 // variableRefs lists the static references an expression reads, minus the names that

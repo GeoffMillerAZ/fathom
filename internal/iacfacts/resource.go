@@ -241,3 +241,46 @@ func sortedRefs(refs []string) []string {
 	}
 	return out[:w]
 }
+
+// emitter collects attributes under the bounds, for every reader.
+type emitter struct {
+	cfg   config
+	attrs int
+	err   error
+}
+
+func (e *emitter) fail(file, what string) {
+	if e.err == nil {
+		e.err = limitErr(file, what)
+	}
+}
+
+// emit appends one attribute. It keeps a value only under WithValues, and only for the
+// classes a check may treat as known.
+func (e *emitter) emit(file string, out *[]Attr, p string, c readRes, span Span) {
+	if e.err != nil {
+		return
+	}
+	if len(p) > MaxPathBytes {
+		e.fail(file, fmt.Sprintf("an attribute path is over %d bytes", MaxPathBytes))
+		return
+	}
+	if e.attrs++; e.attrs > MaxAttrs {
+		e.fail(file, fmt.Sprintf("more than %d attributes", MaxAttrs))
+		return
+	}
+	at := Attr{Path: p, Class: c.class, Refs: sortedRefs(c.refs), Span: span}
+	if e.cfg.values && c.hasV && (c.class == ClassLiteral || c.class == ClassDefaulted) {
+		at.Value = c.val
+	}
+	*out = append(*out, at)
+}
+
+// readRes is the classification of one value: its class, what it references and, when
+// a value was asked for and could be computed, the value.
+type readRes struct {
+	class Class
+	refs  []string
+	val   any
+	hasV  bool
+}
