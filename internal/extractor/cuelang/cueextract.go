@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 import (
 	"sort"
@@ -9,6 +9,7 @@ import (
 	"cuelang.org/go/cue/parser"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // cueMaxDepth caps field nesting (ADR-021 §1 / LT-4): depth 1 is a top-level
@@ -31,7 +32,7 @@ const kindCUEPackage core.SourceKind = "CUEPackage"
 // cuePackagePrefix names a package entity.
 const cuePackagePrefix = "package/"
 
-// CUEExtractor implements Extractor and DocResulter for CUE files. It uses the
+// CUEExtractor implements extractor.Extractor and extractor.DocResulter for CUE files. It uses the
 // official cuelang.org/go parser, which also resolves each identifier to the
 // declaration it names in the file (astutil.Resolve).
 //
@@ -67,8 +68,8 @@ const cuePackagePrefix = "package/"
 type CUEExtractor struct{}
 
 var (
-	_ Extractor   = (*CUEExtractor)(nil)
-	_ DocResulter = (*CUEExtractor)(nil)
+	_ extractor.Extractor   = (*CUEExtractor)(nil)
+	_ extractor.DocResulter = (*CUEExtractor)(nil)
 )
 
 // NewCUEExtractor returns a new CUEExtractor.
@@ -102,7 +103,7 @@ type cueDecl struct {
 	parent   *cueDecl
 	children []*cueDecl
 	calls    map[string]bool
-	xrefs    []DocCrossFileRef
+	xrefs    []extractor.DocCrossFileRef
 }
 
 // cueImport is one import declaration.
@@ -137,28 +138,28 @@ func (w *cueWalk) off(fn func()) {
 // ExtractDoc implements DocResulter: Extract's entities, the file's package
 // entity as its root, and the cross-file references fusion.ResolveDocXrefs
 // resolves with the cue-import and cue-package strategies (cuedoc.go).
-func (c *CUEExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
+func (c *CUEExtractor) ExtractDoc(service, relPath string, src []byte) (extractor.DocResult, error) {
 	return extractCUE(service, relPath, src), nil
 }
 
 // extractCUE is one CUE file's extraction (ExtractDoc's body, a function of
 // its own so a test can call it directly: Extract and ExtractDoc are method
 // names every extractor shares).
-func extractCUE(service, relPath string, src []byte) DocResult {
+func extractCUE(service, relPath string, src []byte) extractor.DocResult {
 	f, _ := parser.ParseFile(relPath, src)
 	if f == nil {
-		return DocResult{}
+		return extractor.DocResult{}
 	}
 	pkg := f.PackageName()
 	if pkg == "" {
-		pkg = pkgFromPath(relPath)
+		pkg = extractor.PkgFromPath(relPath)
 	}
 	w := &cueWalk{
 		service: service, pkg: pkg, relPath: relPath, src: src,
 		byValue: map[ast.Node]*cueDecl{}, byField: map[*ast.Field]*cueDecl{}, byName: map[string][]*cueDecl{}, byStruct: map[*ast.StructLit][]*cueDecl{},
 		imports: map[*ast.ImportSpec]cueImport{}, lets: map[ast.Node]ast.Expr{},
 	}
-	var res DocResult
+	var res extractor.DocResult
 	if name := f.PackageName(); name != "" && name != "_" {
 		for _, d := range f.Decls {
 			if p, ok := d.(*ast.Package); ok {
@@ -212,12 +213,12 @@ func extractCUE(service, relPath string, src []byte) DocResult {
 
 // importDecls emits one KindCUEImport per import declaration and its
 // cross-file reference to the package it loads.
-func (w *cueWalk) importDecls(f *ast.File, res *DocResult) {
+func (w *cueWalk) importDecls(f *ast.File, res *extractor.DocResult) {
 	// f.Imports is deprecated (removal slated mid-2026); ImportSpecs is the
 	// supported iterator over the same decls.
 	for imp := range f.ImportSpecs() {
 		// Malformed imports (e.g. `import 42` in a mid-edit save) parse to a
-		// partial AST whose ImportSpec carries a nil or empty Path — and
+		// partial AST whose extractor.ImportSpec carries a nil or empty Path — and
 		// literal.Unquote's contract assumes a lexed string token: it indexes
 		// the first byte after stripping leading '#'s, so an empty value (or
 		// an all-'#' value) PANICS with index-out-of-range. Nothing in
@@ -239,7 +240,7 @@ func (w *cueWalk) importDecls(f *ast.File, res *DocResult) {
 		ci := cueImport{path: p, seg: seg, std: !strings.Contains(strings.SplitN(bare, "/", 2)[0], ".")}
 		w.imports[imp] = ci
 		if !ci.std {
-			res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: p, Edge: CUEImportsEdge, Raw: p, Strategy: CUEImportStrategy, Line: imp.Pos().Line()})
+			res.CrossFile = append(res.CrossFile, extractor.DocCrossFileRef{From: p, Edge: extractor.CUEImportsEdge, Raw: p, Strategy: extractor.CUEImportStrategy, Line: imp.Pos().Line()})
 		}
 	}
 }
@@ -811,11 +812,11 @@ func (w *cueWalk) record(t cueTarget, caller *cueDecl, line int) {
 		// "seg.Name…" through an import: the entity is Name… in the package
 		// the import loads
 		if t.below != "" {
-			caller.xrefs = append(caller.xrefs, DocCrossFileRef{From: caller.name, Edge: CUEReferencesEdge, Raw: t.below, Target: t.path, Strategy: CUEImportStrategy, Line: line})
+			caller.xrefs = append(caller.xrefs, extractor.DocCrossFileRef{From: caller.name, Edge: extractor.CUEReferencesEdge, Raw: t.below, Target: t.path, Strategy: extractor.CUEImportStrategy, Line: line})
 		}
 		return
 	}
-	caller.xrefs = append(caller.xrefs, DocCrossFileRef{From: caller.name, Edge: CUEReferencesEdge, Raw: t.name, Strategy: CUEPackageStrategy, Line: line})
+	caller.xrefs = append(caller.xrefs, extractor.DocCrossFileRef{From: caller.name, Edge: extractor.CUEReferencesEdge, Raw: t.name, Strategy: extractor.CUEPackageStrategy, Line: line})
 }
 
 // recordDecls adds a reference to declarations of this file.
@@ -831,7 +832,7 @@ func (w *cueWalk) recordDecls(t cueTarget, caller *cueDecl, line int) {
 	if tree {
 		// a path of the package value: the package's other files may declare
 		// it too (CUE unifies every declaration)
-		caller.xrefs = append(caller.xrefs, DocCrossFileRef{From: caller.name, Edge: CUEReferencesEdge, Raw: t.decls[0].name, Strategy: CUEPackageStrategy, Line: line})
+		caller.xrefs = append(caller.xrefs, extractor.DocCrossFileRef{From: caller.name, Edge: extractor.CUEReferencesEdge, Raw: t.decls[0].name, Strategy: extractor.CUEPackageStrategy, Line: line})
 	}
 }
 

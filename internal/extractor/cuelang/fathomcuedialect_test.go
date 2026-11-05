@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 import (
 	"os"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 type fcEntity struct {
@@ -20,11 +21,11 @@ type fcEntity struct {
 // composed CUE nodes (kinds CUE*) are the cue dialect's and tested there.
 func fathomCUEEntities(t *testing.T, id, rel, fixture string) ([]fcEntity, []core.SymbolNode) {
 	t.Helper()
-	x, ok := NativeDialectExtractor(id)
+	x, ok := extractor.NativeDialectExtractor(id)
 	if !ok {
-		t.Fatalf("NativeDialectExtractor(%q): not a native dialect", id)
+		t.Fatalf("extractor.NativeDialectExtractor(%q): not a native dialect", id)
 	}
-	src, err := os.ReadFile(filepath.Join("dialects", id, "testdata", filepath.FromSlash(fixture)))
+	src, err := os.ReadFile(filepath.Join("..", "dialects", id, "testdata", filepath.FromSlash(fixture)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestFathomLayerPacks_SurvivesSyntaxError(t *testing.T) {
 // A file that does not evaluate on its own (an unresolved import) falls back
 // to the static reading: the labels and literals the syntax carries.
 func TestFathomConcerns_StaticFallback(t *testing.T) {
-	x, _ := NativeDialectExtractor("fathom-concerns")
+	x, _ := extractor.NativeDialectExtractor("fathom-concerns")
 	src := []byte("import \"example.com/x\"\nconcerns: {\n\ta: {want: \"w\", check: x.#C}\n\tb: {want: \"v\"}\n}\n")
 	nodes, err := x.Extract("svc", ".fathom/concerns.cue", src)
 	if err != nil {

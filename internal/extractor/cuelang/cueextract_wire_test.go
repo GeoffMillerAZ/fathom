@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 // Direct top-level wire tests for the VS-3/VS-4 contracts. The behavioral
 // suite (cueextract_test.go, package extractor_test) exercises these

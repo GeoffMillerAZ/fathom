@@ -50,7 +50,7 @@ func TestIaCCountNotes(t *testing.T) {
 
 // TestIaCCountNotes_Timoni (LB-F218): a bundle instance's module url no static
 // reading resolves reaches the timoni reading's notes, by reason
-// (extractor.TimoniUnresolvedRefs): an oci:// module, a url that leaves the
+// (cuelang.TimoniUnresolvedRefs): an oci:// module, a url that leaves the
 // repository, a url that is no string literal. A subject with every url
 // resolved gets none.
 func TestIaCCountNotes_Timoni(t *testing.T) {

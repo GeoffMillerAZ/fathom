@@ -102,12 +102,6 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 	if e, ok := HCLToolDialectExtractor(id); ok {
 		return e, true
 	}
-	if e, ok := TimoniDialectExtractor(id); ok {
-		return e, true
-	}
-	if e, ok := FathomCUEDialectExtractor(id); ok {
-		return e, true
-	}
 	if e, ok := registeredNativeDialect(id); ok {
 		return e, true
 	}
@@ -116,8 +110,6 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 		return NewHCLExtractor(), true
 	case "go-mod":
 		return NewGoModulesExtractor(), true
-	case "cue":
-		return NewCUEExtractor(), true // LB-Q-cue: the CUE dialect's own DocResulter (cuedoc.go)
 	case "markdown":
 		return NewMarkdownExtractor(), true // LB-Q-markdown: headings, and the links between Markdown files
 	case "simulink":
@@ -376,3 +368,6 @@ func blankLines(src []byte, lines map[int]bool) []byte {
 	}
 	return bytes.Join(parts, []byte("\n"))
 }
+
+// CapString is capString for the dialect packages that live beside this one.
+func CapString(s string, n int) string { return capString(s, n) }

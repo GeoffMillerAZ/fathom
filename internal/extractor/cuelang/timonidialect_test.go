@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 // timonidialect_test.go — goldens and contracts for the Timoni native dialect
 // (LB-Q-timoni, LB-F217). Every fixture under dialects/timoni/testdata is
@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 type timoniGoldenSymbol struct {
@@ -57,7 +58,7 @@ type timoniGolden struct {
 
 func timoniFixtures(t *testing.T) []string {
 	t.Helper()
-	root := filepath.Join("dialects", "timoni", "testdata")
+	root := filepath.Join("..", "dialects", "timoni", "testdata")
 	var out []string
 	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -79,7 +80,7 @@ func timoniFixtures(t *testing.T) []string {
 }
 
 func timoniRepoPath(fx string) string {
-	rel, _ := filepath.Rel(filepath.Join("dialects", "timoni", "testdata"), fx)
+	rel, _ := filepath.Rel(filepath.Join("..", "dialects", "timoni", "testdata"), fx)
 	return "svc/" + filepath.ToSlash(rel)
 }
 
@@ -151,7 +152,7 @@ func TestTimoniDialectGoldens(t *testing.T) {
 
 func timoniNodes(t *testing.T, rel, fx string) []core.SymbolNode {
 	t.Helper()
-	src, err := os.ReadFile(filepath.Join("dialects", "timoni", "testdata", fx))
+	src, err := os.ReadFile(filepath.Join("..", "dialects", "timoni", "testdata", fx))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +177,7 @@ func timoniNode(ns []core.SymbolNode, name string) (core.SymbolNode, bool) {
 // Timoni entities come on top.
 func TestTimoniComposesTheCUEExtraction(t *testing.T) {
 	for _, fx := range []string{"app/timoni.cue", "app/values.cue", "app/templates/deployment.cue", "bundles/bundle.cue"} {
-		src, err := os.ReadFile(filepath.Join("dialects", "timoni", "testdata", fx))
+		src, err := os.ReadFile(filepath.Join("..", "dialects", "timoni", "testdata", fx))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -279,7 +280,7 @@ func TestTimoniValuesCallsConfigFields(t *testing.T) {
 // timoni.cue relative to the bundle's directory; every other url is counted
 // unresolved with its reason, never guessed.
 func TestTimoniBundleModuleRefs(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join("dialects", "timoni", "testdata", "bundles", "bundle.cue"))
+	src, err := os.ReadFile(filepath.Join("..", "dialects", "timoni", "testdata", "bundles", "bundle.cue"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,14 +319,14 @@ func TestTimoniBundleModuleRefs(t *testing.T) {
 // label-selector references scoped by the module root, and each object
 // declares the label set the reference selects.
 func TestTimoniInstanceRefs(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join("dialects", "timoni", "testdata", "app", "templates", "config.cue"))
+	src, err := os.ReadFile(filepath.Join("..", "dialects", "timoni", "testdata", "app", "templates", "config.cue"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	r, _ := NewTimoniExtractor().ExtractDoc("svc", "svc/app/templates/config.cue", src)
 	var defs []string
 	for _, c := range r.CrossFile {
-		if c.Strategy == CUEImportStrategy || c.Strategy == CUEPackageStrategy {
+		if c.Strategy == extractor.CUEImportStrategy || c.Strategy == extractor.CUEPackageStrategy {
 			continue // the composed CUE extraction's own references, kept unchanged
 		}
 		if c.Edge != timoniEdgeRenders || c.Strategy != "label-selector" || c.From != "#Instance" || c.Scope != "timoni:svc/app" {
@@ -338,7 +339,7 @@ func TestTimoniInstanceRefs(t *testing.T) {
 	if want := []string{"#Deployment", "#Service", "#TestJob"}; !reflect.DeepEqual(defs, want) {
 		t.Errorf("instance renders %v, want %v", defs, want)
 	}
-	dsrc, _ := os.ReadFile(filepath.Join("dialects", "timoni", "testdata", "app", "templates", "deployment.cue"))
+	dsrc, _ := os.ReadFile(filepath.Join("..", "dialects", "timoni", "testdata", "app", "templates", "deployment.cue"))
 	dr, _ := NewTimoniExtractor().ExtractDoc("svc", "svc/app/templates/deployment.cue", dsrc)
 	if len(dr.Labels) != 1 || dr.Labels[0].Entity != "timoni/object/#Deployment" || dr.Labels[0].Scope != "timoni:svc/app" ||
 		dr.Labels[0].Labels["pkg"] != "templates" || dr.Labels[0].Labels["def"] != "#Deployment" {
@@ -364,18 +365,18 @@ func TestTimoniModuleRoot(t *testing.T) {
 // TestTimoniSyntaxErrorKeepsWhatParses: a file with a syntax error still
 // yields the entities its parsed declarations carry, and no panic.
 func TestTimoniSyntaxErrorKeepsWhatParses(t *testing.T) {
-	src, _ := os.ReadFile(filepath.Join("dialects", "timoni", "testdata", "app", "syntax-error.cue"))
+	src, _ := os.ReadFile(filepath.Join("..", "dialects", "timoni", "testdata", "app", "syntax-error.cue"))
 	r, _ := NewTimoniExtractor().ExtractDoc("svc", "svc/app/syntax-error.cue", src)
 	_ = r
 }
 
 func TestTimoniDialectExtractorRegistered(t *testing.T) {
-	e, ok := NativeDialectExtractor("timoni")
+	e, ok := extractor.NativeDialectExtractor("timoni")
 	if !ok {
-		t.Fatal("NativeDialectExtractor(timoni) not registered")
+		t.Fatal("extractor.NativeDialectExtractor(timoni) not registered")
 	}
-	if _, ok := e.(DocResulter); !ok {
-		t.Error("the timoni extractor must be a DocResulter so its cross-file references reach the resolver")
+	if _, ok := e.(extractor.DocResulter); !ok {
+		t.Error("the timoni extractor must be a extractor.DocResulter so its cross-file references reach the resolver")
 	}
 	if _, ok := TimoniDialectExtractor("cue"); ok {
 		t.Error("only the timoni id is this file's")

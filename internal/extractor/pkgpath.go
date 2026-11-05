@@ -22,3 +22,6 @@ func pkgFromPath(relPath string) string {
 	}
 	return base
 }
+
+// PkgFromPath is pkgFromPath for the dialect packages that live beside this one.
+func PkgFromPath(relPath string) string { return pkgFromPath(relPath) }

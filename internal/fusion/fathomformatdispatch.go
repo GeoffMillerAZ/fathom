@@ -20,6 +20,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/internal/planrowsdialect"
 )
 
@@ -38,7 +39,7 @@ var (
 	fathomFormatOnce sync.Once
 	fathomConfigExt  *extractor.DocExtractor
 	fathomPlansExt   *planrowsdialect.PlanRowsExtractor
-	fathomCUEExt     = map[string]*extractor.FathomCUEExtractor{}
+	fathomCUEExt     = map[string]*cuelang.FathomCUEExtractor{}
 )
 
 // fathomFormatExtractors builds the two extractors once; a config dialect
@@ -51,7 +52,7 @@ func fathomFormatExtractors() (*extractor.DocExtractor, *planrowsdialect.PlanRow
 		}
 		fathomPlansExt = planrowsdialect.NewPlanRowsExtractor()
 		for _, id := range []string{"fathom-concerns", "fathom-layer-packs"} {
-			fathomCUEExt[id] = extractor.NewFathomCUEExtractor(id)
+			fathomCUEExt[id] = cuelang.NewFathomCUEExtractor(id)
 		}
 	})
 	return fathomConfigExt, fathomPlansExt

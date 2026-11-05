@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
 func timoniCorpus() map[string]string {
@@ -137,11 +137,11 @@ func TestResolveExtractor_Timoni(t *testing.T) {
 	if !ok || tk != ToolTimoni {
 		t.Fatalf("resolveExtractor = %v, %q, %v", e, tk, ok)
 	}
-	if _, isTimoni := e.(*extractor.TimoniExtractor); !isTimoni {
+	if _, isTimoni := e.(*cuelang.TimoniExtractor); !isTimoni {
 		t.Errorf("resolveExtractor chose %T, want the Timoni extractor", e)
 	}
 	e, tk, _, _ = p.resolveExtractor("schema/schema.cue", []byte(src["schema/schema.cue"]), idx)
-	if _, isTimoni := e.(*extractor.TimoniExtractor); isTimoni || tk == ToolTimoni {
+	if _, isTimoni := e.(*cuelang.TimoniExtractor); isTimoni || tk == ToolTimoni {
 		t.Errorf("plain CUE resolved to %T, %q", e, tk)
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 
 // timoniExtractor is the dialect's extractor, built once (it holds no state).
 func timoniExtractor() extractor.Extractor {
-	timoniOnce.Do(func() { timoniExt = extractor.NewTimoniExtractor() })
+	timoniOnce.Do(func() { timoniExt = cuelang.NewTimoniExtractor() })
 	return timoniExt
 }
 

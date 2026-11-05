@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
@@ -23,7 +24,7 @@ import (
 // under docs/bench/readings/lang/parity/.
 var incumbentExtractors = map[string]func() extractor.Extractor{
 	"cmakeextract":      func() extractor.Extractor { return extractor.NewCMakeExtractor() },
-	"cueextract":        func() extractor.Extractor { return extractor.NewCUEExtractor() },
+	"cueextract":        func() extractor.Extractor { return cuelang.NewCUEExtractor() },
 	"ghaextract":        func() extractor.Extractor { return extractor.NewGHAExtractor() },
 	"helmchartextract":  func() extractor.Extractor { return extractor.NewHelmChartExtractor() },
 	"helmtemplateyaml":  func() extractor.Extractor { return extractor.NewHelmTemplateYAMLExtractor() },

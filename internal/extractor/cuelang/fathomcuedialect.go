@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 // fathomcuedialect.go — fathom's own CUE configuration formats as native
 // dialects (LB-Q-fathom-concerns, LB-Q-fathom-layer-packs, engine "native":
@@ -40,6 +40,7 @@ import (
 	"cuelang.org/go/cue/parser"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 const (
@@ -52,7 +53,7 @@ const (
 	KindFathomRuleSet core.SourceKind = "FathomRuleSet"
 )
 
-// FathomCUEExtractor implements Extractor and DocResulter for the native
+// FathomCUEExtractor implements extractor.Extractor and extractor.DocResulter for the native
 // fathom-concerns and fathom-layer-packs dialects, over the CUE extraction.
 type FathomCUEExtractor struct {
 	id   string
@@ -60,8 +61,8 @@ type FathomCUEExtractor struct {
 }
 
 var (
-	_ Extractor   = (*FathomCUEExtractor)(nil)
-	_ DocResulter = (*FathomCUEExtractor)(nil)
+	_ extractor.Extractor   = (*FathomCUEExtractor)(nil)
+	_ extractor.DocResulter = (*FathomCUEExtractor)(nil)
 )
 
 // NewFathomCUEExtractor returns the extractor of dialect id, "fathom-concerns"
@@ -72,14 +73,14 @@ func NewFathomCUEExtractor(id string) *FathomCUEExtractor {
 
 // FathomCUEDialectExtractor is the extractor of the native dialect a fathom CUE
 // format defines, by dialect id; ok is false for any other id.
-func FathomCUEDialectExtractor(id string) (Extractor, bool) {
+func FathomCUEDialectExtractor(id string) (extractor.Extractor, bool) {
 	if id == "fathom-concerns" || id == "fathom-layer-packs" {
 		return NewFathomCUEExtractor(id), true
 	}
 	return nil, false
 }
 
-// Extract implements Extractor.
+// Extract implements extractor.Extractor.
 func (x *FathomCUEExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	r, err := x.ExtractDoc(service, relPath, src)
 	return r.Nodes, err
@@ -87,10 +88,10 @@ func (x *FathomCUEExtractor) Extract(service, relPath string, src []byte) ([]cor
 
 // ExtractDoc implements DocResulter: the CUE extraction, then this dialect's
 // entities.
-func (x *FathomCUEExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	var res DocResult
+func (x *FathomCUEExtractor) ExtractDoc(service, relPath string, src []byte) (extractor.DocResult, error) {
+	var res extractor.DocResult
 	var baseErr error
-	if d, ok := any(x.base).(DocResulter); ok {
+	if d, ok := any(x.base).(extractor.DocResulter); ok {
 		res, baseErr = d.ExtractDoc(service, relPath, src)
 	} else {
 		res.Nodes, baseErr = x.base.Extract(service, relPath, src)
@@ -101,7 +102,7 @@ func (x *FathomCUEExtractor) ExtractDoc(service, relPath string, src []byte) (Do
 	}
 	pkg := f.PackageName()
 	if pkg == "" {
-		pkg = pkgFromPath(relPath)
+		pkg = extractor.PkgFromPath(relPath)
 	}
 	w := &fathomCUEWalk{service: service, pkg: pkg, relPath: relPath, f: f, val: evalCUEFile(f)}
 	switch x.id {
@@ -153,7 +154,7 @@ func (w *fathomCUEWalk) add(name string, kind core.SourceKind, start, end int, s
 	w.nodes = append(w.nodes, core.SymbolNode{
 		Service: w.service, Package: w.pkg, Name: name, Kind: kind,
 		FilePath: w.relPath, Line: start, EndLine: end,
-		Signature: capString(sig, 200), Tier: core.TierVerified,
+		Signature: extractor.CapString(sig, 200), Tier: core.TierVerified,
 	})
 }
 

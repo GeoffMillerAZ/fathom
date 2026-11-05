@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
 // DispatchTable is the read-only view of the per-key extractor dispatch that
@@ -104,7 +105,7 @@ func dispatchLabel(key string, e extractor.Extractor, docKeys map[string][]strin
 		return fmt.Sprintf("tags dialect `%s`", x.Name())
 	case *extractor.GoExtractor:
 		return "native Go (`go/parser` + `go/types`)"
-	case *extractor.CUEExtractor:
+	case *cuelang.CUEExtractor:
 		return "native CUE (`cue/load`)"
 	case *extractor.CHeaderExtractor:
 		// The CT-3 router picks per file between the two extractors it holds

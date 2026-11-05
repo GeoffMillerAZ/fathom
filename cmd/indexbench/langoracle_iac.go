@@ -5,7 +5,7 @@ package main
 // harness took: a Terragrunt reference no static reading resolves, by reason
 // (extractor.TerragruntUnresolvedRefs, LB-F142), a Timoni bundle instance's
 // module url no static reading resolves, by reason
-// (extractor.TimoniUnresolvedRefs, LB-F218), and a subject's YAML file whose
+// (cuelang.TimoniUnresolvedRefs, LB-F218), and a subject's YAML file whose
 // Argo, Flux or Crossplane documents sit beside other documents, so ingest
 // keeps it Kubernetes, whole (fusion.CRMixed, LB-F149).
 
@@ -18,6 +18,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 )
 
@@ -42,7 +43,7 @@ func iacCountNotes(dialect, name string, measured, yamls []core.SourceFile) []st
 	case dialect == "timoni":
 		by := map[string]int{}
 		for _, f := range measured {
-			for _, u := range extractor.TimoniUnresolvedRefs(f.Path, f.Content) {
+			for _, u := range cuelang.TimoniUnresolvedRefs(f.Path, f.Content) {
 				by[u.Reason]++
 			}
 		}

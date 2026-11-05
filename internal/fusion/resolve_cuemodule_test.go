@@ -17,6 +17,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
 // cueModuleCorpus is a module (example.org/app, v0.9+ form) with a package
@@ -87,7 +88,7 @@ func cueModuleEnv(t *testing.T) (*resolveEnv, []string, []core.SymbolNode) {
 	}
 	sort.Strings(paths)
 	var syms []core.SymbolNode
-	x := extractor.NewCUEExtractor()
+	x := cuelang.NewCUEExtractor()
 	for _, p := range paths {
 		nodes, err := x.Extract("svc", p, []byte(corpus[p]))
 		if err != nil {
@@ -160,7 +161,7 @@ func TestResolveFileEdges_CUEModule(t *testing.T) {
 	corpus := cueModuleCorpus()
 	var files []core.SourceFile
 	var syms []core.SymbolNode
-	x := extractor.NewCUEExtractor()
+	x := cuelang.NewCUEExtractor()
 	paths := make([]string, 0, len(corpus))
 	for p := range corpus {
 		paths = append(paths, p)
@@ -306,7 +307,7 @@ func TestResolveFileEdges_CUEWidePackage(t *testing.T) {
 	for i := 0; i < n; i++ {
 		files = append(files, core.SourceFile{Path: fmt.Sprintf("wide/f%02d.cue", i), Content: []byte(fmt.Sprintf("package wide\n\n#D%d: %d\n", i, i))})
 	}
-	x := extractor.NewCUEExtractor()
+	x := cuelang.NewCUEExtractor()
 	var syms []core.SymbolNode
 	for _, f := range files {
 		nodes, err := x.Extract("svc", f.Path, f.Content)

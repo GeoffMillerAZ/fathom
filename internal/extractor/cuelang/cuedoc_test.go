@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 // cuedoc_test.go — goldens and contracts for the CUE dialect (LB-Q-cue): the
 // entities, roots and cross-file references extractCUE gives each fixture of
@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 type cueGoldenSymbol struct {
@@ -48,7 +50,7 @@ type cueGoldenFile struct {
 // file on disk: the module's files relative to the module, broken.cue as is.
 func cueFixtures(t *testing.T) map[string]string {
 	t.Helper()
-	dir := filepath.Join("dialects", "cue", "testdata")
+	dir := filepath.Join("..", "dialects", "cue", "testdata")
 	out := map[string]string{"broken.cue": filepath.Join(dir, "broken.cue")}
 	mod := filepath.Join(dir, "module")
 	err := filepath.WalkDir(mod, func(p string, d fs.DirEntry, err error) error {
@@ -68,7 +70,7 @@ func cueFixtures(t *testing.T) map[string]string {
 	return out
 }
 
-func cueGolden(rel string, res DocResult) cueGoldenFile {
+func cueGolden(rel string, res extractor.DocResult) cueGoldenFile {
 	g := cueGoldenFile{Roots: res.Roots, Symbols: []cueGoldenSymbol{}, CrossFile: []cueGoldenCross{}}
 	if g.Roots == nil {
 		g.Roots = []string{}
@@ -94,7 +96,7 @@ func TestCUEDialectGoldens(t *testing.T) {
 		}
 		got[rel] = cueGolden(rel, extractCUE("svc", rel, src))
 	}
-	gp := filepath.Join("dialects", "cue", "testdata", "goldens.json")
+	gp := filepath.Join("..", "dialects", "cue", "testdata", "goldens.json")
 	gb, err := json.MarshalIndent(got, "", " ")
 	if err != nil {
 		t.Fatal(err)
@@ -129,15 +131,15 @@ func TestCUEDialectGoldens(t *testing.T) {
 }
 
 // TestCUEDialectIsRegistered: the native engine's registry answers for the
-// dialect with its DocResulter (indexbench lang-oracle measures it through
+// dialect with its extractor.DocResulter (indexbench lang-oracle measures it through
 // this, and the doc-xref pass reads its cross-file references).
 func TestCUEDialectIsRegistered(t *testing.T) {
-	e, ok := NativeDialectExtractor("cue")
+	e, ok := extractor.NativeDialectExtractor("cue")
 	if !ok {
-		t.Fatal("NativeDialectExtractor(cue): not registered")
+		t.Fatal("extractor.NativeDialectExtractor(cue): not registered")
 	}
-	if _, isDoc := e.(DocResulter); !isDoc {
-		t.Error("the CUE extractor must give the cross-file pass its DocResult")
+	if _, isDoc := e.(extractor.DocResulter); !isDoc {
+		t.Error("the CUE extractor must give the cross-file pass its extractor.DocResult")
 	}
 }
 
@@ -145,7 +147,7 @@ func TestCUEDialectIsRegistered(t *testing.T) {
 // unclosed struct) yields the entities the parser recovered, no empty-named
 // import, and no panic.
 func TestCUEMalformedFileKeepsWhatParses(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join("dialects", "cue", "testdata", "broken.cue"))
+	src, err := os.ReadFile(filepath.Join("..", "dialects", "cue", "testdata", "broken.cue"))
 	if err != nil {
 		t.Fatal(err)
 	}

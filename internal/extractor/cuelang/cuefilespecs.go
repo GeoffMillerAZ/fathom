@@ -1,7 +1,7 @@
-package extractor
+package cuelang
 
 // cuefilespecs.go — the CUE dialect's reader as the file resolver's
-// FileSpecExtractor (LB-F583, fusion's cue-module strategy): one
+// extractor.FileSpecExtractor (LB-F583, fusion's cue-module strategy): one
 // whole-package import per import declaration, bound to the package's
 // identifier (the name the extractor's references through the import are
 // written with: "seg.#A"), and the file's own package as its one re-export,
@@ -17,9 +17,10 @@ import (
 	"cuelang.org/go/cue/parser"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
-var _ FileSpecExtractor = (*CUEExtractor)(nil)
+var _ extractor.FileSpecExtractor = (*CUEExtractor)(nil)
 
 // Name is the dialect id, the file resolver's language key.
 func (c *CUEExtractor) Name() string { return "cue" }
@@ -30,19 +31,19 @@ func (c *CUEExtractor) Close() {}
 // ExtractFileSpecs implements FileSpecExtractor: the file's imports, and its
 // own package (".:name", the package name instantiated at the file's own
 // directory, the cue binary's spelling of it) as a re-export.
-func (c *CUEExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, error) {
+func (c *CUEExtractor) ExtractFileSpecs(relPath string, src []byte) (extractor.FileSpecs, error) {
 	f, _ := parser.ParseFile(relPath, src, parser.ImportsOnly)
 	if f == nil {
-		return FileSpecs{}, nil
+		return extractor.FileSpecs{}, nil
 	}
-	var fs FileSpecs
+	var fs extractor.FileSpecs
 	for _, s := range cueImportSpans(f) {
 		fs.Imports = append(fs.Imports, s.ImportSpec)
 	}
 	if name := f.PackageName(); name != "" && name != "_" {
 		for _, d := range f.Decls {
 			if p, ok := d.(*ast.Package); ok {
-				fs.Exports = []ExportSpec{{Module: ".:" + name, Line: p.Pos().Line()}}
+				fs.Exports = []extractor.ExportSpec{{Module: ".:" + name, Line: p.Pos().Line()}}
 				break
 			}
 		}
@@ -52,7 +53,7 @@ func (c *CUEExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, 
 
 // ExtractImportSpans implements FileSpecExtractor: each import declaration's
 // lines.
-func (c *CUEExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSpan, error) {
+func (c *CUEExtractor) ExtractImportSpans(relPath string, src []byte) ([]extractor.ImportSpan, error) {
 	f, _ := parser.ParseFile(relPath, src, parser.ImportsOnly)
 	if f == nil {
 		return nil, nil
@@ -62,16 +63,16 @@ func (c *CUEExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportS
 
 // cueImportSpans is f's import declarations, as importDecls reads them (a
 // malformed path is no import).
-func cueImportSpans(f *ast.File) []ImportSpan {
-	var out []ImportSpan
+func cueImportSpans(f *ast.File) []extractor.ImportSpan {
+	var out []extractor.ImportSpan
 	for imp := range f.ImportSpecs() {
 		p, ok := cueImportPathOf(imp)
 		if !ok {
 			continue
 		}
 		line := imp.Pos().Line()
-		out = append(out, ImportSpan{
-			ImportSpec: ImportSpec{LocalName: cueImportIdent(p), Module: p, Kind: ImportWhole, Line: line},
+		out = append(out, extractor.ImportSpan{
+			ImportSpec: extractor.ImportSpec{LocalName: cueImportIdent(p), Module: p, Kind: extractor.ImportWhole, Line: line},
 			StartLine:  line, EndLine: max(line, imp.End().Line()),
 		})
 	}

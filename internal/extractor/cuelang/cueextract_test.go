@@ -1,4 +1,4 @@
-package extractor_test
+package cuelang
 
 import (
 	"os"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 const cueFixture = `package config
@@ -29,7 +28,7 @@ someValue: "hello"
 `
 
 func TestCUEExtractor_Basic(t *testing.T) {
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", "schema.cue", []byte(cueFixture))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -137,7 +136,7 @@ func TestCUEExtractor_DepthCap(t *testing.T) {
 
 a: b: c: d: e: f: g: h: int
 `
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", "deep.cue", []byte(deepFixture))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -185,7 +184,7 @@ import (
 
 value: list.Contains([1, 2, 3], 1)
 `
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", "withimports.cue", []byte(importFixture))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -231,7 +230,7 @@ import 42
 
 good: "value"
 `
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", "broken.cue", []byte(malformed))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -256,7 +255,7 @@ good: "value"
 func TestCUEExtractor_PackageFallback(t *testing.T) {
 	const noPackageFixture = `value: 42
 `
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", "fragment.cue", []byte(noPackageFixture))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -277,10 +276,10 @@ func TestCUEExtractor_PackageFallback(t *testing.T) {
 // the actual package clause reports "config" for both.
 func TestCUEExtractor_RealConfigSchemas_SamePackage(t *testing.T) {
 	paths := []string{
-		"../config/config_schema.cue",
-		"../../schema/config/schema.cue",
+		"../../config/config_schema.cue",
+		"../../../schema/config/schema.cue",
 	}
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	for _, p := range paths {
 		src, err := os.ReadFile(p)
 		if err != nil {
@@ -306,12 +305,12 @@ func TestCUEExtractor_RealConfigSchemas_SamePackage(t *testing.T) {
 // #Layer's nested field tree, sorted, must all be present now that struct
 // literals recurse.
 func TestCUEExtractor_GoldenLayerSchema(t *testing.T) {
-	const path = "../../schema/semantic/schema.cue"
+	const path = "../../../schema/semantic/schema.cue"
 	src, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile(%q): %v", path, err)
 	}
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", path, src)
 	if err != nil {
 		t.Fatalf("Extract(%q): %v", path, err)
@@ -348,7 +347,7 @@ func TestCUEExtractor_GoldenLayerSchema(t *testing.T) {
 }
 
 func TestCUEExtractor_LineNumbers(t *testing.T) {
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	nodes, err := x.Extract("svc", "schema.cue", []byte(cueFixture))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -368,7 +367,7 @@ func TestCUEExtractor_LineNumbers(t *testing.T) {
 }
 
 func TestCUEExtractor_Determinism(t *testing.T) {
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 	n1, err := x.Extract("svc", "schema.cue", []byte(cueFixture))
 	if err != nil {
 		t.Fatalf("first Extract: %v", err)
@@ -427,7 +426,7 @@ import "example.com/kit"
 // instead of discarding them, landing in SymbolNode.Calls exactly like
 // goextract.go's collectCalls — so find_callers/references work for CUE.
 func TestCUEReferenceEdgesEmitted(t *testing.T) {
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 
 	nodes, err := x.Extract("svc", "kit/kit.cue", []byte(cueRefFixture))
 	if err != nil {
@@ -509,7 +508,7 @@ myKit: #Kit & {
 // a CUE plan row with no new grammar, and with NO change to the reaches
 // machinery itself.
 func TestCUETestdataUnificationCountsAsReaches(t *testing.T) {
-	x := extractor.NewCUEExtractor()
+	x := NewCUEExtractor()
 
 	t.Run("testdata_path_synthesizes_Test_caller", func(t *testing.T) {
 		nodes, err := x.Extract("svc", "kit/testdata/fixture.cue", []byte(cueTestdataFixture))

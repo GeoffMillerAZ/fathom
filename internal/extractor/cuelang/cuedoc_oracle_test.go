@@ -1,4 +1,4 @@
-package extractor_test
+package cuelang_test
 
 // cuedoc_oracle_test.go — LB-Q-cue: the CUE dialect against the cue binary's
 // own answer for the fixture module (dialects/cue/testdata/module.oracle.json,
@@ -16,12 +16,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
 func TestCUEDialectAgreesWithTheCueBinary(t *testing.T) {
-	dir := filepath.Join("dialects", "cue", "testdata")
+	dir := filepath.Join("..", "dialects", "cue", "testdata")
 	raw, err := os.ReadFile(filepath.Join(dir, "module.oracle.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestCUEDialectAgreesWithTheCueBinary(t *testing.T) {
 		wantCalls[c.Path+"|"+langbench.BareName(c.From)+"|"+langbench.BareName(c.To)] = true
 	}
 
-	x := extractor.NewCUEExtractor()
+	x := cuelang.NewCUEExtractor()
 	got := map[string]bool{}
 	gotCalls := map[string]bool{}
 	for f := range files {

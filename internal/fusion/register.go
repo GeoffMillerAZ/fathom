@@ -11,6 +11,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -234,7 +235,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".yml"] = yamlExt
 
 	// CUE
-	p.exts[".cue"] = extractor.NewCUEExtractor()
+	p.exts[".cue"] = cuelang.NewCUEExtractor()
 
 	// Markdown
 	// The native markdown dialect (LB-Q-markdown): headings, and the links

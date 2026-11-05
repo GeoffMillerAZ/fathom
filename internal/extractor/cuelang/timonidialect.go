@@ -1,4 +1,4 @@
-package extractor
+package cuelang
 
 // timonidialect.go — the Timoni native dialect (LB-Q-timoni, docs/design/
 // language-breadth.md §13, engine "native": cuelang.org/go's parser, the one
@@ -31,7 +31,7 @@ package extractor
 // whose body has a `#config: #Config` field calls #Config; #Instance.config ->
 // #Config and `values: templates.#Config` are the CUE extraction's own edges.
 //
-// Cross-file references (L3, DocResult.CrossFile):
+// Cross-file references (L3, extractor.DocResult.CrossFile):
 //
 //   - a bundle instance's `module.url` of `file://<path>` is the module's
 //     timoni.cue: a repo-path of the path read relative to the bundle file's
@@ -45,7 +45,7 @@ package extractor
 //     objects #Instance names, so this is "module -> its rendered Kubernetes
 //     kinds" at the template's file;
 //   - whatever the composed CUE extraction itself reports, when it reports
-//     cross-file references (a DocResulter).
+//     cross-file references (a extractor.DocResulter).
 
 import (
 	"path"
@@ -58,6 +58,7 @@ import (
 	"cuelang.org/go/cue/token"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 const (
@@ -77,15 +78,15 @@ const (
 	timoniScopePrefix = "timoni:"
 )
 
-// TimoniExtractor implements Extractor and DocResulter for Timoni modules,
+// TimoniExtractor implements extractor.Extractor and extractor.DocResulter for Timoni modules,
 // bundles and runtimes, over the CUE extraction.
 type TimoniExtractor struct {
 	base *CUEExtractor
 }
 
 var (
-	_ Extractor   = (*TimoniExtractor)(nil)
-	_ DocResulter = (*TimoniExtractor)(nil)
+	_ extractor.Extractor   = (*TimoniExtractor)(nil)
+	_ extractor.DocResulter = (*TimoniExtractor)(nil)
 )
 
 // NewTimoniExtractor returns the timoni dialect's extractor.
@@ -93,23 +94,23 @@ func NewTimoniExtractor() *TimoniExtractor { return &TimoniExtractor{base: NewCU
 
 // TimoniDialectExtractor is the extractor of the native dialect this file
 // defines, by dialect id; ok is false for any other id.
-func TimoniDialectExtractor(id string) (Extractor, bool) {
+func TimoniDialectExtractor(id string) (extractor.Extractor, bool) {
 	if id == "timoni" {
 		return NewTimoniExtractor(), true
 	}
 	return nil, false
 }
 
-// Extract implements Extractor.
+// Extract implements extractor.Extractor.
 func (x *TimoniExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	r, err := x.ExtractDoc(service, relPath, src)
 	return r.Nodes, err
 }
 
-// ExtractDoc implements DocResulter. A file the CUE parser cannot recover
+// ExtractDoc implements extractor.DocResulter. A file the CUE parser cannot recover
 // anything from yields nothing; one with syntax errors yields what its parsed
 // declarations carry.
-func (x *TimoniExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
+func (x *TimoniExtractor) ExtractDoc(service, relPath string, src []byte) (extractor.DocResult, error) {
 	r, _, err := x.extract(service, relPath, src)
 	return r, err
 }
@@ -151,10 +152,10 @@ func TimoniModuleRoot(relPath string) string {
 	return dir
 }
 
-func (x *TimoniExtractor) extract(service, relPath string, src []byte) (DocResult, []TimoniUnresolved, error) {
-	var res DocResult
+func (x *TimoniExtractor) extract(service, relPath string, src []byte) (extractor.DocResult, []TimoniUnresolved, error) {
+	var res extractor.DocResult
 	var baseErr error
-	if d, ok := any(x.base).(DocResulter); ok {
+	if d, ok := any(x.base).(extractor.DocResulter); ok {
 		// The CUE extraction reports cross-file references of its own: kept.
 		res, baseErr = d.ExtractDoc(service, relPath, src)
 	} else {
@@ -166,7 +167,7 @@ func (x *TimoniExtractor) extract(service, relPath string, src []byte) (DocResul
 	}
 	pkg := f.PackageName()
 	if pkg == "" {
-		pkg = pkgFromPath(relPath)
+		pkg = extractor.PkgFromPath(relPath)
 	}
 	w := &timoniWalk{
 		service: service, pkg: pkg, relPath: relPath,
@@ -233,8 +234,8 @@ type timoniWalk struct {
 	imports                     map[string]string // identifier -> import path
 	taken                       map[string]bool
 	nodes                       []core.SymbolNode
-	cross                       []DocCrossFileRef
-	labels                      []DocLabelSet
+	cross                       []extractor.DocCrossFileRef
+	labels                      []extractor.DocLabelSet
 	unresolved                  []TimoniUnresolved
 	root0                       string // the entity a file-level reference resolves to
 	configDefs                  map[string]bool
@@ -316,7 +317,7 @@ func (w *timoniWalk) definition(name string, fd *ast.Field) {
 			sig = apiVersion + " " + kind
 		}
 		if w.add("timoni/object/"+name, kindTimoniObject, fd, sig, nil) {
-			w.labels = append(w.labels, DocLabelSet{
+			w.labels = append(w.labels, extractor.DocLabelSet{
 				Entity: "timoni/object/" + name,
 				Scope:  timoniScopePrefix + w.root,
 				Labels: map[string]string{"pkg": w.pkg, "def": name},
@@ -494,7 +495,7 @@ func (w *timoniWalk) instanceRefs(fd *ast.Field) {
 		if r.pkg != w.pkg {
 			raw = r.pkg + "." + r.def
 		}
-		w.cross = append(w.cross, DocCrossFileRef{
+		w.cross = append(w.cross, extractor.DocCrossFileRef{
 			From: "#Instance", Edge: timoniEdgeRenders, Raw: raw, Strategy: "label-selector",
 			Line: line[r], Scope: timoniScopePrefix + w.root,
 			Labels: map[string]string{"pkg": r.pkg, "def": r.def},
@@ -591,7 +592,7 @@ func (w *timoniWalk) moduleRef(from string, urlf *ast.Field) {
 		w.unresolved = append(w.unresolved, TimoniUnresolved{Line: line, Edge: timoniEdgeModule, Raw: raw, Reason: "outside-repo"})
 		return
 	}
-	w.cross = append(w.cross, DocCrossFileRef{
+	w.cross = append(w.cross, extractor.DocCrossFileRef{
 		From: from, Edge: timoniEdgeModule, Raw: raw, Target: path.Join(target, "timoni.cue"),
 		Strategy: "repo-path", Line: line,
 	})

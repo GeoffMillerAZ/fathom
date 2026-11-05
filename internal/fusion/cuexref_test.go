@@ -13,7 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -59,7 +59,7 @@ func cueDocFiles(t *testing.T, sources map[string]string) []DocFile {
 		paths = append(paths, p)
 	}
 	sort.Strings(paths)
-	x := extractor.NewCUEExtractor()
+	x := cuelang.NewCUEExtractor()
 	var files []DocFile
 	for _, p := range paths {
 		r, err := x.ExtractDoc("svc", p, []byte(sources[p]))

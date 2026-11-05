@@ -31,7 +31,7 @@ package fusion
 // the file defining the name.
 //
 // The universe's packages are read from its symbols (each file's package
-// entity, extractor.CUEPackageOf), once per pass, and its modules from the
+// entity, cuelang.CUEPackageOf), once per pass, and its modules from the
 // module files' `module` entities (signed with the path), else through the
 // env's reader, once per directory. The doc-xref pass's cue-import and
 // cue-package strategies (cuexref.go) read the same index, so the two passes
@@ -43,7 +43,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
 // cueModTrees are the directories under cue.mod a dependency is read from,
@@ -84,7 +84,7 @@ func (e *resolveEnv) indexCUEPackages(symbols []core.SymbolNode) {
 			}
 			continue
 		}
-		pkg, ok := extractor.CUEPackageOf(s)
+		pkg, ok := cuelang.CUEPackageOf(s)
 		if !ok {
 			continue
 		}
@@ -198,7 +198,7 @@ func (ix *cuePackageIndex) moduleOf(env *resolveEnv, importer string) (root, mod
 			b := env.manifest(mf)
 			m = cueModule{found: b != nil || env.set[mf]}
 			if b != nil {
-				m.path = extractor.CUEModulePath(b)
+				m.path = cuelang.CUEModulePath(b)
 			}
 			ix.modules[dir] = m
 		}
@@ -286,7 +286,7 @@ func (idx *resolveIndex) appendPackageEdges(edges []core.Edge, file string, from
 			continue
 		}
 		for _, s := range idx.byFile[t] {
-			if extractor.IsCUEPackageEntity(s) && s.Key() != from.Key() {
+			if cuelang.IsCUEPackageEntity(s) && s.Key() != from.Key() {
 				edges = append(edges, core.Edge{FromFile: file, FromSymbol: from.Key(), ToSymbol: s.Key(), Kind: core.EdgeFileResolved})
 				break
 			}
