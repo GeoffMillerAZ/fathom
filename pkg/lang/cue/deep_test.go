@@ -1,10 +1,12 @@
 package cue_test
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/pkg/lang/cue"
 )
@@ -60,6 +62,15 @@ var deepCases = []deepCase{
 	{"a closer in a comment", func() string { return rep("a: [\n// ]\n", deepLimit/10) }},
 	{"a closer in a string", func() string { return rep("a: [\n\"]\"\n", deepLimit/9) }},
 	{"a stray closer", func() string { return rep("a: [{ ] \n", deepLimit/9) }},
+	// The attribute scanner calls itself once per bracket in an attribute and once
+	// per `@` that follows another, which no guard that drives that scanner survives
+	// (the guard scans a copy in which an @ is an operator), and the parser's error
+	// list is searched linearly for each error it adds.
+	{"attribute per line", func() string { return rep("@a(\n", deepLimit/4) }},
+	{"bare at per line", func() string { return rep("@\n", deepLimit/2) }},
+	{"brackets in an attribute", func() string { return "@a(" + rep(rep("(", 200)+"\n", deepLimit/201) }},
+	{"attribute with no paren", func() string { return rep("@a\n", deepLimit/3) }},
+	{"illegal tokens", func() string { return "a: " + rep("^\n", deepLimit/2) }},
 	{"an unmatched interpolation", func() string { return rep("a: \"\\([ )\"\n[\n", deepLimit/14) }},
 }
 
@@ -68,7 +79,11 @@ const deepChildEnv = "FATHOM_DEEP_CUE_CASE"
 func TestDeepNestingIsRefusedNotFatal(t *testing.T) {
 	for _, tc := range deepCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command(os.Args[0], "-test.run=^TestDeepNestingChild$", "-test.count=1")
+			// A reader that is slow where it should refuse is a failure too, so a case
+			// that has not finished in two minutes is killed.
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestDeepNestingChild$", "-test.count=1")
 			cmd.Env = append(os.Environ(), deepChildEnv+"="+tc.name)
 			out, err := cmd.CombinedOutput()
 			if err != nil {
@@ -106,7 +121,7 @@ func TestDeepNestingChild(t *testing.T) {
 		if got.Skipped != "" {
 			t.Fatalf("skipped (%s), so no reader was reached", got.Skipped)
 		}
-		if !got.Incomplete || !strings.Contains(strings.Join(got.Notes, " "), "nesting") {
+		if !got.Incomplete || !strings.Contains(strings.Join(got.Notes, " "), "not read") {
 			t.Fatalf("incomplete=%v notes=%v", got.Incomplete, got.Notes)
 		}
 		return

@@ -1,11 +1,13 @@
 package lang_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 )
 
 // F1 (later documents): a YAML file whose second document fails to decode
@@ -191,6 +193,28 @@ var deepCases = []deepCase{
 	{"proto option array", "api/x.proto", func() string { return "syntax=\"proto3\";\noption (a) = [\n" + rep("[\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
 	{"proto option message", "api/x.proto", func() string { return "syntax=\"proto3\";\noption (a) = {\n" + rep("a: {\n", 400_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
 	{"proto nested messages", "api/x.proto", func() string { return "syntax=\"proto3\";\n" + rep("message M {\n", 170_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	// The guards below counted a part of what the parser recurses on or spends its
+	// time on: a for-expression turns newlines off, a directive nests past the
+	// sequence that opens it, a template melds its pieces pairwise, proto recurses
+	// on `-` and on a comment and builds a name by concatenation.
+	{"terraform for-expression not", "infra/main.tf", func() string { return "a = {for k, v in x : k => \n" + rep("!\n", 1_000_000) }, "a = [1]\n"},
+	{"terraform for-expression minus", "infra/main.tf", func() string { return "a = {for k, v in x :\nk => \n" + rep("-\n", 1_000_000) }, "a = [1]\n"},
+	{"tfvars for-expression", "infra/prod.tfvars", func() string { return "a = {for k, v in x : k => \n" + rep("!\n", 1_000_000) }, "a = [1]\n"},
+	{"terragrunt for-expression", "live/terragrunt.hcl", func() string { return "a = {for k, v in x : k => \n" + rep("!\n", 1_000_000) }, "inputs = {\n a = [1]\n}\n"},
+	{"packer for-expression", "img/web.pkr.hcl", func() string { return "a = {for k, v in x : k => \n" + rep("-\n", 1_000_000) }, "source \"a\" \"b\" {\n x = [1]\n}\n"},
+	{"nomad for-expression", "jobs/web.nomad.hcl", func() string { return "job \"j\" {\na = {for k, v in x : k => \n" + rep("-\n", 1_000_000) }, "job \"j\" {\n}\n"},
+	{"docker-bake for-expression", "build/docker-bake.hcl", func() string { return "a = {for k, v in x : k => \n" + rep("!\n", 1_000_000) }, "target \"a\" {\n}\n"},
+	{"terraform open if directives", "infra/main.tf", func() string { return "a = <<E\n" + rep("%{if a}\n", 250_000) }, "a = [1]\n"},
+	{"terraform open for directives", "infra/main.tf", func() string { return "a = <<E\n" + rep("%{for a in b}\n", 140_000) }, "a = [1]\n"},
+	{"terraform heredoc of dollars", "infra/main.tf", func() string { return "a = <<E\n" + rep("$$$$$$$$$$$$$$$$$$$$\n", 95_000) + "E\n" }, "a = <<E\nx\nE\n"},
+	{"terraform heredoc of percents", "infra/main.tf", func() string { return "a = <<E\n" + rep("%%%%%%%%%%%%%%%%%%%%\n", 95_000) + "E\n" }, "a = <<E\nx\nE\n"},
+	{"proto minus after an equals sign", "api/x.proto", func() string { return "syntax=\"proto3\";\noption a = \n" + rep("-\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto comments after an equals sign", "api/x.proto", func() string { return "syntax=\"proto3\";\noption a = \n" + rep("//\n", 690_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto minus in an option", "api/x.proto", func() string { return "syntax=\"proto3\";\nenum E{\n A = 1 [b = \n" + rep("-\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto minus in an aggregate", "api/x.proto", func() string { return "syntax=\"proto3\";\noption a = {\nb: \n" + rep("-\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto plus run in an option", "api/x.proto", func() string { return "syntax=\"proto3\";\nenum E{\n A = 1 [b = \n" + rep("+\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto dot run in a message", "api/x.proto", func() string { return "syntax=\"proto3\";\nmessage m{\n" + rep(".\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
+	{"proto repeated strings", "api/x.proto", func() string { return "syntax=\"proto3\";\noption a = \"a\"\n" + rep("\"a\"\n", 500_000) + ";\n" }, "syntax = \"proto3\";\nmessage M {}\n"},
 	{"proto bracket after a single-quoted slash pair", "api/x.proto", func() string { return "syntax=\"proto3\";\noption (a) = '//' [\n" + rep("[\n", 1_000_000) }, "syntax = \"proto3\";\nmessage M {}\n"},
 }
 
@@ -208,7 +232,11 @@ const deepChildEnv = "FATHOM_DEEP_CASE"
 func TestDeepNestingIsRefusedNotFatal(t *testing.T) {
 	for _, tc := range deepCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command(os.Args[0], "-test.run=^TestDeepNestingChild$", "-test.count=1")
+			// A reader that is slow where it should refuse is a failure too, so a case
+			// that has not finished in two minutes is killed.
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestDeepNestingChild$", "-test.count=1")
 			cmd.Env = append(os.Environ(), deepChildEnv+"="+tc.name)
 			out, err := cmd.CombinedOutput()
 			if err != nil {
@@ -246,7 +274,7 @@ func TestDeepNestingChild(t *testing.T) {
 		if got.Skipped != "" {
 			t.Fatalf("skipped (%s), so no reader was reached", got.Skipped)
 		}
-		if !got.Incomplete || !hasReason(got.Notes) || !strings.Contains(strings.Join(got.Notes, " "), "nesting") {
+		if !got.Incomplete || !hasReason(got.Notes) || !strings.Contains(strings.Join(got.Notes, " "), "not read") {
 			t.Fatalf("incomplete=%v notes=%v", got.Incomplete, got.Notes)
 		}
 		return

@@ -94,8 +94,8 @@ func hclIncomplete(diags hcl.Diagnostics) string {
 // extract is Extract plus each node's hclDef (defs[i] is nodes[i]'s; a
 // node with nothing to add has a nil one).
 func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.SymbolNode, []*hclDef, string, error) {
-	if hclTooDeep(src) {
-		return nil, nil, errTooDeep("hcl parse"), nil
+	if why := hclRefusal(src); why != "" {
+		return nil, nil, why, nil
 	}
 	f, diags := hclsyntax.ParseConfig(src, relPath, hcl.Pos{Line: 1, Column: 1})
 	if f == nil {

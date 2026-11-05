@@ -88,6 +88,22 @@ func (m *NestMeter) Close(kind byte) {
 	}
 }
 
+// CloseThrough leaves every bracket opened inside the innermost one of the given
+// kind, and that one with them, when one is open. A template's end closes the
+// directives (`%{if}`) its body left open, since the parser nested them inside it.
+func (m *NestMeter) CloseThrough(kind byte) {
+	for _, l := range m.levels {
+		if l.kind != kind {
+			continue
+		}
+		for m.Innermost() != kind {
+			m.Close(m.Innermost())
+		}
+		m.Close(kind)
+		return
+	}
+}
+
 // CloseOperand is Close for a bracket pair that is itself an operand of what
 // follows it (an index, a call's result, a splat): the pair counts as one
 // operator of the expression around it, since what is applied to it nests the
@@ -119,65 +135,128 @@ func (m *NestMeter) Op() bool {
 // statements): its operators no longer nest the next one.
 func (m *NestMeter) EndExpr() { m.run = 0 }
 
-// hclTooDeep reports whether src, as HCL, nests deeper than maxNesting. It
+// maxTemplatePieces is the most literal pieces one template may hold in a row.
+// hclsyntax melds the pieces of a template pairwise (a delete from the slice and
+// a string concatenation per piece), so n pieces cost n*n/2 moves: 100,000 pieces
+// took 4 s and 250,000 took 23 s inside a 2 MiB file. The lexer ends a piece at
+// every `$` and `%` that does not open a sequence, so a shell script in a heredoc
+// is thousands of pieces and a file of `$` lines is millions.
+const maxTemplatePieces = 20_000
+
+// hclRefusal is why src, as HCL, is not handed to the parser: it nests deeper than
+// maxNesting or holds a template of more than maxTemplatePieces pieces, and "" when
+// it is read. It
 // counts the lexer's tokens, which are iterative and know a string from code,
 // so a bracket in a comment or a string is not counted and one in an
-// interpolation is. Three things recurse besides brackets: a unary operator
-// (`!` or `-`) parses its operand by calling itself, so does each `?` of a
-// conditional, and so does each `*` of a splat (`a[*].b[*].c`, whose rest nests
-// inside it), so a run of any of them is as deep as the same run of brackets.
-// A run is the operators of one expression: it ends at a comma, at a newline in
-// a block or at the top level, and when its bracket closes.
-func hclTooDeep(src []byte) bool {
+// interpolation is. What the parser recurses on, besides brackets: a unary
+// operator (`!` or `-`) parses its operand by calling itself, so does each `?` of
+// a conditional, and so does each `*` of a splat (`a[*].b[*].c`, whose rest nests
+// inside it), so a run of any of them is as deep as the same run of brackets. And
+// a template directive nests the directives its body opens: `%{if a}` and
+// `%{for a in b}` stay open until `%{endif}` or `%{endfor}`, past the sequence
+// that opened them, and the template parser recurses once per open one.
+//
+// A run is the operators of one expression: it ends at a comma, at a newline
+// where the parser reads a newline as the end of a statement or an item (the top
+// level, a block's body and an object constructor, not inside brackets, a call, a
+// sequence or a for-expression, `{for ...}`, where the parser ignores newlines),
+// and when its bracket closes.
+func hclRefusal(src []byte) string {
 	toks, _ := hclsyntax.LexConfig(src, "nesting", hcl.Pos{Line: 1, Column: 1})
 	var m NestMeter
-	for _, t := range toks {
+	deep := errTooDeep("hcl parse")
+	pieces := 0 // literal pieces of the template being read, in a row
+	// directive is what the keyword after a `%{` opened: 'D' for if and for, 'E'
+	// for endif and endfor, 0 for anything else (and until the keyword is read).
+	var directive byte
+	afterControl := false
+	for i, t := range toks {
+		if afterControl && t.Type != hclsyntax.TokenNewline && t.Type != hclsyntax.TokenComment {
+			afterControl = false
+			if t.Type == hclsyntax.TokenIdent {
+				switch string(t.Bytes) {
+				case "if", "for":
+					directive = 'D'
+				case "endif", "endfor":
+					directive = 'E'
+				}
+			}
+		}
+		if t.Type == hclsyntax.TokenStringLit || t.Type == hclsyntax.TokenQuotedLit {
+			if pieces++; pieces > maxTemplatePieces {
+				return TooLongReason("hcl parse")
+			}
+			continue
+		}
+		pieces = 0
 		switch t.Type {
 		case hclsyntax.TokenOBrace:
-			if m.Open('{') {
-				return true
+			kind := byte('{')
+			if hclForFollows(toks[i+1:]) {
+				kind = 'F'
+			}
+			if m.Open(kind) {
+				return deep
 			}
 		case hclsyntax.TokenOBrack:
 			if m.Open('[') {
-				return true
+				return deep
 			}
 		case hclsyntax.TokenOParen:
 			if m.Open('(') {
-				return true
+				return deep
 			}
-		case hclsyntax.TokenTemplateInterp, hclsyntax.TokenTemplateControl:
+		case hclsyntax.TokenTemplateInterp:
 			if m.Open('%') {
-				return true
+				return deep
+			}
+		case hclsyntax.TokenTemplateControl:
+			afterControl, directive = true, 0
+			if m.Open('%') {
+				return deep
 			}
 		case hclsyntax.TokenOQuote:
 			if m.Open('"') {
-				return true
+				return deep
 			}
 		case hclsyntax.TokenOHeredoc:
 			if m.Open('<') {
-				return true
+				return deep
 			}
 		case hclsyntax.TokenCBrace:
-			if m.CloseOperand('{') {
-				return true
+			kind := byte('{')
+			if m.Innermost() == 'F' {
+				kind = 'F'
+			}
+			if m.CloseOperand(kind) {
+				return deep
 			}
 		case hclsyntax.TokenCBrack:
 			if m.CloseOperand('[') {
-				return true
+				return deep
 			}
 		case hclsyntax.TokenCParen:
 			if m.CloseOperand('(') {
-				return true
+				return deep
 			}
 		case hclsyntax.TokenTemplateSeqEnd:
 			m.Close('%')
+			switch directive {
+			case 'D':
+				if m.Open('D') {
+					return deep
+				}
+			case 'E':
+				m.CloseThrough('D')
+			}
+			directive = 0
 		case hclsyntax.TokenCQuote:
-			m.Close('"')
+			m.CloseThrough('"')
 		case hclsyntax.TokenCHeredoc:
-			m.Close('<')
+			m.CloseThrough('<')
 		case hclsyntax.TokenBang, hclsyntax.TokenMinus, hclsyntax.TokenQuestion, hclsyntax.TokenStar:
 			if m.Op() {
-				return true
+				return deep
 			}
 		case hclsyntax.TokenComma:
 			m.EndExpr()
@@ -187,43 +266,116 @@ func hclTooDeep(src []byte) bool {
 			}
 		}
 	}
+	return ""
+}
+
+// hclForFollows reports whether the next token of rest that the parser sees (it
+// skips newlines and comments there) is the `for` that makes the brace before it
+// a for-expression, whose newlines mean nothing.
+func hclForFollows(rest []hclsyntax.Token) bool {
+	for _, t := range rest {
+		switch t.Type {
+		case hclsyntax.TokenNewline, hclsyntax.TokenComment:
+			continue
+		case hclsyntax.TokenIdent:
+			return string(t.Bytes) == "for"
+		}
+		return false
+	}
 	return false
 }
 
-// protoTooDeep reports whether src nests { [ ( < deeper than maxNesting. It
-// counts the tokens of the scanner the proto parser reads through (the same
-// text/scanner mode, and the single-quoted string the parser re-reads with
-// comments off), so a bracket in a comment or a string is not counted and the
-// guard cannot lose sync with the parser.
-func protoTooDeep(src []byte) bool {
+// maxRun is the most tokens a parser is handed in a row that none of its loops
+// ends. emicklei/proto builds a dotted name, an option name and a multi-line
+// string by concatenation, one token at a time, so a run of n tokens costs n*n/2
+// byte moves: 250,000 `+` tokens in an enum option took 12 s, and the same run of
+// `.` after a message's `{` took 10 s. A real statement is a few tokens, and the
+// longest real run (a long dotted name, a string in a hundred pieces) is well
+// under it.
+const maxRun = MaxNesting
+
+// TooLongReason is the one-line reason for a file refused for a run of tokens
+// no statement or item ends.
+func TooLongReason(what string) string {
+	return fmt.Sprintf("%s: more than %d tokens in a row without a statement or item boundary are not read", what, maxRun)
+}
+
+// TooManyErrorsReason is the one-line reason for a file refused for the
+// lexical errors it holds, for a parser that keeps every one of them in a list
+// it searches linearly for a repeat (cue: 100,000 illegal tokens took 13 s).
+func TooManyErrorsReason(what string) string {
+	return fmt.Sprintf("%s: more than %d lexical errors are not read", what, MaxNesting)
+}
+
+// protoRefusal is why src is not handed to the proto parser: it nests { [ ( <
+// deeper than maxNesting, or holds a run of tokens that no boundary ends (maxRun).
+// It is "" for a file that is read. It counts the tokens of the scanner the
+// parser reads through (the same text/scanner mode, and the single-quoted string
+// the parser re-reads with comments off), so a bracket in a comment or a string
+// is not counted and the guard cannot lose sync with the parser.
+//
+// The parser also recurses where no bracket is: Literal.parse calls itself for a
+// `-` and for each comment where a literal is expected (after `=`, `:`, `,`,
+// `[` or another `-`), and nextInteger for a `-`. Those count as levels, as a
+// bracket does.
+func protoRefusal(src []byte) string {
 	const base = scanner.ScanIdents | scanner.ScanFloats | scanner.ScanStrings | scanner.ScanRawStrings
 	var s scanner.Scanner
 	s.Init(bytes.NewReader(src))
 	s.Mode = base | scanner.ScanComments
 	s.Error = func(*scanner.Scanner, string) {}
 	var m NestMeter
+	run := 0         // tokens since a boundary
+	literal := false // the last token before a comment expects a literal after it
+	deep := func() string { return errTooDeep("proto parse") }
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+		if tok == scanner.Comment {
+			if literal && m.Op() {
+				return deep()
+			}
+			continue
+		}
+		if run++; run > maxRun {
+			return TooLongReason("proto parse")
+		}
+		literal = false
 		switch tok {
+		case '-':
+			literal = true
+			if m.Op() {
+				return deep()
+			}
+			continue
 		case '{', '[', '(', '<':
+			run = 0
+			literal = tok == '['
 			if m.Open(byte(tok)) {
-				return true
+				return deep()
 			}
 		case '}':
+			run = 0
 			m.Close('{')
 		case ']':
+			run = 0
 			m.Close('[')
 		case ')':
+			run = 0
 			m.Close('(')
 		case '>':
+			run = 0
 			m.Close('<')
 		case '\'':
 			s.Mode = base
 			for t := s.Scan(); t != scanner.EOF && s.TokenText() != "'"; t = s.Scan() {
 			}
 			s.Mode = base | scanner.ScanComments
+		case ';', ',', '=', ':':
+			run = 0
+			literal = tok != ';'
 		}
+		m.EndExpr()
 	}
-	return false
+	return ""
 }
 
 // jsonTooDeep reports whether src nests [ and { deeper than maxNesting. A

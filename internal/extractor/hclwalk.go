@@ -21,8 +21,8 @@ import (
 // still yields the body hclsyntax recovered (best effort, as the terraform
 // dialect does); only a nil file is an error.
 func hclParseBody(relPath string, src []byte) (*hclsyntax.Body, string, error) {
-	if hclTooDeep(src) {
-		return nil, errTooDeep("hcl parse"), nil
+	if why := hclRefusal(src); why != "" {
+		return nil, why, nil
 	}
 	f, diags := hclsyntax.ParseConfig(src, relPath, hcl.Pos{Line: 1, Column: 1})
 	if f == nil {

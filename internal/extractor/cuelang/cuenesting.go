@@ -10,6 +10,7 @@ package cuelang
 // it reaches the parser.
 
 import (
+	"bytes"
 	"strings"
 
 	"cuelang.org/go/cue/ast"
@@ -20,21 +21,32 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
-// cueTooDeepReason is the one-line reason for a file refused for its nesting.
-func cueTooDeepReason() string { return extractor.TooDeepReason("cue parse") }
-
 // parseCUE parses src as parser.ParseFile does, and refuses a file nested past
-// extractor.MaxNesting: it returns a nil file and the reason.
-func parseCUE(relPath string, src []byte) (f *ast.File, tooDeep string, err error) {
-	if cueTooDeep(src) {
-		return nil, cueTooDeepReason(), nil
+// extractor.MaxNesting, or one that holds more lexical errors than the parser's
+// error list takes in linear time: it returns a nil file and the reason.
+func parseCUE(relPath string, src []byte) (f *ast.File, refused string, err error) {
+	if why := cueRefusal(src); why != "" {
+		return nil, why, nil
 	}
 	f, err = parser.ParseFile(relPath, src)
 	return f, "", err
 }
 
-// cueTooDeep reports whether src nests deeper than extractor.MaxNesting. It
-// counts the tokens of the scanner the parser reads through, driven as the parser
+// cueRefusal is why src is not handed to the parser, or "" when it is. It refuses
+// a file that nests deeper than extractor.MaxNesting, or that holds more than
+// extractor.MaxNesting lexical errors (the parser keeps every scanner error in a
+// list it searches for a repeat, so n of them cost n*n/2 comparisons: 100,000
+// `^` took 13 s).
+//
+// The guard scans a copy of src with every `@` turned into `&`, because the
+// scanner reads an attribute by recursion (`@a(` calls itself once per bracket
+// inside the attribute, and once per `@` that follows another), which no guard
+// that drives that scanner can survive: 2 MiB of `@a(` ends the process in the
+// guard itself. As an `&` the same bytes are an operator and brackets the meter
+// counts without recursing, and every other token is the one the parser reads,
+// so the depth it measures is at least the recursion's.
+//
+// It counts the tokens of the scanner the parser reads through, driven as the parser
 // drives it (a string interpolation is resumed at the parenthesis that closes it),
 // so a bracket in a comment or a string is never counted. A run of operators is
 // the expression it sits in: it ends at a comma (the scanner inserts one at a
@@ -44,14 +56,22 @@ func parseCUE(relPath string, src []byte) (f *ast.File, tooDeep string, err erro
 // the nesting as it was, and one that cannot be matched inside a string
 // interpolation refuses the file, since the parser's recovery there is not one
 // the guard can follow.
-func cueTooDeep(src []byte) (deep bool) {
+func cueRefusal(src []byte) (why string) {
+	deep := extractor.TooDeepReason("cue parse")
 	defer func() {
 		if recover() != nil {
-			deep = true // a guard that cannot follow the scanner does not let the file through
+			why = deep // a guard that cannot follow the scanner does not let the file through
 		}
 	}()
+	scan := src
+	if bytes.IndexByte(src, '@') >= 0 {
+		scan = bytes.ReplaceAll(src, []byte("@"), []byte("&"))
+	}
 	var s scanner.Scanner
-	s.Init(token.NewFile("nesting", -1, len(src)), src, func(token.Pos, string, []interface{}) {}, 0)
+	errs := 0
+	file := token.NewFile("nesting", -1, len(scan))
+	s.Init(file, scan, func(token.Pos, string, []interface{}) { errs++ }, 0)
+	head := 0 // 1 right after an attribute's @, 2 after its name: what the scanner needs next is a (
 	var m extractor.NestMeter
 	interps := 0                     // string interpolations open now
 	pending := false                 // an interpolation segment ended in "(": the next ( opens it
@@ -62,10 +82,25 @@ func cueTooDeep(src []byte) (deep bool) {
 		return interps > 0
 	}
 	for {
-		_, tok, lit := s.Scan()
+		pos, tok, lit := s.Scan()
+		switch {
+		case head == 1 && tok == token.IDENT:
+			head = 2
+		case head > 0 && tok != token.LPAREN:
+			errs++ // `@a` with no ( is an error the scanner reports once per attribute: a list of them is as slow as one of illegal tokens
+			head = 0
+		default:
+			head = 0
+		}
+		if tok == token.AND && src[file.Offset(pos)] == '@' {
+			head = 1
+		}
+		if errs > extractor.MaxNesting {
+			return extractor.TooManyErrorsReason("cue parse")
+		}
 		switch tok {
 		case token.EOF:
-			return false
+			return ""
 		case token.INTERPOLATION:
 			pending = strings.HasSuffix(lit, "(")
 		case token.LPAREN:
@@ -75,15 +110,15 @@ func cueTooDeep(src []byte) (deep bool) {
 				interps++
 			}
 			if m.Open(kind) {
-				return true
+				return deep
 			}
 		case token.LBRACK:
 			if m.Open('[') {
-				return true
+				return deep
 			}
 		case token.LBRACE:
 			if m.Open('{') {
-				return true
+				return deep
 			}
 		case token.RPAREN:
 			if m.Innermost() == 'I' {
@@ -93,29 +128,29 @@ func cueTooDeep(src []byte) (deep bool) {
 					pending = true
 				}
 				if m.Op() {
-					return true
+					return deep
 				}
 			} else if closer('(') {
-				return true
+				return deep
 			}
 		case token.RBRACK:
 			if closer('[') {
-				return true
+				return deep
 			}
 		case token.RBRACE:
 			if closer('{') {
-				return true
+				return deep
 			}
 		case token.COMMA, token.SEMICOLON:
 			m.EndExpr()
 		case token.IF, token.ELSE, token.FOR, token.IN, token.LET, token.TRY,
 			token.FALLBACK, token.OTHERWISE, token.FUNC:
 			if m.Op() {
-				return true
+				return deep
 			}
 		default:
 			if tok.IsOperator() && m.Op() {
-				return true
+				return deep
 			}
 		}
 	}
