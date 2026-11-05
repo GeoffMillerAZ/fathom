@@ -21,6 +21,19 @@ import (
 // go.mod that needs an update, fails the build. The module cache needs only what
 // `go mod download` of the root module fetches, which a fresh cache holds.
 //
+// Measured on a fresh module cache (GOMODCACHE empty, then `go mod download` in
+// the root module only): the build passes offline. github.com/kr/pretty, which
+// the consumer's go.mod lists as an indirect requirement at v0.3.1 and the
+// root's does not, is absent from that cache (it holds only a v0.2.1 go.mod of
+// it), and the go command's lazy module loading does not need it, because no
+// package the consumer builds is imported from it. TestOutsideModuleMatchesRoot
+// skips a requirement the root does not list, which is why it does not fail.
+//
+// The test cannot run from a module cache (a user who depends on this module
+// and runs `go test` there): the consumer sits in a nested module, and a nested
+// go.mod excludes its directory from the module zip, so testdata/consumer is
+// absent there. It runs from a checkout.
+//
 // A change to the root module's requirements that moves a version the consumer
 // pins fails TestOutsideModuleMatchesRoot with the command that regenerates
 // the consumer's go.mod and go.sum.

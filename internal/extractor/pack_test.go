@@ -3,6 +3,7 @@ package extractor
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"testing/fstest"
 )
@@ -103,5 +104,16 @@ func TestPackAddNativeRules(t *testing.T) {
 	badKind.Kind = "weird"
 	if r := reason(p.AddNative(badKind)); r != PackManifest {
 		t.Errorf("kind: %s", r)
+	}
+}
+
+// N9: auditPackFiles names a variant's tags query and nothing else of the
+// variant, because a variant can carry no other query file
+// (DialectVarQueries has the one field), so a valid pack is never refused for
+// a file it must hold. A field added to it must be named by auditPackFiles.
+func TestVariantQueriesCarryOnlyATagsQuery(t *testing.T) {
+	typ := reflect.TypeOf(DialectVarQueries{})
+	if typ.NumField() != 1 || typ.Field(0).Name != "Tags" {
+		t.Fatalf("DialectVarQueries has %d fields: name each new query file in auditPackFiles, then update this test", typ.NumField())
 	}
 }
