@@ -114,14 +114,14 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 	tree, err := l.Parser().Parse(src)
 	if err != nil {
 		e.noteFault(l)
-		return FileSpecs{}, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return FileSpecs{}, fmt.Errorf("tsextract[%s] %s: parse: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
 		e.noteFault(l)
-		return FileSpecs{}, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return FileSpecs{}, fmt.Errorf("tsextract[%s] %s: query: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	return e.fileSpecsLocked(l, tree, variant.rules, relPath, src, matches)
 }

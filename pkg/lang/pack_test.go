@@ -354,9 +354,9 @@ func TestPackQueriesRunUnderTheEngineBudget(t *testing.T) {
 	res := extract(t, r, "big.thr", src)
 	faulted := false
 	for _, n := range res.Notes {
-		faulted = faulted || strings.Contains(n, "tree-sitter engine fault")
+		faulted = faulted || strings.Contains(n, "parse and query deadline (ParseTimeout)")
 	}
-	if !faulted {
+	if !faulted || !res.Incomplete {
 		t.Fatalf("a nanosecond deadline did not stop the pack query: %d symbols, notes %v", len(res.Symbols), res.Notes)
 	}
 }

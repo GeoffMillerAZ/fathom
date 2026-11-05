@@ -681,7 +681,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		// existing non-fatal extract-error path fingerprints the file so it
 		// is not retried until its bytes or the ExtractorEpoch change.
 		e.noteFault(l)
-		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer func() { tree.Close() }() // the tree preprocessing swaps in, when it does
 
@@ -691,7 +691,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		raw, written := tree, src
 		if tree, src, err = tsPreprocessed(p, tree, src, rules.preprocess, rules.preprocessLenient); err != nil {
 			e.noteFault(l)
-			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 		}
 		swapped = tree != raw
 		if swapped {
@@ -705,7 +705,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	matches, err := q.Run(tree)
 	if err != nil {
 		e.noteFault(l)
-		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	if rules.localsQuery != "" {
 		matches = keepNonLocalCalls(q, src, matches) // LB-F254: a bare identifier is a call only where no local binds it
@@ -865,7 +865,7 @@ func (e *TSExtractor) injectionRanges(variant tsVariant, l *tsengine.Lease, tree
 	matches, err := iq.Run(tree)
 	if err != nil {
 		e.noteFault(l)
-		return nil, fmt.Errorf("tsextract[%s]: injections query: %v: %w", e.spec.name, err, ErrTSEngineFault)
+		return nil, fmt.Errorf("tsextract[%s]: injections query: %w: %w", e.spec.name, err, ErrTSEngineFault)
 	}
 	if _, err := tsRegistry(); err != nil {
 		return nil, err

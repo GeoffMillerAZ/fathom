@@ -1,6 +1,11 @@
 package langroute
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
+)
 
 func TestDialectOfAndExtractFileDoc(t *testing.T) {
 	r, err := NewRouter()
@@ -59,6 +64,110 @@ func TestExtractFileDocNodesEqualExtractFile(t *testing.T) {
 				a.Nodes[i].Signature != b.Nodes[i].Signature || len(a.Nodes[i].Calls) != len(b.Nodes[i].Calls) {
 				t.Errorf("%s node %d differs: %+v / %+v", p, i, a.Nodes[i], b.Nodes[i])
 			}
+		}
+	}
+}
+
+// A generic reader names itself, and a basename a dialect owns does not label a
+// file that dialect's content check refused: the generic reader read it.
+func TestDialectOfNamesTheReaderThatReadTheFile(t *testing.T) {
+	r, err := NewRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	for _, c := range []struct{ path, src, dialect string }{
+		{"data.json", `{"a": 1}`, GenericJSON},
+		{"data.toml", "a = 1\n", GenericTOML},
+		{"envoy.json", `{"not": "an envoy configuration"}`, GenericJSON},
+		{"kong.json", `{"not": "a kong configuration"}`, GenericJSON},
+		{"package.json", `{"name": "web", "version": "1.0.0"}`, "package-json"},
+	} {
+		ex, err := r.ExtractFileDoc("_", nil, c.path, []byte(c.src))
+		if err != nil || ex.Skipped != "" {
+			t.Fatalf("%s: skipped %q err %v", c.path, ex.Skipped, err)
+		}
+		if got := DialectOf(ex.Extractor, ex.ToolKind, c.path, ex.Nodes); got != c.dialect {
+			t.Errorf("%s: dialect %q, want %q", c.path, got, c.dialect)
+		}
+	}
+}
+
+type spyExtractor struct{ calls int }
+
+func (s *spyExtractor) Extract(string, string, []byte) ([]core.SymbolNode, error) {
+	s.calls++
+	return nil, nil
+}
+
+// ExtractFileDocSteps calls its step after dispatch settles on an extractor and
+// before it runs, and again after it returns. A step that fails at either point
+// stops the file with that error.
+func TestExtractFileDocStepsChecksBetweenStages(t *testing.T) {
+	r, err := NewRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	spy := &spyExtractor{}
+	r.RegisterExtractor(".spy", spy)
+	stop := errors.New("stop")
+	for _, c := range []struct {
+		name      string
+		failAt    int
+		wantCalls int
+		wantSteps int
+	}{
+		{"never", 0, 1, 2},
+		{"before the extractor", 1, 0, 1},
+		{"after the extractor", 2, 1, 2},
+	} {
+		spy.calls = 0
+		steps := 0
+		step := func() error {
+			steps++
+			if steps == c.failAt {
+				return stop
+			}
+			return nil
+		}
+		ex, err := r.ExtractFileDocSteps(step, "_", nil, "a.spy", []byte("x"))
+		if c.failAt == 0 && (err != nil || ex.Skipped != "") {
+			t.Errorf("%s: err %v skipped %q", c.name, err, ex.Skipped)
+		}
+		if c.failAt != 0 && !errors.Is(err, stop) {
+			t.Errorf("%s: err %v, want the step's", c.name, err)
+		}
+		if spy.calls != c.wantCalls || steps != c.wantSteps {
+			t.Errorf("%s: extractor ran %d times and step %d, want %d and %d", c.name, spy.calls, steps, c.wantCalls, c.wantSteps)
+		}
+	}
+	// A skipped file reaches no stage boundary.
+	steps := 0
+	ex, _ := r.ExtractFileDocSteps(func() error { steps++; return stop }, "_", nil, "a.bin", []byte{0, 1, 2, 0})
+	if ex.Skipped == "" || steps != 0 {
+		t.Errorf("a binary file: skipped %q after %d steps", ex.Skipped, steps)
+	}
+}
+
+// A header that emits nothing is still read by the dialect its sniff names.
+func TestDialectOfContentNamesTheHeaderDialect(t *testing.T) {
+	r, err := NewRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	for _, c := range []struct{ src, dialect string }{
+		{"#define X 1\n", "c"},
+		{"namespace a {}\n", "cpp"},
+		{"#import <Foundation/Foundation.h>\n", "objective-c"},
+	} {
+		ex, err := r.ExtractFileDoc("_", nil, "x/h.h", []byte(c.src))
+		if err != nil || ex.Skipped != "" {
+			t.Fatalf("%q: skipped %q err %v", c.src, ex.Skipped, err)
+		}
+		if got := DialectOfContent(ex.Extractor, ex.ToolKind, "x/h.h", []byte(c.src), ex.Nodes); got != c.dialect {
+			t.Errorf("%q: dialect %q, want %q", c.src, got, c.dialect)
 		}
 	}
 }

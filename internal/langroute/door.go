@@ -14,6 +14,15 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
+// The ids of the generic readers: the JSON and TOML extractors that read a
+// file no dialect's own extractor claimed. They are readers of an extension,
+// not dialects with a manifest, so the language library names them so that a
+// file they read has a Dialect.
+const (
+	GenericJSON = extractor.GenericJSONDialect
+	GenericTOML = extractor.GenericTOMLDialect
+)
+
 // toolKindDialect names the dialect behind a tool kind whose spelling is not
 // the dialect's id.
 var toolKindDialect = map[ToolKind]string{
@@ -74,11 +83,22 @@ func buildDialectIndex() {
 	}
 }
 
+// DialectOfContent is DialectOf for a caller that has the file's bytes: a .h
+// file is read by the header router, whose own sniff (extractor.HeaderDialect)
+// names c, cpp or objective-c even when the header holds nothing to emit.
+func DialectOfContent(e extractor.Extractor, tk ToolKind, relPath string, content []byte, nodes []core.SymbolNode) string {
+	if _, ok := e.(*extractor.CHeaderExtractor); ok {
+		return extractor.HeaderDialect(content)
+	}
+	return DialectOf(e, tk, relPath, nodes)
+}
+
 // DialectOf is the id of the dialect that read relPath, or "" when no signal
 // names one. e and tk are the extractor and tool kind the dispatch chose and
 // nodes what it returned. The order is the tool kind (the most specific
-// signal), the path's extension or basename when one dialect owns it, the
-// extractor's own name, the kinds of the nodes, then the native Go extractor.
+// signal), the generic JSON and TOML readers, the path's extension or basename
+// when one dialect owns it, the extractor's own name, the kinds of the nodes,
+// then the native Go extractor.
 func DialectOf(e extractor.Extractor, tk ToolKind, relPath string, nodes []core.SymbolNode) string {
 	dialectIndexOnce.Do(buildDialectIndex)
 	if tk != "" && tk != ToolUnclassified {
@@ -88,6 +108,15 @@ func DialectOf(e extractor.Extractor, tk ToolKind, relPath string, nodes []core.
 		if dialectIDs[string(tk)] {
 			return string(tk)
 		}
+	}
+	// The extractor that read the file speaks before the file's name does: a
+	// basename a dialect owns (envoy.json) whose content check failed was read by
+	// the generic reader, and is labelled by it.
+	switch e.(type) {
+	case *extractor.JSONExtractor:
+		return GenericJSON
+	case *extractor.TOMLExtractor:
+		return GenericTOML
 	}
 	if id := keyOwner[filepath.Base(relPath)]; id != "" {
 		return id

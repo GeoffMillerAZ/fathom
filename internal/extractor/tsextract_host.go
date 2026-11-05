@@ -317,13 +317,13 @@ func (e *TSExtractor) rangeImportSpansLocked(v tsVariant, src []byte) ([]ImportS
 	tree, err := l.Parser().Parse(src)
 	if err != nil {
 		e.noteFault(l)
-		return nil, fmt.Errorf("tsextract[%s]: hosted range parse: %v: %w", e.spec.name, err, ErrTSEngineFault)
+		return nil, fmt.Errorf("tsextract[%s]: hosted range parse: %w: %w", e.spec.name, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 	matches, err := q.Run(tree)
 	if err != nil {
 		e.noteFault(l)
-		return nil, fmt.Errorf("tsextract[%s]: hosted range query: %v: %w", e.spec.name, err, ErrTSEngineFault)
+		return nil, fmt.Errorf("tsextract[%s]: hosted range query: %w: %w", e.spec.name, err, ErrTSEngineFault)
 	}
 	specs, spans := importSpecsWithSpans(matches, src, true)
 	out := make([]ImportSpan, len(specs))

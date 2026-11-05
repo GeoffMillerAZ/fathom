@@ -198,8 +198,11 @@ func (r *Reader) extractNative(ctx context.Context, id string, f File, res Resul
 		}
 	}()
 	got, err := r.natives[id].Extract(ctx, f)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return Result{}, ctxErr // the context ended while the extractor ran
+	}
 	if err != nil {
-		res.Notes = append(res.Notes, "extractor error: "+err.Error())
+		res.Notes = append(res.Notes, errorNote(err))
 		res.Incomplete = true
 	}
 	res.Dialect = id

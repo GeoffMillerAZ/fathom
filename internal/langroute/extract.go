@@ -42,7 +42,7 @@ type Extraction struct {
 // that memoizes the index builds it for those files alone. with, when not nil, is the extractor to run in place of dispatch's
 // choice, the retirement protocol's parity run (LB-F18, design §11).
 func (r *Router) ExtractFile(with extractor.Extractor, serviceID string, index func() *SiblingIndex, relPath string, content []byte) (Extraction, error) {
-	return r.extractFile(with, serviceID, index, relPath, content, false)
+	return r.extractFile(nil, with, serviceID, index, relPath, content, false)
 }
 
 // ExtractFileDoc is ExtractFile for the language library's door: the same gates
@@ -50,10 +50,20 @@ func (r *Router) ExtractFile(with extractor.Extractor, serviceID string, index f
 // are that result's nodes) the whole result in Extraction.Doc, so facts,
 // cross-file references and refused references are not dropped.
 func (r *Router) ExtractFileDoc(serviceID string, index func() *SiblingIndex, relPath string, content []byte) (Extraction, error) {
-	return r.extractFile(nil, serviceID, index, relPath, content, true)
+	return r.extractFile(nil, nil, serviceID, index, relPath, content, true)
 }
 
-func (r *Router) extractFile(with extractor.Extractor, serviceID string, index func() *SiblingIndex, relPath string, content []byte, wantDoc bool) (Extraction, error) {
+// ExtractFileDocSteps is ExtractFileDoc that calls step between its stages:
+// after the gates and dispatch settle on an extractor and before it runs, and
+// again after it returns. A step that returns an error stops the file there,
+// with that error and no Extraction. The language library passes its context's
+// Err, so a cancelled or expired context is honored at a stage boundary; a
+// stage already running is not interrupted (the engine's own deadline bounds it).
+func (r *Router) ExtractFileDocSteps(step func() error, serviceID string, index func() *SiblingIndex, relPath string, content []byte) (Extraction, error) {
+	return r.extractFile(step, nil, serviceID, index, relPath, content, true)
+}
+
+func (r *Router) extractFile(step func() error, with extractor.Extractor, serviceID string, index func() *SiblingIndex, relPath string, content []byte, wantDoc bool) (Extraction, error) {
 	if BinaryExcluded(relPath, content) {
 		return Extraction{Skipped: "binary"}, nil
 	}
@@ -83,6 +93,11 @@ func (r *Router) extractFile(with extractor.Extractor, serviceID string, index f
 	if packDialect != "" && langclass.IsGeneratedOrMinified(relPath, content) {
 		return Extraction{Skipped: "generated"}, nil // the dialect gate's rule, for a pack dialect's file
 	}
+	if step != nil {
+		if err := step(); err != nil {
+			return Extraction{}, err
+		}
+	}
 	tr, counts := e.(interface{ TypeRefs() int64 })
 	var before int64
 	if counts {
@@ -100,6 +115,11 @@ func (r *Router) extractFile(with extractor.Extractor, serviceID string, index f
 		nodes, incomplete, err = re.ExtractReport(serviceID, relPath, content)
 	} else {
 		nodes, err = e.Extract(serviceID, relPath, content)
+	}
+	if step != nil {
+		if serr := step(); serr != nil {
+			return Extraction{}, serr
+		}
 	}
 	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc, PackDialect: packDialect, Incomplete: incomplete}
 	if counts {

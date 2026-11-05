@@ -22,6 +22,7 @@ import (
 	"context"
 	"embed"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"runtime"
 	"sort"
@@ -111,6 +112,58 @@ const (
 	queryMatchSize   = 12 // TSQueryMatch: id(4) + pattern_index(2) + capture_count(2) + captures ptr(4)
 	queryCaptureSize = 28 // TSQueryCapture: TSNode(24) + index(4)
 )
+
+// The budgets a BudgetError names.
+const (
+	// BudgetTime: the ParseTimeout deadline expired, in a parse or a query.
+	BudgetTime = "time"
+	// BudgetMemory: the module's linear memory reached MemoryLimitPages, and
+	// the guest trapped on the allocation that did not fit.
+	BudgetMemory = "memory"
+)
+
+// BudgetError is an engine failure that spent a budget the engine holds every
+// file to, so the caller can say which budget and not show a wasm trap. It
+// unwraps to the underlying error.
+type BudgetError struct {
+	Budget string
+	Err    error
+}
+
+func (e *BudgetError) Error() string { return e.Err.Error() }
+func (e *BudgetError) Unwrap() error { return e.Err }
+
+// Reason is the one-line account of the budget that was spent.
+func (e *BudgetError) Reason() string {
+	switch e.Budget {
+	case BudgetMemory:
+		return fmt.Sprintf("the grammar module's memory limit (%d MiB, MemoryLimitPages) was reached", MemoryLimitPages*64/1024)
+	case BudgetTime:
+		return fmt.Sprintf("the %v parse and query deadline (ParseTimeout) expired", ParseTimeout)
+	}
+	return "an engine budget was spent"
+}
+
+// budgeted turns a guest failure into a BudgetError when the module's memory
+// had grown to its limit, which is what a trap on a failed allocation looks
+// like. Any other error passes through.
+func (p *Parser) budgeted(err error) error {
+	var be *BudgetError
+	if err == nil || errors.As(err, &be) {
+		return err
+	}
+	var pages uint32
+	func() {
+		defer func() { _ = recover() }()
+		if m := p.mod.Memory(); m != nil {
+			pages = m.Size() / 65536
+		}
+	}()
+	if pages >= MemoryLimitPages {
+		return &BudgetError{Budget: BudgetMemory, Err: err}
+	}
+	return err
+}
 
 // MemoryLimitPages caps every grammar module's linear memory (RT-107,
 // docs/design/responsible-tenant.md §7.2): 1024 pages of 64 KiB = 64 MiB.
@@ -430,7 +483,7 @@ func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
 			_ = p.mod.Close(context.Background())
 			p.release()
 		}()
-		return nil, fmt.Errorf("tsengine: %s abandoned at %v hard backstop (guest %v budget did not fire — progress-check-free phase); parser must be re-created", what, backstop, ParseTimeout)
+		return nil, &BudgetError{Budget: BudgetTime, Err: fmt.Errorf("tsengine: %s abandoned at %v hard backstop (guest %v budget did not fire — progress-check-free phase); parser must be re-created", what, backstop, ParseTimeout)}
 	}
 }
 
@@ -525,7 +578,7 @@ func (p *Parser) Parse(src []byte) (*Tree, error) {
 		return p.call("fathom_parse_bounded", uint64(p.parserPtr), uint64(srcPtr), uint64(len(src)), uint64(budgetMS))
 	})
 	if err != nil {
-		return nil, err
+		return nil, p.budgeted(err)
 	}
 	res := resAny.([]uint64)
 	treePtr := uint32(res[0])
@@ -534,7 +587,7 @@ func (p *Parser) Parse(src []byte) (*Tree, error) {
 		// callback cancelled the parse — the ParseTimeout budget expired
 		// during a checked phase. The Parser survives (Parse resets at
 		// entry).
-		return nil, fmt.Errorf("tsengine: parse aborted after %v budget (pathological input?)", ParseTimeout)
+		return nil, &BudgetError{Budget: BudgetTime, Err: fmt.Errorf("tsengine: parse aborted after %v budget (pathological input?)", ParseTimeout)}
 	}
 	notePages(p.mod.Memory().Size() / 65536)
 	return &Tree{p: p, treePtr: treePtr, src: src}, nil
@@ -788,7 +841,7 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 		budgetMS = 1
 	}
 	if _, err := p.call("fathom_query_cursor_exec_bounded", uint64(cursorPtr), uint64(qPtr), uint64(rootPtr), uint64(budgetMS)); err != nil {
-		return nil, err
+		return nil, p.budgeted(err)
 	}
 
 	matchBuf, err := p.malloc(queryMatchSize)
@@ -805,7 +858,7 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 		return q.collectMatches(qPtr, cursorPtr, matchBuf)
 	})
 	if err != nil {
-		return nil, err
+		return nil, p.budgeted(err)
 	}
 	all := matchesAny.([]Match)
 	if remap != nil {
@@ -839,7 +892,7 @@ func (q *Query) collectMatches(qPtr, cursorPtr, matchBuf uint32) ([]Match, error
 				return nil, cErr
 			}
 			if cRes[0] != 0 {
-				return nil, fmt.Errorf("tsengine: query aborted after %v budget (pathological tree?)", ParseTimeout)
+				return nil, &BudgetError{Budget: BudgetTime, Err: fmt.Errorf("tsengine: query aborted after %v budget (pathological tree?)", ParseTimeout)}
 			}
 			break
 		}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 	"github.com/geoffmilleraz/fathom/internal/langclass"
 	"github.com/geoffmilleraz/fathom/internal/langlink"
 	"github.com/geoffmilleraz/fathom/internal/langroute"
@@ -228,7 +229,10 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		return res, nil
 	}
 	index := func() *langroute.SiblingIndex { return siblingIndex(path, f.Siblings) }
-	ex, err := r.router.ExtractFileDoc(serviceID, index, path, f.Src)
+	ex, err := r.router.ExtractFileDocSteps(ctx.Err, serviceID, index, path, f.Src)
+	if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
+		return Result{}, err // the context ended between two stages of this file
+	}
 	if ex.Skipped != "" {
 		res.Skipped = skipReason(ex.Skipped, path)
 		if res.Skipped == SkipNotLinked {
@@ -244,14 +248,14 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		res.Dialect = ex.PackDialect
 		res.Level = LevelUnmeasured
 	} else {
-		res.Dialect = langroute.DialectOf(ex.Extractor, ex.ToolKind, path, ex.Nodes)
+		res.Dialect = langroute.DialectOfContent(ex.Extractor, ex.ToolKind, path, f.Src, ex.Nodes)
 		res.Level, _ = levelOf(r.levels, res.Dialect)
 		if res.Dialect == "" {
 			res.Level = LevelUnmeasured
 		}
 	}
 	if err != nil {
-		res.Notes = append(res.Notes, "extractor error: "+err.Error())
+		res.Notes = append(res.Notes, errorNote(err))
 		res.Incomplete = true
 	}
 	if ex.Incomplete != "" {
@@ -263,6 +267,24 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 	res.addSiblingNote(path, f.Siblings)
 	res.sort()
 	return res, nil
+}
+
+// errorNote is the one-line Notes entry for an extractor's error: the engine
+// budget it spent, when it spent one, else the error's first line. A wasm trap
+// carries a multi-line stack, which is no use to a caller and never printed.
+func errorNote(err error) string {
+	var be *tsengine.BudgetError
+	if errors.As(err, &be) {
+		return "extractor error: " + be.Reason()
+	}
+	line := err.Error()
+	if i := strings.IndexByte(line, '\n'); i >= 0 {
+		line = line[:i]
+	}
+	if len(line) > 200 {
+		line = line[:200]
+	}
+	return "extractor error: " + strings.TrimSpace(line)
 }
 
 func newResult(path string) Result {
@@ -524,7 +546,8 @@ func (res *Result) addSiblingNote(path string, siblings []string) {
 	}
 }
 
-// dialectInfos lists the manifest dialects and the native Go extractor.
+// dialectInfos lists the manifest dialects, the native Go extractor and the
+// generic JSON and TOML readers.
 func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]DialectInfo, error) {
 	ds, err := extractor.LoadDialects()
 	if err != nil {
@@ -569,6 +592,11 @@ func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]Dialect
 		out = append(out, newDialectInfo(levels, d.ID, d.Kind, d.Engine, set))
 	}
 	out = append(out, newDialectInfo(levels, "go", "language", "native", map[string]bool{".go": true}))
+	// The generic readers read the .json and .toml files no dialect claims, so
+	// they are listed, unmeasured, and a file they read has a Dialect.
+	out = append(out,
+		newDialectInfo(levels, langroute.GenericJSON, "tooling", "native", map[string]bool{".json": true}),
+		newDialectInfo(levels, langroute.GenericTOML, "tooling", "native", map[string]bool{".toml": true}))
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/pkg/lang"
@@ -57,6 +58,8 @@ var ownSamples = map[string]struct{ path, src string }{
 	"git-hooks-config": {".pre-commit-config.yaml", "repos:\n- repo: https://example.com/hooks\n  rev: v1\n  hooks:\n  - id: lint\n"},
 	"github-actions":   {".github/workflows/ci.yml", "name: ci\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n"},
 	"gitlab-ci":        {".gitlab-ci.yml", "stages:\n  - build\nbuild-job:\n  stage: build\n  script:\n    - make\n"},
+	"generic-json":     {"data.json", `{"a": 1}`},
+	"generic-toml":     {"data.toml", "a = 1\n"},
 	"go":               {"a/a.go", "package a\n\nfunc F() { G() }\n\nfunc G() {}\n"},
 	"go-mod":           {"go.mod", "module example.com/m\n\ngo 1.22\n\nrequire example.com/x v1.0.0\n"},
 	"kustomize":        {"kustomization.yaml", "resources:\n- deploy.yaml\n"},
@@ -118,6 +121,38 @@ func TestDialectsOmitsWhatTheDoorCannotRead(t *testing.T) {
 	}
 }
 
+// N4: Dialects lists the generic readers, and a JSON or TOML file no dialect
+// claims names the reader that read it.
+func TestGenericReadersAreNamedDialects(t *testing.T) {
+	r := newReader(t)
+	listed := map[string]lang.DialectInfo{}
+	for _, d := range r.Dialects() {
+		listed[d.ID] = d
+	}
+	for id, want := range map[string]string{"generic-json": ".json", "generic-toml": ".toml"} {
+		d, ok := listed[id]
+		if !ok || d.Level != lang.LevelUnmeasured || len(d.Matches) != 1 || d.Matches[0] != want {
+			t.Errorf("Dialects()[%s] = %+v", id, d)
+		}
+	}
+	for path, want := range map[string]string{"x/data.json": "generic-json", "x/c.toml": "generic-toml", "envoy.json": "generic-json", "kong.json": "generic-json"} {
+		got := extract(t, r, path, `{"a": 1}`)
+		if path == "x/c.toml" {
+			got = extract(t, r, path, "a = 1\n")
+		}
+		if got.Dialect != want || got.Skipped != "" || got.Level != lang.LevelUnmeasured {
+			t.Errorf("%s: dialect %q skipped %q level %q, want %s", path, got.Dialect, got.Skipped, got.Level, want)
+		}
+	}
+	// A pack may not take a generic reader's id.
+	fsys := sampleFS(t)
+	fsys["dialects/generic-json/dialect.json"] = &fstest.MapFile{Data: []byte(strings.NewReplacer(`"widget-spec"`, `"generic-json"`, "WidgetDef", "GenDef", `"**/*.widget.json"`, `"**/*.gen.json"`).Replace(string(fsys["dialects/widget-spec/dialect.json"].Data)))}
+	fsys["dialects/generic-json/doc.json"] = fsys["dialects/widget-spec/doc.json"]
+	if _, err := lang.New(lang.WithDialects(fsys)); err == nil {
+		t.Error("a pack took the id generic-json")
+	}
+}
+
 // F4 and F5: every symbol of every dialect fixture carries a Canonical value,
 // but for the kinds extractor.HasNoCanonical lists with a reason, and every
 // reference names an edge and a ToKey that is a symbol of the file or empty.
@@ -128,6 +163,14 @@ func TestFixturesHoldTheResultContract(t *testing.T) {
 		got, err := r.Extract(context.Background(), lang.File{Path: path, Src: src})
 		if err != nil {
 			t.Fatal(err)
+		}
+		// Dialect and Level agree with Skipped: a file something read names it and
+		// has a level, and a skipped file has no level.
+		if got.Skipped == "" && (got.Dialect == "" || got.Level == "") {
+			t.Errorf("%s was read (dialect %q, level %q) and is missing one", path, got.Dialect, got.Level)
+		}
+		if got.Skipped != "" && got.Level != "" {
+			t.Errorf("%s was skipped (%s) and carries level %q", path, got.Skipped, got.Level)
 		}
 		keys := map[string]bool{}
 		for _, s := range got.Symbols {

@@ -22,6 +22,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
+// The ids the language library gives the generic readers (JSONExtractor,
+// TOMLExtractor): readers of an extension, not dialects with a manifest.
+const (
+	GenericJSONDialect = "generic-json"
+	GenericTOMLDialect = "generic-toml"
+)
+
 // The reasons a pack is refused. The set is closed: a caller may switch on it.
 const (
 	// PackEmpty: the pack holds no dialect.
@@ -95,7 +102,11 @@ func NewPack(fsys fs.FS) (*Pack, error) {
 			return nil, &PackError{Reason: PackManifest, Err: err}
 		}
 	}
-	p.claims.ids["go"] = true // the native Go extractor is a dialect no manifest declares
+	// The native Go extractor and the generic JSON and TOML readers are dialects
+	// no manifest declares; a pack may not take their ids.
+	for _, id := range []string{"go", GenericJSONDialect, GenericTOMLDialect} {
+		p.claims.ids[id] = true
+	}
 	if fsys == nil {
 		return p, nil
 	}
