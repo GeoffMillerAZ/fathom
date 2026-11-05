@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/emicklei/proto"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // SourceFile is one file of a service, as a whole-service source reads it.
@@ -23,6 +25,9 @@ type SourceFile struct {
 // spelling ("<package>.<Service>/<Method>"). An unparsable file provides
 // nothing.
 func protoProvides(file string, content []byte) []KeyRow {
+	if extractor.ProtoRefusal(content) != "" {
+		return nil // a file the parser cannot finish (a bracket open at its end never returns)
+	}
 	def, err := proto.NewParser(bytes.NewReader(content)).Parse()
 	if err != nil || def == nil {
 		return nil

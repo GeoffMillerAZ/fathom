@@ -58,3 +58,22 @@ func TestFlatCUEAttributesAreNotRefused(t *testing.T) {
 		t.Fatalf("a few errors are refused: %q", why)
 	}
 }
+
+// The file resolver reads a .cue file's imports through the parser too, in its
+// imports-only mode, and the scanner recurses on an attribute before it knows the
+// file has no import: 2 MiB of `@a(` ended the process (a fatal stack overflow).
+// It asks the same guard Extract does.
+func TestCUEFileSpecsAreGuarded(t *testing.T) {
+	c := &CUEExtractor{}
+	src := []byte(strings.Repeat("@a(", (2<<20)/3))
+	if fs, err := c.ExtractFileSpecs("a.cue", src); err != nil || len(fs.Imports) != 0 || len(fs.Exports) != 0 {
+		t.Errorf("ExtractFileSpecs: %+v, %v", fs, err)
+	}
+	if spans, err := c.ExtractImportSpans("a.cue", src); err != nil || len(spans) != 0 {
+		t.Errorf("ExtractImportSpans: %v, %v", spans, err)
+	}
+	ok := []byte("package p\n\nimport \"strings\"\n\nx: strings.ToUpper(\"a\")\n")
+	if fs, _ := c.ExtractFileSpecs("a.cue", ok); len(fs.Imports) != 1 || len(fs.Exports) != 1 {
+		t.Errorf("a real file reads %+v", fs)
+	}
+}

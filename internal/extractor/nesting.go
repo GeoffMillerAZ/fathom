@@ -260,6 +260,11 @@ func UnclosedReason(what string) string {
 	return fmt.Sprintf("%s: a bracket is still open at the end of the file, which the parser cannot read to its end", what)
 }
 
+// ProtoRefusal is protoRefusal for the callers outside this package that hand a
+// .proto file to the parser (the surface inventory, the service links): "" for a
+// file the parser can read, and the reason for one it cannot finish.
+func ProtoRefusal(src []byte) string { return protoRefusal(src) }
+
 // jsonTooDeep reports whether src nests [ and { deeper than maxNesting. A
 // comment to the end of the line and a quoted string are skipped, so a bracket
 // in either is not counted. (nginx and Caddyfile have no text guard: their

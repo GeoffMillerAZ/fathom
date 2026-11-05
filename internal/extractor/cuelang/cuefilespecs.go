@@ -32,6 +32,9 @@ func (c *CUEExtractor) Close() {}
 // own package (".:name", the package name instantiated at the file's own
 // directory, the cue binary's spelling of it) as a re-export.
 func (c *CUEExtractor) ExtractFileSpecs(relPath string, src []byte) (extractor.FileSpecs, error) {
+	if cueRefusal(src) != "" {
+		return extractor.FileSpecs{}, nil // the guard that protects Extract: the scanner recurses on an attribute
+	}
 	f, _ := parser.ParseFile(relPath, src, parser.ImportsOnly)
 	if f == nil {
 		return extractor.FileSpecs{}, nil
@@ -54,6 +57,9 @@ func (c *CUEExtractor) ExtractFileSpecs(relPath string, src []byte) (extractor.F
 // ExtractImportSpans implements FileSpecExtractor: each import declaration's
 // lines.
 func (c *CUEExtractor) ExtractImportSpans(relPath string, src []byte) ([]extractor.ImportSpan, error) {
+	if cueRefusal(src) != "" {
+		return nil, nil
+	}
 	f, _ := parser.ParseFile(relPath, src, parser.ImportsOnly)
 	if f == nil {
 		return nil, nil

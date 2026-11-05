@@ -42,6 +42,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -512,6 +513,9 @@ func isCobraCommandType(e ast.Expr) bool {
 // none. A file that fails to parse contributes nothing, the same
 // "skip unparseable" discipline internal/analysis/routes documents.
 func extractProtoRPC(f File) []Item {
+	if extractor.ProtoRefusal(f.Content) != "" {
+		return nil // a file the parser cannot finish (a bracket open at its end never returns)
+	}
 	def, err := proto.NewParser(bytes.NewReader(f.Content)).Parse()
 	if err != nil || def == nil {
 		return nil
