@@ -23,13 +23,14 @@ import (
 // whole with ErrLimit. A syntax error is counted in ResourceSet.SyntaxErrors and the
 // rest of the file is still read.
 func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSet, error) {
-	body, nerr, err := parseTerraform(filePath, src)
+	pf, err := parseTerraform(filePath, src)
 	if err != nil {
 		return nil, err
 	}
 	r := newTFReader(newConfig(opts), nil)
-	set := &ResourceSet{Tool: ToolTerraform, SyntaxErrors: nerr}
-	if err := r.readBody(set, body); err != nil {
+	set := &ResourceSet{Tool: ToolTerraform, SyntaxErrors: pf.nerr}
+	r.bad = pf.bad
+	if err := r.readBody(set, pf.body); err != nil {
 		return nil, err
 	}
 	sortSet(set)
@@ -59,10 +60,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	if len(names) > MaxModuleFiles {
 		return nil, limitErr(dir, fmt.Sprintf("%d files, over %d", len(names), MaxModuleFiles))
 	}
-	type parsed struct {
-		body *hclsyntax.Body
-	}
-	var files []parsed
+	var files []*tfParsed
 	set := &ResourceSet{Tool: ToolTerraform}
 	total := 0
 	for _, n := range names {
@@ -79,12 +77,12 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if total += len(src); total > MaxModuleBytes {
 			return nil, limitErr(dir, fmt.Sprintf("module is over %d bytes", MaxModuleBytes))
 		}
-		body, nerr, err := parseTerraform(p, src)
+		pf, err := parseTerraform(p, src)
 		if err != nil {
 			return nil, err
 		}
-		set.SyntaxErrors += nerr
-		files = append(files, parsed{body})
+		set.SyntaxErrors += pf.nerr
+		files = append(files, pf)
 	}
 	env := &tfEnv{vars: map[string]*tfVar{}, locals: map[string]hclsyntax.Expression{}}
 	for _, f := range files {
@@ -92,6 +90,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	}
 	r := newTFReader(newConfig(opts), env)
 	for _, f := range files {
+		r.bad = f.bad
 		if err := r.readBody(set, f.body); err != nil {
 			return nil, err
 		}
@@ -100,30 +99,38 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	return set, nil
 }
 
-// parseTerraform lexes, bounds and parses one file. It returns the body, the count of
-// syntax errors and ErrLimit past a limit.
-func parseTerraform(file string, src []byte) (*hclsyntax.Body, int, error) {
+// tfParsed is one parsed file: its body, the count of syntax errors and the source ranges the errors point at.
+type tfParsed struct {
+	body *hclsyntax.Body
+	nerr int
+	bad  []hcl.Range
+}
+
+// parseTerraform lexes, bounds and parses one file. It returns ErrLimit past a limit.
+func parseTerraform(file string, src []byte) (*tfParsed, error) {
 	if err := checkSize(file, len(src)); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	f, diags, err := parseHCLBounded(file, src)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	nerr := 0
+	pf := &tfParsed{body: &hclsyntax.Body{}}
 	for _, d := range diags {
-		if d.Severity == hcl.DiagError {
-			nerr++
+		if d.Severity != hcl.DiagError {
+			continue
+		}
+		pf.nerr++
+		if d.Subject != nil {
+			pf.bad = append(pf.bad, *d.Subject)
 		}
 	}
-	if f == nil {
-		return &hclsyntax.Body{}, nerr, nil
+	if f != nil {
+		if body, _ := f.Body.(*hclsyntax.Body); body != nil {
+			pf.body = body
+		}
 	}
-	body, _ := f.Body.(*hclsyntax.Body)
-	if body == nil {
-		body = &hclsyntax.Body{}
-	}
-	return body, nerr, nil
+	return pf, nil
 }
 
 // tfVar is a declared variable and its default, when it has one.
@@ -161,6 +168,8 @@ func (e *tfEnv) collect(body *hclsyntax.Body) {
 
 type tfReader struct {
 	emitter
+	// bad is where the current file's syntax errors point: an attribute they touch reads unknown.
+	bad       []hcl.Range
 	env       *tfEnv
 	resolving map[string]bool
 	nodes     int
@@ -177,6 +186,22 @@ func sortedAttrs(b *hclsyntax.Body) []*hclsyntax.Attribute {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].SrcRange.Start.Byte < out[j].SrcRange.Start.Byte })
 	return out
+}
+
+// broken reports whether a syntax error points at a line rng occupies. The parser recovers from a broken
+// expression with a placeholder or a partial value, so what it returns there says nothing about what was written.
+// The test is by line, so tokens left over after a complete expression ("x = a b") mark the attribute too.
+func (r *tfReader) broken(rng hcl.Range) bool {
+	for _, b := range r.bad {
+		last := b.End.Line
+		if b.End.Column == 1 && last > b.Start.Line {
+			last-- // a newline token ends at the start of the next line, which it does not occupy
+		}
+		if b.Filename == rng.Filename && b.Start.Line <= rng.End.Line && rng.Start.Line <= last {
+			return true
+		}
+	}
+	return false
 }
 
 func spanOf(rng hcl.Range) Span {
@@ -212,7 +237,7 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 				if a.Name == "for_each" {
 					kind = MultiForEach
 				}
-				c := r.classify(a.Expr, nil, 0)
+				c := r.classifyAttr(a, nil)
 				res.Multiplicity = Multiplicity{Kind: kind, Class: c.class, Refs: c.refs, Span: spanOf(a.SrcRange)}
 			}
 		}
@@ -251,17 +276,9 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 			c = ignoreChanges(a.Expr, r.cfg.values)
 		}
 		if c.class == "" {
-			c = r.classify(a.Expr, iters, 0)
+			c = r.classifyAttr(a, iters)
 		}
 		r.emit(w.file, out, p, c, spanOf(a.SrcRange))
-	}
-	counts := map[string]int{}
-	for _, b := range body.Blocks {
-		if b.Type == "dynamic" && len(b.Labels) == 1 {
-			counts[b.Labels[0]]++
-		} else {
-			counts[b.Type]++
-		}
 	}
 	for _, b := range body.Blocks {
 		w.top = false
@@ -279,7 +296,7 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 			}
 			inner := with(iters, iterName)
 			if fe, ok := b.Body.Attributes["for_each"]; ok {
-				r.emit(w.file, out, p, r.classify(fe.Expr, iters, 0), spanOf(fe.SrcRange))
+				r.emit(w.file, out, p, r.classifyAttr(fe, iters), spanOf(fe.SrcRange))
 			}
 			for _, cb := range b.Body.Blocks {
 				if cb.Type == "content" {
@@ -288,8 +305,11 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 			}
 			continue
 		}
+		// Every nested block segment takes [*], as tofu lists blocks, so one schema attribute has one
+		// spelling whether a resource writes one block or several. The resource's own lifecycle block is
+		// meta-configuration and not a schema block.
 		p := joinPath(prefix, b.Type)
-		if counts[b.Type] > 1 {
+		if !(top && b.Type == "lifecycle") {
 			p += "[*]"
 		}
 		r.walkBody(b.Body, p, w, iters, depth+1, out)
@@ -332,6 +352,14 @@ func ignoreChanges(e hclsyntax.Expression, values bool) readRes {
 	return readRes{}
 }
 
+// classifyAttr classifies an attribute's expression, or reads it unknown when a syntax error points into it.
+func (r *tfReader) classifyAttr(a *hclsyntax.Attribute, iters map[string]bool) readRes {
+	if r.broken(a.SrcRange) {
+		return readRes{class: ClassUnknown}
+	}
+	return r.classify(a.Expr, iters, 0)
+}
+
 // classify classifies one expression. iters are the dynamic-block iterator names in scope.
 func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth int) readRes {
 	if r.err != nil {
@@ -347,7 +375,18 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 	}
 	switch x := e.(type) {
 	case *hclsyntax.LiteralValueExpr:
+		if !x.Val.IsKnown() {
+			// The parser's placeholder for an expression it could not read.
+			return readRes{class: ClassUnknown}
+		}
 		return readRes{class: ClassLiteral, val: ctyToGo(x.Val), hasV: r.cfg.values}
+	case *hclsyntax.UnaryOpExpr:
+		// A negative number is a constant as written, as it is for OpenTofu: from_port = -1. Any other unary
+		// operator is computed, and so is a negation of anything but a number literal.
+		if lit, ok := x.Val.(*hclsyntax.LiteralValueExpr); ok && x.Op == hclsyntax.OpNegate && lit.Val.IsKnown() && lit.Val.Type() == cty.Number {
+			return readRes{class: ClassLiteral, val: ctyToGo(lit.Val.Negate()), hasV: r.cfg.values}
+		}
+		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	case *hclsyntax.TemplateExpr:
 		return r.foldTemplate(x.Parts, iters, depth)
 	case *hclsyntax.TemplateWrapExpr:
@@ -410,7 +449,7 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 		}
 		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	case *hclsyntax.RelativeTraversalExpr, *hclsyntax.IndexExpr, *hclsyntax.FunctionCallExpr,
-		*hclsyntax.ConditionalExpr, *hclsyntax.BinaryOpExpr, *hclsyntax.UnaryOpExpr,
+		*hclsyntax.ConditionalExpr, *hclsyntax.BinaryOpExpr,
 		*hclsyntax.ForExpr, *hclsyntax.TemplateJoinExpr, *hclsyntax.AnonSymbolExpr:
 		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	}

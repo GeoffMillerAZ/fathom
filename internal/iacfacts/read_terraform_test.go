@@ -146,7 +146,7 @@ variable "x" {
 		{"u", ClassLiteral, nil},
 		{"v", ClassReference, []string{"var.x"}},
 		{"depends_on", ClassReference, []string{"aws_iam_role.r"}},
-		{"versioning.enabled", ClassLiteral, nil},
+		{"versioning[*].enabled", ClassLiteral, nil},
 		{"grant[*]", ClassReference, []string{"var.grants"}},
 		{"grant[*].id", ClassExpression, nil},
 		{"grant[*].p", ClassLiteral, nil},
@@ -170,7 +170,7 @@ variable "x" {
 			t.Errorf("unexpected attribute %q", p)
 		}
 	}
-	// A repeated block takes [*]; a single block does not.
+	// Every nested block takes [*], one block or several; the resource's own lifecycle block does not.
 	var ids int
 	for _, a := range b.Attrs {
 		if a.Path == "rule[*].id" {

@@ -118,7 +118,7 @@ type Resource struct {
     Multiplicity Multiplicity // single, count, for_each or condition, with the expression's class
 }
 type Attr struct {
-    Path  string // versioning.enabled, rule[*].id
+    Path  string // versioning[*].enabled, rule[*].id
     Class Class
     Value any    // only with iac.WithValues()
     Refs  []string
@@ -136,6 +136,12 @@ type Attr struct {
 
 Absence is not a class. "This attribute is unset" comes from comparing a read with a contract, because only a contract knows what could
 have been set.
+
+**Paths.** Every nested Terraform block segment takes `[*]`, one block or several, because tofu lists blocks and one schema attribute
+must have one spelling. A resource's own `lifecycle` block is meta-configuration and takes none.
+
+**Syntax errors.** A broken expression reads `unknown` and counts in `SyntaxErrors`: an attribute on a line a syntax error points at is
+`unknown`, never what the parser's recovery guessed.
 
 **Coverage.** Terraform (blocks, `dynamic` as `[*]`, `count`, `for_each`), CloudFormation (`Properties`, intrinsic functions, `Condition`,
 parameter defaults) and Pulumi YAML. Pulumi TypeScript and Python stay with IF-22, lane #200. Module calls read as a resource-like
@@ -158,7 +164,7 @@ planted sentinel appears in no store row.
 
 Bar: path precision at least 0.99, path recall at least 0.95, class agreement at least 0.98. A miss withholds that tool from the door.
 
-The Terraform oracle is coarser than the classes. A probe of OpenTofu 1.13 read `var.x`, `["a", var.x]` and `"pre-${var.x}"` all as `references`, folded `true ? "a" : "b"` to a constant, read `upper("x")` as empty, and dropped `dynamic` blocks, `lifecycle` and unknown attributes. So the reading maps `literal` to constant, `reference` and `defaulted` to references, and `expression` to references or empty. A folded conditional counts as agreement. `defaulted` is graded separately against `root_module.variables`, and locals are ungraded and disclosed. `dynamic`, `lifecycle` and paths outside the schema leave the denominators and are counted. Subjects are limited to providers in the oracle's pin list.
+The Terraform oracle is coarser than the classes. A probe of OpenTofu 1.13 read `var.x`, `["a", var.x]` and `"pre-${var.x}"` all as `references`, folded `true ? "a" : "b"` to a constant, read `upper("x")` as empty, and dropped `dynamic` blocks, `lifecycle` and unknown attributes. So the reading maps `literal` to constant, `reference` and `defaulted` to references, and `expression` to references or empty. A folded conditional counts as agreement, and so do a few other expressions tofu folds that the reader keeps as `expression`: `!true`, `1 + 2`, a `for` over constants and a negation of anything but a number literal. A negative number literal (`-1`, `-1.5`, and one inside a tuple or object) is `literal`, as tofu reports `constant_value`. `defaulted` is graded separately against `root_module.variables`, and locals are ungraded and disclosed. `dynamic`, `lifecycle` and paths outside the schema leave the denominators and are counted. Subjects are limited to providers in the oracle's pin list.
 
 ## 6. Packs
 

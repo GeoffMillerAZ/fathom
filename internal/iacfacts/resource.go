@@ -101,9 +101,10 @@ type Multiplicity struct {
 
 // Attr is one attribute of a resource.
 type Attr struct {
-	// Path is the attribute's path: versioning.enabled, rule[*].id. A Terraform block
-	// that repeats under one parent, a dynamic block and every CloudFormation or Pulumi
-	// list element take [*].
+	// Path is the attribute's path: versioning[*].enabled, rule[*].id. Every nested Terraform
+	// block segment takes [*], one block or several, as tofu lists blocks, and so does a dynamic
+	// block and every CloudFormation or Pulumi list element. A resource's own lifecycle block
+	// is meta-configuration and takes none.
 	Path  string
 	Class Class
 	// Value is set only under WithValues, and only for literal and defaulted classes
