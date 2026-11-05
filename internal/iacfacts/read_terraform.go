@@ -29,7 +29,7 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 	}
 	r := newTFReader(newConfig(opts), nil)
 	set := &ResourceSet{Tool: ToolTerraform, SyntaxErrors: pf.nerr}
-	r.bad, r.file = pf.bad, filePath
+	r.pf, r.file = pf, filePath
 	if err := r.readBody(set, pf.body); err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if f.override {
 			env.collectOverrides(f.body)
 		} else {
-			env.collect(f.body)
+			env.collect(f)
 		}
 	}
 	r := newTFReader(newConfig(opts), env)
@@ -96,7 +96,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if f.override {
 			continue
 		}
-		r.bad, r.file = f.bad, f.file
+		r.pf, r.file = f, f.file
 		if err := r.readBody(set, f.body); err != nil {
 			return nil, err
 		}
@@ -106,7 +106,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if !f.override {
 			continue
 		}
-		r.bad, r.file = f.bad, f.file
+		r.pf, r.file = f, f.file
 		if err := r.applyOverrides(set, ix, f.body); err != nil {
 			return nil, err
 		}
@@ -149,6 +149,56 @@ type tfParsed struct {
 	bad  []hcl.Range
 	// override marks an override file, which only changes what the other files declare.
 	override bool
+	src      []byte
+	lineAt   []int // byte offset of each line start, built on first use
+}
+
+// suspect reports whether what the parser returned for rng cannot be trusted. The parser reports the first syntax
+// error and then recovers silently, so a later broken attribute reads as a clean literal with the error count left
+// at one. An attribute a reported error touches is suspect. So is any attribute at or after the first error, unless
+// its own lines parse clean on their own, which is the one proof the recovered parse cannot give.
+func (pf *tfParsed) suspect(rng hcl.Range) bool {
+	first := 0
+	for _, b := range pf.bad {
+		last := b.End.Line
+		if b.End.Column == 1 && last > b.Start.Line {
+			last-- // a newline token ends at the start of the next line, which it does not occupy
+		}
+		if b.Filename == rng.Filename && b.Start.Line <= rng.End.Line && rng.Start.Line <= last {
+			return true
+		}
+		if first == 0 || b.Start.Line < first {
+			first = b.Start.Line
+		}
+	}
+	if pf.nerr > 0 && len(pf.bad) == 0 {
+		return true // errors with no position: nothing is known to be clean
+	}
+	if first == 0 || rng.End.Line < first {
+		return false
+	}
+	return !pf.linesParseClean(rng.Start.Line, rng.End.Line)
+}
+
+// linesParseClean parses lines from..to of the file on their own, in a fresh parser that is not in recovery.
+func (pf *tfParsed) linesParseClean(from, to int) bool {
+	if pf.lineAt == nil {
+		pf.lineAt = []int{0}
+		for i, c := range pf.src {
+			if c == '\n' {
+				pf.lineAt = append(pf.lineAt, i+1)
+			}
+		}
+	}
+	if from < 1 || to < from || to > len(pf.lineAt) {
+		return false
+	}
+	end := len(pf.src)
+	if to < len(pf.lineAt) {
+		end = pf.lineAt[to]
+	}
+	_, diags, err := parseHCLBounded(pf.file, pf.src[pf.lineAt[from-1]:end])
+	return err == nil && !diags.HasErrors()
 }
 
 // isOverrideFile reports whether a file name is one OpenTofu treats as an override file.
@@ -166,7 +216,7 @@ func parseTerraform(file string, src []byte) (*tfParsed, error) {
 	if err != nil {
 		return nil, err
 	}
-	pf := &tfParsed{file: file, body: &hclsyntax.Body{}}
+	pf := &tfParsed{file: file, body: &hclsyntax.Body{}, src: src}
 	for _, d := range diags {
 		if d.Severity != hcl.DiagError {
 			continue
@@ -223,8 +273,8 @@ func (e *tfEnv) collectOverrides(body *hclsyntax.Body) {
 	}
 }
 
-func (e *tfEnv) collect(body *hclsyntax.Body) {
-	for _, b := range body.Blocks {
+func (e *tfEnv) collect(pf *tfParsed) {
+	for _, b := range pf.body.Blocks {
 		switch {
 		case b.Type == "variable" && len(b.Labels) == 1:
 			if _, dup := e.vars[b.Labels[0]]; dup {
@@ -233,9 +283,12 @@ func (e *tfEnv) collect(body *hclsyntax.Body) {
 			v := &tfVar{}
 			if a, ok := b.Body.Attributes["default"]; ok {
 				v.def = a.Expr
+				if pf.suspect(a.SrcRange) {
+					e.overVars[b.Labels[0]] = true // a default the parser may have guessed reads unknown
+				}
 			}
 			for _, flag := range []string{"sensitive", "ephemeral"} {
-				if a, ok := b.Body.Attributes[flag]; ok && !isFalseLiteral(a.Expr) {
+				if a, ok := b.Body.Attributes[flag]; ok && (!isFalseLiteral(a.Expr) || pf.suspect(a.SrcRange)) {
 					v.secret = true
 				}
 			}
@@ -244,6 +297,9 @@ func (e *tfEnv) collect(body *hclsyntax.Body) {
 			for _, a := range sortedAttrs(b.Body) {
 				if _, dup := e.locals[a.Name]; !dup {
 					e.locals[a.Name] = a.Expr
+					if pf.suspect(a.SrcRange) {
+						e.overLocals[a.Name] = true
+					}
 				}
 			}
 		}
@@ -252,8 +308,9 @@ func (e *tfEnv) collect(body *hclsyntax.Body) {
 
 type tfReader struct {
 	emitter
-	// bad is where the current file's syntax errors point: an attribute they touch reads unknown.
-	bad       []hcl.Range
+	// pf is the file being read: an attribute its syntax errors touch, or that follows its first one without
+	// parsing clean on its own, reads unknown.
+	pf        *tfParsed
 	file      string // the file being read, for errors
 	env       *tfEnv
 	resolving map[string]bool
@@ -278,20 +335,11 @@ func sortedAttrs(b *hclsyntax.Body) []*hclsyntax.Attribute {
 	return out
 }
 
-// broken reports whether a syntax error points at a line rng occupies. The parser recovers from a broken
-// expression with a placeholder or a partial value, so what it returns there says nothing about what was written.
-// The test is by line, so tokens left over after a complete expression ("x = a b") mark the attribute too.
+// broken reports whether the parser's answer for rng is suspect (tfParsed.suspect). The parser recovers from a
+// broken expression with a placeholder or a partial value, so what it returns there says nothing about what was
+// written. The test is by line, so tokens left over after a complete expression ("x = a b") mark the attribute too.
 func (r *tfReader) broken(rng hcl.Range) bool {
-	for _, b := range r.bad {
-		last := b.End.Line
-		if b.End.Column == 1 && last > b.Start.Line {
-			last-- // a newline token ends at the start of the next line, which it does not occupy
-		}
-		if b.Filename == rng.Filename && b.Start.Line <= rng.End.Line && rng.Start.Line <= last {
-			return true
-		}
-	}
-	return false
+	return r.pf != nil && r.pf.suspect(rng)
 }
 
 func spanOf(rng hcl.Range) Span {
@@ -364,7 +412,7 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 		}
 		p := joinPath(prefix, a.Name)
 		var c readRes
-		if prefix == "lifecycle" && a.Name == "ignore_changes" {
+		if prefix == "lifecycle" && a.Name == "ignore_changes" && !r.broken(a.SrcRange) {
 			c = ignoreChanges(a.Expr, r.cfg.values)
 		}
 		if c.class == "" {

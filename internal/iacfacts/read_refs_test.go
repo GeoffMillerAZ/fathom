@@ -139,3 +139,55 @@ func TestReadTerraformLocalCyclesAreNotMemoized(t *testing.T) {
 		}
 	}
 }
+
+// The parser reports the first syntax error in a file and then recovers silently, so a later broken attribute read as
+// a clean literal: `x = 1 2` was literal 1 and SyntaxErrors stayed at 1. An attribute at or after the first error
+// reads unknown unless its own lines parse clean on their own.
+func TestReadTerraformAttributesAfterTheFirstErrorAreChecked(t *testing.T) {
+	src := "locals {\n  fine = \"f\"\n}\n" +
+		"resource \"t\" \"n\" {\n  before = 1\n  a = )\n  x = 1 2\n  q = [1, 2 3]\n  o = {k = 1 z = 2}\n  t = true false\n  y = 1\n  r = local.fine\n" +
+		"  lifecycle {\n    ignore_changes = [tags] junk\n  }\n}\n" +
+		"locals {\n  l = 1 2\n  g = 3\n}\n" +
+		"resource \"t\" \"m\" {\n  p = 1 2\n  ok = 2\n  viaL = local.l\n  viaG = local.g\n}\n"
+	set, err := ReadTerraformFile("a.tf", []byte(src), WithValues())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if set.SyntaxErrors == 0 {
+		t.Fatal("not counted")
+	}
+	for name, res := range map[string]Resource{"n": set.Resources[0], "m": set.Resources[1]} {
+		if res.Name != name {
+			t.Fatalf("order: %s", res.Name)
+		}
+	}
+	unknown := map[string][]string{"n": {"a", "x", "q", "o", "t", "lifecycle.ignore_changes"}, "m": {"p"}}
+	literal := map[string]map[string]any{"n": {"before": int64(1), "y": int64(1)}, "m": {"ok": int64(2)}}
+	for _, res := range set.Resources {
+		for _, p := range unknown[res.Name] {
+			if a := attrOf(t, res, p); a.Class != ClassUnknown || a.Value != nil {
+				t.Errorf("%s.%s: %+v", res.Name, p, a)
+			}
+		}
+		for p, v := range literal[res.Name] {
+			if a := attrOf(t, res, p); a.Class != ClassLiteral || a.Value != v {
+				t.Errorf("%s.%s: %+v", res.Name, p, a)
+			}
+		}
+	}
+	// Only the module read resolves locals: one the parser may have guessed reads unknown.
+	mod, err := ReadTerraformModule(fstest.MapFS{"main.tf": file(src)}, ".", WithValues())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := mod.Resources[1]
+	if a := attrOf(t, m, "viaL"); a.Class != ClassUnknown || a.Value != nil {
+		t.Errorf("viaL: %+v", a)
+	}
+	if a := attrOf(t, m, "viaG"); a.Value != int64(3) {
+		t.Errorf("viaG: %+v", a)
+	}
+	if a := attrOf(t, mod.Resources[0], "r"); a.Value != "f" {
+		t.Errorf("r: %+v", a)
+	}
+}
