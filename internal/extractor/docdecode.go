@@ -597,9 +597,13 @@ func newTOMLLocator(src []byte) *tomlLocator {
 	loc := &tomlLocator{headers: map[string]int{}, assigns: map[string][]tomlAt{}, implicit: map[string]int{}}
 	table := ""
 	note := func(full string, line int) { // the first line that writes under each dotted prefix of full
+		dots := 0
 		for i := 0; i < len(full); i++ {
 			if full[i] != '.' {
 				continue
+			}
+			if dots++; dots > maxTOMLSegments {
+				return // a key of thousands of segments: its deeper prefixes are not located
 			}
 			if _, ok := loc.implicit[full[:i+1]]; !ok {
 				loc.implicit[full[:i+1]] = line

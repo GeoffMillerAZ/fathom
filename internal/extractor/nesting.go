@@ -292,6 +292,12 @@ func jsonTooDeep(src []byte) bool {
 // holds thousands.
 const maxTOMLKeys = 40_000
 
+// maxTOMLSegments is the most segments a table header may have. The locator that
+// gives each key its line hashes every dotted prefix of the key's full name, so a
+// header of n segments costs each key under it n*n bytes: 9,000 dots and 8,000
+// keys (81 KB) took 27 s and 2.1 GB. A real header has a handful.
+const maxTOMLSegments = 64
+
 // tomlRefusal is why src is not handed to the TOML decoder: it nests deeper than
 // maxNesting in any way the decoder recurses on (an array or an inline table, and
 // a dotted key, which the decoder reads as that many nested tables: `a.a.a.a = 1`,
@@ -304,6 +310,7 @@ func tomlRefusal(src []byte) string {
 	dots := 0       // dots in the key being read
 	keys := 0       // keys and tables seen
 	inKey := true   // a key (or a table header) is being read, not a value
+	header := false // the key being read is a table header
 	for i := 0; i < len(src); i++ {
 		switch c := src[i]; c {
 		case '#':
@@ -313,7 +320,7 @@ func tomlRefusal(src []byte) string {
 		case '"', '\'':
 			i = skipQuoted(src, i)
 		case '\n':
-			dots, inKey = 0, len(open) == 0 || open[len(open)-1] == '{'
+			dots, inKey, header = 0, len(open) == 0 || open[len(open)-1] == '{', false
 		case '=':
 			if inKey {
 				keys++
@@ -331,6 +338,7 @@ func tomlRefusal(src []byte) string {
 		case '[':
 			if len(open) == 0 && inKey {
 				keys++ // a table header
+				header = true
 			}
 			open = append(open, c)
 		case ']', '}':
@@ -343,6 +351,9 @@ func tomlRefusal(src []byte) string {
 		}
 		if keys > maxTOMLKeys {
 			return fmt.Sprintf("toml decode: more than %d keys is not read", maxTOMLKeys)
+		}
+		if header && dots >= maxTOMLSegments {
+			return fmt.Sprintf("toml decode: a table header of more than %d segments is not read", maxTOMLSegments)
 		}
 	}
 	return ""

@@ -82,3 +82,32 @@ func TestProtoBracketOpenAtEOFIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// The locator that gives a TOML key its line hashed every dotted prefix of the
+// key's full name, so a table header of 9,000 segments with 8,000 keys under it
+// (81 KB) took 27 s and 2.1 GB. A header of more than 64 segments is refused, and
+// a dotted key of thousands of segments is located by its first 64.
+func TestTOMLDeepHeaderIsRefusedAndDeepKeysAreBounded(t *testing.T) {
+	r := newReader(t)
+	var h strings.Builder
+	h.WriteString("[" + strings.Repeat("a.", 9_000) + "a]\n")
+	for i := 0; i < 8_000; i++ {
+		fmt.Fprintf(&h, "k%d = 1\n", i)
+	}
+	var got lang.Result
+	within(t, 20*time.Second, "a 9,000 segment header", func() { got = extract(t, r, "crate/Cargo.toml", h.String()) })
+	if !got.Incomplete || len(got.Notes) != 1 || !strings.Contains(got.Notes[0], "table header of more than 64 segments") {
+		t.Errorf("deep header: incomplete=%v notes=%v", got.Incomplete, got.Notes)
+	}
+	var k strings.Builder
+	k.WriteString("[package]\n")
+	for i := 0; i < 3_000; i++ {
+		fmt.Fprintf(&k, "%sk%d = 1\n", strings.Repeat("a.", 9_000), i)
+	}
+	within(t, 20*time.Second, "3,000 keys of 9,000 segments", func() { extract(t, r, "data.toml", k.String()) })
+	// A header at the bound reads.
+	ok := "[" + strings.TrimSuffix(strings.Repeat("a.", 64), ".") + "]\nk = 1\n"
+	if got := extract(t, r, "crate/Cargo.toml", ok); got.Incomplete {
+		t.Errorf("a 64 segment header is refused: %v", got.Notes)
+	}
+}
