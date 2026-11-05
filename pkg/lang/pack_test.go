@@ -106,6 +106,57 @@ func TestPackDoesNotTakeBuiltInFiles(t *testing.T) {
 	}
 }
 
+// builtInOwned are files a built-in dialect owns by extension. No pack or Go
+// extractor reads one, whatever its glob or basename claims (design section 6).
+var builtInOwned = []struct{ path, src string }{
+	{"main.tf", tfSrc},
+	{"a/a.go", "package a\n\nfunc F() {}\n"},
+	{"a.py", "def f():\n    pass\n"},
+	{"README.md", "# Title\n"},
+	{"src/a.go", "package a\n\nfunc G() {}\n"},
+	{"src/a.py", "def g():\n    pass\n"},
+	{"x.widget.py", "def w():\n    pass\n"},
+	{"x.widget.go", "package a\n\nfunc W() {}\n"},
+	{"x.widget.tf", tfSrc},
+	{"infra/main.tf", tfSrc},
+}
+
+func TestPackNeverTakesBuiltInOwnedFiles(t *testing.T) {
+	plain := newReader(t)
+	for _, claim := range []struct{ name, globs, basenames string }{
+		{"everything", `["**/*"]`, `[]`},
+		{"a directory", `["src/**"]`, `[]`},
+		{"a bracketed extension", `["**/*.t[f]"]`, `[]`},
+		{"a middle segment", `["**/*.widget.*"]`, `[]`},
+		{"a basename", `["**/*.widget.json"]`, `["main.tf"]`},
+	} {
+		t.Run(claim.name, func(t *testing.T) {
+			fsys := sampleFS(t)
+			d := string(fsys["dialects/widget-spec/dialect.json"].Data)
+			d = strings.Replace(d, `"globs": ["**/*.widget.json"]`, `"globs": `+claim.globs, 1)
+			d = strings.Replace(d, `"basenames": []`, `"basenames": `+claim.basenames, 1)
+			fsys["dialects/widget-spec/dialect.json"].Data = []byte(d)
+			m := lang.Match{ID: "aaa-rows", Globs: []string{"**/*"}, Kinds: map[string]string{"RowDef": "function"}}
+			readers := map[string]*lang.Reader{
+				"pack":      newReader(t, lang.WithDialects(fsys)),
+				"extractor": newReader(t, lang.WithExtractor(m, &rowExtractor{})),
+			}
+			for who, r := range readers {
+				for _, f := range builtInOwned {
+					want, got := extract(t, plain, f.path, f.src), extract(t, r, f.path, f.src)
+					if got.Dialect != want.Dialect || got.Skipped != want.Skipped || len(got.Symbols) != len(want.Symbols) || got.Level != want.Level {
+						t.Errorf("%s: %s read as %q level %q skipped %q with %d symbols; the built-ins read it as %q level %q with %d", who, f.path, got.Dialect, got.Level, got.Skipped, len(got.Symbols), want.Dialect, want.Level, len(want.Symbols))
+					}
+				}
+			}
+			// The claim still works on a file no built-in owns.
+			if got := extract(t, readers["extractor"], "notes/a.rowdata", "def Main\n"); got.Dialect != "aaa-rows" && claim.name == "everything" {
+				t.Errorf("the extractor's own glob read nothing: %+v", got)
+			}
+		})
+	}
+}
+
 func TestPackDialectsAreTriedInIDOrder(t *testing.T) {
 	fsys := sampleFS(t)
 	for _, id := range []string{"zeta-spec", "alpha-spec"} {

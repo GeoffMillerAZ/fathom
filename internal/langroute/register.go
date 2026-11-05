@@ -921,10 +921,11 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 		if !ok {
 			e, toolKind, ok = JSONSchemaDispatch(relPath, content) // a JSON Schema document, by its $schema or *.schema.json (LB-Q-json-schema)
 		}
-		if !ok {
+		if !ok && !r.owned(strings.ToLower(ext)) {
 			// The pack layer: after every specific built-in claim above, before the
 			// extension's generic fallback, so a pack dialect can read a .json or .toml
-			// file by basename, glob or sniff (design §6).
+			// file by basename, glob or sniff (design §6). A file whose extension a
+			// built-in dialect owns is never the pack's, whatever its glob matches.
 			e, toolKind, ok = r.packDispatch(relPath, content)
 		}
 		if !ok {
