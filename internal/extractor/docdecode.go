@@ -567,7 +567,23 @@ type tomlLine struct {
 	line     int
 }
 
-type tomlLocator struct{ lines []tomlLine }
+// tomlLocator answers "which line is this key on" for every key of a document, so
+// each answer is a map lookup: a scan of every line per key cost n*n for a
+// manifest of n keys (39,900 dependencies took 27 s).
+type tomlLocator struct {
+	lines    []tomlLine
+	headers  map[string]int      // a table's dotted path -> the first header that names it
+	assigns  map[string][]tomlAt // an assignment's full dotted path -> where it is written, in file order
+	implicit map[string]int      // a dotted prefix, with its trailing dot -> the first line that writes under it
+}
+
+// tomlAt is one place an assignment is written: at the top level (whose dotted
+// key is the whole path) or inside a table (whose line must not precede the
+// table's own, see explicitLine).
+type tomlAt struct {
+	line int
+	top  bool
+}
 
 func normTOMLKey(k string) string {
 	parts := strings.Split(k, ".")
@@ -578,16 +594,37 @@ func normTOMLKey(k string) string {
 }
 
 func newTOMLLocator(src []byte) *tomlLocator {
-	loc := &tomlLocator{}
+	loc := &tomlLocator{headers: map[string]int{}, assigns: map[string][]tomlAt{}, implicit: map[string]int{}}
 	table := ""
+	note := func(full string, line int) { // the first line that writes under each dotted prefix of full
+		for i := 0; i < len(full); i++ {
+			if full[i] != '.' {
+				continue
+			}
+			if _, ok := loc.implicit[full[:i+1]]; !ok {
+				loc.implicit[full[:i+1]] = line
+			}
+		}
+	}
 	for i, raw := range strings.Split(string(src), "\n") {
 		if m := tomlHeaderRe.FindStringSubmatch(raw); m != nil {
 			table = normTOMLKey(m[2])
 			loc.lines = append(loc.lines, tomlLine{table: table, array: m[1] == "[[", isHeader: true, line: i + 1})
+			if _, ok := loc.headers[table]; !ok {
+				loc.headers[table] = i + 1
+			}
+			note(table, i+1)
 			continue
 		}
 		if m := tomlAssignRe.FindStringSubmatch(raw); m != nil {
-			loc.lines = append(loc.lines, tomlLine{table: table, key: normTOMLKey(m[1]), line: i + 1})
+			key := normTOMLKey(m[1])
+			loc.lines = append(loc.lines, tomlLine{table: table, key: key, line: i + 1})
+			full := key
+			if table != "" {
+				full = table + "." + key
+			}
+			loc.assigns[full] = append(loc.assigns[full], tomlAt{line: i + 1, top: table == ""})
+			note(full, i+1)
 		}
 	}
 	return loc
@@ -601,40 +638,20 @@ func (l *tomlLocator) lineOf(keyPath []string, fallback int) int {
 	if line, ok := l.explicitLine(keyPath, fallback); ok {
 		return line
 	}
-	prefix := strings.Join(keyPath, ".") + "."
-	for _, t := range l.lines {
-		full := t.table
-		if !t.isHeader {
-			full = t.key
-			if t.table != "" {
-				full = t.table + "." + t.key
-			}
-		}
-		if strings.HasPrefix(full, prefix) {
-			return t.line
-		}
+	if line, ok := l.implicit[strings.Join(keyPath, ".")+"."]; ok {
+		return line
 	}
 	return fallback
 }
 
 func (l *tomlLocator) explicitLine(keyPath []string, fallback int) (int, bool) {
 	full := strings.Join(keyPath, ".")
-	for _, t := range l.lines {
-		if t.isHeader && t.table == full {
-			return t.line, true
-		}
+	if line, ok := l.headers[full]; ok {
+		return line, true
 	}
-	for _, t := range l.lines {
-		if t.isHeader {
-			continue
-		}
-		if t.table == "" && t.key == full {
-			return t.line, true
-		}
-		if t.table != "" && strings.HasPrefix(full, t.table+".") && t.key == strings.TrimPrefix(full, t.table+".") {
-			if t.line >= fallback {
-				return t.line, true
-			}
+	for _, at := range l.assigns[full] {
+		if at.top || at.line >= fallback {
+			return at.line, true
 		}
 	}
 	return 0, false
