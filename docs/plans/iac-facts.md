@@ -19,7 +19,7 @@ plans stay under `workspace/`.
 - [x] (op) Lockfile coverage: on a public sample of at least 200 repositories with a committed `.terraform.lock.hcl`, chosen by a rule written before reading, the share of the first five providers' selections a catalog of N versions binds, for N of 12, 50 and every release, against IF-P1's size per N {id: IF-P6, oracle: lexical, path: docs/bench/readings/iac-facts/p6-coverage.md, pattern: "^IF-P6 verdict:"}
 - [x] (op) CloudFormation registry schemas: catalog size, a digest as the version key, regional differences between two regions, and the licence on the schema files, naming whether a catalog may be published {id: IF-P7, oracle: lexical, path: docs/bench/readings/iac-facts/p7-cloudformation.md, pattern: "^IF-P7 verdict:"}
 - [x] (op) ctl: go or no-go on the catalog format, version coverage and facts 5 to 7, from IF-P1 to IF-P6, amending bounds in the design {id: IF-M0, oracle: lexical, path: docs/bench/readings/iac-facts/p0-exit.md, pattern: "^IF-M0 verdict:", needs: "IF-P1,IF-P2,IF-P3,IF-P4,IF-P5,IF-P6"}
-- [ ] (op) Major-line cost: every stable AWS 5.x and 6.x release exported and deduplicated, 2.x to 4.x projected from every tenth release, each line against 32 MiB and 500,000 entries, as IF-M0 requires {id: IF-P8, oracle: lexical, path: docs/bench/readings/iac-facts/p8-major-lines.md, pattern: "^IF-P8 verdict:"}
+- [x] (op) Major-line cost: every stable AWS 5.x and 6.x release exported and deduplicated, 2.x to 4.x projected from every tenth release, each line against 32 MiB and 500,000 entries, as IF-M0 requires {id: IF-P8, oracle: lexical, path: docs/bench/readings/iac-facts/p8-major-lines.md, pattern: "^IF-P8 verdict:"}
 
 ## Phase 1: catalogs and facts 1 to 4
 
