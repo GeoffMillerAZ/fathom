@@ -61,23 +61,34 @@ func TestExtractForBenchReadsSimulinkPackage(t *testing.T) {
 	}
 }
 
-// TestBinaryGateIsTheOnlySniff: every fusion read path asks binaryExcluded, never
-// connector.IsBinary directly, so the container exemption is one rule, not nineteen.
+// TestBinaryGateIsTheOnlySniff: every read path in the routing and fusion
+// packages asks the gate (langroute.binaryExcluded), never connector.IsBinary or
+// langclass.IsBinary directly, so the container exemption is one rule, not
+// nineteen. langroute/binarygate.go is the one place that sniffs.
 func TestBinaryGateIsTheOnlySniff(t *testing.T) {
-	files, err := filepath.Glob("*.go")
-	if err != nil {
-		t.Fatal(err)
+	var files []string
+	for _, dir := range []string{".", filepath.Join("..", "langroute")} {
+		fs, err := filepath.Glob(filepath.Join(dir, "*.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, fs...)
+	}
+	if len(files) == 0 {
+		t.Fatal("no source files found to scan")
 	}
 	for _, f := range files {
-		if strings.HasSuffix(f, "_test.go") || f == "binarygate.go" {
+		if strings.HasSuffix(f, "_test.go") || (filepath.Base(f) == "binarygate.go" && filepath.Base(filepath.Dir(f)) == "langroute") {
 			continue
 		}
 		b, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(b), "connector.IsBinary(") {
-			t.Errorf("%s calls connector.IsBinary; use binaryExcluded (binarygate.go)", f)
+		for _, call := range []string{"connector.IsBinary(", "langclass.IsBinary("} {
+			if strings.Contains(string(b), call) {
+				t.Errorf("%s calls %s; use the gate in internal/langroute/binarygate.go", f, call)
+			}
 		}
 	}
 }
