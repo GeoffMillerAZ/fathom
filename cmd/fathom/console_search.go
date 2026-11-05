@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/intent"
-	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
@@ -96,7 +96,7 @@ func (e entrySlice) Lowered(i int) (string, string, string, string) {
 func (e entrySlice) Entry(i int) consoleSymbolEntry { return e[i] }
 
 // snapshotSource is a symbolSource over a service's shared snapshot.
-type snapshotSource struct{ s *memo.Snapshot }
+type snapshotSource struct{ s *graphmemo.Snapshot }
 
 func (p snapshotSource) Len() int { return len(p.s.Palette()) }
 func (p snapshotSource) Lowered(i int) (string, string, string, string) {

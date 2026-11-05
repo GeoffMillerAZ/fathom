@@ -11,19 +11,19 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // consoleScope is service's graph-store scope in c's store.
-func consoleScope(ctx context.Context, c *client.Client, service string) memo.Scope {
+func consoleScope(ctx context.Context, c *client.Client, service string) graphmemo.Scope {
 	return client.MemoScope(ctx, c, service)
 }
 
 // consoleSnapshot is service's symbol snapshot.
-func consoleSnapshot(ctx context.Context, c *client.Client, service string) (*memo.Snapshot, error) {
-	snap, err := memo.SnapshotForExtra(ctx, consoleScope(ctx, c, service), func(l context.Context) ([]core.SymbolNode, any, error) {
+func consoleSnapshot(ctx context.Context, c *client.Client, service string) (*graphmemo.Snapshot, error) {
+	snap, err := graphmemo.SnapshotForExtra(ctx, consoleScope(ctx, c, service), func(l context.Context) ([]core.SymbolNode, any, error) {
 		cctx, col := scope.WithCollector(l)
 		//fathom:tenancy-allow sources the console's graph-store group: loads the shared memo snapshot once per watermark (single flight, memo-budgeted)
 		nodes, err := c.ListAllSymbols(cctx, service)
@@ -41,7 +41,7 @@ func consoleSnapshot(ctx context.Context, c *client.Client, service string) (*me
 // consoleTypedLoader loads service's typed edges. A read failure is
 // returned, never read as "none" (the graph store never caches a failure,
 // so it cannot stand for the watermark — I38).
-func consoleTypedLoader(c *client.Client, service string) memo.TypedLoader {
+func consoleTypedLoader(c *client.Client, service string) graphmemo.TypedLoader {
 	return func(l context.Context) ([]core.Edge, error) {
 		return c.TypedEdges(l, service)
 	}
@@ -50,13 +50,13 @@ func consoleTypedLoader(c *client.Client, service string) memo.TypedLoader {
 // consoleBothGraph is service's snapshot, typed edges and syntax+typed
 // graph — the graph find_callers and the verify engine walk. typedErr is
 // set when the typed edges could not be read: the graph is then the
-// syntax edges only, for this call (memo.GraphForTyped), and the caller
+// syntax edges only, for this call (graphmemo.GraphForTyped), and the caller
 // names the failure.
-func consoleBothGraph(ctx context.Context, c *client.Client, service string) (snap *memo.Snapshot, edges []core.Edge, g *callgraph.Graph, typedErr, err error) {
+func consoleBothGraph(ctx context.Context, c *client.Client, service string) (snap *graphmemo.Snapshot, edges []core.Edge, g *callgraph.Graph, typedErr, err error) {
 	if snap, err = consoleSnapshot(ctx, c, service); err != nil {
 		return nil, nil, nil, nil, err
 	}
-	g, edges, typedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, consoleTypedLoader(c, service))
+	g, edges, typedErr, err = graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphBoth, consoleTypedLoader(c, service))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

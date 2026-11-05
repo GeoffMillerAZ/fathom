@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -28,13 +28,13 @@ func TestMemoScopeSharesSuppressionIdentity(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		backend memoScopeBackend
-		want    memo.Scope
+		want    graphmemo.Scope
 	}{
-		{"suppressed", memoScopeBackend{id: "store", watermark: "w1", suppression: "token"}, memo.Scope{Store: "store", Service: "svc", Watermark: "w1|suppressed:token"}},
-		{"unsuppressed", memoScopeBackend{id: "store", watermark: "w1"}, memo.Scope{Store: "store", Service: "svc", Watermark: "w1"}},
-		{"no-watermark", memoScopeBackend{id: "store", suppression: "token"}, memo.Scope{Store: "store", Service: "svc"}},
-		{"watermark-error", memoScopeBackend{id: "store", watermark: "untrusted", suppression: "token", err: errors.New("unavailable")}, memo.Scope{Store: "store", Service: "svc"}},
-		{"no-store-identity", memoScopeBackend{watermark: "w1", suppression: "token"}, memo.Scope{Service: "svc"}},
+		{"suppressed", memoScopeBackend{id: "store", watermark: "w1", suppression: "token"}, graphmemo.Scope{Store: "store", Service: "svc", Watermark: "w1|suppressed:token"}},
+		{"unsuppressed", memoScopeBackend{id: "store", watermark: "w1"}, graphmemo.Scope{Store: "store", Service: "svc", Watermark: "w1"}},
+		{"no-watermark", memoScopeBackend{id: "store", suppression: "token"}, graphmemo.Scope{Store: "store", Service: "svc"}},
+		{"watermark-error", memoScopeBackend{id: "store", watermark: "untrusted", suppression: "token", err: errors.New("unavailable")}, graphmemo.Scope{Store: "store", Service: "svc"}},
+		{"no-store-identity", memoScopeBackend{watermark: "w1", suppression: "token"}, graphmemo.Scope{Service: "svc"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := client.MemoScope(context.Background(), tc.backend, "svc"); got != tc.want {
@@ -42,7 +42,7 @@ func TestMemoScopeSharesSuppressionIdentity(t *testing.T) {
 			}
 		})
 	}
-	if got := client.MemoScope(context.Background(), memoScopeIDOnly{}, "svc"); got != (memo.Scope{Store: "store", Service: "svc"}) {
+	if got := client.MemoScope(context.Background(), memoScopeIDOnly{}, "svc"); got != (graphmemo.Scope{Store: "store", Service: "svc"}) {
 		t.Fatalf("optional watermark missing: %+v", got)
 	}
 }

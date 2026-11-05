@@ -20,7 +20,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
 )
 
@@ -58,7 +58,7 @@ func TestConsoleSearch_SymbolsMatchEveryTokenWithExactTotals(t *testing.T) {
 	for i, o := range obs {
 		nodes[i] = o.ToSymbolNode()
 	}
-	if got := memo.NewSnapshot(nodes).Palette(); len(got) != 2 {
+	if got := graphmemo.NewSnapshot(nodes).Palette(); len(got) != 2 {
 		t.Errorf("palette = %v, want the duplicate row once and doc chunks dropped", got)
 	}
 }

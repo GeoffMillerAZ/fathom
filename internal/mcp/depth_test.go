@@ -9,7 +9,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // depthFixture: Target ← Direct1 (syntax) ← Deep (syntax) ← TestDeep;
@@ -69,7 +69,7 @@ func TestCallerDepthsAndBuckets(t *testing.T) {
 // unscoped (never cached): the graph a service's snapshot would get.
 func bothGraphOf(t *testing.T, nodes []core.SymbolNode, typed []core.Edge) *callgraph.Graph {
 	t.Helper()
-	g, err := memo.GraphFor(context.Background(), memo.NewSnapshot(nodes), memo.GraphBoth, func(context.Context) ([]core.Edge, error) { return typed, nil })
+	g, err := graphmemo.GraphFor(context.Background(), graphmemo.NewSnapshot(nodes), graphmemo.GraphBoth, func(context.Context) ([]core.Edge, error) { return typed, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

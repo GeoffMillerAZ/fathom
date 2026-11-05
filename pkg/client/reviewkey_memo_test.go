@@ -10,6 +10,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/reviewkey"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -69,13 +70,13 @@ func TestReviewKeyReusesWarmResolvedGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sc := memo.Scope{Store: c.StoreID(), Service: "svc", Watermark: wm}
-	snap, err := memo.SnapshotFor(ctx, sc, func(ctx context.Context) ([]core.SymbolNode, error) { return c.ListAllSymbols(ctx, "svc") })
+	sc := graphmemo.Scope{Store: c.StoreID(), Service: "svc", Watermark: wm}
+	snap, err := graphmemo.SnapshotFor(ctx, sc, func(ctx context.Context) ([]core.SymbolNode, error) { return c.ListAllSymbols(ctx, "svc") })
 	if err != nil {
 		t.Fatal(err)
 	}
 	typed := func(ctx context.Context) ([]core.Edge, error) { return c.TypedEdges(ctx, "svc") }
-	if _, err := memo.GraphFor(ctx, snap, memo.GraphResolved, typed); err != nil {
+	if _, err := graphmemo.GraphFor(ctx, snap, graphmemo.GraphResolved, typed); err != nil {
 		t.Fatal(err)
 	}
 	before := keyGraphMisses()

@@ -16,7 +16,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/references"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // referencesDefaultMax is the default occurrence cap (SB-1,
@@ -438,7 +438,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 			// list; the opt-in substring match iterates the watermark's
 			// shared snapshot (RT-75), never a per-call copy.
 			var defNodes []core.SymbolNode
-			var snap *memo.Snapshot
+			var snap *graphmemo.Snapshot
 			if p.IncludeHeuristic && !p.Word && !p.Regex {
 				sn, err := serviceSnapshot(ctx, backend, svc)
 				if err != nil {
@@ -549,13 +549,13 @@ func registerReferences(s *Server, backend QueryInterface) {
 			// the watermark's memoized typed edges and GraphBoth (RT-74),
 			// never a per-call load or graph build.
 			typedLoad := typedLoader(backend, svc)
-			typed, _ := memo.TypedFor(ctx, snap.Scope, typedLoad)
+			typed, _ := graphmemo.TypedFor(ctx, snap.Scope, typedLoad)
 			if len(typed) > 0 {
 				anyTyped = true
 			}
 			var mentionConf func(file string, line int) core.EdgeConfidence
 			if len(defKeys) > 0 && len(typed) > 0 {
-				if both, gErr := memo.GraphFor(ctx, snap, memo.GraphBoth, typedLoad); gErr == nil {
+				if both, gErr := graphmemo.GraphFor(ctx, snap, graphmemo.GraphBoth, typedLoad); gErr == nil {
 					mentionConf = callgraph.NewMentionIndex(both, nodes).Confidence(defKeys)
 				}
 			}

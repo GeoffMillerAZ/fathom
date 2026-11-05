@@ -151,6 +151,15 @@ func NewRegistry() *Registry {
 	}
 }
 
+// ResetWatermarks forgets every service's recorded watermark, so the next
+// read of a watermark-scoped group builds cold. Test support for packages that
+// keep groups in a registry (internal/graphmemo).
+func (r *Registry) ResetWatermarks() {
+	r.mu.Lock()
+	r.marks = make(map[string]string)
+	r.mu.Unlock()
+}
+
 // Default is the daemon's registry.
 var Default = NewRegistry()
 
@@ -748,13 +757,13 @@ func (g *Group[K, V]) evictOldestOwnLocked(keep *entryRef) {
 	}
 }
 
-// pendingCost is what key still costs to build in this group (O1446), read
+// PendingCost is what key still costs to build in this group (O1446), read
 // without building, counting or touching the LRU: resident is true and cost
 // zero when the entry is cached; otherwise cost is the service's last
 // completed build (O1236's per-service record), ExpectedCost when none is
 // measured, less what a flight in progress has already run (never below
 // zero).
-func (g *Group[K, V]) pendingCost(key K) (cost time.Duration, resident bool) {
+func (g *Group[K, V]) PendingCost(key K) (cost time.Duration, resident bool) {
 	service, _, _ := g.scopeOf(key)
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -771,10 +780,10 @@ func (g *Group[K, V]) pendingCost(key K) (cost time.Duration, resident bool) {
 	return max(cost, 0), false
 }
 
-// measured reports whether key is resident or its service has a completed
-// build recorded in this group (pendingCost then reads a measurement, not
+// Measured reports whether key is resident or its service has a completed
+// build recorded in this group (PendingCost then reads a measurement, not
 // ExpectedCost), read without building, counting or touching the LRU.
-func (g *Group[K, V]) measured(key K) bool {
+func (g *Group[K, V]) Measured(key K) bool {
 	service, _, _ := g.scopeOf(key)
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -784,6 +793,9 @@ func (g *Group[K, V]) measured(key K) bool {
 	_, ok := g.lastBuild[service]
 	return ok
 }
+
+// Registry is the registry the group was made in.
+func (g *Group[K, V]) Registry() *Registry { return g.reg }
 
 // Peek returns the cached value without building (no hit or miss counted).
 func (g *Group[K, V]) Peek(key K) (V, bool) {

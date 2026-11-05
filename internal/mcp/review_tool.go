@@ -22,7 +22,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
@@ -556,7 +556,7 @@ type reviewCorpus struct {
 	windowUnverified       bool
 	now                    func() time.Time
 	legacy                 bool
-	indexScope             memo.Scope
+	indexScope             graphmemo.Scope
 	indexCommit            string
 	indexFound, indexKnown bool
 	typedNote              string
@@ -624,7 +624,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, err)
 	}
 	loadTyped := typedLoader(backend, service)
-	graph, typed, typedErr, graphErr := memo.GraphForTyped(ctx, snap, memo.GraphBoth, loadTyped)
+	graph, typed, typedErr, graphErr := graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphBoth, loadTyped)
 	if graphErr != nil {
 		if ctx.Err() != nil {
 			return review.Input{}, reviewCorpus{}, navLoadError("review_diff", service, ctx.Err())

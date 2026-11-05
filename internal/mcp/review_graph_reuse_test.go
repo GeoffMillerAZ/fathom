@@ -12,6 +12,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
@@ -66,7 +67,7 @@ func TestReviewDiffColdBuildsOneGraph(t *testing.T) {
 
 // reviewTypedErrBackend is the mixed resolution fixture whose typed-edge
 // read fails with a plain error: the impact dimension degrades to the
-// syntax graph (memo.GraphForTyped) and so does every section.
+// syntax graph (graphmemo.GraphForTyped) and so does every section.
 type reviewTypedErrBackend struct{ *multiSvcBackend }
 
 func (reviewTypedErrBackend) TypedEdges(context.Context, string) ([]core.Edge, error) {
@@ -214,7 +215,7 @@ func TestReviewDiffGraphSectionsAgreeWithImpactAcrossPatch(t *testing.T) {
 	added := core.SymbolNode{Service: "svc", Package: "pkg", Name: "E", Kind: core.KindGoFunc, FilePath: "pkg/e.go", Line: 1, Calls: []string{"C"}}
 	b.patch = func() {
 		patched := append(append([]core.SymbolNode(nil), fx.nodes...), added)
-		memo.PatchPackage(navScope(context.Background(), b, "svc"), "pkg", patched, fx.typedEdges)
+		graphmemo.PatchPackage(navScope(context.Background(), b, "svc"), "pkg", patched, fx.typedEdges)
 	}
 	p := reviewDiffCall(t, NewServer(b), "svc", "pkg/c.go")
 	if b.patch != nil {

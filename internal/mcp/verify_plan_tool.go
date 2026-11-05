@@ -11,6 +11,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
@@ -376,17 +377,17 @@ func loadVerifyStage(ctx context.Context, backend QueryInterface, service string
 		return nil, err
 	}
 	typed := verifyTypedLoader(backend, service)
-	kind := memo.GraphBoth
-	graph, _, typedErr, err := memo.GraphForTyped(ctx, snap, kind, typed)
+	kind := graphmemo.GraphBoth
+	graph, _, typedErr, err := graphmemo.GraphForTyped(ctx, snap, kind, typed)
 	if err != nil {
 		return nil, err
 	}
 	fallback := ""
 	if typedErr != nil {
-		kind, typed = memo.GraphSyntax, nil // graph is the syntax graph
+		kind, typed = graphmemo.GraphSyntax, nil // graph is the syntax graph
 		fallback = typedErr.Error()
 	}
-	product, err := memo.ProductReachFor(ctx, snap, kind, typed)
+	product, err := graphmemo.ProductReachFor(ctx, snap, kind, typed)
 	if err != nil {
 		return nil, fmt.Errorf("product reach: %w", err)
 	}

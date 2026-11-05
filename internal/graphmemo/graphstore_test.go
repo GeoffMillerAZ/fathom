@@ -1,4 +1,4 @@
-package memo
+package graphmemo
 
 import (
 	"context"
@@ -187,8 +187,8 @@ func TestSnapshot_NameIndexSharedByReaders(t *testing.T) {
 	if a.Nodes[0].Name != "Handler" {
 		t.Fatal("NodesCopy shares the snapshot's slice")
 	}
-	if st := snapshotGroup.stats(); st.Bytes <= 0 {
-		t.Fatalf("snapshot bytes not accounted: %+v", st)
+	if b := groupBytes(t, "snapshot"); b <= 0 {
+		t.Fatalf("snapshot bytes not accounted: %d", b)
 	}
 }
 

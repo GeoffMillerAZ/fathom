@@ -5,13 +5,13 @@ package mcp
 // symbol_context's answer to a name it cannot resolve (O1451).
 //
 // Every ingest and every daemon start evicts a service's snapshot and
-// graphs (memo.EvictStoreService), so on an actively developed repository
+// graphs (graphmemo.EvictStoreService), so on an actively developed repository
 // the next graph-backed call pays a cold build. On a large service that
 // build is as long as the call's deadline: the call was abandoned with
 // nothing. Here symbol_context answers what the store lookup holds, named
 // partial, and search serves its hits without the optional receipts. Each
 // leaves the build it started or joined running for the next caller: it
-// stays on the flight at least memo.NavKeepAfter, past which Group.leave
+// stays on the flight at least graphmemo.NavKeepAfter, past which Group.leave
 // keeps a flight instead of cancelling it.
 
 import (
@@ -23,6 +23,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
@@ -35,37 +36,37 @@ const notComputedColdGraph = "not computed (cold graph)"
 // empty list would read as "nothing uses it".
 const fieldReferencesNotIndexed = "not computed (field references are not indexed)"
 
-// coldKeepMargin is added to memo.NavKeepAfter so a caller leaving a flight
+// coldKeepMargin is added to graphmemo.NavKeepAfter so a caller leaving a flight
 // it started is past the keep threshold, not on it.
 const coldKeepMargin = 100 * time.Millisecond
 
 // coldGraph is why a symbol_context call answers without its call graph.
 type coldGraph struct {
-	scope memo.Scope
+	scope graphmemo.Scope
 	// kept is true when the build keeps running for the next caller: this
-	// call stayed on its flights past memo.NavKeepAfter. False when no
+	// call stayed on its flights past graphmemo.NavKeepAfter. False when no
 	// build was started (the deadline left no time, or the memo declined).
 	kept bool
 	// unmeasured is true when no build of the service has completed since
 	// the process started, so its cost is unknown and taken as longer than
-	// the deadline (memo.NavBuildMeasuredFor).
+	// the deadline (graphmemo.NavBuildMeasuredFor).
 	unmeasured bool
 }
 
 // navGraphsWithin loads symbol_context's Both graph at sc bounded by ctx's deadline
 // (O1446). With no deadline, an uncacheable scope (I21) or everything
 // resident it loads directly. When the measured build
-// (memo.NavBuildCostFor) fits in the deadline less a reserve for the answer
+// (graphmemo.NavBuildCostFor) fits in the deadline less a reserve for the answer
 // (verify_plan's stage reserve) it waits up to that; when it does not, or
 // no build of the service is measured since the process started
-// (memo.NavBuildMeasuredFor: ExpectedCost says nothing about a large service,
+// (graphmemo.NavBuildMeasuredFor: ExpectedCost says nothing about a large service,
 // whose cold build ran past the deadline), it warms the build stage by
 // stage (warmNavStages) and stops at the first stage still building. A
 // cold result means the graphs are not ready and the caller answers its
 // partial; an error is the load's own.
-func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*symbolContextGraphs, *coldGraph, error) {
+func navGraphsWithin(ctx context.Context, backend QueryInterface, service string, sc graphmemo.Scope) (*symbolContextGraphs, *coldGraph, error) {
 	dl, hasDeadline := ctx.Deadline()
-	cost, resident := memo.NavBuildCostFor(sc, memo.GraphBoth)
+	cost, resident := graphmemo.NavBuildCostFor(sc, graphmemo.GraphBoth)
 	if !hasDeadline || resident || sc.Watermark == "" {
 		ng, err := loadSymbolContextGraphsAt(ctx, backend, service, sc)
 		return ng, nil, err
@@ -76,7 +77,7 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 	if wait <= 0 {
 		return nil, cold, nil
 	}
-	if cost <= wait && memo.NavBuildMeasuredFor(sc, memo.GraphBoth) {
+	if cost <= wait && graphmemo.NavBuildMeasuredFor(sc, graphmemo.GraphBoth) {
 		wctx, cancel := context.WithTimeout(ctx, wait)
 		defer cancel()
 		ng, err := loadSymbolContextGraphsAt(wctx, backend, service, sc)
@@ -88,7 +89,7 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 		case errors.Is(err, memo.ErrWouldNotFinish):
 			return nil, cold, nil
 		case wctx.Err() != nil:
-			cold.kept = wait >= memo.NavKeepAfter()
+			cold.kept = wait >= graphmemo.NavKeepAfter()
 			return nil, cold, nil
 		}
 		return nil, nil, err
@@ -107,7 +108,7 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 }
 
 // warmNavStages builds sc's snapshot, typed edges and Both graph one
-// stage at a time until end, each stage held only memo.NavKeepAfter (plus
+// stage at a time until end, each stage held only graphmemo.NavKeepAfter (plus
 // a margin): long enough that a flight it starts or joins is kept for the
 // next caller (Group.leave), never cancelled with this one, and short
 // enough that the call answers well inside its deadline. A stage that
@@ -116,21 +117,21 @@ func navGraphsWithin(ctx context.Context, backend QueryInterface, service string
 // every stage is built; kept when the stage it stopped at keeps building;
 // err is a failure that is not the hold ending (a typed-edge read failure
 // is left to loadSymbolContextGraphsAt, which degrades it).
-func warmNavStages(ctx context.Context, backend QueryInterface, service string, sc memo.Scope, end time.Time) (done, kept bool, err error) {
-	hold := memo.NavKeepAfter() + coldKeepMargin
+func warmNavStages(ctx context.Context, backend QueryInterface, service string, sc graphmemo.Scope, end time.Time) (done, kept bool, err error) {
+	hold := graphmemo.NavKeepAfter() + coldKeepMargin
 	typed := typedLoader(backend, service)
-	var snap *memo.Snapshot
+	var snap *graphmemo.Snapshot
 	stages := []func(context.Context) error{
 		func(c context.Context) (e error) { snap, e = serviceSnapshotAt(c, backend, service, sc); return e },
 		func(c context.Context) error {
-			_, e := memo.TypedFor(c, sc, typed)
+			_, e := graphmemo.TypedFor(c, sc, typed)
 			if e != nil && c.Err() == nil && !errors.Is(e, memo.ErrWouldNotFinish) {
 				return nil // a read failure, degraded by loadSymbolContextGraphsAt (I38)
 			}
 			return e
 		},
 		func(c context.Context) error {
-			_, _, _, e := memo.GraphForTyped(c, snap, memo.GraphBoth, typed)
+			_, _, _, e := graphmemo.GraphForTyped(c, snap, graphmemo.GraphBoth, typed)
 			return e
 		},
 	}
@@ -186,7 +187,7 @@ func coldGraphNote(service string, c *coldGraph) string {
 // (snippetWithheld).
 func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, service, symbol string, wantSnippet bool, c *coldGraph) (any, *rpcError) {
 	note := coldGraphNote(service, c)
-	snap, resident := memo.PeekSnapshot(c.scope)
+	snap, resident := graphmemo.PeekSnapshot(c.scope)
 	var nodes []core.SymbolNode
 	if resident {
 		recordSnapshotDisclosure(ctx, service, snap)
@@ -257,17 +258,17 @@ func symbolContextColdAnswer(ctx context.Context, backend QueryInterface, servic
 //
 // A name the store lookup misses is checked against the snapshot, which
 // lists the nearest names: the call starts or joins its load and stays on
-// it only memo.NavKeepAfter (snapshotWithinHold), so a load it starts is
+// it only graphmemo.NavKeepAfter (snapshotWithinHold), so a load it starts is
 // kept for the next caller. When it is still loading the answer is
 // not_found without the nearest names, saying so.
-func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, service, symbol string, sc memo.Scope) map[string]any {
+func symbolContextResolveFirst(ctx context.Context, backend QueryInterface, service, symbol string, sc graphmemo.Scope) map[string]any {
 	if sc.Watermark == "" {
 		return nil
 	}
-	if _, resident := memo.NavBuildCostFor(sc, memo.GraphBoth); resident {
+	if _, resident := graphmemo.NavBuildCostFor(sc, graphmemo.GraphBoth); resident {
 		return nil
 	}
-	snap, resident := memo.PeekSnapshot(sc)
+	snap, resident := graphmemo.PeekSnapshot(sc)
 	if !resident {
 		found, err := backend.FindSymbol(ctx, service, symbolLookupName(symbol))
 		if err != nil {
@@ -303,12 +304,12 @@ func storeNotFound(service, symbol string) map[string]any {
 }
 
 // snapshotWithinHold starts or joins sc's snapshot load and stays on it
-// only memo.NavKeepAfter plus a margin: past that, Group.leave keeps a load
+// only graphmemo.NavKeepAfter plus a margin: past that, Group.leave keeps a load
 // it started for the next caller, and the call never waits out a long one.
 // nil when the load did not finish inside the hold or failed, or the
 // deadline is too short to keep a load it would start.
-func snapshotWithinHold(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) *memo.Snapshot {
-	hold := memo.NavKeepAfter() + coldKeepMargin
+func snapshotWithinHold(ctx context.Context, backend QueryInterface, service string, sc graphmemo.Scope) *graphmemo.Snapshot {
+	hold := graphmemo.NavKeepAfter() + coldKeepMargin
 	if dl, ok := ctx.Deadline(); ok {
 		remaining := time.Until(dl)
 		if remaining-min(max(remaining/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax) < hold {
@@ -392,12 +393,12 @@ func symbolContextNotFound(ctx context.Context, backend QueryInterface, nodes []
 // searchReceipts is a service search's source of sym/kind receipts
 // (O1447). A resident snapshot is read in place (groupSymbolsByFile only
 // reads it), never copied per call. One that is not resident is not waited
-// for: the search starts or joins its load and stays only memo.NavKeepAfter
+// for: the search starts or joins its load and stays only graphmemo.NavKeepAfter
 // (so the load is kept for the next caller), runs the engine, and renders
 // its hits without receipts when the snapshot is still loading.
 type searchReceipts struct {
 	service string
-	scope   memo.Scope
+	scope   graphmemo.Scope
 	byFile  map[string][]core.SymbolNode
 }
 
@@ -424,7 +425,7 @@ func beginSearchReceipts(ctx context.Context, backend QueryInterface, service st
 
 // peek fills byFile from the resident snapshot.
 func (r *searchReceipts) peek(ctx context.Context) bool {
-	snap, ok := memo.PeekSnapshot(r.scope)
+	snap, ok := graphmemo.PeekSnapshot(r.scope)
 	if !ok {
 		return false
 	}

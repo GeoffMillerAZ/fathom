@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // TestVerifyPlanGraphFallbackReadsUnknown pins O1162 (I38, I44): when the
@@ -28,7 +28,7 @@ func TestVerifyPlanGraphFallbackReadsUnknown(t *testing.T) {
 		prev := verifyTypedLoader
 		t.Cleanup(func() { verifyTypedLoader = prev })
 		if failTyped {
-			verifyTypedLoader = func(QueryInterface, string) memo.TypedLoader {
+			verifyTypedLoader = func(QueryInterface, string) graphmemo.TypedLoader {
 				return func(context.Context) ([]core.Edge, error) { return nil, errors.New("refuse mark: read cut") }
 			}
 		}

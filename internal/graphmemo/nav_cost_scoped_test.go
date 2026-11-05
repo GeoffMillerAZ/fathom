@@ -1,10 +1,11 @@
-package memo
+package graphmemo
 
 import (
 	"context"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 func TestNavBuildCostForBothDoesNotRequireOtherKinds(t *testing.T) {
@@ -30,7 +31,7 @@ func TestNavBuildCostForBothDoesNotRequireOtherKinds(t *testing.T) {
 	if !NavBuildMeasuredFor(sc, GraphBoth) {
 		t.Fatal("Both should be measured")
 	}
-	typedGroup.Remove(typedKey{sc}, ReasonBudget)
+	typedGroup.Remove(typedKey{sc}, memo.ReasonBudget)
 	if _, resident := NavBuildCostFor(sc, GraphBoth); resident {
 		t.Fatal("Both graph alone cannot serve typed-edge details")
 	}

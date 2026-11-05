@@ -11,11 +11,12 @@ import (
 	"context"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-type serviceRefsKey struct{ memo.Scope }
+type serviceRefsKey struct{ graphmemo.Scope }
 
 func (k serviceRefsKey) MemoScope() (string, string) {
 	return k.Store + "\x00" + k.Service, k.Watermark

@@ -1,4 +1,4 @@
-package memo
+package graphmemo
 
 // graphstore.go — one symbol snapshot and one graph store per (service,
 // watermark) (docs/design/responsible-tenant.md §5, RT-74, RT-75, I51).
@@ -27,6 +27,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 // Scope names one service's state: the store it lives in (so two stores
@@ -77,16 +78,16 @@ const (
 )
 
 var (
-	snapshotGroup = NewGroup[snapKey, *Snapshot]("snapshot", Options{WatermarkScoped: true, Keep: true, ExpectedCost: snapshotCost})
-	typedGroup    = NewGroup[typedKey, []core.Edge]("typed_edges", Options{WatermarkScoped: true, Keep: true, ExpectedCost: typedCost})
-	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
+	snapshotGroup = memo.NewGroup[snapKey, *Snapshot]("snapshot", memo.Options{WatermarkScoped: true, Keep: true, ExpectedCost: snapshotCost})
+	typedGroup    = memo.NewGroup[typedKey, []core.Edge]("typed_edges", memo.Options{WatermarkScoped: true, Keep: true, ExpectedCost: typedCost})
+	graphGroup    = memo.NewGroup[graphKey, *callgraph.Graph]("graphstore", memo.Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
 	// productGroup holds each graph's product-entry reach set (verify's
 	// `wired` criterion, ADR-018 amendment 2026-09-28): one O(V+E) walk
 	// per (store, service, watermark, kind), dropped with its graph. Its
 	// build nests the graph's (GraphFor) when that is not built yet, so it
 	// is kept like one: a walk a caller gave up on finishes for the next
 	// caller instead of being cancelled with it (EW-22, O130).
-	productGroup = NewGroup[graphKey, *callgraph.ProductReach]("product_reach", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
+	productGroup = memo.NewGroup[graphKey, *callgraph.ProductReach]("product_reach", memo.Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
 )
 
 // Snapshot is one service's symbols at one watermark. Immutable: callers
@@ -379,12 +380,12 @@ func PeekSnapshot(sc Scope) (*Snapshot, bool) {
 // including typed details even when the graph remains cached. It builds
 // nothing and does not move entries in the LRU.
 func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident bool) {
-	cost, resident = snapshotGroup.pendingCost(snapKey{sc})
-	d, ok := graphGroup.pendingCost(graphKey{sc, kind})
+	cost, resident = snapshotGroup.PendingCost(snapKey{sc})
+	d, ok := graphGroup.PendingCost(graphKey{sc, kind})
 	cost += d
 	resident = resident && ok
 	if kind != GraphSyntax {
-		d, ok := typedGroup.pendingCost(typedKey{sc})
+		d, ok := typedGroup.PendingCost(typedKey{sc})
 		cost += d
 		resident = resident && ok
 	}
@@ -394,10 +395,10 @@ func NavBuildCostFor(sc Scope, kind GraphKind) (cost time.Duration, resident boo
 // NavBuildMeasuredFor reports whether the requested graph's missing parts
 // have completed builds from which to estimate a cold deadline.
 func NavBuildMeasuredFor(sc Scope, kind GraphKind) bool {
-	if !snapshotGroup.measured(snapKey{sc}) || !graphGroup.measured(graphKey{sc, kind}) {
+	if !snapshotGroup.Measured(snapKey{sc}) || !graphGroup.Measured(graphKey{sc, kind}) {
 		return false
 	}
-	return kind == GraphSyntax || typedGroup.measured(typedKey{sc})
+	return kind == GraphSyntax || typedGroup.Measured(typedKey{sc})
 }
 
 // NavKeepAfter is how long a caller must stay on a snapshot or graph flight
@@ -452,12 +453,12 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 			return ng, ng.EstimatedBytes()
 		})
 	}
-	graphGroup.Remove(graphKey{sc, GraphResolved}, ReasonWatermark)
+	graphGroup.Remove(graphKey{sc, GraphResolved}, memo.ReasonWatermark)
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
-		productGroup.Remove(graphKey{sc, k}, ReasonWatermark)
+		productGroup.Remove(graphKey{sc, k}, memo.ReasonWatermark)
 	}
 	if typed != nil {
-		typedGroup.Remove(typedKey{sc}, ReasonWatermark)
+		typedGroup.Remove(typedKey{sc}, memo.ReasonWatermark)
 	}
 }
 
@@ -467,7 +468,7 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 // (§5: eager eviction on WatermarkBumped), instead of leaving superseded
 // ones resident until the service is next read at its new watermark.
 func EvictStoreService(store, service string) {
-	reg := graphGroup.reg
+	reg := graphGroup.Registry()
 	reg.EvictService(store + "\x00" + service)
 	reg.EvictService(service)
 }
@@ -475,11 +476,11 @@ func EvictStoreService(store, service string) {
 // DropScope forgets sc's snapshot, typed edges and graphs — the honest
 // fallback when a refresh cannot name the package to patch.
 func DropScope(sc Scope) {
-	snapshotGroup.Remove(snapKey{sc}, ReasonWatermark)
-	typedGroup.Remove(typedKey{sc}, ReasonWatermark)
+	snapshotGroup.Remove(snapKey{sc}, memo.ReasonWatermark)
+	typedGroup.Remove(typedKey{sc}, memo.ReasonWatermark)
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
-		graphGroup.Remove(graphKey{sc, k}, ReasonWatermark)
-		productGroup.Remove(graphKey{sc, k}, ReasonWatermark)
+		graphGroup.Remove(graphKey{sc, k}, memo.ReasonWatermark)
+		productGroup.Remove(graphKey{sc, k}, memo.ReasonWatermark)
 	}
 }
 
@@ -490,7 +491,7 @@ func DropScope(sc Scope) {
 // the syntax graph), an empty graph for GraphResolved — and typedErr names
 // the failure; nothing built without the typed edges is cached, so the
 // next call reads them again. err is the snapshot's graph build failing or
-// the caller's ctx ending, or ErrWouldNotFinish when the caller's deadline
+// the caller's ctx ending, or memo.ErrWouldNotFinish when the caller's deadline
 // cannot hold a build — never a typed-edge read failure.
 func GraphForTyped(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLoader) (g *callgraph.Graph, edges []core.Edge, typedErr, err error) {
 	if kind == GraphSyntax {
@@ -502,7 +503,7 @@ func GraphForTyped(ctx context.Context, snap *Snapshot, kind GraphKind, typed Ty
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
 		}
-		if errors.Is(terr, ErrWouldNotFinish) {
+		if errors.Is(terr, memo.ErrWouldNotFinish) {
 			return nil, nil, nil, terr
 		}
 		if kind == GraphResolved {

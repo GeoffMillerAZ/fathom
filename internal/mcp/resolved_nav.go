@@ -33,6 +33,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -64,7 +65,7 @@ type navGraphs struct {
 	// Nodes is the shared snapshot's slice: read it, never sort or edit
 	// it (serviceSymbols hands out a copy).
 	Nodes    []core.SymbolNode
-	Snapshot *memo.Snapshot
+	Snapshot *graphmemo.Snapshot
 	Typed    []core.Edge
 	// Syntax is the syntax-only graph (no typed edges) — what
 	// symbol_context's "callers"/"callees" read.
@@ -102,7 +103,7 @@ type freshnessEnsurer interface {
 
 // navScope is service's (store, service, watermark) scope; the watermark
 // is "" when the backend cannot name one (never cached, I21).
-func navScope(ctx context.Context, backend QueryInterface, service string) memo.Scope {
+func navScope(ctx context.Context, backend QueryInterface, service string) graphmemo.Scope {
 	if e, ok := backend.(freshnessEnsurer); ok {
 		e.EnsureFresh(ctx, service)
 	}
@@ -111,12 +112,12 @@ func navScope(ctx context.Context, backend QueryInterface, service string) memo.
 
 // navScopeNoEnsure is navScope without the freshness check (the refresh
 // path patching the store's own state).
-func navScopeNoEnsure(ctx context.Context, backend QueryInterface, service string) memo.Scope {
+func navScopeNoEnsure(ctx context.Context, backend QueryInterface, service string) graphmemo.Scope {
 	id, ok := backend.(storeIdentifier)
 	if !ok {
 		// A backend that cannot name its store is never cached: an address
 		// is not an identity (a freed backend's address is reused).
-		return memo.Scope{Service: service}
+		return graphmemo.Scope{Service: service}
 	}
 	return client.MemoScope(ctx, id, service)
 }
@@ -130,13 +131,13 @@ type suppressionTokener interface {
 // serviceSnapshot is service's symbol snapshot (RT-75): one immutable load
 // per (store, service, watermark), shared by every iterating tool, the
 // navigation graphs and the console.
-func serviceSnapshot(ctx context.Context, backend QueryInterface, service string) (*memo.Snapshot, error) {
+func serviceSnapshot(ctx context.Context, backend QueryInterface, service string) (*graphmemo.Snapshot, error) {
 	return serviceSnapshotAt(ctx, backend, service, navScope(ctx, backend, service))
 }
 
 // serviceSnapshotAt is serviceSnapshot at a scope the caller already took.
-func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*memo.Snapshot, error) {
-	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service string, sc graphmemo.Scope) (*graphmemo.Snapshot, error) {
+	snap, err := graphmemo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
 		// The load's suppression disclosure is kept on the snapshot and
 		// replayed to every reader below: a cached snapshot still says
 		// what it hides (SP-3).
@@ -154,7 +155,7 @@ func serviceSnapshotAt(ctx context.Context, backend QueryInterface, service stri
 
 // recordSnapshotDisclosure replays the snapshot load's suppression
 // disclosure to this reader (SP-3), a resident snapshot read in place too.
-func recordSnapshotDisclosure(ctx context.Context, service string, snap *memo.Snapshot) {
+func recordSnapshotDisclosure(ctx context.Context, service string, snap *graphmemo.Snapshot) {
 	if d, ok := snap.Extra.(*scope.Disclosure); ok {
 		scope.Record(ctx, service, d)
 	}
@@ -174,8 +175,8 @@ func serviceSymbols(ctx context.Context, backend QueryInterface, service string)
 // typedLoader loads the service's typed edges through the backend. A read
 // failure is returned, never read as "none": the graph store does not
 // cache a failure, so it cannot stand for the whole watermark (I38); the
-// callers degrade that one call (memo.GraphForTyped).
-func typedLoader(backend QueryInterface, service string) memo.TypedLoader {
+// callers degrade that one call (graphmemo.GraphForTyped).
+func typedLoader(backend QueryInterface, service string) graphmemo.TypedLoader {
 	return func(ctx context.Context) ([]core.Edge, error) {
 		return backend.TypedEdges(ctx, service)
 	}
@@ -193,29 +194,29 @@ func loadNavGraphsErr(ctx context.Context, backend QueryInterface, service strin
 }
 
 // loadNavGraphsAt is loadNavGraphsErr at a scope the caller already took.
-func loadNavGraphsAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*navGraphs, error) {
+func loadNavGraphsAt(ctx context.Context, backend QueryInterface, service string, sc graphmemo.Scope) (*navGraphs, error) {
 	snap, err := serviceSnapshotAt(ctx, backend, service, sc)
 	if err != nil {
 		return nil, err
 	}
 	typed := typedLoader(backend, service)
 	g := &navGraphs{Nodes: snap.Nodes, Snapshot: snap}
-	if g.Syntax, err = memo.GraphFor(ctx, snap, memo.GraphSyntax, nil); err != nil {
+	if g.Syntax, err = graphmemo.GraphFor(ctx, snap, graphmemo.GraphSyntax, nil); err != nil {
 		return nil, err
 	}
 	// A typed-edge read failure degrades this call to the syntax edges
 	// (TypedAvailable false, TypedErr naming it) and is never cached: the
 	// next call reads the typed edges again (I38).
-	if g.Both, g.Typed, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, typed); err != nil {
+	if g.Both, g.Typed, g.TypedErr, err = graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphBoth, typed); err != nil {
 		return nil, err
 	}
 	if g.TypedErr == nil {
-		if g.Resolved, _, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphResolved, typed); err != nil {
+		if g.Resolved, _, g.TypedErr, err = graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphResolved, typed); err != nil {
 			return nil, err
 		}
 	}
 	if g.TypedErr != nil {
-		g.Typed, g.Both, g.Resolved = nil, g.Syntax, memo.EmptyGraph()
+		g.Typed, g.Both, g.Resolved = nil, g.Syntax, graphmemo.EmptyGraph()
 	}
 	g.TypedAvailable = g.Resolved.HasEdges()
 	return g, nil

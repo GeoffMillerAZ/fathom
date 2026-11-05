@@ -1,4 +1,4 @@
-package memo
+package graphmemo
 
 import (
 	"context"
@@ -73,16 +73,28 @@ func TestByteEstimatesTrackTheHeap(t *testing.T) {
 			t.Errorf("%s estimate %d is %.2f× the heap it holds (%d)", what, est, ratio, real)
 		}
 	}
-	check("snapshot", snapshotGroup.stats().Bytes, afterSnap-base)
+	check("snapshot", groupBytes(t, "snapshot"), afterSnap-base)
 	_ = afterNodes
 	for _, kind := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
 		before := heapInUse()
-		startBytes := graphGroup.stats().Bytes
+		startBytes := groupBytes(t, "graphstore")
 		if _, err := GraphFor(ctx, snap, kind, func(context.Context) ([]core.Edge, error) { return nil, nil }); err != nil {
 			t.Fatal(err)
 		}
 		after := heapInUse()
-		check(string(kind)+" graph", graphGroup.stats().Bytes-startBytes, after-before)
+		check(string(kind)+" graph", groupBytes(t, "graphstore")-startBytes, after-before)
 	}
 	runtime.KeepAlive(snap)
+}
+
+// groupBytes is the byte count the registry reports for the named group.
+func groupBytes(t *testing.T, name string) int64 {
+	t.Helper()
+	for _, st := range graphGroup.Registry().Stats() {
+		if st.Name == name {
+			return st.Bytes
+		}
+	}
+	t.Fatalf("no group %q in the registry", name)
+	return 0
 }

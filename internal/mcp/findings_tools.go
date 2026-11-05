@@ -13,7 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/findings"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // findingsBackend is the optional backend capability findings_near needs:
@@ -73,7 +73,7 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "findings_near: " + err.Error()}
 		}
-		graph, _, _, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, p.Service))
+		graph, _, _, err := graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphBoth, typedLoader(backend, p.Service))
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "findings_near: " + err.Error()}
 		}

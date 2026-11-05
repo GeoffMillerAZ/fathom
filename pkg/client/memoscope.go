@@ -3,16 +3,16 @@ package client
 import (
 	"context"
 
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // MemoScope names a service's shared snapshot and graph state. A backend
 // without a store identity or watermark is never cached. Suppression changes
 // invalidate the same state for reviews, navigation and the console.
-func MemoScope(ctx context.Context, backend interface{ StoreID() string }, service string) memo.Scope {
+func MemoScope(ctx context.Context, backend interface{ StoreID() string }, service string) graphmemo.Scope {
 	id := backend.StoreID()
 	if id == "" {
-		return memo.Scope{Service: service}
+		return graphmemo.Scope{Service: service}
 	}
 	w := ""
 	if source, ok := backend.(interface {
@@ -29,5 +29,5 @@ func MemoScope(ctx context.Context, backend interface{ StoreID() string }, servi
 			}
 		}
 	}
-	return memo.Scope{Store: id, Service: service, Watermark: w}
+	return graphmemo.Scope{Store: id, Service: service, Watermark: w}
 }

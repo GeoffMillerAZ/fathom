@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 func TestConsoleSearchUsesSharedSnapshot(t *testing.T) {
@@ -35,7 +35,7 @@ func TestConsoleSearchUsesSharedSnapshot(t *testing.T) {
 		}
 		checked++
 		loads := 0
-		snap, err := memo.SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) {
+		snap, err := graphmemo.SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) {
 			loads++
 			return nil, nil
 		})

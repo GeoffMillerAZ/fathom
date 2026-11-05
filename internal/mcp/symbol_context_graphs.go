@@ -5,7 +5,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // symbolContextGraphs holds only the navigation inputs symbol_context reads.
@@ -20,13 +20,13 @@ type symbolContextGraphs struct {
 // loadSymbolContextGraphsAt loads exactly the graph symbol_context reads.
 // Syntax and Resolved stay cold; a later reader pays for their builds.
 // GraphForTyped preserves its uncached syntax fallback on typed read errors.
-func loadSymbolContextGraphsAt(ctx context.Context, backend QueryInterface, service string, sc memo.Scope) (*symbolContextGraphs, error) {
+func loadSymbolContextGraphsAt(ctx context.Context, backend QueryInterface, service string, sc graphmemo.Scope) (*symbolContextGraphs, error) {
 	snap, err := serviceSnapshotAt(ctx, backend, service, sc)
 	if err != nil {
 		return nil, err
 	}
 	g := &symbolContextGraphs{Nodes: snap.Nodes}
-	g.Both, g.Typed, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, service))
+	g.Both, g.Typed, g.TypedErr, err = graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphBoth, typedLoader(backend, service))
 	if err != nil {
 		return nil, err
 	}

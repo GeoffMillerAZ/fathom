@@ -10,6 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
@@ -66,7 +67,7 @@ func TestReviewDiffReusesMemoGraphAndTypedEdges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := memo.GraphFor(ctx, snap, memo.GraphBoth, typedLoader(b, "svc"))
+	g, err := graphmemo.GraphFor(ctx, snap, graphmemo.GraphBoth, typedLoader(b, "svc"))
 	if err != nil || in.ImpactGraph != g {
 		t.Errorf("review input did not reuse the memo graph: %v", err)
 	}

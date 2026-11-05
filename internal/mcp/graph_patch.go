@@ -14,12 +14,12 @@ import (
 	"context"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // patchScope is service's graph-store scope at the backend's current
 // watermark.
-func (s *Server) patchScope(service string) memo.Scope {
+func (s *Server) patchScope(service string) graphmemo.Scope {
 	//fathom:tenancy-allow bg-ctx scope lookup for a cache patch after a refresh job, called through a context-free interface; a point query on the watermark
 	return navScopeNoEnsure(context.Background(), s.backend, service)
 }
@@ -29,16 +29,16 @@ func (s *Server) patchScope(service string) memo.Scope {
 // nodes; a snapshot alone must be patched too (the iterating tools read
 // it under the watermark a single-file refresh does not move).
 func (s *Server) HasCachedGraph(service string) bool {
-	return memo.HasGraphs(s.patchScope(service))
+	return graphmemo.HasGraphs(s.patchScope(service))
 }
 
 // PatchPackageGraph replaces package pkg's nodes (and, when typed is
 // non-nil, its typed edges) in the graph store's snapshot and graphs for
-// service (memo.PatchPackage): the syntax and syntax+typed graphs are
+// service (graphmemo.PatchPackage): the syntax and syntax+typed graphs are
 // patched copy-on-write, the resolved-only graph dropped and rebuilt on
 // its next use. A no-op when nothing is cached for service.
 func (s *Server) PatchPackageGraph(service, pkg string, nodes []core.SymbolNode, typed []core.Edge) {
-	memo.PatchPackage(s.patchScope(service), pkg, nodes, typed)
+	graphmemo.PatchPackage(s.patchScope(service), pkg, nodes, typed)
 }
 
 // DropCachedGraphs forgets every memoized graph for service — the honest
@@ -46,7 +46,7 @@ func (s *Server) PatchPackageGraph(service, pkg string, nodes []core.SymbolNode,
 // fresh extraction produced no symbols): the next query rebuilds; a stale
 // graph is never served.
 func (s *Server) DropCachedGraphs(service string) {
-	memo.DropScope(s.patchScope(service))
+	graphmemo.DropScope(s.patchScope(service))
 }
 
 // evictServiceCaches drops service's memo entries once an ingest of it may
@@ -54,6 +54,6 @@ func (s *Server) DropCachedGraphs(service string) {
 // names no store caches nothing to evict.
 func evictServiceCaches(backend any, service string) {
 	if id, ok := backend.(storeIdentifier); ok && id.StoreID() != "" {
-		memo.EvictStoreService(id.StoreID(), service)
+		graphmemo.EvictStoreService(id.StoreID(), service)
 	}
 }

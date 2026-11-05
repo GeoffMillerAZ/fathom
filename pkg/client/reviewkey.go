@@ -18,7 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/reviewkey"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 )
@@ -31,7 +31,7 @@ func (c *Client) ReviewKey(ctx context.Context, req reviewkey.Request) (reviewke
 	// Use the shared snapshot scope, including its suppression
 	// identity and disclosure, so a key and a navigation call share data.
 	sc := MemoScope(ctx, c, req.Service)
-	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+	snap, err := graphmemo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
 		cctx, col := scope.WithCollector(lctx)
 		//fathom:tenancy-allow sources the shared watermarked snapshot loader
 		nodes, err := c.ListAllSymbols(cctx, req.Service)
@@ -43,7 +43,7 @@ func (c *Client) ReviewKey(ctx context.Context, req reviewkey.Request) (reviewke
 	if d, ok := snap.Extra.(*scope.Disclosure); ok {
 		scope.Record(ctx, req.Service, d)
 	}
-	graph, typed, _, err := memo.GraphForTyped(ctx, snap, memo.GraphResolved, func(ctx context.Context) ([]core.Edge, error) {
+	graph, typed, _, err := graphmemo.GraphForTyped(ctx, snap, graphmemo.GraphResolved, func(ctx context.Context) ([]core.Edge, error) {
 		return c.TypedEdges(ctx, req.Service)
 	})
 	if err != nil {

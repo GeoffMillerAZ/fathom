@@ -9,7 +9,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/graphmemo"
 )
 
 // Empty watermarks prevent memo hits from hiding cold allocations.
@@ -69,7 +69,7 @@ func TestSymbolContextNavigationAllocationBound(t *testing.T) {
 	for i := 0; i < 1024; i++ {
 		b.nodes = append(b.nodes, core.SymbolNode{Service: "svc", Package: "work", FilePath: "work/run.go", Name: fmt.Sprintf("Extra%d", i), Kind: core.KindGoFunc})
 	}
-	sc := memo.Scope{}
+	sc := graphmemo.Scope{}
 	var full *navGraphs
 	var sink *symbolContextGraphs
 	baseline := testing.AllocsPerRun(3, func() {
