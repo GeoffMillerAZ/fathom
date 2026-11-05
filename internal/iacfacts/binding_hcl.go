@@ -132,12 +132,19 @@ func (r *bindingReader) module(dir string) *bindModule {
 	return m
 }
 
+// literalString reads a plain quoted string from syntax. It never evaluates the expression: a for-expression or a
+// long `1+1+...` in a repository file would cost memory or stack on the reader's side, and only literal syntax
+// names a source, a version or a constraint. Anything else, an interpolation included, is not a literal.
 func literalString(e hclsyntax.Expression) (string, bool) {
-	v, diags := e.Value(nil)
-	if diags.HasErrors() || v.IsNull() || !v.IsKnown() || v.Type().FriendlyName() != "string" {
+	t, ok := e.(*hclsyntax.TemplateExpr)
+	if !ok || !t.IsStringLiteral() {
 		return "", false
 	}
-	return v.AsString(), true
+	lit, ok := t.Parts[0].(*hclsyntax.LiteralValueExpr)
+	if !ok || lit.Val.IsNull() || !lit.Val.IsKnown() || lit.Val.Type().FriendlyName() != "string" {
+		return "", false
+	}
+	return lit.Val.AsString(), true
 }
 
 func readRequiredProviders(body *hclsyntax.Body, into map[string]bindRequired) {
