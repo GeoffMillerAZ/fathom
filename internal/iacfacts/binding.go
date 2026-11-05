@@ -1,11 +1,16 @@
 package iacfacts
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/readlimit"
 )
 
 // Binding statuses (design section 5). unbound carries no facts and never falls back to a nearest version.
@@ -108,7 +113,46 @@ type IaCBinding struct {
 // The provider's local name is the `provider =` meta-argument's name, else the type's prefix. Its source is the
 // module's `required_providers` entry, else Terraform's implied hashicorp/<name>. A module call's `providers` map
 // is checked against the caller's own source for the name it maps. Only `./` and `../` module sources are followed.
+//
+// The answer comes by a deadline (BindingDeadline). An overrun is refused with a reason, as a bound is, and the work
+// it was doing is abandoned, not stopped: Go cannot interrupt it, and it runs on until it returns, its answer
+// discarded. Once GOMAXPROCS abandoned answers are still running, a new one is refused at once.
 func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
+	if limit := runtime.GOMAXPROCS(0); bindingGroup.Saturated(limit) {
+		return bindingRefused(q, fmt.Sprintf("%d earlier answers past their %v deadline are still running, the most that may run is %d, so this one was not started", bindingGroup.Abandoned(), bindingDeadline, limit))
+	}
+	b, out, err := readlimit.Run(context.Background(), &bindingGroup, bindingDeadline, func() (IaCBinding, error) {
+		return resolveIaCBinding(q), nil
+	})
+	switch {
+	case out == readlimit.DeadlineExceeded:
+		return bindingRefused(q, fmt.Sprintf("the answer passed its %v deadline and was abandoned", bindingDeadline))
+	case err != nil:
+		return bindingRefused(q, "the answer failed: "+err.Error())
+	}
+	return b
+}
+
+// BindingDeadline is how long ResolveIaCBinding works on one answer before it refuses it.
+const BindingDeadline = 30 * time.Second
+
+// bindingDeadline is BindingDeadline, a variable so a test can lower it.
+var bindingDeadline = BindingDeadline
+
+// bindingGroup counts the abandoned answers still running.
+var bindingGroup readlimit.Group
+
+// bindingRefused is the answer for a block whose read could not finish: unbound with a reason and no facts.
+func bindingRefused(q IaCBindingQuery, reason string) IaCBinding {
+	local, alias := providerLocalName(q.Block)
+	return IaCBinding{
+		Status: BindUnbound, LocalName: local, Alias: alias,
+		Refusal:     refuse(RefuseDeadline, "%s", reason),
+		Disclosures: []string{"the answer is refused: " + reason + "; no facts are attached"},
+	}
+}
+
+func resolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	b := IaCBinding{Status: BindUnbound}
 	dir := cleanRepoDir(q.Block.Dir)
 	local, alias := providerLocalName(q.Block)

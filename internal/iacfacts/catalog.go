@@ -95,6 +95,8 @@ const (
 	RefuseNotFound      = "not-found"
 	// RefuseBindingBound refuses one binding answer a read bound could make wrong.
 	RefuseBindingBound = "binding-bound"
+	// RefuseDeadline refuses one binding answer that passed its deadline or was not started for want of room.
+	RefuseDeadline = "deadline"
 )
 
 // Refusal scopes.
