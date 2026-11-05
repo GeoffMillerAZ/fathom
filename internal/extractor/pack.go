@@ -77,7 +77,6 @@ type Pack struct {
 	dialects  []Dialect
 	native    map[string]bool
 	canonical map[string]string
-	sensitive map[string]bool
 }
 
 // NewPack reads the pack at fsys (its dialects/<id>/dialect.json files),
@@ -88,7 +87,7 @@ func NewPack(fsys fs.FS) (*Pack, error) {
 	if err != nil {
 		return nil, &PackError{Reason: PackManifest, Err: err}
 	}
-	p := &Pack{fsys: fsys, claims: newDialectClaims(), native: map[string]bool{}, canonical: map[string]string{}, sensitive: map[string]bool{}}
+	p := &Pack{fsys: fsys, claims: newDialectClaims(), native: map[string]bool{}, canonical: map[string]string{}}
 	for _, d := range builtins {
 		if err := p.claims.admit("built-in "+d.ID, d); err != nil {
 			return nil, &PackError{Reason: PackManifest, Err: err}
@@ -124,14 +123,8 @@ func NewPack(fsys fs.FS) (*Pack, error) {
 		}
 		p.add(d)
 		if d.Engine == "doc" {
-			x, err := loadDocExtractor(fsys, d)
-			if err != nil {
+			if _, err := loadDocExtractor(fsys, d); err != nil {
 				return nil, &PackError{Reason: PackManifest, Dialect: d.ID, Err: err}
-			}
-			for _, e := range x.spec.Entities {
-				if e.Sensitive {
-					p.sensitive[e.SourceKind] = true
-				}
 			}
 		}
 	}
@@ -248,9 +241,6 @@ func (emptyFS) Open(name string) (fs.File, error) {
 // Dialects is the pack's dialects, sorted by id.
 func (p *Pack) Dialects() []Dialect { return append([]Dialect(nil), p.dialects...) }
 
-// IsNative reports whether id is a dialect a Go extractor reads.
-func (p *Pack) IsNative(id string) bool { return p.native[id] }
-
 // CanonicalKind is the package function over the built-in dialects, then the
 // pack's: ok is false for a source kind neither declares.
 func (p *Pack) CanonicalKind(sk string) (string, bool) {
@@ -259,12 +249,6 @@ func (p *Pack) CanonicalKind(sk string) (string, bool) {
 	}
 	c, ok := p.canonical[sk]
 	return c, ok
-}
-
-// SensitiveKind is the package function over the built-in dialects, or a kind
-// a pack doc spec selects with sensitive set.
-func (p *Pack) SensitiveKind(kind string) bool {
-	return SensitiveKind(kind) || p.sensitive[kind]
 }
 
 // Build constructs the extractor of every pack dialect read from the pack's

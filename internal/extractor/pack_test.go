@@ -28,7 +28,7 @@ func secretPackFS() fstest.MapFS {
 	}
 }
 
-func TestPackCanonicalAndSensitiveKinds(t *testing.T) {
+func TestPackCanonicalKinds(t *testing.T) {
 	p, err := NewPack(secretPackFS())
 	if err != nil {
 		t.Fatal(err)
@@ -44,9 +44,6 @@ func TestPackCanonicalAndSensitiveKinds(t *testing.T) {
 	}
 	if _, ok := p.CanonicalKind("NoSuchKind"); ok {
 		t.Error("an undeclared kind has a canonical kind")
-	}
-	if !p.SensitiveKind("SecretSpecEntry") || p.SensitiveKind("SecretSpecPlain") {
-		t.Error("the pack doc spec's sensitive flag is not read")
 	}
 	if SensitiveKind("SecretSpecEntry") {
 		t.Error("the package function learned a pack's sensitive kind")
@@ -78,9 +75,6 @@ func TestPackAddNativeRules(t *testing.T) {
 	}
 	if err := p.AddNative(mk("zzq")); err != nil {
 		t.Fatal(err)
-	}
-	if !p.IsNative("zzq") {
-		t.Error("IsNative")
 	}
 	if c, ok := p.CanonicalKind("Thing"); !ok || c != "class" {
 		t.Errorf("native kind: %q %v", c, ok)
