@@ -51,8 +51,8 @@
 // Guards stay where nothing in process survives a failure: a parser that
 // recurses on nesting is handed no file nested past 10,000 levels, because a
 // stack overflow is fatal. A few parsers also refuse a shape that cost them
-// hours (a run of tokens no statement ends, a flood of lexical errors, a TOML
-// document of 40,000 keys). A refused file reads Incomplete with the reason in
+// hours (a TOML document of 40,000 keys, a proto file with a bracket open at
+// its end). A refused file reads Incomplete with the reason in
 // Notes. No other shape is promised refused or bounded in time or memory.
 //
 // The wazero runtime that runs the grammars is process-wide, so its on-disk

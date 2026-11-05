@@ -34,7 +34,7 @@ A commit that moves code behind a claimed row re-anchors that row in the same co
 
 ## Phase 3: standing alone
 
-- [x] A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP or `net/http`, or passes its package budget of 79 {id: LL-20, symbol: TestLangClosure, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any forbidden dependency", needs: LL-11}
+- [x] A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP or `net/http`, or passes its package budget of 80 {id: LL-20, symbol: TestLangClosure, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any forbidden dependency", needs: LL-11}
 - [x] A test fails if the door opens a socket or writes a file without a cache directory, including a write to an absolute path outside scratch (TestLangWritesOnlyToCallerPaths reads the closure's source for it) {id: LL-21, symbol: TestLangNeverDialsOrWrites, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any dial or write", needs: LL-11}
 - [x] The exported API is pinned by a `go doc -all` snapshot {id: LL-22, symbol: TestLangAPISnapshot, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on an unreviewed API change", needs: LL-11}
 - [x] An outside module builds against the door offline, with its own committed tidied go.mod and go.sum, read-only, on a module cache holding only what `go mod download` of the root module fetches {id: LL-23, symbol: TestOutsideModuleBuilds, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it builds the outside module", needs: LL-11}

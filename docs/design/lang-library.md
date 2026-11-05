@@ -126,18 +126,20 @@ Rules:
     - **Guards that stay.** Where nothing in process survives a failure the guard stays: a parser that recurses on nesting is handed
       no file nested past 10,000 levels, since a stack overflow is fatal. There is one HCL guard (`internal/hclbound`, used by
       the extractors and by the stand-alone reads), whose refusal states the bound that fired. A few parsers also refuse a shape
-      that cost them hours or never returned (a run of tokens no statement ends, a flood of lexical errors, a TOML document of 40,000
-      keys or a table header of 64 segments, a proto file with a bracket open at its end). A
-      refused file reads `Incomplete` with the reason. Cost shapes get no new guard unless a tiny file hangs or holds gigabytes.
+      that cost them hours or never returned (a TOML document of 40,000 keys or a table header of 64 segments, a proto file with a bracket open
+      at its end). A refused file reads `Incomplete` with the reason. Cost shapes get no new guard unless a tiny file hangs or holds gigabytes.
       **No shape is promised refused, and no shape is promised bounded in time or memory in process**: the deadline bounds the
       caller's wait and the process boundary bounds the damage. Each guard has a test over a family of shapes, at the size it
       must refuse and the size of a flat file it must read.
-11. **Value domains.** `Dialect` is "" only when nothing read the file. The generic JSON and TOML readers have ids
-    (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and a level on a read one. A file
+11. **Value domains.** `Dialect` is "" only when nothing answered: a skipped file, or a read that passed its deadline or was killed
+    (`Incomplete`, with a `read-deadline:` or `read-killed:` note, and `Skipped` ""), which names no dialect because none returned. The generic JSON and TOML readers have ids
+    (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and on a read that passed its deadline or was killed, and a level on a read one. A file
     owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
 12. **Withheld values.** The door follows one rule about which of the file's own text it returns, and the rule fails closed
     (ADR-069 decision 2, ADR-065 decision 2, ADR-092). It is not a secret scanner. In a `Signature` from a code dialect
-    (`DialectInfo.Kind` `language`) every quoted literal of every quote style reads `***`, whatever its name or its place;
+    (`DialectInfo.Kind` `language`) every quoted literal of every quote style reads `***`, whatever its name or its place (a literal that
+    interpolates is one literal with the quotes inside its interpolation; Ruby percent literals, Elixir sigils and PHP and Ruby heredocs
+    are quote styles);
     numbers, identifiers and unquoted text stay. A `Signature` from any other dialect is empty unless the symbol's `Kind`
     (never its `Canonical`) is on `structuralKinds`, each entry with a one-line reason why its `Signature` is a keyword or
     a declared name and holds no value; a test holds the list, so a new kind is withheld until it is listed. A `Fact` value
