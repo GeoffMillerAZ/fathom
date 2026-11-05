@@ -261,3 +261,12 @@ func TestCountsPostfixStepsAndOperatorsPendingBeforeABracket(t *testing.T) {
 	reads(t, "postfix steps across items", "a = ["+strings.Repeat("f(x)[0], ", 50_000)+"]\n", readBounds)
 	reads(t, "a few postfix steps", "a = f(x)[0].b[1](2)[3]\n", readBounds)
 }
+
+// A closer that matches no bracket pops nothing from the filtered stream either: boundTokens drops a newline inside a
+// for expression's brace, and a stray `)` there must not end that. With the stray closer popping the brace's level, the
+// newline would split a run of operators the parser recurses through whole into two runs under the bound.
+func TestStrayCloserKeepsTheNewlineHiddenInAForBrace(t *testing.T) {
+	src := "x = {for a in b : a => ) " + strings.Repeat("!", 100) + "\n" + strings.Repeat("!", 100) + "a}\n"
+	refusedBy(t, src, readBounds, BoundDepth)
+	reads(t, "half the run", "x = {for a in b : a => ) "+strings.Repeat("!", 100)+"a}\n", readBounds)
+}
