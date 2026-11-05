@@ -34,7 +34,7 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 	if root.hasMerge() {
 		set.SyntaxErrors++ // `<<: *base` at the root may carry resources, variables or configuration
 	}
-	res := root.get("resources")
+	res := root.getFold("resources")
 	if res.unreadableSection() {
 		// `resources: *all`, `${v}`, a list: which resources the program declares is not known.
 		set.SyntaxErrors++
@@ -44,15 +44,15 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 		return set, nil
 	}
 	pr := &pulumiReader{cfg: newConfig(opts), resolving: map[string]bool{}, inners: map[string]readRes{},
-		resNames: nameMap(res), vars: nameMap(root.get("variables")),
+		resNames: nameMap(res), vars: nameMap(root.getFold("variables")),
 		// pulumi-yaml reads both spellings of the configuration section.
-		cfgs: nameMap(root.get("configuration"), root.get("config"))}
+		cfgs: nameMap(root.getFold("configuration"), root.getFold("config"))}
 	w := &treeWalker{emitter: emitter{cfg: pr.cfg}, file: filePath, classify: pr.classifyNode}
 	pr.em, pr.file = &w.emitter, filePath
 	for _, p := range res.pairs {
 		var typ *node
 		if p.val.kind == nodeMap {
-			typ = p.val.get("type")
+			typ = p.val.getFold("type")
 		}
 		if typ == nil || typ.kind != nodeScalar {
 			set.Dropped = append(set.Dropped, p.key.value)
@@ -62,15 +62,15 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 			Tool: ToolPulumi, Mode: ModeManaged, Type: typ.value, Name: p.key.value,
 			Span: p.span, Multiplicity: Multiplicity{Kind: MultiSingle},
 		}
-		if p.val.get("get") != nil {
+		if p.val.getFold("get") != nil {
 			r.Mode = ModeData
 		}
-		if opt := p.val.get("options"); opt != nil {
-			if pv := opt.get("provider"); pv != nil && pv.kind == nodeScalar {
+		if opt := p.val.getFold("options"); opt != nil {
+			if pv := opt.getFold("provider"); pv != nil && pv.kind == nodeScalar {
 				r.Provider = strings.TrimSuffix(strings.TrimPrefix(pv.value, "${"), "}")
 			}
 		}
-		if props := p.val.get("properties"); props == nil && p.val.hasMerge() {
+		if props := p.val.getFold("properties"); props == nil && p.val.hasMerge() {
 			// `<<: *base` may carry the properties; the merge is not expanded, so every attribute is unknown.
 			w.emit(filePath, &r.Attrs, "", readRes{class: ClassUnknown}, p.span)
 			set.SyntaxErrors++
@@ -150,12 +150,13 @@ func (p *pulumiReader) spend() bool {
 	return true
 }
 
-// pulumiBuiltins are the fn:: builtins a program may call.
+// pulumiBuiltins are the fn:: builtins a program may call, by lowercased name: the engine matches them without
+// regard to case.
 var pulumiBuiltins = map[string]bool{
-	"invoke": true, "join": true, "split": true, "toJSON": true, "toBase64": true, "fromBase64": true,
-	"select": true, "readFile": true, "fileAsset": true, "stringAsset": true, "remoteAsset": true,
-	"fileArchive": true, "remoteArchive": true, "assetArchive": true, "stackReference": true,
-	"rawSecret": true, "secret": true,
+	"invoke": true, "join": true, "split": true, "tojson": true, "tobase64": true, "frombase64": true,
+	"select": true, "readfile": true, "fileasset": true, "stringasset": true, "remoteasset": true,
+	"filearchive": true, "remotearchive": true, "assetarchive": true, "stackreference": true,
+	"rawsecret": true, "secret": true,
 }
 
 // classifyNode classifies a string with interpolations and a fn:: call. It reports false
@@ -168,13 +169,13 @@ func (p *pulumiReader) classifyNode(n *node, depth int) (readRes, bool) {
 	if !p.spend() {
 		return readRes{class: ClassUnknown}, true
 	}
-	if n.kind == nodeMap && len(n.pairs) == 1 && n.pairs[0].key.kind == nodeScalar && strings.HasPrefix(n.pairs[0].key.value, "fn::") {
-		name := strings.TrimPrefix(n.pairs[0].key.value, "fn::")
+	if n.kind == nodeMap && len(n.pairs) == 1 && n.pairs[0].key.kind == nodeScalar && strings.HasPrefix(strings.ToLower(n.pairs[0].key.value), "fn::") {
+		name := strings.ToLower(n.pairs[0].key.value)[len("fn::"):]
 		arg := n.pairs[0].val
 		if !pulumiBuiltins[name] {
 			return readRes{class: ClassUnknown}, true
 		}
-		if name == "secret" || name == "rawSecret" {
+		if name == "secret" || name == "rawsecret" {
 			// The class of the argument and never its value: a secret stays withheld whatever the caller asks.
 			if arg.kind == nodeScalar {
 				if r, ok := p.classifyNode(arg, depth+1); ok {
@@ -244,8 +245,8 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 		return readRes{class: ClassReference, refs: []string{ref}}
 	case p.cfgs[name] != nil:
 		c := p.cfgs[name]
-		if d := c.get("default"); d != nil && d.kind == nodeScalar && ref == name {
-			secret := isSecretFlag(c, c.get("secret"))
+		if d := c.getFold("default"); d != nil && d.kind == nodeScalar && ref == name {
+			secret := isSecretFlag(c, c.foldAll("secret")...)
 			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: p.cfg.values && !secret}
 		}
 		return readRes{class: ClassReference, refs: []string{ref}}

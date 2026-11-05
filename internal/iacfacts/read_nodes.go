@@ -39,7 +39,15 @@ type node struct {
 	pairs []pair
 	items []*node
 	span  Span
+	// exact and folded index a large mapping's scalar keys, built on first use: exact by the key, the first of a
+	// repeat winning, and folded by the key lowercased, every value in order. A template that interpolates a name
+	// against a mapping of 40,000 keys looked each up by scanning them all.
+	exact  map[string]*node
+	folded map[string][]*node
 }
+
+// indexedPairs is the mapping size above which get and getFold use an index and not a scan.
+const indexedPairs = 8
 
 // pair is one entry of a mapping. span runs from the key's start to the value's end.
 type pair struct {
@@ -54,12 +62,65 @@ func (n *node) get(key string) *node {
 	if n == nil || n.kind != nodeMap {
 		return nil
 	}
+	if len(n.pairs) > indexedPairs {
+		if n.exact == nil {
+			n.exact = make(map[string]*node, len(n.pairs))
+			for _, p := range n.pairs {
+				if p.key.kind != nodeScalar {
+					continue
+				}
+				if _, dup := n.exact[p.key.value]; !dup {
+					n.exact[p.key.value] = p.val
+				}
+			}
+		}
+		return n.exact[key]
+	}
 	for _, p := range n.pairs {
 		if p.key.kind == nodeScalar && p.key.value == key {
 			return p.val
 		}
 	}
 	return nil
+}
+
+// foldAll returns the values under every key that equals key apart from case, in order. Pulumi YAML matches the
+// fields of its records, and the names of its fn:: functions, without regard to case and warns that a later version
+// will not, so a reader that reads only the spelling in the documentation reads less than the engine does. When a
+// mapping spells one field two ways the engine keeps the last, which getFold returns.
+func (n *node) foldAll(key string) []*node {
+	if n == nil || n.kind != nodeMap {
+		return nil
+	}
+	want := strings.ToLower(key)
+	if len(n.pairs) > indexedPairs {
+		if n.folded == nil {
+			n.folded = make(map[string][]*node, len(n.pairs))
+			for _, p := range n.pairs {
+				if p.key.kind == nodeScalar {
+					k := strings.ToLower(p.key.value)
+					n.folded[k] = append(n.folded[k], p.val)
+				}
+			}
+		}
+		return n.folded[want]
+	}
+	var out []*node
+	for _, p := range n.pairs {
+		if p.key.kind == nodeScalar && strings.ToLower(p.key.value) == want {
+			out = append(out, p.val)
+		}
+	}
+	return out
+}
+
+// getFold returns the value of the last key that equals key apart from case, or nil.
+func (n *node) getFold(key string) *node {
+	vs := n.foldAll(key)
+	if len(vs) == 0 {
+		return nil
+	}
+	return vs[len(vs)-1]
 }
 
 // hasMerge reports whether a mapping holds a YAML merge key (`<<: *anchor`), whose entries the reader does not
@@ -98,14 +159,16 @@ func (n *node) unreadableSection() bool {
 // nil when the entry does not name it. Only the literal false clears the flag. Anything the reader cannot tell from
 // true counts as true: yes (YAML 1.1 reads a boolean where yaml.v3 reads a string), 1, ${x}, !Ref D, an alias, a
 // mapping, a null. A merge key in the entry may carry the flag, so it counts as true too.
-func isSecretFlag(entry, flag *node) bool {
+func isSecretFlag(entry *node, flags ...*node) bool {
 	if entry.hasMerge() {
 		return true
 	}
-	if flag == nil {
-		return false
+	for _, flag := range flags {
+		if flag != nil && !(flag.kind == nodeScalar && flag.tag == "" && strings.EqualFold(flag.value, "false")) {
+			return true
+		}
 	}
-	return !(flag.kind == nodeScalar && flag.tag == "" && strings.EqualFold(flag.value, "false"))
+	return false
 }
 
 // scalarValue is a scalar's value as Go sees it.
