@@ -18,16 +18,17 @@ plans stay under `workspace/`.
 - [x] (op) Baselines on one seeded fixture set: what `tofu validate`, `tflint` with its cloud rulesets, Checkov and the registries' MCP servers each catch, and what is left for fathom {id: IF-P5, oracle: lexical, path: docs/bench/readings/iac-facts/p5-baselines.md, pattern: "^IF-P5 verdict:"}
 - [x] (op) Lockfile coverage: on a public sample of at least 200 repositories with a committed `.terraform.lock.hcl`, chosen by a rule written before reading, the share of the first five providers' selections a catalog of N versions binds, for N of 12, 50 and every release, against IF-P1's size per N {id: IF-P6, oracle: lexical, path: docs/bench/readings/iac-facts/p6-coverage.md, pattern: "^IF-P6 verdict:"}
 - [x] (op) CloudFormation registry schemas: catalog size, a digest as the version key, regional differences between two regions, and the licence on the schema files, naming whether a catalog may be published {id: IF-P7, oracle: lexical, path: docs/bench/readings/iac-facts/p7-cloudformation.md, pattern: "^IF-P7 verdict:"}
-- [ ] (op) ctl: go or no-go on the catalog format, version coverage and facts 5 to 7, from IF-P1 to IF-P6, amending bounds in the design {id: IF-M0, oracle: lexical, path: docs/bench/readings/iac-facts/p0-exit.md, pattern: "^IF-M0 verdict:", needs: "IF-P1,IF-P2,IF-P3,IF-P4,IF-P5,IF-P6"}
+- [x] (op) ctl: go or no-go on the catalog format, version coverage and facts 5 to 7, from IF-P1 to IF-P6, amending bounds in the design {id: IF-M0, oracle: lexical, path: docs/bench/readings/iac-facts/p0-exit.md, pattern: "^IF-M0 verdict:", needs: "IF-P1,IF-P2,IF-P3,IF-P4,IF-P5,IF-P6"}
+- [ ] (op) Major-line cost: every stable AWS 5.x and 6.x release exported and deduplicated, 2.x to 4.x projected from every tenth release, each line against 32 MiB and 500,000 entries, as IF-M0 requires {id: IF-P8, oracle: lexical, path: docs/bench/readings/iac-facts/p8-major-lines.md, pattern: "^IF-P8 verdict:"}
 
 ## Phase 1: catalogs and facts 1 to 4
 
-- [ ] `ReadIaCCatalog` reads one version index and one blob from a catalog under the design's bounds, refusing the whole input at cap + 1 {id: IF-1, symbol: ReadIaCCatalog, package: internal/iacfacts, needs: IF-M0}
+- [ ] `ReadIaCCatalog` reads one version index and one blob from a catalog under the design's bounds, refusing the whole input at cap + 1, decoding only the requested path and holding one fact under 8 MiB on the largest blob {id: IF-1, symbol: ReadIaCCatalog, package: internal/iacfacts, needs: IF-M0}
 - [ ] `fathom iac add|import|list|remove`; `add` takes a local path only, and `import` builds a catalog from an operator's export {id: IF-2, symbol: cmdIaC, package: cmd/fathom, needs: IF-1}
 - [ ] I56 holds in code: no product path of this package dials, proven by a test that fails on a dial {id: IF-3, symbol: TestIaCFactsNeverDials, package: internal/iacfacts, skip_test: true, skip: "the test is the anchor: it fails on any dial from the package", needs: IF-1}
 - [ ] `cmd/iaccatalog` builds a deterministic catalog from a pin list and receipts it: two builds are byte-identical {id: IF-4, symbol: buildCatalog, package: cmd/iaccatalog, needs: IF-M0}
-- [ ] `calibration/iac/pins.yaml` pins the first five providers by version and archive sha256 {id: IF-5, oracle: lexical, path: calibration/iac/pins.yaml, pattern: "hashicorp/aws", needs: IF-M0}
-- [ ] A CI workflow publishes catalogs as release assets with attestations, no secrets beyond the release token {id: IF-6, oracle: lexical, path: .github/workflows/iac-catalogs.yml, pattern: "attest", needs: IF-4}
+- [ ] `calibration/iac/pins.yaml` pins the first five providers by major line, version and archive sha256 {id: IF-5, oracle: lexical, path: calibration/iac/pins.yaml, pattern: "hashicorp/aws", needs: IF-M0}
+- [ ] A CI workflow publishes catalogs as release assets with attestations, no secrets beyond the release token {id: IF-6, oracle: lexical, path: .github/workflows/iac-catalogs.yml, pattern: "attest", needs: "IF-4,IF-P8,IF-11"}
 - [ ] `ResolveIaCBinding` answers locked, constraint-matched, ambiguous or unbound for a block, through the lockfile, `required_providers`, aliases and module mappings, with the reusable-module-plus-examples fixture {id: IF-7, symbol: ResolveIaCBinding, package: internal/iacfacts, needs: IF-1}
 - [ ] `CheckAttributeUse` walks a block's attributes and static traversals against a schema: unknown, unset required, deprecated, sensitive {id: IF-8, symbol: CheckAttributeUse, package: internal/iacfacts, needs: IF-7}
 - [ ] `symbol_context` on a Terraform resource carries the `iac` block {id: IF-9, symbol: symbolContextIaCFacts, package: internal/mcp, needs: IF-8}
@@ -38,12 +39,12 @@ plans stay under `workspace/`.
 
 ## Phase 2: replacement and upgrades
 
-- [ ] `extractReplacementFacts` scans a provider's tagged source and records each fact's provenance and any `CustomizeDiff` {id: IF-13, symbol: extractReplacementFacts, package: cmd/iaccatalog, needs: IF-M0}
+- [ ] `extractReplacementFacts` scans a provider's tagged source into replace, conditional or unknown, recording each fact's provenance and any `CustomizeDiff` or `ModifyPlan` {id: IF-13, symbol: extractReplacementFacts, package: cmd/iaccatalog, needs: IF-M0}
 - [ ] `review_diff` flags a changed attribute that forces replacement, with the static-floor disclosure {id: IF-14, symbol: reviewIaCReplacement, package: internal/mcp, needs: "IF-10,IF-13"}
 - [ ] `ReplacementCascade` joins fact 5 to the repository's reference edges and re-parses the bounded referring set {id: IF-15, symbol: ReplacementCascade, package: internal/iacfacts, needs: "IF-8,IF-13"}
 - [ ] `blast_radius` on an IaC change answers the cascade, tagged as prediction {id: IF-16, symbol: blastRadiusIaCCascade, package: internal/mcp, needs: IF-15}
 - [ ] `IaCUpgradeImpact` diffs two catalog versions and joins the difference to usage; `review_diff` carries it when `.terraform.lock.hcl` changes {id: IF-17, symbol: IaCUpgradeImpact, package: internal/iacfacts, needs: IF-8}
-- [ ] (op) Facts 5 and 6 against `replace_paths` and plan `resource_changes` on sampled pairs per provider {id: IF-M2, oracle: lexical, path: docs/bench/readings/iac-facts/m2-replacement.md, pattern: "^IF-M2 verdict:", needs: "IF-14,IF-16"}
+- [ ] (op) Facts 5 and 6 against `replace_paths` and plan `resource_changes` on sampled pairs per provider, with a per-plan timeout and known-value inputs that exercise conditional replacement {id: IF-M2, oracle: lexical, path: docs/bench/readings/iac-facts/m2-replacement.md, pattern: "^IF-M2 verdict:", needs: "IF-14,IF-16"}
 - [ ] (op) Fact 7 on mined public provider-bump commits and `tofu validate` before and after {id: IF-M3, oracle: lexical, path: docs/bench/readings/iac-facts/m3-upgrade.md, pattern: "^IF-M3 verdict:", needs: IF-17}
 
 ## Phase 3: Kubernetes
@@ -61,11 +62,12 @@ plans stay under `workspace/`.
 
 ## Phase 2C: CloudFormation (ADR-091 amendment)
 
-- [ ] `buildCloudFormationCatalog` reads AWS's public registry schema file into a catalog keyed by source, region and digest {id: IF-C1, symbol: buildCloudFormationCatalog, package: cmd/iaccatalog, needs: "IF-P7,IF-4"}
+- [ ] `buildCloudFormationCatalog` reads a registry schema zip the operator fetched into a catalog keyed by source, region and digest, reached through `fathom iac import`, with no catalog published or committed {id: IF-C1, symbol: buildCloudFormationCatalog, package: internal/iacfacts, needs: "IF-P7,IF-2"}
 - [ ] `CheckCloudFormationUse` walks a resource's `Properties` against a schema: unknown, missing required, read-only set and deprecated, with binding `unversioned` and transform types `unbound` {id: IF-C2, symbol: CheckCloudFormationUse, package: internal/iacfacts, needs: "IF-1,lang-library.md#LL-32"}
 - [ ] `symbol_context` on a CloudFormation resource carries the `iac` block {id: IF-C3, symbol: symbolContextCFNFacts, package: internal/mcp, needs: "IF-C2,IF-9"}
 - [ ] `review_diff` flags a changed create-only property as forcing replacement, a conditional one as may replace, and carries attribute findings {id: IF-C4, symbol: reviewCFNFindings, package: internal/mcp, needs: "IF-C2,IF-10"}
 - [ ] `iac.OpenCatalog` and `Contract` lookups are the public door to catalogs, reached through `fathom-lang contract --catalog PATH` {id: IF-C5, symbol: OpenCatalog, package: pkg/lang/iac, needs: "IF-1,lang-library.md#LL-34"}
+- [ ] `iac.ImportCatalog` builds a catalog from a local schema zip or a `tofu providers schema -json` export, reached through `fathom-lang catalog import`, so a library consumer needs no `fathom` binary {id: IF-C8, symbol: ImportCatalog, package: pkg/lang/iac, needs: "IF-C1,IF-C5"}
 - [ ] (op) CloudFormation syntax understanding at L3 excellent or a written ceiling: fix the 25 missed Node handlers (O721) in the JavaScript dialect, re-measure, and either a tier-A cross-file oracle lifts it or the reading records why none exists {id: IF-C6, oracle: lexical, path: docs/bench/readings/iac-facts/c6-cloudformation-l3.md, pattern: "^IF-C6 verdict:"}
 - [-] SAM and other transform types (`AWS::Serverless::*`) carry contract facts {id: IF-C7, disposition: deferred, reason: "transform types are not in the registry schemas, and SAM's own schema is a second source to pin and grade", trigger: "IF-CM1 reads PASS and a measured share of public templates uses a transform"}
 - [ ] (op) CloudFormation attribute findings against cfn-lint on public templates with seeded errors: precision at least 0.99, recall at least 0.95 {id: IF-CM1, oracle: lexical, path: docs/bench/readings/iac-facts/cm1-cloudformation-validity.md, pattern: "^IF-CM1 verdict:", needs: "IF-C3,IF-C4"}

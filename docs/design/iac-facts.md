@@ -80,7 +80,8 @@ A catalog is a deterministic zip (stdlib `archive/zip`, sorted entries, zero tim
   stay, with the provenance of each replacement fact and whether the resource has a `CustomizeDiff`.
 
 Blobs are content-addressed so that one catalog can carry many versions: most resources do not change between releases.
-Row IF-P1 measures the size. Reading one fact opens the zip, reads one version index and one blob, and closes: no
+One catalog holds every stable release of one provider major line (IF-M0: a recent-N catalog binds 3% to 60% of public lockfile
+selections, IF-P6). Rows IF-P1 and IF-P8 measure the size. Reading one fact opens the zip, reads one version index and one blob, and closes: no
 residency, no memo.
 
 **Where they come from, and I56.** The product has one directory (`$FATHOM_HOME/iac/`) and fills it only from a local file on
@@ -112,7 +113,7 @@ Carried over from `docs/design/iac-provider-schemas.md`, without the authored ma
   falling back to Terraform's implied provider only where Terraform itself does.
 - A shared child module reached by several roots with different versions reads `ambiguous` and is counted. No first-root
   choice. The reusable module plus `examples/*` layout is a required fixture.
-- No catalog for the exact version: `unbound`, no facts, one disclosure. Never a silent nearest version.
+- No catalog for the exact version: `unbound`, no facts, one disclosure naming the major line to add. Never a nearest version, labelled or not (IF-M0).
 - OpenTofu and HashiCorp registry addresses stay distinct in identity. Row IF-P2 measures whether builds at one version
   are equal, and a catalog built from one address serves the other only with the difference disclosed.
 
@@ -158,11 +159,12 @@ the 2026-10-26 triage, so this needs no SDK store.
 
 ## 9. Bounds
 
-Catalog file 256 MiB, 500,000 zip entries, manifest and version index 4 MiB each, blob 1 MiB, JSON depth 64. One fact stays
-under I48's 8 MiB point ceiling. Per answer: binding reads at most 16 lockfiles, `review_diff` reads at most 256 blobs, and the
+Catalog file 256 MiB, 500,000 zip entries, manifest and version index 4 MiB each, blob 4 MiB (IF-M0: the largest AWS type is
+2.43 MiB), JSON depth 64. A lookup decodes only the requested path with a streaming decoder, and one fact stays under I48's
+8 MiB point ceiling, or that one answer is refused with a reason. Per answer: binding reads at most 16 lockfiles, `review_diff` reads at most 256 blobs, and the
 cascade re-parses at most 64 referring files to depth 8, each disclosed when hit. Cap + 1 refuses the whole catalog at `add`
-and the single answer at query time, with a reason. Lockfiles are read at query time: ingest does not change. These are
-starting values for IF-P1 to confirm before any row hardens them. No read happens on a hook path until IF-M1 reads its latency.
+and the single answer at query time, with a reason. Lockfiles are read at query time: ingest does not change. IF-M0 confirmed them
+except the blob bound. No read happens on a hook path until IF-M1 reads its latency.
 
 ## 10. Measurement and kill
 
@@ -172,6 +174,7 @@ Graded against native tools on public subjects chosen before reading. Readings l
 |---|---|---|---|
 | IF-P1 | catalog bytes and lookup cost | AWS single version at most 16 MiB; 12 consecutive versions under 2x that; lookup p95 at most 20 ms and at most 8 MiB allocated | Redesign the format before building on it |
 | IF-P6 | what share of public lockfile selections a catalog of N versions would bind | a catalog within IF-P1's size budget binds at least 80% of selections for the first five providers | Exact-version binding would rarely fire: widen coverage or rethink before building |
+| IF-P8 | every stable AWS 5.x and 6.x release, deduplicated, with older lines projected | each major line's catalog at most 32 MiB and 500,000 entries | No catalog is published for that provider, the IF-P6 bar is reported unmet, and operators use `fathom iac import` |
 | IF-M1 | facts 1 to 4 against `tofu validate` with seeded and real errors | precision at least 0.99, recall at least 0.95; lookup p95 as IF-P1 | Withhold from `review_diff`; a false alarm costs more than a miss here |
 | IF-M2 | facts 5 and 6 against `replace_paths`, at least 200 sampled pairs per provider, stratified by SDKv2 and framework | fact 5 precision at least 0.95, recall at least 0.90; cascade recall reported | Serve only for providers that pass; report the rest |
 | IF-M3 | fact 7 on mined public provider-bump commits | precision at least 0.9 (G18's upgrade-impact bar), recall reported | Withhold the section |
@@ -206,7 +209,7 @@ GitHub Action inputs. F97 holds them. G18 stays as it is for package ecosystems 
 
 ## 13. CloudFormation (ADR-091 amendment, 2026-11-04)
 
-The owner moved CloudFormation forward, ahead of F97's trigger. Registry schemas state replacement in the contract: `createOnlyProperties` in 1,643 of 1,876 types (`docs/assessments/2026-11-04-iac-equivalence.md`). A catalog is keyed by `aws/cloudformation`, region and digest, built from AWS's public schema file and read as a local file. A template names no version, so binding reads `unversioned` with the catalog's date. Transform types such as `AWS::Serverless::*` read `unbound`. cfn-lint grades validity. No independent offline oracle exists for CloudFormation replacement: the resource specification's `UpdateType` agrees 99.93% across 1,872 types because the two share a source, so it only checks the reader (IF-CM2), and a change set needs credentials. An answer says the contract states it, which is true by reading, and IF-CM3's comparison with Terraform is the only independent evidence. Rows: IF-P7, IF-C1 to IF-C7, IF-CM1 to IF-CM3.
+The owner moved CloudFormation forward, ahead of F97's trigger. Registry schemas state replacement in the contract: `createOnlyProperties` in 1,643 of 1,876 types (`docs/assessments/2026-11-04-iac-equivalence.md`). A catalog is keyed by `aws/cloudformation`, region and a digest over entry names and bodies, because the zip embeds its build time. AWS's schema files carry no licence allowing redistribution (IF-P7), so an operator builds it: `fathom iac import` reads a schema zip they fetched, and no CloudFormation catalog is published or committed unless the owner decides otherwise. Regions differ by 2% to 50% of shared types, so an answer names its region. A template names no version, so binding reads `unversioned` with the catalog's date. Transform types such as `AWS::Serverless::*` read `unbound`. cfn-lint grades validity. No independent offline oracle exists for CloudFormation replacement: the resource specification's `UpdateType` agrees 99.93% across 1,872 types because the two share a source, so it only checks the reader (IF-CM2), and a change set needs credentials. An answer says the contract states it, which is true by reading, and IF-CM3's comparison with Terraform is the only independent evidence. A consumer of `pkg/lang/iac` has no `fathom` binary, so `iac.ImportCatalog` builds both kinds of catalog from local files, reached through `fathom-lang catalog import`. Rows: IF-P7, IF-C1 to IF-C8, IF-CM1 to IF-CM3.
 
 Attribute reads for both tools come from `docs/design/lang-library.md` section 5, so the product's checks and the public door share one reader.
 
