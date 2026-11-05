@@ -120,13 +120,17 @@ Carried over from `docs/design/iac-provider-schemas.md`, without the authored ma
 - OpenTofu and HashiCorp registry addresses stay distinct in identity. Row IF-P2 measures whether builds at one version
   are equal, and a catalog built from one address serves the other only with the difference disclosed.
 - Addresses compare lower case. A source with no host matches a lock key on either default registry (OpenTofu writes
-  `registry.opentofu.org` for the shorthand), and an explicit host matches exactly. A catalog serves a block only on the
+  `registry.opentofu.org` for the shorthand) and the block then resolves to that key's host, and an explicit host matches
+  exactly. A catalog serves a block only on the
   same host or between those two default registries. Any other host reads `unbound` unless a catalog for exactly that host
   is installed.
 - Provider constraints follow OpenTofu's Ruby-style parser: `~> 5` and `~> 5.0` are `>= 5.0, < 6`. An unreadable
-  constraint reads `unbound` with the reason. Binding reads `.tofu` files and override files with the reader's shadowing.
+  constraint reads `unbound` with the reason. Binding reads `.tofu` files, override files and the JSON syntax with the reader's shadowing, follows a symbolic link to a
+  file, and skips dot files and editor backups, as OpenTofu does.
 - A bound that hides a root (more than 16 lockfiles, a stopped lockfile search, a module walk that stopped before it saw
-  every module) refuses that answer with a reason. It never answers from the roots it did read.
+  every module) refuses that answer with a reason. It never answers from the roots it did read. So does an input it did
+  not read: a file over 1 MiB or past the 256th file of a directory, a file past the nesting bound, a lockfile that does
+  not parse, and a module call whose source is not a literal string, which OpenTofu resolves and the walk cannot.
 
 ## 6. Surfaces
 

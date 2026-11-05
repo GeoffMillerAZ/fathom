@@ -22,7 +22,7 @@ func TestReadTerraformSplatChainsAreRefused(t *testing.T) {
 		if _, err := ReadTerraformFile("a.tf", tfWith(e)); !errors.Is(err, ErrLimit) {
 			t.Errorf("%s: want ErrLimit, got %v", name, err)
 		}
-		if body := (&bindingReader{}).parse([]byte("x = "+e+"\n"), "z.tf"); body != nil {
+		if body, _ := (&bindingReader{}).parse([]byte("x = "+e+"\n"), "z.tf"); body != nil {
 			t.Errorf("%s: binding must skip the file", name)
 		}
 	}
@@ -100,7 +100,7 @@ func TestBindingNeverEvaluatesRepositoryExpressions(t *testing.T) {
 // A quoted literal, a heredoc-free escape and a number-free string still read; an interpolation or any other
 // expression is not a literal.
 func TestBindingLiteralStringIsSyntaxOnly(t *testing.T) {
-	body := (&bindingReader{}).parse([]byte("a = \"x\\ty\"\nb = \"p${v}\"\nc = 1\nd = true\ne = (\"x\")\nf = \"a\" + \"b\"\ng = null\n"), "m.tf")
+	body, _ := (&bindingReader{}).parse([]byte("a = \"x\\ty\"\nb = \"p${v}\"\nc = 1\nd = true\ne = (\"x\")\nf = \"a\" + \"b\"\ng = null\n"), "m.tf")
 	want := map[string]struct {
 		s  string
 		ok bool

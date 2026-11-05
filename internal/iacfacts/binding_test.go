@@ -399,7 +399,7 @@ func TestBindingReadsARealOpenTofuLockfile(t *testing.T) {
 			if b.Status != BindLocked || b.Version != "3.4.0" || b.Catalog != tlsCatalogs[0].Name {
 				t.Fatalf("the lockfile pins 3.4.0 and must win over the highest release: %+v", b)
 			}
-			if b.Source != "registry.terraform.io/hashicorp/tls" || len(b.Roots) != 1 || b.Roots[0].Version != "3.4.0" {
+			if b.Source != "registry.opentofu.org/hashicorp/tls" || len(b.Roots) != 1 || b.Roots[0].Version != "3.4.0" {
 				t.Fatalf("%+v", b)
 			}
 			if strings.Contains(strings.Join(b.Disclosures, "|"), "no lockfile reaches") {

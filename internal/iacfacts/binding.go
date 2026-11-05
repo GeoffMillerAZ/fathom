@@ -150,6 +150,8 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 
 	var mismatch []string
 	walkStopped := ""
+	// lockHosts are the registry hosts of the lock keys that matched an implied source.
+	lockHosts := map[string]bool{}
 	for _, lf := range locks {
 		root := path.Dir(lf)
 		via, edges, cut := rc.reaches(root, dir)
@@ -161,10 +163,13 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		}
 		r := IaCBindingRoot{Dir: root, Via: via}
 		if lock := rc.lockfile(lf); lock != nil {
-			var conflict string
-			r.Version, conflict = lockVersion(lock, b.Source, implied)
+			var conflict, host string
+			r.Version, host, conflict = lockVersion(lock, b.Source, implied)
 			if conflict != "" {
 				mismatch = append(mismatch, fmt.Sprintf("%s: %s", lf, conflict))
+			}
+			if host != "" {
+				lockHosts[host] = true
 			}
 		}
 		b.Roots = append(b.Roots, r)
@@ -178,10 +183,13 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		if lf := nearestLockfile(locks, dir); lf != "" {
 			r := IaCBindingRoot{Dir: path.Dir(lf), Via: "nearest lockfile"}
 			if lock := rc.lockfile(lf); lock != nil {
-				var conflict string
-				r.Version, conflict = lockVersion(lock, b.Source, implied)
+				var conflict, host string
+				r.Version, host, conflict = lockVersion(lock, b.Source, implied)
 				if conflict != "" {
 					mismatch = append(mismatch, fmt.Sprintf("%s: %s", lf, conflict))
+				}
+				if host != "" {
+					lockHosts[host] = true
 				}
 			}
 			b.Roots = append(b.Roots, r)
@@ -190,7 +198,11 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	}
 	b.Disclosures = append(b.Disclosures, rc.notes...)
 
-	if reason := firstNonEmpty(incomplete, walkStopped); reason != "" {
+	unread := ""
+	if len(rc.unread) > 0 {
+		unread = "an input binding needs was not read (" + rc.unread[0] + "), so the answer could be contradicted by it"
+	}
+	if reason := firstNonEmpty(firstNonEmpty(incomplete, walkStopped), unread); reason != "" {
 		b.Status = BindUnbound
 		b.Refusal = refuse(RefuseBindingBound, "%s", reason)
 		b.Disclosures = append(b.Disclosures, "the answer is refused: "+reason+"; no facts are attached")
@@ -200,6 +212,15 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		b.Status = BindAmbiguous
 		b.Disclosures = append(b.Disclosures, mismatch...)
 		return b
+	}
+
+	// A source with no host resolves to the registry its lock key names: OpenTofu writes registry.opentofu.org for
+	// the shorthand, and the address a tool reports for the block is that one. Roots that name two hosts leave the
+	// default, since no one host is the block's.
+	if implied && len(lockHosts) == 1 {
+		for h := range lockHosts {
+			b.Source = h + "/" + nsName(b.Source)
+		}
 	}
 
 	pinned := map[string][]string{}
@@ -257,24 +278,26 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 // registry, since OpenTofu writes registry.opentofu.org and Terraform registry.terraform.io for the same shorthand;
 // an explicit host matches exactly. Keys are lower case. Two default-registry keys that pin different versions are
 // a conflict the caller reports as ambiguous.
-func lockVersion(lock map[string]string, source string, implied bool) (version, conflict string) {
+func lockVersion(lock map[string]string, source string, implied bool) (version, host, conflict string) {
 	if !implied {
-		return lock[source], ""
+		return lock[source], "", ""
 	}
 	ns := nsName(source)
-	var vs []string
+	var vs, hs []string
 	for _, h := range []string{defaultRegistryHost, openTofuRegistryHost} {
 		if v := lock[h+"/"+ns]; v != "" {
-			vs = append(vs, v)
+			vs, hs = append(vs, v), append(hs, h)
 		}
 	}
 	switch {
 	case len(vs) == 0:
-		return "", ""
+		return "", "", ""
 	case len(vs) == 2 && vs[0] != vs[1]:
-		return "", fmt.Sprintf("the lockfile pins %s at %s on %s and at %s on %s", ns, vs[0], defaultRegistryHost, vs[1], openTofuRegistryHost)
+		return "", "", fmt.Sprintf("the lockfile pins %s at %s on %s and at %s on %s", ns, vs[0], defaultRegistryHost, vs[1], openTofuRegistryHost)
+	case len(vs) == 2:
+		return vs[0], "", "" // both registries pin one version: neither host is the block's
 	}
-	return vs[0], ""
+	return vs[0], hs[0], ""
 }
 
 func (b *IaCBinding) noteHost(cat *IaCCatalogInfo) {

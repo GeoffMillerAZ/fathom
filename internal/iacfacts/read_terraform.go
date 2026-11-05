@@ -48,6 +48,11 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 // adds no resource: every attribute or nested block it names reads unknown in the resource it
 // overrides, a variable default or local it overrides reads unknown, and the resource is read
 // once. Attributes are not merged, since the value that wins is not worth the guess.
+//
+// It skips what OpenTofu skips (dot files, editor backups) and follows a symbolic link to a file as OpenTofu does;
+// a link that points nowhere, or at a directory, counts as a syntax error. The JSON syntax (.tf.json and
+// .tofu.json) is not read: a JSON file counts one syntax error, since it declares blocks this read does not see,
+// except that a JSON override file marks the attributes, variable defaults and locals it names as unknown.
 func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, error) {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
@@ -60,11 +65,28 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	var files []*tfParsed
 	set := &ResourceSet{Tool: ToolTerraform}
 	total := 0
+	link := map[string]bool{}
+	for _, e := range entries {
+		if e.Type()&fs.ModeSymlink != 0 {
+			link[e.Name()] = true
+		}
+	}
 	for _, n := range names {
 		p := path.Join(dir, n)
 		f, err := fsys.Open(p)
 		if err != nil {
+			if link[n] {
+				set.SyntaxErrors++ // a link that points nowhere: OpenTofu refuses the module, the file is not read
+				continue
+			}
 			return nil, fmt.Errorf("iacfacts: open module file: %w", err)
+		}
+		if link[n] {
+			if st, err := f.Stat(); err != nil || !st.Mode().IsRegular() {
+				_ = f.Close()
+				set.SyntaxErrors++
+				continue
+			}
 		}
 		src, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
 		_ = f.Close()
@@ -73,6 +95,21 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		}
 		if total += len(src); total > MaxModuleBytes {
 			return nil, limitErr(dir, fmt.Sprintf("module is over %d bytes", MaxModuleBytes))
+		}
+		if isTFJSON(n) {
+			if err := checkSize(p, len(src)); err != nil {
+				return nil, err
+			}
+			pf := &tfParsed{file: p, body: &hclsyntax.Body{}, override: isOverrideFile(n)}
+			if pf.override {
+				if pf.jsonOver = readJSONOverride(p, src); pf.jsonOver == nil {
+					set.SyntaxErrors++
+				}
+			} else {
+				set.SyntaxErrors++
+			}
+			files = append(files, pf)
+			continue
 		}
 		pf, err := parseTerraform(p, src)
 		if err != nil {
@@ -86,7 +123,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		overVars: map[string]bool{}, overLocals: map[string]bool{}}
 	for _, f := range files {
 		if f.override {
-			env.collectOverrides(f.body)
+			env.collectOverrides(f)
 		} else {
 			env.collect(f)
 		}
@@ -107,6 +144,12 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 			continue
 		}
 		r.pf, r.file = f, f.file
+		if f.jsonOver != nil {
+			for _, o := range f.jsonOver.res {
+				ix.apply(set, o)
+			}
+			continue
+		}
 		if err := r.applyOverrides(set, ix, f.body); err != nil {
 			return nil, err
 		}
@@ -121,24 +164,36 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 func tfModuleFileNames(entries []fs.DirEntry) []string {
 	have := map[string]bool{}
 	for _, e := range entries {
-		if e.Type().IsRegular() {
+		// A symbolic link is a file, as it is to OpenTofu; the reader checks that it points at one.
+		if t := e.Type(); (t.IsRegular() || t&fs.ModeSymlink != 0) && !tfIgnoredFile(e.Name()) {
 			have[e.Name()] = true
 		}
 	}
 	var names []string
 	for n := range have {
-		switch path.Ext(n) {
-		case ".tf":
+		switch {
+		case strings.HasSuffix(n, ".tf"):
 			if have[strings.TrimSuffix(n, ".tf")+".tofu"] {
 				continue // shadowed, as OpenTofu does
 			}
 			names = append(names, n)
-		case ".tofu":
+		case strings.HasSuffix(n, ".tf.json"):
+			if have[strings.TrimSuffix(n, ".tf.json")+".tofu.json"] {
+				continue
+			}
+			names = append(names, n)
+		case strings.HasSuffix(n, ".tofu"), strings.HasSuffix(n, ".tofu.json"):
 			names = append(names, n)
 		}
 	}
 	sort.Strings(names)
 	return names
+}
+
+// tfIgnoredFile reports a name OpenTofu skips: a dot file, an editor backup ending in ~, or an editor lock
+// file written between #.
+func tfIgnoredFile(name string) bool {
+	return strings.HasPrefix(name, ".") || strings.HasSuffix(name, "~") || (strings.HasPrefix(name, "#") && strings.HasSuffix(name, "#"))
 }
 
 // tfParsed is one parsed file: its body, the count of syntax errors and the source ranges the errors point at.
@@ -149,6 +204,8 @@ type tfParsed struct {
 	bad  []hcl.Range
 	// override marks an override file, which only changes what the other files declare.
 	override bool
+	// jsonOver is what a .tf.json override file names; its body is empty.
+	jsonOver *tfJSONOver
 	src      []byte
 	lineAt   []int // byte offset of each line start, built on first use
 }
@@ -203,7 +260,7 @@ func (pf *tfParsed) linesParseClean(from, to int) bool {
 
 // isOverrideFile reports whether a file name is one OpenTofu treats as an override file.
 func isOverrideFile(name string) bool {
-	stem := strings.TrimSuffix(strings.TrimSuffix(name, ".tf"), ".tofu")
+	stem := strings.TrimSuffix(strings.TrimSuffix(strings.TrimSuffix(name, ".json"), ".tf"), ".tofu")
 	return stem == "override" || strings.HasSuffix(stem, "_override")
 }
 
@@ -258,8 +315,17 @@ func isFalseLiteral(e hclsyntax.Expression) bool {
 }
 
 // collectOverrides records the variable defaults and locals an override file replaces.
-func (e *tfEnv) collectOverrides(body *hclsyntax.Body) {
-	for _, b := range body.Blocks {
+func (e *tfEnv) collectOverrides(pf *tfParsed) {
+	if pf.jsonOver != nil {
+		for _, n := range pf.jsonOver.vars {
+			e.overVars[n] = true
+		}
+		for _, n := range pf.jsonOver.locals {
+			e.overLocals[n] = true
+		}
+		return
+	}
+	for _, b := range pf.body.Blocks {
 		switch {
 		case b.Type == "variable" && len(b.Labels) == 1:
 			if _, ok := b.Body.Attributes["default"]; ok {
@@ -504,22 +570,27 @@ func (r *tfReader) applyOverrides(set *ResourceSet, ix *overrideIndex, body *hcl
 		return err
 	}
 	for _, o := range over.Resources {
-		i, ok := ix.res[overrideKey{o.Mode, o.Type, o.Name}]
-		if !ok {
-			continue
-		}
-		base := &set.Resources[i]
-		if o.Multiplicity.Kind != MultiSingle {
-			base.Multiplicity = Multiplicity{Kind: o.Multiplicity.Kind, Class: ClassUnknown, Refs: o.Multiplicity.Refs, Span: o.Multiplicity.Span}
-		}
-		if o.Provider != "" {
-			base.Provider = o.Provider
-		}
-		for _, a := range o.Attrs {
-			ix.overrideAttr(set, i, a)
-		}
+		ix.apply(set, o)
 	}
 	return nil
+}
+
+// apply changes the base resource an override resource names, if there is one.
+func (ix *overrideIndex) apply(set *ResourceSet, o Resource) {
+	i, ok := ix.res[overrideKey{o.Mode, o.Type, o.Name}]
+	if !ok {
+		return
+	}
+	base := &set.Resources[i]
+	if o.Multiplicity.Kind != MultiSingle {
+		base.Multiplicity = Multiplicity{Kind: o.Multiplicity.Kind, Class: ClassUnknown, Refs: o.Multiplicity.Refs, Span: o.Multiplicity.Span}
+	}
+	if o.Provider != "" {
+		base.Provider = o.Provider
+	}
+	for _, a := range o.Attrs {
+		ix.overrideAttr(set, i, a)
+	}
 }
 
 // topSegment is the first segment of an attribute path: the attribute, or the nested block it sits in.

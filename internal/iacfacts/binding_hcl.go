@@ -1,6 +1,7 @@
 package iacfacts
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -20,6 +21,9 @@ type bindCall struct {
 	name string
 	// dir is the callee's repository-relative directory; empty for a source that is not a local path.
 	dir string
+	// dynamic marks a source that is not a literal string (`var.src`, `"./${x}"`): OpenTofu resolves it, the reader
+	// cannot, so the call may lead anywhere.
+	dynamic bool
 	// providers maps the callee's provider key ("aws" or "aws.east") to the caller's expression ("amazon.east").
 	providers map[string]string
 }
@@ -40,6 +44,9 @@ type bindingReader struct {
 	mods  map[string]*bindModule
 	locks map[string]map[string]string
 	notes []string
+	// unread lists the reasons an input binding needed was not read. A definite answer from the inputs that were
+	// read could be contradicted by the ones that were not, so any entry refuses the answer.
+	unread []string
 }
 
 func (r *bindingReader) note(format string, args ...any) {
@@ -52,40 +59,58 @@ func (r *bindingReader) note(format string, args ...any) {
 	r.notes = append(r.notes, n)
 }
 
-// readBounded reads a file no larger than maxBindingFileBytes.
+// skip records an input that was not read: a disclosure, and a reason the answer is refused.
+func (r *bindingReader) skip(format string, args ...any) {
+	n := fmt.Sprintf(format, args...)
+	r.note("%s", n)
+	for _, e := range r.unread {
+		if e == n {
+			return
+		}
+	}
+	r.unread = append(r.unread, n)
+}
+
+// readBounded reads a file no larger than maxBindingFileBytes. A file it cannot read is skipped with a reason: a
+// symbolic link is followed, as OpenTofu follows it, and one that points nowhere or at a directory is unread.
 func (r *bindingReader) readBounded(name string) ([]byte, bool) {
 	st, err := fs.Stat(r.fsys, name)
 	if err != nil || !st.Mode().IsRegular() {
+		r.skip("%s is not a readable regular file (a link that points nowhere, or at a directory) and was skipped", name)
 		return nil, false
 	}
 	if st.Size() > maxBindingFileBytes {
-		r.note("%s is %d bytes, over the %d byte read bound, and was skipped", name, st.Size(), maxBindingFileBytes)
+		r.skip("%s is %d bytes, over the %d byte read bound, and was skipped", name, st.Size(), maxBindingFileBytes)
 		return nil, false
 	}
 	b, err := fs.ReadFile(r.fsys, name)
 	if err != nil {
+		r.skip("%s could not be read and was skipped", name)
 		return nil, false
 	}
 	return b, true
 }
 
-func (r *bindingReader) parse(src []byte, name string) *hclsyntax.Body {
+// parse parses an HCL file. It returns the body, which is nil for a file past the nesting bound, and whether the
+// parser reported errors.
+func (r *bindingReader) parse(src []byte, name string) (body *hclsyntax.Body, hadErrors bool) {
 	f, diags, err := parseHCLBounded(name, src)
 	if err != nil {
-		r.note("%s nests operators or brackets past the read bound and was skipped", name)
-		return nil
+		r.skip("%s nests operators or brackets past the read bound and was skipped", name)
+		return nil, true
 	}
 	if diags.HasErrors() {
 		r.note("%s has HCL errors; blocks it parsed before the error were read", name)
+		hadErrors = true
 	}
 	if f == nil {
-		return nil
+		return nil, hadErrors
 	}
-	body, _ := f.Body.(*hclsyntax.Body)
-	return body
+	body, _ = f.Body.(*hclsyntax.Body)
+	return body, hadErrors
 }
 
-// module reads the required_providers and module calls of every .tf file in dir.
+// module reads the required_providers and module calls of every .tf, .tofu, .tf.json and .tofu.json file in dir.
 func (r *bindingReader) module(dir string) *bindModule {
 	if m, ok := r.mods[dir]; ok {
 		return m
@@ -94,11 +119,15 @@ func (r *bindingReader) module(dir string) *bindModule {
 	r.mods[dir] = m
 	ents, err := fs.ReadDir(r.fsys, dir)
 	if err != nil {
+		// A directory that does not exist holds nothing. One that exists and cannot be listed may hold anything.
+		if !errors.Is(err, fs.ErrNotExist) {
+			r.skip("%s could not be listed and was skipped", dir)
+		}
 		return m
 	}
 	names := tfModuleFileNames(ents)
 	if len(names) > maxBindingTFFiles {
-		r.note("%s holds more than %d .tf or .tofu files; the rest were not read", dir, maxBindingTFFiles)
+		r.skip("%s holds more than %d configuration files; the rest were not read", dir, maxBindingTFFiles)
 		names = names[:maxBindingTFFiles]
 	}
 	// Override files go last: they replace a required_providers entry by name and add no module call.
@@ -109,11 +138,15 @@ func (r *bindingReader) module(dir string) *bindModule {
 		if !ok {
 			continue
 		}
-		body := r.parse(src, name)
+		override := isOverrideFile(n)
+		if isTFJSON(n) {
+			r.jsonModule(dir, name, src, override, m)
+			continue
+		}
+		body, _ := r.parse(src, name)
 		if body == nil {
 			continue
 		}
-		override := isOverrideFile(n)
 		for _, blk := range body.Blocks {
 			switch blk.Type {
 			case "terraform":
@@ -175,10 +208,10 @@ func readRequiredProviders(body *hclsyntax.Body, into map[string]bindRequired) {
 func readModuleCall(dir string, blk *hclsyntax.Block) bindCall {
 	c := bindCall{name: blk.Labels[0], providers: map[string]string{}}
 	if attr, ok := blk.Body.Attributes["source"]; ok {
-		if s, ok := literalString(attr.Expr); ok && (strings.HasPrefix(s, "./") || strings.HasPrefix(s, "../")) {
-			if d := path.Clean(path.Join(dir, s)); !strings.HasPrefix(d, "../") && d != ".." {
-				c.dir = d
-			}
+		if s, ok := literalString(attr.Expr); !ok {
+			c.dynamic = true
+		} else {
+			c.dir = localModuleDir(dir, s)
 		}
 	}
 	if attr, ok := blk.Body.Attributes["providers"]; ok {
@@ -192,6 +225,19 @@ func readModuleCall(dir string, blk *hclsyntax.Block) bindCall {
 		}
 	}
 	return c
+}
+
+// localModuleDir resolves a literal module source against the calling directory. It is empty for a source that is
+// not a local path, and for one that leaves the repository.
+func localModuleDir(dir, source string) string {
+	if !strings.HasPrefix(source, "./") && !strings.HasPrefix(source, "../") {
+		return ""
+	}
+	d := path.Clean(path.Join(dir, source))
+	if strings.HasPrefix(d, "../") || d == ".." {
+		return ""
+	}
+	return d
 }
 
 // traversalName renders `aws.east` or `aws` from a reference expression or object key.
@@ -214,7 +260,9 @@ func traversalName(e hclsyntax.Expression) string {
 	return strings.Join(parts, ".")
 }
 
-// lockfile reads a .terraform.lock.hcl into provider address to version.
+// lockfile reads a .terraform.lock.hcl into provider address to version. A lockfile that does not parse, or is not
+// read, is unread: a pin it holds may be hidden by the fault, so the answer is refused and never made from the pins
+// that parsed.
 func (r *bindingReader) lockfile(name string) map[string]string {
 	if l, ok := r.locks[name]; ok {
 		return l
@@ -228,7 +276,10 @@ func (r *bindingReader) lockfile(name string) map[string]string {
 	if !ok {
 		return out
 	}
-	body := r.parse(src, name)
+	body, hadErrors := r.parse(src, name)
+	if hadErrors {
+		r.skip("%s does not parse (a merge conflict marker is the usual cause), so a provider it pins may be hidden", name)
+	}
 	if body == nil {
 		return out
 	}
@@ -247,7 +298,8 @@ func (r *bindingReader) lockfile(name string) map[string]string {
 
 // reaches reports whether target is root itself or a module root's calls lead to, following local sources to a
 // bounded depth and count. It returns every call edge that enters target, so each one's provider mapping is checked,
-// and whether a bound stopped the walk before it saw every module.
+// and whether the walk stopped before it saw every module: a bound, or a module call whose source is not a literal
+// and so may lead to target.
 func (r *bindingReader) reaches(root, target string) (via string, edges []*bindEdge, truncated bool) {
 	if root == target {
 		return "self", nil, false
@@ -274,6 +326,10 @@ func (r *bindingReader) reaches(root, target string) (via string, edges []*bindE
 		}
 		for _, c := range r.module(it.dir).calls {
 			if c.dir == "" {
+				if c.dynamic {
+					r.note("module %q in %s has a source that is not a literal string, which OpenTofu resolves and this reader does not; the walk from %s may miss a module", c.name, it.dir, root)
+					truncated = true
+				}
 				continue
 			}
 			if c.dir == target {
