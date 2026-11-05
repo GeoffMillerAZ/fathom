@@ -1,4 +1,4 @@
-package connector_test
+package langclass_test
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 type countingReader struct {
@@ -70,9 +70,9 @@ func TestIsGeneratedReaderMatchesFullClassifier(t *testing.T) {
 	}
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("%s/%d", c.path, i), func(t *testing.T) {
-			got, err := connector.IsGeneratedReader(c.path, &shortReader{data: []byte(c.body)})
-			if err != nil || got != connector.IsGenerated(c.path, []byte(c.body)) {
-				t.Fatalf("streamed=%v err=%v, full=%v", got, err, connector.IsGenerated(c.path, []byte(c.body)))
+			got, err := langclass.IsGeneratedReader(c.path, &shortReader{data: []byte(c.body)})
+			if err != nil || got != langclass.IsGenerated(c.path, []byte(c.body)) {
+				t.Fatalf("streamed=%v err=%v, full=%v", got, err, langclass.IsGenerated(c.path, []byte(c.body)))
 			}
 		})
 	}
@@ -80,11 +80,11 @@ func TestIsGeneratedReaderMatchesFullClassifier(t *testing.T) {
 
 func TestIsGeneratedReaderReportsReadError(t *testing.T) {
 	for _, path := range []string{"main.go", "config.yaml"} {
-		if got, err := connector.IsGeneratedReader(path, failingReader{}); got || err == nil {
+		if got, err := langclass.IsGeneratedReader(path, failingReader{}); got || err == nil {
 			t.Fatalf("%s: got %v, err %v", path, got, err)
 		}
 	}
-	if got, err := connector.IsGeneratedReader("config.yaml", &partialFailingReader{}); got || err == nil {
+	if got, err := langclass.IsGeneratedReader("config.yaml", &partialFailingReader{}); got || err == nil {
 		t.Fatalf("partial failure: got %v, err %v", got, err)
 	}
 }
@@ -92,12 +92,12 @@ func TestIsGeneratedReaderReportsReadError(t *testing.T) {
 func TestIsGeneratedReaderBoundsHeaderRead(t *testing.T) {
 	goBody := []byte("package main\n" + strings.Repeat("x", 4<<20))
 	goReader := &countingReader{r: bytes.NewReader(goBody)}
-	if generated, err := connector.IsGeneratedReader("main.go", goReader); err != nil || generated || goReader.bytes != 4096 {
+	if generated, err := langclass.IsGeneratedReader("main.go", goReader); err != nil || generated || goReader.bytes != 4096 {
 		t.Fatalf("Go generated=%v err=%v bytes=%d", generated, err, goReader.bytes)
 	}
 	yamlBody := []byte("# first\n# second\n# third\n" + strings.Repeat("x", 4<<20))
 	yamlReader := &countingReader{r: bytes.NewReader(yamlBody)}
-	if generated, err := connector.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 4*1024 {
+	if generated, err := langclass.IsGeneratedReader("config.yaml", yamlReader); err != nil || generated || yamlReader.bytes > 4*1024 {
 		t.Fatalf("YAML generated=%v err=%v bytes=%d", generated, err, yamlReader.bytes)
 	}
 }
