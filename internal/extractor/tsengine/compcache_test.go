@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // TestCompilationCacheUserScopeOnly is LB-F26 (design §8.3): wazero's
@@ -16,22 +14,27 @@ import (
 // <wazero version>/, is off unless the managed daemon turns it on, and
 // accepts no other location — no repository or relative path reaches it.
 func TestCompilationCacheUserScopeOnly(t *testing.T) {
-	t.Setenv(fathomhome.Env, "") // this test names its own home
 	home := t.TempDir()
-	dir, err := compilationCacheDir(home)
+	root := filepath.Join(home, ".fathom", "cache", "wazero")
+	dir, err := CompilationCacheVersionDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(home, ".fathom", "cache", "wazero", WazeroVersion())
+	want := filepath.Join(root, WazeroVersion())
 	if dir != want {
 		t.Fatalf("cache dir %q, want %q", dir, want)
 	}
 	if WazeroVersion() == "" || strings.ContainsAny(WazeroVersion(), `/\`) {
 		t.Fatalf("wazero version %q is not a safe directory name", WazeroVersion())
 	}
-	for _, bad := range []string{"", "relative/home", "."} {
-		if _, err := compilationCacheDir(bad); err == nil {
-			t.Errorf("home %q must be refused", bad)
+	for _, bad := range []string{"", "relative/root", "."} {
+		if _, err := CompilationCacheVersionDir(bad); err == nil {
+			t.Errorf("root %q must be refused", bad)
+		}
+	}
+	for _, bad := range []string{"", "relative/" + WazeroVersion(), filepath.Join(root, "v0.0.1")} {
+		if err := EnableCompilationCacheDir(bad); err == nil {
+			t.Errorf("directory %q must be refused", bad)
 		}
 	}
 
@@ -105,13 +108,12 @@ func TestEnableCompilationCacheBeforeRuntimeOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.Close()
-	if err := EnableCompilationCache(t.TempDir()); err == nil {
+	if err := EnableCompilationCacheDir(filepath.Join(t.TempDir(), WazeroVersion())); err == nil {
 		t.Fatal("enabling the cache after the runtime exists must be an error")
 	}
 }
 
 func TestPruneCompilationCache(t *testing.T) {
-	t.Setenv(fathomhome.Env, "") // this test names its own home
 	home := t.TempDir()
 	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
 	root := filepath.Join(home, ".fathom", "cache", "wazero")
@@ -128,7 +130,7 @@ func TestPruneCompilationCache(t *testing.T) {
 	touch(filepath.Join(root, "v0.0.1", "a"), now)              // another wazero version: stale
 	touch(filepath.Join(cur, "fresh"), now.Add(-time.Hour))     // current, recent: kept
 	touch(filepath.Join(cur, "old"), now.Add(-40*24*time.Hour)) // current, untouched 40 days: aged out
-	got := PrunableCompilationCache(home, now)
+	got := PrunableCompilationCache(root, now)
 	var names []string
 	for _, p := range got {
 		names = append(names, strings.TrimPrefix(p, root+string(filepath.Separator)))
@@ -152,18 +154,4 @@ func dirBytes(t *testing.T, dir string) int64 {
 		return nil
 	})
 	return n
-}
-
-// TestCompilationCacheFollowsFathomHome (PE-26): FATHOM_HOME moves the
-// compilation cache with the rest of ~/.fathom.
-func TestCompilationCacheFollowsFathomHome(t *testing.T) {
-	home, scratch := t.TempDir(), t.TempDir()
-	t.Setenv(fathomhome.Env, scratch)
-	dir, err := compilationCacheDir(home)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.Join(scratch, "cache", "wazero", WazeroVersion()); dir != want {
-		t.Fatalf("cache dir %q, want %q", dir, want)
-	}
 }

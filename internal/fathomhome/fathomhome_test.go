@@ -95,3 +95,17 @@ func TestAtIgnoresTheOverride(t *testing.T) {
 		t.Fatalf("At(home) = %q, want %q", got, want)
 	}
 }
+
+// TestWazeroCacheRootFollowsFathomHome (PE-26): FATHOM_HOME moves the
+// compilation cache with the rest of ~/.fathom.
+func TestWazeroCacheRootFollowsFathomHome(t *testing.T) {
+	home, scratch := t.TempDir(), t.TempDir()
+	t.Setenv(Env, "")
+	if got, want := WazeroCacheRoot(home), filepath.Join(home, ".fathom", "cache", "wazero"); got != want {
+		t.Fatalf("cache root %q, want %q", got, want)
+	}
+	t.Setenv(Env, scratch)
+	if got, want := WazeroCacheRoot(home), filepath.Join(scratch, "cache", "wazero"); got != want {
+		t.Fatalf("cache root %q, want %q", got, want)
+	}
+}

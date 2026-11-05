@@ -88,3 +88,10 @@ func PerFile(envVar string, elem ...string) string {
 	}
 	return Path(elem...)
 }
+
+// WazeroCacheRoot is the directory under which wazero's compiled-grammar cache
+// keeps one subdirectory per wazero version: <fathom home>/cache/wazero. The
+// product computes it so internal/extractor/tsengine names no fathom path.
+func WazeroCacheRoot(home string) string {
+	return filepath.Join(Under(home), "cache", "wazero")
+}

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
@@ -36,36 +35,37 @@ const wazeroVersion = "v1.12.0"
 // and gc ages the old directory out whole.
 func WazeroVersion() string { return wazeroVersion }
 
-// compilationCacheRoot is ~/.fathom/cache/wazero under home.
-func compilationCacheRoot(home string) string {
-	return filepath.Join(fathomhome.Under(home), "cache", "wazero")
-}
-
-// compilationCacheDir is the one place wazero's compilation cache may live
-// (LB-F26, design §8.3): <home>/.fathom/cache/wazero/<wazero version>/, at
-// user scope. home must be an absolute path; there is no way to name any
-// other directory, so a repository's configuration cannot point the daemon
-// at machine code it supplied.
-func compilationCacheDir(home string) (string, error) {
-	if home == "" || !filepath.IsAbs(home) {
-		return "", fmt.Errorf("tsengine: compilation cache needs an absolute home, got %q", home)
+// CompilationCacheVersionDir is the one place wazero's compilation cache may
+// live under root (LB-F26, design §8.3): <root>/<wazero version>/. root must be
+// an absolute path the product chose at user scope (the daemon passes
+// <home>/.fathom/cache/wazero); there is no way to name any other directory,
+// so a repository's configuration cannot point the daemon at machine code it
+// supplied.
+func CompilationCacheVersionDir(root string) (string, error) {
+	if root == "" || !filepath.IsAbs(root) {
+		return "", fmt.Errorf("tsengine: compilation cache needs an absolute root, got %q", root)
 	}
 	v := WazeroVersion()
 	if v == "" || strings.ContainsAny(v, `/\`) || v == "." || v == ".." {
 		return "", fmt.Errorf("tsengine: wazero version %q unusable as a cache directory", v)
 	}
-	return filepath.Join(compilationCacheRoot(filepath.Clean(home)), v), nil
+	return filepath.Join(filepath.Clean(root), v), nil
 }
 
-// EnableCompilationCache turns wazero's on-disk compilation cache on for
-// this process, under compilationCacheDir(home). Only the managed daemon
+// EnableCompilationCacheDir turns wazero's on-disk compilation cache on for
+// this process, in dir. dir must be an absolute path whose last element is the
+// linked wazero version (CompilationCacheVersionDir builds it), so a wazero
+// upgrade never reads another version's machine code. Only the managed daemon
 // calls it; every other process (the CLI, tests, an unmanaged serve-http)
-// compiles in memory and writes nothing. It must run before the first
-// parser is made: the process runtime is built once.
-func EnableCompilationCache(home string) error {
-	dir, err := compilationCacheDir(home)
-	if err != nil {
-		return err
+// compiles in memory and writes nothing. It must run before the first parser
+// is made: the process runtime is built once.
+func EnableCompilationCacheDir(dir string) error {
+	if dir == "" || !filepath.IsAbs(dir) {
+		return fmt.Errorf("tsengine: compilation cache needs an absolute directory, got %q", dir)
+	}
+	dir = filepath.Clean(dir)
+	if filepath.Base(dir) != WazeroVersion() {
+		return fmt.Errorf("tsengine: compilation cache directory %q does not end in the wazero version %q", dir, WazeroVersion())
 	}
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
@@ -118,12 +118,12 @@ func newRuntime(ctx context.Context, dir string) (wazero.Runtime, wazero.Compila
 	return r, cache, nil
 }
 
-// PrunableCompilationCache lists what `fathom gc` ages out of home's
-// compilation cache at now (ADR-047 decision 13): every directory of
+// PrunableCompilationCache lists what `fathom gc` ages out of the compilation
+// cache under root (the directory holding one subdirectory per wazero version)
+// at now (ADR-047 decision 13): every directory of
 // another wazero version, and every entry of this version's directory not
 // written for CompilationCacheMaxAge. Sorted.
-func PrunableCompilationCache(home string, now time.Time) []string {
-	root := compilationCacheRoot(home)
+func PrunableCompilationCache(root string, now time.Time) []string {
 	vers, err := os.ReadDir(root)
 	if err != nil {
 		return nil

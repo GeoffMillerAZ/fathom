@@ -188,7 +188,7 @@ func runGC(o gcOptions) gcReport {
 		// wazero's compilation cache (LB-F26): other wazero versions'
 		// directories and entries unwritten for 30 days. Compiled machine
 		// code, not evidence: the next compile recreates what is still used.
-		for _, p := range tsengine.PrunableCompilationCache(o.Home, o.Now) {
+		for _, p := range tsengine.PrunableCompilationCache(fathomhome.WazeroCacheRoot(o.Home), o.Now) {
 			add(gcItem{Class: "wazero-cache", Path: p, Action: "delete", Bytes: dirSize(p), Reason: "compiled grammar code of another wazero version, or unwritten for 30 days"})
 		}
 

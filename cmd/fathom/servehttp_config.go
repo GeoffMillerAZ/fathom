@@ -10,6 +10,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -121,7 +122,11 @@ func (r *serveRun) configure() (int, bool) {
 	// gc`); an unmanaged daemon compiles in memory and leaves nothing.
 	if managed {
 		if home, hErr := os.UserHomeDir(); hErr == nil {
-			if cErr := tsengine.EnableCompilationCache(home); cErr != nil {
+			dir, cErr := tsengine.CompilationCacheVersionDir(fathomhome.WazeroCacheRoot(home))
+			if cErr == nil {
+				cErr = tsengine.EnableCompilationCacheDir(dir)
+			}
+			if cErr != nil {
 				flog.Warn("serve-http: wazero compilation cache off: " + cErr.Error())
 			}
 		}
