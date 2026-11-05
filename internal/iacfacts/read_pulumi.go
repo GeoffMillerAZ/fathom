@@ -137,6 +137,29 @@ type pulumiReader struct {
 	// em and file charge the values the memo holds (emitter.hold).
 	em   *emitter
 	file string
+	// secrets memoizes isSecretFlag per configuration entry: an entry that repeats `secret: false` 70,000 times is
+	// asked once for every interpolation of it, and each ask is the length of the list.
+	secrets map[*node]bool
+}
+
+// secret reports whether a configuration entry is secret, once per entry.
+func (p *pulumiReader) secret(c *node) bool {
+	if s, ok := p.secrets[c]; ok {
+		return s
+	}
+	s := isSecretFlag(c, c.foldAll("secret")...)
+	if p.secrets == nil {
+		p.secrets = map[*node]bool{}
+	}
+	p.secrets[c] = s
+	return s
+}
+
+// typedInteger reports whether a configuration entry declares type integer. pulumi-yaml casts its default to an int
+// then (run.go, the Int case of the configuration), and an interpolation prints that int whole.
+func typedInteger(c *node) bool {
+	t := c.getFold("type")
+	return t != nil && t.kind == nodeScalar && (strings.EqualFold(t.value, "int") || strings.EqualFold(t.value, "integer"))
 }
 
 // spend counts one node visit and reports whether the budget still holds.
@@ -224,7 +247,14 @@ func (p *pulumiReader) interpolation(s string, depth int) readRes {
 	}
 	out := foldRes(parts)
 	if out.hasV {
-		out.val, out.hasV = concatVals(parts)
+		// The concat below builds a real string, kept or not: charge it first, so a variable that discards its
+		// template cannot build one for every use.
+		out = p.em.hold(p.file, out)
+		if p.em != nil && p.em.err != nil {
+			out.hasV = false
+			return out
+		}
+		out.val, out.hasV = concatVals(parts, stylePulumi)
 	}
 	return out
 }
@@ -247,8 +277,9 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 	case p.cfgs[name] != nil:
 		c := p.cfgs[name]
 		if d := c.getFold("default"); d != nil && d.kind == nodeScalar && ref == name {
-			secret := isSecretFlag(c, c.foldAll("secret")...)
-			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: p.cfg.values && !secret}
+			secret := p.secret(c)
+			v, raw := d.scalarRes()
+			return readRes{class: ClassDefaulted, refs: []string{ref}, val: v, hasV: p.cfg.values && !secret, noStr: raw, pint: typedInteger(c)}
 		}
 		return readRes{class: ClassReference, refs: []string{ref}}
 	case p.vars[name] != nil:
@@ -270,7 +301,7 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 		}
 		out := readRes{class: inner.class, refs: []string{ref}}
 		if ref == name && inner.hasV {
-			out.val, out.hasV, out.vsize = inner.val, true, inner.vsize
+			out.val, out.hasV, out.vsize, out.noStr, out.pint = inner.val, true, inner.vsize, inner.noStr, inner.pint
 		}
 		out.big = inner.big
 		return out
@@ -288,7 +319,8 @@ func (p *pulumiReader) structural(n *node, depth int) readRes {
 	}
 	switch n.kind {
 	case nodeScalar:
-		return readRes{class: ClassLiteral, val: n.scalarValue(), hasV: p.cfg.values}
+		v, raw := n.scalarRes()
+		return readRes{class: ClassLiteral, val: v, hasV: p.cfg.values, noStr: raw}
 	case nodeSeq:
 		parts := make([]readRes, len(n.items))
 		for i, it := range n.items {

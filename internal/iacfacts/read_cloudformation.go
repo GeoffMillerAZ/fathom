@@ -287,7 +287,8 @@ func (c *cfnReader) ref(name string) readRes {
 		return readRes{class: ClassExpression, refs: []string{name}}
 	}
 	if p, ok := c.params[name]; ok && p.def != nil && !p.indirect {
-		return readRes{class: ClassDefaulted, refs: []string{name}, val: p.def.scalarValue(), hasV: c.cfg.values && !p.noEcho}
+		v, raw := p.def.scalarRes()
+		return readRes{class: ClassDefaulted, refs: []string{name}, val: v, hasV: c.cfg.values && !p.noEcho, noStr: raw}
 	}
 	return readRes{class: ClassReference, refs: []string{name}}
 }
@@ -332,7 +333,8 @@ func (c *cfnReader) sub(arg *node, depth int) readRes {
 			if r, ok := c.classifyIntrinsic(d, depth+1); ok {
 				parts = append(parts, r)
 			} else if d.kind == nodeScalar {
-				parts = append(parts, readRes{class: ClassLiteral, val: d.scalarValue(), hasV: c.cfg.values})
+				v, raw := d.scalarRes()
+				parts = append(parts, readRes{class: ClassLiteral, val: v, hasV: c.cfg.values, noStr: raw})
 			} else {
 				parts = append(parts, readRes{class: ClassExpression})
 			}
@@ -352,7 +354,7 @@ func (c *cfnReader) sub(arg *node, depth int) readRes {
 	}
 	out := foldRes(parts)
 	if out.hasV {
-		out.val, out.hasV = concatVals(parts)
+		out.val, out.hasV = concatVals(parts, styleCty)
 	}
 	return out
 }

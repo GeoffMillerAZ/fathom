@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"math/big"
 	"path"
 	"sort"
@@ -891,12 +892,14 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 			// The parser's placeholder for an expression it could not read.
 			return readRes{class: ClassUnknown}
 		}
-		return readRes{class: ClassLiteral, val: r.literalValue(x, false), hasV: r.cfg.values}
+		v, raw := r.literalValue(x, false)
+		return readRes{class: ClassLiteral, val: v, hasV: r.cfg.values, noStr: raw}
 	case *hclsyntax.UnaryOpExpr:
 		// A negative number is a constant as written, as it is for OpenTofu: from_port = -1. Any other unary
 		// operator is computed, and so is a negation of anything but a number literal.
 		if lit, ok := x.Val.(*hclsyntax.LiteralValueExpr); ok && x.Op == hclsyntax.OpNegate && lit.Val.IsKnown() && lit.Val.Type() == cty.Number {
-			return readRes{class: ClassLiteral, val: r.literalValue(lit, true), hasV: r.cfg.values}
+			v, raw := r.literalValue(lit, true)
+			return readRes{class: ClassLiteral, val: v, hasV: r.cfg.values, noStr: raw}
 		}
 		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	case *hclsyntax.TemplateExpr:
@@ -1012,18 +1015,32 @@ func (r *tfReader) foldTemplate(parts []hclsyntax.Expression, iters map[string]b
 			out.hasV = false
 			return out
 		}
-		out.val, out.hasV = concatVals(rs)
+		out.val, out.hasV = concatVals(rs, styleCty)
 	}
 	return out
 }
 
-// concatVals joins the string values of a template's parts.
-func concatVals(parts []readRes) (string, bool) {
+// numStyle is how an engine prints a number it interpolates into a string.
+type numStyle uint8
+
+const (
+	// styleCty is OpenTofu: a number is held at 512 bits and printed positionally, 1e6 as 1000000.
+	styleCty numStyle = iota
+	// stylePulumi is pulumi-yaml: a number is a float64, printed with %v, so 1e6 is 1e+06.
+	stylePulumi
+)
+
+// concatVals joins the string values of a template's parts. A part that is only a number's source text (noStr) or
+// has no string form gives the template no value.
+func concatVals(parts []readRes, style numStyle) (string, bool) {
 	var sb strings.Builder
 	for _, p := range parts {
+		if p.noStr {
+			return "", false
+		}
 		s, ok := p.val.(string)
 		if !ok {
-			if s, ok = scalarString(p.val); !ok {
+			if s, ok = scalarString(p, style); !ok {
 				return "", false
 			}
 		}
@@ -1032,26 +1049,45 @@ func concatVals(parts []readRes) (string, bool) {
 	return sb.String(), true
 }
 
-func scalarString(v any) (string, bool) {
-	switch x := v.(type) {
+// scalarString is the string an engine of the given style prints for a scalar part of a template.
+func scalarString(p readRes, style numStyle) (string, bool) {
+	switch x := p.val.(type) {
 	case bool:
 		if x {
 			return "true", true
 		}
 		return "false", true
 	case int64:
-		return big.NewInt(x).String(), true
+		if style == stylePulumi && !p.pint {
+			// pulumi-yaml reads every number as a float64, so a large integer prints as one.
+			return fmt.Sprintf("%v", float64(x)), true
+		}
+		return strconv.FormatInt(x, 10), true
 	case float64:
+		if style == stylePulumi {
+			if p.pint && x == math.Trunc(x) && math.Abs(x) < 1<<63 {
+				return strconv.FormatInt(int64(x), 10), true
+			}
+			return fmt.Sprintf("%v", x), true
+		}
 		// cty prints a number in positional form, whatever its size: 1e6 is 1000000 and 0.00001 is 0.00001.
 		return strconv.FormatFloat(x, 'f', -1, 64), true
 	case json.Number:
-		// cty holds a number at 512 bits and prints it positionally. A text with an exponent past what a float64
-		// holds by a long way would print as a million digits, so such a number has no known string.
-		f, _, err := big.ParseFloat(string(x), 10, 512, big.ToNearestEven)
-		if err != nil {
+		if len(x) > maxNumberText || !numberInRange(string(x)) {
+			// A number past float64's range is no number a template prints here: the engines print it as digits
+			// no reader should invent, so the template has no value.
 			return "", false
 		}
-		if exp := f.MantExp(nil); exp > 4096 || exp < -4096 {
+		if style == stylePulumi {
+			f, err := strconv.ParseFloat(string(x), 64)
+			if err != nil {
+				return "", false
+			}
+			return fmt.Sprintf("%v", f), true
+		}
+		// cty holds a number at 512 bits and prints it positionally.
+		f, _, err := big.ParseFloat(string(x), 10, 512, big.ToNearestEven)
+		if err != nil {
 			return "", false
 		}
 		return f.Text('f', -1), true
@@ -1169,7 +1205,7 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			out.class = ClassReference
 		}
 		if len(t.Traversal) == 2 && inner.hasV && (out.class == ClassLiteral || out.class == ClassDefaulted) {
-			out.val, out.hasV, out.vsize = inner.val, true, inner.vsize
+			out.val, out.hasV, out.vsize, out.noStr = inner.val, true, inner.vsize, inner.noStr
 		}
 		out.big = inner.big
 		if secret {
@@ -1184,7 +1220,7 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 	return readRes{class: ClassReference, refs: []string{ref}}
 }
 
-// maxVariableWalkBytes bounds the source bytes the reference search of one file walks, counting a byte once for every
+// maxVariableWalkBytes bounds the source bytes the reference search of one read walks, every file of a module together, counting a byte once for every
 // walk that covers it.
 const maxVariableWalkBytes = 32 << 20
 
@@ -1253,15 +1289,25 @@ func renderTraversal(t hcl.Traversal) string {
 // literalValue is the Go value of a literal, negated when neg. A number goes through numberValue with the text the
 // file wrote, the rule every reader shares, so 1e999 is never +Inf and 1.0 is a float64 as it is in CloudFormation and
 // Pulumi. Only when the text cannot be found does it fall back on cty's value, which spells 1.0 and 1 the same.
-func (r *tfReader) literalValue(lit *hclsyntax.LiteralValueExpr, neg bool) any {
+//
+// The second result is true when the value has no string form for a template: a number that reads as its source
+// text (numberRead), and a negated integer zero, which the Go value int64(0) cannot tell from 0 and tofu prints as -0.
+func (r *tfReader) literalValue(lit *hclsyntax.LiteralValueExpr, neg bool) (any, bool) {
 	v := lit.Val
 	if neg {
 		v = v.Negate()
 	}
 	if v.IsNull() || !v.IsKnown() || v.Type() != cty.Number {
-		return ctyToGo(v)
+		return ctyToGo(v), false
 	}
 	bf := v.AsBigFloat()
+	read := func(text string) (any, bool) {
+		val, raw := numberRead(text)
+		if i, ok := val.(int64); ok && i == 0 && neg {
+			raw = true
+		}
+		return val, raw
+	}
 	// The text the file wrote, when it can be found, is read by the one rule every reader shares; cty has kept only
 	// the value, which spells 1.0 and 1 the same.
 	if src := r.sourceOf(lit.SrcRange.Filename); src != nil {
@@ -1270,16 +1316,16 @@ func (r *tfReader) literalValue(lit *hclsyntax.LiteralValueExpr, neg bool) any {
 				if neg {
 					t = "-" + t
 				}
-				return numberValue(t)
+				return read(t)
 			}
 		}
 	}
 	if bf.IsInt() {
 		if i, acc := bf.Int64(); acc == big.Exact {
-			return i
+			return i, neg && i == 0
 		}
 	}
-	return numberValue(bf.Text('g', -1))
+	return read(bf.Text('g', -1))
 }
 
 // sourceOf is the source of the file a range names: the file being read, or another file of the module whose local or

@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 )
 
 // Class is how an attribute's value is known. There are five. Absence is not one: an
@@ -185,13 +186,14 @@ const (
 	MaxModuleFiles = 4096
 	// MaxDepth bounds block, bracket and node nesting.
 	MaxDepth = 128
-	// MaxNodes bounds the syntax nodes one file may hold.
+	// MaxNodes bounds the syntax nodes one read may hold: one file, or every file of a Terraform module together,
+	// since one reader serves the module.
 	MaxNodes = 1 << 20
 	// MaxReadVisits bounds the first visits a template read makes while it classifies intrinsic functions and
 	// resolves variables. Every node is visited a bounded number of times, so a file at MaxNodes stays inside it.
 	MaxReadVisits = 4 * MaxNodes
 	// MaxValueBytes bounds the logical size of one value a read builds under WithValues, counted the way a
-	// consumer would serialise it: string bytes, mapping keys and ignore_changes names. A value past it refuses the whole input: a chain of doublings is small as
+	// consumer would serialise it: string bytes, numbers at their printed length, mapping keys and ignore_changes names. A value past it refuses the whole input: a chain of doublings is small as
 	// source and enormous as a value.
 	MaxValueBytes = 1 << 20
 	// MaxTotalValueBytes bounds the logical size of every value one read keeps under WithValues. MaxValueBytes
@@ -394,6 +396,12 @@ type readRes struct {
 	big   bool
 	// charged marks a value already counted against MaxTotalValueBytes when it was built (emitter.hold).
 	charged bool
+	// noStr marks a number that is only its source text in val (numberRead): a template that holds it has no value,
+	// because no string the reader could print is the string the engine prints.
+	noStr bool
+	// pint marks a Pulumi configuration default that its entry types as an integer, which an interpolation prints
+	// as an integer where it prints any other number as a float64.
+	pint bool
 }
 
 // withBytes adds n bytes the parts of a composite do not carry (the keys of a mapping, the names of a list) to its
@@ -407,16 +415,22 @@ func (c readRes) withBytes(n int) readRes {
 	return c
 }
 
-// partSize is the logical size of one part of a composite value.
+// partSize is the logical size of one part of a composite value. A number is charged at the length it prints at
+// (numberPrintLen), so a template of numbers or a list of them cannot hold more than MaxValueBytes of text.
 func partSize(p readRes) int {
 	if p.vsize > 0 {
 		return p.vsize
 	}
-	if s, ok := p.val.(string); ok {
-		return len(s) + 1
-	}
-	if n, ok := p.val.(json.Number); ok {
-		return len(n) + 1
+	switch x := p.val.(type) {
+	case string:
+		return len(x) + 1
+	case json.Number:
+		return numberPrintLen(string(x)) + 1
+	case int64:
+		return len(strconv.FormatInt(x, 10)) + 1
+	case float64:
+		var buf [400]byte
+		return len(strconv.AppendFloat(buf[:0], x, 'f', -1, 64)) + 1
 	}
 	return 8
 }

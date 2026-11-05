@@ -196,9 +196,22 @@ func isSecretFlag(entry *node, flags ...*node) bool {
 
 // scalarValue is a scalar's value as Go sees it.
 func (n *node) scalarValue() any {
+	v, _ := n.scalarRes()
+	return v
+}
+
+// scalarRes is scalarValue and whether the value is only a number's source text (numberRead), which a template
+// cannot print.
+func (n *node) scalarRes() (any, bool) {
 	switch n.typ {
 	case "int", "float":
-		return numberValue(n.value)
+		return numberRead(n.value)
+	}
+	return n.scalarText(), false
+}
+
+func (n *node) scalarText() any {
+	switch n.typ {
 	case "bool":
 		switch strings.ToLower(n.value) {
 		case "true":

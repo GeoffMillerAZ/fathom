@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // numberValue is the one rule for the Go value of a number every reader returns in Attr.Value, so the same text reads
@@ -16,24 +17,88 @@ import (
 //   - any other number that is finite as float64 and valid as JSON keeps its exact text as a json.Number
 //     (12345678901234567890, a long fraction, 1e-999);
 //   - anything else is the source text as a string: a number past float64's range (1e999, 1e400), which would be Inf,
-//     and text that is not a JSON number.
+//     a number written in more than maxNumberText bytes (a 900 KB literal is no number a program means, and parsing it
+//     is quadratic in its digits), and text that is not a JSON number.
 //
 // text is the number as the source wrote it.
 func numberValue(text string) any {
+	v, _ := numberRead(text)
+	return v
+}
+
+// maxNumberText is the longest number text that reads as a number. A longer text reads as itself.
+const maxNumberText = 1024
+
+// numberRead is numberValue, and whether the value is only the number's source text. Such a text has no string form:
+// the string a template makes of the number is not the text the file wrote, and a template that holds one yields no
+// value (readRes.noStr).
+func numberRead(text string) (any, bool) {
+	if len(text) > maxNumberText {
+		return text, true
+	}
 	if i, err := strconv.ParseInt(text, 0, 64); err == nil {
-		return i
+		return i, false
 	}
 	f, err := strconv.ParseFloat(text, 64)
 	if err != nil || math.IsInf(f, 0) || math.IsNaN(f) {
-		return text
+		return text, true
 	}
 	if sameDecimal(text, f) {
-		return f
+		return f, false
 	}
 	if jsonNumberRE.MatchString(text) {
-		return json.Number(text)
+		return json.Number(text), false
 	}
-	return text
+	return text, true
+}
+
+// maxPrintDigits is the most significant digits a template prints of a number: cty holds 512 bits, which are 155.
+const maxPrintDigits = 160
+
+// numberInRange reports whether text is a number a float64 holds, within its range at both ends: it neither
+// overflows nor underflows to zero. A template prints only such a number.
+func numberInRange(text string) bool {
+	f, err := strconv.ParseFloat(text, 64)
+	if err != nil || math.IsInf(f, 0) || math.IsNaN(f) {
+		return false
+	}
+	if f == 0 {
+		d, _, ok := decimalDigits(text)
+		return ok && d == ""
+	}
+	return true
+}
+
+// numberPrintLen is the length of the positional text a template prints for a JSON number, which is the length a
+// consumer holds it at. A number no template prints (past float64's range, or over maxNumberText bytes) is charged
+// its own text. The length is an upper bound: it is computed from the digits and the exponent, and printing a
+// number is not worth its cost to count it.
+func numberPrintLen(text string) int {
+	if len(text) > maxNumberText || !numberInRange(text) {
+		return len(text)
+	}
+	d, e, ok := decimalDigits(text)
+	if !ok {
+		return len(text)
+	}
+	neg := 0
+	if strings.HasPrefix(text, "-") {
+		neg = 1
+	}
+	if len(d) > maxPrintDigits {
+		e += len(d) - maxPrintDigits
+		d = d[:maxPrintDigits]
+	}
+	switch n := len(d); {
+	case n == 0:
+		return neg + 1
+	case e >= 0:
+		return neg + n + e
+	case n+e > 0:
+		return neg + n + 1
+	default:
+		return neg + 2 - e
+	}
 }
 
 // jsonNumberRE is the JSON grammar for a number.
