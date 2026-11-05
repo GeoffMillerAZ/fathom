@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/langlevelsgen"
 )
 
 func write(t *testing.T, root, rel, body string) {
@@ -104,9 +106,20 @@ func TestDialectsPrintsJSON(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
+	raw, err := langlevelsgen.Generate(filepath.Join("..", "..", "docs", "bench", "readings", "lang"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []langlevelsgen.Row
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		t.Fatal(err)
+	}
 	found := false
 	for _, d := range got.Dialects {
-		found = found || d.ID == "terraform" && d.Level == "L3" && d.Grade == "excellent"
+		for _, r := range rows {
+			// The level is whatever the readings say today, not a literal a regrade moves.
+			found = found || d.ID == "terraform" && r.ID == "terraform" && d.Level == r.Level && d.Grade == r.Grade
+		}
 	}
 	if !found || len(got.Dialects) < 100 {
 		t.Fatalf("%d dialects, terraform found %v", len(got.Dialects), found)
@@ -120,9 +133,11 @@ func TestUsageAndErrors(t *testing.T) {
 	}{
 		{nil, 2},
 		{[]string{"bogus"}, 2},
-		{[]string{"extract"}, 1},
-		{[]string{"extract", "-root", t.TempDir(), "missing.go"}, 1},
-		{[]string{"extract", "-nonsense"}, 1},
+		{[]string{"extract"}, 2},
+		{[]string{"extract", "-nonsense"}, 2},
+		{[]string{"dialects", "-nonsense"}, 2},
+		{[]string{"dialects", "extra"}, 2},
+		{[]string{"extract", "-root", t.TempDir(), "missing.go"}, 1}, // a file that cannot be read is a failure, not misuse
 		{[]string{"help"}, 0},
 	}
 	for _, c := range cases {
@@ -237,5 +252,104 @@ func TestPackFlagRefusesABadPackWhole(t *testing.T) {
 	errw.Reset()
 	if code := run(context.Background(), []string{"dialects", "-pack", filepath.Join(dir, "nowhere")}, strings.NewReader(""), &out, &errw); code != 1 || !strings.Contains(errw.String(), "pack refused (empty)") {
 		t.Errorf("missing pack dir: exit %d, stderr %s", code, errw.String())
+	}
+}
+
+// N7: an absolute PATH is read as given, a file that cannot be read is a result
+// of its own and the batch goes on, and both commands print schema_version.
+func TestExtractAbsolutePathsAndPerFileErrors(t *testing.T) {
+	root, other := t.TempDir(), t.TempDir()
+	write(t, root, "infra/main.tf", "resource \"aws_s3_bucket\" \"b\" {\n}\n")
+	write(t, other, "elsewhere/main.tf", "resource \"aws_s3_bucket\" \"c\" {\n}\n")
+	write(t, root, "ok.go", "package a\n\nfunc F() {}\n")
+	abs := filepath.Join(other, "elsewhere", "main.tf")
+	var out, errw bytes.Buffer
+	code := run(context.Background(), []string{"extract", "-root", root, filepath.Join(root, "infra", "main.tf"), abs, "missing.go", filepath.Join(other, "nope.tf"), "ok.go"}, strings.NewReader(""), &out, &errw)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 (two files could not be read): %s", code, errw.String())
+	}
+	var got struct {
+		SchemaVersion int `json:"schema_version"`
+		Files         []struct {
+			Path   string `json:"path"`
+			Error  string `json:"error"`
+			Result *struct {
+				Dialect string `json:"dialect"`
+			} `json:"result"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("the run printed no JSON: %v\n%s\nstderr %s", err, out.String(), errw.String())
+	}
+	if got.SchemaVersion != 1 || len(got.Files) != 5 {
+		t.Fatalf("schema %d, %d files: %s", got.SchemaVersion, len(got.Files), out.String())
+	}
+	f := got.Files
+	if f[0].Path != "infra/main.tf" || f[0].Error != "" || f[0].Result == nil || f[0].Result.Dialect != "terraform" {
+		t.Errorf("an absolute path under -root: %+v", f[0])
+	}
+	if f[1].Path != filepath.ToSlash(abs) || f[1].Error != "" || f[1].Result == nil || f[1].Result.Dialect != "terraform" {
+		t.Errorf("an absolute path outside -root: %+v", f[1])
+	}
+	for _, i := range []int{2, 3} {
+		if f[i].Error == "" || f[i].Result != nil {
+			t.Errorf("file %d should carry an error and no result: %+v", i, f[i])
+		}
+	}
+	if f[4].Error != "" || f[4].Result == nil || f[4].Result.Dialect != "go" {
+		t.Errorf("the batch stopped at a bad path: %+v", f[4])
+	}
+	if !strings.Contains(errw.String(), "could not be read") {
+		t.Errorf("stderr says nothing about the unreadable files: %q", errw.String())
+	}
+
+	out.Reset()
+	if code := run(context.Background(), []string{"dialects"}, strings.NewReader(""), &out, &errw); code != 0 {
+		t.Fatalf("dialects exit %d", code)
+	}
+	var d struct {
+		SchemaVersion int `json:"schema_version"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &d); err != nil || d.SchemaVersion != 1 {
+		t.Errorf("dialects schema_version %d, %v", d.SchemaVersion, err)
+	}
+}
+
+// N12: a user who installs fathom gets fathom-lang too. The install steps in
+// the README and the early-testers guide extract both binaries from the
+// release archive, and `task deploy` links ~/.local/bin/fathom-lang at the
+// installed binary the way the shim does for fathom.
+func TestInstallPathsCarryFathomLang(t *testing.T) {
+	for _, doc := range []string{"README.md", "docs/early-testers.md"} {
+		b, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(doc)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), `-C ~/.local/bin fathom fathom-lang`) {
+			t.Errorf("%s: the archive step does not extract fathom-lang", doc)
+		}
+		if !strings.Contains(string(b), "cmd/fathom-lang") {
+			t.Errorf("%s: no install step names cmd/fathom-lang", doc)
+		}
+	}
+	b, err := os.ReadFile(filepath.Join("..", "..", "Taskfile.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deploy := string(b)
+	i := strings.Index(deploy, "\n  deploy:\n")
+	j := strings.Index(deploy[i+1:], "\n  build-dev:")
+	if i < 0 || j < 0 {
+		t.Fatal("Taskfile.yml: cannot find the deploy task")
+	}
+	deploy = deploy[i : i+1+j]
+	for _, want := range []string{
+		`link="$HOME/.local/bin/fathom-lang"`,
+		`ln -sfn "$HOME/.local/libexec/fathom/fathom-lang" "$link"`,
+		`mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"`, // fathom's own install is as it was
+	} {
+		if !strings.Contains(deploy, want) {
+			t.Errorf("task deploy lacks %q", want)
+		}
 	}
 }

@@ -5,7 +5,13 @@
 //	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR] PATH...
 //	fathom-lang dialects [-pack DIR]
 //
-// The JSON is compatibility surface: fields are added, never renamed.
+// PATH may be relative to -root or absolute. A file that cannot be read is a
+// result of its own (its error is in the JSON) and the batch goes on.
+//
+// The JSON is compatibility surface: fields are added, never renamed, and the
+// top-level schema_version says which version of the shape this is. Exit 0 when
+// every file was read, 1 when a file could not be read or the run stopped on an
+// error, 2 on misuse (a bad flag, no PATH, an unknown command).
 package main
 
 import (
@@ -28,11 +34,26 @@ const usage = `usage:
   fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR] PATH...
   fathom-lang dialects [-pack DIR]
 
-extract reads each PATH (relative to -root, default the working directory)
-and prints {"files":[{"path":...,"result":...}]} as JSON.
-dialects prints every dialect with its measured level as JSON.
+extract reads each PATH (absolute, or relative to -root, default the working
+directory) and prints {"schema_version":1,"files":[{"path":...,"error":...,
+"result":...}]} as JSON. A file that cannot be read has an error and a null
+result, and the other files are still read.
+dialects prints {"schema_version":1,"dialects":[...]} with every dialect and
+its measured level.
+Exit 0 on success, 1 when a file could not be read or the run failed, 2 on misuse.
 -pack DIR adds the dialect pack in DIR (dialects/<id>/dialect.json and the
 queries and doc specs it names). A pack that breaks a rule is refused whole.`
+
+// schemaVersion is the version of the JSON shape both commands print. It
+// changes only with a break; added fields do not change it.
+const schemaVersion = 1
+
+// usageError is misuse of the command line: a bad flag, a missing PATH.
+type usageError struct{ error }
+
+// errUnreadable is the error of a run whose JSON was printed but in which a
+// file could not be read.
+var errUnreadable = errors.New("one or more files could not be read; see their error fields")
 
 // maxWalk bounds -walk: the most files one sibling listing may hold.
 const maxWalk = 200000
@@ -64,15 +85,21 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 			return 0
 		}
 		fmt.Fprintln(errw, "fathom-lang:", err)
+		var ue usageError
+		if errors.As(err, &ue) {
+			return 2
+		}
 		return 1
 	}
 	return 0
 }
 
-// fileResult is one file's entry in the extract output.
+// fileResult is one file's entry in the extract output. Error is "" for a file
+// that was read, and Result is null for one that was not.
 type fileResult struct {
-	Path   string      `json:"path"`
-	Result lang.Result `json:"result"`
+	Path   string       `json:"path"`
+	Error  string       `json:"error"`
+	Result *lang.Result `json:"result"`
 }
 
 // cmdExtract reads each named file and prints its result as JSON.
@@ -84,10 +111,14 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 	cache := fs.String("cache", "", "directory for wazero's compilation cache (off by default)")
 	pack := fs.String("pack", "", "directory of a dialect pack to add")
 	if err := fs.Parse(args); err != nil {
-		return err
+		return parseError(err)
 	}
 	if fs.NArg() == 0 {
-		return errors.New("extract needs at least one PATH")
+		return usageError{errors.New("extract needs at least one PATH")}
+	}
+	rootAbs, err := filepath.Abs(*root)
+	if err != nil {
+		return err
 	}
 	if *cache != "" {
 		if err := lang.EnableCompilationCache(*cache); err != nil {
@@ -115,21 +146,63 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 	}
 	defer r.Close()
 	res := struct {
-		Files []fileResult `json:"files"`
-	}{Files: []fileResult{}}
+		SchemaVersion int          `json:"schema_version"`
+		Files         []fileResult `json:"files"`
+	}{SchemaVersion: schemaVersion, Files: []fileResult{}}
+	unreadable := false
 	for _, p := range fs.Args() {
-		rel := filepath.ToSlash(filepath.Clean(p))
-		src, err := os.ReadFile(filepath.Join(*root, filepath.FromSlash(rel)))
+		readPath, shown, classified := resolvePath(rootAbs, p)
+		src, err := os.ReadFile(readPath)
 		if err != nil {
-			return err
+			res.Files = append(res.Files, fileResult{Path: shown, Error: err.Error()})
+			unreadable = true
+			continue
 		}
-		got, err := r.Extract(ctx, lang.File{Path: rel, Src: src, Siblings: sibs})
+		got, err := r.Extract(ctx, lang.File{Path: classified, Src: src, Siblings: sibs})
 		if err != nil {
-			return fmt.Errorf("%s: %w", rel, err)
+			if ctx.Err() != nil {
+				return fmt.Errorf("%s: %w", shown, err) // the run was cancelled: stop
+			}
+			res.Files = append(res.Files, fileResult{Path: shown, Error: err.Error()})
+			unreadable = true
+			continue
 		}
-		res.Files = append(res.Files, fileResult{Path: rel, Result: got})
+		res.Files = append(res.Files, fileResult{Path: shown, Result: &got})
 	}
-	return writeJSON(out, res)
+	if err := writeJSON(out, res); err != nil {
+		return err
+	}
+	if unreadable {
+		return errUnreadable
+	}
+	return nil
+}
+
+// parseError turns a flag parsing failure into misuse; -h stays a help request.
+func parseError(err error) error {
+	if errors.Is(err, flag.ErrHelp) {
+		return err
+	}
+	return usageError{err}
+}
+
+// resolvePath maps a PATH argument to the file to read, the path the output
+// shows and the path the library classifies by. A relative PATH is read under
+// root and is its own classified path. An absolute PATH is read as given; the
+// library sees it relative to root when it lies under root, and otherwise by
+// its slash form, so a directory name such as .github/workflows still
+// classifies.
+func resolvePath(rootAbs, p string) (readPath, shown, classified string) {
+	if !filepath.IsAbs(p) {
+		rel := filepath.ToSlash(filepath.Clean(p))
+		return filepath.Join(rootAbs, filepath.FromSlash(rel)), rel, rel
+	}
+	clean := filepath.Clean(p)
+	if rel, err := filepath.Rel(rootAbs, clean); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return clean, filepath.ToSlash(rel), filepath.ToSlash(rel)
+	}
+	slash := filepath.ToSlash(clean)
+	return clean, slash, slash
 }
 
 // cmdDialects prints every dialect with its measured level.
@@ -137,7 +210,10 @@ func cmdDialects(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("dialects", flag.ContinueOnError)
 	pack := fs.String("pack", "", "directory of a dialect pack to add")
 	if err := fs.Parse(args); err != nil {
-		return err
+		return parseError(err)
+	}
+	if fs.NArg() != 0 {
+		return usageError{fmt.Errorf("dialects takes no PATH, got %q", fs.Arg(0))}
 	}
 	r, err := lang.New(packOptions(*pack)...)
 	if err != nil {
@@ -145,8 +221,9 @@ func cmdDialects(args []string, out io.Writer) error {
 	}
 	defer r.Close()
 	return writeJSON(out, struct {
-		Dialects []lang.DialectInfo `json:"dialects"`
-	}{r.Dialects()})
+		SchemaVersion int                `json:"schema_version"`
+		Dialects      []lang.DialectInfo `json:"dialects"`
+	}{schemaVersion, r.Dialects()})
 }
 
 // packOptions is the option that adds the pack in dir, none for "".

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -27,7 +28,10 @@ func TestFathomLangJSONGolden(t *testing.T) {
 	if code := run(context.Background(), args, strings.NewReader(""), &out, &errw); code != 0 {
 		t.Fatalf("extract exit %d: %s", code, errw.String())
 	}
-	checkGolden(t, "extract.json", out.Bytes())
+	// A level is what a reading measured, and a regrade moves it. The level
+	// table has its own drift test (TestLevelsTableMatchesReadings), so the
+	// golden pins the field and not the state of a reading.
+	checkGolden(t, "extract.json", levelValue.ReplaceAll(out.Bytes(), []byte(`"level": "<level>"`)))
 
 	out.Reset()
 	if code := run(context.Background(), []string{"dialects"}, strings.NewReader(""), &out, &errw); code != 0 {
@@ -35,6 +39,10 @@ func TestFathomLangJSONGolden(t *testing.T) {
 	}
 	checkGolden(t, "dialects.json", shapeOfDialects(t, out.Bytes()))
 }
+
+// levelValue matches a measured level in the extract output: L1 to L4 or none.
+// "unmeasured" is not a reading and stays literal.
+var levelValue = regexp.MustCompile(`"level": "(L[1-4]|none)"`)
 
 // shapeOfDialects keeps three stable entries of the dialects output and
 // replaces the values that move as languages improve (matches, level, grade)
@@ -51,7 +59,8 @@ func shapeOfDialects(t *testing.T, raw []byte) []byte {
 		Grade   any    `json:"grade"`
 	}
 	var doc struct {
-		Dialects []entry `json:"dialects"`
+		SchemaVersion int     `json:"schema_version"`
+		Dialects      []entry `json:"dialects"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -75,8 +84,9 @@ func shapeOfDialects(t *testing.T, raw []byte) []byte {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(struct {
-		Dialects []entry `json:"dialects"`
-	}{out}); err != nil {
+		SchemaVersion int     `json:"schema_version"`
+		Dialects      []entry `json:"dialects"`
+	}{doc.SchemaVersion, out}); err != nil {
 		t.Fatal(err)
 	}
 	return b.Bytes()

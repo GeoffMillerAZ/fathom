@@ -1281,7 +1281,8 @@ The binary's package closure is the point of the library (ADR-092): at most 80 n
 packages with no CUE, and a stripped binary under 30 MiB. Cobra, its completion and `cli.config`'s CUE
 layers would add packages the closure test (`TestLangClosure`) refuses, and CUE is what `pkg/lang/cue`
 exists to keep out. The contract kept: `-h` and `help` print usage to stdout and exit 0, a misuse exits 2,
-an error exits 1 with the reason on standard error, and stdout is JSON whose shape is pinned by
+an error, or a file that cannot be read, exits 1 with the reason on standard error (the JSON still holds
+every file), and stdout is JSON with a `schema_version` whose shape is pinned by
 `TestFathomLangJSONGolden`. No upstream kit change is needed; a stdlib-only variant of the command
 chrome would be the reusable contribution if a second tool wants the same closure bar.
-Consumer proof: `TestUsageAndErrors` and `TestFathomLangJSONGolden` in `cmd/fathom-lang`.
+Consumer proof: `TestUsageAndErrors`, `TestExtractAbsolutePathsAndPerFileErrors` and `TestFathomLangJSONGolden` in `cmd/fathom-lang`.

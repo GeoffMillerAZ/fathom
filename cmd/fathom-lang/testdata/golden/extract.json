@@ -1,7 +1,9 @@
 {
+  "schema_version": 1,
   "files": [
     {
       "path": "main.tf",
+      "error": "",
       "result": {
         "dialect": "terraform",
         "language": "terraform",
@@ -43,13 +45,14 @@
         ],
         "unresolved": [],
         "facts": [],
-        "level": "L3",
+        "level": "<level>",
         "incomplete": false,
         "notes": []
       }
     },
     {
       "path": "a.go",
+      "error": "",
       "result": {
         "dialect": "go",
         "language": "go",
@@ -91,13 +94,14 @@
         ],
         "unresolved": [],
         "facts": [],
-        "level": "L4",
+        "level": "<level>",
         "incomplete": false,
         "notes": []
       }
     },
     {
       "path": "blob.bin",
+      "error": "",
       "result": {
         "dialect": "",
         "language": "unclassified",
@@ -113,6 +117,7 @@
     },
     {
       "path": "misc.yaml",
+      "error": "",
       "result": {
         "dialect": "",
         "language": "yaml",
