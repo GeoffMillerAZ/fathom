@@ -1,0 +1,59 @@
+# IaC provider catalog pins (IF-5, docs/plans/iac-facts.md; ADR-091).
+#
+# One catalog is built per provider major line (IF-M0 A2): it holds every stable release of the line, so exact-version
+# binding reaches every lockfile selection whose line an operator has added. A pin names a release by version and by
+# the sha256 of its provider archive for `platform`. cmd/iaccatalog refuses an archive whose sha256 differs.
+#
+# This file pins one or two releases per provider so the builder and its receipt can be exercised end to end. Widening
+# a line to every stable release is data, not code: IF-P8 measures the cost first, and IF-6 publishes only if the
+# 32 MiB and 500,000-entry bars hold. `licence` stays empty until IF-11 audits each provider at its pin.
+#
+# Values: the registry's own download metadata for platform linux_amd64, read 2026-11-04.
+registry: registry.opentofu.org
+platform: linux_amd64
+providers:
+  - source: hashicorp/aws
+    licence: ""
+    lines:
+      - line: 5
+        releases:
+          - {version: 5.100.0, sha256: 9750423138bb01ecaa5cec1a6691664f7783d301fb1628d3b64a231b6b564e0e}
+      - line: 6
+        releases:
+          - {version: 6.72.0, sha256: afd61efd15d485cf0f621d5bdaf730143db6e763e862ed59f8e94b51d23e8a71}
+  - source: hashicorp/azurerm
+    licence: ""
+    lines:
+      - line: 3
+        releases:
+          - {version: 3.117.1, sha256: 7c7741f66ff5b05051db4b6c3d9bad68c829f9e920a7f1debdca0ab8e50836a3}
+      - line: 4
+        releases:
+          - {version: 4.81.0, sha256: faf96f32e7bd9bf4886a34635c93e80f512214228531e7548ac5b2e3b93a525d}
+  - source: hashicorp/google
+    licence: ""
+    lines:
+      - line: 6
+        releases:
+          - {version: 6.50.0, sha256: 96545c8cd4d3a57069c5d1799eab5aedd887e16d98b5559a195f6d2c2d9bc674}
+      - line: 7
+        releases:
+          - {version: 7.46.2, sha256: cf21367691194ca138f0f75d46f3fc5bd1afd6c9c54e774172552e272654e23e}
+  - source: hashicorp/kubernetes
+    licence: ""
+    lines:
+      - line: 2
+        releases:
+          - {version: 2.38.0, sha256: 96eecc9f94938a0bc35b8a63d2c4a5f972395e44206620db06760b730d0471fc}
+      - line: 3
+        releases:
+          - {version: 3.4.0, sha256: 62df4432adbfcc54e26b507284aefed6e65f5ab2316bf219d3cc20aeb59f60d9}
+  - source: hashicorp/helm
+    licence: ""
+    lines:
+      - line: 2
+        releases:
+          - {version: 2.17.0, sha256: 6512e2ab9f2fa31cbb90d9249647b5c5798f62eb1215ec44da2cdaa24e38ad25}
+      - line: 3
+        releases:
+          - {version: 3.3.0, sha256: 2c8cb4f322eb11396b053fde8f6e69cad689b46a15bddba458526342dae566db}
