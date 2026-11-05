@@ -116,6 +116,10 @@ func (m *NestMeter) CloseOperand(kind byte) bool {
 	return m.Op()
 }
 
+// Unclosed is the number of brackets still open, which a file that ends has none of
+// when a parser can read it to the end.
+func (m *NestMeter) Unclosed() int { return len(m.levels) }
+
 // Innermost is the kind of the bracket open now, or 0 at the top level.
 func (m *NestMeter) Innermost() byte {
 	if n := len(m.levels); n > 0 {
@@ -240,7 +244,20 @@ func protoRefusal(src []byte) string {
 		}
 		m.EndExpr()
 	}
+	if m.Unclosed() > 0 {
+		// emicklei/proto's service and message loops have no exit at the end of the
+		// input: `service s{ rpc a(b) returns (c) {` never returns, and a real file
+		// cut at a bracket reads the same. A file with a bracket open at its end is
+		// no proto file the parser can finish, and it is refused here.
+		return UnclosedReason("proto parse")
+	}
 	return ""
+}
+
+// UnclosedReason is the one-line reason for a file refused for a bracket still
+// open at its end.
+func UnclosedReason(what string) string {
+	return fmt.Sprintf("%s: a bracket is still open at the end of the file, which the parser cannot read to its end", what)
 }
 
 // jsonTooDeep reports whether src nests [ and { deeper than maxNesting. A
