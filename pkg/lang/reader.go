@@ -21,8 +21,9 @@ import (
 var ErrClosed = errors.New("lang: reader is closed")
 
 // DefaultMaxFileBytes is the largest file a Reader reads: the product's own
-// limit. A larger file is skipped as oversize.
-const DefaultMaxFileBytes = langroute.MaxExtractSize
+// limit, 2 MiB. A larger file is skipped as oversize. The value is a literal;
+// TestPublicConstantValues holds it to the product's.
+const DefaultMaxFileBytes = 2 * 1024 * 1024
 
 // maxSiblings bounds the sibling list one call may carry.
 const maxSiblings = 1 << 20

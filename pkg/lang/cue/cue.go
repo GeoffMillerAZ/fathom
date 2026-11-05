@@ -16,9 +16,6 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/lang"
 )
 
-// Family is the name Option links.
-const Family = langlink.CUE
-
 func init() {
 	langlink.Register(langlink.Family{
 		Name: langlink.CUE,
@@ -32,4 +29,4 @@ func init() {
 }
 
 // Option links CUE and Timoni extraction into the Reader it is passed to.
-func Option() lang.Option { return lang.Link(Family) }
+func Option() lang.Option { return lang.Link(langlink.CUE) }

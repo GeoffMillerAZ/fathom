@@ -15,17 +15,21 @@ import (
 
 // The reasons a pack or a Go extractor is refused, in PackError.Reason. The
 // set is closed.
+//
+// The values are written as literals, not aliases of the internal constants,
+// so a consumer reading the godoc sees them and a change to one is a visible
+// edit here. TestPublicConstantValues holds them to the internal ones.
 const (
-	PackEmpty      = extractor.PackEmpty      // the pack holds no dialect
-	PackManifest   = extractor.PackManifest   // a manifest is unreadable or breaks the dialect rules
-	PackConflict   = extractor.PackConflict   // an id, source kind, extension or basename is already taken
-	PackEngine     = extractor.PackEngine     // the engine is not tags or doc
-	PackInjections = extractor.PackInjections // queries.injections is not accepted in a pack
-	PackGrammar    = extractor.PackGrammar    // the grammar is not one the library embeds
-	PackQuery      = extractor.PackQuery      // a query does not compile against its grammar
-	PackContainer  = extractor.PackContainer  // match.container is not accepted in a pack
-	PackClaims     = extractor.PackClaims     // the dialect claims no file, or claims one by a shebang
-	PackRoute      = extractor.PackRoute      // the dialect claims what a built-in dialect owns outright
+	PackEmpty      = "empty"      // the pack holds no dialect
+	PackManifest   = "manifest"   // a manifest is unreadable or breaks the dialect rules
+	PackConflict   = "conflict"   // an id, source kind, extension or basename is already taken
+	PackEngine     = "engine"     // the engine is not tags or doc
+	PackInjections = "injections" // queries.injections is not accepted in a pack
+	PackGrammar    = "grammar"    // the grammar is not one the library embeds
+	PackQuery      = "query"      // a query does not compile against its grammar
+	PackContainer  = "container"  // match.container is not accepted in a pack
+	PackClaims     = "claims"     // the dialect claims no file, claims one by a shebang, or names a glob that is not a pattern
+	PackRoute      = "route"      // the dialect claims what a built-in dialect owns outright
 )
 
 // PackError is why New refused a pack or a Go extractor. Nothing of it is
@@ -146,8 +150,9 @@ func WithExtractor(m Match, e Extractor) Option {
 }
 
 // Link adds an extractor family a sibling package registers by import, by its
-// name. Use that package's Option (pkg/lang/cue.Option) rather than calling
-// Link. New returns an error when the family's package was not imported.
+// name. It is the hook pkg/lang/cue's Option calls, and cue is the only family
+// there is: write cue.Option(), not Link("cue"). New returns an error when the
+// family's package was not imported.
 func Link(family string) Option {
 	return func(c *config) error {
 		if _, known := langlink.FamilyDialects[family]; !known {

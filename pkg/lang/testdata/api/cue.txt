@@ -10,12 +10,6 @@ out.
 
     r, err := lang.New(cue.Option())
 
-CONSTANTS
-
-const Family = langlink.CUE
-    Family is the name Option links.
-
-
 FUNCTIONS
 
 func Option() lang.Option
