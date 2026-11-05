@@ -1,0 +1,9 @@
+struct Order {
+  1: i32 id,
+  2: string sku
+}
+
+service Shop {
+  Order place(1: Order order),
+  void cancel(1: i32 id)
+}

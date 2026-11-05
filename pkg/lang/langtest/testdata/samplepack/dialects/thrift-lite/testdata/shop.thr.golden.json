@@ -1,0 +1,56 @@
+{
+  "dialect": "thrift-lite",
+  "language": "unclassified",
+  "skipped": "",
+  "symbols": [
+    {
+      "key": "shop.Order",
+      "name": "Order",
+      "package": "shop",
+      "kind": "ThriftLiteStruct",
+      "canonical": "struct",
+      "line": 1,
+      "end_line": 4,
+      "signature": "",
+      "tier": "verified"
+    },
+    {
+      "key": "shop.Shop",
+      "name": "Shop",
+      "package": "shop",
+      "kind": "ThriftLiteService",
+      "canonical": "service",
+      "line": 6,
+      "end_line": 9,
+      "signature": "service Shop {",
+      "tier": "verified"
+    },
+    {
+      "key": "shop.Shop.place",
+      "name": "Shop.place",
+      "package": "shop",
+      "kind": "ThriftLiteFunction",
+      "canonical": "rpc",
+      "line": 7,
+      "end_line": 7,
+      "signature": "Order place(1: Order order)",
+      "tier": "verified"
+    },
+    {
+      "key": "shop.Shop.cancel",
+      "name": "Shop.cancel",
+      "package": "shop",
+      "kind": "ThriftLiteFunction",
+      "canonical": "rpc",
+      "line": 8,
+      "end_line": 8,
+      "signature": "void cancel(1: i32 id)",
+      "tier": "verified"
+    }
+  ],
+  "references": [],
+  "unresolved": [],
+  "facts": [],
+  "level": "unmeasured",
+  "notes": []
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Clock",
+  "kind": "timer",
+  "uses": ["Battery"],
+  "imports": ["parts/battery.widget.json"]
+}
