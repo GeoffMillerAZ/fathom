@@ -130,7 +130,8 @@ func (r *bindingReader) module(dir string) *bindModule {
 		r.skip("%s holds more than %d configuration files; the rest were not read", dir, maxBindingTFFiles)
 		names = names[:maxBindingTFFiles]
 	}
-	// Override files go last: they replace a required_providers entry by name and add no module call.
+	// Override files go last: they replace a required_providers entry by name. A module call in one is not
+	// merged, so one that sets a source or providers refuses the answer.
 	sort.SliceStable(names, func(i, j int) bool { return !isOverrideFile(names[i]) && isOverrideFile(names[j]) })
 	for _, n := range names {
 		name := path.Join(dir, n)
@@ -143,7 +144,12 @@ func (r *bindingReader) module(dir string) *bindModule {
 			r.jsonModule(dir, name, src, override, m)
 			continue
 		}
-		body, _ := r.parse(src, name)
+		body, hadErrors := r.parse(src, name)
+		if hadErrors {
+			// The parser recovers past an error and can hand back a different block than the file declares, so what
+			// it returned is not an answer: the refusal a lockfile gets.
+			r.skip("%s does not parse, so a required provider or module call in it may be hidden or misread", name)
+		}
 		if body == nil {
 			continue
 		}
@@ -152,12 +158,19 @@ func (r *bindingReader) module(dir string) *bindModule {
 			case "terraform":
 				for _, inner := range blk.Body.Blocks {
 					if inner.Type == "required_providers" {
-						readRequiredProviders(inner.Body, m.required)
+						r.readRequiredProviders(name, inner.Body, m.required)
 					}
 				}
 			case "module":
-				if len(blk.Labels) == 1 && !override {
+				if len(blk.Labels) != 1 {
+					continue
+				}
+				if !override {
 					m.calls = append(m.calls, readModuleCall(dir, blk))
+				} else if _, ok := blk.Body.Attributes["source"]; ok {
+					r.skipOverrideModule(name, blk.Labels[0])
+				} else if _, ok := blk.Body.Attributes["providers"]; ok {
+					r.skipOverrideModule(name, blk.Labels[0])
 				}
 			}
 		}
@@ -180,24 +193,47 @@ func literalString(e hclsyntax.Expression) (string, bool) {
 	return lit.Val.AsString(), true
 }
 
-func readRequiredProviders(body *hclsyntax.Body, into map[string]bindRequired) {
-	for name, attr := range body.Attributes {
+// skipOverrideModule refuses the answer for an override file that sets a module's source or providers. OpenTofu
+// merges the override over the call, so the module graph is not the one the base file declares, and this reader
+// does not merge it.
+func (r *bindingReader) skipOverrideModule(file, module string) {
+	r.skip("%s overrides the source or providers of module %q, which this reader does not merge, so the module graph is not known", file, module)
+}
+
+// readRequiredProviders reads one required_providers block. An entry, or a source or version in one, that is not a
+// literal string is something OpenTofu evaluates or rejects and this reader does not, so it refuses the answer and
+// is never read as an entry that states nothing.
+func (r *bindingReader) readRequiredProviders(file string, body *hclsyntax.Body, into map[string]bindRequired) {
+	names := make([]string, 0, len(body.Attributes))
+	for name := range body.Attributes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		attr := body.Attributes[name]
 		if s, ok := literalString(attr.Expr); ok { // the legacy `aws = "~> 5.0"` form
 			into[name] = bindRequired{constraint: s}
 			continue
 		}
 		obj, ok := attr.Expr.(*hclsyntax.ObjectConsExpr)
 		if !ok {
+			r.skip("%s: required_providers entry %q is not a literal string or object and was not read", file, name)
 			continue
 		}
 		var req bindRequired
 		for _, it := range obj.Items {
 			key := hcl.ExprAsKeyword(it.KeyExpr)
-			s, _ := literalString(it.ValueExpr)
-			switch key {
-			case "source":
+			if key != "source" && key != "version" {
+				continue
+			}
+			s, ok := literalString(it.ValueExpr)
+			if !ok {
+				r.skip("%s: the %s of required_providers entry %q is not a literal string and was not read", file, key, name)
+				continue
+			}
+			if key == "source" {
 				req.source = s
-			case "version":
+			} else {
 				req.constraint = s
 			}
 		}

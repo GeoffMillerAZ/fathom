@@ -67,12 +67,12 @@ func (r *bindingReader) jsonModule(dir, name string, src []byte, override bool, 
 			}
 			for _, set := range sets {
 				for _, prov := range sortedKeys(set) {
-					m.required[prov] = readJSONRequired(set[prov])
+					m.required[prov] = r.readJSONRequired(name, prov, set[prov])
 				}
 			}
 		}
 	}
-	if raw, ok := top["module"]; ok && !override {
+	if raw, ok := top["module"]; ok {
 		calls, ok := jsonObjects(raw)
 		if !ok {
 			r.skip("%s: module is not a block and was skipped", name)
@@ -85,7 +85,16 @@ func (r *bindingReader) jsonModule(dir, name string, src []byte, override bool, 
 					continue
 				}
 				for _, body := range bodies {
-					m.calls = append(m.calls, readJSONModuleCall(dir, label, body))
+					if !override {
+						m.calls = append(m.calls, readJSONModuleCall(dir, label, body))
+						continue
+					}
+					// An override is merged over the call by OpenTofu and not by this reader.
+					_, hasSource := body["source"]
+					_, hasProviders := body["providers"]
+					if hasSource || hasProviders {
+						r.skipOverrideModule(name, label)
+					}
 				}
 			}
 		}
@@ -93,17 +102,33 @@ func (r *bindingReader) jsonModule(dir, name string, src []byte, override bool, 
 }
 
 // readJSONRequired reads one required_providers entry: a constraint string (the legacy form) or an object.
-func readJSONRequired(raw json.RawMessage) bindRequired {
+// An entry, or a source or version in one, that is not a literal string refuses the answer, as in HCL.
+func (r *bindingReader) readJSONRequired(file, prov string, raw json.RawMessage) bindRequired {
 	if s, ok := jsonString(raw); ok {
 		return bindRequired{constraint: s}
 	}
 	var obj map[string]json.RawMessage
 	if json.Unmarshal(raw, &obj) != nil {
+		r.skip("%s: required_providers entry %q is not a literal string or object and was not read", file, prov)
 		return bindRequired{}
 	}
 	var req bindRequired
-	req.source, _ = jsonString(obj["source"])
-	req.constraint, _ = jsonString(obj["version"])
+	for _, key := range []string{"source", "version"} {
+		v, present := obj[key]
+		if !present {
+			continue
+		}
+		s, ok := jsonString(v)
+		if !ok {
+			r.skip("%s: the %s of required_providers entry %q is not a literal string and was not read", file, key, prov)
+			continue
+		}
+		if key == "source" {
+			req.source = s
+		} else {
+			req.constraint = s
+		}
+	}
 	return req
 }
 
