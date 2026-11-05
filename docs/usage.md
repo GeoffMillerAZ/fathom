@@ -43,7 +43,9 @@ agent through `fathom serve-mcp --url <daemon rpc url>`, a stdio front that open
 so quote levels from there; it is regenerated, never hand-edited.
 
 To use that reading without the rest of fathom, import `pkg/lang` from Go or run `fathom-lang extract|dialects`
-(JSON, stdlib flags only; release archives and `task deploy` carry it beside `fathom`).
+(JSON, stdlib flags only; release archives and `task deploy` carry it beside `fathom`). `extract` reads in a supervised
+child process, so a file that hangs, overflows the stack or allocates without bound costs that file's result (`Incomplete`,
+a `read-killed:` note) and not the batch; `-deadline`, `-max-memory` and `-in-process` tune it.
 Guide: [use-cases/lang-library.md](use-cases/lang-library.md).
 
 ---

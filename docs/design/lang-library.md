@@ -55,7 +55,7 @@ r, err := lang.New(
 defer r.Close()
 
 res, err := r.Extract(ctx, lang.File{Path: "main.tf", Src: src, Siblings: paths})
-// res.Dialect, res.Language, res.Skipped (binary, oversize, generated, ambiguous, unclassified, not-linked), res.Symbols,
+// res.Dialect, res.Language, res.Skipped (binary, oversize, generated, ambiguous, unclassified, not-linked, busy), res.Symbols,
 // res.References, res.Unresolved, res.Facts, res.Level, res.Incomplete, res.Notes
 
 for _, d := range r.Dialects() { /* id, kind, engine, matches, measured level and grade */ }
@@ -73,22 +73,11 @@ Rules:
 2. **`Siblings`** is the optional path list that YAML classification reads. Empty is legal and is disclosed when it changes a verdict.
 3. **Errors, never panics.** `lang.New` returns the error a bad variant gives. `Extract` prevents what it can, and a panic in a
    built-in extractor that it did not prevent is that file's failure: an Incomplete reading with a one-line note ("the reader
-   failed on this input"), so one file never ends a batch. A stack overflow is fatal and cannot be recovered, and a parser
-   whose cost grows with the square of its input cannot be interrupted, so such a parser is handed a file only after a guard
-   has counted what it recurses on or spends its time on, and a file past a bound reads Incomplete with the reason. The count
-   is the parser's own: the HCL and CUE guards read the tokens of the lexer the parser reads (brackets, prefix operators,
-   conditionals, splats, field labels, the chain of selectors, calls and indexes applied to a bracket, and in HCL the template
-   directives a body leaves open and the literal pieces of one template; a `{for ...}` expression, whose newlines the parser
-   ignores, is not reset at a newline). The CUE guard scans a copy in which `@` is an operator, since the scanner reads an
-   attribute by recursion and no guard that drives it survives, and counts lexical errors, which the parser keeps in a list it
-   searches linearly. The proto guard reads the tokens of its scanner and counts brackets, `-` and a comment where a literal is
-   expected, and runs of tokens no statement ends. nginx and Caddyfile refuse in the parser, which carries the block depth. A
-   second reading of the raw text drifts from the parser, so none is kept for those. A TOML document of more than 40,000 keys is
-   refused too: go-toml's repeat check is quadratic (60,000 keys took 4 s). A guard is a belief about a parser, so a shape no
-   guard counts is not promised refused: each belief has a test over a family of shapes at the size the guard must refuse and
-   the size of a flat file it must read.
+   failed on this input"), so one file never ends a batch. What `Extract` promises for input that is hostile or only very
+   large, and what it does not, is rule 10.
    There is a fuzz target, and a test cuts every dialect fixture at four points and fails on a panic.
-4. **Concurrency.** A `Reader` is safe for concurrent use and deterministic: equal inputs give byte-equal JSON.
+4. **Concurrency.** A `Reader` is safe for concurrent use and deterministic: equal inputs give byte-equal JSON, except where a
+   time limit decides (rule 10).
 5. **Compilation cache.** The wazero runtime is process-wide, so the on-disk cache is a package function, `lang.EnableCompilationCache(dir)`. It errors on a second directory and refuses a group- or world-writable one, because the cache holds machine code (LB-F26). It is off by default.
 6. **Limits.** The product's limits apply (2 MiB file, 64 MiB module, binary and generated sniffs). `WithLimits` may lower them. No
    option raises a module's memory cap.
@@ -113,12 +102,35 @@ Rules:
    that declares none (a CMake link, a Markdown link). `Line` is
    where the reference is written, 0 when the engine records none (calls read by the Go and tree-sitter engines). `Symbol.Key` is
    `Package.Name`, and only a Go call target is already one.
-10. **Context and the deadline.** `Extract` checks its context on entry, after dispatch settles on an extractor, and after the
-    extractor returns, never inside a parse: a deadline shorter than one parse is returned when that parse ends, not at once, and
-    the result of a file read past its deadline is not returned. The engine's own 10 s parse and query deadline is the one stated
-    exception to byte-equal output: a file that runs past it reads as incomplete with the budget named, and a slower machine can
-    fail where a faster one does not. So does the grammar module's 64 MiB memory limit, which a 690 KB Python file of 30,000
-    functions exceeds: it reads incomplete with the limit named, and no option raises it.
+10. **Hostile input: two boundaries.** Five rounds of review showed that guards cannot end this. Each round closed the shapes it
+    named and found new ones, because Go cannot interrupt a goroutine and the third-party parsers carry costs no guard fully
+    predicts (ADR-092, the read guarantee). So the door promises what two boundaries deliver, and nothing else.
+    - **In process: a deadline.** `Extract` returns by a deadline, `DefaultReadDeadline` (30 s, above the tree-sitter engine's own
+      budgets), which `WithLimits` may lower and no pack or option may raise. A read that overruns returns `Incomplete` with one
+      note that names the deadline, and none of the facts it was reading. The parser is abandoned, not stopped: it keeps its CPU,
+      and what it allocates, until it returns on its own, and its result is discarded. Once `GOMAXPROCS` abandoned parsers are
+      still running, `Extract` starts nothing and returns `Skipped` `busy` with a note, and it recovers when they finish. `Close`
+      does not wait for an abandoned parser. A context that ends first returns its error and abandons the read the same way. The
+      deadline, the engine's own 10 s budget and the grammar module's 64 MiB memory limit (a 690 KB Python file of 30,000
+      functions exceeds it) are the stated exceptions to byte-equal output: they read as incomplete with the budget named, and a
+      slower machine can fail where a faster one does not.
+    - **Across a process: a kill.** `pkg/lang` starts no process (the closure test keeps that true), so a fatal stack overflow, a
+      parser that never returns and a read that allocates without bound are the calling process's. `fathom-lang extract` reads in
+      a supervised child by default: the same binary with a hidden flag, paths on standard input, one JSON line back per file.
+      The parent gives each file the deadline plus a margin, and kills and restarts the child when that passes, when the child
+      dies by any cause (a fatal stack overflow included), when its watchdog finds it past `-max-memory` (4 GiB by default,
+      polled about every 100 ms, exiting with a distinct status), and when the child answered by abandoning a parser. The file in
+      hand reads `Incomplete` with a `read-killed:` note, and the batch goes on with the next file. `-in-process` turns this off.
+      Output is byte-equal in both modes for a batch that faults nowhere. A consumer that reads input it does not trust uses this
+      boundary, from the command or by running the library in a process of its own.
+    - **Guards that stay.** Where nothing in process survives a failure the guard stays: a parser that recurses on nesting is handed
+      no file nested past 10,000 levels, since a stack overflow is fatal. There is one HCL guard (`internal/hclbound`, used by
+      the extractors and by the stand-alone reads), whose refusal states the bound that fired. A few parsers also refuse a shape
+      that cost them hours (a run of tokens no statement ends, a flood of lexical errors, a TOML document of 40,000 keys). A
+      refused file reads `Incomplete` with the reason. Cost shapes get no new guard unless a tiny file hangs or holds gigabytes.
+      **No shape is promised refused, and no shape is promised bounded in time or memory in process**: the deadline bounds the
+      caller's wait and the process boundary bounds the damage. Each guard has a test over a family of shapes, at the size it
+      must refuse and the size of a flat file it must read.
 11. **Value domains.** `Dialect` is "" only when nothing read the file. The generic JSON and TOML readers have ids
     (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and a level on a read one. A file
     owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
@@ -272,7 +284,7 @@ if** an outside consumer reports a real version conflict. The closure test keeps
 
 Each is a plan row, in the gate.
 
-1. A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP, `net/http`, or more than the budgeted package count (79: the consumer bar of 80 includes the consumer's own package).
+1. A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP, `net/http`, or more than the budgeted package count (80). The closure read 78 and the read guarantee added two leaf packages, `internal/readlimit` and `internal/hclbound`, so a consumer now links 81 with its own, one over LL-M1's bar of 80: LL-M1 is to be re-read and the bar decided.
 2. A no-dial and no-write test: the library opens no socket and writes no file unless a cache directory was given.
    `net` stays in the closure through wazero, so the test watches behavior, and the closure test forbids `net/http`. A second test
    reads the source of every fathom package the door links: a file-system write may appear only in a file that writes a path its

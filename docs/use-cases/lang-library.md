@@ -37,16 +37,16 @@ res, err := r.Extract(ctx, lang.File{Path: "infra/main.tf", Src: src, Siblings: 
 ```
 
 - **Bytes and a path.** `Path` is repository-relative with forward slashes. `Siblings` (the other paths in the same repository) is optional: some classifications read it (an Ansible role, a Helm chart, a Timoni module), and `Notes` says so when leaving it out may have changed the answer.
-- **Skipped, with a reason.** A file no dialect reads is not an error. `Skipped` is one of `binary`, `oversize`, `generated`, `ambiguous`, `unclassified` or `not-linked`, and a skipped file has no facts.
+- **Skipped, with a reason.** A file no dialect reads is not an error. `Skipped` is one of `binary`, `oversize`, `generated`, `ambiguous`, `unclassified`, `not-linked` or `busy` (see Reading hostile input), and a skipped file has no facts.
 - **Incomplete.** `res.Incomplete` is true when an engine could not fully read the file, and `Notes` gives a one-line reason (a decode failure, or the budget a very large file spent, such as the grammar module's 64 MiB memory limit). A policy tool that must not pass a file it could not read should refuse on it. The tree-sitter dialects recover from a syntax error without reporting it, so `false` means no engine reported a failure, not that every construct was read.
 - **Credentials.** The door withholds the places a credential is found and does not promise a `Result` holds none. The userinfo of a URL is dropped wherever it lands (a module source, a dependency repository, a kustomize resource, a reference target), without changing the URL's host, and a docker image reference keeps its name. A string literal bound to a name or a key is masked as `***` where it is a parameter's default, a rule's value or a fact's value, whatever the name is. A task's text is not returned, only the program it runs. A credential in another place (a name, a label, a literal that is an argument, a block's own attributes) is returned as written.
-- **Limits that refuse.** A file nested past 10,000 levels (brackets, but also a run of prefix operators or field labels, template directives left open, and a chain of selectors or calls), a run of more than 10,000 tokens that no statement ends (proto), more than 10,000 lexical errors (CUE), a template of more than 20,000 literal pieces (HCL) and a TOML document of more than 40,000 keys read `Incomplete` with the reason, because the parsers behind them overflow the stack or run in quadratic time, and neither can be interrupted. A shape no guard counts is not promised refused. A panic in an extractor is one file's `Incomplete`, not the batch's end.
+- **Limits that refuse.** A parser that recurses on nesting is handed no file nested past 10,000 levels, and a few parsers refuse a shape that cost them hours (a template that melds past a budget, a run of tokens no statement ends in proto, a flood of lexical errors in CUE, a TOML document of 40,000 keys). Those files read `Incomplete` with the reason. No other shape is promised refused, or bounded in time or memory, in process: see Reading hostile input. A panic in an extractor is one file's `Incomplete`, not the batch's end.
 - **References.** `Reference.To` is the target as the dialect writes it (with a URL's userinfo dropped), and `ToKey` is the `Key` of the one symbol of the same file it names, empty otherwise (another file, an ambiguous name). `Edge` is the relation the dialect declared (`ref`, `depends_on`, `uses`, `references`), `call` for a call, and `reference` for a document dialect that declares none. `Line` is where it is written, 0 when the engine records none (a call read by the Go or a tree-sitter engine).
 - **`Canonical` and `Kind`.** `Symbol.Canonical` is a closed cross-dialect vocabulary that only grows, and is compatibility surface. `Symbol.Kind` is each dialect's own name (for example `TerraformResource`) and changes as a language improves: do not branch on a `Kind` across dialects.
 - **Concurrency and determinism.** A `Reader` is safe for concurrent use. Equal inputs give byte-equal JSON.
 - **No side effects.** The library opens no socket and writes no file. The one opt-in is `lang.EnableCompilationCache(dir)`, which keeps the compiled grammars (machine code) in `dir`; it refuses a directory that a group or other user can write, and errors on a second directory.
 - **Limits.** Files over 2 MiB are skipped. `WithLimits` may lower the limit, never raise it.
-- **Context.** `Extract` checks `ctx` on entry and between a file's stages (after dispatch and after the engine returns), never inside a parse: a deadline shorter than one parse is reported when that parse ends, not at once. The engine's own 10 second parse and query deadline is the one wall-clock input to a `Result`: a file that runs past it reads `Incomplete` with the deadline named, so a slower machine can read fewer files fully than a faster one.
+- **Context and the deadline.** `Extract` checks `ctx` on entry and between a file's stages, and returns by `lang.DefaultReadDeadline` (30 seconds, lowered by `WithLimits`). A context that ends mid-parse returns its error at once and abandons the read. The deadline, the engine's own 10 second parse and query deadline and a grammar module's memory limit are the wall-clock and memory inputs to a `Result`: a slower machine can read fewer files fully than a faster one.
 - **Dialect and Level.** `Dialect` is "" only for a skipped file. The JSON and TOML files no dialect claims are read by `generic-json` and `generic-toml`, which `Dialects` lists as unmeasured. `Level` is "" on a skipped file.
 
 The runnable versions are the godoc examples on `Reader.Extract`, `Reader.Dialects` and `WithExtractor`.
@@ -60,11 +60,12 @@ The runnable versions are the godoc examples on `Reader.Extract`, `Reader.Dialec
 ## From a shell
 
 ```
-fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR] PATH...
+fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
+                    [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
 fathom-lang dialects [-pack DIR]
 ```
 
-`extract` prints `{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]}`, `dialects` prints `{"schema_version":1,"dialects":[...]}`. Both are JSON with the field names of `lang.Result` and `lang.DialectInfo`. PATH may be absolute or relative to `-root`. A file that cannot be read has an `error` and a null `result`, and the other files are still read. The output is compatibility surface for tools not written in Go: fields are added, never renamed, `schema_version` changes only with a break, and a change is a reviewed edit of the goldens under `cmd/fathom-lang/testdata/golden`. Exit 0 when every file was read, 1 when a file could not be read or the run failed, 2 on misuse (a bad flag, no PATH, an unknown command). The command links no CUE: a `.cue` file reads `Skipped: not-linked`, and a Go program adds CUE with `pkg/lang/cue`.
+`extract` prints `{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]}`, `dialects` prints `{"schema_version":1,"dialects":[...]}`. Both are JSON with the field names of `lang.Result` and `lang.DialectInfo`. PATH may be absolute or relative to `-root`. A file that cannot be read has an `error` and a null `result`, and the other files are still read. `extract` reads in a child process it supervises (see Reading hostile input). The output is compatibility surface for tools not written in Go: fields are added, never renamed, `schema_version` changes only with a break, and a change is a reviewed edit of the goldens under `cmd/fathom-lang/testdata/golden`. Exit 0 when every file was read, 1 when a file could not be read or the run failed, 2 on misuse (a bad flag, no PATH, an unknown command). The command links no CUE: a `.cue` file reads `Skipped: not-linked`, and a Go program adds CUE with `pkg/lang/cue`.
 
 ```
 $ fathom-lang extract -root infra main.tf | jq '.files[0].result | {dialect, level, symbols: [.symbols[].name]}'
@@ -84,6 +85,30 @@ Release archives carry `fathom-lang` beside `fathom`, and `task deploy` installs
 
 ---
 
+## Reading hostile input
+
+A parser can hang, allocate without bound or overflow the stack on a file of a few kilobytes, and guards have not ended that: each round of review closed the shapes it named and found new ones. So the library promises two boundaries.
+
+- **In process, a deadline.** `Reader.Extract` returns by `lang.DefaultReadDeadline` (30 seconds; `WithLimits(lang.Limits{ReadDeadline: d})` lowers it). A read that overruns reads `Incomplete` with a `read-deadline:` note and none of its facts. The parser is abandoned, not stopped: it keeps its CPU and memory until it returns. After `GOMAXPROCS` abandoned reads are still running, `Extract` starts nothing and returns `Skipped` `busy`, and recovers when they finish. A fatal stack overflow, a parser that never returns and a read that allocates without bound still take the calling process down or starve it.
+- **Across a process, a kill.** `fathom-lang extract` is the way to read input you do not trust. It reads in a child process it supervises, and kills and restarts the child when a file takes longer than the deadline plus a margin, when the child dies for any reason, or when it holds more than `-max-memory` (4 GiB by default).
+
+A file the supervisor killed does not stop the batch. Its entry has no error and an `Incomplete` result with one note that says why, and the files around it read as they would have:
+
+```json
+{
+  "path": "evil.tf",
+  "error": "",
+  "result": {
+    "dialect": "", "language": "", "skipped": "",
+    "symbols": [], "references": [], "unresolved": [], "facts": [],
+    "level": "", "incomplete": true,
+    "notes": ["read-killed: the reader process ended while it read this file (exit status 2: fatal error: stack overflow), so none of its facts are returned"]
+  }
+}
+```
+
+Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as for any `Incomplete` result: read the JSON. `-deadline` lowers the per-file deadline, `-max-memory 512MiB` lowers the memory limit, and `-in-process` turns the supervisor off. A library caller reads in process, so to get the same protection run `Reader.Extract` in a process of your own that you can kill. Output is byte-equal in both modes for a batch that faults nowhere.
+
 ## Maintained
 
-This doc covers: `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits`, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract and dialects commands, the `-root`, `-siblings`, `-walk`, `-cache` and `-pack` flags and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract and dialects commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
