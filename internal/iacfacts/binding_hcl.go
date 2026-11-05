@@ -96,16 +96,15 @@ func (r *bindingReader) module(dir string) *bindModule {
 	if err != nil {
 		return m
 	}
-	n := 0
-	for _, e := range ents {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".tf") {
-			continue
-		}
-		if n++; n > maxBindingTFFiles {
-			r.note("%s holds more than %d .tf files; the rest were not read", dir, maxBindingTFFiles)
-			break
-		}
-		name := path.Join(dir, e.Name())
+	names := tfModuleFileNames(ents)
+	if len(names) > maxBindingTFFiles {
+		r.note("%s holds more than %d .tf or .tofu files; the rest were not read", dir, maxBindingTFFiles)
+		names = names[:maxBindingTFFiles]
+	}
+	// Override files go last: they replace a required_providers entry by name and add no module call.
+	sort.SliceStable(names, func(i, j int) bool { return !isOverrideFile(names[i]) && isOverrideFile(names[j]) })
+	for _, n := range names {
+		name := path.Join(dir, n)
 		src, ok := r.readBounded(name)
 		if !ok {
 			continue
@@ -114,6 +113,7 @@ func (r *bindingReader) module(dir string) *bindModule {
 		if body == nil {
 			continue
 		}
+		override := isOverrideFile(n)
 		for _, blk := range body.Blocks {
 			switch blk.Type {
 			case "terraform":
@@ -123,7 +123,7 @@ func (r *bindingReader) module(dir string) *bindModule {
 					}
 				}
 			case "module":
-				if len(blk.Labels) == 1 {
+				if len(blk.Labels) == 1 && !override {
 					m.calls = append(m.calls, readModuleCall(dir, blk))
 				}
 			}
@@ -231,7 +231,7 @@ func (r *bindingReader) lockfile(name string) map[string]string {
 		}
 		if attr, ok := blk.Body.Attributes["version"]; ok {
 			if s, ok := literalString(attr.Expr); ok {
-				out[blk.Labels[0]] = s
+				out[strings.ToLower(blk.Labels[0])] = s
 			}
 		}
 	}
@@ -239,15 +239,15 @@ func (r *bindingReader) lockfile(name string) map[string]string {
 }
 
 // reaches reports whether target is root itself or a module root's calls lead to, following local sources to a
-// bounded depth and count. It returns the last call edge on the way in.
-func (r *bindingReader) reaches(root, target string) (string, *bindEdge) {
+// bounded depth and count. It returns every call edge that enters target, so each one's provider mapping is checked,
+// and whether a bound stopped the walk before it saw every module.
+func (r *bindingReader) reaches(root, target string) (via string, edges []*bindEdge, truncated bool) {
 	if root == target {
-		return "self", nil
+		return "self", nil, false
 	}
 	type item struct {
 		dir   string
 		depth int
-		edge  *bindEdge
 	}
 	seen := map[string]bool{root: true}
 	queue := []item{{dir: root}}
@@ -257,25 +257,33 @@ func (r *bindingReader) reaches(root, target string) (string, *bindEdge) {
 		queue = queue[1:]
 		if visited++; visited > maxBindingModules {
 			r.note("the module walk from %s stopped at %d modules", root, maxBindingModules)
-			return "", nil
+			truncated = true
+			break
 		}
 		if it.depth >= maxBindingModuleDepth {
 			r.note("the module walk from %s stopped at depth %d", root, maxBindingModuleDepth)
+			truncated = true
 			continue
 		}
 		for _, c := range r.module(it.dir).calls {
-			if c.dir == "" || seen[c.dir] {
+			if c.dir == "" {
+				continue
+			}
+			if c.dir == target {
+				edges = append(edges, &bindEdge{parent: it.dir, call: c})
+				continue
+			}
+			if seen[c.dir] {
 				continue
 			}
 			seen[c.dir] = true
-			e := &bindEdge{parent: it.dir, call: c}
-			if c.dir == target {
-				return "module call", e
-			}
-			queue = append(queue, item{dir: c.dir, depth: it.depth + 1, edge: e})
+			queue = append(queue, item{dir: c.dir, depth: it.depth + 1})
 		}
 	}
-	return "", nil
+	if len(edges) > 0 {
+		return "module call", edges, truncated
+	}
+	return "", nil, truncated
 }
 
 // checkMapping compares the provider a call's `providers` map hands the callee with the callee's own source for
@@ -302,8 +310,7 @@ func (r *bindingReader) checkMapping(e *bindEdge, local, alias, childSource stri
 }
 
 // findLockfiles walks the repository for .terraform.lock.hcl, skipping version-control and dependency trees.
-func findLockfiles(fsys fs.FS) ([]string, []string) {
-	var out, notes []string
+func findLockfiles(fsys fs.FS) (out, notes []string, truncated bool) {
 	visited := 0
 	_ = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -311,6 +318,7 @@ func findLockfiles(fsys fs.FS) ([]string, []string) {
 		}
 		if visited++; visited > maxBindingWalk {
 			notes = append(notes, fmt.Sprintf("the lockfile search stopped after %d entries", maxBindingWalk))
+			truncated = true
 			return fs.SkipAll
 		}
 		if d.IsDir() {
@@ -326,5 +334,5 @@ func findLockfiles(fsys fs.FS) ([]string, []string) {
 		return nil
 	})
 	sort.Strings(out)
-	return out, notes
+	return out, notes, truncated
 }

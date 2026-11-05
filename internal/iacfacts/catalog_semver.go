@@ -180,18 +180,23 @@ func (c IaCConstraint) Matches(v IaCVersion) bool {
 	return true
 }
 
-// pessimisticHolds is go-version's rule (the library Terraform uses): every part of the constraint except the last
-// written one must be equal, and the last may rise. So `~> 5` is `>= 5`, `~> 5.1` is `>= 5.1, < 6` and `~> 5.1.2`
-// is `>= 5.1.2, < 5.2`.
+// pessimisticHolds is OpenTofu's Ruby-style rule for provider constraints (apparentlymart/go-versions, ruby_style.go):
+// three written parts hold the major and minor and let the patch rise, and one or two written parts hold the major
+// and let the minor rise. So `~> 5` is `>= 5.0, < 6`, the same as `~> 5.0`, `~> 5.1` is `>= 5.1, < 6` and `~> 5.1.2`
+// is `>= 5.1.2, < 5.2`. Terraform's go-version reads `~> 5` as `>= 5` instead, which OpenTofu does not.
 func pessimisticHolds(v IaCVersion, cl constraintClause) bool {
 	vs := [3]int{v.Major, v.Minor, v.Patch}
 	cs := [3]int{cl.v.Major, cl.v.Minor, cl.v.Patch}
-	for i := 0; i < cl.segs-1; i++ {
+	last := cl.segs - 1
+	if last < 1 {
+		last = 1
+	}
+	for i := 0; i < last; i++ {
 		if vs[i] != cs[i] {
 			return false
 		}
 	}
-	return vs[cl.segs-1] >= cs[cl.segs-1]
+	return vs[last] >= cs[last]
 }
 
 // LowerLine names the major line the constraint's lowest admitted release sits in, for a disclosure that tells an

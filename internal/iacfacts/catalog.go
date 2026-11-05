@@ -92,6 +92,8 @@ const (
 	RefuseCorrupt       = "corrupt"
 	RefuseFormat        = "format"
 	RefuseNotFound      = "not-found"
+	// RefuseBindingBound refuses one binding answer a read bound could make wrong.
+	RefuseBindingBound = "binding-bound"
 )
 
 // Refusal scopes.

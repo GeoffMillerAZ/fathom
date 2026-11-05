@@ -84,7 +84,9 @@ type IaCBinding struct {
 	// Roots are the lockfile roots that reach the module.
 	Roots []IaCBindingRoot
 	// Candidates are the distinct versions behind an ambiguous answer.
-	Candidates  []string
+	Candidates []string
+	// Refusal is set when a bound stopped the read and any answer could be wrong. The status is unbound, with no facts.
+	Refusal     *IaCRefusal
 	Disclosures []string
 }
 
@@ -95,8 +97,13 @@ type IaCBinding struct {
 //   - constraint-matched: no lockfile reaches the module (a reusable module is the common case), so the highest
 //     installed release satisfying `required_providers` is used, and the answer says it is not what any root installs.
 //   - ambiguous: roots pin different versions, or a module mapping names a different provider. No first-root choice.
-//   - unbound: no catalog holds the exact version (or any release the constraint admits). The disclosure names the
-//     major line to add. A nearest version is never used, labelled or not.
+//   - unbound: no catalog holds the exact version (or any release the constraint admits), the constraint is
+//     unreadable, or the provider's registry host is neither default registry and no catalog is for that host. The
+//     disclosure names the major line to add. A nearest version is never used, labelled or not.
+//
+// A bound that stops the read (more than MaxBindingLockfiles lockfiles, a stopped lockfile search, or a module walk
+// that stopped before it saw every module) refuses the answer with a reason: it is unbound with Refusal set, never a
+// definite answer a hidden root could contradict.
 //
 // The provider's local name is the `provider =` meta-argument's name, else the type's prefix. Its source is the
 // module's `required_providers` entry, else Terraform's implied hashicorp/<name>. A module call's `providers` map
@@ -116,53 +123,66 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	rc.notes = nil
 	req, declared := mod.required[local]
 	b.Source = normalizeProviderSource(req.source, local)
+	implied := providerHostImplied(req.source)
 	b.Constraint = req.constraint
 	if !declared {
 		b.Disclosures = append(b.Disclosures, fmt.Sprintf("provider %q is not in required_providers; Terraform implies %s", local, b.Source))
 	}
-	cons, err := ParseIaCConstraint(req.constraint)
-	if err != nil {
-		b.Disclosures = append(b.Disclosures, "the version constraint is unreadable ("+err.Error()+"), so it is ignored")
-		cons = IaCConstraint{}
-	}
+	cons, consErr := ParseIaCConstraint(req.constraint)
 
 	locks := q.Lockfiles
+	incomplete := ""
 	if locks == nil {
-		var found []string
-		found, rc.notes = findLockfiles(q.Repo)
+		var found, notes []string
+		var cut bool
+		found, notes, cut = findLockfiles(q.Repo)
 		locks = found
-		b.Disclosures = append(b.Disclosures, rc.notes...)
-		rc.notes = nil
+		b.Disclosures = append(b.Disclosures, notes...)
+		if cut {
+			incomplete = fmt.Sprintf("the lockfile search stopped after %d entries, so a lockfile that reaches this module may be unread", maxBindingWalk)
+		}
 	}
 	sort.Strings(locks)
 	if len(locks) > MaxBindingLockfiles {
-		b.Disclosures = append(b.Disclosures, fmt.Sprintf("the repository has %d lockfiles; the first %d by path were read", len(locks), MaxBindingLockfiles))
+		incomplete = fmt.Sprintf("the repository has %d lockfiles, over the %d one answer reads, so a root that reaches this module may be unread", len(locks), MaxBindingLockfiles)
 		locks = locks[:MaxBindingLockfiles]
 	}
 
 	var mismatch []string
+	walkStopped := ""
 	for _, lf := range locks {
 		root := path.Dir(lf)
-		via, edge := rc.reaches(root, dir)
+		via, edges, cut := rc.reaches(root, dir)
 		if via == "" {
+			if cut && walkStopped == "" {
+				walkStopped = fmt.Sprintf("the module walk from %s stopped before it saw every module, so that root may reach this one", root)
+			}
 			continue
 		}
 		r := IaCBindingRoot{Dir: root, Via: via}
 		if lock := rc.lockfile(lf); lock != nil {
-			r.Version = lock[b.Source]
+			var conflict string
+			r.Version, conflict = lockVersion(lock, b.Source, implied)
+			if conflict != "" {
+				mismatch = append(mismatch, fmt.Sprintf("%s: %s", lf, conflict))
+			}
 		}
 		b.Roots = append(b.Roots, r)
-		if edge != nil {
+		for _, edge := range edges {
 			if msg := rc.checkMapping(edge, local, alias, b.Source); msg != "" {
 				mismatch = append(mismatch, msg)
 			}
 		}
 	}
-	if len(b.Roots) == 0 {
+	if len(b.Roots) == 0 && walkStopped == "" {
 		if lf := nearestLockfile(locks, dir); lf != "" {
 			r := IaCBindingRoot{Dir: path.Dir(lf), Via: "nearest lockfile"}
 			if lock := rc.lockfile(lf); lock != nil {
-				r.Version = lock[b.Source]
+				var conflict string
+				r.Version, conflict = lockVersion(lock, b.Source, implied)
+				if conflict != "" {
+					mismatch = append(mismatch, fmt.Sprintf("%s: %s", lf, conflict))
+				}
 			}
 			b.Roots = append(b.Roots, r)
 			b.Disclosures = append(b.Disclosures, "no module call reaches this module from a lockfile root; the nearest lockfile above it was read")
@@ -170,6 +190,12 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	}
 	b.Disclosures = append(b.Disclosures, rc.notes...)
 
+	if reason := firstNonEmpty(incomplete, walkStopped); reason != "" {
+		b.Status = BindUnbound
+		b.Refusal = refuse(RefuseBindingBound, "%s", reason)
+		b.Disclosures = append(b.Disclosures, "the answer is refused: "+reason+"; no facts are attached")
+		return b
+	}
 	if len(mismatch) > 0 {
 		b.Status = BindAmbiguous
 		b.Disclosures = append(b.Disclosures, mismatch...)
@@ -177,13 +203,16 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	}
 
 	pinned := map[string][]string{}
+	var unpinned []string
 	for _, r := range b.Roots {
 		if r.Version != "" {
 			pinned[r.Version] = append(pinned[r.Version], r.Dir)
+		} else {
+			unpinned = append(unpinned, r.Dir)
 		}
 	}
 	switch {
-	case len(pinned) > 1:
+	case len(pinned) > 1 || (len(pinned) == 1 && len(unpinned) > 0):
 		b.Status = BindAmbiguous
 		for v := range pinned {
 			b.Candidates = append(b.Candidates, v)
@@ -193,10 +222,16 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		for _, v := range b.Candidates {
 			parts = append(parts, fmt.Sprintf("%s in %s", v, strings.Join(pinned[v], ", ")))
 		}
-		b.Disclosures = append(b.Disclosures, fmt.Sprintf("%d roots reach this module and pin different %s versions (%s); no root was chosen", len(b.Roots), b.Source, strings.Join(parts, "; ")))
+		if len(unpinned) > 0 {
+			parts = append(parts, "no entry in "+strings.Join(unpinned, ", "))
+		}
+		b.Disclosures = append(b.Disclosures, fmt.Sprintf("%d roots reach this module and do not all pin one %s version (%s); no root was chosen", len(b.Roots), b.Source, strings.Join(parts, "; ")))
 	case len(pinned) == 1:
 		for v := range pinned {
 			b.Version = v
+		}
+		if consErr != nil {
+			b.Disclosures = append(b.Disclosures, "the version constraint is unreadable ("+consErr.Error()+"); the lockfile pin was used instead")
 		}
 		if cat := pickCatalog(q.Catalogs, b.Source, func(v string) bool { return v == b.Version }); cat != nil {
 			b.Status, b.Catalog = BindLocked, cat.Name
@@ -208,9 +243,38 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		b.Disclosures = append(b.Disclosures, unboundNote(q.Catalogs, b.Source, b.Version, b.AddLine))
 		b.Locked, b.Version = b.Version, ""
 	default:
-		b.constraintMatch(q.Catalogs, cons)
+		if consErr != nil {
+			b.Status = BindUnbound
+			b.Disclosures = append(b.Disclosures, fmt.Sprintf("the version constraint %q is unreadable (%v), so no release can be shown to satisfy it", req.constraint, consErr))
+			return b
+		}
+		b.constraintMatch(q.Catalogs, cons, len(b.Roots))
 	}
 	return b
+}
+
+// lockVersion reads the version a lockfile pins for source. An implied host matches the lock key on either default
+// registry, since OpenTofu writes registry.opentofu.org and Terraform registry.terraform.io for the same shorthand;
+// an explicit host matches exactly. Keys are lower case. Two default-registry keys that pin different versions are
+// a conflict the caller reports as ambiguous.
+func lockVersion(lock map[string]string, source string, implied bool) (version, conflict string) {
+	if !implied {
+		return lock[source], ""
+	}
+	ns := nsName(source)
+	var vs []string
+	for _, h := range []string{defaultRegistryHost, openTofuRegistryHost} {
+		if v := lock[h+"/"+ns]; v != "" {
+			vs = append(vs, v)
+		}
+	}
+	switch {
+	case len(vs) == 0:
+		return "", ""
+	case len(vs) == 2 && vs[0] != vs[1]:
+		return "", fmt.Sprintf("the lockfile pins %s at %s on %s and at %s on %s", ns, vs[0], defaultRegistryHost, vs[1], openTofuRegistryHost)
+	}
+	return vs[0], ""
 }
 
 func (b *IaCBinding) noteHost(cat *IaCCatalogInfo) {
@@ -220,8 +284,10 @@ func (b *IaCBinding) noteHost(cat *IaCCatalogInfo) {
 	}
 }
 
-// constraintMatch binds a module no lockfile pins: the highest installed release the constraint admits.
-func (b *IaCBinding) constraintMatch(catalogs []IaCCatalogInfo, cons IaCConstraint) {
+// constraintMatch binds a module no lockfile pins: the highest installed release the constraint admits. roots counts
+// the lockfile roots that reach the module without an entry for the provider. Among equal versions a catalog built
+// from the block's own registry host wins.
+func (b *IaCBinding) constraintMatch(catalogs []IaCCatalogInfo, cons IaCConstraint, roots int) {
 	best := ""
 	var bestV IaCVersion
 	var bestCat *IaCCatalogInfo
@@ -235,7 +301,12 @@ func (b *IaCBinding) constraintMatch(catalogs []IaCCatalogInfo, cons IaCConstrai
 			if err != nil || !cons.Matches(v) {
 				continue
 			}
-			if best == "" || CompareIaCVersions(v, bestV) > 0 {
+			cmp := 1
+			if best != "" {
+				cmp = CompareIaCVersions(v, bestV)
+			}
+			ownHost := hostOf(c.Manifest.Source) == hostOf(b.Source)
+			if cmp > 0 || (cmp == 0 && ownHost && hostOf(bestCat.Manifest.Source) != hostOf(b.Source)) {
 				best, bestV, bestCat = s, v, c
 			}
 		}
@@ -249,16 +320,31 @@ func (b *IaCBinding) constraintMatch(catalogs []IaCCatalogInfo, cons IaCConstrai
 		if cons.Raw != "" {
 			what = "a release satisfying " + cons.Raw
 		}
-		b.Disclosures = append(b.Disclosures, fmt.Sprintf("no installed catalog holds %s of %s%s", what, b.Source, addLineNote(b.AddLine)))
+		b.Disclosures = append(b.Disclosures, fmt.Sprintf("no installed catalog holds %s of %s%s", what, b.Source, addLineNote(b.AddLine))+hostNote(catalogs, b.Source))
 		return
 	}
 	b.Status, b.Version, b.Catalog = BindConstraintMatched, best, bestCat.Name
 	b.noteHost(bestCat)
-	if cons.Raw == "" {
-		b.Disclosures = append(b.Disclosures, "no lockfile reaches this module and it states no version constraint: the highest installed release was used, which no root has been shown to install")
-	} else {
-		b.Disclosures = append(b.Disclosures, fmt.Sprintf("no lockfile reaches this module: the highest installed release satisfying %s was used, which no root has been shown to install", cons.Raw))
+	reach := "no lockfile reaches this module"
+	if roots > 0 {
+		reach = fmt.Sprintf("%d lockfile roots reach this module but none pins %s", roots, b.Source)
 	}
+	if cons.Raw == "" {
+		b.Disclosures = append(b.Disclosures, reach+" and it states no version constraint: the highest installed release was used, which no root has been shown to install")
+	} else {
+		b.Disclosures = append(b.Disclosures, fmt.Sprintf("%s: the highest installed release satisfying %s was used, which no root has been shown to install", reach, cons.Raw))
+	}
+}
+
+// hostNote names a catalog of the same provider that was set aside because its registry host cannot serve the block's.
+func hostNote(catalogs []IaCCatalogInfo, source string) string {
+	for i := range catalogs {
+		c := &catalogs[i]
+		if nsName(c.Manifest.Source) == nsName(source) && !sameProvider(c.Manifest.Source, source) {
+			return fmt.Sprintf("; catalog %s was built from %s, and the block's registry host %s is not one of the two default registries it may stand in for", c.Name, hostOf(c.Manifest.Source), hostOf(source))
+		}
+	}
+	return ""
 }
 
 func addLineNote(line string) string {
@@ -275,7 +361,7 @@ func unboundNote(catalogs []IaCCatalogInfo, source, version, line string) string
 			return fmt.Sprintf("%s %s is not in the installed catalog %s, which holds the %s line from %s to %s: import an export at that version or add a newer catalog of the line; no nearest version is used", source, version, c.Name, line, c.Manifest.Versions[0], c.Manifest.Versions[len(c.Manifest.Versions)-1])
 		}
 	}
-	return fmt.Sprintf("%s %s has no installed catalog%s; no nearest version is used", source, version, addLineNote(line))
+	return fmt.Sprintf("%s %s has no installed catalog%s%s; no nearest version is used", source, version, addLineNote(line), hostNote(catalogs, source))
 }
 
 func lineOf(version string) string {
@@ -324,14 +410,17 @@ func pickCatalog(catalogs []IaCCatalogInfo, source string, ok func(string) bool)
 	return best
 }
 
-const defaultRegistryHost = "registry.terraform.io"
+const (
+	defaultRegistryHost  = "registry.terraform.io"
+	openTofuRegistryHost = "registry.opentofu.org"
+)
 
-// normalizeProviderSource expands a required_providers source to host/namespace/name. With none, Terraform implies
-// hashicorp/<local name>.
+// normalizeProviderSource expands a required_providers source to a lower case host/namespace/name. With none,
+// Terraform implies hashicorp/<local name>. Addresses compare lower case.
 func normalizeProviderSource(src, local string) string {
-	src = strings.TrimSpace(src)
+	src = strings.ToLower(strings.TrimSpace(src))
 	if src == "" {
-		return defaultRegistryHost + "/hashicorp/" + local
+		return defaultRegistryHost + "/hashicorp/" + strings.ToLower(local)
 	}
 	switch parts := strings.Split(src, "/"); len(parts) {
 	case 1:
@@ -342,15 +431,31 @@ func normalizeProviderSource(src, local string) string {
 	return src
 }
 
+// providerHostImplied reports that a required_providers source names no registry host.
+func providerHostImplied(src string) bool { return strings.Count(strings.TrimSpace(src), "/") < 2 }
+
+// hostOf is the registry host of a provider address; an address without one is on the default registry.
 func hostOf(source string) string {
-	if i := strings.IndexByte(source, '/'); i >= 0 {
-		return source[:i]
+	if parts := strings.Split(strings.ToLower(source), "/"); len(parts) >= 3 {
+		return parts[0]
 	}
-	return ""
+	return defaultRegistryHost
 }
 
-// sameProvider compares namespace and name; the registry host is a disclosure, not a barrier (design section 5).
-func sameProvider(a, b string) bool { return nsName(a) == nsName(b) && nsName(a) != "" }
+// hostsInterchange reports whether a catalog built from one registry host may stand in for another's. Only the two
+// default registries do, on the IF-P2 reading that their builds of a release are equal. Any other host needs a
+// catalog for exactly that host.
+func hostsInterchange(a, b string) bool {
+	if a == b {
+		return true
+	}
+	return (a == defaultRegistryHost || a == openTofuRegistryHost) && (b == defaultRegistryHost || b == openTofuRegistryHost)
+}
+
+// sameProvider compares namespace and name and requires the registry hosts to interchange (design section 5).
+func sameProvider(a, b string) bool {
+	return nsName(a) == nsName(b) && nsName(a) != "" && hostsInterchange(hostOf(a), hostOf(b))
+}
 
 func nsName(source string) string {
 	parts := strings.Split(source, "/")

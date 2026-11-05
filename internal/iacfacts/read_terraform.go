@@ -53,25 +53,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	if err != nil {
 		return nil, fmt.Errorf("iacfacts: read module directory: %w", err)
 	}
-	var names []string
-	have := map[string]bool{}
-	for _, e := range entries {
-		if e.Type().IsRegular() {
-			have[e.Name()] = true
-		}
-	}
-	for n := range have {
-		switch path.Ext(n) {
-		case ".tf":
-			if have[strings.TrimSuffix(n, ".tf")+".tofu"] {
-				continue // shadowed, as OpenTofu does
-			}
-			names = append(names, n)
-		case ".tofu":
-			names = append(names, n)
-		}
-	}
-	sort.Strings(names)
+	names := tfModuleFileNames(entries)
 	if len(names) > MaxModuleFiles {
 		return nil, limitErr(dir, fmt.Sprintf("%d files, over %d", len(names), MaxModuleFiles))
 	}
@@ -130,6 +112,32 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	}
 	sortSet(set)
 	return set, nil
+}
+
+// tfModuleFileNames lists the files OpenTofu reads in one module directory, sorted: every regular .tf and .tofu
+// file, where a .tofu file shadows the .tf file of the same name. Binding and the reader share it, so the two never
+// disagree about which files make a module.
+func tfModuleFileNames(entries []fs.DirEntry) []string {
+	have := map[string]bool{}
+	for _, e := range entries {
+		if e.Type().IsRegular() {
+			have[e.Name()] = true
+		}
+	}
+	var names []string
+	for n := range have {
+		switch path.Ext(n) {
+		case ".tf":
+			if have[strings.TrimSuffix(n, ".tf")+".tofu"] {
+				continue // shadowed, as OpenTofu does
+			}
+			names = append(names, n)
+		case ".tofu":
+			names = append(names, n)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // tfParsed is one parsed file: its body, the count of syntax errors and the source ranges the errors point at.
