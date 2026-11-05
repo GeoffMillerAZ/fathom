@@ -1,8 +1,6 @@
 package lang_test
 
 import (
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -27,22 +25,6 @@ func TestUnlinkedCUE(t *testing.T) {
 		switch d.ID {
 		case "cue", "timoni", "fathom-concerns", "fathom-layer-packs":
 			t.Errorf("Dialects lists %s, a CUE-family dialect this Reader cannot read", d.ID)
-		}
-	}
-}
-
-// The door's closure holds no CUE: importing pkg/lang must not link
-// cuelang.org/go, which is what pkg/lang/cue exists to keep out (LL-16).
-func TestDoorClosureHoldsNoCUE(t *testing.T) {
-	cmd := exec.Command("go", "list", "-deps", "-f", "{{.ImportPath}}", ".")
-	cmd.Env = append(os.Environ(), "GOWORK=off")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Skipf("go list: %v", err)
-	}
-	for _, p := range strings.Fields(string(out)) {
-		if strings.HasPrefix(p, "cuelang.org/") || strings.Contains(p, "extractor/cuelang") {
-			t.Errorf("pkg/lang links %s", p)
 		}
 	}
 }

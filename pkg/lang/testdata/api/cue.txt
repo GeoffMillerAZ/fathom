@@ -1,0 +1,23 @@
+package cue // import "github.com/geoffmilleraz/fathom/pkg/lang/cue"
+
+Package cue adds CUE and Timoni extraction to a lang.Reader. CUE is its own
+package because reading it links cuelang.org/go, which a consumer that does
+not read CUE should not pay for (ADR-092). Without this package a .cue file is
+skipped with lang.SkipNotLinked, and Reader.Dialects leaves the CUE dialects
+out.
+
+    import "github.com/geoffmilleraz/fathom/pkg/lang/cue"
+
+    r, err := lang.New(cue.Option())
+
+CONSTANTS
+
+const Family = langlink.CUE
+    Family is the name Option links.
+
+
+FUNCTIONS
+
+func Option() lang.Option
+    Option links CUE and Timoni extraction into the Reader it is passed to.
+
