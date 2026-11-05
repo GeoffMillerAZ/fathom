@@ -472,9 +472,7 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 		for _, a := range sortedAttrs(b.Body) {
 			switch a.Name {
 			case "provider":
-				if t, ok := a.Expr.(*hclsyntax.ScopeTraversalExpr); ok {
-					res.Provider = renderTraversal(t.Traversal)
-				}
+				res.Provider = providerRef(a.Expr)
 			case "count", "for_each":
 				kind := MultiCount
 				if a.Name == "for_each" {
@@ -492,6 +490,23 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 		set.Resources = append(set.Resources, res)
 	}
 	return r.err
+}
+
+// providerRef is the provider configuration a `provider =` meta-argument names: tls.by for tls.by and for
+// tls.by[each.key], whose instance key picks one instance of the configuration and is not part of its name (OpenTofu
+// reports provider_config_key tls.by). It is empty for an expression that is not a traversal.
+func providerRef(e hclsyntax.Expression) string {
+	for {
+		ix, ok := e.(*hclsyntax.IndexExpr)
+		if !ok {
+			break
+		}
+		e = ix.Collection
+	}
+	if t, ok := e.(*hclsyntax.ScopeTraversalExpr); ok {
+		return renderTraversal(t.Traversal)
+	}
+	return ""
 }
 
 // tfWalk is the state of one resource walk.

@@ -100,3 +100,28 @@ func TestRootMergeIsCounted(t *testing.T) {
 		t.Errorf("pulumi: %v resources %d syntax %d", err, len(set.Resources), set.SyntaxErrors)
 	}
 }
+
+// IAC10: `provider = tls.by[each.key]` is valid in OpenTofu and names the configuration tls.by (provider_config_key
+// in `tofu show -json -config`). The reader accepted only a bare traversal, so the field read empty, which means "no
+// meta-argument", and a type-prefix binding would pick the wrong provider.
+func TestReadTerraformProviderWithInstanceKey(t *testing.T) {
+	for expr, want := range map[string]string{
+		"tls.by":                    "tls.by",
+		"tls.by[each.key]":          "tls.by",
+		`tls.by["k"]`:               "tls.by",
+		"google-beta.by[each.key]":  "google-beta.by",
+		"aws":                       "aws",
+		`{ a = 1 }`:                 "",
+		`"tls.by"`:                  "",
+		"tls.by[each.key] ? a : b ": "",
+	} {
+		src := "resource \"google_x\" \"n\" {\n  provider = " + expr + "\n  for_each = var.r\n}\n"
+		set, err := ReadTerraformFile("a.tf", []byte(src))
+		if err != nil || len(set.Resources) != 1 {
+			t.Fatalf("%s: %v", expr, err)
+		}
+		if got := set.Resources[0].Provider; got != want {
+			t.Errorf("provider = %s: Provider %q, want %q", expr, got, want)
+		}
+	}
+}
