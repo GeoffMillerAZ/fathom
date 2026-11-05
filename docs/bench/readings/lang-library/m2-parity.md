@@ -6,15 +6,24 @@ Routing parity for the language library cuts (ADR-092, plan `docs/plans/lang-lib
 
 | Item | Value |
 |---|---|
-| Base commit | `73d683729` (before the cuts) plus the harness seam `2ea2ffb02` (`reingestDispatch` extracted unchanged, no behavior change) |
-| Compared commit | `ea7d54e0c` (all of LL-1 to LL-7 landed) |
+| Base | `6852aa99a` (before the cuts) plus the harness seam `9a364b8d5` (`reingestDispatch` extracted unchanged, no behavior change). The base output was produced before the branch was rebased onto this base; the only upstream difference was line wraps in `docs/intent/scope.md`, and the corpus is untouched |
+| Compared commit | `79add9265` (all of LL-1 to LL-7 landed, after the review fixes). Rerun at this commit after the rebase |
 | Files | 1310 (1283 dialect fixtures, 27 fauxtown files) |
 | Output | 2620 lines (`bench:` and `reingest:` per file, 2346 distinct digests) plus the `DispatchTable()` JSON |
 | sha256 output, base and compared | `d8d619eac0fe4a3c716b8d1157f3338f18624d68c46ffe1c3af7dc6251d5c15a` |
 | sha256 `DispatchTable()` JSON, base and compared | `d081e521fdcc2d28b399d3f777618eb1308b12fe2e13e0390525498e491219e5` |
-| `cmp` | silent on both files |
+| `cmp` | silent on both files, base against the rerun at `79add9265` |
 
-Not covered: files in `ExcludedFromCorpus`, which the `ReingestFile` gate mirror skips.
+Not covered. Parity digests nodes only, so a change that moves only cross-file references is invisible to it. The corpus holds no file that reaches these branches, so a regression in any of them passes this reading:
+
+| Branch | Where |
+|---|---|
+| Files in `ExcludedFromCorpus`, which the `ReingestFile` gate mirror skips | `internal/fusion/reingest_file.go` (the gate), `internal/connector/defaultignore.go` |
+| The fathom config and plan claims | `Dispatch` in `internal/fathomformat/dispatch.go` (`TestNewOutlineRouterKeepsProductFormats` pins the readout's registration of them) |
+| Embedded dashboard or Alertmanager manifest, GitLab CI by path, CircleCI, GitHub workflow in `Resolve` | `internal/langroute/resolve.go` lines 56-57, 67-68, 76-77, 80-81 |
+| Shebang claim (`sniffedExtractor`), embedded manifest and GitHub workflow in `ResolveExtractor` | `internal/langroute/register.go` lines 787-790 (shebang), 853-854, 860-861 |
+| `Router.ShebangDialect` (and the `Pipeline.ShebangDialect` method that delegates) | `internal/langroute/shebangdispatch.go`, `internal/fusion/shebangscripts.go` |
+| Cross-file references | the doc-xref pass reads nodes and edges the digest does not hold |
 
 ## Rerun
 
@@ -29,12 +38,12 @@ The harness is `internal/fusion/routing_parity_test.go` and skips unless `FATHOM
 
 Non-standard packages (`go list -deps`, standard library excluded, counting this module):
 
-| Package | At `73d683729` | At `ea7d54e0c` |
+| Package | At `6852aa99a` (measured before the rebase, same sources) | At `79add9265` |
 |---|---|---|
 | `./internal/extractor` | 227 | 74 |
 | `./internal/langroute` | not present | 76 |
 
-Fathom packages in the closure at `ea7d54e0c`: `internal/extractor` reaches `core`, `tenancy`, `memo`, `extractor/tsengine`, `promql`. `internal/langroute` adds `langclass`. The `internal/extractor` closure no longer holds `verify`, `sdd`, `repofacts`, `callgraph`, `fathomhome` or `cuelang.org/go`.
+Fathom packages in the closure at `79add9265`: `internal/extractor` reaches `core`, `tenancy`, `memo`, `extractor/tsengine`, `promql`. `internal/langroute` adds `langclass`. The `internal/extractor` closure no longer holds `verify`, `sdd`, `repofacts`, `callgraph`, `fathomhome` or `cuelang.org/go`.
 
 ## Other proof at this point
 
