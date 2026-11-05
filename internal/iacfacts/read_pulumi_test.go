@@ -82,7 +82,7 @@ func TestReadPulumiYAML(t *testing.T) {
 		{"tags.Owner", ClassUnknown, []string{"other.id"}, nil},
 		{"rules[*].id", ClassLiteral, nil, "one"},
 		{"rules[*].id", ClassReference, []string{"logs.id"}, nil},
-		{"secretish", ClassLiteral, nil, "hunter2"},
+		{"secretish", ClassLiteral, nil, nil}, // fn::secret: the class stays and the value is withheld
 		{"joined", ClassExpression, []string{"env"}, nil},
 		{"weird", ClassUnknown, nil, nil},
 		{"pulumiStack", ClassExpression, nil, nil},

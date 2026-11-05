@@ -29,7 +29,7 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 	}
 	r := newTFReader(newConfig(opts), nil)
 	set := &ResourceSet{Tool: ToolTerraform, SyntaxErrors: pf.nerr}
-	r.bad = pf.bad
+	r.bad, r.file = pf.bad, filePath
 	if err := r.readBody(set, pf.body); err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if f.override {
 			continue
 		}
-		r.bad = f.bad
+		r.bad, r.file = f.bad, f.file
 		if err := r.readBody(set, f.body); err != nil {
 			return nil, err
 		}
@@ -123,7 +123,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if !f.override {
 			continue
 		}
-		r.bad = f.bad
+		r.bad, r.file = f.bad, f.file
 		if err := r.applyOverrides(set, f.body); err != nil {
 			return nil, err
 		}
@@ -134,6 +134,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 
 // tfParsed is one parsed file: its body, the count of syntax errors and the source ranges the errors point at.
 type tfParsed struct {
+	file string
 	body *hclsyntax.Body
 	nerr int
 	bad  []hcl.Range
@@ -156,7 +157,7 @@ func parseTerraform(file string, src []byte) (*tfParsed, error) {
 	if err != nil {
 		return nil, err
 	}
-	pf := &tfParsed{body: &hclsyntax.Body{}}
+	pf := &tfParsed{file: file, body: &hclsyntax.Body{}}
 	for _, d := range diags {
 		if d.Severity != hcl.DiagError {
 			continue
@@ -177,6 +178,9 @@ func parseTerraform(file string, src []byte) (*tfParsed, error) {
 // tfVar is a declared variable and its default, when it has one.
 type tfVar struct {
 	def hclsyntax.Expression
+	// secret marks a variable declared sensitive or ephemeral, or with an expression the reader cannot tell
+	// from true. Its default is never kept as a value, whatever the caller asks.
+	secret bool
 }
 
 // tfEnv is what ReadTerraformModule resolves against: variable defaults and locals.
@@ -186,6 +190,12 @@ type tfEnv struct {
 	// overVars and overLocals name the variable defaults and locals an override file replaces. Which value
 	// wins is not read, so a reference to one reads unknown.
 	overVars, overLocals map[string]bool
+}
+
+// isFalseLiteral reports whether an expression is the literal false.
+func isFalseLiteral(e hclsyntax.Expression) bool {
+	l, ok := e.(*hclsyntax.LiteralValueExpr)
+	return ok && l.Val.IsKnown() && l.Val.Type() == cty.Bool && l.Val.False()
 }
 
 // collectOverrides records the variable defaults and locals an override file replaces.
@@ -215,6 +225,11 @@ func (e *tfEnv) collect(body *hclsyntax.Body) {
 			if a, ok := b.Body.Attributes["default"]; ok {
 				v.def = a.Expr
 			}
+			for _, flag := range []string{"sensitive", "ephemeral"} {
+				if a, ok := b.Body.Attributes[flag]; ok && !isFalseLiteral(a.Expr) {
+					v.secret = true
+				}
+			}
 			e.vars[b.Labels[0]] = v
 		case b.Type == "locals":
 			for _, a := range sortedAttrs(b.Body) {
@@ -230,6 +245,7 @@ type tfReader struct {
 	emitter
 	// bad is where the current file's syntax errors point: an attribute they touch reads unknown.
 	bad       []hcl.Range
+	file      string // the file being read, for errors
 	env       *tfEnv
 	resolving map[string]bool
 	nodes     int
@@ -278,6 +294,8 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 			res = Resource{Tool: ToolTerraform, Mode: ModeManaged, Type: b.Labels[0], Name: b.Labels[1]}
 		case b.Type == "data" && len(b.Labels) == 2:
 			res = Resource{Tool: ToolTerraform, Mode: ModeData, Type: b.Labels[0], Name: b.Labels[1]}
+		case b.Type == "ephemeral" && len(b.Labels) == 2:
+			res = Resource{Tool: ToolTerraform, Mode: ModeEphemeral, Type: b.Labels[0], Name: b.Labels[1]}
 		case b.Type == "module" && len(b.Labels) == 1:
 			res = Resource{Tool: ToolTerraform, Mode: ModeModule, Type: "module", Name: b.Labels[0]}
 		default:
@@ -478,11 +496,11 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 		return readRes{class: ClassUnknown}
 	}
 	if r.nodes++; r.nodes > MaxNodes {
-		r.fail("", fmt.Sprintf("more than %d expression nodes", MaxNodes))
+		r.fail(r.file, fmt.Sprintf("more than %d expression nodes", MaxNodes))
 		return readRes{class: ClassUnknown}
 	}
 	if depth > MaxDepth {
-		r.fail("", fmt.Sprintf("expressions nest past %d deep", MaxDepth))
+		r.fail(r.file, fmt.Sprintf("expressions nest past %d deep", MaxDepth))
 		return readRes{class: ClassUnknown}
 	}
 	switch x := e.(type) {
@@ -694,9 +712,10 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			return readRes{class: ClassUnknown, refs: []string{ref}}
 		}
 		var expr hclsyntax.Expression
+		secret := false
 		if root == "var" {
 			if v := r.env.vars[attr.Name]; v != nil {
-				expr = v.def
+				expr, secret = v.def, v.secret
 			}
 		} else {
 			expr = r.env.locals[attr.Name]
@@ -722,6 +741,10 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			out.val, out.hasV, out.vsize = inner.val, true, inner.vsize
 		}
 		out.big = inner.big
+		if secret {
+			// The class stays: a check still learns that a default is there. The value does not.
+			out.val, out.hasV = nil, false
+		}
 		return out
 	}
 	if iters[root] {

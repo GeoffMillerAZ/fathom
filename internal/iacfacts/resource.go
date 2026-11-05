@@ -50,6 +50,8 @@ const (
 	ModeManaged = "managed"
 	ModeData    = "data"
 	ModeModule  = "module"
+	// ModeEphemeral is an OpenTofu ephemeral resource, which is read for the plan and never stored.
+	ModeEphemeral = "ephemeral"
 )
 
 // MultiplicityKind is how many instances a resource declares.
@@ -101,7 +103,11 @@ type Multiplicity struct {
 
 // Attr is one attribute of a resource.
 type Attr struct {
-	// Path is the attribute's path: versioning[*].enabled, rule[*].id. Every nested Terraform
+	// Path is the attribute's path. It is empty for a value the reader could not walk at all, such as a
+	// CloudFormation Properties that is an intrinsic function or a Pulumi properties that is an interpolation: the
+	// one attribute at the root stands for every attribute of the resource, and reads unknown.
+	//
+	// Otherwise it is versioning[*].enabled, rule[*].id. Every nested Terraform
 	// block segment takes [*], one block or several, as tofu lists blocks, and so does a dynamic
 	// block and every CloudFormation or Pulumi list element. A resource's own lifecycle block
 	// is meta-configuration and takes none.
@@ -129,9 +135,14 @@ type Resource struct {
 type ResourceSet struct {
 	Tool      string
 	Resources []Resource
-	// SyntaxErrors counts the syntax errors the parser reported. A read still returns
-	// the resources it could parse, and an attribute it could not read is unknown.
+	// SyntaxErrors counts the syntax errors the parser reported, keys a mapping repeats, YAML documents after
+	// the first (which are not read), and values the reader could not walk (a root attribute with an empty
+	// path). A read still returns the resources it could parse, and an attribute it could not read is unknown.
 	SyntaxErrors int
+	// Dropped names the YAML or JSON entries of a resource section that were not read as resources: a
+	// Fn::ForEach, an alias, a merge-only entry, a value that is not a mapping, or one without a type. Absence
+	// is never silent: a resource that is not in Resources and not in Dropped does not exist in the file.
+	Dropped []string
 }
 
 // Option configures a read.

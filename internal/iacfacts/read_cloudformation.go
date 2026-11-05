@@ -3,6 +3,7 @@ package iacfacts
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ import (
 // SyntaxErrors set. A template past the product's limits is refused whole with ErrLimit.
 func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*ResourceSet, error) {
 	set := &ResourceSet{Tool: ToolCloudFormation}
-	root, err := parseTemplate(filePath, src)
+	root, info, err := parseTemplate(filePath, src)
 	if errors.Is(err, errSyntax) {
 		set.SyntaxErrors = 1
 		return set, nil
@@ -25,6 +26,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 	if err != nil {
 		return nil, err
 	}
+	set.SyntaxErrors = info.syntaxErrors()
 	res := root.get("Resources")
 	if root == nil || root.kind != nodeMap || res == nil || res.kind != nodeMap {
 		return set, nil
@@ -34,23 +36,28 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 	cr.cfg = newConfig(opts)
 	if ps := root.get("Parameters"); ps != nil && ps.kind == nodeMap {
 		for _, p := range ps.pairs {
-			info := cfnParam{}
+			prm := cfnParam{}
 			if def := p.val.get("Default"); def != nil && def.kind == nodeScalar {
-				info.def = def
+				prm.def = def
 			}
 			if t := p.val.get("Type"); t != nil && strings.HasPrefix(t.value, "AWS::SSM::Parameter::Value<") {
-				info.indirect = true
+				prm.indirect = true
 			}
-			cr.params[p.key.value] = info
+			if ne := p.val.get("NoEcho"); ne != nil && ne.kind == nodeScalar && strings.EqualFold(ne.value, "true") {
+				prm.noEcho = true
+			}
+			cr.params[p.key.value] = prm
 		}
 	}
 	w := &treeWalker{emitter: emitter{cfg: cr.cfg}, file: filePath, classify: cr.classifyIntrinsic}
 	for _, p := range res.pairs {
-		if p.val.kind != nodeMap {
-			continue
+		var typ *node
+		if p.val.kind == nodeMap {
+			typ = p.val.get("Type")
 		}
-		typ := p.val.get("Type")
 		if typ == nil || typ.kind != nodeScalar {
+			// Fn::ForEach, an alias, a merge-only entry, a scalar: not a resource the reader can name.
+			set.Dropped = append(set.Dropped, p.key.value)
 			continue
 		}
 		r := Resource{
@@ -63,10 +70,19 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 			}
 		}
 		if props := p.val.get("Properties"); props != nil {
-			if _, intrinsic := cr.classifyIntrinsic(props, 0); !intrinsic && props.kind == nodeMap {
+			ires, intrinsic := cr.classifyIntrinsic(props, 0)
+			switch {
+			case !intrinsic && props.kind == nodeMap:
 				for _, pp := range props.pairs {
 					w.walk(pp.val, pp.key.value, pp.span, &r.Attrs, 0)
 				}
+			case props.kind == nodeScalar && props.typ == "null":
+				// `Properties:` with nothing under it sets nothing.
+			default:
+				// An intrinsic (!If, Fn::Transform), an alias, a list or a scalar: the shape of the
+				// resource is not known, so every attribute is.
+				w.emit(filePath, &r.Attrs, "", readRes{class: ClassUnknown, refs: ires.refs}, props.span)
+				set.SyntaxErrors++
 			}
 		}
 		if w.err != nil {
@@ -77,6 +93,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		}
 		set.Resources = append(set.Resources, r)
 	}
+	sort.Strings(set.Dropped)
 	sortSet(set)
 	return set, nil
 }
@@ -84,6 +101,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 type cfnParam struct {
 	def      *node
 	indirect bool // the default is a path the service resolves, not the value
+	noEcho   bool // NoEcho: the value is a secret and is never kept, whatever the caller asks
 }
 
 type cfnReader struct {
@@ -220,7 +238,7 @@ func (c *cfnReader) ref(name string) readRes {
 		return readRes{class: ClassExpression, refs: []string{name}}
 	}
 	if p, ok := c.params[name]; ok && p.def != nil && !p.indirect {
-		return readRes{class: ClassDefaulted, refs: []string{name}, val: p.def.scalarValue(), hasV: c.cfg.values}
+		return readRes{class: ClassDefaulted, refs: []string{name}, val: p.def.scalarValue(), hasV: c.cfg.values && !p.noEcho}
 	}
 	return readRes{class: ClassReference, refs: []string{name}}
 }

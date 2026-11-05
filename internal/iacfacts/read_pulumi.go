@@ -3,6 +3,7 @@ package iacfacts
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ import (
 // product's limits is refused whole with ErrLimit.
 func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceSet, error) {
 	set := &ResourceSet{Tool: ToolPulumi}
-	root, err := parseTemplate(filePath, src)
+	root, info, err := parseTemplate(filePath, src)
 	if errors.Is(err, errSyntax) {
 		set.SyntaxErrors = 1
 		return set, nil
@@ -26,6 +27,7 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 	if err != nil {
 		return nil, err
 	}
+	set.SyntaxErrors = info.syntaxErrors()
 	if root == nil || root.kind != nodeMap {
 		return set, nil
 	}
@@ -33,14 +35,18 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 	if res == nil || res.kind != nodeMap {
 		return set, nil
 	}
-	pr := &pulumiReader{cfg: newConfig(opts), root: root, resolving: map[string]bool{}, inners: map[string]readRes{}}
+	pr := &pulumiReader{cfg: newConfig(opts), resolving: map[string]bool{}, inners: map[string]readRes{},
+		resNames: nameMap(res), vars: nameMap(root.get("variables")),
+		// pulumi-yaml reads both spellings of the configuration section.
+		cfgs: nameMap(root.get("configuration"), root.get("config"))}
 	w := &treeWalker{emitter: emitter{cfg: pr.cfg}, file: filePath, classify: pr.classifyNode}
 	for _, p := range res.pairs {
-		if p.val.kind != nodeMap {
-			continue
+		var typ *node
+		if p.val.kind == nodeMap {
+			typ = p.val.get("type")
 		}
-		typ := p.val.get("type")
 		if typ == nil || typ.kind != nodeScalar {
+			set.Dropped = append(set.Dropped, p.key.value)
 			continue
 		}
 		r := Resource{
@@ -55,11 +61,20 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 				r.Provider = strings.TrimSuffix(strings.TrimPrefix(pv.value, "${"), "}")
 			}
 		}
-		if props := p.val.get("properties"); props != nil && props.kind == nodeMap {
-			if _, handled := pr.classifyNode(props, 0); !handled {
+		if props := p.val.get("properties"); props != nil {
+			ires, handled := pr.classifyNode(props, 0)
+			switch {
+			case !handled && props.kind == nodeMap:
 				for _, pp := range props.pairs {
 					w.walk(pp.val, pp.key.value, pp.span, &r.Attrs, 0)
 				}
+			case props.kind == nodeScalar && props.typ == "null":
+				// `properties:` with nothing under it sets nothing.
+			default:
+				// A ${variable}, a fn:: call, an alias or a list: the shape of the resource is not
+				// known, so every attribute is.
+				w.emit(filePath, &r.Attrs, "", readRes{class: ClassUnknown, refs: ires.refs}, props.span)
+				set.SyntaxErrors++
 			}
 		}
 		if w.err != nil {
@@ -70,14 +85,36 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 		}
 		set.Resources = append(set.Resources, r)
 	}
+	sort.Strings(set.Dropped)
 	sortSet(set)
 	return set, nil
 }
 
+// nameMap indexes the entries of mappings by key. The first of a repeated key wins, as node.get does, and
+// a lookup stays constant time however many resources a program declares.
+func nameMap(sections ...*node) map[string]*node {
+	m := map[string]*node{}
+	for _, sec := range sections {
+		if sec == nil || sec.kind != nodeMap {
+			continue
+		}
+		for _, p := range sec.pairs {
+			if p.key.kind != nodeScalar {
+				continue
+			}
+			if _, dup := m[p.key.value]; !dup {
+				m[p.key.value] = p.val
+			}
+		}
+	}
+	return m
+}
+
 type pulumiReader struct {
 	cfg       config
-	root      *node
 	resolving map[string]bool
+	// resNames, vars and cfgs index the program's resources, variables and configuration entries by name.
+	resNames, vars, cfgs map[string]*node
 	// inners memoizes what a variable's value classifies as, so a chain such as v0: "${v1}${v1}" costs one
 	// classification per variable and not one per path. nodes counts visits against MaxNodes, and over is set
 	// when the budget is spent.
@@ -123,11 +160,13 @@ func (p *pulumiReader) classifyNode(n *node, depth int) (readRes, bool) {
 			return readRes{class: ClassUnknown}, true
 		}
 		if name == "secret" || name == "rawSecret" {
+			// The class of the argument and never its value: a secret stays withheld whatever the caller asks.
 			if arg.kind == nodeScalar {
 				if r, ok := p.classifyNode(arg, depth+1); ok {
+					r.hasV, r.val = false, nil
 					return r, true
 				}
-				return readRes{class: ClassLiteral, val: arg.scalarValue(), hasV: p.cfg.values}, true
+				return readRes{class: ClassLiteral}, true
 			}
 		}
 		return readRes{class: ClassExpression, refs: p.collectRefs(arg, depth+1)}, true
@@ -186,22 +225,26 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 	switch {
 	case name == "pulumi":
 		return readRes{class: ClassExpression}
-	case p.root.get("resources").get(name) != nil:
+	case p.resNames[name] != nil:
 		return readRes{class: ClassReference, refs: []string{ref}}
-	case p.root.get("configuration").get(name) != nil:
-		c := p.root.get("configuration").get(name)
+	case p.cfgs[name] != nil:
+		c := p.cfgs[name]
 		if d := c.get("default"); d != nil && d.kind == nodeScalar && ref == name {
-			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: p.cfg.values}
+			secret := false
+			if sec := c.get("secret"); sec != nil && sec.kind == nodeScalar && strings.EqualFold(sec.value, "true") {
+				secret = true
+			}
+			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: p.cfg.values && !secret}
 		}
 		return readRes{class: ClassReference, refs: []string{ref}}
-	case p.root.get("variables").get(name) != nil:
+	case p.vars[name] != nil:
 		if p.resolving[name] || depth > MaxDepth {
 			return readRes{class: ClassUnknown, refs: []string{ref}}
 		}
 		inner, done := p.inners[name]
 		if !done {
 			p.resolving[name] = true
-			v := p.root.get("variables").get(name)
+			v := p.vars[name]
 			if r, ok := p.classifyNode(v, depth+1); ok {
 				inner = r
 			} else {
@@ -286,10 +329,16 @@ func (p *pulumiReader) collectRefs(n *node, depth int) []string {
 				break
 			}
 			e := s[:j]
+			root := e
+			if k := strings.IndexAny(e, ".["); k >= 0 {
+				root = e[:k]
+			}
 			if k := strings.IndexByte(e, '['); k >= 0 {
 				e = e[:k]
 			}
-			if !strings.HasPrefix(e, "pulumi") {
+			// Only the pulumi namespace itself (${pulumi.stack}) is not a reference: a resource named
+			// pulumiThing is.
+			if root != "pulumi" {
 				out = append(out, e)
 			}
 			s = s[j+1:]

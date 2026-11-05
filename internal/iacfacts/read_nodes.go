@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -105,7 +106,8 @@ func newSrcIndex(file string, src []byte) *srcIndex {
 	ix := &srcIndex{file: file, src: src, starts: []int{0}}
 	ascii := true
 	for i, b := range src {
-		if b == '\n' {
+		// A line ends at \n, at \r\n and at a lone \r, which is how YAML counts lines.
+		if b == '\n' || (b == '\r' && (i+1 >= len(src) || src[i+1] != '\n')) {
 			ix.starts = append(ix.starts, i+1)
 		}
 		if b >= 0x80 {
@@ -208,39 +210,102 @@ func pairSpan(k, v *node) Span {
 	return s
 }
 
+// tmplInfo is what parsing a template found besides the tree, counted as syntax errors by the readers: keys a
+// mapping repeats, and YAML documents after the first, which are not read.
+type tmplInfo struct {
+	dupKeys   int
+	extraDocs int
+}
+
+func (i tmplInfo) syntaxErrors() int { return i.dupKeys + i.extraDocs }
+
+// maxExtraDocs bounds how many documents after the first are counted.
+const maxExtraDocs = 64
+
 // parseTemplate parses a YAML or JSON document into a node tree. A document whose first
 // byte is { is read as JSON and, if that fails, as YAML. A template that does not parse
 // returns errSyntax, and one past a limit returns ErrLimit.
-func parseTemplate(file string, src []byte) (*node, error) {
+func parseTemplate(file string, src []byte) (*node, tmplInfo, error) {
+	var info tmplInfo
 	if err := checkSize(file, len(src)); err != nil {
-		return nil, err
+		return nil, info, err
 	}
 	src = bytes.TrimPrefix(src, []byte("\xef\xbb\xbf"))
 	ix := newSrcIndex(file, src)
 	if t := bytes.TrimLeft(src, " \t\r\n"); len(t) > 0 && t[0] == '{' {
-		n, err := parseJSON(ix)
+		n, dups, err := parseJSON(ix)
 		if err == nil || errors.Is(err, ErrLimit) {
-			return n, err
+			info.dupKeys = dups
+			return n, info, err
 		}
 	}
+	dec := yaml.NewDecoder(bytes.NewReader(src))
 	var doc yaml.Node
-	if err := yaml.Unmarshal(src, &doc); err != nil {
-		return nil, errSyntax
+	if err := dec.Decode(&doc); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, info, nil
+		}
+		return nil, info, errSyntax
+	}
+	for i := 0; i < maxExtraDocs; i++ {
+		var more yaml.Node
+		if err := dec.Decode(&more); err != nil {
+			if !errors.Is(err, io.EOF) {
+				info.extraDocs++ // a later document that does not parse
+			}
+			break
+		}
+		info.extraDocs++
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return nil, nil
+		return nil, info, nil
 	}
 	st := &convState{ix: ix}
 	n, err := st.convert(doc.Content[0], false, -1, false, 0)
 	if err != nil {
-		return nil, err
+		return nil, info, err
 	}
-	return n, nil
+	info.dupKeys = st.dups
+	return n, info, nil
+}
+
+// countDupKeys counts the scalar keys of a mapping that repeat an earlier key.
+func countDupKeys(pairs []pair) int {
+	if len(pairs) < 2 {
+		return 0
+	}
+	n := 0
+	if len(pairs) <= 8 {
+		for i := 1; i < len(pairs); i++ {
+			if pairs[i].key.kind != nodeScalar {
+				continue
+			}
+			for j := 0; j < i; j++ {
+				if pairs[j].key.kind == nodeScalar && pairs[j].key.value == pairs[i].key.value {
+					n++
+					break
+				}
+			}
+		}
+		return n
+	}
+	seen := make(map[string]bool, len(pairs))
+	for _, p := range pairs {
+		if p.key.kind != nodeScalar {
+			continue
+		}
+		if seen[p.key.value] {
+			n++
+		}
+		seen[p.key.value] = true
+	}
+	return n
 }
 
 type convState struct {
 	ix    *srcIndex
 	nodes int
+	dups  int
 }
 
 func (st *convState) enter(depth int) error {
@@ -303,6 +368,7 @@ func (st *convState) convert(y *yaml.Node, flow bool, indent int, isKey bool, de
 				}
 				n.pairs = append(n.pairs, pair{key: k, val: v, span: pairSpan(k, v)})
 			}
+			st.dups += countDupKeys(n.pairs)
 		} else {
 			n.kind = nodeSeq
 			for _, c := range y.Content {
@@ -359,7 +425,7 @@ func (st *convState) flowCloser(i int) int {
 		switch s[j] {
 		case ' ', '\t', '\n', '\r', ',':
 		case '#':
-			for j < len(s) && s[j] != '\n' {
+			for j < len(s) && s[j] != '\n' && s[j] != '\r' {
 				j++
 			}
 		case ']', '}':
@@ -371,11 +437,20 @@ func (st *convState) flowCloser(i int) int {
 	return i
 }
 
+// eol is the offset of the line break that ends the line holding i: \n, \r\n or a lone \r.
 func eol(s []byte, i int) int {
-	for i < len(s) && s[i] != '\n' {
+	for i < len(s) && s[i] != '\n' && s[i] != '\r' {
 		i++
 	}
 	return i
+}
+
+// nextLine is the offset of the line after the break at e.
+func nextLine(s []byte, e int) int {
+	if e+1 < len(s) && s[e] == '\r' && s[e+1] == '\n' {
+		return e + 2
+	}
+	return e + 1
 }
 
 // scalarEnd finds the end offset of a scalar that starts at start.
@@ -408,7 +483,7 @@ func (st *convState) scalarEnd(y *yaml.Node, start int, flow bool, indent int, i
 		return len(s)
 	case y.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0 && (s[i] == '|' || s[i] == '>'):
 		last := eol(s, i)
-		for ls := last + 1; ls < len(s); {
+		for ls := nextLine(s, last); ls < len(s); {
 			le := eol(s, ls)
 			lineEnd := le
 			if lineEnd > ls && s[lineEnd-1] == '\r' {
@@ -426,7 +501,7 @@ func (st *convState) scalarEnd(y *yaml.Node, start int, flow bool, indent int, i
 			} else if ls+sp < lineEnd {
 				last = lineEnd
 			}
-			ls = le + 1
+			ls = nextLine(s, le)
 		}
 		return last
 	}
@@ -434,7 +509,7 @@ func (st *convState) scalarEnd(y *yaml.Node, start int, flow bool, indent int, i
 	end := plainLineEnd(s, i, flow, isKey)
 	if !flow && !isKey && y.Value != "" {
 		for {
-			ls := eol(s, end) + 1
+			ls := nextLine(s, eol(s, end))
 			for ls < len(s) {
 				le := eol(s, ls)
 				blank := true
@@ -446,7 +521,7 @@ func (st *convState) scalarEnd(y *yaml.Node, start int, flow bool, indent int, i
 				if !blank {
 					break
 				}
-				ls = le + 1
+				ls = nextLine(s, le)
 			}
 			if ls >= len(s) {
 				break
@@ -455,7 +530,7 @@ func (st *convState) scalarEnd(y *yaml.Node, start int, flow bool, indent int, i
 			for ls+sp < len(s) && s[ls+sp] == ' ' {
 				sp++
 			}
-			if sp <= indent || s[ls+sp] == '#' || s[ls+sp] == '\n' {
+			if sp <= indent || s[ls+sp] == '#' || s[ls+sp] == '\n' || s[ls+sp] == '\r' {
 				break
 			}
 			end = plainLineEnd(s, ls+sp, false, false)
@@ -467,7 +542,7 @@ func (st *convState) scalarEnd(y *yaml.Node, start int, flow bool, indent int, i
 // plainLineEnd is the end of a plain scalar's text on the line that holds offset i.
 func plainLineEnd(s []byte, i int, flow, isKey bool) int {
 	j := i
-	for j < len(s) && s[j] != '\n' {
+	for j < len(s) && s[j] != '\n' && s[j] != '\r' {
 		c := s[j]
 		if c == '#' && j > i && (s[j-1] == ' ' || s[j-1] == '\t') {
 			break
@@ -488,18 +563,18 @@ func plainLineEnd(s []byte, i int, flow, isKey bool) int {
 }
 
 // parseJSON reads a JSON document into a node tree with exact spans.
-func parseJSON(ix *srcIndex) (*node, error) {
+func parseJSON(ix *srcIndex) (*node, int, error) {
 	p := &jsonParser{ix: ix, s: ix.src}
 	p.ws()
 	n, err := p.value(0)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	p.ws()
 	if p.i != len(p.s) {
-		return nil, errSyntax
+		return nil, 0, errSyntax
 	}
-	return n, nil
+	return n, p.dups, nil
 }
 
 type jsonParser struct {
@@ -507,6 +582,7 @@ type jsonParser struct {
 	s     []byte
 	i     int
 	nodes int
+	dups  int
 }
 
 func (p *jsonParser) ws() {
@@ -571,6 +647,7 @@ func (p *jsonParser) value(depth int) (*node, error) {
 			}
 			if p.s[p.i] == '}' {
 				p.i++
+				p.dups += countDupKeys(n.pairs)
 				n.span = p.ix.span(start, p.i)
 				return n, nil
 			}
