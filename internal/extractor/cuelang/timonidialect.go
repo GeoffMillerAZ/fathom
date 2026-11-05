@@ -54,7 +54,6 @@ import (
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/literal"
-	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -161,7 +160,7 @@ func (x *TimoniExtractor) extract(service, relPath string, src []byte) (extracto
 	} else {
 		res.Nodes, baseErr = x.base.Extract(service, relPath, src)
 	}
-	f, _ := parser.ParseFile(relPath, src)
+	f, _, _ := parseCUE(relPath, src)
 	if f == nil {
 		return res, nil, baseErr
 	}

@@ -84,8 +84,8 @@ type haproxyRoute struct {
 
 // ExtractDoc implements DocResulter.
 func (x *HAProxyExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	toks, _ := confLex(src, haproxySyntax)
-	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath)}
+	toks, fixes := confLex(src, haproxySyntax)
+	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath), repairs: fixes, what: "haproxy parse"}
 	declared := map[string]bool{}
 	var secs []*haproxySection
 	var cur *haproxySection

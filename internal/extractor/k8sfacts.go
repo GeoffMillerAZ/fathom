@@ -1,6 +1,7 @@
 package extractor
 
 import (
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -143,19 +144,72 @@ func k8sPodSpec(root *yaml.Node) *yaml.Node {
 	return nil
 }
 
-// k8sYEntry is a mapping's key node and value node for key, nil for none.
-// A key the mapping repeats takes its last value, as Kubernetes' own decode
-// reads it (sigs.k8s.io/yaml, kubectl).
-func k8sYEntry(n *yaml.Node, key string) (k, v *yaml.Node) {
-	if n == nil || n.Kind != yaml.MappingNode {
+// maxYAMLHops bounds the aliases and merges a lookup follows, so a document
+// whose anchor contains itself (yaml.v3 parses one, and refuses it only when it
+// decodes) cannot loop the node reader.
+const maxYAMLHops = 32
+
+// yamlResolve follows an alias to the node it names, as yaml.v3's decode does; n
+// is returned as it is when it is no alias, and nil when the chain is too long.
+func yamlResolve(n *yaml.Node) *yaml.Node {
+	for hops := 0; n != nil && n.Kind == yaml.AliasNode; hops++ {
+		if hops >= maxYAMLHops {
+			return nil
+		}
+		n = n.Alias
+	}
+	return n
+}
+
+// yamlLookup is a mapping's key node and value node for key, reading the mapping
+// as YAML does: an alias is the node it names, and a `<<` merge supplies the keys
+// the mapping does not write itself (a merged sequence of mappings lets the
+// earlier one win). Of a key the mapping writes more than once, the last value
+// wins when last is set and the first otherwise. It is nil, nil for none.
+func yamlLookup(n *yaml.Node, key string, last bool, depth int) (k, v *yaml.Node) {
+	n = yamlResolve(n)
+	if n == nil || n.Kind != yaml.MappingNode || depth > maxYAMLHops {
 		return nil, nil
 	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
-		if n.Content[i].Value == key {
-			k, v = n.Content[i], n.Content[i+1]
+		if n.Content[i].Value != key || n.Content[i].Tag == "!!merge" {
+			continue
+		}
+		k, v = n.Content[i], n.Content[i+1]
+		if !last {
+			return k, v
 		}
 	}
-	return k, v
+	if k != nil {
+		return k, v
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if n.Content[i].Tag != "!!merge" {
+			continue
+		}
+		src := yamlResolve(n.Content[i+1])
+		if src == nil {
+			continue
+		}
+		from := []*yaml.Node{src}
+		if src.Kind == yaml.SequenceNode {
+			from = src.Content
+		}
+		for _, m := range from {
+			if k, v = yamlLookup(m, key, last, depth+1); k != nil {
+				return k, v
+			}
+		}
+	}
+	return nil, nil
+}
+
+// k8sYEntry is a mapping's key node and value node for key, nil for none.
+// A key the mapping repeats takes its last value, as Kubernetes' own decode
+// reads it (sigs.k8s.io/yaml, kubectl). An alias and a merge are followed, as the
+// decode follows them (yamlLookup).
+func k8sYEntry(n *yaml.Node, key string) (k, v *yaml.Node) {
+	return yamlLookup(n, key, true, 0)
 }
 
 // k8sYGet walks keys through nested mappings, each key's last value
@@ -168,6 +222,98 @@ func k8sYGet(n *yaml.Node, keys ...string) *yaml.Node {
 		}
 	}
 	return n
+}
+
+// maxDecodeMapKeys is the widest mapping yaml.v3 is asked to decode into a Go
+// value. Its decode compares every pair of a mapping's keys (uniqueKeys), so a
+// mapping of n keys costs n*n comparisons, and for each pair of equal keys it
+// builds an error string: 4,000 repeats of one key held 2.2 GB, 150,000 distinct
+// keys took 80 s, both inside a 2 MiB file. A real mapping a struct decode reads
+// has a few dozen keys.
+const maxDecodeMapKeys = 1_000
+
+// errYAMLDecodeUnsafe is why a document was not decoded into a Go value: a
+// mapping in it is wide or repeats a key, and the extractor reads the fields it
+// needs from the nodes instead.
+var errYAMLDecodeUnsafe = fmt.Errorf("a mapping repeats a key or has more than %d keys", maxDecodeMapKeys)
+
+// yamlMapDecodeSafe reports whether yaml.v3 can decode the mapping n into a Go
+// value in linear time and memory: it is no mapping, or it has at most
+// maxDecodeMapKeys keys and repeats none. The check is a hash of the keys, not
+// the pairwise comparison the decode does.
+func yamlMapDecodeSafe(n *yaml.Node) bool {
+	if n == nil || n.Kind != yaml.MappingNode {
+		return true
+	}
+	if len(n.Content)/2 > maxDecodeMapKeys {
+		return false
+	}
+	type key struct {
+		kind  yaml.Kind
+		value string
+	}
+	seen := make(map[key]struct{}, len(n.Content)/2)
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k := key{n.Content[i].Kind, n.Content[i].Value}
+		if _, dup := seen[k]; dup {
+			return false
+		}
+		seen[k] = struct{}{}
+	}
+	return true
+}
+
+// yamlDecodeSafe is yamlMapDecodeSafe for every mapping under n (an alias is
+// followed where it is defined, not here).
+func yamlDecodeSafe(n *yaml.Node) bool {
+	if n == nil {
+		return true
+	}
+	if !yamlMapDecodeSafe(n) {
+		return false
+	}
+	for _, c := range n.Content {
+		if !yamlDecodeSafe(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// yamlAliasesDecodeSafe is yamlDecodeSafe for the mappings an alias in n names,
+// wherever the alias sits in n: yaml.v3 decodes the mapping an alias names into
+// whatever the alias stands for (a value, a merge, a list item), so a repeated key
+// or a wide mapping in an anchor costs what it costs on its own, once per alias.
+// A mapping nothing aliases is not checked, so a wide one the decode never reads
+// (a chart's annotations) does not refuse the file.
+func yamlAliasesDecodeSafe(n *yaml.Node) bool {
+	seen := map[*yaml.Node]bool{}
+	var walk func(*yaml.Node) bool
+	walk = func(n *yaml.Node) bool {
+		if n == nil {
+			return true
+		}
+		if n.Kind == yaml.AliasNode {
+			t := yamlResolve(n)
+			if t == nil {
+				return false
+			}
+			if !seen[t] {
+				seen[t] = true
+				if !yamlDecodeSafe(t) {
+					return false
+				}
+			}
+			return true
+		}
+		for _, c := range n.Content {
+			if !walk(c) {
+				return false
+			}
+		}
+		return true
+	}
+	return walk(n)
 }
 
 // k8sDocFromNode reads the fields k8sDoc holds from a document's root

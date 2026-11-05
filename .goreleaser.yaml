@@ -43,6 +43,18 @@ builds:
       - CGO_ENABLED=0
     ldflags: [""]  # empty, so not GoReleaser's default -s -w -X main.*
 
+  # fathom-lang (ADR-092) is the language library as a standalone binary. It is
+  # pure Go on every target, so one build covers all four and the archive below
+  # carries it beside fathom.
+  - id: fathom-lang
+    main: ./cmd/fathom-lang
+    binary: fathom-lang
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=0
+    ldflags: [""]  # empty, so not GoReleaser's default -s -w -X main.*
+
 archives:
   - id: fathom
     formats: [tar.gz]

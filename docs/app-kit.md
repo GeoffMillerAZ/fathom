@@ -1270,3 +1270,19 @@ schema semantics stay local. No terminal renderer, runtime, dependency or kit pi
 changes. `TestCmdConserveConcernDeltas` covers the file, strict exit, decoding
 skips, basis and write failures. This is fixture proof, with no second-consumer
 propagation claimed.
+
+## fathom-lang CLI review (LL-26, 2026-11-04)
+
+Contribution disposition: **reasoned divergence**. `fathom-lang extract|dialects` uses the
+standard `flag` package and prints JSON, not Cobra chrome. Discovery: `search_capabilities(query="command",
+profile="cli")` returned `cli.command` (Cobra help, versions, completion, signal-aware exit) and
+`cli.config`, catalog revision `1e5ce694e0cbbb1826dcc8f3513b045ec2ec97a0433b2e57f637efd107f47811`.
+The binary's package closure is the point of the library (ADR-092): at most 80 non-standard
+packages with no CUE, and a stripped binary under 30 MiB. Cobra, its completion and `cli.config`'s CUE
+layers would add packages the closure test (`TestLangClosure`) refuses, and CUE is what `pkg/lang/cue`
+exists to keep out. The contract kept: `-h` and `help` print usage to stdout and exit 0, a misuse exits 2,
+an error, or a file that cannot be read, exits 1 with the reason on standard error (the JSON still holds
+every file), and stdout is JSON with a `schema_version` whose shape is pinned by
+`TestFathomLangJSONGolden`. No upstream kit change is needed; a stdlib-only variant of the command
+chrome would be the reusable contribution if a second tool wants the same closure bar.
+Consumer proof: `TestUsageAndErrors`, `TestExtractAbsolutePathsAndPerFileErrors` and `TestFathomLangJSONGolden` in `cmd/fathom-lang`.

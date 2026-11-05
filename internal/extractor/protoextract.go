@@ -25,12 +25,26 @@ func NewProtoExtractor() *ProtoExtractor { return &ProtoExtractor{} }
 // Extract parses Protocol Buffer source bytes and returns SymbolNodes.
 // Output is sorted by Line then Name for determinism.
 func (p *ProtoExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := p.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when the file could not be parsed, the reason
+// (ReportingExtractor).
+func (p *ProtoExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
 	var nodes []core.SymbolNode
 
-	def, _ := proto.NewParser(bytes.NewReader(src)).Parse()
+	if why := protoRefusal(src); why != "" {
+		return nil, why, nil
+	}
+	def, perr := proto.NewParser(bytes.NewReader(src)).Parse()
+	reason := ""
+	if perr != nil {
+		reason = incompleteReason("proto parse", perr)
+	}
 	if def == nil {
-		return nodes, nil
+		return nodes, reason, nil
 	}
 
 	proto.Walk(
@@ -88,5 +102,5 @@ func (p *ProtoExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 		}
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes, reason, nil
 }

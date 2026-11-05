@@ -2,6 +2,8 @@ package extractor
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"regexp"
 	"sort"
 	"strings"
@@ -65,7 +67,21 @@ func NewHelmTemplateYAMLExtractor() *HelmTemplateYAMLExtractor {
 // Extract parses src as a (templated) Helm k8s manifest and returns
 // SymbolNodes for its documents plus its .Values references.
 func (h *HelmTemplateYAMLExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := h.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when a document could not be read, the reason
+// (ReportingExtractor): a document that does not parse as YAML once its actions
+// are substituted, or does not decode as a manifest, is not skipped in silence.
+func (h *HelmTemplateYAMLExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
+	incomplete := ""
+	note := func(what string, err error) {
+		if incomplete == "" {
+			incomplete = incompleteReason(what, err)
+		}
+	}
 	var nodes []core.SymbolNode
 
 	nodes = append(nodes, helmValuesRefNodes(service, pkg, relPath, src)...)
@@ -79,14 +95,32 @@ func (h *HelmTemplateYAMLExtractor) Extract(service, relPath string, src []byte)
 	for _, chunk := range k8sSplitDocs(substituted) {
 		dec := yaml.NewDecoder(bytes.NewReader([]byte(chunk.text)))
 		var rawNode yaml.Node
-		if err := dec.Decode(&rawNode); err != nil || len(rawNode.Content) == 0 {
+		if err := dec.Decode(&rawNode); err != nil {
+			if !errors.Is(err, io.EOF) {
+				note("yaml decode", err)
+			}
+			continue
+		}
+		if len(rawNode.Content) == 0 {
 			continue
 		}
 		docLine := chunk.lineStart + rawNode.Line - 1
 
+		// A template's if/else branches repeat a key (two `strategy:` blocks);
+		// yaml.v3 refuses a mapping that does, and its decode is quadratic in a
+		// wide one (maxDecodeMapKeys), so the fields are then read from the
+		// nodes, the last value winning, as the Kubernetes decode reads them.
 		var doc k8sDoc
-		if err := rawNode.Decode(&doc); err != nil {
-			continue
+		decErr := errYAMLDecodeUnsafe
+		if yamlDecodeSafe(rawNode.Content[0]) {
+			decErr = rawNode.Decode(&doc)
+		}
+		if decErr != nil {
+			var ok bool
+			if doc, ok = k8sDocFromNode(rawNode.Content[0]); !ok {
+				note("document decode", decErr)
+				continue
+			}
 		}
 		if doc.Kind == "" {
 			continue
@@ -146,7 +180,7 @@ func (h *HelmTemplateYAMLExtractor) Extract(service, relPath string, src []byte)
 		}
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes, incomplete, nil
 }
 
 // helmValuesRefNodes scans raw (pre-substitution) template text for

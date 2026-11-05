@@ -40,7 +40,7 @@ func NewHCLExtractor() *HCLExtractor { return &HCLExtractor{} }
 // diagnostics), those results are still processed. Only a nil file pointer
 // causes a nil return.
 func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
-	nodes, _, err := h.extract(service, relPath, src)
+	nodes, _, _, err := h.extract(service, relPath, src)
 	return nodes, err
 }
 
@@ -77,21 +77,40 @@ var hclModuleMeta = map[string]bool{
 	"source": true, "version": true, "count": true, "for_each": true, "depends_on": true, "providers": true,
 }
 
+// hclIncomplete is the door's one-line reason for a file whose parse reported
+// errors: the parser recovered what it could, and the rest is not in the nodes.
+func hclIncomplete(diags hcl.Diagnostics) string {
+	if !diags.HasErrors() {
+		return ""
+	}
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError {
+			return incompleteReason("hcl parse", fmt.Errorf("%s: %s", d.Summary, d.Detail))
+		}
+	}
+	return "hcl parse: errors"
+}
+
 // extract is Extract plus each node's hclDef (defs[i] is nodes[i]'s; a
 // node with nothing to add has a nil one).
-func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.SymbolNode, []*hclDef, error) {
+func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.SymbolNode, []*hclDef, string, error) {
+	if why := hclRefusal(src); why != "" {
+		return nil, nil, why, nil
+	}
 	f, diags := hclsyntax.ParseConfig(src, relPath, hcl.Pos{Line: 1, Column: 1})
 	if f == nil {
 		// Fatal parse failure — no AST at all.
 		if diags.HasErrors() {
-			return nil, nil, fmt.Errorf("hcl parse %s: %s", relPath, diags.Error())
+			return nil, nil, "", fmt.Errorf("hcl parse %s: %s", relPath, diags.Error())
 		}
-		return nil, nil, nil
+		return nil, nil, "", nil
 	}
+
+	incomplete := hclIncomplete(diags)
 
 	body, ok := f.Body.(*hclsyntax.Body)
 	if !ok || body == nil {
-		return nil, nil, nil
+		return nil, nil, "", nil
 	}
 
 	pkg := pkgFromPath(relPath)
@@ -100,7 +119,7 @@ func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.Symb
 	// blocks); each key is one KindTerraformVarValue symbol (queue item
 	// terraform's notes: ".tfvars keys").
 	if strings.HasSuffix(relPath, ".tfvars") {
-		return extractTFVars(service, pkg, relPath, body), nil, nil
+		return extractTFVars(service, pkg, relPath, body), nil, incomplete, nil
 	}
 
 	var nodes []core.SymbolNode
@@ -284,7 +303,7 @@ func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.Symb
 	for i, k := range order {
 		sortedNodes[i], sortedDefs[i] = nodes[k], defs[k]
 	}
-	return sortedNodes, sortedDefs, nil
+	return sortedNodes, sortedDefs, incomplete, nil
 }
 
 // extractTFVars turns a .tfvars file's top-level attributes into one
@@ -359,6 +378,23 @@ func collectRefsFromExpr(expr hclsyntax.Expression) []hclRef {
 	c := &refCollector{}
 	_ = hclsyntax.Walk(expr, c)
 	return c.refs
+}
+
+// hclLocalRefs is the detail of a node's Calls: each distinct reference key
+// once, at the line it is first written, with the edge the dialect declares.
+func hclLocalRefs(from string, refs []hclRef) []DocLocalRef {
+	first := map[string]int{}
+	for _, r := range refs {
+		if l, ok := first[r.key]; !ok || r.line < l {
+			first[r.key] = r.line
+		}
+	}
+	out := make([]DocLocalRef, 0, len(first))
+	for to, line := range first {
+		out = append(out, DocLocalRef{From: from, To: to, Edge: hclEdgeReferences, Line: line})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].To < out[j].To })
+	return out
 }
 
 // refKeys is the sorted, de-duplicated set of reference keys: a node's Calls.
@@ -578,11 +614,11 @@ const (
 // A registry or remote module source names nothing in the repository, and
 // An invalid or nonlocal source leaves that output intent unresolved.
 func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	nodes, defs, err := h.extract(service, relPath, src)
+	nodes, defs, incomplete, err := h.extract(service, relPath, src)
 	if err != nil {
 		return DocResult{}, err
 	}
-	res := DocResult{Nodes: nodes}
+	res := DocResult{Nodes: nodes, Incomplete: incomplete}
 	if strings.HasSuffix(relPath, ".tfvars") {
 		return res, nil
 	}
@@ -618,7 +654,8 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		if d == nil {
 			continue
 		}
-		first := map[[2]string]int{} // (edge, raw) → first line, for one reference per target
+		res.Refs = append(res.Refs, hclLocalRefs(n.Name, d.refs)...) // the detail of n.Calls
+		first := map[[2]string]int{}                                 // (edge, raw) → first line, for one reference per target
 		refs := map[[2]string]DocCrossFileRef{}
 		ref := func(edge, raw, scope, address string, line int) {
 			k := [2]string{edge, scope + "\x00" + address}

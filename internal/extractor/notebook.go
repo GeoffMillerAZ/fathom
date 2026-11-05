@@ -30,6 +30,7 @@ package extractor
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -396,15 +397,29 @@ func pythonCell(lines []string) (out []string, skip bool) {
 
 // Extract implements Extractor.
 func (x *NotebookExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := x.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when the notebook could not be read (a
+// truncated or malformed .ipynb), the reason (ReportingExtractor).
+func (x *NotebookExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	doc, ok := readNotebook(src)
-	if !ok || (doc.lang != "" && doc.lang != "python") {
-		return nil, nil
+	if !ok {
+		if len(bytes.TrimSpace(src)) == 0 {
+			return nil, "", nil
+		}
+		return nil, "notebook decode: not a complete notebook (truncated or malformed JSON)", nil
+	}
+	if doc.lang != "" && doc.lang != "python" {
+		return nil, "", nil
 	}
 	var nodes []core.SymbolNode
 	var module *core.SymbolNode
 	moduleCalls := map[string]bool{}
 	firstLine, lastLine := 0, 0
-	for _, c := range doc.cells {
+	incomplete := "" // the first cell the Python reader could not read
+	for ci, c := range doc.cells {
 		lines, phys := cellLines(c.pieces)
 		py, skip := pythonCell(lines)
 		if skip {
@@ -412,6 +427,9 @@ func (x *NotebookExtractor) Extract(service, relPath string, src []byte) ([]core
 		}
 		res, err := x.py.Extract(service, relPath, []byte(strings.Join(py, "\n")+"\n"))
 		if err != nil {
+			if incomplete == "" {
+				incomplete = incompleteReason(fmt.Sprintf("notebook cell %d", ci+1), err)
+			}
 			continue
 		}
 		at := func(n int) int {
@@ -462,5 +480,5 @@ func (x *NotebookExtractor) Extract(service, relPath string, src []byte) ([]core
 		sort.Strings(m.Calls)
 		nodes = append([]core.SymbolNode{m}, nodes...)
 	}
-	return nodes, nil
+	return nodes, incomplete, nil
 }

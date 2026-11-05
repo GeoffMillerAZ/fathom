@@ -6,7 +6,6 @@ import (
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/literal"
-	"cuelang.org/go/cue/parser"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -150,9 +149,12 @@ func (c *CUEExtractor) ExtractDoc(service, relPath string, src []byte) (extracto
 // its own so a test can call it directly: Extract and ExtractDoc are method
 // names every extractor shares).
 func extractCUE(service, relPath string, src []byte) extractor.DocResult {
-	f, _ := parser.ParseFile(relPath, src)
+	f, reason, perr := parseCUE(relPath, src)
+	if perr != nil {
+		reason = cueIncomplete(perr)
+	}
 	if f == nil {
-		return extractor.DocResult{}
+		return extractor.DocResult{Incomplete: reason}
 	}
 	pkg := f.PackageName()
 	if pkg == "" {
@@ -212,7 +214,21 @@ func extractCUE(service, relPath string, src []byte) extractor.DocResult {
 	})
 	sortCUECross(res.CrossFile)
 	res.Nodes = w.nodes
+	res.Incomplete = reason
 	return res
+}
+
+// cueIncomplete is the one-line reason for a file the CUE parser reported
+// errors for: it recovers what it can, and the rest is not in the nodes.
+func cueIncomplete(err error) string {
+	msg := err.Error()
+	if i := strings.IndexByte(msg, '\n'); i >= 0 {
+		msg = msg[:i]
+	}
+	if len(msg) > 160 {
+		msg = msg[:160]
+	}
+	return "cue parse: " + strings.TrimSpace(msg)
 }
 
 // importDecls emits one KindCUEImport per import declaration and its

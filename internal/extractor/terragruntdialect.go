@@ -91,6 +91,10 @@ var (
 // NewTerragruntExtractor returns the terragrunt dialect's extractor.
 func NewTerragruntExtractor() *TerragruntExtractor { return &TerragruntExtractor{} }
 
+// Name is the dialect's id, which the door labels a file with when the file's
+// extension (.hcl) is shared by several dialects and the file emits no node.
+func (x *TerragruntExtractor) Name() string { return "terragrunt" }
+
 // Extract implements Extractor.
 func (x *TerragruntExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	r, err := x.ExtractDoc(service, relPath, src)
@@ -325,14 +329,15 @@ func tgDependencyFile(p string) string {
 }
 
 func (x *TerragruntExtractor) extract(service, relPath string, src []byte) (DocResult, []TerragruntUnresolved, error) {
-	body, err := hclParseBody(relPath, src)
+	body, incomplete, err := hclParseBody(relPath, src)
 	if err != nil {
 		return DocResult{}, nil, err
 	}
 	if body == nil {
-		return DocResult{}, nil, nil
+		return DocResult{Incomplete: incomplete}, nil, nil
 	}
 	w := newHCLWalk(service, relPath, src)
+	w.incomplete = incomplete
 	root := path.Base(relPath)
 	w.add(root, kindTGConfig, "", 1, w.lines, nil)
 	dir := path.Dir(relPath)

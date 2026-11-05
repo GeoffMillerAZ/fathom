@@ -462,7 +462,7 @@ func (d *Dialect) UnmarshalJSON(b []byte) error {
 // TestCanonicalKindClosedList holds the two together.
 var canonicalKinds = []string{
 	"module", "namespace", "package", "class", "struct", "interface", "trait", "enum",
-	"enum_member", "union", "type_alias", "function", "method", "constructor", "field",
+	"enum_member", "union", "type_alias", "type", "function", "method", "constructor", "field",
 	"property", "constant", "variable", "macro", "import", "test",
 	"target", "job", "stage", "task", "step", "resource", "data_source", "output",
 	"variable_decl", "rule", "policy", "service", "rpc", "message", "table", "view",
@@ -549,14 +549,72 @@ func LoadDialects() ([]Dialect, error) {
 }
 
 func loadDialects(fsys fs.FS) ([]Dialect, error) {
+	return loadDialectsInto(fsys, newDialectClaims())
+}
+
+// dialectClaims is the cross-dialect state §2.2's rules need every manifest
+// for: the dialect that emits each source kind and the one that claims each
+// extension or basename. A pack starts from the built-ins' claims, so a pack
+// dialect is held to the same rules against them as they are against each
+// other.
+type dialectClaims struct {
+	ids         map[string]bool
+	sourceOwner map[string]string
+	extOwner    map[string]string
+}
+
+func newDialectClaims() *dialectClaims {
+	return &dialectClaims{ids: map[string]bool{}, sourceOwner: map[string]string{}, extOwner: map[string]string{}}
+}
+
+// admit records d's claims and returns the first rule they break against the
+// dialects admitted before it. label names d in the error.
+func (c *dialectClaims) admit(label string, d Dialect) error {
+	if c.ids[d.ID] {
+		return fmt.Errorf("%s: id %q is already a dialect", label, d.ID)
+	}
+	for _, key := range sortedKindKeys(d) {
+		sk := d.Kinds[key].SourceKind
+		if prev, ok := c.sourceOwner[sk]; ok && prev != d.ID && !sameSourceKindGroup(prev, d.ID) && !isContractSourceKind(sk) {
+			return fmt.Errorf("%s: source_kind %q already emitted by dialect %q", label, sk, prev)
+		}
+	}
+	sniffed := map[string]bool{}
+	if d.Match.Sniff != nil {
+		for _, e := range d.Match.Sniff.Extensions {
+			sniffed[strings.ToLower(e)] = true
+		}
+	}
+	var keys []string
+	for _, e := range dialectExtensions(d) {
+		keys = append(keys, "ext:"+e)
+	}
+	for _, base := range d.Match.Basenames {
+		keys = append(keys, "base:"+base)
+	}
+	for _, key := range keys {
+		if prev, ok := c.extOwner[key]; ok && prev != d.ID && !sniffed[strings.TrimPrefix(key, "ext:")] {
+			return fmt.Errorf("%s: %s already claimed by dialect %q", label, key, prev)
+		}
+	}
+	// Nothing broke a rule: record the claims.
+	c.ids[d.ID] = true
+	for _, key := range sortedKindKeys(d) {
+		c.sourceOwner[d.Kinds[key].SourceKind] = d.ID
+	}
+	for _, key := range keys {
+		c.extOwner[key] = d.ID
+	}
+	return nil
+}
+
+func loadDialectsInto(fsys fs.FS, claims *dialectClaims) ([]Dialect, error) {
 	manifests, err := fs.Glob(fsys, "dialects/*/dialect.json")
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(manifests)
 	var out []Dialect
-	sourceOwner := map[string]string{}
-	extOwner := map[string]string{}
 	for _, mp := range manifests {
 		dir := path.Base(path.Dir(mp))
 		b, err := fs.ReadFile(fsys, mp)
@@ -570,35 +628,8 @@ func loadDialects(fsys fs.FS) ([]Dialect, error) {
 		if err := checkDialect(fsys, dir, d); err != nil {
 			return nil, fmt.Errorf("%s: %w", mp, err)
 		}
-		for _, key := range sortedKindKeys(d) {
-			sk := d.Kinds[key].SourceKind
-			if prev, ok := sourceOwner[sk]; ok && prev != d.ID && !sameSourceKindGroup(prev, d.ID) && !isContractSourceKind(sk) {
-				return nil, fmt.Errorf("%s: source_kind %q already emitted by dialect %q", mp, sk, prev)
-			}
-			sourceOwner[sk] = d.ID
-		}
-		sniffed := map[string]bool{}
-		if d.Match.Sniff != nil {
-			for _, e := range d.Match.Sniff.Extensions {
-				sniffed[strings.ToLower(e)] = true
-			}
-		}
-		claim := func(key string) error {
-			if prev, ok := extOwner[key]; ok && prev != d.ID && !sniffed[strings.TrimPrefix(key, "ext:")] {
-				return fmt.Errorf("%s: %s already claimed by dialect %q", mp, key, prev)
-			}
-			extOwner[key] = d.ID
-			return nil
-		}
-		for _, e := range dialectExtensions(d) {
-			if err := claim("ext:" + e); err != nil {
-				return nil, err
-			}
-		}
-		for _, base := range d.Match.Basenames {
-			if err := claim("base:" + base); err != nil {
-				return nil, err
-			}
+		if err := claims.admit(mp, d); err != nil {
+			return nil, err
 		}
 		out = append(out, d)
 	}

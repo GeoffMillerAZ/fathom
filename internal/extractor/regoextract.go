@@ -43,6 +43,7 @@ package extractor
 //     from every file that declares it.
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,8 +61,9 @@ const (
 type RegoExtractor struct{}
 
 var (
-	_ Extractor         = (*RegoExtractor)(nil)
-	_ FileSpecExtractor = (*RegoExtractor)(nil)
+	_ Extractor          = (*RegoExtractor)(nil)
+	_ FileSpecExtractor  = (*RegoExtractor)(nil)
+	_ ReportingExtractor = (*RegoExtractor)(nil)
 )
 
 // NewRegoExtractor returns the Rego dialect's extractor.
@@ -76,7 +78,19 @@ func (x *RegoExtractor) Close() {}
 // Extract implements Extractor. Malformed input yields what its readable
 // statements declare and no error.
 func (x *RegoExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
-	return parseRego(src).nodes(service, relPath), nil
+	nodes, _, err := x.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when reading took repairs (an unclosed
+// bracket or string, a stray closer), the reason (ReportingExtractor).
+func (x *RegoExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
+	f := parseRego(src)
+	why := ""
+	if f.repairs > 0 {
+		why = fmt.Sprintf("rego parse: %d repair(s) to malformed input", f.repairs)
+	}
+	return f.nodes(service, relPath), why, nil
 }
 
 // ExtractFileSpecs implements FileSpecExtractor.
@@ -505,7 +519,7 @@ func regoRef(ts []regoTok, i int) ([]regoTerm, int) {
 			default:
 				terms = append(terms, regoTerm{kind: regoTermOther})
 			}
-			j = k + 1
+			j = min(k+1, len(ts)) // regoClose is len(ts) for a bracket never closed
 		default:
 			return terms, j
 		}
@@ -611,7 +625,7 @@ func (f *regoFile) rule(ts []regoTok) {
 	fn := j < len(ts) && ts[j].is("(")
 	after := j
 	if fn {
-		after = regoClose(ts, j) + 1
+		after = min(regoClose(ts, j)+1, len(ts)) // regoClose is len(ts) for a bracket never closed
 	}
 	hasValue := after < len(ts) && (ts[after].is(":=") || ts[after].is("="))
 	hasBody, depth := false, 0

@@ -1,2 +1,3 @@
 docs/languages.md merge=fathom-regen
 internal/extractor/tsengine/grammars/PROVENANCE.md merge=fathom-regen
+pkg/lang/levels.json merge=fathom-regen

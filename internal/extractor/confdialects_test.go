@@ -241,7 +241,7 @@ func TestConfLexCaddyfile(t *testing.T) {
 // a brace cuts short is kept, an unclosed block ends at the end of the
 // file; each repair is counted.
 func TestParseNginxTreeRepairs(t *testing.T) {
-	tree, fixes := parseNginxTree([]byte("}\nserver {\n  location / {\n    proxy_pass http://a\n  }\n"))
+	tree, fixes, _ := parseNginxTree([]byte("}\nserver {\n  location / {\n    proxy_pass http://a\n  }\n"))
 	if fixes != 3 {
 		t.Errorf("fixes = %d, want 3 (stray }, cut statement, unclosed server)", fixes)
 	}

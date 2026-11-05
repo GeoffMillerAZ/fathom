@@ -1,0 +1,34 @@
+package langtest // import "github.com/geoffmilleraz/fathom/pkg/lang/langtest"
+
+Package langtest is the conformance check for a dialect pack (ADR-092, design
+§6). A pack author calls CheckPack from a test:
+
+    func TestPack(t *testing.T) {
+    	if err := langtest.CheckPack(os.DirFS("pack")); err != nil {
+    		t.Fatal(err)
+    	}
+    }
+
+It runs what lang.New runs (the manifest rules, the cross-dialect rules against
+the built-in dialects, query compilation), then holds the pack to its own
+goldens and to its required kinds.
+
+A golden is dialects/<id>/testdata/<name>.golden.json beside the file
+dialects/<id>/testdata/<name> it describes. It holds the lang.Result of reading
+that file, with the path relative to the testdata directory, as Golden prints
+it. fathom-lang extract prints the same Result.
+
+FUNCTIONS
+
+func CheckPack(fsys fs.FS) error
+    CheckPack holds the pack at fsys to the rules of lang.WithDialects, then to
+    its goldens and its required kinds. Every dialect needs at least one golden,
+    and every golden must read as it says: the file is read by its own dialect
+    and the Result equals the golden. Every required kind of a dialect must
+    appear among its goldens' symbols, so a kind the manifest promises is a kind
+    a fixture shows. The error lists every failure, or is nil. A pack refused by
+    lang.New returns that *lang.PackError alone.
+
+func Golden(res lang.Result) ([]byte, error)
+    Golden is the bytes a golden file holds for res.
+

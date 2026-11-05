@@ -199,35 +199,9 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 		if d.Engine != "tags" && d.Engine != "tags+doc" {
 			continue
 		}
-		rules, err := compileDialectRules(d)
+		spec, err := tagsSpec(dialectFS, d)
 		if err != nil {
 			return nil, nil, err
-		}
-		spec := &tsLangSpec{
-			name:           d.ID,
-			variantForExt:  map[string]tsVariant{},
-			defaultVariant: tsVariant{blob: d.Grammar.Blob, entryPoint: d.Grammar.EntryPoint, rules: rules},
-		}
-		for _, e := range d.Match.Extensions {
-			spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
-		}
-		for _, v := range d.Variants {
-			vrules, err := variantRules(d, v, rules)
-			if err != nil {
-				return nil, nil, err
-			}
-			vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: vrules}
-			for _, e := range v.Extensions {
-				spec.variantForExt[strings.ToLower(e)] = vv
-			}
-			if v.Sniff != "" {
-				re, err := regexp.Compile("(?m)" + v.Sniff)
-				if err != nil {
-					return nil, nil, fmt.Errorf("dialect %s: variant %s: sniff: %w", d.ID, v.ID, err)
-				}
-				vv.id = v.ID
-				spec.sniffVariants = append(spec.sniffVariants, tsSniffVariant{re: re, variant: vv})
-			}
 		}
 		all[d.ID] = spec
 		single[d.ID] = spec
@@ -257,16 +231,59 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 	return all, single, nil
 }
 
-// variantRules is the rules a variant parses with: its dialect's, or, when
-// the variant names a tags query of its own (O732, LB-F385), a copy whose
-// query is that file's patterns before the dialect's — so a node both name
-// keeps the variant's definition (oneDefPerNode) — compiled on the variant's
-// own Parser (leaseFor keys the pool by variant).
-func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
+// tagsSpec is the spec of one tags-engine dialect, its queries read from fsys.
+func tagsSpec(fsys fs.FS, d Dialect) (*tsLangSpec, error) {
+	rules, err := compileDialectRulesFS(fsys, d)
+	if err != nil {
+		return nil, err
+	}
+	spec := &tsLangSpec{
+		name:           d.ID,
+		variantForExt:  map[string]tsVariant{},
+		defaultVariant: tsVariant{blob: d.Grammar.Blob, entryPoint: d.Grammar.EntryPoint, rules: rules},
+	}
+	for _, e := range d.Match.Extensions {
+		spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
+	}
+	for _, v := range d.Variants {
+		vrules, err := variantRulesFS(fsys, d, v, rules)
+		if err != nil {
+			return nil, err
+		}
+		vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: vrules}
+		if vrules != rules {
+			// A variant with a tags query of its own is keyed by its id, so its
+			// parser and compiled query are its own: the pool and the compiled
+			// query cache are keyed by dialect, blob, entry point and variant id,
+			// and two variants of one entry point would share the first compiled.
+			vv.id = v.ID
+		}
+		for _, e := range v.Extensions {
+			spec.variantForExt[strings.ToLower(e)] = vv
+		}
+		if v.Sniff != "" {
+			re, err := regexp.Compile("(?m)" + v.Sniff)
+			if err != nil {
+				return nil, fmt.Errorf("dialect %s: variant %s: sniff: %w", d.ID, v.ID, err)
+			}
+			vv.id = v.ID
+			spec.sniffVariants = append(spec.sniffVariants, tsSniffVariant{re: re, variant: vv})
+		}
+	}
+	return spec, nil
+}
+
+// variantRulesFS is the rules a variant parses with, its queries read from
+// fsys: its dialect's, or, when the variant names a tags query of its own
+// (O732, LB-F385), a copy whose query is that file's patterns before the
+// dialect's — so a node both name keeps the variant's definition
+// (oneDefPerNode) — compiled on the variant's own Parser (leaseFor keys the pool
+// by variant).
+func variantRulesFS(fsys fs.FS, d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
 	if v.Queries == nil || v.Queries.Tags == "" {
 		return rules, nil
 	}
-	b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, v.Queries.Tags))
+	b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, v.Queries.Tags))
 	if err != nil {
 		return nil, fmt.Errorf("dialect %s: variant %s: %w", d.ID, v.ID, err)
 	}
@@ -286,7 +303,11 @@ func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRul
 }
 
 func compileDialectRules(d Dialect) (*tsDialectRules, error) {
-	query, err := dialectQuerySource(dialectFS, d)
+	return compileDialectRulesFS(dialectFS, d)
+}
+
+func compileDialectRulesFS(fsys fs.FS, d Dialect) (*tsDialectRules, error) {
+	query, err := dialectQuerySource(fsys, d)
 	if err != nil {
 		return nil, err
 	}
@@ -324,20 +345,20 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 		r.preprocess = pre
 	}
 	if d.Queries.Injections != "" {
-		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))
+		b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, d.Queries.Injections))
 		if err != nil {
 			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
 		}
 		r.injectionsQuery = string(b)
 	}
 	if d.Queries.References != "" {
-		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.References))
+		b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, d.Queries.References))
 		if err != nil {
 			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
 		}
 		r.refsQuery = string(b)
 	}
-	if err := r.loadLocalsQuery(dialectFS, d); err != nil {
+	if err := r.loadLocalsQuery(fsys, d); err != nil {
 		return nil, err
 	}
 	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
@@ -400,6 +421,11 @@ type TSExtractor struct {
 	// typeRefs counts @reference.class/implementation/type captures over
 	// this extractor's lifetime (LB-F4): measured in readings, not stored.
 	typeRefs atomic.Int64
+
+	// injectFault is the first injected range that failed in the extraction in
+	// progress (its dialect, line and reason), "" when none did. ExtractReport
+	// reads it; the host's symbols stand either way. Guarded by mu.
+	injectFault string
 
 	// parses counts every source parse this extractor ran (extract, file
 	// specs, injected ranges): the seam the one-parse test reads (EW-52).
@@ -577,7 +603,46 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	defer e.mu.Unlock()
 
 	nodes, _, err := e.extractNodesLocked(variant, service, relPath, src, nil)
+	e.injectFault = ""
 	return nodes, err
+}
+
+var _ ReportingExtractor = (*TSExtractor)(nil)
+
+// ExtractReport is Extract and, when an injected range failed to read (a
+// budget spent inside a <script>, say), a one-line reason: the host's symbols
+// stand and the file is not fully read (ReportingExtractor).
+func (e *TSExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
+	variant := e.variantFor(relPath, src)
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.injectFault = ""
+	nodes, _, err := e.extractNodesLocked(variant, service, relPath, src, nil)
+	why := e.injectFault
+	e.injectFault = ""
+	return nodes, why, err
+}
+
+// noteInjectFault records the first injected range that failed. Caller holds
+// e.mu.
+func (e *TSExtractor) noteInjectFault(inj tsInjection, err error) {
+	if e.injectFault != "" {
+		return
+	}
+	var be *tsengine.BudgetError
+	msg := err.Error()
+	if errors.As(err, &be) {
+		msg = be.Reason()
+	}
+	if i := strings.IndexByte(msg, '\n'); i >= 0 {
+		msg = msg[:i]
+	}
+	if len(msg) > 120 {
+		msg = msg[:120]
+	}
+	e.injectFault = fmt.Sprintf("injected %s range at line %d not read: %s", inj.dialect, inj.row+1, msg)
 }
 
 // ExtractWithFileSpecs is Extract and ExtractFileSpecs from one parse and one
@@ -657,7 +722,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		// existing non-fatal extract-error path fingerprints the file so it
 		// is not retried until its bytes or the ExtractorEpoch change.
 		e.noteFault(l)
-		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer func() { tree.Close() }() // the tree preprocessing swaps in, when it does
 
@@ -667,7 +732,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		raw, written := tree, src
 		if tree, src, err = tsPreprocessed(p, tree, src, rules.preprocess, rules.preprocessLenient); err != nil {
 			e.noteFault(l)
-			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 		}
 		swapped = tree != raw
 		if swapped {
@@ -681,7 +746,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	matches, err := q.Run(tree)
 	if err != nil {
 		e.noteFault(l)
-		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %w: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	if rules.localsQuery != "" {
 		matches = keepNonLocalCalls(q, src, matches) // LB-F254: a bare identifier is a call only where no local binds it
@@ -841,7 +906,7 @@ func (e *TSExtractor) injectionRanges(variant tsVariant, l *tsengine.Lease, tree
 	matches, err := iq.Run(tree)
 	if err != nil {
 		e.noteFault(l)
-		return nil, fmt.Errorf("tsextract[%s]: injections query: %v: %w", e.spec.name, err, ErrTSEngineFault)
+		return nil, fmt.Errorf("tsextract[%s]: injections query: %w: %w", e.spec.name, err, ErrTSEngineFault)
 	}
 	if _, err := tsRegistry(); err != nil {
 		return nil, err
@@ -889,6 +954,7 @@ func (e *TSExtractor) extractInjections(rules *tsDialectRules, injected []tsInje
 		v := tsDialectMap[inj.dialect].defaultVariant
 		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, false, nil)
 		if err != nil {
+			e.noteInjectFault(inj, err)
 			continue
 		}
 		out = append(out, nodes...)

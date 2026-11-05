@@ -1,0 +1,397 @@
+package lang // import "github.com/geoffmilleraz/fathom/pkg/lang"
+
+Package lang reads source files and configuration into facts: symbols,
+references, refused references and the facts a dialect declares, each with the
+level that readings measured for the dialect that read it.
+
+Bytes and a path go in. Nothing else is needed: no store, no daemon, no index,
+no git and no network. A Reader is safe for concurrent use and deterministic:
+equal inputs give byte-equal JSON.
+
+The package is a door over fathom's own extraction code (ADR-092). Public
+types are defined here, so a change inside fathom does not change this API.
+Symbol.Canonical is a closed vocabulary that only grows; Symbol.Kind is each
+dialect's own name and may change as a language improves.
+
+Withheld values. A Result is not promised to carry no credential, but it
+withholds the places one is found. The userinfo of a URL is dropped wherever
+a string from the file lands (a name, a key, a reference target or its raw
+spelling, an unresolved target, a fact), keeping an ssh account that has no
+password and the image of a docker or oci reference; a userinfo ends at the
+first '/', '?' or '#', so the host of a URL is never changed. A string literal
+a Signature binds to a name or a key is masked as *** where it is a parameter's
+default, a rule's value or a dictionary entry, and in every fact value.
+The text of a script (a package.json or composer.json script, any task) is
+not returned, only the program it runs, because a credential can sit in a
+script in more shapes than a pattern covers. A credential flag (--password,
+-u user:pass) and an Authorization header are masked in the rest of a Signature.
+A credential in any other place (a name, a label, a literal that is an argument,
+a block's own attributes) is returned as written.
+
+Refused files. A parser that recurses, or whose cost grows with the square of
+its input, cannot be interrupted, so a file is refused before it reaches one:
+it reads Incomplete with the reason in Notes. The guards count what each parser
+is known to recurse on or spend its time on (nesting past 10,000 levels, a run
+of more than 10,000 tokens no statement ends, more than 10,000 lexical errors,
+a TOML document of more than 40,000 keys). A shape no guard counts is not
+promised refused.
+
+The wazero runtime that runs the grammars is process-wide, so its on-disk
+compilation cache is a package function, EnableCompilationCache, and is off by
+default. Without it the package writes no file.
+
+CONSTANTS
+
+const (
+	PackEmpty      = "empty"      // the pack holds no dialect
+	PackManifest   = "manifest"   // a manifest is unreadable or breaks the dialect rules
+	PackConflict   = "conflict"   // an id, source kind, extension or basename is already taken
+	PackEngine     = "engine"     // the engine is not tags or doc
+	PackInjections = "injections" // queries.injections is not accepted in a pack
+	PackGrammar    = "grammar"    // the grammar is not one the library embeds
+	PackQuery      = "query"      // a query does not compile against its grammar
+	PackContainer  = "container"  // match.container is not accepted in a pack
+	PackClaims     = "claims"     // the dialect claims no file, claims one by a shebang, or names a glob that is not a pattern
+	PackRoute      = "route"      // the dialect claims what a built-in dialect owns outright
+)
+    The reasons a pack or a Go extractor is refused, in PackError.Reason.
+    The set is closed.
+
+    The values are written as literals, not aliases of the internal constants,
+    so a consumer reading the godoc sees them and a change to one is a visible
+    edit here. TestPublicConstantValues holds them to the internal ones.
+
+const (
+	SkipBinary       = "binary"       // the bytes are not source text
+	SkipOversize     = "oversize"     // over the file limit (2 MiB, lowerable by WithLimits)
+	SkipGenerated    = "generated"    // a generated file the dialect excludes
+	SkipAmbiguous    = "ambiguous"    // the file could belong to two dialects and the content does not settle it
+	SkipUnclassified = "unclassified" // no dialect reads this path and content
+	SkipNotLinked    = "not-linked"   // a dialect owns the file but its extractor is not linked into this Reader
+)
+    Skip reasons: the closed set Result.Skipped holds. A skipped file has no
+    symbols; the reason says why.
+
+const (
+	LevelUnmeasured = "unmeasured" // no reading exists for the dialect
+	LevelNone       = "none"       // measured, and no level was met
+)
+    Level values Result.Level and DialectInfo.Level hold besides L1 to L4.
+
+const DefaultMaxFileBytes = 2 * 1024 * 1024
+    DefaultMaxFileBytes is the largest file a Reader reads: the product's own
+    limit, 2 MiB. A larger file is skipped as oversize. The value is a literal;
+    TestPublicConstantValues holds it to the product's.
+
+
+VARIABLES
+
+var ErrClosed = errors.New("lang: reader is closed")
+    ErrClosed is returned by Extract on a Reader that was closed.
+
+
+FUNCTIONS
+
+func EnableCompilationCache(dir string) error
+    EnableCompilationCache turns on wazero's on-disk compilation cache for the
+    process, under dir. It is off by default. The cache holds machine code the
+    process will execute, so dir must be an absolute path that no group or
+    other user can write and, on unix, that no other user owns (an owner can
+    rewrite it whatever its mode); a directory that does not exist is created
+    with mode 0700. It must be called before the first Reader is built, because
+    the runtime is made once, and it errors on a second, different directory.
+    Calling it again with the same directory is a no-op.
+
+
+TYPES
+
+type DialectInfo struct {
+	ID string `json:"id"`
+	// Kind is "language" or "tooling".
+	Kind string `json:"kind"`
+	// Engine is what reads the dialect: tags (a tree-sitter grammar and its
+	// queries), doc (the document engine), tags+doc, or native (a Go reader
+	// wired by hand, such as CMake, proto, nginx or Kubernetes). It is the
+	// engine of the extractor the Reader dispatches to, which for a few
+	// dialects is not the one their manifest declares.
+	Engine string `json:"engine"`
+	// Matches is the sorted extensions, basenames and globs the dialect claims.
+	Matches []string `json:"matches"`
+	// Level and Grade are what readings proved: Level is L1 to L4, LevelNone
+	// or LevelUnmeasured, Grade the grade at that level ("" when none).
+	Level string `json:"level"`
+	Grade string `json:"grade"`
+}
+    DialectInfo describes one dialect a Reader can read.
+
+type Extracted struct {
+	Symbols    []Symbol
+	References []Reference
+	Unresolved []Unresolved
+	Facts      []Fact
+}
+    Extracted is what an Extractor reads from one file. Symbol.Key,
+    Symbol.Canonical and Reference.ToKey are derived by the Reader and ignored
+    here. Reference.Edge is the extractor's own relation name and is passed
+    through.
+
+type Extractor interface {
+	Extract(ctx context.Context, f File) (Extracted, error)
+}
+    An Extractor reads the files a Match claims. It must be safe for concurrent
+    use and deterministic. A panic in it is returned by Reader.Extract as an
+    error.
+
+type Fact struct {
+	// Entity is the Key of the symbol the fact belongs to, or the entity's name
+	// when it is no symbol of this file.
+	Entity string `json:"entity"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	Line   int    `json:"line"`
+}
+    Fact is one scalar a dialect declares an entity writes.
+
+type File struct {
+	Path string
+	Src  []byte
+	// Siblings is the optional list of the other repository-relative paths in
+	// the same repository. Some classifications read it (an Ansible role, a
+	// Helm chart's templates, a Timoni module). Empty is legal: the file is
+	// then classified alone, and Result.Notes says so when that could change
+	// the verdict.
+	Siblings []string
+}
+    File is one file to read. Path is repository-relative with forward slashes
+    and is the only thing the Reader knows about where the file lives.
+
+type Limits struct {
+	// MaxFileBytes lowers the file size limit (DefaultMaxFileBytes).
+	MaxFileBytes int
+}
+    Limits are the bounds a Reader works under. A zero field keeps the default.
+
+type Match struct {
+	// ID names the dialect: lowercase letters, digits and hyphens, and not a
+	// dialect the Reader already has.
+	ID string
+	// Kind is "language" or "tooling" ("language" when empty).
+	Kind string
+	// Extensions (with their dot), Basenames and Globs claim files, as in a pack.
+	// A built-in dialect's extension or basename is refused.
+	Extensions []string
+	Basenames  []string
+	Globs      []string
+	// Sniff claims files by content.
+	Sniff *Sniff
+	// Kinds maps each Symbol.Kind the extractor emits to its Symbol.Canonical,
+	// a value of the closed vocabulary. At least one is required.
+	Kinds map[string]string
+}
+    Match says which files a Go extractor reads and which kinds it emits.
+    It is held to the rules a pack dialect is.
+
+type Option func(*config) error
+    Option configures New.
+
+func Link(family string) Option
+    Link adds an extractor family a sibling package registers by import, by its
+    name. It is the hook pkg/lang/cue's Option calls, and cue is the only family
+    there is: write cue.Option(), not Link("cue"). New returns an error when the
+    family's package was not imported.
+
+func WithDialects(fsys fs.FS) Option
+    WithDialects adds a pack: dialects read from fsys, laid out as
+    dialects/<id>/dialect.json beside the queries and doc specs each names.
+    A pack is data. It names a grammar the library embeds and runs no code of
+    its own, and only the "tags" and "doc" engines are accepted.
+
+    The pack is merged with the built-in dialects and held to the same rules
+    they are, then compiled, and New returns a *PackError and no Reader when any
+    dialect breaks one. A pack dialect claims files by basename, glob or sniff,
+    or by an extension no built-in dialect owns. It is tried after the specific
+    built-in dialects and before an extension's generic reader, so it cannot
+    take a file whose extension a built-in dialect owns, whatever its glob or
+    basename says. Among the pack's dialects an exact basename claim beats a
+    glob, a glob an extension, and equal claims go to the lower id. Its queries
+    run under the same budget as the built-ins'. A pack dialect's Level is
+    always LevelUnmeasured: no reading exists for it. queries.injections is not
+    accepted in this version. A glob that is not a pattern, an empty tags query,
+    a tags capture of a kind the manifest does not declare, a variant with
+    its own tags query and no id, and a file in a dialect directory that the
+    manifest does not name each refuse the pack.
+
+    pkg/lang/langtest.CheckPack runs the same checks, then the pack's goldens.
+
+func WithExtractor(m Match, e Extractor) Option
+    WithExtractor registers a Go extractor under the same routing rules as a
+    pack dialect: it is merged with the built-ins, tried (basename, then glob,
+    then extension, then by id) after the specific built-ins and before an
+    extension's generic reader, never for a file whose extension a built-in
+    dialect owns, and refused whole, as a *PackError, when it breaks a rule. Its
+    dialect appears in Dialects with Engine "native" and Level LevelUnmeasured.
+    A context cancelled while the extractor runs is returned as the error.
+
+func WithLimits(l Limits) Option
+    WithLimits lowers the Reader's limits. A limit above the product's, or a
+    negative one, is an error: no option raises a limit, and no option raises a
+    grammar module's memory cap.
+
+type PackError struct {
+	// Reason is one of the Pack constants.
+	Reason string
+	// Dialect is the dialect that broke the rule, "" when the pack as a whole did.
+	Dialect string
+	// Detail says which rule and why.
+	Detail string
+}
+    PackError is why New refused a pack or a Go extractor. Nothing of it is
+    loaded: a pack is accepted whole or not at all.
+
+func (e *PackError) Error() string
+
+type Reader struct {
+	// Has unexported fields.
+}
+    Reader reads files into facts. Build one with New and Close it. A Reader is
+    safe for concurrent use.
+
+func New(opts ...Option) (r *Reader, err error)
+    New builds a Reader. It returns the error a bad option or a bad built-in
+    dialect gives, and never panics. The Reader links every built-in dialect
+    except CUE and Timoni, which a consumer adds by importing pkg/lang/cue.
+
+func (r *Reader) Close() error
+    Close releases the Reader's pooled grammar modules. It is idempotent,
+    and waits for extractions in flight.
+
+func (r *Reader) Dialects() []DialectInfo
+    Dialects lists every dialect the Reader reads, sorted by id, with the level
+    and grade that readings measured for it.
+
+func (r *Reader) Extract(ctx context.Context, f File) (Result, error)
+    Extract reads one file. A file no dialect reads is not an error:
+    the Result says why in Skipped. The error is for misuse (an empty path,
+    a closed Reader, a done context). A file an extractor could not fully read
+    returns what it did read, and Notes says what failed.
+
+type Reference struct {
+	// From is the Key of the referencing symbol, or "" for a reference the
+	// document itself makes.
+	From string `json:"from"`
+	// To is the target as the dialect names it, with the userinfo of a URL
+	// dropped (a withheld value, see the package documentation): a Go call names
+	// package.Func, a Terraform reference var.name, a CloudFormation Ref the
+	// logical id, a cross-file reference the path, image or address the
+	// Strategy resolved. It is not necessarily a Key.
+	To string `json:"to"`
+	// ToKey is the Key of the symbol in the same file that To names, when To
+	// equals exactly one symbol's Key or Name, and empty otherwise (a target
+	// in another file, an ambiguous name, a cross-file reference).
+	ToKey string `json:"to_key"`
+	// Edge names the relation: "call" for a call by a code reader (Go, the
+	// tree-sitter dialects, templ, Rego, notebooks), "reference" for a plain
+	// reference from an engine that declares no relation, and
+	// otherwise the edge the dialect declares (uses, imports, depends_on and
+	// so on). Do not branch on an Edge across dialects.
+	Edge string `json:"edge"`
+	// Raw is the value as written, when it differs from To, with the userinfo of
+	// a URL dropped.
+	Raw string `json:"raw"`
+	// Strategy is how a document reference resolved (repo-path, image-ref,
+	// module-source and so on), empty for a call.
+	Strategy string `json:"strategy"`
+	// Line is the line the reference is written on. 0 means the engine does
+	// not record one: calls read by the tree-sitter and Go engines carry no
+	// line.
+	Line int `json:"line"`
+}
+    Reference is one edge from a symbol (or the document, From "") to a target.
+
+type Result struct {
+	// Dialect is the id of the dialect or generic reader (generic-json,
+	// generic-toml) that read the file, and "" only when nothing read it: a
+	// skipped file. SkipNotLinked names the dialect that owns the file but is
+	// not linked into this Reader.
+	Dialect string `json:"dialect"`
+	// Language is the file's language class from its path.
+	Language string `json:"language"`
+	// Skipped is a Skip reason, or "" when a dialect read the file.
+	Skipped    string       `json:"skipped"`
+	Symbols    []Symbol     `json:"symbols"`
+	References []Reference  `json:"references"`
+	Unresolved []Unresolved `json:"unresolved"`
+	Facts      []Fact       `json:"facts"`
+	// Level is the dialect's measured level: L1 to L4, LevelNone or
+	// LevelUnmeasured. It is what readings proved about the dialect, not a
+	// promise about this file. It is "" when Skipped is set: no dialect read
+	// the file, so no level applies.
+	Level string `json:"level"`
+	// Incomplete is true when an engine could not fully read the file: the
+	// symbols, references and facts above are what it did read, and Notes says
+	// why. False means no engine reported a failure, which is not a promise
+	// that every construct was read: the tree-sitter dialects recover from a
+	// syntax error without reporting it, and the line scanners (CMake,
+	// templ) have no failure concept. A policy tool that must not pass a file
+	// it could not read should refuse when Incomplete is true.
+	Incomplete bool `json:"incomplete"`
+	// Notes disclose what the Reader could not know and that may have changed
+	// the result. Empty when nothing did.
+	Notes []string `json:"notes"`
+}
+    Result is what one file holds. Every slice is non-nil and sorted, so equal
+    inputs give byte-equal JSON.
+
+type Sniff struct {
+	Extensions []string
+	Pattern    string
+}
+    Sniff claims files of the listed extensions whose first kilobyte matches
+    Pattern (a Go regular expression, matched across lines).
+
+type Symbol struct {
+	// Key is the symbol's identity within its file: Package and Name joined by
+	// a dot, or Name alone when Package is empty. Reference.From and
+	// Reference.ToKey hold Keys. A dialect names a reference target as it
+	// writes it (Reference.To), which equals a Key only when the dialect
+	// writes targets the way it names definitions; ToKey is the join.
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	// Package is the scope the extractor groups the symbol under, and the part
+	// of Key before Name. It is the extractor's own scope, not a normalized
+	// package: for most dialects it is the directory or package a definition
+	// sits in, and for the Go extractor it is the package name for a function,
+	// type, constant and variable but the receiver type for a method and the
+	// owner type for a field (method M on type T reads Package "T", Name "T.M",
+	// Key "T.T.M"). The scope is part of Key and so of Reference.From; it is
+	// pinned by the tests and changes only as a Breaking change.
+	Package string `json:"package"`
+	// Kind is the dialect's own name for what the symbol is (for example
+	// TerraformResource). Kinds may be added and renamed as languages
+	// improve; do not branch on a Kind across dialects.
+	Kind string `json:"kind"`
+	// Canonical is the closed cross-dialect vocabulary. Values only grow. It
+	// is empty for a kind that has no canonical meaning (a fact an extractor
+	// observes, for example) and for a kind of an extractor no table maps. A
+	// Go type reads struct, interface, type_alias (type A = B) or type (a
+	// defined type such as type N int) by its declaration.
+	Canonical string `json:"canonical"`
+	Line      int    `json:"line"`
+	// EndLine is the last line, 0 when the extractor does not compute it.
+	EndLine   int    `json:"end_line"`
+	Signature string `json:"signature"`
+	// Tier is how the symbol was established: verified, pre-scan,
+	// doc-claimed, sme-stated or assumed.
+	Tier string `json:"tier"`
+}
+    Symbol is one definition.
+
+type Unresolved struct {
+	From   string `json:"from"`
+	Edge   string `json:"edge"`
+	Raw    string `json:"raw"`
+	Reason string `json:"reason"`
+	Line   int    `json:"line"`
+}
+    Unresolved is a reference the Reader read and refused to guess.
+

@@ -70,7 +70,7 @@ func EnableCompilationCacheDir(dir string) error {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	if runtimeMade {
-		return fmt.Errorf("tsengine: compilation cache enabled after the runtime was built; call it at daemon start")
+		return fmt.Errorf("tsengine: compilation cache enabled after the runtime was built; call it before the first parse (a daemon at start, a library consumer before its first Reader)")
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("tsengine: compilation cache: %w", err)

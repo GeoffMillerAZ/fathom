@@ -164,13 +164,28 @@ func addEmbedded(out *[]embeddedDoc, dialect, key, object string, v *yaml.Node, 
 // embeds, each qualified by its key and placed at its lines; ok is false
 // when none reads to an entity.
 func K8sEmbeddedResult(service, relPath string, content []byte) (extractor.DocResult, bool) {
-	var all extractor.DocResult
+	all, ok, _ := k8sEmbeddedReport(service, relPath, content)
+	return all, ok
+}
+
+// k8sEmbeddedReport is K8sEmbeddedResult and, when an embedded document could
+// not be read (its engine failed or reported Incomplete), the first one's
+// key and reason.
+func k8sEmbeddedReport(service, relPath string, content []byte) (all extractor.DocResult, ok bool, incomplete string) {
 	for _, d := range k8sEmbeddedDocs(content) {
 		x := LateYAMLLookup(d.dialect)
 		if x == nil {
 			continue
 		}
 		res, err := x.ExtractDoc(service, relPath, d.content)
+		if incomplete == "" {
+			switch {
+			case err != nil:
+				incomplete = incompleteNote("embedded "+d.key, err.Error())
+			case res.Incomplete != "":
+				incomplete = incompleteNote("embedded "+d.key, res.Incomplete)
+			}
+		}
 		if err != nil || len(res.Roots) == 0 {
 			continue
 		}
@@ -183,7 +198,18 @@ func K8sEmbeddedResult(service, relPath string, content []byte) (extractor.DocRe
 		all.Matchers = append(all.Matchers, res.Matchers...)
 		all.Facts = append(all.Facts, res.Facts...)
 	}
-	return all, len(all.Nodes) > 0
+	return all, len(all.Nodes) > 0, incomplete
+}
+
+// incompleteNote is a one-line reason: what failed, then why, bounded.
+func incompleteNote(what, why string) string {
+	if i := strings.IndexByte(why, '\n'); i >= 0 {
+		why = why[:i]
+	}
+	if len(why) > 120 {
+		why = why[:120]
+	}
+	return what + ": " + strings.TrimSpace(why)
 }
 
 // placeEmbedded qualifies an embedded document's entities by its key and
@@ -255,23 +281,45 @@ func placeEmbedded(res extractor.DocResult, relPath string, d embeddedDoc) extra
 // k8sEmbedExtractor is a Kubernetes manifest's extractor plus the documents
 // its objects embed. It is deliberately no DocResulter: the route and
 // policy passes read the manifest as the Kubernetes object it is, and the
-// doc-xref pass's hook (alertroute.go) reads the embedded documents.
+// doc-xref pass's hook (alertroute.go) reads the embedded documents. It is a
+// ReportingExtractor, so the door still hears the base reader's reason and
+// an embedded document that failed to read.
 type k8sEmbedExtractor struct {
 	base extractor.Extractor
 }
 
+var _ extractor.ReportingExtractor = k8sEmbedExtractor{}
+
 // Extract implements extractor.Extractor: the Kubernetes nodes, then the
 // embedded documents' entities and their facts (WAE-4).
 func (x k8sEmbedExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
-	nodes, err := x.base.Extract(service, relPath, src)
-	if err != nil {
-		return nodes, err
+	nodes, _, err := x.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and the reason a document, the manifest's own or
+// an embedded one, could not be read (extractor.ReportingExtractor).
+func (x k8sEmbedExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
+	var nodes []core.SymbolNode
+	var why string
+	var err error
+	if re, ok := x.base.(extractor.ReportingExtractor); ok {
+		nodes, why, err = re.ExtractReport(service, relPath, src)
+	} else {
+		nodes, err = x.base.Extract(service, relPath, src)
 	}
-	if res, ok := K8sEmbeddedResult(service, relPath, src); ok {
+	if err != nil {
+		return nodes, why, err
+	}
+	res, ok, embedded := k8sEmbeddedReport(service, relPath, src)
+	if ok {
 		nodes = append(nodes, res.Nodes...)
 		nodes = append(nodes, storeEntityFacts(res)...)
 	}
-	return nodes, nil
+	if why == "" {
+		why = embedded
+	}
+	return nodes, why, nil
 }
 
 // k8sEmbedDispatch claims a Kubernetes manifest that embeds a document:

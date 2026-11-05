@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "dialects": [
+    {
+      "id": "dockerfile",
+      "kind": "tooling",
+      "engine": "tags",
+      "matches": "<array>",
+      "level": "<string>",
+      "grade": "<string>"
+    },
+    {
+      "id": "go",
+      "kind": "language",
+      "engine": "native",
+      "matches": "<array>",
+      "level": "<string>",
+      "grade": "<string>"
+    },
+    {
+      "id": "terraform",
+      "kind": "tooling",
+      "engine": "native",
+      "matches": "<array>",
+      "level": "<string>",
+      "grade": "<string>"
+    }
+  ]
+}

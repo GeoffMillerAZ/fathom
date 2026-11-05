@@ -81,6 +81,10 @@ var (
 // NewHCLToolsExtractor returns the hcl-tools dialect's extractor.
 func NewHCLToolsExtractor() *HCLToolsExtractor { return &HCLToolsExtractor{} }
 
+// Name is the dialect's id, which the door labels a file with when the file's
+// extension (.hcl) is shared by several dialects and the file emits no node.
+func (x *HCLToolsExtractor) Name() string { return "hcl-tools" }
+
 // Extract implements Extractor.
 func (x *HCLToolsExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	r, err := x.ExtractDoc(service, relPath, src)
@@ -102,14 +106,15 @@ func hclToolOf(relPath string) string {
 
 // ExtractDoc implements DocResulter.
 func (x *HCLToolsExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	body, err := hclParseBody(relPath, src)
+	body, incomplete, err := hclParseBody(relPath, src)
 	if err != nil {
 		return DocResult{}, err
 	}
 	if body == nil {
-		return DocResult{}, nil
+		return DocResult{Incomplete: incomplete}, nil
 	}
 	w := newHCLWalk(service, relPath, src)
+	w.incomplete = incomplete
 	switch hclToolOf(relPath) {
 	case "packer":
 		if strings.HasSuffix(relPath, ".pkrvars.hcl") {

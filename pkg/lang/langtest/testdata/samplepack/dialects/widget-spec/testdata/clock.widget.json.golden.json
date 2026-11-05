@@ -1,0 +1,43 @@
+{
+  "dialect": "widget-spec",
+  "language": "json",
+  "skipped": "",
+  "symbols": [
+    {
+      "key": "clock.widget.Clock",
+      "name": "Clock",
+      "package": "clock.widget",
+      "kind": "WidgetDef",
+      "canonical": "resource",
+      "line": 1,
+      "end_line": 6,
+      "signature": "timer",
+      "tier": "verified"
+    }
+  ],
+  "references": [
+    {
+      "from": "",
+      "to": "parts/battery.widget.json",
+      "to_key": "",
+      "edge": "imports",
+      "raw": "",
+      "strategy": "repo-path",
+      "line": 5
+    },
+    {
+      "from": "clock.widget.Clock",
+      "to": "Battery",
+      "to_key": "",
+      "edge": "uses",
+      "raw": "",
+      "strategy": "",
+      "line": 4
+    }
+  ],
+  "unresolved": [],
+  "facts": [],
+  "level": "unmeasured",
+  "incomplete": false,
+  "notes": []
+}

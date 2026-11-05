@@ -25,6 +25,7 @@ type Router struct {
 
 	timoni  extractor.Extractor // the Timoni dialect's extractor; nil skips Timoni files
 	formats FormatDispatch      // product-only formats; nil skips them
+	pack    *packLayer          // this Router's pack layer (AttachPack); nil for none
 }
 
 // Option configures NewRouter.
@@ -69,6 +70,7 @@ func (r *Router) formatDispatch(relPath string, content []byte) (extractor.Extra
 
 // Close releases the extractors' pooled modules.
 func (r *Router) Close() {
+	r.closePack()
 	seen := map[*extractor.TSExtractor]bool{}
 	for _, e := range r.exts {
 		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {

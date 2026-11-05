@@ -42,6 +42,10 @@ agent through `fathom serve-mcp --url <daemon rpc url>`, a stdio front that open
 (tiers T1..T6, the level each item meets and its next gap) is the one place that states levels,
 so quote levels from there; it is regenerated, never hand-edited.
 
+To use that reading without the rest of fathom, import `pkg/lang` from Go or run `fathom-lang extract|dialects`
+(JSON, stdlib flags only; release archives and `task deploy` carry it beside `fathom`).
+Guide: [use-cases/lang-library.md](use-cases/lang-library.md).
+
 ---
 
 ## Ignoring files: `.fathomignore`

@@ -113,9 +113,17 @@ type k8sChunk struct {
 // template with mustache expressions) is silently skipped without affecting
 // the rest of the file.
 func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := k.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when a document could not be decoded, the
+// reason (ReportingExtractor).
+func (k *K8sExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	var nodes []core.SymbolNode
 	pkg := pkgFromPath(relPath)
 	identities := map[string]bool{}
+	incomplete := "" // the first document that could not be decoded
 
 	for _, chunk := range k8sSplitDocs(src) {
 		dec := yaml.NewDecoder(bytes.NewReader([]byte(chunk.text)))
@@ -126,6 +134,9 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				continue
 			}
 			// Malformed document — skip it (best-effort).
+			if incomplete == "" {
+				incomplete = incompleteReason("yaml decode", err)
+			}
 			continue
 		}
 		if len(rawNode.Content) == 0 {
@@ -140,9 +151,16 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 		// last value winning: the same fields are then read from the node
 		// (k8sDocFromNode, O1034).
 		var doc k8sDoc
-		if decErr := rawNode.Decode(&doc); decErr != nil {
+		decErr := errYAMLDecodeUnsafe
+		if yamlDecodeSafe(rawNode.Content[0]) { // yaml.v3's decode is quadratic in a mapping's keys
+			decErr = rawNode.Decode(&doc)
+		}
+		if decErr != nil {
 			var ok bool
 			if doc, ok = k8sDocFromNode(rawNode.Content[0]); !ok {
+				if incomplete == "" {
+					incomplete = incompleteReason("document decode", decErr)
+				}
 				continue
 			}
 		}
@@ -236,7 +254,7 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 		}
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes, incomplete, nil
 }
 
 // k8sSplitDocs splits YAML bytes into per-document chunks on "---" separator
@@ -358,22 +376,16 @@ func k8sLiteral(v string) bool {
 
 func k8sYPath(n *yaml.Node, keys ...string) *yaml.Node {
 	for _, k := range keys {
-		if n == nil || n.Kind != yaml.MappingNode {
+		_, n = yamlLookup(n, k, false, 0)
+		if n == nil {
 			return nil
 		}
-		var next *yaml.Node
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			if n.Content[i].Value == k {
-				next = n.Content[i+1]
-				break
-			}
-		}
-		n = next
 	}
 	return n
 }
 
 func k8sYSeq(n *yaml.Node) []*yaml.Node {
+	n = yamlResolve(n)
 	if n == nil || n.Kind != yaml.SequenceNode {
 		return nil
 	}
@@ -381,6 +393,7 @@ func k8sYSeq(n *yaml.Node) []*yaml.Node {
 }
 
 func k8sYScalar(n *yaml.Node) string {
+	n = yamlResolve(n)
 	if n == nil || n.Kind != yaml.ScalarNode {
 		return ""
 	}
