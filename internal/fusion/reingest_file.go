@@ -33,6 +33,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -158,107 +159,8 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return ReingestReport{}, nil
 	}
 
-	base := filepath.Base(relFile)
 	ext := filepath.Ext(relFile)
-	extExtractor, ok := p.exts[base]
-	if ke, _, kok := p.checkovDispatch(relFile); kok {
-		extExtractor, ok = ke, true // Checkov Python checks and YAML graph checks (LB-Q-checkov-policies): resolveExtractor's decision
-	}
-	if ce, _, cok := p.cloudPolicyDispatch(relFile, content, nil); cok {
-		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the decision resolveExtractor makes.
-		extExtractor, ok = ce, true
-	}
-	if ge, _, gok := gatewayDispatch(relFile, content); gok {
-		// Envoy, Kong and Traefik configuration (LB-F104): the decision
-		// resolveExtractor makes, a manifest name AND the content sniff.
-		extExtractor, ok = ge, true
-	}
-	if fe, _, fok := fathomFormatDispatch(relFile, content); fok {
-		extExtractor, ok = fe, true // .fathom/config.toml and docs/plans/*.md (LB-F219): resolveExtractor's decision
-	}
-	if pe, _, pok := policyDispatch(relFile, content); pok {
-		extExtractor, ok = pe, true // Kyverno and Gatekeeper files (LB-F134): resolveExtractor's decision
-	}
-	var idx *siblingIndex
-	if ext == ".yml" || ext == ".yaml" {
-		idx = diskSiblingIndex(repoPath, relFile) // the chart and role roots ingest read from Discover
-	}
-	if ext == ".cue" {
-		idx = diskTimoniIndex(repoPath, relFile) // the module roots above the file (LB-F216)
-	}
-	if ce, _, cok := crDispatch(relFile, content, idx); cok {
-		// Argo, Flux and Crossplane objects (LB-F149): ingest's decision.
-		extExtractor, ok = ce, true
-	}
-	if te, _, tok := timoniDispatch(relFile, content, idx); tok {
-		extExtractor, ok = te, true // Timoni modules, bundles and runtimes (LB-F216): ingest's decision
-	}
-	if ke, _, kok := p.k8sEmbedDispatch(relFile, content, idx); kok {
-		extExtractor, ok = ke, true // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366): ingest's decision
-	}
-	if !ok && (ext == ".yml" || ext == ".yaml") && Classify(relFile, content, idx) == ToolAnsible {
-		// An Ansible file (LB-Q-ansible), read by path and content as ingest's
-		// classifier reads it, not by the generic YAML extractor.
-		extExtractor, ok = p.toolExts[ToolAnsible]
-	}
-	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "gitlab-ci" {
-		// A pipeline file named only by its path (.gitlab/ci/…, *.gitlab-ci.yml)
-		// reads through the gitlab-ci dialect, as ingest's classifier sends it
-		// there, not through the generic YAML extractor the extension names.
-		extExtractor, ok = p.toolExts[ToolGitLabCI]
-	}
-	if !ok {
-		if ae, _, aok := azurePipelineDispatch(relFile, content, idx); aok {
-			extExtractor, ok = ae, true
-		}
-	}
-	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "circleci" {
-		// .circleci/config.yml, as ingest's classifier sends it (LB-Q-circleci).
-		extExtractor, ok = p.toolExts[ToolCircleCI]
-	}
-	if !ok && (ext == ".yml" || ext == ".yaml") && strings.Contains(filepath.ToSlash(relFile), ".github/workflows/") {
-		// A workflow is the github-actions dialect's, as ingest dispatches it (LB-F306).
-		extExtractor, ok = p.toolExts[ToolGHA]
-	}
-	if !ok && (ext == ".yml" || ext == ".yaml") {
-		// A late YAML dialect (lateyamldispatch.go): the classifier's last
-		// signal, the decision ingest's resolveExtractor makes.
-		if le := lateYAMLExtractor(Classify(relFile, content, idx)); le != nil {
-			extExtractor, ok = le, true
-		}
-	}
-	if !ok && isCloudFormation(relFile, content, nil) {
-		// A CloudFormation template (LB-Q-cloudformation) is read by its
-		// content, as ingest's dispatch reads it, not by the YAML or JSON
-		// extractor its extension names.
-		extExtractor, ok = p.toolExts[ToolCloudFormation]
-	}
-	if !ok && isOpenAPI(relFile, content, nil) {
-		// An OpenAPI or Swagger document (LB-Q-openapi), YAML or JSON, is read
-		// by its content as ingest's dispatch reads it.
-		extExtractor, ok = p.toolExts[ToolOpenAPI]
-	}
-	if !ok && ext == ".json" && isGrafanaDashboard(relFile, content, nil) {
-		// A Grafana dashboard JSON (LB-F365), by its content, as ingest reads it.
-		if ge := lateYAMLExtractor(ToolGrafanaDashboard); ge != nil {
-			extExtractor, ok = ge, true
-		}
-	}
-	if !ok {
-		extExtractor, _, ok = appFrameworkDispatch(relFile, content) // ARM by content, a Pulumi stack by glob: ingest's decision (LB-F146)
-	}
-	if !ok {
-		extExtractor, _, ok = jsonSchemaDispatch(relFile, content) // a JSON Schema document: ingest's decision (LB-Q-json-schema)
-	}
-	if !ok {
-		extExtractor, ok = p.exts[ext]
-	}
-	if !ok {
-		// A dialect that owns the extension only through match.sniff
-		// (MATLAB's .m): ingest's dispatch, resolveExtractor, asks the
-		// same classifier.
-		extExtractor, ok = p.sniffedExtractor(relFile, content)
-	}
+	extExtractor, ok := p.reingestDispatch(repoPath, relFile, content)
 	if !ok {
 		if err := setFingerprintAndReceipt(ctx, st, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
@@ -425,4 +327,113 @@ func replaceFileServiceRefs(ctx context.Context, st store.Store, serviceID, relF
 		return fmt.Errorf("fusion: ReingestFile service refs %q: %w", relFile, err)
 	}
 	return nil
+}
+
+// reingestDispatch is the extractor ReingestFile reads relFile with: its own
+// dispatch order, a second one beside resolveExtractor's. Split out of
+// ReingestFile unchanged so the routing-parity harness can record which
+// extractor it picks without a store.
+func (p *Pipeline) reingestDispatch(repoPath, relFile string, content []byte) (extractor.Extractor, bool) {
+	base := filepath.Base(relFile)
+	ext := filepath.Ext(relFile)
+	extExtractor, ok := p.exts[base]
+	if ke, _, kok := p.checkovDispatch(relFile); kok {
+		extExtractor, ok = ke, true // Checkov Python checks and YAML graph checks (LB-Q-checkov-policies): resolveExtractor's decision
+	}
+	if ce, _, cok := p.cloudPolicyDispatch(relFile, content, nil); cok {
+		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the decision resolveExtractor makes.
+		extExtractor, ok = ce, true
+	}
+	if ge, _, gok := gatewayDispatch(relFile, content); gok {
+		// Envoy, Kong and Traefik configuration (LB-F104): the decision
+		// resolveExtractor makes, a manifest name AND the content sniff.
+		extExtractor, ok = ge, true
+	}
+	if fe, _, fok := fathomFormatDispatch(relFile, content); fok {
+		extExtractor, ok = fe, true // .fathom/config.toml and docs/plans/*.md (LB-F219): resolveExtractor's decision
+	}
+	if pe, _, pok := policyDispatch(relFile, content); pok {
+		extExtractor, ok = pe, true // Kyverno and Gatekeeper files (LB-F134): resolveExtractor's decision
+	}
+	var idx *siblingIndex
+	if ext == ".yml" || ext == ".yaml" {
+		idx = diskSiblingIndex(repoPath, relFile) // the chart and role roots ingest read from Discover
+	}
+	if ext == ".cue" {
+		idx = diskTimoniIndex(repoPath, relFile) // the module roots above the file (LB-F216)
+	}
+	if ce, _, cok := crDispatch(relFile, content, idx); cok {
+		// Argo, Flux and Crossplane objects (LB-F149): ingest's decision.
+		extExtractor, ok = ce, true
+	}
+	if te, _, tok := timoniDispatch(relFile, content, idx); tok {
+		extExtractor, ok = te, true // Timoni modules, bundles and runtimes (LB-F216): ingest's decision
+	}
+	if ke, _, kok := p.k8sEmbedDispatch(relFile, content, idx); kok {
+		extExtractor, ok = ke, true // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366): ingest's decision
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && Classify(relFile, content, idx) == ToolAnsible {
+		// An Ansible file (LB-Q-ansible), read by path and content as ingest's
+		// classifier reads it, not by the generic YAML extractor.
+		extExtractor, ok = p.toolExts[ToolAnsible]
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "gitlab-ci" {
+		// A pipeline file named only by its path (.gitlab/ci/…, *.gitlab-ci.yml)
+		// reads through the gitlab-ci dialect, as ingest's classifier sends it
+		// there, not through the generic YAML extractor the extension names.
+		extExtractor, ok = p.toolExts[ToolGitLabCI]
+	}
+	if !ok {
+		if ae, _, aok := azurePipelineDispatch(relFile, content, idx); aok {
+			extExtractor, ok = ae, true
+		}
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "circleci" {
+		// .circleci/config.yml, as ingest's classifier sends it (LB-Q-circleci).
+		extExtractor, ok = p.toolExts[ToolCircleCI]
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && strings.Contains(filepath.ToSlash(relFile), ".github/workflows/") {
+		// A workflow is the github-actions dialect's, as ingest dispatches it (LB-F306).
+		extExtractor, ok = p.toolExts[ToolGHA]
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") {
+		// A late YAML dialect (lateyamldispatch.go): the classifier's last
+		// signal, the decision ingest's resolveExtractor makes.
+		if le := lateYAMLExtractor(Classify(relFile, content, idx)); le != nil {
+			extExtractor, ok = le, true
+		}
+	}
+	if !ok && isCloudFormation(relFile, content, nil) {
+		// A CloudFormation template (LB-Q-cloudformation) is read by its
+		// content, as ingest's dispatch reads it, not by the YAML or JSON
+		// extractor its extension names.
+		extExtractor, ok = p.toolExts[ToolCloudFormation]
+	}
+	if !ok && isOpenAPI(relFile, content, nil) {
+		// An OpenAPI or Swagger document (LB-Q-openapi), YAML or JSON, is read
+		// by its content as ingest's dispatch reads it.
+		extExtractor, ok = p.toolExts[ToolOpenAPI]
+	}
+	if !ok && ext == ".json" && isGrafanaDashboard(relFile, content, nil) {
+		// A Grafana dashboard JSON (LB-F365), by its content, as ingest reads it.
+		if ge := lateYAMLExtractor(ToolGrafanaDashboard); ge != nil {
+			extExtractor, ok = ge, true
+		}
+	}
+	if !ok {
+		extExtractor, _, ok = appFrameworkDispatch(relFile, content) // ARM by content, a Pulumi stack by glob: ingest's decision (LB-F146)
+	}
+	if !ok {
+		extExtractor, _, ok = jsonSchemaDispatch(relFile, content) // a JSON Schema document: ingest's decision (LB-Q-json-schema)
+	}
+	if !ok {
+		extExtractor, ok = p.exts[ext]
+	}
+	if !ok {
+		// A dialect that owns the extension only through match.sniff
+		// (MATLAB's .m): ingest's dispatch, resolveExtractor, asks the
+		// same classifier.
+		extExtractor, ok = p.sniffedExtractor(relFile, content)
+	}
+	return extExtractor, ok
 }
