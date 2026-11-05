@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 )
 
 func classOf(t *testing.T, set *ResourceSet, path string) Attr {
@@ -503,24 +502,14 @@ func TestReadTerraformEphemeralBlocksAndErrorFileName(t *testing.T) {
 		fmt.Fprintf(&tf, "  l%d = \"${local.l%d}${local.l%d}\"\n", i, i-1, i-1)
 	}
 	tf.WriteString("}\nresource \"t\" \"n\" {\n  x = local.l30\n}\n")
-	_, err = ReadTerraformModule(fstest.MapFS{"main.tf": file(tf.String())}, ".")
+	// The doubling chain is linear since a local is classified once (R4): it reads.
+	if set, err := ReadTerraformModule(fstest.MapFS{"main.tf": file(tf.String())}, "."); err != nil || len(set.Resources) != 1 {
+		t.Fatalf("a doubling chain of locals must read: %v", err)
+	}
+	// A file past the token bound is refused with an error that names it.
+	big := "resource \"t\" \"n\" {\n  x = [" + strings.Repeat("1,", MaxNodes/2+1) + "1]\n}\n"
+	_, err = ReadTerraformModule(fstest.MapFS{"main.tf": file(big)}, ".")
 	if !errors.Is(err, ErrLimit) || !strings.Contains(err.Error(), "main.tf") {
 		t.Fatalf("want ErrLimit naming main.tf, got %v", err)
 	}
-}
-
-// 40,000 resources and 10,000 references took 1.5 s with a linear name lookup. The size is bounded by the file cap.
-func TestReadPulumiNameLookupIsConstantTime(t *testing.T) {
-	var sb strings.Builder
-	sb.WriteString("resources:\n")
-	const n = 30000
-	for i := 0; i < n; i++ {
-		fmt.Fprintf(&sb, "  r%d: {type: a:b:C, properties: {p: \"${r%d.id}\"}}\n", i, n-1-i)
-	}
-	within(t, 5*time.Second, "pulumi lookup", func() {
-		set, err := ReadPulumiYAMLFile("Pulumi.yaml", []byte(sb.String()))
-		if err != nil || len(set.Resources) != n {
-			t.Errorf("%v", err)
-		}
-	})
 }

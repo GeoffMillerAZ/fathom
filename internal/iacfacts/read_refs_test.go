@@ -97,3 +97,45 @@ func TestReadValuesAreBoundedInAll(t *testing.T) {
 		}
 	}
 }
+
+// A local was classified again at every reference, and the node count only saw the reference: 4,000 uses of a
+// 100,000-term local took 40 s and 45 GB with values off. A local is classified once.
+func TestReadTerraformLocalIsClassifiedOnce(t *testing.T) {
+	const terms, uses = 20_000, 1000
+	var sb strings.Builder
+	sb.WriteString("locals {\n  big = " + strings.Repeat("a.b + ", terms) + "1\n}\nresource \"t\" \"n\" {\n")
+	for i := 0; i < uses; i++ {
+		fmt.Fprintf(&sb, "  x%d = local.big\n", i)
+	}
+	sb.WriteString("}\n")
+	var set *ResourceSet
+	var err error
+	got := allocated(func() { set, err = ReadTerraformModule(fstest.MapFS{"main.tf": file(sb.String())}, ".") })
+	if err != nil || len(set.Resources) != 1 || len(set.Resources[0].Attrs) != uses {
+		t.Fatalf("%v", err)
+	}
+	if got > 256<<20 {
+		t.Errorf("allocated %d MB", got>>20)
+	}
+	if a := set.Resources[0].Attrs[0]; a.Class != ClassExpression || fmt.Sprint(a.Refs) != "[local.big]" {
+		t.Errorf("%+v", a)
+	}
+}
+
+// A cycle reads unknown at the reference that closes it, and an answer cut by a cycle is not kept for other uses.
+func TestReadTerraformLocalCyclesAreNotMemoized(t *testing.T) {
+	src := "locals {\n  a = \"x${local.b}\"\n  b = \"y${local.a}\"\n  c = \"z\"\n}\nresource \"t\" \"n\" {\n  p = local.a\n  q = local.b\n  r = local.c\n}\n"
+	set, err := ReadTerraformModule(fstest.MapFS{"main.tf": file(src)}, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range set.Resources[0].Attrs {
+		want := ClassUnknown
+		if a.Path == "r" {
+			want = ClassLiteral
+		}
+		if a.Class != want {
+			t.Errorf("%s: %s, want %s", a.Path, a.Class, want)
+		}
+	}
+}

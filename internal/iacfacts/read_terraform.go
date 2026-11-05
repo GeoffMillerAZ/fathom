@@ -101,12 +101,13 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 			return nil, err
 		}
 	}
+	ix := newOverrideIndex(set)
 	for _, f := range files {
 		if !f.override {
 			continue
 		}
 		r.bad, r.file = f.bad, f.file
-		if err := r.applyOverrides(set, f.body); err != nil {
+		if err := r.applyOverrides(set, ix, f.body); err != nil {
 			return nil, err
 		}
 	}
@@ -257,10 +258,15 @@ type tfReader struct {
 	env       *tfEnv
 	resolving map[string]bool
 	nodes     int
+	// inners memoizes what a variable default or a local classifies to, so a thousand references to one local read
+	// its expression once. An answer computed while a cycle was being cut is not kept: it depends on where the
+	// walk entered.
+	inners map[string]readRes
+	cuts   int
 }
 
 func newTFReader(cfg config, env *tfEnv) *tfReader {
-	return &tfReader{emitter: emitter{cfg: cfg}, env: env, resolving: map[string]bool{}}
+	return &tfReader{emitter: emitter{cfg: cfg}, env: env, resolving: map[string]bool{}, inners: map[string]readRes{}}
 }
 
 func sortedAttrs(b *hclsyntax.Body) []*hclsyntax.Attribute {
@@ -403,29 +409,66 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 	w.top = top
 }
 
+// overrideKey names the resource an override block changes.
+type overrideKey struct {
+	mode       string
+	typ, rname string
+}
+
+// overrideIndex finds, without scanning, the base resource an override block changes and the attributes of that
+// resource under one top segment. A scan per override attribute is quadratic in the attribute count: 40,000 base
+// and 40,000 override attributes took 34 s.
+type overrideIndex struct {
+	res  map[overrideKey]int
+	segs map[int]map[string][]int
+}
+
+func newOverrideIndex(set *ResourceSet) *overrideIndex {
+	ix := &overrideIndex{res: map[overrideKey]int{}, segs: map[int]map[string][]int{}}
+	for i := range set.Resources {
+		k := overrideKey{set.Resources[i].Mode, set.Resources[i].Type, set.Resources[i].Name}
+		if _, dup := ix.res[k]; !dup {
+			ix.res[k] = i
+		}
+	}
+	return ix
+}
+
+// segments is base resource i's attribute indexes by top segment, built on first use.
+func (ix *overrideIndex) segments(set *ResourceSet, i int) map[string][]int {
+	m, ok := ix.segs[i]
+	if !ok {
+		m = map[string][]int{}
+		for j := range set.Resources[i].Attrs {
+			seg := topSegment(set.Resources[i].Attrs[j].Path)
+			m[seg] = append(m[seg], j)
+		}
+		ix.segs[i] = m
+	}
+	return m
+}
+
 // applyOverrides reads an override file's blocks and marks, in the resource each one overrides, every
 // attribute or nested block it names as unknown. A block with no base is ignored, as OpenTofu refuses it.
-func (r *tfReader) applyOverrides(set *ResourceSet, body *hclsyntax.Body) error {
+func (r *tfReader) applyOverrides(set *ResourceSet, ix *overrideIndex, body *hclsyntax.Body) error {
 	var over ResourceSet
 	if err := r.readBody(&over, body); err != nil {
 		return err
 	}
 	for _, o := range over.Resources {
-		for i := range set.Resources {
-			base := &set.Resources[i]
-			if base.Mode != o.Mode || base.Type != o.Type || base.Name != o.Name {
-				continue
-			}
-			if o.Multiplicity.Kind != MultiSingle {
-				base.Multiplicity = Multiplicity{Kind: o.Multiplicity.Kind, Class: ClassUnknown, Refs: o.Multiplicity.Refs, Span: o.Multiplicity.Span}
-			}
-			if o.Provider != "" {
-				base.Provider = o.Provider
-			}
-			for _, a := range o.Attrs {
-				base.overrideAttr(a)
-			}
-			break
+		i, ok := ix.res[overrideKey{o.Mode, o.Type, o.Name}]
+		if !ok {
+			continue
+		}
+		base := &set.Resources[i]
+		if o.Multiplicity.Kind != MultiSingle {
+			base.Multiplicity = Multiplicity{Kind: o.Multiplicity.Kind, Class: ClassUnknown, Refs: o.Multiplicity.Refs, Span: o.Multiplicity.Span}
+		}
+		if o.Provider != "" {
+			base.Provider = o.Provider
+		}
+		for _, a := range o.Attrs {
+			ix.overrideAttr(set, i, a)
 		}
 	}
 	return nil
@@ -439,20 +482,20 @@ func topSegment(p string) string {
 	return p
 }
 
-// overrideAttr reads unknown every attribute under the same top segment as a, which an override replaces
-// whole when it is a nested block, and adds a when the base never set it.
-func (r *Resource) overrideAttr(a Attr) {
+// overrideAttr reads unknown every attribute of base resource i under the same top segment as a, which an
+// override replaces whole when it is a nested block, and adds a when the base never set it.
+func (ix *overrideIndex) overrideAttr(set *ResourceSet, i int, a Attr) {
+	r := &set.Resources[i]
 	seg := topSegment(a.Path)
-	found := false
-	for i := range r.Attrs {
-		if topSegment(r.Attrs[i].Path) == seg {
-			r.Attrs[i] = Attr{Path: r.Attrs[i].Path, Class: ClassUnknown, Span: r.Attrs[i].Span}
-			found = true
+	segs := ix.segments(set, i)
+	if held := segs[seg]; len(held) > 0 {
+		for _, j := range held {
+			r.Attrs[j] = Attr{Path: r.Attrs[j].Path, Class: ClassUnknown, Span: r.Attrs[j].Span}
 		}
+		return
 	}
-	if !found {
-		r.Attrs = append(r.Attrs, Attr{Path: a.Path, Class: ClassUnknown, Span: a.Span})
-	}
+	r.Attrs = append(r.Attrs, Attr{Path: a.Path, Class: ClassUnknown, Span: a.Span})
+	segs[seg] = append(segs[seg], len(r.Attrs)-1)
 }
 
 func with(m map[string]bool, k string) map[string]bool {
@@ -733,12 +776,20 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 		if expr == nil {
 			return readRes{class: ClassReference, refs: []string{ref}}
 		}
-		if r.resolving[key] {
-			return readRes{class: ClassUnknown, refs: []string{ref}}
+		inner, done := r.inners[key]
+		if !done {
+			if r.resolving[key] {
+				r.cuts++
+				return readRes{class: ClassUnknown, refs: []string{ref}}
+			}
+			r.resolving[key] = true
+			cuts := r.cuts
+			inner = r.classify(expr, nil, depth+1)
+			delete(r.resolving, key)
+			if r.cuts == cuts {
+				r.inners[key] = inner
+			}
 		}
-		r.resolving[key] = true
-		inner := r.classify(expr, nil, depth+1)
-		delete(r.resolving, key)
 		out := readRes{class: inner.class, refs: []string{ref}}
 		if root == "var" && inner.class == ClassLiteral {
 			out.class = ClassDefaulted
