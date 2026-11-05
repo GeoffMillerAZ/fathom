@@ -6,7 +6,8 @@ level that readings measured for the dialect that read it.
 
 Bytes and a path go in. Nothing else is needed: no store, no daemon, no index,
 no git and no network. A Reader is safe for concurrent use and deterministic:
-equal inputs give byte-equal JSON.
+equal inputs give byte-equal JSON, except where a time limit decides (a read
+that overruns its deadline, a Reader that is busy).
 
 The package is a door over fathom's own extraction code (ADR-092). Public
 types are defined here, so a change inside fathom does not change this API.
@@ -28,13 +29,26 @@ script in more shapes than a pattern covers. A credential flag (--password,
 A credential in any other place (a name, a label, a literal that is an argument,
 a block's own attributes) is returned as written.
 
-Refused files. A parser that recurses, or whose cost grows with the square of
-its input, cannot be interrupted, so a file is refused before it reaches one:
-it reads Incomplete with the reason in Notes. The guards count what each parser
-is known to recurse on or spend its time on (nesting past 10,000 levels, a run
-of more than 10,000 tokens no statement ends, more than 10,000 lexical errors,
-a TOML document of more than 40,000 keys). A shape no guard counts is not
-promised refused.
+Reading hostile input. Two boundaries, and each promises only what it can keep.
+In process, Extract returns by a deadline (DefaultReadDeadline, lowered by
+WithLimits): a read that overruns it is Incomplete, with one note naming the
+deadline and none of its facts. Go cannot interrupt a goroutine, so the parser
+is abandoned and keeps its CPU, and what it allocates, until it returns on its
+own. Once GOMAXPROCS abandoned reads are running, Extract starts nothing more
+and says SkipBusy. A fatal stack overflow, a parser that never returns and a
+parser that allocates without bound end or starve the calling process whatever
+the deadline says. The process boundary keeps those: cmd/fathom-lang reads in a
+supervised child by default, kills it on an overrun, a death or a memory limit,
+and the file in hand reads Incomplete while the batch continues. This package
+starts no process, so a consumer that reads input it does not trust uses that
+boundary.
+
+Guards stay where nothing in process survives a failure: a parser that recurses
+on nesting is handed no file nested past 10,000 levels, because a stack overflow
+is fatal. A few parsers also refuse a shape that cost them hours (a run of
+tokens no statement ends, a flood of lexical errors, a TOML document of 40,000
+keys). A refused file reads Incomplete with the reason in Notes. No other shape
+is promised refused or bounded in time or memory.
 
 The wazero runtime that runs the grammars is process-wide, so its on-disk
 compilation cache is a package function, EnableCompilationCache, and is off by
@@ -68,6 +82,7 @@ const (
 	SkipAmbiguous    = "ambiguous"    // the file could belong to two dialects and the content does not settle it
 	SkipUnclassified = "unclassified" // no dialect reads this path and content
 	SkipNotLinked    = "not-linked"   // a dialect owns the file but its extractor is not linked into this Reader
+	SkipBusy         = "busy"         // GOMAXPROCS reads past their deadline are still running, so this file was not started
 )
     Skip reasons: the closed set Result.Skipped holds. A skipped file has no
     symbols; the reason says why.
@@ -82,6 +97,14 @@ const DefaultMaxFileBytes = 2 * 1024 * 1024
     DefaultMaxFileBytes is the largest file a Reader reads: the product's own
     limit, 2 MiB. A larger file is skipped as oversize. The value is a literal;
     TestPublicConstantValues holds it to the product's.
+
+const DefaultReadDeadline = 30 * time.Second
+    DefaultReadDeadline is how long Extract waits for one file: 30 seconds,
+    above the budgets the tree-sitter engine spends on its own, so a file
+    the engine would stop returns its own reason first. A read that passes it
+    returns an Incomplete Result and abandons the parser, which keeps running
+    until it returns (see Reader.Extract). WithLimits may lower it, never raise
+    it. The value is a literal; TestPublicConstantValues holds it.
 
 
 VARIABLES
@@ -168,6 +191,9 @@ type File struct {
 type Limits struct {
 	// MaxFileBytes lowers the file size limit (DefaultMaxFileBytes).
 	MaxFileBytes int
+	// ReadDeadline lowers the time Extract waits for one file
+	// (DefaultReadDeadline).
+	ReadDeadline time.Duration
 }
     Limits are the bounds a Reader works under. A zero field keeps the default.
 
@@ -262,8 +288,10 @@ func New(opts ...Option) (r *Reader, err error)
     except CUE and Timoni, which a consumer adds by importing pkg/lang/cue.
 
 func (r *Reader) Close() error
-    Close releases the Reader's pooled grammar modules. It is idempotent,
-    and waits for extractions in flight.
+    Close releases the Reader's pooled grammar modules. It is idempotent, and
+    waits for extractions in flight, but not for a parser an Extract abandoned
+    at its deadline: that one runs until it returns on its own, its result
+    discarded, and a grammar module it holds is released when it does.
 
 func (r *Reader) Dialects() []DialectInfo
     Dialects lists every dialect the Reader reads, sorted by id, with the level
@@ -274,6 +302,17 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error)
     the Result says why in Skipped. The error is for misuse (an empty path,
     a closed Reader, a done context). A file an extractor could not fully read
     returns what it did read, and Notes says what failed.
+
+    Extract returns by a deadline (DefaultReadDeadline, lowerable by
+    WithLimits). A read that overruns it returns Incomplete with one note naming
+    the deadline and none of the facts it was reading. Go cannot interrupt a
+    goroutine, so the parser is abandoned, not stopped: it keeps its CPU, and
+    what it allocates, until it returns on its own, and its result is discarded.
+    Once GOMAXPROCS abandoned reads are still running the Reader starts no more:
+    Extract returns Skipped SkipBusy until some of them finish. A caller reading
+    input it does not trust, where a parser may never return, reads through a
+    process it can kill (cmd/fathom-lang does, by default). A context that ends
+    first returns its error, and abandons the read the same way.
 
 type Reference struct {
 	// From is the Key of the referencing symbol, or "" for a reference the

@@ -13,10 +13,12 @@ import (
 )
 
 // packageBudget is the most non-standard packages the door may link
-// (docs/design/lang-library.md section 8, row 1). The bar is 80 for a consumer,
-// which adds its own main package, so the door's own budget is 79. The closure
-// reads 78 today, with CUE left to pkg/lang/cue.
-const packageBudget = 79
+// (docs/design/lang-library.md section 8, row 1). The bar is 81 for a consumer,
+// which adds its own main package, so the door's own budget is 80. The closure
+// reads 80 today, with CUE left to pkg/lang/cue: 78, and the two leaves the read
+// guarantee adds (ADR-092), internal/readlimit and internal/hclbound, each of
+// which imports the standard library and hcl only.
+const packageBudget = 80
 
 // forbiddenClosure are the dependencies the door must never reach: fathom's
 // store, fusion, connectors and MCP server, the network client stack and CUE.

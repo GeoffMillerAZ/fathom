@@ -2,6 +2,7 @@ package lang_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/langroute"
@@ -32,6 +33,7 @@ func TestPublicConstantValues(t *testing.T) {
 		{"SkipAmbiguous", lang.SkipAmbiguous, "ambiguous", "ambiguous"},
 		{"SkipUnclassified", lang.SkipUnclassified, "unclassified", "unclassified"},
 		{"SkipNotLinked", lang.SkipNotLinked, "not-linked", "not-linked"},
+		{"SkipBusy", lang.SkipBusy, "busy", "busy"},
 		{"LevelUnmeasured", lang.LevelUnmeasured, "unmeasured", "unmeasured"},
 		{"LevelNone", lang.LevelNone, "none", "none"},
 	} {
@@ -41,6 +43,9 @@ func TestPublicConstantValues(t *testing.T) {
 		if c.got != c.inner {
 			t.Errorf("%s = %q but the internal constant it must agree with is %q", c.name, c.got, c.inner)
 		}
+	}
+	if lang.DefaultReadDeadline != 30*time.Second {
+		t.Errorf("DefaultReadDeadline = %v, want 30s: a change to a public constant is a breaking change", lang.DefaultReadDeadline)
 	}
 	limit := lang.DefaultMaxFileBytes
 	if limit != 2*1024*1024 {

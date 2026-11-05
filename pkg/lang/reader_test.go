@@ -143,7 +143,7 @@ func TestExtractSkipReasons(t *testing.T) {
 
 func TestSkipReasonsAreTheClosedSet(t *testing.T) {
 	closed := map[string]bool{"": true, lang.SkipBinary: true, lang.SkipOversize: true, lang.SkipGenerated: true,
-		lang.SkipAmbiguous: true, lang.SkipUnclassified: true, lang.SkipNotLinked: true}
+		lang.SkipAmbiguous: true, lang.SkipUnclassified: true, lang.SkipNotLinked: true, lang.SkipBusy: true}
 	r := newReader(t)
 	for _, p := range []string{"x.m", "x.h", "noext", "x.unknownext", "a.go", "x.cue", "docker-compose.yml"} {
 		if got := extract(t, r, p, "x\n").Skipped; !closed[got] {

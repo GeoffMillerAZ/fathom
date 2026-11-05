@@ -9,6 +9,7 @@ const (
 	SkipAmbiguous    = "ambiguous"    // the file could belong to two dialects and the content does not settle it
 	SkipUnclassified = "unclassified" // no dialect reads this path and content
 	SkipNotLinked    = "not-linked"   // a dialect owns the file but its extractor is not linked into this Reader
+	SkipBusy         = "busy"         // GOMAXPROCS reads past their deadline are still running, so this file was not started
 )
 
 // Level values Result.Level and DialectInfo.Level hold besides L1 to L4.

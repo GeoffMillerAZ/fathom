@@ -70,7 +70,7 @@ func FuzzExtract(f *testing.F) {
 		f.Fatal(err)
 	}
 	f.Cleanup(func() { small.Close() })
-	skips := []string{"", lang.SkipBinary, lang.SkipOversize, lang.SkipGenerated, lang.SkipAmbiguous, lang.SkipUnclassified, lang.SkipNotLinked}
+	skips := []string{"", lang.SkipBinary, lang.SkipOversize, lang.SkipGenerated, lang.SkipAmbiguous, lang.SkipUnclassified, lang.SkipNotLinked, lang.SkipBusy}
 
 	f.Fuzz(func(t *testing.T, path string, src []byte) {
 		file := lang.File{Path: path, Src: src}

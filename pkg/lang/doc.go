@@ -4,7 +4,8 @@
 //
 // Bytes and a path go in. Nothing else is needed: no store, no daemon, no
 // index, no git and no network. A Reader is safe for concurrent use and
-// deterministic: equal inputs give byte-equal JSON.
+// deterministic: equal inputs give byte-equal JSON, except where a time limit
+// decides (a read that overruns its deadline, a Reader that is busy).
 //
 // The package is a door over fathom's own extraction code (ADR-092). Public
 // types are defined here, so a change inside fathom does not change this
@@ -26,13 +27,26 @@
 // any other place (a name, a label, a literal that is an argument, a block's own
 // attributes) is returned as written.
 //
-// Refused files. A parser that recurses, or whose cost grows with the square of
-// its input, cannot be interrupted, so a file is refused before it reaches one:
-// it reads Incomplete with the reason in Notes. The guards count what each parser
-// is known to recurse on or spend its time on (nesting past 10,000 levels, a run
-// of more than 10,000 tokens no statement ends, more than 10,000 lexical errors,
-// a TOML document of more than 40,000 keys). A shape no guard counts is not
-// promised refused.
+// Reading hostile input. Two boundaries, and each promises only what it can
+// keep. In process, Extract returns by a deadline (DefaultReadDeadline, lowered
+// by WithLimits): a read that overruns it is Incomplete, with one note naming
+// the deadline and none of its facts. Go cannot interrupt a goroutine, so the
+// parser is abandoned and keeps its CPU, and what it allocates, until it
+// returns on its own. Once GOMAXPROCS abandoned reads are running, Extract
+// starts nothing more and says SkipBusy. A fatal stack overflow, a parser that
+// never returns and a parser that allocates without bound end or starve the
+// calling process whatever the deadline says. The process boundary keeps those:
+// cmd/fathom-lang reads in a supervised child by default, kills it on an
+// overrun, a death or a memory limit, and the file in hand reads Incomplete
+// while the batch continues. This package starts no process, so a consumer
+// that reads input it does not trust uses that boundary.
+//
+// Guards stay where nothing in process survives a failure: a parser that
+// recurses on nesting is handed no file nested past 10,000 levels, because a
+// stack overflow is fatal. A few parsers also refuse a shape that cost them
+// hours (a run of tokens no statement ends, a flood of lexical errors, a TOML
+// document of 40,000 keys). A refused file reads Incomplete with the reason in
+// Notes. No other shape is promised refused or bounded in time or memory.
 //
 // The wazero runtime that runs the grammars is process-wide, so its on-disk
 // compilation cache is a package function, EnableCompilationCache, and is

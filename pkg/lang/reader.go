@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -16,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/langclass"
 	"github.com/geoffmilleraz/fathom/internal/langlink"
 	"github.com/geoffmilleraz/fathom/internal/langroute"
+	"github.com/geoffmilleraz/fathom/internal/readlimit"
 )
 
 // ErrClosed is returned by Extract on a Reader that was closed.
@@ -25,6 +28,14 @@ var ErrClosed = errors.New("lang: reader is closed")
 // limit, 2 MiB. A larger file is skipped as oversize. The value is a literal;
 // TestPublicConstantValues holds it to the product's.
 const DefaultMaxFileBytes = 2 * 1024 * 1024
+
+// DefaultReadDeadline is how long Extract waits for one file: 30 seconds, above
+// the budgets the tree-sitter engine spends on its own, so a file the engine
+// would stop returns its own reason first. A read that passes it returns an
+// Incomplete Result and abandons the parser, which keeps running until it
+// returns (see Reader.Extract). WithLimits may lower it, never raise it. The
+// value is a literal; TestPublicConstantValues holds it.
+const DefaultReadDeadline = 30 * time.Second
 
 // maxSiblings bounds the sibling list one call may carry.
 const maxSiblings = 1 << 20
@@ -37,6 +48,9 @@ const serviceID = "_"
 type Limits struct {
 	// MaxFileBytes lowers the file size limit (DefaultMaxFileBytes).
 	MaxFileBytes int
+	// ReadDeadline lowers the time Extract waits for one file
+	// (DefaultReadDeadline).
+	ReadDeadline time.Duration
 }
 
 // Option configures New.
@@ -44,6 +58,7 @@ type Option func(*config) error
 
 type config struct {
 	maxFile  int
+	deadline time.Duration
 	packFS   fs.FS
 	natives  []nativeSpec
 	families []string
@@ -59,8 +74,16 @@ func WithLimits(l Limits) Option {
 			return fmt.Errorf("lang: MaxFileBytes %d is negative", l.MaxFileBytes)
 		case l.MaxFileBytes > DefaultMaxFileBytes:
 			return fmt.Errorf("lang: MaxFileBytes %d is above the limit %d; limits may only be lowered", l.MaxFileBytes, DefaultMaxFileBytes)
-		case l.MaxFileBytes > 0:
+		case l.ReadDeadline < 0:
+			return fmt.Errorf("lang: ReadDeadline %v is negative", l.ReadDeadline)
+		case l.ReadDeadline > DefaultReadDeadline:
+			return fmt.Errorf("lang: ReadDeadline %v is above the limit %v; limits may only be lowered", l.ReadDeadline, DefaultReadDeadline)
+		}
+		if l.MaxFileBytes > 0 {
 			c.maxFile = l.MaxFileBytes
+		}
+		if l.ReadDeadline > 0 {
+			c.deadline = l.ReadDeadline
 		}
 		return nil
 	}
@@ -73,6 +96,8 @@ type Reader struct {
 	closed   bool
 	router   *langroute.Router
 	maxFile  int
+	deadline time.Duration
+	abandon  readlimit.Group // reads that passed the deadline and are still running
 	levels   map[string]levelRow
 	dialects []DialectInfo
 	pack     *extractor.Pack      // the pack layer's dialects; nil for none
@@ -88,7 +113,7 @@ func New(opts ...Option) (r *Reader, err error) {
 			r, err = nil, fmt.Errorf("lang: building the reader: %v", p)
 		}
 	}()
-	cfg := config{maxFile: DefaultMaxFileBytes}
+	cfg := config{maxFile: DefaultMaxFileBytes, deadline: DefaultReadDeadline}
 	for _, o := range opts {
 		if o == nil {
 			continue
@@ -123,7 +148,7 @@ func New(opts ...Option) (r *Reader, err error) {
 		router.Close()
 		return nil, err
 	}
-	rd := &Reader{router: router, maxFile: cfg.maxFile, levels: levels, dialects: dialects}
+	rd := &Reader{router: router, maxFile: cfg.maxFile, deadline: cfg.deadline, levels: levels, dialects: dialects}
 	if cfg.packFS != nil || len(cfg.natives) > 0 {
 		if err := rd.attachPack(cfg); err != nil {
 			router.Close()
@@ -173,7 +198,9 @@ func (r *Reader) attachPack(cfg config) error {
 }
 
 // Close releases the Reader's pooled grammar modules. It is idempotent, and
-// waits for extractions in flight.
+// waits for extractions in flight, but not for a parser an Extract abandoned at
+// its deadline: that one runs until it returns on its own, its result
+// discarded, and a grammar module it holds is released when it does.
 func (r *Reader) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -200,6 +227,17 @@ func (r *Reader) Dialects() []DialectInfo {
 // Result says why in Skipped. The error is for misuse (an empty path, a
 // closed Reader, a done context). A file an extractor could not fully read
 // returns what it did read, and Notes says what failed.
+//
+// Extract returns by a deadline (DefaultReadDeadline, lowerable by WithLimits).
+// A read that overruns it returns Incomplete with one note naming the deadline
+// and none of the facts it was reading. Go cannot interrupt a goroutine, so the
+// parser is abandoned, not stopped: it keeps its CPU, and what it allocates,
+// until it returns on its own, and its result is discarded. Once GOMAXPROCS
+// abandoned reads are still running the Reader starts no more: Extract returns
+// Skipped SkipBusy until some of them finish. A caller reading input it does
+// not trust, where a parser may never return, reads through a process it can
+// kill (cmd/fathom-lang does, by default). A context that ends first returns
+// its error, and abandons the read the same way.
 func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -229,6 +267,30 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		}
 		return res, nil
 	}
+	if limit := runtime.GOMAXPROCS(0); r.abandon.Saturated(limit) {
+		res.Skipped = SkipBusy
+		res.Notes = append(res.Notes, fmt.Sprintf("busy: %d reads past the %v deadline are still running, the most a reader allows is %d, and this file was not started", r.abandon.Abandoned(), r.deadline, limit))
+		return res, nil
+	}
+	// The goroutine owns its own copy of the Result: an abandoned read keeps
+	// running while Extract builds the answer it returns instead.
+	start := newResult(path)
+	got, out, err := readlimit.Run(ctx, &r.abandon, r.deadline, func() (Result, error) {
+		return r.read(ctx, path, f, start)
+	})
+	switch out {
+	case readlimit.DeadlineExceeded:
+		res.Incomplete = true
+		res.Notes = append(res.Notes, fmt.Sprintf("read-deadline: the read passed its %v deadline and was abandoned, so none of its facts are returned", r.deadline))
+		return res, nil
+	case readlimit.Canceled:
+		return Result{}, err
+	}
+	return got, err
+}
+
+// read is Extract's body for one file: classify, extract, convert.
+func (r *Reader) read(ctx context.Context, path string, f File, res Result) (Result, error) {
 	ex, err := r.route(ctx, path, f)
 	if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
 		return Result{}, err // the context ended between two stages of this file
