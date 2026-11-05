@@ -30,6 +30,7 @@ package extractor
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -417,7 +418,8 @@ func (x *NotebookExtractor) ExtractReport(service, relPath string, src []byte) (
 	var module *core.SymbolNode
 	moduleCalls := map[string]bool{}
 	firstLine, lastLine := 0, 0
-	for _, c := range doc.cells {
+	incomplete := "" // the first cell the Python reader could not read
+	for ci, c := range doc.cells {
 		lines, phys := cellLines(c.pieces)
 		py, skip := pythonCell(lines)
 		if skip {
@@ -425,6 +427,9 @@ func (x *NotebookExtractor) ExtractReport(service, relPath string, src []byte) (
 		}
 		res, err := x.py.Extract(service, relPath, []byte(strings.Join(py, "\n")+"\n"))
 		if err != nil {
+			if incomplete == "" {
+				incomplete = incompleteReason(fmt.Sprintf("notebook cell %d", ci+1), err)
+			}
 			continue
 		}
 		at := func(n int) int {
@@ -475,5 +480,5 @@ func (x *NotebookExtractor) ExtractReport(service, relPath string, src []byte) (
 		sort.Strings(m.Calls)
 		nodes = append([]core.SymbolNode{m}, nodes...)
 	}
-	return nodes, "", nil
+	return nodes, incomplete, nil
 }
