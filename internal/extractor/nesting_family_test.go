@@ -95,3 +95,18 @@ func TestFlatProtoIsNotRefused(t *testing.T) {
 		t.Fatalf("a flat file is refused: %q", why)
 	}
 }
+
+// The proto parser nests on `<` as it does on a brace (a text-format message in
+// an option), and a single-quoted string is one token however many brackets it
+// holds. Counting `<` and following the quote are each a belief of the guard.
+func TestProtoRefusalCountsAngleBracketsAndFollowsSingleQuotes(t *testing.T) {
+	const head = "syntax = \"proto3\";\nmessage M {\n  option (a) = "
+	deep := head + over("<") + over(">") + ";\n}\n"
+	if why := protoRefusal([]byte(deep)); !strings.Contains(why, "nesting") {
+		t.Errorf("12,000 nested angle brackets read %q, want a refusal naming nesting", why)
+	}
+	quoted := head + "'" + strings.Repeat("{", 3*MaxNesting) + "';\n}\n"
+	if why := protoRefusal([]byte(quoted)); why != "" {
+		t.Errorf("braces inside a single-quoted string are counted: %q", why)
+	}
+}

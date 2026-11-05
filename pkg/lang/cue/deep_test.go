@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 	"github.com/geoffmilleraz/fathom/pkg/lang/cue"
 )
 
@@ -148,5 +149,25 @@ func TestFlatCUEIsNotRefused(t *testing.T) {
 	got := extract(t, r, "p/x.cue", b.String(), "p/x.cue")
 	if got.Skipped != "" || got.Incomplete || len(got.Symbols) == 0 {
 		t.Fatalf("skipped %q incomplete=%v notes=%v symbols=%d", got.Skipped, got.Incomplete, got.Notes, len(got.Symbols))
+	}
+}
+
+func init() {
+	// The keywords the CUE parser nests on as it does on an operator: a run of one
+	// of them on a line is one level each.
+	for _, kw := range []string{"if", "else", "for", "in", "let", "try", "fallback", "otherwise", "func"} {
+		kw := kw
+		deepCases = append(deepCases, deepCase{"keyword " + kw, func() string { return oneLine("a: ", kw+" ") }})
+	}
+}
+
+// The module file a CUE module declares is read through the parser too, by the
+// file resolver, and it is handed the same guard.
+func TestModulePathReadIsGuarded(t *testing.T) {
+	if got := cuelang.CUEModulePath([]byte(rep("@a(", (2<<20)/3))); got != "" {
+		t.Errorf("a file of attributes declares the module %q", got)
+	}
+	if got := cuelang.CUEModulePath([]byte("module: \"example.com/m@v0\"\nlanguage: version: \"v0.9.0\"\n")); got != "example.com/m" {
+		t.Errorf("a real module file reads %q", got)
 	}
 }

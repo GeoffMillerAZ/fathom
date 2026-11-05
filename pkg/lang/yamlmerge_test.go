@@ -1,9 +1,12 @@
 package lang_test
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/pkg/lang"
 )
 
 // A mapping that merges itself, or merges that fan out and meet again, cost a
@@ -99,5 +102,49 @@ func TestNodeReaderAgreesWithDecode(t *testing.T) {
 	}
 	if strings.Join(imgs, ",") != "reg/a:1" {
 		t.Errorf("an alias key named for its anchor hides the real container: %v", imgs)
+	}
+}
+
+// A key a mapping repeats takes its last value, as Kubernetes' own decode reads
+// it, and a repeated key sends the document to the node reader.
+func TestNodeReaderTakesTheLastOfARepeatedKey(t *testing.T) {
+	r := newReader(t)
+	const src = "apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\nspec:\n  containers:\n  - name: a\n    image: reg/first:1\n    image: reg/last:1\n"
+	var imgs []string
+	for _, s := range extract(t, r, "k/pod.yaml", src).Symbols {
+		if s.Kind == "K8sContainer" {
+			imgs = append(imgs, s.Name)
+		}
+	}
+	if strings.Join(imgs, ",") != "reg/last:1" {
+		t.Errorf("a container's repeated image reads %v, want the last", imgs)
+	}
+}
+
+// A dependency in a Chart.yaml that repeats a key costs what the document costs:
+// it is refused, with a reason, and not decoded.
+func TestChartDependencyThatRepeatsAKeyIsNotDecoded(t *testing.T) {
+	r := newReader(t)
+	src := "apiVersion: v2\nname: x\nversion: 1.0.0\ndependencies:\n- name: d\n" + strings.Repeat("  version: 1.0.0\n", 8_000)
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	var got lang.Result
+	within(t, 30*time.Second, "a dependency that repeats a key", func() { got = extract(t, r, "chart/Chart.yaml", src) })
+	runtime.ReadMemStats(&after)
+	if mb := (after.TotalAlloc - before.TotalAlloc) >> 20; mb > 200 {
+		t.Errorf("allocated %d MB reading 8,000 repeats", mb)
+	}
+	if !got.Incomplete || !hasReason(got.Notes) {
+		t.Errorf("read as complete: incomplete=%v notes=%v", got.Incomplete, got.Notes)
+	}
+}
+
+// A Helm template whose document cannot be read says so in Notes, whether its
+// root is no mapping (the decode and the node reader both refuse it) or not.
+func TestHelmTemplateThatIsNoManifestSaysSo(t *testing.T) {
+	r := newReader(t)
+	got := extract(t, r, "chart/templates/list.yaml", "- a\n- b\n", "chart/Chart.yaml", "chart/templates/list.yaml")
+	if !got.Incomplete || !strings.Contains(strings.Join(got.Notes, " "), "document decode") {
+		t.Errorf("incomplete=%v notes=%v, want a document decode note", got.Incomplete, got.Notes)
 	}
 }

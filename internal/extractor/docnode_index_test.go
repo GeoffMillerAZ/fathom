@@ -59,3 +59,40 @@ func TestDocNodeCopiesDoNotCorruptEachOther(t *testing.T) {
 		t.Fatal("a shared key is lost")
 	}
 }
+
+// An index is a hint, and a hint that no longer matches the keys is not trusted:
+// a copy whose keys were rebuilt in another order, with the index it shared, finds
+// a key at a position that holds another.
+func TestDocNodeIgnoresAStaleIndex(t *testing.T) {
+	n := &docNode{kind: docMap}
+	for i := 0; i < 2*docIndexMin; i++ {
+		n.set("k"+strconv.Itoa(i), &docNode{kind: docScalar, scalar: strconv.Itoa(i)})
+	}
+	n.get("k1") // builds the index
+	cp := *n
+	cp.keys = make([]string, len(n.keys))
+	for i, k := range n.keys {
+		cp.keys[len(cp.keys)-1-i] = k // same length, another order
+	}
+	for _, k := range cp.keys {
+		if i := cp.indexOf(k); i >= 0 && cp.keys[i] != k {
+			t.Fatalf("indexOf(%q) = %d, which holds %q", k, i, cp.keys[i])
+		}
+	}
+}
+
+// Of a key a mapping repeats, the first wins, with or without an index.
+func TestDocNodeFirstOfARepeatedKeyWins(t *testing.T) {
+	for _, size := range []int{4, 3 * docIndexMin} {
+		n := &docNode{kind: docMap}
+		for i := 0; i < size; i++ {
+			n.keys = append(n.keys, "k"+strconv.Itoa(i))
+			n.vals = append(n.vals, &docNode{kind: docScalar, scalar: "first"})
+		}
+		n.keys = append(n.keys, "k2")
+		n.vals = append(n.vals, &docNode{kind: docScalar, scalar: "second"})
+		if got := n.get("k2"); got == nil || got.scalar != "first" {
+			t.Errorf("size %d: a repeated key reads %+v, want the first", size, got)
+		}
+	}
+}
