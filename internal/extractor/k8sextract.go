@@ -151,7 +151,11 @@ func (k *K8sExtractor) ExtractReport(service, relPath string, src []byte) ([]cor
 		// last value winning: the same fields are then read from the node
 		// (k8sDocFromNode, O1034).
 		var doc k8sDoc
-		if decErr := rawNode.Decode(&doc); decErr != nil {
+		decErr := errYAMLDecodeUnsafe
+		if yamlDecodeSafe(rawNode.Content[0]) { // yaml.v3's decode is quadratic in a mapping's keys
+			decErr = rawNode.Decode(&doc)
+		}
+		if decErr != nil {
 			var ok bool
 			if doc, ok = k8sDocFromNode(rawNode.Content[0]); !ok {
 				if incomplete == "" {

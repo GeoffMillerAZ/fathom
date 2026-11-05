@@ -1310,30 +1310,60 @@ type docNode struct {
 	// when the spec names no yaml_tags scheme that reads it (the node reads
 	// as its untagged value); refuse_templates reads it (K20).
 	tag string
+	// index is keys' positions by name, built once a map has docIndexMin
+	// entries so that setting or getting a key is not a scan of the others
+	// (a map of n keys built by n sets is otherwise n*n comparisons). A copy
+	// of the node shares it; indexOf rebuilds it whenever it no longer
+	// matches keys.
+	index map[string]int
+}
+
+// docIndexMin is the map size from which a docNode indexes its keys.
+const docIndexMin = 32
+
+// indexOf is the position of key k in n.keys, -1 for none.
+func (n *docNode) indexOf(k string) int {
+	if len(n.keys) < docIndexMin {
+		for i, key := range n.keys {
+			if key == k {
+				return i
+			}
+		}
+		return -1
+	}
+	if len(n.index) != len(n.keys) {
+		n.index = make(map[string]int, len(n.keys))
+		for i := len(n.keys) - 1; i >= 0; i-- { // the first of a repeated key wins, as the scan did
+			n.index[n.keys[i]] = i
+		}
+	}
+	if i, ok := n.index[k]; ok && i < len(n.keys) && n.keys[i] == k {
+		return i
+	}
+	return -1
 }
 
 func (n *docNode) get(k string) *docNode {
 	if n == nil || n.kind != docMap {
 		return nil
 	}
-	for i, key := range n.keys {
-		if key == k {
-			return n.vals[i]
-		}
+	if i := n.indexOf(k); i >= 0 {
+		return n.vals[i]
 	}
 	return nil
 }
 
 // set adds or replaces a map entry, keeping first-seen order.
 func (n *docNode) set(k string, v *docNode) {
-	for i, key := range n.keys {
-		if key == k {
-			n.vals[i] = v
-			return
-		}
+	if i := n.indexOf(k); i >= 0 {
+		n.vals[i] = v
+		return
 	}
 	n.keys = append(n.keys, k)
 	n.vals = append(n.vals, v)
+	if len(n.keys) >= docIndexMin && len(n.index) == len(n.keys)-1 {
+		n.index[k] = len(n.keys) - 1
+	}
 }
 
 // fixEndLines sets every node's endLine to the last line in its subtree

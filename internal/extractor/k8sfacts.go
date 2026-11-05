@@ -1,6 +1,7 @@
 package extractor
 
 import (
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -168,6 +169,62 @@ func k8sYGet(n *yaml.Node, keys ...string) *yaml.Node {
 		}
 	}
 	return n
+}
+
+// maxDecodeMapKeys is the widest mapping yaml.v3 is asked to decode into a Go
+// value. Its decode compares every pair of a mapping's keys (uniqueKeys), so a
+// mapping of n keys costs n*n comparisons, and for each pair of equal keys it
+// builds an error string: 4,000 repeats of one key held 2.2 GB, 150,000 distinct
+// keys took 80 s, both inside a 2 MiB file. A real mapping a struct decode reads
+// has a few dozen keys.
+const maxDecodeMapKeys = 1_000
+
+// errYAMLDecodeUnsafe is why a document was not decoded into a Go value: a
+// mapping in it is wide or repeats a key, and the extractor reads the fields it
+// needs from the nodes instead.
+var errYAMLDecodeUnsafe = fmt.Errorf("a mapping repeats a key or has more than %d keys", maxDecodeMapKeys)
+
+// yamlMapDecodeSafe reports whether yaml.v3 can decode the mapping n into a Go
+// value in linear time and memory: it is no mapping, or it has at most
+// maxDecodeMapKeys keys and repeats none. The check is a hash of the keys, not
+// the pairwise comparison the decode does.
+func yamlMapDecodeSafe(n *yaml.Node) bool {
+	if n == nil || n.Kind != yaml.MappingNode {
+		return true
+	}
+	if len(n.Content)/2 > maxDecodeMapKeys {
+		return false
+	}
+	type key struct {
+		kind  yaml.Kind
+		value string
+	}
+	seen := make(map[key]struct{}, len(n.Content)/2)
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k := key{n.Content[i].Kind, n.Content[i].Value}
+		if _, dup := seen[k]; dup {
+			return false
+		}
+		seen[k] = struct{}{}
+	}
+	return true
+}
+
+// yamlDecodeSafe is yamlMapDecodeSafe for every mapping under n (an alias is
+// followed where it is defined, not here).
+func yamlDecodeSafe(n *yaml.Node) bool {
+	if n == nil {
+		return true
+	}
+	if !yamlMapDecodeSafe(n) {
+		return false
+	}
+	for _, c := range n.Content {
+		if !yamlDecodeSafe(c) {
+			return false
+		}
+	}
+	return true
 }
 
 // k8sDocFromNode reads the fields k8sDoc holds from a document's root

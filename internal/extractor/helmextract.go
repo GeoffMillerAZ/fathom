@@ -63,7 +63,19 @@ func (h *HelmChartExtractor) ExtractReport(service, relPath string, src []byte) 
 		} `yaml:"dependencies"`
 	}
 	var chart helmChart
-	if err := root.Decode(&chart); err != nil {
+	// yaml.v3's decode is quadratic in a mapping's keys (maxDecodeMapKeys): the
+	// mappings it would decode are the root and each dependency.
+	safe := yamlMapDecodeSafe(root)
+	if _, deps := k8sYEntry(root, "dependencies"); deps != nil {
+		for _, d := range deps.Content {
+			safe = safe && yamlMapDecodeSafe(d)
+		}
+	}
+	err := errYAMLDecodeUnsafe
+	if safe {
+		err = root.Decode(&chart)
+	}
+	if err != nil {
 		return nil, incompleteReason("chart decode", err), nil
 	}
 	if chart.Name == "" {
