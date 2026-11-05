@@ -11,7 +11,7 @@ Azure/azure-policy (MIT).
 
 The manifest claims no basename, glob or extension. `detect.content_sniff` matches a `policyRule`
 key, a `policyDefinitions` key, or a bare `{"if": …, "then": {"effect": …}}` rule.
-`fusion.cloudPolicyDispatch` adds a decode check: a definition needs its rule's effect, an
+`langroute.cloudPolicyDispatch` adds a decode check: a definition needs its rule's effect, an
 initiative needs a member, so a JSON file that only names `policyRule` as a string stays generic
 JSON. A parameters-only file (`azurepolicy.parameters.json`) names no rule and is not claimed.
 Earlier signals win exactly as for the other cloud-policy dialects.

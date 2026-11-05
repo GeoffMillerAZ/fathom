@@ -9,7 +9,7 @@ extractor as bare keys). The decode is `jsonc`: comments and trailing commas, wh
 The manifest claims no basename, glob or extension. `doc.json`'s `detect.content_sniff` is a
 `"$schema"` naming `deploymentTemplate.json` (and its subscription-, managementGroup- and
 tenant-level variants) or `deploymentParameters.json`; fusion's `appFrameworkDispatch`
-(`internal/fusion/armdispatch.go`) claims a `.json` the sniff matches only when it decodes to a
+(`internal/langroute/armdispatch.go`) claims a `.json` the sniff matches only when it decodes to a
 template whose root `$schema` names a deployment template, or to a parameters file whose root
 `$schema` names `deploymentParameters.json` and that sets a parameter. A document that only
 embeds a template (an Azure Policy definition's deployIfNotExists, wave pc's format) has no root

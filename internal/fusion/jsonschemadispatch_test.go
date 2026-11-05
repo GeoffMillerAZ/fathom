@@ -17,6 +17,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -69,7 +70,7 @@ func TestJSONSchemaDispatchClaims(t *testing.T) {
 		{"schemas/order.yaml", jsOrder, ""}, // a JSON document
 	}
 	for _, c := range cases {
-		_, got, ok := jsonSchemaDispatch(c.path, []byte(c.content))
+		_, got, ok := langroute.JSONSchemaDispatch(c.path, []byte(c.content))
 		if !ok {
 			got = ""
 		}

@@ -62,6 +62,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 )
 
 // The policy contract every policy producer emits (docs/design/
@@ -70,12 +71,12 @@ import (
 // form (Raw when there is nothing to normalize), Scope and Labels for a
 // selector.
 const (
-	PolicyRefEdge       = "policy_ref"
-	PolicyResourceKind  = "resource-kind"
-	PolicyLabelSelector = "label-selector"
-	PolicyResourceType  = "resource-type"
-	PolicyAWSARN        = "aws-arn"
-	PolicyServiceName   = "service-name"
+	PolicyRefEdge       = langroute.PolicyRefEdge
+	PolicyResourceKind  = langroute.PolicyResourceKind
+	PolicyLabelSelector = langroute.PolicyLabelSelector
+	PolicyResourceType  = langroute.PolicyResourceType
+	PolicyAWSARN        = langroute.PolicyAWSARN
+	PolicyServiceName   = langroute.PolicyServiceName
 )
 
 // Why a policy reference resolved to nothing (PolicyResolution.Unresolved).

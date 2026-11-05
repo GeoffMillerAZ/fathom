@@ -17,7 +17,7 @@ behaviour reference only and nothing of it is copied.
   provisioning file has a top-level `groups` of rules too, LB-F365).
 - **Embedded**: a ConfigMap's `.json` data value that is a dashboard (kube-prometheus' grafana-dashboardDefinitions),
   a grafana-operator GrafanaDashboard's `spec.json`, and a ConfigMap's or Secret's `.yaml` provisioning value are read
-  as documents of their own (`fusion/k8sembed.go`).
+  as documents of their own (`langroute/k8sembed.go`).
 
 ## What it models
 

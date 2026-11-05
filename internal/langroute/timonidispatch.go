@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // timonidispatch.go — ingest's claim of Timoni modules, bundles and runtimes
 // (LB-F216, language-breadth fx wave, LB-Q-timoni). The dialect is native
@@ -11,7 +11,7 @@ package fusion
 // its files.
 //
 // resolveExtractor (ingest and ExtractForBench) and ReingestFile both call
-// timoniDispatch, so a Timoni file is read the same way however it arrives and
+// TimoniDispatch, so a Timoni file is read the same way however it arrives and
 // every other .cue file reads as before.
 
 import (
@@ -19,34 +19,21 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
-	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
-
-var (
-	timoniOnce sync.Once
-	timoniExt  extractor.Extractor
-)
-
-// timoniExtractor is the dialect's extractor, built once (it holds no state).
-func timoniExtractor() extractor.Extractor {
-	timoniOnce.Do(func() { timoniExt = cuelang.NewTimoniExtractor() })
-	return timoniExt
-}
 
 // inCueModDir reports whether slash lies under a cue.mod directory.
 func inCueModDir(slash string) bool {
 	return strings.HasPrefix(slash, "cue.mod/") || strings.Contains(slash, "/cue.mod/")
 }
 
-// timoniDispatch returns the Timoni extractor and ToolKind when relPath is a
+// TimoniDispatch returns the Timoni extractor and ToolKind when relPath is a
 // .cue file of a Timoni module, bundle or runtime. idx is the sibling index
 // ingest holds (it names every module root); nil reads the file alone, so only
 // a file whose name or content says Timoni is claimed.
-func timoniDispatch(relPath string, content []byte, idx *siblingIndex) (extractor.Extractor, ToolKind, bool) {
-	if strings.ToLower(filepath.Ext(relPath)) != ".cue" {
+func (r *Router) TimoniDispatch(relPath string, content []byte, idx *SiblingIndex) (extractor.Extractor, ToolKind, bool) {
+	if r.timoni == nil || strings.ToLower(filepath.Ext(relPath)) != ".cue" {
 		return nil, "", false
 	}
 	slash := filepath.ToSlash(relPath)
@@ -56,14 +43,14 @@ func timoniDispatch(relPath string, content []byte, idx *siblingIndex) (extracto
 	if classifyCUE(slash, content, idx) != ToolTimoni {
 		return nil, "", false
 	}
-	return timoniExtractor(), ToolTimoni, true
+	return r.timoni, ToolTimoni, true
 }
 
-// diskTimoniIndex is a sibling index of the module roots above relPath, read
+// DiskTimoniIndex is a sibling index of the module roots above relPath, read
 // from the repository on disk: the index ReingestFile's one-file refresh gives
-// timoniDispatch where ingest holds the whole repository's.
-func diskTimoniIndex(repoPath, relPath string) *siblingIndex {
-	idx := &siblingIndex{timoniDirs: map[string]struct{}{}}
+// TimoniDispatch where ingest holds the whole repository's.
+func DiskTimoniIndex(repoPath, relPath string) *SiblingIndex {
+	idx := &SiblingIndex{timoniDirs: map[string]struct{}{}}
 	segs := strings.Split(filepath.ToSlash(relPath), "/")
 	for i := 0; i < len(segs)-1; i++ {
 		root := "."

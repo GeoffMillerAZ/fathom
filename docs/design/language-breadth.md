@@ -1408,7 +1408,7 @@ compose bind mount maps) every dashboard under it. A dashboard JSON is claimed b
 (`fusion.grafanaDashboardJSON`); provisioning and Alertmanager YAML through late-YAML rows asked before prometheus. A
 document a Kubernetes object embeds (a ConfigMap's dashboard or provisioning value, a GrafanaDashboard's
 `spec.json`, a Secret's `alertmanager.yaml`) is read through its dialect as a document of its own beside the object,
-its entities qualified by the key, at the manifest's lines (`fusion/k8sembed.go`). No secret-bearing field is
+its entities qualified by the key, at the manifest's lines (`langroute/k8sembed.go`). No secret-bearing field is
 selected: TestIngest_AlertmanagerSecretsNeverStored plants a sentinel in every field Alertmanager's config package
 types a secret (by reflection) and Grafana's, and finds it in no store table and no `symbol_context` answer.
 Readings: alertmanager L3 excellent (amtool v0.34.1, tier A), grafana-dashboard L3 good (a tier-C walk, every level

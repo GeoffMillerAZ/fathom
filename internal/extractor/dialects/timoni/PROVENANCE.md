@@ -19,7 +19,7 @@ extractor already parses with `cuelang.org/go/cue/parser`; a dialect over it nee
   a sniff on `.cue` makes every `.cue` file it does not match `ambiguous`, which ingest's gate excludes, and every
   other CUE file would stop being read (O495). The manifest therefore only says what the harness owns; it decides
   nothing about extraction.
-- Dispatch (`internal/fusion/timonidispatch.go`, `classifyCUE`): a `.cue` file is Timoni's when its basename is
+- Dispatch (`internal/langroute/timonidispatch.go`, `classifyCUE`): a `.cue` file is Timoni's when its basename is
   `timoni.cue`, its content has a top-level `bundle:` struct or a `runtime:` struct with a `"v1alpha1"` apiVersion, or
   it sits under a directory holding a `timoni.cue` (a module's `templates/`, `values.cue`, `images.cue`,
   `debug_values.cue`). Never under `cue.mod/`: that directory holds the module's vendored Kubernetes types and the

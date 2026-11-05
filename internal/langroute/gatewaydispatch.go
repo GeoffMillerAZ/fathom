@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // gatewaydispatch.go — ingest's claim of Envoy, Kong and Traefik
 // configuration files (LB-F104, language-breadth px wave). Each is a doc-engine
@@ -12,7 +12,7 @@ package fusion
 // language-breadth harness could not measure it).
 //
 // resolveExtractor (ingest and ExtractForBench) and ReingestFile both call
-// gatewayDispatch before every other signal, so a Kubernetes manifest under
+// GatewayDispatch before every other signal, so a Kubernetes manifest under
 // a matching glob, a compose file that names one of these tools, and every
 // file no manifest names read exactly as before.
 
@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 const (
@@ -72,14 +72,14 @@ func gatewayExtractors() map[string]*extractor.DocExtractor {
 	return gatewayExts
 }
 
-// gatewayDispatch returns the dialect's extractor and ToolKind when relPath
+// GatewayDispatch returns the dialect's extractor and ToolKind when relPath
 // is an Envoy, Kong or Traefik configuration file: a manifest basename or
 // glob names it and the dialect's content sniff claims it. A file that opens
 // as a Kubernetes object (a top-level apiVersion and kind) is never one.
-func gatewayDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
-	v := connector.ClassifyDialect(dialectRules(), relPath, content)
-	if v.By != connector.ClassifiedByBasename && v.By != connector.ClassifiedByGlob &&
-		!(v.By == connector.ClassifiedBySniff && gatewaySniffed[v.Dialect]) {
+func GatewayDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
+	v := langclass.ClassifyDialect(DialectRules(), relPath, content)
+	if v.By != langclass.ClassifiedByBasename && v.By != langclass.ClassifiedByGlob &&
+		!(v.By == langclass.ClassifiedBySniff && gatewaySniffed[v.Dialect]) {
 		return nil, "", false
 	}
 	tk, ok := gatewayKinds[v.Dialect]

@@ -23,7 +23,7 @@ a Jenkinsfile fell through to no extractor before it.
 
 By the manifest alone: the basename `Jenkinsfile`, the extension `.jenkinsfile`, and the glob
 `**/vars/*.groovy`, a shared library's global variables (jenkins-infra/pipeline-library's layout). The
-glob is the only way a `.groovy` file is claimed: `internal/fusion/register.go` sends the glob's
+glob is the only way a `.groovy` file is claimed: `internal/langroute/register.go` sends the glob's
 extension to the classifier (`connector.ClassifyDialect`), which claims a file only when the glob
 matches, so `src/org/acme/Util.groovy`, a `Jenkinsfile.groovy` or a `vars/sub/x.groovy` stays
 unclaimed and `.groovy` stays disclosed as unsupported (LB-Q-groovy-rest). Not claimed: a pipeline

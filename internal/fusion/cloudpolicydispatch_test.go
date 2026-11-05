@@ -89,18 +89,18 @@ func TestCloudPolicyDispatchLeavesOthersUnchanged(t *testing.T) {
 		rel, src string
 		want     func() (extractor.Extractor, ToolKind)
 	}{
-		{"package.json", "{\"name\": \"x\", \"Version\": \"2012-10-17\", \"Statement\": [], \"policyRule\": {}}\n", func() (extractor.Extractor, ToolKind) { return p.exts["package.json"], "" }},
-		{"infra/stack.yaml", cfnInline, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolCloudFormation], ToolCloudFormation }},
-		{"infra/stack.json", cfnJSON, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolCloudFormation], ToolCloudFormation }},
-		{"api/openapi.json", openapi, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolOpenAPI], ToolOpenAPI }},
-		{"k8s/cm.yaml", configMap, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolK8sManifest], ToolK8sManifest }},
-		{"k8s/cm2.yaml", k8sCustodian, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolK8sManifest], ToolK8sManifest }},
-		{"stack/app.yml", "services:\n  web:\n    image: nginx\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolCompose], ToolCompose }},
-		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolGHA], ToolGHA }},
-		{".gitlab-ci.yml", "build:\n  script: [make]\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolGitLabCI], ToolGitLabCI }},
-		{"data/generic.json", "{\"Version\": \"2012-10-17\", \"Statement\": \"not a policy\"}\n", func() (extractor.Extractor, ToolKind) { return p.exts[".json"], "" }},
-		{"data/generic2.json", "{\"if\": 1, \"then\": 2, \"policyRule\": \"a string\"}\n", func() (extractor.Extractor, ToolKind) { return p.exts[".json"], "" }},
-		{"data/plain.json", "{\"a\": 1}\n", func() (extractor.Extractor, ToolKind) { return p.exts[".json"], "" }},
+		{"package.json", "{\"name\": \"x\", \"Version\": \"2012-10-17\", \"Statement\": [], \"policyRule\": {}}\n", func() (extractor.Extractor, ToolKind) { return p.Exts()["package.json"], "" }},
+		{"infra/stack.yaml", cfnInline, func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolCloudFormation], ToolCloudFormation }},
+		{"infra/stack.json", cfnJSON, func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolCloudFormation], ToolCloudFormation }},
+		{"api/openapi.json", openapi, func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolOpenAPI], ToolOpenAPI }},
+		{"k8s/cm.yaml", configMap, func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolK8sManifest], ToolK8sManifest }},
+		{"k8s/cm2.yaml", k8sCustodian, func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolK8sManifest], ToolK8sManifest }},
+		{"stack/app.yml", "services:\n  web:\n    image: nginx\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolCompose], ToolCompose }},
+		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolGHA], ToolGHA }},
+		{".gitlab-ci.yml", "build:\n  script: [make]\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.ToolExts()[ToolGitLabCI], ToolGitLabCI }},
+		{"data/generic.json", "{\"Version\": \"2012-10-17\", \"Statement\": \"not a policy\"}\n", func() (extractor.Extractor, ToolKind) { return p.Exts()[".json"], "" }},
+		{"data/generic2.json", "{\"if\": 1, \"then\": 2, \"policyRule\": \"a string\"}\n", func() (extractor.Extractor, ToolKind) { return p.Exts()[".json"], "" }},
+		{"data/plain.json", "{\"a\": 1}\n", func() (extractor.Extractor, ToolKind) { return p.Exts()[".json"], "" }},
 	} {
 		want, wantTool := c.want()
 		e, tool, ok, unclassified := p.resolveExtractor(c.rel, []byte(c.src), idx)

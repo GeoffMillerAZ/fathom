@@ -179,7 +179,7 @@ wave lh's dispatch switch (O462 closed).
 
 lang-parity against `csharpextract.go` on Polly and Newtonsoft.Json, with the
 Roslyn dump dating a definition by its name (O457), reads MERGE at L1
-(`docs/bench/readings/lang/parity/csharp.json`), so `internal/fusion/register.go`
+(`docs/bench/readings/lang/parity/csharp.json`), so `internal/langroute/register.go`
 serves `.cs` from `NewTSExtractor("csharp")`. `csharpextract.go` stays as
 lang-parity's incumbent. The merge-gate paragraph above (target L4) predates
 ADR-048's dispatch-at-parity amendment (D1).

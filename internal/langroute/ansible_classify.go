@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // ansible_classify.go — Ansible files by path and content (LB-F150,
 // language-breadth iac wave, item k8s; LB-Q-ansible). A playbook, a role's
@@ -49,7 +49,7 @@ var (
 )
 
 // noteAnsibleRole records dir as a role root when base is tasks/main.yml's.
-func (idx *siblingIndex) noteAnsibleRole(base, dir string) {
+func (idx *SiblingIndex) noteAnsibleRole(base, dir string) {
 	if (base == "main.yml" || base == "main.yaml") && path.Base(dir) == "tasks" {
 		idx.ansibleRoleRoots[path.Dir(dir)] = struct{}{}
 	}
@@ -57,7 +57,7 @@ func (idx *siblingIndex) noteAnsibleRole(base, dir string) {
 
 // ansibleRoleFile reports whether slash is a file under tasks/, handlers/,
 // defaults/, vars/ or meta/ of a role root idx knows.
-func ansibleRoleFile(slash string, idx *siblingIndex) bool {
+func ansibleRoleFile(slash string, idx *SiblingIndex) bool {
 	if idx == nil || len(idx.ansibleRoleRoots) == 0 {
 		return false
 	}
@@ -77,12 +77,12 @@ func ansibleRoleFile(slash string, idx *siblingIndex) bool {
 	return false
 }
 
-// diskSiblingIndex is the sibling facts a one-file refresh needs for relPath,
+// DiskSiblingIndex is the sibling facts a one-file refresh needs for relPath,
 // found by looking under repoPath (ingest reads them from the Discover list):
 // the Helm chart roots and the Ansible role roots among relPath's ancestors, so
 // ReingestFile classifies a chart's template and a role's file as ingest does.
-func diskSiblingIndex(repoPath, relPath string) *siblingIndex {
-	idx := &siblingIndex{chartDirs: map[string]struct{}{}, ansibleRoleRoots: map[string]struct{}{}}
+func DiskSiblingIndex(repoPath, relPath string) *SiblingIndex {
+	idx := &SiblingIndex{chartDirs: map[string]struct{}{}, ansibleRoleRoots: map[string]struct{}{}}
 	segs := strings.Split(filepath.ToSlash(relPath), "/")
 	for i := 0; i < len(segs)-1; i++ {
 		root := "."
@@ -104,7 +104,7 @@ func diskSiblingIndex(repoPath, relPath string) *siblingIndex {
 
 // ansibleDetects reports whether a .yaml or .yml file at relPath is Ansible's
 // by the path and content signals above.
-func ansibleDetects(relPath string, content []byte, idx *siblingIndex) bool {
+func ansibleDetects(relPath string, content []byte, idx *SiblingIndex) bool {
 	slash := strings.TrimPrefix(path.Clean(strings.ReplaceAll(relPath, `\`, "/")), "./")
 	if strings.Contains(slash, ".github/workflows/") {
 		return false

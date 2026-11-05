@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
@@ -89,9 +90,9 @@ import (
 }
 
 func TestTimoniDispatchClaims(t *testing.T) {
-	refs := []string{"mods/app/timoni.cue", "mods/app/cue.mod/module.cue"}
-	idx := &siblingIndex{timoniDirs: map[string]struct{}{"mods/app": {}}}
-	_ = refs
+	p := New(nil, nil, Config{})
+	defer p.Close()
+	idx := buildSiblingIndex([]core.SourceRef{{Path: "mods/app/timoni.cue"}, {Path: "mods/app/cue.mod/module.cue"}})
 	src := timoniCorpus()
 	for rel, want := range map[string]bool{
 		"mods/app/timoni.cue":                               true,
@@ -106,22 +107,22 @@ func TestTimoniDispatchClaims(t *testing.T) {
 		"other/values.cue":                                  false, // outside any module
 		"other/templates/t.cue":                             false, // templates/ alone is no module
 	} {
-		_, tk, ok := timoniDispatch(rel, []byte(src[rel]), idx)
+		_, tk, ok := p.Router.TimoniDispatch(rel, []byte(src[rel]), idx)
 		if ok != want || (ok && tk != ToolTimoni) {
-			t.Errorf("timoniDispatch(%q) = %q, %v; want claimed=%v", rel, tk, ok, want)
+			t.Errorf("p.Router.TimoniDispatch(%q) = %q, %v; want claimed=%v", rel, tk, ok, want)
 		}
 	}
 	// A timoni.cue claims itself without an index, and a runtime by content.
-	if _, _, ok := timoniDispatch("x/timoni.cue", []byte("package main\n"), nil); !ok {
+	if _, _, ok := p.Router.TimoniDispatch("x/timoni.cue", []byte("package main\n"), nil); !ok {
 		t.Error("timoni.cue without an index is not claimed")
 	}
-	if _, _, ok := timoniDispatch("x/rt.cue", []byte("runtime: {\n\tapiVersion: \"v1alpha1\"\n}\n"), nil); !ok {
+	if _, _, ok := p.Router.TimoniDispatch("x/rt.cue", []byte("runtime: {\n\tapiVersion: \"v1alpha1\"\n}\n"), nil); !ok {
 		t.Error("a runtime by content is not claimed")
 	}
-	if _, _, ok := timoniDispatch("x/rt.cue", []byte("runtime: {\n\tmode: \"fast\"\n}\n"), nil); ok {
+	if _, _, ok := p.Router.TimoniDispatch("x/rt.cue", []byte("runtime: {\n\tmode: \"fast\"\n}\n"), nil); ok {
 		t.Error("a runtime: field with no v1alpha1 apiVersion is not a Timoni runtime")
 	}
-	if _, _, ok := timoniDispatch("a/b.yaml", []byte("bundle: {\n"), nil); ok {
+	if _, _, ok := p.Router.TimoniDispatch("a/b.yaml", []byte("bundle: {\n"), nil); ok {
 		t.Error("only .cue files are claimed")
 	}
 }
@@ -131,7 +132,7 @@ func TestTimoniDispatchClaims(t *testing.T) {
 func TestResolveExtractor_Timoni(t *testing.T) {
 	p := New(nil, nil, Config{})
 	defer p.Close()
-	idx := &siblingIndex{timoniDirs: map[string]struct{}{"mods/app": {}}}
+	idx := buildSiblingIndex([]core.SourceRef{{Path: "mods/app/timoni.cue"}})
 	src := timoniCorpus()
 	e, tk, ok, _ := p.resolveExtractor("mods/app/templates/deployment.cue", []byte(src["mods/app/templates/deployment.cue"]), idx)
 	if !ok || tk != ToolTimoni {

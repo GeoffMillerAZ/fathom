@@ -1,21 +1,22 @@
-package fusion
+package langroute
 
 import (
-	"github.com/geoffmilleraz/fathom/internal/connector"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 const ToolAzurePipelines ToolKind = "azure-pipelines"
 
 var azurePipelineRootRe = regexp.MustCompile(`(?m)^(stages|jobs|steps|extends|parameters)[ \t]*:`)
 
-// azurePipelineDispatch claims pipeline basenames and literal stage/job templates
+// AzurePipelineDispatch claims pipeline basenames and literal stage/job templates
 // only after earlier dispatchers and the YAML classifier decline.
 // Content claims also need a top-level pipeline key.
-func azurePipelineDispatch(rel string, src []byte, idx *siblingIndex) (extractor.Extractor, ToolKind, bool) {
+func AzurePipelineDispatch(rel string, src []byte, idx *SiblingIndex) (extractor.Extractor, ToolKind, bool) {
 	ext := strings.ToLower(filepath.Ext(rel))
 	if ext != ".yml" && ext != ".yaml" {
 		return nil, "", false
@@ -27,8 +28,8 @@ func azurePipelineDispatch(rel string, src []byte, idx *siblingIndex) (extractor
 	if x == nil {
 		return nil, "", false
 	}
-	v := connector.ClassifyDialect(dialectRules(), rel, src)
-	if v.Dialect != "azure-pipelines" && (v.By == connector.ClassifiedByBasename || (v.By == connector.ClassifiedByGlob && v.Dialect != "helm")) {
+	v := langclass.ClassifyDialect(DialectRules(), rel, src)
+	if v.Dialect != "azure-pipelines" && (v.By == langclass.ClassifiedByBasename || (v.By == langclass.ClassifiedByGlob && v.Dialect != "helm")) {
 		return nil, "", false
 	}
 	named := v.Dialect == "azure-pipelines"

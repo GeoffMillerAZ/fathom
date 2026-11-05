@@ -2,14 +2,16 @@ package fusion
 
 import (
 	"context"
-	"github.com/geoffmilleraz/fathom/internal/connector"
-	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
-	"github.com/geoffmilleraz/fathom/internal/store"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 func TestAzurePipelinesDispatch(t *testing.T) {
@@ -27,7 +29,7 @@ func TestAzurePipelinesDispatch(t *testing.T) {
 	}
 	for _, rel := range []string{".github/workflows/ci.yml", "manifest.yaml"} {
 		src := []byte("apiVersion: batch/v1\nkind: Job\nmetadata: {name: x}\nspec: {}\n")
-		if _, _, ok := azurePipelineDispatch(rel, src, nil); ok {
+		if _, _, ok := langroute.AzurePipelineDispatch(rel, src, nil); ok {
 			t.Fatalf("stole %s", rel)
 		}
 	}
@@ -74,18 +76,18 @@ func TestAzurePipelinesContentDiscoveryAndEarlierClaims(t *testing.T) {
 	t.Cleanup(p.Close)
 	src := []byte("jobs:\n- job: build\n")
 	idx := buildSiblingIndex([]core.SourceRef{{Path: "Chart.yaml"}})
-	if _, _, ok := azurePipelineDispatch("templates/build.yml", src, idx); ok {
+	if _, _, ok := langroute.AzurePipelineDispatch("templates/build.yml", src, idx); ok {
 		t.Fatal("stole actual chart template")
 	}
 	if got := p.ContentDialect("templates/build.yml", src, nil); got != "azure-pipelines" {
 		t.Fatalf("content discovery %q", got)
 	}
 	for _, rel := range []string{"Taskfile.yml", ".circleci/config.yml", ".gitlab-ci.yml", "Chart.yaml", ".github/workflows/ci.yml"} {
-		if _, _, ok := azurePipelineDispatch(rel, src, nil); ok {
+		if _, _, ok := langroute.AzurePipelineDispatch(rel, src, nil); ok {
 			t.Fatalf("stole earlier claim %s", rel)
 		}
 	}
-	if _, _, ok := azurePipelineDispatch("notes.yml", []byte("script: |\n  - job: text only\n"), nil); ok {
+	if _, _, ok := langroute.AzurePipelineDispatch("notes.yml", []byte("script: |\n  - job: text only\n"), nil); ok {
 		t.Fatal("claimed text in a string")
 	}
 }
@@ -115,7 +117,7 @@ func TestAzurePipelinesPreservesYAMLClaims(t *testing.T) {
 			st := store.NewMemoryStore()
 			p := New(connector.NewLocalConnector(), st, Config{})
 			t.Cleanup(p.Close)
-			if _, _, ok := azurePipelineDispatch(tc.path, []byte(tc.source), nil); ok {
+			if _, _, ok := langroute.AzurePipelineDispatch(tc.path, []byte(tc.source), nil); ok {
 				t.Fatal("Azure stole an earlier claim or a nested example")
 			}
 			if tc.name == "nested-only" {

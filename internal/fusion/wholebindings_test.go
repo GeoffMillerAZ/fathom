@@ -1,8 +1,9 @@
 package fusion
 
 import (
-	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // The namespace setting changes binding, not path lookup. Existing strategies

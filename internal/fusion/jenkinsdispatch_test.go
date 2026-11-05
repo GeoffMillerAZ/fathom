@@ -73,7 +73,7 @@ pipeline {
 func TestJenkinsfileIsTheDialect(t *testing.T) {
 	p := New(connector.NewLocalConnector(), store.NewMemoryStore(), Config{})
 	t.Cleanup(p.Close)
-	want := p.exts["Jenkinsfile"]
+	want := p.Exts()["Jenkinsfile"]
 	if want == nil {
 		t.Fatal("no jenkinsfile dialect registered for the Jenkinsfile basename")
 	}

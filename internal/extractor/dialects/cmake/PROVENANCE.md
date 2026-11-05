@@ -41,7 +41,7 @@ until the integrator switches it (see "Dispatch" below).
   written by hand from reading the fixture before the queries were final. The one correction the goldens forced was the
   engine's, not the query's: a multi-line `add_library(\n name ...)` is `Line` the name's line (as universal-ctags
   reports it), `EndLine` the command's last.
-- **Dispatch**: `internal/fusion/register.go` hand-wires `CMakeLists.txt` and `.cmake` to `cmakeextract.go`, so the tags
+- **Dispatch**: `internal/langroute/register.go` hand-wires `CMakeLists.txt` and `.cmake` to `cmakeextract.go`, so the tags
   loop does not claim them (and ingest's extension-keyed file-resolve pass would reach only `*.cmake` once it does, O379). `indexbench lang-parity -dialect cmake -incumbent cmakeextract` on the three subjects
   (2026-10-01): every L1 metric is at least the incumbent's (sym_recall .9952 = .9952, sym_precision .9952 vs .9200),
   ref_precision 1 vs .8986, kinds gained `CMakeVariable`; the verdict is REFUSED only because the dialect's `level_met`

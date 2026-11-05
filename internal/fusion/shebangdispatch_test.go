@@ -71,8 +71,8 @@ func TestShebangDispatch(t *testing.T) {
 			}
 		}
 	}
-	if e, _, _, _ := p.resolveExtractor("scripts/report", []byte(corpus["scripts/report"]), nil); e != p.exts[".py"] {
-		t.Errorf("scripts/report reads with a new extractor, want p.exts[\".py\"]'s")
+	if e, _, _, _ := p.resolveExtractor("scripts/report", []byte(corpus["scripts/report"]), nil); e != p.Exts()[".py"] {
+		t.Errorf("scripts/report reads with a new extractor, want p.Exts()[\".py\"]'s")
 	}
 	for _, rel := range []string{"scripts/legacy", "notes/TODO", "tools/run.txt", "tools/zshrc-like"} {
 		if e, _, ok, _ := p.resolveExtractor(rel, []byte(corpus[rel]), buildSiblingIndex(nil)); ok {

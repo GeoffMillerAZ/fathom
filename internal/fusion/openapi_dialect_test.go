@@ -33,7 +33,7 @@ func TestOpenAPIRoutingByContent(t *testing.T) {
 	p := New(connector.NewLocalConnector(), store.NewMemoryStore(), Config{})
 	t.Cleanup(p.Close)
 	idx := buildSiblingIndex(nil)
-	oa := p.toolExts[ToolOpenAPI]
+	oa := p.ToolExts()[ToolOpenAPI]
 	if oa == nil {
 		t.Fatal("no openapi extractor registered")
 	}
@@ -47,15 +47,15 @@ func TestOpenAPIRoutingByContent(t *testing.T) {
 		{"api/legacy.yml", oaSwagger, oa, ToolOpenAPI, "openapi"},
 		{"api/openapi.json", oaJSONDoc, oa, ToolOpenAPI, "openapi"},
 		{"api/swagger.json", oaMinified, oa, ToolOpenAPI, "openapi"},
-		{"api/example.json", "{\"title\": \"x\", \"example\": {\"openapi\": \"3.0.0\"}}\n", p.exts[".json"], "", ""},
-		{"schema/openapi-schema.json", "{\"properties\": {\"openapi\": {\"type\": \"string\"}}}\n", p.exts[".json"], "", ""},
-		{"data/data.json", "{\"a\": 1}\n", p.exts[".json"], "", ""},
-		{"package.json", "{\"name\": \"x\", \"openapi\": \"3.0.0\", \"info\": {}}\n", p.exts["package.json"], "", ""},
-		{"api/no-info.json", "{\"openapi\": \"3.0.0\", \"paths\": {}}\n", p.exts[".json"], "", ""},
-		{"infra/stack.json", cfnJSONTemplate, p.toolExts[ToolCloudFormation], ToolCloudFormation, "cloudformation"},
-		{"infra/stack.yaml", cfnYAMLTemplate, p.toolExts[ToolCloudFormation], ToolCloudFormation, "cloudformation"},
-		{"k8s/deploy.yaml", "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n", p.toolExts[ToolK8sManifest], ToolK8sManifest, ""},
-		{"stack/app.yml", "services:\n  web:\n    image: nginx\n", p.toolExts[ToolCompose], ToolCompose, ""},
+		{"api/example.json", "{\"title\": \"x\", \"example\": {\"openapi\": \"3.0.0\"}}\n", p.Exts()[".json"], "", ""},
+		{"schema/openapi-schema.json", "{\"properties\": {\"openapi\": {\"type\": \"string\"}}}\n", p.Exts()[".json"], "", ""},
+		{"data/data.json", "{\"a\": 1}\n", p.Exts()[".json"], "", ""},
+		{"package.json", "{\"name\": \"x\", \"openapi\": \"3.0.0\", \"info\": {}}\n", p.Exts()["package.json"], "", ""},
+		{"api/no-info.json", "{\"openapi\": \"3.0.0\", \"paths\": {}}\n", p.Exts()[".json"], "", ""},
+		{"infra/stack.json", cfnJSONTemplate, p.ToolExts()[ToolCloudFormation], ToolCloudFormation, "cloudformation"},
+		{"infra/stack.yaml", cfnYAMLTemplate, p.ToolExts()[ToolCloudFormation], ToolCloudFormation, "cloudformation"},
+		{"k8s/deploy.yaml", "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n", p.ToolExts()[ToolK8sManifest], ToolK8sManifest, ""},
+		{"stack/app.yml", "services:\n  web:\n    image: nginx\n", p.ToolExts()[ToolCompose], ToolCompose, ""},
 	} {
 		e, tool, ok, unclassified := p.resolveExtractor(c.rel, []byte(c.src), idx)
 		if !ok || unclassified {

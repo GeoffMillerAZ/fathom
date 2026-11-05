@@ -1,11 +1,12 @@
-package fusion
+package langroute
 
 // entityfacts.go — dialect facts stored (WAE-4, ADR-069): the facts a
 // dialect's doc spec declares (DocResult.Facts, which DocExtractor.Extract
 // drops) become EntityFact nodes beside the entities, written with the
 // file's other observations and purged with it (the ADR-064 precedent): no
 // table, no pass. Ingest's extract sink, ReingestFile and the embedded
-// documents' reader (k8sEmbedExtractor) store them alike.
+// documents' reader (k8sEmbedExtractor) store them alike. The code is in
+// internal/langroute, which owns the dispatch that reads them.
 
 import (
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -18,9 +19,9 @@ type factsDeclarer interface {
 	DeclaresFacts() bool
 }
 
-// extractWithFacts is x.Extract, plus the facts x declares as EntityFact
+// ExtractWithFacts is x.Extract, plus the facts x declares as EntityFact
 // nodes; a dialect that declares none is read by Extract alone.
-func extractWithFacts(x extractor.Extractor, service, relPath string, src []byte) ([]core.SymbolNode, error) {
+func ExtractWithFacts(x extractor.Extractor, service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	doc, isDoc := x.(extractor.DocResulter)
 	if fd, ok := x.(factsDeclarer); !isDoc || !ok || !fd.DeclaresFacts() {
 		return x.Extract(service, relPath, src)

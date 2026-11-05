@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 )
 
 func grafanaRepo() map[string]string {
@@ -172,7 +174,7 @@ func TestReingestFile_GrafanaDashboardRepo(t *testing.T) {
 // their own dialects.
 func TestLateYAMLOrderingObs(t *testing.T) {
 	grafanaRules := grafanaRepo()["grafana/provisioning/alerting/rules.yaml"]
-	if x := lateYAMLLookup("prometheus"); x == nil || !x.DetectsContent([]byte(grafanaRules)) {
+	if x := langroute.LateYAMLLookup("prometheus"); x == nil || !x.DetectsContent([]byte(grafanaRules)) {
 		t.Fatal("the fixture no longer meets prometheus' sniff: the ordering is not exercised")
 	}
 	for rel, want := range map[string]ToolKind{

@@ -32,7 +32,7 @@ func TestCloudFormationRoutingLeavesOthersUnchanged(t *testing.T) {
 	p := New(connector.NewLocalConnector(), store.NewMemoryStore(), Config{})
 	t.Cleanup(p.Close)
 	idx := buildSiblingIndex(nil)
-	cfn := p.toolExts[ToolCloudFormation]
+	cfn := p.ToolExts()[ToolCloudFormation]
 	if cfn == nil {
 		t.Fatal("no cloudformation extractor registered")
 	}
@@ -47,17 +47,17 @@ func TestCloudFormationRoutingLeavesOthersUnchanged(t *testing.T) {
 		{"infra/stack.yaml", cfnYAMLTemplate, cfn, ToolCloudFormation},
 		{"infra/stack.yml", cfnSAMTemplate, cfn, ToolCloudFormation},
 		{"infra/stack.json", cfnJSONTemplate, cfn, ToolCloudFormation},
-		{"k8s/deploy.yaml", "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n", p.toolExts[ToolK8sManifest], ToolK8sManifest},
-		{"k8s/crd.yaml", "apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: x\n", p.toolExts[ToolK8sCRD], ToolK8sCRD},
-		{"stack/app.yml", "services:\n  web:\n    image: nginx\n", p.toolExts[ToolCompose], ToolCompose},
-		{"docker-compose.yml", "services:\n  web:\n    image: nginx\n", p.exts["docker-compose.yml"], ToolCompose},
-		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\n", p.toolExts[ToolGHA], ToolGHA},
-		{".gitlab-ci.yml", "build:\n  script: [make]\n", p.toolExts[ToolGitLabCI], ToolGitLabCI},
-		{".gitlab/ci/deploy.yml", "deploy:\n  script: [make]\n", p.toolExts[ToolGitLabCI], ToolGitLabCI},
-		{"api/openapi.yaml", "openapi: 3.0.0\npaths: {}\n", p.toolExts[ToolOpenAPI], ToolOpenAPI},
-		{"data/data.json", "{\"a\": 1}\n", p.exts[".json"], ""},
-		{"schema/cfn-schema.json", "{\"properties\": {\"AWSTemplateFormatVersion\": {\"type\": \"string\"}}}\n", p.exts[".json"], ""},
-		{"package.json", "{\"name\": \"x\", \"AWSTemplateFormatVersion\": \"2010-09-09\", \"Resources\": {}}\n", p.exts["package.json"], ""},
+		{"k8s/deploy.yaml", "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n", p.ToolExts()[ToolK8sManifest], ToolK8sManifest},
+		{"k8s/crd.yaml", "apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: x\n", p.ToolExts()[ToolK8sCRD], ToolK8sCRD},
+		{"stack/app.yml", "services:\n  web:\n    image: nginx\n", p.ToolExts()[ToolCompose], ToolCompose},
+		{"docker-compose.yml", "services:\n  web:\n    image: nginx\n", p.Exts()["docker-compose.yml"], ToolCompose},
+		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\n", p.ToolExts()[ToolGHA], ToolGHA},
+		{".gitlab-ci.yml", "build:\n  script: [make]\n", p.ToolExts()[ToolGitLabCI], ToolGitLabCI},
+		{".gitlab/ci/deploy.yml", "deploy:\n  script: [make]\n", p.ToolExts()[ToolGitLabCI], ToolGitLabCI},
+		{"api/openapi.yaml", "openapi: 3.0.0\npaths: {}\n", p.ToolExts()[ToolOpenAPI], ToolOpenAPI},
+		{"data/data.json", "{\"a\": 1}\n", p.Exts()[".json"], ""},
+		{"schema/cfn-schema.json", "{\"properties\": {\"AWSTemplateFormatVersion\": {\"type\": \"string\"}}}\n", p.Exts()[".json"], ""},
+		{"package.json", "{\"name\": \"x\", \"AWSTemplateFormatVersion\": \"2010-09-09\", \"Resources\": {}}\n", p.Exts()["package.json"], ""},
 	} {
 		e, tool, ok, unclassified := p.resolveExtractor(c.rel, []byte(c.src), idx)
 		if !ok || unclassified {

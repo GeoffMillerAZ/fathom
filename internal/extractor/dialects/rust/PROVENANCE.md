@@ -110,7 +110,7 @@
   harness resolving a symbol defined in more than one document to every one (ruling 3, O539) lang-parity reads MERGE
   at L4 against `rustextract.go` (`docs/bench/readings/lang/parity/rust.json`: sym_recall .8966 -> .9984,
   file_edge_precision .9971 -> .9972, def_mapping .8938 -> .9984, typed_recall .9092 -> .9966, no kind lost), so
-  `internal/fusion/register.go` serves `.rs` from this dialect and `rustextract.go` and its test are deleted: the
+  `internal/langroute/register.go` serves `.rs` from this dialect and `rustextract.go` and its test are deleted: the
   walker's own contracts are the `contracts.rs` and `empty.rs` goldens here. Extraction costs 2.68-2.84 MB/CPU-s on
   ripgrep and clap (4.24 MB) against the walker's 6.87-6.92, above the 1 MB/s floor (K25 ruling 2). The reading reads
   every level excellent once a module path is a file edge (ruling 4, `internal/fusion/rustcrate.go`

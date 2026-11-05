@@ -4,7 +4,11 @@ package fusion
 // gateway hub by a manifest basename or glob AND the doc spec's content sniff; a
 // file of that name that is not a libconfig ProxySQL configuration stays unread.
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/langroute"
+)
 
 func TestProxySQLDispatchClaims(t *testing.T) {
 	const cnf = "datadir=\"/var/lib/proxysql\"\n\nmysql_servers =\n(\n\t{ address=\"db\" , port=3306 , hostgroup=0 }\n)\n"
@@ -21,15 +25,15 @@ func TestProxySQLDispatchClaims(t *testing.T) {
 		{"conf/haproxy.cfg", cnf, ""},
 	}
 	for _, c := range cases {
-		e, tk, ok := gatewayDispatch(c.path, []byte(c.content))
+		e, tk, ok := langroute.GatewayDispatch(c.path, []byte(c.content))
 		if c.want == "" {
 			if ok || e != nil {
-				t.Errorf("gatewayDispatch(%q) claimed it as %q; want unclaimed", c.path, tk)
+				t.Errorf("langroute.GatewayDispatch(%q) claimed it as %q; want unclaimed", c.path, tk)
 			}
 			continue
 		}
 		if !ok || tk != c.want || e == nil {
-			t.Errorf("gatewayDispatch(%q) = (%v, %q, %v), want %q", c.path, e, tk, ok, c.want)
+			t.Errorf("langroute.GatewayDispatch(%q) = (%v, %q, %v), want %q", c.path, e, tk, ok, c.want)
 		}
 	}
 }

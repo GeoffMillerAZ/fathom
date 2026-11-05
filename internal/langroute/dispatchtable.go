@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 import (
 	"fmt"
@@ -7,13 +7,12 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
-	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
 )
 
 // DispatchTable is the read-only view of the per-key extractor dispatch that
 // New wires (LB-F356): for every extension or basename key, a short label of
 // the extractor that serves it. It is computed from a freshly constructed
-// Pipeline's own registry (p.exts), the sniff-only dialects (p.sniffExts) and
+// Router's own registry (exts), the sniff-only dialects (sniffExts) and
 // refusedDialects, so docs/languages.md's "Engine / dispatch" column is
 // generated from what ingest does and cannot be hand-typed into disagreement.
 // A key no extractor serves is absent.
@@ -24,12 +23,10 @@ import (
 // names both); "<label> or <label> (by content sniff)" for the .h router, which
 // picks between two extractors per file, three with Objective-C; "refused (no extractor)" for a
 // refused dialect's keys.
-func DispatchTable() map[string]string {
-	p := New(nil, nil, Config{})
-	defer p.Close()
+func (r *Router) DispatchTable() map[string]string {
 	docKeys := docDialectIDsByKey()
 	out := map[string]string{}
-	for k, e := range p.exts {
+	for k, e := range r.exts {
 		out[k] = dispatchLabel(k, e, docKeys)
 	}
 	dialects, err := extractor.LoadDialects()
@@ -45,7 +42,7 @@ func DispatchTable() map[string]string {
 		}
 		if d.Engine == "tags" && refusedDialects[d.ID] {
 			for _, k := range keys {
-				if _, claimed := p.exts[k]; !claimed {
+				if _, claimed := r.exts[k]; !claimed {
 					out[k] = "refused (no extractor)"
 				}
 			}
@@ -53,7 +50,7 @@ func DispatchTable() map[string]string {
 		}
 		if d.Engine == "tags" && d.Match.Sniff != nil {
 			for _, x := range d.Match.Sniff.Extensions {
-				if _, claimed := p.exts[x]; !claimed {
+				if _, claimed := r.exts[x]; !claimed {
 					sniffers[x] = append(sniffers[x], d.ID)
 				}
 			}
@@ -99,14 +96,18 @@ func docDialectIDsByKey() map[string][]string {
 	return out
 }
 
+// dispatchLabeler is an extractor that names its own dispatch label, for an
+// engine that routing does not import (the CUE extractor).
+type dispatchLabeler interface{ DispatchLabel() string }
+
 func dispatchLabel(key string, e extractor.Extractor, docKeys map[string][]string) string {
 	switch x := e.(type) {
 	case *extractor.TSExtractor:
 		return fmt.Sprintf("tags dialect `%s`", x.Name())
 	case *extractor.GoExtractor:
 		return "native Go (`go/parser` + `go/types`)"
-	case *cuelang.CUEExtractor:
-		return "native CUE (`cue/load`)"
+	case dispatchLabeler:
+		return x.DispatchLabel() // native CUE, which registers itself so routing does not import it
 	case *extractor.CHeaderExtractor:
 		// The CT-3 router picks per file between the two extractors it holds
 		// (LB-F392): name them, not the router's own Go type.

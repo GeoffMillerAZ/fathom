@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // k8sembed.go — documents a Kubernetes object embeds (wave c3, LB-F366;
 // docs/design/language-breadth.md §4 "Observability documents"). A
@@ -52,9 +52,9 @@ type embeddedDoc struct {
 	line    int
 }
 
-// k8sEmbedCandidate is the cheap pre-check: an object kind that can embed a
+// K8sEmbedCandidate is the cheap pre-check: an object kind that can embed a
 // document, and a key that can hold one.
-func k8sEmbedCandidate(content []byte) bool {
+func K8sEmbedCandidate(content []byte) bool {
 	if !bytes.Contains(content, []byte("ConfigMap")) && !bytes.Contains(content, []byte("Secret")) && !bytes.Contains(content, []byte("GrafanaDashboard")) {
 		return false
 	}
@@ -65,7 +65,7 @@ func k8sEmbedCandidate(content []byte) bool {
 // document order.
 func k8sEmbeddedDocs(content []byte) []embeddedDoc {
 	var out []embeddedDoc
-	for _, doc := range yamlDocs(content) {
+	for _, doc := range YAMLDocs(content) {
 		embedObject(doc, &out, 0)
 	}
 	// a key two objects share is qualified by each object's name
@@ -86,9 +86,9 @@ func embedObject(n *yaml.Node, out *[]embeddedDoc, depth int) {
 	if n == nil || n.Kind != yaml.MappingNode || depth > 1 {
 		return
 	}
-	kind := yscalar(ymap(n, "kind"))
+	kind := YScalar(YMap(n, "kind"))
 	if strings.HasSuffix(kind, "List") {
-		if items := ymap(n, "items"); items != nil && items.Kind == yaml.SequenceNode {
+		if items := YMap(n, "items"); items != nil && items.Kind == yaml.SequenceNode {
 			for _, it := range items.Content {
 				embedObject(it, out, depth+1)
 			}
@@ -97,10 +97,10 @@ func embedObject(n *yaml.Node, out *[]embeddedDoc, depth int) {
 	}
 	isAMKey := func(k string) bool { return k == "alertmanager.yaml" || k == "alertmanager.yml" }
 	isYAMLKey := func(k string) bool { return strings.HasSuffix(k, ".yaml") || strings.HasSuffix(k, ".yml") }
-	object := yscalar(ymap(n, "metadata", "name"))
+	object := YScalar(YMap(n, "metadata", "name"))
 	switch {
 	case kind == "ConfigMap":
-		data := ymap(n, "data")
+		data := YMap(n, "data")
 		if data == nil || data.Kind != yaml.MappingNode {
 			return
 		}
@@ -117,7 +117,7 @@ func embedObject(n *yaml.Node, out *[]embeddedDoc, depth int) {
 		}
 	case kind == "Secret":
 		for _, field := range []string{"stringData", "data"} {
-			data := ymap(n, field)
+			data := YMap(n, field)
 			if data == nil || data.Kind != yaml.MappingNode {
 				continue
 			}
@@ -130,12 +130,12 @@ func embedObject(n *yaml.Node, out *[]embeddedDoc, depth int) {
 				}
 			}
 		}
-	case kind == "GrafanaDashboard" && strings.HasPrefix(yscalar(ymap(n, "apiVersion")), "grafana.integreatly.org/"):
+	case kind == "GrafanaDashboard" && strings.HasPrefix(YScalar(YMap(n, "apiVersion")), "grafana.integreatly.org/"):
 		name := object
 		if name == "" {
 			name = "spec.json"
 		}
-		addEmbedded(out, "grafana-dashboard", name, object, ymap(n, "spec", "json"), false)
+		addEmbedded(out, "grafana-dashboard", name, object, YMap(n, "spec", "json"), false)
 	}
 }
 
@@ -153,20 +153,20 @@ func addEmbedded(out *[]embeddedDoc, dialect, key, object string, v *yaml.Node, 
 		}
 		content = dec
 	}
-	x := lateYAMLLookup(dialect)
+	x := LateYAMLLookup(dialect)
 	if x == nil || !x.DetectsContent(content) {
 		return
 	}
 	*out = append(*out, embeddedDoc{dialect: dialect, key: key, object: object, content: content, offset: v.Line, flat: flat, line: v.Line})
 }
 
-// k8sEmbeddedResult is the merged extraction of every document a manifest
+// K8sEmbeddedResult is the merged extraction of every document a manifest
 // embeds, each qualified by its key and placed at its lines; ok is false
 // when none reads to an entity.
-func k8sEmbeddedResult(service, relPath string, content []byte) (extractor.DocResult, bool) {
+func K8sEmbeddedResult(service, relPath string, content []byte) (extractor.DocResult, bool) {
 	var all extractor.DocResult
 	for _, d := range k8sEmbeddedDocs(content) {
-		x := lateYAMLLookup(d.dialect)
+		x := LateYAMLLookup(d.dialect)
 		if x == nil {
 			continue
 		}
@@ -267,7 +267,7 @@ func (x k8sEmbedExtractor) Extract(service, relPath string, src []byte) ([]core.
 	if err != nil {
 		return nodes, err
 	}
-	if res, ok := k8sEmbeddedResult(service, relPath, src); ok {
+	if res, ok := K8sEmbeddedResult(service, relPath, src); ok {
 		nodes = append(nodes, res.Nodes...)
 		nodes = append(nodes, storeEntityFacts(res)...)
 	}
@@ -277,21 +277,21 @@ func (x k8sEmbedExtractor) Extract(service, relPath string, src []byte) ([]core.
 // k8sEmbedDispatch claims a Kubernetes manifest that embeds a document:
 // the Kubernetes extractor wrapped with the embedded documents' reader, its
 // tool kind unchanged. ingest's resolveExtractor and ReingestFile ask it.
-func (p *Pipeline) k8sEmbedDispatch(relPath string, content []byte, idx *siblingIndex) (extractor.Extractor, ToolKind, bool) {
+func (r *Router) k8sEmbedDispatch(relPath string, content []byte, idx *SiblingIndex) (extractor.Extractor, ToolKind, bool) {
 	if ext := strings.ToLower(path.Ext(relPath)); ext != ".yaml" && ext != ".yml" {
 		return nil, "", false
 	}
-	if strings.Contains(relPath, ".github/workflows/") || !k8sEmbedCandidate(content) {
+	if strings.Contains(relPath, ".github/workflows/") || !K8sEmbedCandidate(content) {
 		return nil, "", false
 	}
-	if _, named := p.exts[path.Base(relPath)]; named {
+	if _, named := r.exts[path.Base(relPath)]; named {
 		return nil, "", false
 	}
 	kind := Classify(relPath, content, idx)
 	if kind != ToolK8sManifest && kind != ToolK8sCRD {
 		return nil, "", false
 	}
-	base, ok := p.toolExts[kind]
+	base, ok := r.toolExts[kind]
 	if !ok || len(k8sEmbeddedDocs(content)) == 0 {
 		return nil, "", false
 	}

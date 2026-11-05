@@ -430,7 +430,7 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	}
 	p.beginPassState(ctx, svc.ID, docXrefStateKey)
 	idx := buildSiblingIndex(refs)
-	dockerfile := p.exts["Dockerfile"]
+	dockerfile := p.Exts()["Dockerfile"]
 	var files []DocFile
 	var runs []ghaRunStep     // the run steps of workflows and composite actions (gharun.go, LB-F310)
 	var builds []ghaBuildStep // their docker/build-push-action steps (LB-F311)

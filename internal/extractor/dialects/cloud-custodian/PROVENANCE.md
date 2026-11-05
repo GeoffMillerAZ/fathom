@@ -9,7 +9,7 @@ a source tree.
 ## How a file is claimed: by content, never by name
 
 The manifest claims no basename, glob or extension. `detect.content_sniff` matches a column-0
-`policies:` key followed by an indented `resource:` key; `fusion.cloudPolicyDispatch` adds a
+`policies:` key followed by an indented `resource:` key; `langroute.cloudPolicyDispatch` adds a
 decode check (a `policies` list entry that is a map carrying a `name` and a `resource`), so a
 `policies:` list of anything else (a retention config, a Kubernetes object that carries one) is
 not claimed, and never claims a file an earlier signal claims.

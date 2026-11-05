@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // cloudpolicydispatch.go — ingest's claim of AWS IAM policy documents, Azure
 // Policy definitions and initiatives, and Cloud Custodian policy files
@@ -17,18 +17,18 @@ package fusion
 // GitHub Actions workflow, a YAML file the classifier gives a tool kind (a
 // Kubernetes manifest, a CRD, Compose, GitLab CI, OpenAPI, a Helm template,
 // CloudFormation), a CloudFormation or OpenAPI JSON document, and an Envoy,
-// Kong or Traefik file (gatewayDispatch). So an inline IAM PolicyDocument in
+// Kong or Traefik file (GatewayDispatch). So an inline IAM PolicyDocument in
 // a CloudFormation template stays the template's (LB-X-iam-inline). The hook
-// sits in resolveExtractor and ReingestFile before gatewayDispatch.
+// sits in resolveExtractor and ReingestFile before GatewayDispatch.
 
 import (
 	"path/filepath"
 	"strings"
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 const (
@@ -80,8 +80,8 @@ func cloudPolicyExtractors() map[string]*extractor.DocExtractor {
 // relPath is an IAM policy, an Azure Policy definition or initiative, or a
 // Cloud Custodian policies file; ok is false for every other file. idx is the
 // sibling index the YAML classifier reads (nil in ReingestFile).
-func (p *Pipeline) cloudPolicyDispatch(relPath string, content []byte, idx *siblingIndex) (extractor.Extractor, ToolKind, bool) {
-	id, tk := cloudPolicyClaim(p, relPath, content, idx)
+func (r *Router) cloudPolicyDispatch(relPath string, content []byte, idx *SiblingIndex) (extractor.Extractor, ToolKind, bool) {
+	id, tk := cloudPolicyClaim(r, relPath, content, idx)
 	if id == "" {
 		return nil, "", false
 	}
@@ -94,22 +94,22 @@ func (p *Pipeline) cloudPolicyDispatch(relPath string, content []byte, idx *sibl
 // the language-breadth harness measures a content-classified dialect on
 // exactly these files (indexbench lang-oracle). refs is the service's
 // Discover list.
-func (p *Pipeline) CloudPolicyDialect(relPath string, content []byte, refs []core.SourceRef) string {
-	id, _ := cloudPolicyClaim(p, relPath, content, buildSiblingIndex(refs))
+func (r *Router) CloudPolicyDialect(relPath string, content []byte, refs []core.SourceRef) string {
+	id, _ := cloudPolicyClaim(r, relPath, content, BuildSiblingIndex(refs))
 	return id
 }
 
 // cloudPolicyClaim is the one decision both entry points share: the claiming
 // dialect's id and tool kind, "" when none claims relPath.
-func cloudPolicyClaim(p *Pipeline, relPath string, content []byte, idx *siblingIndex) (string, ToolKind) {
+func cloudPolicyClaim(r *Router, relPath string, content []byte, idx *SiblingIndex) (string, ToolKind) {
 	ext := strings.ToLower(filepath.Ext(relPath))
 	if ext != ".json" && ext != ".yaml" && ext != ".yml" {
 		return "", ""
 	}
-	if _, named := p.exts[filepath.Base(relPath)]; named {
+	if _, named := r.exts[filepath.Base(relPath)]; named {
 		return "", ""
 	}
-	if by := connector.ClassifyDialect(dialectRules(), relPath, content).By; by == connector.ClassifiedByBasename || by == connector.ClassifiedByGlob {
+	if by := langclass.ClassifyDialect(DialectRules(), relPath, content).By; by == langclass.ClassifiedByBasename || by == langclass.ClassifiedByGlob {
 		return "", ""
 	}
 	exts := cloudPolicyExtractors()
@@ -129,7 +129,7 @@ func cloudPolicyClaim(p *Pipeline, relPath string, content []byte, idx *siblingI
 	} else if strings.Contains(filepath.ToSlash(relPath), ".github/workflows/") || Classify(relPath, content, idx) != ToolUnclassified {
 		return "", ""
 	}
-	if _, _, claimed := gatewayDispatch(relPath, content); claimed {
+	if _, _, claimed := GatewayDispatch(relPath, content); claimed {
 		return "", ""
 	}
 	for _, i := range sniffed {

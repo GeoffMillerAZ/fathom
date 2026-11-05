@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // policydispatch.go — ingest's claim of Kyverno and OPA Gatekeeper files
 // (LB-F134, language-breadth wave pc). Both are Kubernetes objects, so before
@@ -11,7 +11,7 @@ package fusion
 //
 // A file is claimed by its documents' top-level apiVersion group, decided
 // before the Kubernetes verdict (one hook in resolveExtractor, one in
-// ReingestFile, each after gatewayDispatch):
+// ReingestFile, each after GatewayDispatch):
 //
 //   - kyverno: kyverno.io (ClusterPolicy, Policy, PolicyException, the
 //     cleanup policies), policies.kyverno.io (ValidatingPolicy, MutatingPolicy,
@@ -170,9 +170,9 @@ func stripYAMLComments(s string) string {
 	return b.String()
 }
 
-// policyDispatch returns the policy dialect's extractor and ToolKind when
+// PolicyDispatch returns the policy dialect's extractor and ToolKind when
 // PolicyDialect claims relPath and the dialect's content sniff agrees.
-func policyDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
+func PolicyDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
 	id := PolicyDialect(relPath, content)
 	if id == "" {
 		return nil, "", false
@@ -221,9 +221,9 @@ var policyRefReaders = map[string]func([]byte) []extractor.DocCrossFileRef{
 
 // ── policy targets ──────────────────────────────────────────────────────────
 
-// yamlDocs decodes every document of a YAML stream; a document that fails
+// YAMLDocs decodes every document of a YAML stream; a document that fails
 // to decode ends the stream (the doc engine's rule: what decoded stands).
-func yamlDocs(content []byte) []*yaml.Node {
+func YAMLDocs(content []byte) []*yaml.Node {
 	dec := yaml.NewDecoder(bytes.NewReader(content))
 	var out []*yaml.Node
 	for {
@@ -237,8 +237,8 @@ func yamlDocs(content []byte) []*yaml.Node {
 	}
 }
 
-// ymap returns a mapping node's value for key.
-func ymap(n *yaml.Node, keys ...string) *yaml.Node {
+// YMap returns a mapping node's value for key.
+func YMap(n *yaml.Node, keys ...string) *yaml.Node {
 	for _, key := range keys {
 		if n == nil || n.Kind != yaml.MappingNode {
 			return nil
@@ -255,7 +255,7 @@ func ymap(n *yaml.Node, keys ...string) *yaml.Node {
 	return n
 }
 
-func yscalar(n *yaml.Node) string {
+func YScalar(n *yaml.Node) string {
 	if n == nil || n.Kind != yaml.ScalarNode {
 		return ""
 	}
@@ -281,9 +281,9 @@ func ystrings(n *yaml.Node) []*yaml.Node {
 	return out
 }
 
-// ylabels is a selector's matchLabels as a map and its canonical form
+// YLabels is a selector's matchLabels as a map and its canonical form
 // ("k=v,k2=v2", keys sorted); ok is false when n is no map of scalars.
-func ylabels(n *yaml.Node) (map[string]string, string, bool) {
+func YLabels(n *yaml.Node) (map[string]string, string, bool) {
 	if n == nil || n.Kind != yaml.MappingNode || len(n.Content) == 0 {
 		return nil, "", false
 	}
@@ -310,9 +310,9 @@ func canonicalLabels(m map[string]string) string {
 	return strings.Join(parts, ",")
 }
 
-// k8sEntityName is the Kubernetes object naming every dialect and the
+// K8sEntityName is the Kubernetes object naming every dialect and the
 // incumbent share: Kind/<ns>/<name>, Kind/<name> with no namespace.
-func k8sEntityName(kind, ns, name string) string {
+func K8sEntityName(kind, ns, name string) string {
 	if ns != "" {
 		return kind + "/" + ns + "/" + name
 	}
@@ -384,36 +384,36 @@ var kyvernoCEL = map[string]bool{
 // resources.namespaces.
 func kyvernoPolicyRefs(content []byte) []extractor.DocCrossFileRef {
 	var out []extractor.DocCrossFileRef
-	for _, root := range yamlDocs(content) {
-		kind := yscalar(ymap(root, "kind"))
-		name := yscalar(ymap(root, "metadata", "name"))
+	for _, root := range YAMLDocs(content) {
+		kind := YScalar(YMap(root, "kind"))
+		name := YScalar(YMap(root, "metadata", "name"))
 		if kind == "" || name == "" {
 			continue
 		}
-		ns := yscalar(ymap(root, "metadata", "namespace"))
-		entity := k8sEntityName(kind, ns, name)
+		ns := YScalar(YMap(root, "metadata", "namespace"))
+		entity := K8sEntityName(kind, ns, name)
 		scope := ""
 		if kyvernoNamespaced[kind] {
 			scope = ns
 		}
-		spec := ymap(root, "spec")
+		spec := YMap(root, "spec")
 		switch {
 		case kind == "ClusterPolicy" || kind == "Policy":
-			for _, rule := range yitems(ymap(spec, "rules")) {
-				rn := yscalar(ymap(rule, "name"))
+			for _, rule := range yitems(YMap(spec, "rules")) {
+				rn := YScalar(YMap(rule, "name"))
 				if rn == "" {
 					continue
 				}
 				for _, key := range []string{"match", "exclude"} {
-					out = append(out, kyvernoMatchRefs(ymap(rule, key), rn, scope)...)
+					out = append(out, kyvernoMatchRefs(YMap(rule, key), rn, scope)...)
 				}
 			}
 		case kind == "ClusterCleanupPolicy" || kind == "CleanupPolicy" || kind == "PolicyException":
 			for _, key := range []string{"match", "exclude"} {
-				out = append(out, kyvernoMatchRefs(ymap(spec, key), entity, scope)...)
+				out = append(out, kyvernoMatchRefs(YMap(spec, key), entity, scope)...)
 			}
 		case kyvernoCEL[kind]:
-			out = append(out, celMatchRefs(ymap(spec, "matchConstraints"), entity, scope)...)
+			out = append(out, celMatchRefs(YMap(spec, "matchConstraints"), entity, scope)...)
 		}
 	}
 	return out
@@ -427,13 +427,13 @@ func kyvernoMatchRefs(m *yaml.Node, from, scope string) []extractor.DocCrossFile
 	}
 	var blocks []*yaml.Node
 	for _, key := range []string{"any", "all"} {
-		for _, f := range yitems(ymap(m, key)) {
-			if r := ymap(f, "resources"); r != nil {
+		for _, f := range yitems(YMap(m, key)) {
+			if r := YMap(f, "resources"); r != nil {
 				blocks = append(blocks, r)
 			}
 		}
 	}
-	if r := ymap(m, "resources"); r != nil {
+	if r := YMap(m, "resources"); r != nil {
 		blocks = append(blocks, r)
 	}
 	var out []extractor.DocCrossFileRef
@@ -441,17 +441,17 @@ func kyvernoMatchRefs(m *yaml.Node, from, scope string) []extractor.DocCrossFile
 		b := policyTargetBlock{from: from, scope: scope}
 		if b.scope == "" {
 			var nss []string
-			for _, n := range ystrings(ymap(r, "namespaces")) {
+			for _, n := range ystrings(YMap(r, "namespaces")) {
 				nss = append(nss, n.Value)
 			}
 			b.scope = strings.Join(nss, ",")
 		}
-		if sel := ymap(r, "selector", "matchLabels"); sel != nil {
-			if m, canon, ok := ylabels(sel); ok {
+		if sel := YMap(r, "selector", "matchLabels"); sel != nil {
+			if m, canon, ok := YLabels(sel); ok {
 				b.labels, b.canon, b.line = m, canon, sel.Line
 			}
 		}
-		for _, k := range ystrings(ymap(r, "kinds")) {
+		for _, k := range ystrings(YMap(r, "kinds")) {
 			b.kinds = append(b.kinds, policyKindRef{raw: k.Value, target: kyvernoKindTarget(k.Value), line: k.Line})
 		}
 		out = append(out, b.refs()...)
@@ -496,17 +496,17 @@ func celMatchRefs(mc *yaml.Node, from, scope string) []extractor.DocCrossFileRef
 	}
 	var labels map[string]string
 	canon, line := "", 0
-	if sel := ymap(mc, "objectSelector", "matchLabels"); sel != nil {
-		if m, c, ok := ylabels(sel); ok {
+	if sel := YMap(mc, "objectSelector", "matchLabels"); sel != nil {
+		if m, c, ok := YLabels(sel); ok {
 			labels, canon, line = m, c, sel.Line
 		}
 	}
 	var out []extractor.DocCrossFileRef
 	for _, key := range []string{"resourceRules", "excludeResourceRules"} {
-		for _, rr := range yitems(ymap(mc, key)) {
+		for _, rr := range yitems(YMap(mc, key)) {
 			b := policyTargetBlock{from: from, scope: scope, labels: labels, canon: canon, line: line}
-			groups := ystrings(ymap(rr, "apiGroups"))
-			for _, res := range ystrings(ymap(rr, "resources")) {
+			groups := ystrings(YMap(rr, "apiGroups"))
+			for _, res := range ystrings(YMap(rr, "resources")) {
 				if len(groups) == 0 {
 					b.kinds = append(b.kinds, policyKindRef{raw: res.Value, target: celResourceTarget("*", res.Value), line: res.Line})
 				}
@@ -599,30 +599,30 @@ var builtinResources = map[string]map[string]string{
 // object: one resource-kind reference "*" (counted as a wildcard).
 func gatekeeperPolicyRefs(content []byte) []extractor.DocCrossFileRef {
 	var out []extractor.DocCrossFileRef
-	for _, root := range yamlDocs(content) {
-		av := yscalar(ymap(root, "apiVersion"))
+	for _, root := range YAMLDocs(content) {
+		av := YScalar(YMap(root, "apiVersion"))
 		if !strings.HasPrefix(av, "constraints.gatekeeper.sh/") {
 			continue
 		}
-		kind, name := yscalar(ymap(root, "kind")), yscalar(ymap(root, "metadata", "name"))
+		kind, name := YScalar(YMap(root, "kind")), YScalar(YMap(root, "metadata", "name"))
 		if kind == "" || name == "" {
 			continue
 		}
 		b := policyTargetBlock{from: kind + "/" + name}
-		match := ymap(root, "spec", "match")
+		match := YMap(root, "spec", "match")
 		var nss []string
-		for _, n := range ystrings(ymap(match, "namespaces")) {
+		for _, n := range ystrings(YMap(match, "namespaces")) {
 			nss = append(nss, n.Value)
 		}
 		b.scope = strings.Join(nss, ",")
-		if sel := ymap(match, "labelSelector", "matchLabels"); sel != nil {
-			if m, canon, ok := ylabels(sel); ok {
+		if sel := YMap(match, "labelSelector", "matchLabels"); sel != nil {
+			if m, canon, ok := YLabels(sel); ok {
 				b.labels, b.canon, b.line = m, canon, sel.Line
 			}
 		}
-		for _, ks := range yitems(ymap(match, "kinds")) {
-			groups := ystrings(ymap(ks, "apiGroups"))
-			for _, k := range ystrings(ymap(ks, "kinds")) {
+		for _, ks := range yitems(YMap(match, "kinds")) {
+			groups := ystrings(YMap(ks, "apiGroups"))
+			for _, k := range ystrings(YMap(ks, "kinds")) {
 				if len(groups) == 0 {
 					b.kinds = append(b.kinds, policyKindRef{raw: k.Value, target: gatekeeperKindTarget("*", k.Value), line: k.Line})
 				}
@@ -668,9 +668,9 @@ func dedupePolicyRefs(refs []extractor.DocCrossFileRef) []extractor.DocCrossFile
 	return out
 }
 
-// policyEntityNodes is the nodes a policy file's references name (the
+// PolicyEntityNodes is the nodes a policy file's references name (the
 // referring rule, policy, exception or constraint entities).
-func policyEntityNodes(nodes []core.SymbolNode, refs []extractor.DocCrossFileRef) []core.SymbolNode {
+func PolicyEntityNodes(nodes []core.SymbolNode, refs []extractor.DocCrossFileRef) []core.SymbolNode {
 	from := map[string]bool{}
 	for _, c := range refs {
 		from[c.From] = true

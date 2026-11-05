@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -91,7 +92,7 @@ func TestAppFrameworkDispatchClaims(t *testing.T) {
 		{"web/notpulumi.dev.yaml", "config:\n  a: b\n", ""},
 	}
 	for _, c := range cases {
-		_, got, ok := appFrameworkDispatch(c.path, []byte(c.content))
+		_, got, ok := langroute.AppFrameworkDispatch(c.path, []byte(c.content))
 		if !ok {
 			got = ""
 		}

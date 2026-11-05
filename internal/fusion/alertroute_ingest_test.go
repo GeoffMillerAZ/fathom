@@ -20,6 +20,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/promql"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -287,7 +288,7 @@ func reingestParity(t *testing.T, p *Pipeline, st store.Store, dir, svc string, 
 // its group's, wherever the group writes them, a templated value left to
 // runtime, and its name as alertname.
 func TestAMRulesStaticLabels(t *testing.T) {
-	x := lateYAMLLookup("prometheus")
+	x := langroute.LateYAMLLookup("prometheus")
 	if x == nil {
 		t.Fatal("no prometheus dialect")
 	}

@@ -1,10 +1,10 @@
-package fusion
+package langroute
 
 // classify.go — the pass-3 tool-identity classifier (ADR-021 §2). It runs
 // between the hash-gate and extractor dispatch in extractAndStore, for the
 // yaml/cue-family files whose extension alone is ambiguous about what tool
 // actually produced them: the ext/basename table (fusion.New's p.exts,
-// connector.extClassMap) stays the candidate pre-filter ("is there a
+// langclass.extClassMap) stays the candidate pre-filter ("is there a
 // yaml/cue extractor at all for this file"), and classify decides which one.
 //
 // Grounding (wf_d0588a59): Helm templates/*.yaml fail yaml.v3 on {{ }} and
@@ -21,9 +21,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 // ToolKind identifies what a yaml/cue-family source file actually is,
@@ -107,7 +107,7 @@ var (
 // Classify for them, since no content sniff is needed. Extensions outside
 // the yaml/cue family return ToolUnclassified (Classify is never called for
 // them either; the constant is simply the safe default).
-func Classify(relPath string, content []byte, idx *siblingIndex) ToolKind {
+func Classify(relPath string, content []byte, idx *SiblingIndex) ToolKind {
 	switch strings.ToLower(filepath.Ext(relPath)) {
 	case ".yaml", ".yml":
 		return classifyYAML(relPath, content, idx)
@@ -129,7 +129,7 @@ func Classify(relPath string, content []byte, idx *siblingIndex) ToolKind {
 // win over a content signal that would otherwise also match). Content
 // signals then run cheapest-first: a plain byte-level regex over the raw
 // content, no YAML parse.
-func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
+func classifyYAML(relPath string, content []byte, idx *SiblingIndex) ToolKind {
 	slash := filepath.ToSlash(relPath)
 	dir := path.Dir(slash)
 
@@ -147,12 +147,12 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	// basenames and globs (the root .gitlab-ci.yml, .gitlab/ci/**, *.gitlab-ci.yml).
 	// Before the Compose signal: a pipeline's deprecated global `services:` list
 	// is a bare top-level `services:` key too.
-	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "gitlab-ci" {
+	if langclass.ClassifyDialect(DialectRules(), relPath, content).Dialect == "gitlab-ci" {
 		return ToolGitLabCI
 	}
 	// CircleCI (LB-Q-circleci): by path, the manifest's own globs
 	// (.circleci/config.yml at any depth).
-	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "circleci" {
+	if langclass.ClassifyDialect(DialectRules(), relPath, content).Dialect == "circleci" {
 		return ToolCircleCI
 	}
 	if composeServices(content) {
@@ -177,7 +177,7 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	}
 	// Late YAML dialects (lateyamldispatch.go): the last signal, so every
 	// verdict above is unchanged.
-	if k := lateYAMLDetects(relPath, content); k != "" {
+	if k := LateYAMLDetects(relPath, content); k != "" {
 		return k
 	}
 	return ToolUnclassified
@@ -225,7 +225,7 @@ func cloudFormationJSON(content []byte) bool {
 // CloudFormation template: a .yaml or .yml the classifier gives
 // ToolCloudFormation, or a .json that is one (cloudFormationJSON; a
 // basename claim, package.json, wins first: resolveExtractor, ReingestFile).
-func isCloudFormation(relPath string, content []byte, idx *siblingIndex) bool {
+func isCloudFormation(relPath string, content []byte, idx *SiblingIndex) bool {
 	switch filepath.Ext(relPath) {
 	case ".yaml", ".yml":
 		return Classify(relPath, content, idx) == ToolCloudFormation
@@ -272,7 +272,7 @@ func openAPIJSON(content []byte) bool {
 // .json that is one (openAPIJSON). ReingestFile asks it, so a one-file
 // refresh reads a document as an ingest does, not as the generic YAML or
 // JSON extractor its extension names.
-func isOpenAPI(relPath string, content []byte, idx *siblingIndex) bool {
+func isOpenAPI(relPath string, content []byte, idx *SiblingIndex) bool {
 	switch filepath.Ext(relPath) {
 	case ".yaml", ".yml":
 		return Classify(relPath, content, idx) == ToolOpenAPI
@@ -290,8 +290,8 @@ func isOpenAPI(relPath string, content []byte, idx *siblingIndex) bool {
 // refs is the service's Discover list (the sibling index the YAML classifier
 // reads). The language-breadth harness measures a content-classified dialect
 // on exactly these files (indexbench lang-oracle).
-func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.SourceRef) string {
-	_, tk, ok, _ := p.resolveExtractor(relPath, content, buildSiblingIndex(refs))
+func (r *Router) ContentDialect(relPath string, content []byte, refs []core.SourceRef) string {
+	_, tk, ok, _ := r.ResolveExtractor(relPath, content, BuildSiblingIndex(refs))
 	switch {
 	case ok && tk == ToolAzurePipelines:
 		return string(tk)
@@ -320,7 +320,7 @@ func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.So
 // only mentions a dashboard's keys keeps the generic JSON extractor. Only a
 // file the sniff claims is decoded.
 func grafanaDashboardJSON(content []byte) bool {
-	x := lateYAMLLookup(string(ToolGrafanaDashboard))
+	x := LateYAMLLookup(string(ToolGrafanaDashboard))
 	if x == nil || !x.DetectsContent(content) {
 		return false
 	}
@@ -344,7 +344,7 @@ func grafanaDashboardJSON(content []byte) bool {
 // Grafana dashboard or provisioning file: a .yaml or .yml the late-YAML hub
 // gives ToolGrafanaDashboard, or a .json that is a dashboard. ReingestFile
 // asks it, so a one-file refresh reads a dashboard as an ingest does.
-func isGrafanaDashboard(relPath string, content []byte, idx *siblingIndex) bool {
+func isGrafanaDashboard(relPath string, content []byte, idx *SiblingIndex) bool {
 	switch filepath.Ext(relPath) {
 	case ".yaml", ".yml":
 		return Classify(relPath, content, idx) == ToolGrafanaDashboard
@@ -360,7 +360,7 @@ func isGrafanaDashboard(relPath string, content []byte, idx *siblingIndex) bool 
 // ToolKind), giving CUE modules and timoni bundles visibility they
 // previously had none of (ADR-021 §2 grounding), without duplicating CUE
 // extraction logic.
-func classifyCUE(relPath string, content []byte, idx *siblingIndex) ToolKind {
+func classifyCUE(relPath string, content []byte, idx *SiblingIndex) ToolKind {
 	slash := filepath.ToSlash(relPath)
 	base := path.Base(slash)
 	dir := path.Dir(slash)
@@ -435,7 +435,7 @@ func toolKindForBasename(base string) ToolKind {
 
 // ─── sibling index (built once per Ingest from the Discover list) ─────────
 
-// siblingIndex answers "does an ancestor directory of this file contain a
+// SiblingIndex answers "does an ancestor directory of this file contain a
 // Chart.yaml / cue.mod module root?" and "is there a Dockerfile matching
 // image name X?" — built once per Ingest (option (b) from the grounding:
 // O(files), not O(files²)) and threaded into extractAndStore, so every
@@ -451,10 +451,10 @@ func toolKindForBasename(base string) ToolKind {
 // reachable only through the lone-Dockerfile fallback (see
 // crossRefImageToDockerfile).
 //
-// A nil *siblingIndex is valid and behaves as empty (no ancestors, no
+// A nil *SiblingIndex is valid and behaves as empty (no ancestors, no
 // Dockerfiles) — defensive default for callers (e.g. ExtractPending before
 // any Ingest has run for a service) that have no index yet.
-type siblingIndex struct {
+type SiblingIndex struct {
 	chartDirs           map[string]struct{} // dirs directly containing Chart.yaml
 	cueModDirs          map[string]struct{} // dirs directly containing a cue.mod/ module root
 	timoniDirs          map[string]struct{} // dirs directly containing a timoni.cue: a Timoni module's root (LB-F216)
@@ -462,22 +462,21 @@ type siblingIndex struct {
 	dockerfileByDirName map[string]string   // bare Dockerfile's parent-dir basename → repo-relative path
 	rootDockerfile      string              // path of a bare Dockerfile at the repo root, "" when absent
 	dockerfileCount     int                 // total Dockerfile-class files seen in the ingest
-	specs               *specMemo           // this ingest's file specs, read in the extract stage's one parse (EW-52)
+	Attached            any                 // the embedder's per-ingest slot (fusion keeps its file-spec memo here, EW-52); routing never reads it
 	ansibleRoleRoots    map[string]struct{} // dirs holding tasks/main.yml: an Ansible role's root (ansible_classify.go)
 }
 
-// buildSiblingIndex scans refs once and records every Chart.yaml, cue.mod/
+// BuildSiblingIndex scans refs once and records every Chart.yaml, cue.mod/
 // module root, and Dockerfile it finds. refs is the Discover-pass list for
 // one service — the "option (b)" plan from the grounding, computed once per
 // Ingest rather than re-walking ancestors per file.
-func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
-	idx := &siblingIndex{
+func BuildSiblingIndex(refs []core.SourceRef) *SiblingIndex {
+	idx := &SiblingIndex{
 		chartDirs:           map[string]struct{}{},
 		cueModDirs:          map[string]struct{}{},
 		timoniDirs:          map[string]struct{}{},
 		dockerfileByStem:    map[string]string{},
 		dockerfileByDirName: map[string]string{},
-		specs:               newSpecMemo(),
 		ansibleRoleRoots:    map[string]struct{}{},
 	}
 	for _, r := range refs {
@@ -547,14 +546,14 @@ func hasAncestorIn(dir string, set map[string]struct{}) bool {
 	}
 }
 
-func (idx *siblingIndex) hasChartAncestor(dir string) bool {
+func (idx *SiblingIndex) hasChartAncestor(dir string) bool {
 	if idx == nil {
 		return false
 	}
 	return hasAncestorIn(dir, idx.chartDirs)
 }
 
-func (idx *siblingIndex) hasTimoniAncestor(dir string) bool {
+func (idx *SiblingIndex) hasTimoniAncestor(dir string) bool {
 	if idx == nil {
 		return false
 	}
@@ -567,95 +566,36 @@ func timoniRuntimeFile(content []byte) bool {
 	return timoniRuntimeRe.Match(content) && bytes.Contains(content, []byte(`"v1alpha1"`))
 }
 
-func (idx *siblingIndex) hasCueModAncestor(dir string) bool {
+func (idx *SiblingIndex) hasCueModAncestor(dir string) bool {
 	if idx == nil {
 		return false
 	}
 	return hasAncestorIn(dir, idx.cueModDirs)
 }
 
-// ─── cross-refs, cheap tier (ADR-021 §2 / TI-7) ────────────────────────────
-
-// imageBaseName extracts the trailing repository-name segment of a
-// container image reference, stripping any registry/path prefix and
-// tag/digest suffix — deliberately naive, no registry resolution:
-// "ghcr.io/org/myapp:1.2.3" → "myapp"; "myapp@sha256:…" → "myapp";
-// "myapp" → "myapp".
-func imageBaseName(ref string) string {
-	ref = strings.TrimSpace(ref)
-	if ref == "" {
-		return ""
+// DockerfileCount is how many Dockerfile-class files the ingest saw; a nil
+// index has none.
+func (idx *SiblingIndex) DockerfileCount() int {
+	if idx == nil {
+		return 0
 	}
-	if i := strings.LastIndex(ref, "/"); i >= 0 {
-		ref = ref[i+1:]
-	}
-	if i := strings.IndexAny(ref, ":@"); i >= 0 {
-		ref = ref[:i]
-	}
-	return ref
+	return idx.dockerfileCount
 }
 
-// crossRefImageToDockerfile appends a KindImageDockerfileRef reference node
-// for every K8sContainer/ComposeService node in nodes whose image name
-// matches a Dockerfile found anywhere in the same ingest (TI-7's cheap
-// tier: a same-repo name match, no registry resolution, no build-context
-// evaluation — Tier is always TierPreScan). Resolution order (critic F3):
-//
-//  1. *.dockerfile STEM match — the file names the image it builds.
-//  2. bare Dockerfile parent-DIRECTORY-name match (dir-per-image layout).
-//  3. Lone-root fallback: when the repo contains exactly ONE
-//     Dockerfile-class file and it is the bare root Dockerfile, any image
-//     ref resolves to it — the single-service-repo layout, where the root
-//     Dockerfile is the only build there is. This fallback trades a little
-//     precision for the most common layout of all (a public image like
-//     postgres referenced in the same repo also matches); TierPreScan and
-//     the "dockerfile:" signature keep the heuristic honest, and repos
-//     with 2+ Dockerfiles never guess.
-//
-// Safe to call unconditionally after any extraction: it is a no-op when idx
-// has no recorded Dockerfiles or nodes carries no image-bearing kind.
-func crossRefImageToDockerfile(service, relPath string, nodes []core.SymbolNode, idx *siblingIndex) []core.SymbolNode {
-	if idx == nil || idx.dockerfileCount == 0 {
-		return nil
+// DockerfileFor is the Dockerfile an image name resolves to, in the order the
+// image cross-reference uses: a *.dockerfile stem, then a bare Dockerfile's
+// parent directory name, then the lone root Dockerfile when it is the only
+// Dockerfile-class file in the ingest.
+func (idx *SiblingIndex) DockerfileFor(name string) (string, bool) {
+	if idx == nil {
+		return "", false
 	}
-	var refs []core.SymbolNode
-	seen := make(map[string]bool)
-	for _, n := range nodes {
-		var image string
-		switch n.Kind {
-		case core.KindK8sContainer:
-			image = n.Name
-		case core.KindComposeService:
-			if !strings.HasPrefix(n.Signature, "build:") {
-				image = n.Signature
-			}
-		default:
-			continue
-		}
-		name := imageBaseName(image)
-		if name == "" || seen[name] {
-			continue
-		}
-		dockerfile, ok := idx.dockerfileByStem[name]
-		if !ok {
-			dockerfile, ok = idx.dockerfileByDirName[name]
-		}
-		if !ok && idx.dockerfileCount == 1 && idx.rootDockerfile != "" {
-			dockerfile, ok = idx.rootDockerfile, true
-		}
-		if !ok {
-			continue
-		}
-		seen[name] = true
-		refs = append(refs, core.SymbolNode{
-			Service:   service,
-			Name:      name,
-			Kind:      core.KindImageDockerfileRef,
-			FilePath:  relPath,
-			Line:      n.Line,
-			Signature: "dockerfile: " + dockerfile,
-			Tier:      core.TierPreScan,
-		})
+	dockerfile, ok := idx.dockerfileByStem[name]
+	if !ok {
+		dockerfile, ok = idx.dockerfileByDirName[name]
 	}
-	return refs
+	if !ok && idx.dockerfileCount == 1 && idx.rootDockerfile != "" {
+		dockerfile, ok = idx.rootDockerfile, true
+	}
+	return dockerfile, ok
 }

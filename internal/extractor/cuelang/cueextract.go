@@ -75,6 +75,10 @@ var (
 // NewCUEExtractor returns a new CUEExtractor.
 func NewCUEExtractor() *CUEExtractor { return &CUEExtractor{} }
 
+// DispatchLabel is the label the dispatch table (internal/langroute) shows for
+// the extensions this extractor serves.
+func (c *CUEExtractor) DispatchLabel() string { return "native CUE (`cue/load`)" }
+
 // Extract parses CUE source bytes and returns the file's entities (see the
 // type's doc). Parse errors are best-effort: a nil File yields nil, nil;
 // otherwise whatever partial tree the parser produced is read.

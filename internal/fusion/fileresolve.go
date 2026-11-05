@@ -1416,7 +1416,7 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 // another kind, a fresh one released by the returned func.
 func (p *Pipeline) fileResolveExtractor(lang string) (extractor.FileSpecExtractor, func(), error) {
 	for _, ext := range fileResolveExts()[lang] {
-		if e, ok := p.exts[ext].(extractor.FileSpecExtractor); ok && e.Name() == lang {
+		if e, ok := p.Exts()[ext].(extractor.FileSpecExtractor); ok && e.Name() == lang {
 			return e, func() {}, nil
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -34,14 +35,14 @@ func injectLateDialect(t *testing.T, id string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := lateYAMLLookup
-	lateYAMLLookup = func(got string) *extractor.DocExtractor {
+	old := langroute.LateYAMLLookup
+	langroute.LateYAMLLookup = func(got string) *extractor.DocExtractor {
 		if got == id {
 			return x
 		}
 		return nil
 	}
-	t.Cleanup(func() { lateYAMLLookup = old })
+	t.Cleanup(func() { langroute.LateYAMLLookup = old })
 }
 
 const lateRules = "groups:\n  - name: node\n    rules:\n      - alert: Down\n        expr: up == 0\n"
@@ -56,11 +57,11 @@ func lateCorpus() map[string]string {
 }
 
 func TestLateYAML_NoDialectNoClaim(t *testing.T) {
-	old := lateYAMLLookup
-	lateYAMLLookup = func(string) *extractor.DocExtractor { return nil }
-	t.Cleanup(func() { lateYAMLLookup = old })
+	old := langroute.LateYAMLLookup
+	langroute.LateYAMLLookup = func(string) *extractor.DocExtractor { return nil }
+	t.Cleanup(func() { langroute.LateYAMLLookup = old })
 	for rel, c := range lateCorpus() {
-		if k := lateYAMLDetects(rel, []byte(c)); k != "" {
+		if k := langroute.LateYAMLDetects(rel, []byte(c)); k != "" {
 			t.Errorf("%s claimed as %q with no late dialect", rel, k)
 		}
 	}
@@ -71,19 +72,19 @@ func TestLateYAML_NoDialectNoClaim(t *testing.T) {
 
 func TestLateYAML_InjectedClaimsAndRefuses(t *testing.T) {
 	injectLateDialect(t, "prometheus")
-	if k := lateYAMLDetects("alerts/rules.yml", []byte(lateRules)); k != ToolPrometheus {
+	if k := langroute.LateYAMLDetects("alerts/rules.yml", []byte(lateRules)); k != ToolPrometheus {
 		t.Errorf("groups file = %q, want prometheus", k)
 	}
 	if k := Classify("alerts/rules.yml", []byte(lateRules), nil); k != ToolPrometheus {
 		t.Errorf("Classify groups file = %q, want prometheus", k)
 	}
 	for _, rel := range []string{"k8s/rules.yaml", ".github/workflows/groups.yml", "misc/notes.yml"} {
-		if k := lateYAMLDetects(rel, []byte(lateCorpus()[rel])); k != "" {
+		if k := langroute.LateYAMLDetects(rel, []byte(lateCorpus()[rel])); k != "" {
 			t.Errorf("%s claimed as %q, want refused", rel, k)
 		}
 	}
 	// A claim needs a decodable root: sniff alone is not enough.
-	if k := lateYAMLDetects("a.yml", []byte("groups: [unterminated\n")); k != "" {
+	if k := langroute.LateYAMLDetects("a.yml", []byte("groups: [unterminated\n")); k != "" {
 		t.Errorf("undecodable file claimed as %q", k)
 	}
 	// An earlier signal still wins (Compose).

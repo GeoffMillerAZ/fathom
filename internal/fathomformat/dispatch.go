@@ -1,6 +1,10 @@
-package fusion
+// Package fathomformat claims fathom's own formats for the language router: a
+// project's .fathom/config.toml, its CUE packs and a plan under docs/plans/
+// (ADR-092). They are product formats, so the language library does not link
+// them; the product and the readout register Dispatch on a langroute.Router.
+package fathomformat
 
-// fathomformatdispatch.go — ingest's claim of fathom's own formats
+// dispatch.go — ingest's claim of fathom's own formats
 // (LB-F219, language-breadth wave fx item fmt): a project's
 // .fathom/config.toml (the fathom-config doc-engine dialect), the CUE formats
 // (.fathom/concerns.cue, a layer.cue, a rule pack: the native fathom-concerns and
@@ -11,28 +15,29 @@ package fusion
 // carries an author-owned id, so docs/plans/README.md and any other Markdown
 // file in that directory read exactly as before.
 //
-// resolveExtractor (ingest and ExtractForBench) and ReingestFile both call
-// fathomFormatDispatch before the extension and basename maps, so the
+// langroute.Router.ResolveExtractor (ingest and ExtractForBench) and Resolve
+// (ReingestFile) both call Dispatch before the extension and basename maps, so the
 // language-breadth harness measures the dispatch ingest runs.
 
 import (
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/extractor/cuelang"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/planrowsdialect"
 )
 
 const (
 	// ToolFathomConfig: a project's .fathom/config.toml (LB-Q-fathom-config).
-	ToolFathomConfig ToolKind = "fathom-config"
+	ToolFathomConfig langroute.ToolKind = "fathom-config"
 	// ToolFathomPlanRows: a plan grammar v2 file under docs/plans/ (LB-Q-fathom-plan-rows).
-	ToolFathomPlanRows ToolKind = "fathom-plan-rows"
+	ToolFathomPlanRows langroute.ToolKind = "fathom-plan-rows"
 	// ToolFathomConcerns: a project's .fathom/concerns.cue (LB-Q-fathom-concerns).
-	ToolFathomConcerns ToolKind = "fathom-concerns"
+	ToolFathomConcerns langroute.ToolKind = "fathom-concerns"
 	// ToolFathomLayerPacks: a layer pack's layer.cue or a rule pack under .fathom/rules/ (LB-Q-fathom-layer-packs).
-	ToolFathomLayerPacks ToolKind = "fathom-layer-packs"
+	ToolFathomLayerPacks langroute.ToolKind = "fathom-layer-packs"
 )
 
 var (
@@ -58,12 +63,12 @@ func fathomFormatExtractors() (*extractor.DocExtractor, *planrowsdialect.PlanRow
 	return fathomConfigExt, fathomPlansExt
 }
 
-// fathomFormatDispatch returns the extractor and ToolKind of a file in one
+// Dispatch returns the extractor and tool kind of a file in one
 // of fathom's own formats: relPath matches the dialect's manifest glob and,
 // for a plan, the content is a plan (planrowsdialect.LooksLikePlan).
-func fathomFormatDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
-	v := connector.ClassifyDialect(dialectRules(), relPath, nil)
-	if v.By != connector.ClassifiedByGlob {
+func Dispatch(relPath string, content []byte) (extractor.Extractor, langroute.ToolKind, bool) {
+	v := langclass.ClassifyDialect(langroute.DialectRules(), relPath, nil)
+	if v.By != langclass.ClassifiedByGlob {
 		return nil, "", false
 	}
 	cfg, plans := fathomFormatExtractors()

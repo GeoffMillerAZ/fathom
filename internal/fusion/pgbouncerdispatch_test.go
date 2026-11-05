@@ -5,7 +5,11 @@ package fusion
 // dialect's content sniff, AND the doc spec's content sniff; an .ini of another
 // tool stays unclaimed.
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/langroute"
+)
 
 func TestPgBouncerDispatchClaims(t *testing.T) {
 	const pgb = "[databases]\napp = host=db dbname=app\n\n[pgbouncer]\nlisten_port = 6432\n"
@@ -23,15 +27,15 @@ func TestPgBouncerDispatchClaims(t *testing.T) {
 		{"etc/pgbouncer.ini", "name = not an ini\n", ""},
 	}
 	for _, c := range cases {
-		e, tk, ok := gatewayDispatch(c.path, []byte(c.content))
+		e, tk, ok := langroute.GatewayDispatch(c.path, []byte(c.content))
 		if c.want == "" {
 			if ok || e != nil {
-				t.Errorf("gatewayDispatch(%q) claimed it as %q; want unclaimed", c.path, tk)
+				t.Errorf("langroute.GatewayDispatch(%q) claimed it as %q; want unclaimed", c.path, tk)
 			}
 			continue
 		}
 		if !ok || tk != c.want || e == nil {
-			t.Errorf("gatewayDispatch(%q) = (%v, %q, %v), want %q", c.path, e, tk, ok, c.want)
+			t.Errorf("langroute.GatewayDispatch(%q) = (%v, %q, %v), want %q", c.path, e, tk, ok, c.want)
 		}
 	}
 }

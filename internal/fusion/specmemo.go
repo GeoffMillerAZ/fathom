@@ -92,9 +92,19 @@ func (p *Pipeline) specMemoFor(serviceID string) *specMemo {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if idx := p.siblingIdx[serviceID]; idx != nil {
-		return idx.specs
+		return specsOf(idx)
 	}
 	return nil
+}
+
+// specsOf is the file-spec memo buildSiblingIndex attached to idx (EW-52); nil
+// for an index built without one.
+func specsOf(idx *siblingIndex) *specMemo {
+	if idx == nil {
+		return nil
+	}
+	m, _ := idx.Attached.(*specMemo)
+	return m
 }
 
 // oneParse is ext as the extractor that reads path's symbols and file specs

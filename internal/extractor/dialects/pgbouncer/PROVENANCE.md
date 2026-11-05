@@ -8,7 +8,7 @@ reserved example name.
 ## How a file is claimed
 
 Manifest basename `pgbouncer.ini`, globs `**/pgbouncer*.ini` and `**/pgbouncer/**/*.ini`, and a sniff on any other
-`.ini` (a `[databases]` or `[pgbouncer]` section header in the first 16 KiB). The gateway hub (`fusion/gatewaydispatch.go`)
+`.ini` (a `[databases]` or `[pgbouncer]` section header in the first 16 KiB). The gateway hub (`langroute/gatewaydispatch.go`)
 claims a file only when the doc spec's `content_sniff` also holds, so an `.ini` of another tool stays unread.
 
 ## The decode

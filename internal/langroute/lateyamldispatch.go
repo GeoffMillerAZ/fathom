@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 import (
 	"bytes"
@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 	"gopkg.in/yaml.v3"
 )
 
@@ -86,16 +86,16 @@ func lateYAMLLoad(id string) *extractor.DocExtractor {
 	return out
 }
 
-// lateYAMLLookup resolves a dialect id to its extractor. A variable so a test
+// LateYAMLLookup resolves a dialect id to its extractor. A variable so a test
 // can inject a testdata dialect.
-var lateYAMLLookup = lateYAMLLoad
+var LateYAMLLookup = lateYAMLLoad
 
 // lateYAMLExtractor is the extractor for a late kind, nil when kind is not a
 // late kind or its dialect is absent.
 func lateYAMLExtractor(kind ToolKind) extractor.Extractor {
 	for _, d := range lateYAMLDialects {
 		if d.kind == kind {
-			if x := lateYAMLLookup(d.id); x != nil {
+			if x := LateYAMLLookup(d.id); x != nil {
 				return x
 			}
 			return nil
@@ -104,8 +104,8 @@ func lateYAMLExtractor(kind ToolKind) extractor.Extractor {
 	return nil
 }
 
-// lateYAMLDetects returns the late kind that claims the YAML file, or "".
-func lateYAMLDetects(relPath string, content []byte) ToolKind {
+// LateYAMLDetects returns the late kind that claims the YAML file, or "".
+func LateYAMLDetects(relPath string, content []byte) ToolKind {
 	slash := strings.TrimPrefix(path.Clean(strings.ReplaceAll(relPath, `\`, "/")), "./")
 	if strings.Contains(slash, ".github/workflows/") {
 		return ""
@@ -114,11 +114,11 @@ func lateYAMLDetects(relPath string, content []byte) ToolKind {
 		return "" // a Kubernetes object
 	}
 	for _, d := range lateYAMLDialects {
-		x := lateYAMLLookup(d.id)
+		x := LateYAMLLookup(d.id)
 		if x == nil {
 			continue
 		}
-		byPath := connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == d.id
+		byPath := langclass.ClassifyDialect(DialectRules(), relPath, content).Dialect == d.id
 		if !byPath && !x.DetectsContent(content) {
 			continue
 		}

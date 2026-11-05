@@ -16,6 +16,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -79,15 +80,15 @@ func TestGatewayDispatchClaims(t *testing.T) {
 		{"traefik.yml", "services:\n  web:\n    image: traefik\n", ""},
 	}
 	for _, c := range cases {
-		e, tk, ok := gatewayDispatch(c.path, []byte(c.content))
+		e, tk, ok := langroute.GatewayDispatch(c.path, []byte(c.content))
 		if c.want == "" {
 			if ok || e != nil {
-				t.Errorf("gatewayDispatch(%q) claimed it as %q; want unclaimed", c.path, tk)
+				t.Errorf("langroute.GatewayDispatch(%q) claimed it as %q; want unclaimed", c.path, tk)
 			}
 			continue
 		}
 		if !ok || tk != c.want || e == nil {
-			t.Errorf("gatewayDispatch(%q) = (%v, %q, %v), want %q", c.path, e, tk, ok, c.want)
+			t.Errorf("langroute.GatewayDispatch(%q) = (%v, %q, %v), want %q", c.path, e, tk, ok, c.want)
 		}
 	}
 }

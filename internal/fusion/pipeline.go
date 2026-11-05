@@ -33,7 +33,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/docindex"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/llm"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -293,12 +293,10 @@ type Report struct {
 
 // Pipeline is the source fusion pipeline.
 type Pipeline struct {
+	*langroute.Router // the extractor tables and the per-file dispatch (ADR-092, LL-4)
+
 	conn       connector.Connector
 	st         store.Store
-	exts       map[string]extractor.Extractor
-	toolExts   map[ToolKind]extractor.Extractor // ADR-021 §2: yaml-family extractors keyed by classifier verdict
-	sniffExts  map[string]extractor.Extractor   // dialect id -> extractor, for a dialect that claims an extension only through match.sniff (LB-Q-matlab)
-	sniffExt   map[string]bool                  // the lowercased extensions those sniffs settle (sniffedExtractor reads only these files)
 	cfg        Config
 	enricher   *llm.Enricher // nil → enrichment disabled
 	mu         sync.Mutex
@@ -373,28 +371,7 @@ type pendingFile struct {
 // Close releases the pipeline's tree-sitter grammar modules (RT-107). The
 // pipeline stays usable: the next extraction instantiates afresh.
 func (p *Pipeline) Close() {
-	seen := map[*extractor.TSExtractor]bool{}
-	for _, e := range p.exts {
-		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
-			seen[ts] = true
-			ts.Close()
-		}
-	}
-	for _, e := range p.exts {
-		if td, ok := e.(*extractor.TagsDocExtractor); ok {
-			td.Close() // the conan dialect owns one tags engine, shared by its four basenames
-			break
-		}
-	}
-	for _, e := range p.sniffExts {
-		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
-			seen[ts] = true
-			ts.Close()
-		}
-		if td, ok := e.(*extractor.TagsDocExtractor); ok {
-			td.Close() // the checkov-policies dialect's tags engine, reached by glob
-		}
-	}
+	p.Router.Close()
 }
 
 // WithGitHead replaces the function used to resolve the git HEAD commit for a

@@ -18,8 +18,8 @@ import (
 func TestLanguageRegistryParity(t *testing.T) {
 	p := New(connector.NewFauxConnector(), nil, Config{})
 
-	pipelineExts := make(map[string]bool, len(p.exts))
-	for k := range p.exts {
+	pipelineExts := make(map[string]bool, len(p.Exts()))
+	for k := range p.Exts() {
 		pipelineExts[k] = true
 	}
 

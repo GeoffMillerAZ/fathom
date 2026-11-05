@@ -18,6 +18,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -72,13 +73,13 @@ func TestCRDispatchClaims(t *testing.T) {
 		{"no kind", "x/a.yaml", "apiVersion: argoproj.io/v1alpha1\nmetadata:\n  name: a\n", "", false},
 	}
 	for _, c := range cases {
-		e, tk, ok := crDispatch(c.path, []byte(c.content), nil)
+		e, tk, ok := langroute.CRDispatch(c.path, []byte(c.content), nil)
 		if c.want == "" {
 			if ok || e != nil {
-				t.Errorf("%s: crDispatch(%q) claimed it as %q; want unclaimed", c.name, c.path, tk)
+				t.Errorf("%s: langroute.CRDispatch(%q) claimed it as %q; want unclaimed", c.name, c.path, tk)
 			}
 		} else if !ok || tk != c.want || e == nil {
-			t.Errorf("%s: crDispatch(%q) = (%v, %q, %v), want %q", c.name, c.path, e, tk, ok, c.want)
+			t.Errorf("%s: langroute.CRDispatch(%q) = (%v, %q, %v), want %q", c.name, c.path, e, tk, ok, c.want)
 		}
 		if got := CRMixed(c.path, []byte(c.content)); got != c.mixed {
 			t.Errorf("%s: CRMixed(%q) = %v, want %v", c.name, c.path, got, c.mixed)
@@ -92,7 +93,7 @@ func TestCRDispatchClaims(t *testing.T) {
 // Kubernetes verdicts are the ones they were.
 func TestCRDispatchKeepsEveryOtherVerdict(t *testing.T) {
 	idx := buildSiblingIndex([]core.SourceRef{{Path: "charts/app/Chart.yaml"}, {Path: "charts/app/templates/app.yaml"}})
-	if _, _, ok := crDispatch("charts/app/templates/app.yaml", []byte(crArgoApp), idx); ok {
+	if _, _, ok := langroute.CRDispatch("charts/app/templates/app.yaml", []byte(crArgoApp), idx); ok {
 		t.Errorf("a CR in a chart's templates/ was claimed")
 	}
 	if got := Classify("charts/app/templates/app.yaml", []byte(crArgoApp), idx); got != ToolHelmTemplateYAML {
@@ -109,8 +110,8 @@ func TestCRDispatchKeepsEveryOtherVerdict(t *testing.T) {
 	}
 	// Envoy, Kong and Traefik stay what they were: the gateway hook runs first.
 	for path, content := range gatewayRepoCorpus() {
-		ge, gk, gok := gatewayDispatch(path, []byte(content))
-		if _, _, cok := crDispatch(path, []byte(content), nil); cok && gok {
+		ge, gk, gok := langroute.GatewayDispatch(path, []byte(content))
+		if _, _, cok := langroute.CRDispatch(path, []byte(content), nil); cok && gok {
 			t.Errorf("%s is claimed by both a gateway dialect (%s, %v) and a CR dialect", path, gk, ge != nil)
 		}
 	}

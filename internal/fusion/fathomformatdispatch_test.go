@@ -10,6 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fathomformat"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -41,7 +42,7 @@ func TestFathomFormatDispatch(t *testing.T) {
 		{"docs/plans/archive/old.md", fmtPlanSrc, ""},
 		{"docs/other.md", fmtPlanSrc, ""},
 	} {
-		e, tk, ok := fathomFormatDispatch(tc.path, []byte(tc.src))
+		e, tk, ok := fathomformat.Dispatch(tc.path, []byte(tc.src))
 		if (tc.want != "") != ok || tk != tc.want || (ok && e == nil) {
 			t.Errorf("%s: dispatch = %v, %q, %v; want %q", tc.path, e != nil, tk, ok, tc.want)
 		}

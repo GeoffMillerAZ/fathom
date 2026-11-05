@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // armdispatch.go — ingest's claim of the Azure and AWS app-framework
 // configuration files no basename names (wave iac, LB-F146): an Azure
@@ -28,8 +28,8 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 const (
@@ -106,8 +106,8 @@ func armTemplateJSON(content []byte) bool {
 // never the project file, which its basename claims) and it decodes to a
 // mapping whose `config` sets a key (the dialect's entities).
 func pulumiStackFile(relPath string, content []byte) bool {
-	v := connector.ClassifyDialect(dialectRules(), relPath, nil)
-	if v.Dialect != string(ToolPulumiYAML) || v.By != connector.ClassifiedByGlob {
+	v := langclass.ClassifyDialect(DialectRules(), relPath, nil)
+	if v.Dialect != string(ToolPulumiYAML) || v.By != langclass.ClassifiedByGlob {
 		return false
 	}
 	x := pulumiStackExtractor()
@@ -118,10 +118,10 @@ func pulumiStackFile(relPath string, content []byte) bool {
 	return err == nil && len(res.Nodes) > 0
 }
 
-// appFrameworkDispatch returns the dialect's extractor and ToolKind when
+// AppFrameworkDispatch returns the dialect's extractor and ToolKind when
 // relPath is an ARM template or parameters file (.json, by content) or a
 // Pulumi stack configuration file (.yaml/.yml, by the manifest's glob).
-func appFrameworkDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
+func AppFrameworkDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
 	switch filepath.Ext(relPath) {
 	case ".json":
 		if armTemplateJSON(content) {

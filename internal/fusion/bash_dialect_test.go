@@ -55,7 +55,7 @@ func TestBashDialectIsWhatFusionDispatches(t *testing.T) {
 	if v := connector.ClassifyDialect(dialectRules(), "bin/run", run); v.Dialect != "bash" || v.By != connector.ClassifiedByShebang {
 		t.Errorf("bin/run with a bash shebang classified %+v, want bash by shebang", v)
 	}
-	if e, _, ok, _ := p.resolveExtractor("bin/run", run, buildSiblingIndex(nil)); !ok || e != p.exts[".sh"] {
+	if e, _, ok, _ := p.resolveExtractor("bin/run", run, buildSiblingIndex(nil)); !ok || e != p.Exts()[".sh"] {
 		t.Errorf("bin/run dispatches to %T (ok %v), want the extractor registered for .sh", e, ok)
 	}
 }

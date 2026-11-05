@@ -9,10 +9,10 @@ unclassified YAML). The fixtures are written for this dialect from the configura
 
 Manifest basenames `alertmanager.yml`, `alertmanager.yaml`. `detect.content_sniff` claims a file no name claims: a
 top-level `route` and a top-level `receivers`, in either order, a key quoted or not (kube-prometheus writes
-`"route":`). The late-YAML hub (`fusion/lateyamldispatch.go`) asks this dialect after grafana-dashboard and before
+`"route":`). The late-YAML hub (`langroute/lateyamldispatch.go`) asks this dialect after grafana-dashboard and before
 prometheus, never for a Kubernetes object or a workflow. A configuration a Kubernetes Secret (`stringData` or base64
 `data`) or ConfigMap embeds under `alertmanager.yaml`/`alertmanager.yml` is read through this dialect as a document
-of its own, its entities qualified by the key (`alertmanager.yaml/route.routes[0]`, `fusion/k8sembed.go`).
+of its own, its entities qualified by the key (`alertmanager.yaml/route.routes[0]`, `langroute/k8sembed.go`).
 
 ## What it models
 

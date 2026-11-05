@@ -16,7 +16,7 @@ error, as it is for ProxySQL (`method=GET`): the file reads as no entities.
 
 Manifest basenames `proxysql.cnf`, `proxysql.cfg`, globs `**/proxysql*.cnf`, `**/proxysql*.cfg`, `**/proxysql/**/*.cnf`,
 and the doc spec's `content_sniff` (a ProxySQL group or `datadir` opens a line); both, through the gateway hub
-(`fusion/gatewaydispatch.go`).
+(`langroute/gatewaydispatch.go`).
 
 ## What it models
 

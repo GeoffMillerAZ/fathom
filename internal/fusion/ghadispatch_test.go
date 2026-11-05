@@ -29,7 +29,7 @@ func ghaCorpus() map[string]string {
 func TestGitHubActionsIsTheDialect(t *testing.T) {
 	p := New(connector.NewLocalConnector(), store.NewMemoryStore(), Config{})
 	t.Cleanup(p.Close)
-	want := p.toolExts[ToolGHA]
+	want := p.ToolExts()[ToolGHA]
 	if want == nil {
 		t.Fatal("no github-actions dialect registered")
 	}

@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // jsonschemadispatch.go — LB-Q-json-schema: ingest's claim of a JSON Schema
 // document no basename names, by content or by the *.schema.json naming
@@ -12,7 +12,7 @@ package fusion
 //
 // A document an earlier verdict claimed (CloudFormation, OpenAPI, Grafana, ARM)
 // and a file a basename claims (package.json, cdk.json) never reach this hook:
-// resolveExtractor and ReingestFile ask it after appFrameworkDispatch, the last
+// resolveExtractor and ReingestFile ask it after AppFrameworkDispatch, the last
 // content claim, so every earlier verdict stands. A package.json or tsconfig.json
 // that points `$schema` at a schemastore.org URL is an instance of a schema, not
 // one, and stays JSON.
@@ -78,9 +78,9 @@ func jsonSchemaJSON(relPath string, content []byte) bool {
 	return false
 }
 
-// jsonSchemaDispatch returns the dialect's extractor and ToolKind when
+// JSONSchemaDispatch returns the dialect's extractor and ToolKind when
 // relPath is a JSON Schema document.
-func jsonSchemaDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
+func JSONSchemaDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
 	if jsonSchemaJSON(relPath, content) {
 		return jsonSchemaExtractor(), ToolJSONSchema, true
 	}

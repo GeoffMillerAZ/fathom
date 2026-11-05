@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -84,7 +85,7 @@ func TestPolicyDialectGoldens(t *testing.T) {
 				t.Fatal(err)
 			}
 			rel := "policies/" + filepath.Base(fx)
-			e, tk, ok := policyDispatch(rel, src)
+			e, tk, ok := langroute.PolicyDispatch(rel, src)
 			if !ok || string(tk) != id {
 				t.Errorf("%s: policyDispatch = (%q, %v), want %s", fx, tk, ok, id)
 				continue
@@ -171,9 +172,9 @@ func TestPolicyDispatchClaims(t *testing.T) {
 		if got := PolicyDialect(c.path, []byte(c.content)); got != c.want {
 			t.Errorf("PolicyDialect(%s) = %q, want %q", c.path, got, c.want)
 		}
-		_, tk, ok := policyDispatch(c.path, []byte(c.content))
+		_, tk, ok := langroute.PolicyDispatch(c.path, []byte(c.content))
 		if ok != (c.want != "") || (ok && string(tk) != c.want) {
-			t.Errorf("policyDispatch(%s) = (%q, %v), want %q", c.path, tk, ok, c.want)
+			t.Errorf("langroute.PolicyDispatch(%s) = (%q, %v), want %q", c.path, tk, ok, c.want)
 		}
 	}
 }

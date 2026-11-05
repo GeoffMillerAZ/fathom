@@ -1,10 +1,10 @@
-package fusion
+package langroute
 
 import (
 	"sync"
 
-	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 // The per-file exclusion reasons the dialect gate adds to file_stats and
@@ -25,21 +25,21 @@ const (
 
 var (
 	dialectRulesOnce sync.Once
-	dialectRulesAll  []connector.DialectRule
+	dialectRulesAll  []langclass.DialectRule
 )
 
-// dialectRules is every embedded manifest's match block as the connector's
+// DialectRules is every embedded manifest's match block as the connector's
 // classification consumes it. A manifest load error leaves no rules — the
 // gate then passes every file, exactly the pre-manifest behavior —
 // and TestDialectManifests fails the build's tests on the same error.
-func dialectRules() []connector.DialectRule {
+func DialectRules() []langclass.DialectRule {
 	dialectRulesOnce.Do(func() {
 		ds, err := extractor.LoadDialects()
 		if err != nil {
 			return
 		}
 		for _, d := range ds {
-			r := connector.DialectRule{
+			r := langclass.DialectRule{
 				ID:        d.ID,
 				Basenames: d.Match.Basenames,
 				Globs:     d.Match.Globs,
@@ -50,10 +50,10 @@ func dialectRules() []connector.DialectRule {
 				r.Extensions = append(r.Extensions, v.Extensions...)
 			}
 			if s := d.Match.Sniff; s != nil {
-				r.Sniff = &connector.DialectSniffRule{Extensions: s.Extensions, Pattern: s.Pattern, Priority: s.Priority, ScanBytes: s.ScanBytes}
+				r.Sniff = &langclass.DialectSniffRule{Extensions: s.Extensions, Pattern: s.Pattern, Priority: s.Priority, ScanBytes: s.ScanBytes}
 			}
 			if c := d.Match.Container; c != nil {
-				r.Containers = c.Extensions // ADR-021 (1), amended 2026-10-24: binaryExcluded's exemption
+				r.Containers = c.Extensions // ADR-021 (1), amended 2026-10-24: BinaryExcluded's exemption
 			}
 			dialectRulesAll = append(dialectRulesAll, r)
 		}
@@ -61,30 +61,31 @@ func dialectRules() []connector.DialectRule {
 	return dialectRulesAll
 }
 
-// dialectVerdict is the gate's decision on one read file.
-type dialectVerdict struct {
-	// excluded is "", ExcludedSkippedGenerated or ExcludedAmbiguous.
-	excluded string
-	// sniffed: a sniff classified the file.
-	sniffed bool
+// DialectVerdict is the gate's decision on one read file.
+type DialectVerdict struct {
+	// Excluded is "", ExcludedSkippedGenerated or ExcludedAmbiguous.
+	Excluded string
+	// Sniffed: a sniff classified the file.
+	Sniffed bool
 }
 
-// gateDialectFile classifies relPath against the manifests (LB-F9) and
+// GateDialectFile classifies relPath against the manifests (LB-F9) and
 // applies the generated/minified gate (LB-F10) to a dialect-owned file.
 // The gate covers every manifest dialect (ADR-048 §7: "apply to every
 // dialect"); a native extractor's file (a protoc-gen-go stub) is not a
 // dialect's and is still extracted and tagged Generated (ADR-021 §2 TI-5).
-func gateDialectFile(relPath string, content []byte) dialectVerdict {
-	return gateDialectFileWith(dialectRules(), relPath, content)
+func GateDialectFile(relPath string, content []byte) DialectVerdict {
+	return GateDialectFileWith(DialectRules(), relPath, content)
 }
 
-func gateDialectFileWith(rules []connector.DialectRule, relPath string, content []byte) dialectVerdict {
-	v := connector.ClassifyDialect(rules, relPath, content)
+// GateDialectFileWith is GateDialectFile over the given rules.
+func GateDialectFileWith(rules []langclass.DialectRule, relPath string, content []byte) DialectVerdict {
+	v := langclass.ClassifyDialect(rules, relPath, content)
 	switch {
-	case v.By == connector.ClassifiedAmbiguous:
-		return dialectVerdict{excluded: ExcludedAmbiguous}
-	case v.Dialect != "" && connector.IsGeneratedOrMinified(relPath, content):
-		return dialectVerdict{excluded: ExcludedSkippedGenerated, sniffed: v.By == connector.ClassifiedBySniff}
+	case v.By == langclass.ClassifiedAmbiguous:
+		return DialectVerdict{Excluded: ExcludedAmbiguous}
+	case v.Dialect != "" && langclass.IsGeneratedOrMinified(relPath, content):
+		return DialectVerdict{Excluded: ExcludedSkippedGenerated, Sniffed: v.By == langclass.ClassifiedBySniff}
 	}
-	return dialectVerdict{sniffed: v.By == connector.ClassifiedBySniff}
+	return DialectVerdict{Sniffed: v.By == langclass.ClassifiedBySniff}
 }

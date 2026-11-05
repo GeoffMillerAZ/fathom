@@ -11,7 +11,7 @@ copied from a source tree, the selectors are written from that grammar.
 
 The manifest claims no basename, glob or extension. `doc.json`'s `detect.content_sniff` is the
 signal: a column-0 (or JSON) `Version` of `2012-10-17` or `2008-10-17` and a `Statement` key, in
-either order. `fusion.cloudPolicyDispatch` (internal/fusion/cloudpolicydispatch.go) adds a decode
+either order. `langroute.cloudPolicyDispatch` (internal/langroute/cloudpolicydispatch.go) adds a decode
 check (the root entity and at least one statement that is a map, so `{"Version": "2012-10-17",
 "Statement": "x"}` stays generic JSON) and never claims a file an earlier signal claims
 (package.json by basename, a CloudFormation template, an OpenAPI document, a Kubernetes manifest,

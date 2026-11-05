@@ -1,4 +1,4 @@
-package fusion
+package langroute
 
 // crdispatch.go — ingest's claim of Argo, Flux and Crossplane custom
 // resources (LB-F149, language-breadth iac wave, item k8s). Each is a
@@ -24,7 +24,7 @@ package fusion
 //
 // crDialects is a table so another wave's CR dialects (gatekeeper, kyverno)
 // append an id here and need no further edit in resolveExtractor or
-// ReingestFile: both call crDispatch once, beside gatewayDispatch.
+// ReingestFile: both call CRDispatch once, beside GatewayDispatch.
 
 import (
 	"bytes"
@@ -90,10 +90,10 @@ type crVerdict struct {
 	Mixed bool   // some document is a dialect's, and the file is not wholly one
 }
 
-// crDispatch returns the dialect's extractor and ToolKind when relPath is a
+// CRDispatch returns the dialect's extractor and ToolKind when relPath is a
 // file of Argo, Flux or Crossplane objects and nothing else. idx is the
 // sibling index ingest holds (nil in a one-file refresh).
-func crDispatch(relPath string, content []byte, idx *siblingIndex) (extractor.Extractor, ToolKind, bool) {
+func CRDispatch(relPath string, content []byte, idx *SiblingIndex) (extractor.Extractor, ToolKind, bool) {
 	v := crRead(relPath, content, idx)
 	return v.Ext, v.Kind, v.ID != ""
 }
@@ -105,7 +105,7 @@ func CRMixed(relPath string, content []byte) bool {
 	return crRead(relPath, content, nil).Mixed
 }
 
-func crRead(relPath string, content []byte, idx *siblingIndex) crVerdict {
+func crRead(relPath string, content []byte, idx *SiblingIndex) crVerdict {
 	if ext := strings.ToLower(filepath.Ext(relPath)); ext != ".yaml" && ext != ".yml" {
 		return crVerdict{}
 	}

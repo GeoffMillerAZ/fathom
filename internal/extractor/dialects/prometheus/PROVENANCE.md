@@ -13,7 +13,7 @@ name (`TestPrometheusGlobsLeaveOtherClaims`: traefik's `rules/` and `dynamic*`, 
 other dialect's fixture paths keep their verdicts). `detect.content_sniff` claims a file no name claims: a top-level
 `groups:` whose rules write `alert:` or `record:` (never Grafana's alerting provisioning, whose rules are `uid`/`title`
 maps), or a top-level `scrape_configs:` or `rule_files:` (a configuration, a promtool test file; never an
-OpenTelemetry Collector's indented prometheus receiver). The late-YAML hub (`fusion/lateyamldispatch.go`, LB-F309)
+OpenTelemetry Collector's indented prometheus receiver). The late-YAML hub (`langroute/lateyamldispatch.go`, LB-F309)
 claims a YAML file no earlier classifier signal claimed when either holds and it decodes to a root, never a
 Kubernetes object (a PrometheusRule custom resource is the kubernetes side pass's, item mesh) or a workflow.
 `require_keys` is not set: a rule file, a configuration and a test file share no key, and the spec's selectors are

@@ -30,7 +30,7 @@ provisional until grounded with `find_symbol` at row start.
 
 ## Wave 2: facts (rides lf8)
 
-- [x] Dialect facts are stored as observations of the entity's own file (the ADR-064 precedent), purged with the file, no table {id: WAE-4, symbol: storeEntityFacts, package: internal/fusion, reachable_from: TestEntityFactsStoredAsObservationsOfOwnFile}
+- [x] Dialect facts are stored as observations of the entity's own file (the ADR-064 precedent), purged with the file, no table {id: WAE-4, symbol: storeEntityFacts, package: internal/langroute, reachable_from: TestEntityFactsStoredAsObservationsOfOwnFile}
 - [x] `symbol_context` on an entity serves its stored facts with anchors and coverage {id: WAE-5, symbol: entityFactsSection, package: internal/mcp, reachable_from: TestSymbolContextServesWorkloadFactsWithCoverage, needs: "WAE-4"}
 - [x] Prometheus `for`, `keep_firing_for` and annotations, Alertmanager `group_wait` and `repeat_interval` are facts {id: WAE-6, oracle: lexical, path: internal/extractor/dialects/prometheus/doc.json, pattern: "\"key\": \"keep_firing_for\"", needs: "WAE-4"}
 - [ ] Kubernetes container facts widened under the ADR-067 decision 12 amendment: preStop, terminationGracePeriodSeconds, strategy, minReadySeconds, progressDeadlineSeconds, affinity, topology spread, env names and `valueFrom` references, arg flag names; env and arg values withheld except the two allow-lists (non-secret retry env keys; heap flags) {id: WAE-7, symbol: k8sContainerFacts, package: internal/extractor, reachable_from: TestK8sContainerFactsShutdownStrategyEnvNamesArgFlags, needs: "language-breadth.md#LB-F451"}
