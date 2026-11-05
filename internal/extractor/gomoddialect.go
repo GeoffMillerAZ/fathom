@@ -30,6 +30,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 
 	"golang.org/x/mod/modfile"
 
@@ -65,6 +66,31 @@ var (
 // NewGoModulesExtractor returns the go-mod dialect's extractor.
 func NewGoModulesExtractor() *GoModulesExtractor { return &GoModulesExtractor{} }
 
+var (
+	nativeRegMu sync.RWMutex
+	nativeReg   = map[string]func() Extractor{}
+)
+
+// RegisterNativeDialect lets a package outside internal/extractor supply the
+// stand-alone extractor of a native dialect (the fathom-plan-rows dialect lives
+// in internal/planrowsdialect so this package does not import internal/verify).
+// NativeDialectExtractor asks the registry before its own switch.
+func RegisterNativeDialect(id string, build func() Extractor) {
+	nativeRegMu.Lock()
+	defer nativeRegMu.Unlock()
+	nativeReg[id] = build
+}
+
+func registeredNativeDialect(id string) (Extractor, bool) {
+	nativeRegMu.RLock()
+	build, ok := nativeReg[id]
+	nativeRegMu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	return build(), true
+}
+
 // NativeDialectExtractor returns the stand-alone extractor of a native-engine
 // dialect that has one (the harness measures the dialect's own code through
 // it, not fusion's dispatch, so a DocResulter's cross-file references reach
@@ -82,6 +108,9 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 	if e, ok := FathomCUEDialectExtractor(id); ok {
 		return e, true
 	}
+	if e, ok := registeredNativeDialect(id); ok {
+		return e, true
+	}
 	switch id {
 	case "terraform":
 		return NewHCLExtractor(), true
@@ -89,8 +118,6 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 		return NewGoModulesExtractor(), true
 	case "cue":
 		return NewCUEExtractor(), true // LB-Q-cue: the CUE dialect's own DocResulter (cuedoc.go)
-	case "fathom-plan-rows":
-		return NewPlanRowsExtractor(), true // wave fx item fmt
 	case "markdown":
 		return NewMarkdownExtractor(), true // LB-Q-markdown: headings, and the links between Markdown files
 	case "simulink":

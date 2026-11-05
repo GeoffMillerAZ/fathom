@@ -5,18 +5,19 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/planrowsdialect"
 )
 
 func TestResolvePlanSymbolsFieldDoesNotCompeteWithBareFunction(t *testing.T) {
 	const plan = "docs/plans/fields.md"
 	files := []DocFile{{Path: plan, Result: extractor.DocResult{
 		Nodes: []core.SymbolNode{
-			{Service: "svc", Name: "P-1", Kind: extractor.KindPlanRow, FilePath: plan},
-			{Service: "svc", Name: "P-2", Kind: extractor.KindPlanRow, FilePath: plan},
+			{Service: "svc", Name: "P-1", Kind: planrowsdialect.KindPlanRow, FilePath: plan},
+			{Service: "svc", Name: "P-2", Kind: planrowsdialect.KindPlanRow, FilePath: plan},
 		},
 		CrossFile: []extractor.DocCrossFileRef{
-			{From: "P-1", Raw: "Default", Target: "pkg", Strategy: extractor.PlanStrategySymbol},
-			{From: "P-2", Raw: "Capability.Default", Target: "pkg", Strategy: extractor.PlanStrategySymbol},
+			{From: "P-1", Raw: "Default", Target: "pkg", Strategy: planrowsdialect.PlanStrategySymbol},
+			{From: "P-2", Raw: "Capability.Default", Target: "pkg", Strategy: planrowsdialect.PlanStrategySymbol},
 		},
 	}}}
 	symbols := []core.SymbolNode{

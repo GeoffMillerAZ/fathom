@@ -25,6 +25,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/planrowsdialect"
 )
 
 // planRowTarget splits a plan-row reference into the plan file and the row
@@ -53,7 +54,7 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 	want := map[string]bool{}
 	for _, f := range files {
 		for _, c := range f.Result.CrossFile {
-			if c.Strategy == extractor.PlanStrategySymbol {
+			if c.Strategy == planrowsdialect.PlanStrategySymbol {
 				want[c.Raw] = true
 			}
 		}
@@ -77,7 +78,7 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 	}
 	byName := map[string][]core.SymbolNode{}
 	for _, n := range symbols {
-		if n.Kind == core.KindDocChunk || n.Kind == extractor.KindPlanRow {
+		if n.Kind == core.KindDocChunk || n.Kind == planrowsdialect.KindPlanRow {
 			continue
 		}
 		for _, sym := range byFull[n.Name] {
@@ -96,7 +97,7 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 	rowKey := map[[2]string]string{}
 	for _, f := range files {
 		for _, n := range f.Result.Nodes {
-			if n.Kind == extractor.KindPlanRow {
+			if n.Kind == planrowsdialect.KindPlanRow {
 				rowKey[[2]string{f.Path, n.Name}] = n.Key()
 			}
 		}
@@ -105,7 +106,7 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 	seen := map[string]bool{}
 	for _, f := range files {
 		for _, c := range f.Result.CrossFile {
-			if c.Strategy != extractor.PlanStrategySymbol {
+			if c.Strategy != planrowsdialect.PlanStrategySymbol {
 				continue
 			}
 			from, ok := rowKey[[2]string{f.Path, c.From}]
@@ -187,7 +188,7 @@ func (p *Pipeline) planSymbolEdges(ctx context.Context, service string, files []
 	has := false
 	for _, f := range files {
 		for _, c := range f.Result.CrossFile {
-			if c.Strategy == extractor.PlanStrategySymbol {
+			if c.Strategy == planrowsdialect.PlanStrategySymbol {
 				has = true
 			}
 		}

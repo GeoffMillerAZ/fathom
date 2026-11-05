@@ -27,6 +27,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/planrowsdialect"
 )
 
 // DocFile is one doc-engine file's extraction. Builds are the image build
@@ -259,7 +260,7 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, docXrefS
 				for _, t := range cueIx.targets(f.Path, c) {
 					add(from, fk{t[0], t[1]}, c)
 				}
-			case extractor.PlanStrategyRow: // needs: <plan>.md#<ID> (LB-F220): that row of that plan
+			case planrowsdialect.PlanStrategyRow: // needs: <plan>.md#<ID> (LB-F220): that row of that plan
 				if file, id, ok := planRowTarget(c); ok {
 					add(from, fk{file, id}, c)
 				}

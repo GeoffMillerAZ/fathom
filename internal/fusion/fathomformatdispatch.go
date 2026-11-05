@@ -20,6 +20,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/planrowsdialect"
 )
 
 const (
@@ -36,19 +37,19 @@ const (
 var (
 	fathomFormatOnce sync.Once
 	fathomConfigExt  *extractor.DocExtractor
-	fathomPlansExt   *extractor.PlanRowsExtractor
+	fathomPlansExt   *planrowsdialect.PlanRowsExtractor
 	fathomCUEExt     = map[string]*extractor.FathomCUEExtractor{}
 )
 
 // fathomFormatExtractors builds the two extractors once; a config dialect
 // that does not load is absent (TestDialectManifests fails the build's tests
 // on that, and dispatch then claims no config file).
-func fathomFormatExtractors() (*extractor.DocExtractor, *extractor.PlanRowsExtractor) {
+func fathomFormatExtractors() (*extractor.DocExtractor, *planrowsdialect.PlanRowsExtractor) {
 	fathomFormatOnce.Do(func() {
 		if x, err := extractor.NewDocDialectExtractor("fathom-config"); err == nil {
 			fathomConfigExt = x
 		}
-		fathomPlansExt = extractor.NewPlanRowsExtractor()
+		fathomPlansExt = planrowsdialect.NewPlanRowsExtractor()
 		for _, id := range []string{"fathom-concerns", "fathom-layer-packs"} {
 			fathomCUEExt[id] = extractor.NewFathomCUEExtractor(id)
 		}
@@ -58,7 +59,7 @@ func fathomFormatExtractors() (*extractor.DocExtractor, *extractor.PlanRowsExtra
 
 // fathomFormatDispatch returns the extractor and ToolKind of a file in one
 // of fathom's own formats: relPath matches the dialect's manifest glob and,
-// for a plan, the content is a plan (extractor.LooksLikePlan).
+// for a plan, the content is a plan (planrowsdialect.LooksLikePlan).
 func fathomFormatDispatch(relPath string, content []byte) (extractor.Extractor, ToolKind, bool) {
 	v := connector.ClassifyDialect(dialectRules(), relPath, nil)
 	if v.By != connector.ClassifiedByGlob {
@@ -75,7 +76,7 @@ func fathomFormatDispatch(relPath string, content []byte) (extractor.Extractor, 
 	case "fathom-layer-packs":
 		return fathomCUEExt[v.Dialect], ToolFathomLayerPacks, true
 	case "fathom-plan-rows":
-		if extractor.LooksLikePlan(content) {
+		if planrowsdialect.LooksLikePlan(content) {
 			return plans, ToolFathomPlanRows, true
 		}
 	}

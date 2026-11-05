@@ -1,4 +1,4 @@
-package extractor
+package planrowsdialect
 
 import (
 	"os"
@@ -11,7 +11,7 @@ import (
 
 func planFixture(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("dialects", "fathom-plan-rows", "testdata", name))
+	b, err := os.ReadFile(filepath.Join("..", "extractor", "dialects", "fathom-plan-rows", "testdata", name))
 	if err != nil {
 		t.Fatal(err)
 	}

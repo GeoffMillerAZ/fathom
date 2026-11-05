@@ -1,4 +1,4 @@
-package extractor
+package planrowsdialect
 
 // planrowsdialect.go — the fathom-plan-rows native dialect (LB-Q-fathom-plan-rows,
 // wave fx item fmt): fathom's own plan grammar v2 (docs/plans/README.md) read as
@@ -33,6 +33,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -60,15 +61,17 @@ var (
 
 // PlanRowsExtractor implements Extractor and DocResulter for the plan files
 // the fathom-plan-rows dialect owns (docs/plans/*.md).
-type PlanRowsExtractor struct{ md *MarkdownExtractor }
+type PlanRowsExtractor struct{ md *extractor.MarkdownExtractor }
 
 var (
-	_ Extractor   = (*PlanRowsExtractor)(nil)
-	_ DocResulter = (*PlanRowsExtractor)(nil)
+	_ extractor.Extractor   = (*PlanRowsExtractor)(nil)
+	_ extractor.DocResulter = (*PlanRowsExtractor)(nil)
 )
 
 // NewPlanRowsExtractor returns the fathom-plan-rows dialect's extractor.
-func NewPlanRowsExtractor() *PlanRowsExtractor { return &PlanRowsExtractor{md: NewMarkdownExtractor()} }
+func NewPlanRowsExtractor() *PlanRowsExtractor {
+	return &PlanRowsExtractor{md: extractor.NewMarkdownExtractor()}
+}
 
 // Extract implements Extractor.
 func (p *PlanRowsExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
@@ -91,8 +94,8 @@ func LooksLikePlan(src []byte) bool {
 
 // ExtractDoc implements DocResulter: the headings, then a node per row, and
 // the references the rows carry.
-func (p *PlanRowsExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	var res DocResult
+func (p *PlanRowsExtractor) ExtractDoc(service, relPath string, src []byte) (extractor.DocResult, error) {
+	var res extractor.DocResult
 	heads, err := p.md.Extract(service, relPath, src)
 	if err != nil {
 		return res, err
@@ -129,7 +132,7 @@ func (p *PlanRowsExtractor) ExtractDoc(service, relPath string, src []byte) (Doc
 					}
 					continue
 				}
-				res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: t.ID, Edge: "needs", Raw: need, Target: target, Strategy: PlanStrategyRow, Line: t.Line})
+				res.CrossFile = append(res.CrossFile, extractor.DocCrossFileRef{From: t.ID, Edge: "needs", Raw: need, Target: target, Strategy: PlanStrategyRow, Line: t.Line})
 			case planNeedID.MatchString(need):
 				if declared[need] && !seen[need] && need != t.ID {
 					seen[need] = true
@@ -142,13 +145,13 @@ func (p *PlanRowsExtractor) ExtractDoc(service, relPath string, src []byte) (Doc
 		res.Nodes = append(res.Nodes, n)
 		pkgDir := cleanRepoDir(t.Expect.Package)
 		if sym := strings.TrimSpace(t.Expect.Symbol); sym != "" {
-			res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: t.ID, Edge: "plan_symbol", Raw: sym, Target: pkgDir, Strategy: PlanStrategySymbol, Line: t.Line})
+			res.CrossFile = append(res.CrossFile, extractor.DocCrossFileRef{From: t.ID, Edge: "plan_symbol", Raw: sym, Target: pkgDir, Strategy: PlanStrategySymbol, Line: t.Line})
 		}
 		if rf := strings.TrimSpace(t.Expect.ReachableFrom); rf != "" {
-			res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: t.ID, Edge: "plan_reachable_from", Raw: rf, Target: pkgDir, Strategy: PlanStrategySymbol, Line: t.Line})
+			res.CrossFile = append(res.CrossFile, extractor.DocCrossFileRef{From: t.ID, Edge: "plan_reachable_from", Raw: rf, Target: pkgDir, Strategy: PlanStrategySymbol, Line: t.Line})
 		}
 		if pkgDir != "" {
-			res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: t.ID, Edge: "plan_package", Raw: t.Expect.Package, Target: pkgDir, Strategy: "repo-path", Line: t.Line})
+			res.CrossFile = append(res.CrossFile, extractor.DocCrossFileRef{From: t.ID, Edge: "plan_package", Raw: t.Expect.Package, Target: pkgDir, Strategy: "repo-path", Line: t.Line})
 		}
 	}
 	sort.SliceStable(res.Nodes, func(i, j int) bool {
@@ -183,4 +186,32 @@ func cleanRepoDir(p string) string {
 		return ""
 	}
 	return p
+}
+
+// capString truncates s to n bytes.
+func capString(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+
+// pkgFromPath is the file-stem package label: the base name without its
+// extension.
+func pkgFromPath(relPath string) string {
+	base := relPath
+	for i := len(relPath) - 1; i >= 0; i-- {
+		if relPath[i] == '/' || relPath[i] == '\\' {
+			base = relPath[i+1:]
+			break
+		}
+	}
+	if dot := strings.LastIndex(base, "."); dot >= 0 {
+		base = base[:dot]
+	}
+	return base
+}
+
+func init() {
+	extractor.RegisterNativeDialect("fathom-plan-rows", func() extractor.Extractor { return NewPlanRowsExtractor() })
 }
