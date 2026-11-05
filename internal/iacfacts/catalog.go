@@ -19,8 +19,9 @@ const (
 	MaxCatalogBytes int64 = 256 << 20
 	// MaxCatalogEntries is the most zip entries in one catalog.
 	MaxCatalogEntries = 500_000
-	// MaxManifestBytes bounds manifest.json.
-	MaxManifestBytes int64 = 4 << 20
+	// MaxManifestBytes bounds manifest.json. A manifest holds a version list and one digest per release, so a real one
+	// is tens of KB; 1 MiB keeps one lookup, which decodes the manifest whole, under I48's 8 MiB.
+	MaxManifestBytes int64 = 1 << 20
 	// MaxIndexBytes bounds one version index.
 	MaxIndexBytes int64 = 4 << 20
 	// MaxBlobBytes bounds one pruned resource schema (the largest AWS type is 2.43 MiB, IF-M0).

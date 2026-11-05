@@ -184,7 +184,7 @@ func TestCatalogWriterRefusesMixedInputs(t *testing.T) {
 
 func TestDocumentedBoundsAreTheAmendedOnes(t *testing.T) {
 	l := DefaultIaCLimits()
-	if l.BlobBytes != 4<<20 || l.CatalogBytes != 256<<20 || l.Entries != 500_000 || l.IndexBytes != 4<<20 || l.ManifestBytes != 4<<20 || l.Depth != 64 || l.FactBytes != 8<<20 {
+	if l.BlobBytes != 4<<20 || l.CatalogBytes != 256<<20 || l.Entries != 500_000 || l.IndexBytes != 4<<20 || l.ManifestBytes != 1<<20 || l.Depth != 64 || l.FactBytes != 8<<20 {
 		t.Fatalf("bounds drifted from docs/design/iac-facts.md section 9: %+v", l)
 	}
 }
