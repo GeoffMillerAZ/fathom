@@ -5,7 +5,7 @@ package fusion
 // the package it loads, and an entity named below it to its declarations
 // there; cue-package resolves a name a file does not declare to its
 // declarations in the other files of the same package. The extractor
-// (internal/extractor/cuedoc.go) records each reference as written; this file
+// (internal/extractor/cuelang/cuedoc.go) records each reference as written; this file
 // resolves it over the set the pass reads, by CUE's own module rules:
 //
 //   - An import path names the files of the package the cue binary loads for

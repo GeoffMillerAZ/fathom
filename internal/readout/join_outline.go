@@ -210,11 +210,7 @@ var (
 // runs, built without the pipeline (no store, no connector, no LLM), so the
 // readout does not import internal/fusion (ADR-092, LL-6).
 func newOutlineRouter() (*langroute.Router, error) {
-	return langroute.NewRouter(
-		langroute.WithCUE(cuelang.NewCUEExtractor()),
-		langroute.WithTimoni(cuelang.NewTimoniExtractor()),
-		langroute.WithFormats(fathomformat.Dispatch),
-	)
+	return langroute.NewRouter(fathomformat.RouterOptions(cuelang.NewTimoniExtractor())...)
 }
 
 // extractOutline runs the indexer's per-file dispatch over one file.

@@ -1,6 +1,7 @@
 package langroute
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -105,9 +106,13 @@ func TestLangrouteClosure(t *testing.T) {
 	if err != nil {
 		t.Skip("no go toolchain on PATH")
 	}
-	out, err := exec.Command(goBin, "list", "-deps", "-f", "{{.ImportPath}}", ".").CombinedOutput()
+	// A failing go list fails the test: a closure regression must not pass
+	// silently. The environment is the one internal/usedset's closure tests use.
+	cmd := exec.Command(goBin, "list", "-deps", "-f", "{{.ImportPath}}", ".")
+	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=readonly", "GOPROXY=off")
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Skipf("go list failed (offline or no module cache): %v\n%s", err, out)
+		t.Fatalf("go list -deps: %v\n%s", err, out)
 	}
 	for _, p := range strings.Fields(string(out)) {
 		for _, banned := range []string{"/internal/connector", "/internal/store", "/internal/fusion", "/internal/verify", "/internal/llm", "/internal/extractor/cuelang", "/internal/planrowsdialect"} {

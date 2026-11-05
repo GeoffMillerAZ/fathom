@@ -88,3 +88,16 @@ func Dispatch(relPath string, content []byte) (extractor.Extractor, langroute.To
 	}
 	return nil, "", false
 }
+
+// RouterOptions is the registration list every product router carries beyond
+// the language library's own: the CUE extractor, the Timoni extractor the
+// caller supplies (fusion shares one across pipelines) and fathom's own
+// formats. fusion.New and the readout's outline router both build from it, so
+// a format added here reaches both.
+func RouterOptions(timoni extractor.Extractor) []langroute.Option {
+	return []langroute.Option{
+		langroute.WithCUE(cuelang.NewCUEExtractor()),
+		langroute.WithTimoni(timoni),
+		langroute.WithFormats(Dispatch),
+	}
+}

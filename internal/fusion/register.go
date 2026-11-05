@@ -38,11 +38,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	if cfg.InflightBytes <= 0 {
 		cfg.InflightBytes = DefaultInflightBytes
 	}
-	router, err := langroute.NewRouter(
-		langroute.WithCUE(cuelang.NewCUEExtractor()),
-		langroute.WithTimoni(timoniExtractor()),
-		langroute.WithFormats(fathomformat.Dispatch),
-	)
+	router, err := langroute.NewRouter(fathomformat.RouterOptions(timoniExtractor())...)
 	if err != nil {
 		panic(fmt.Sprintf("fusion: %v", err))
 	}

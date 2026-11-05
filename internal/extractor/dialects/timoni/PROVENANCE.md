@@ -2,9 +2,9 @@
 
 LB-Q-timoni (wave fx, owner request 2026-10-02), design `docs/design/language-breadth.md` §13/§18.3 (T3), engine
 `native`, grammar_source `native:cuelang.org/go` (Apache-2.0, a library dependency, unmodified). A Timoni module,
-bundle or runtime is plain CUE with a contract, so `internal/extractor/timonidialect.go` composes
+bundle or runtime is plain CUE with a contract, so `internal/extractor/cuelang/timonidialect.go` composes
 `NewCUEExtractor()`: every CUE node and reference edge is the CUE extraction's, unchanged, and the Timoni entities,
-calls and cross-file references ride on top. Neither `cueextract.go` nor `typedcue.go` is edited (item cue owns them);
+calls and cross-file references ride on top. Neither `internal/extractor/cuelang/cueextract.go` nor `internal/fusion/typedcue.go` is edited (item cue owns them);
 when the CUE extractor becomes a `DocResulter` the composed extractor carries its cross-file references too.
 
 ## Why native, not the tags or doc engine

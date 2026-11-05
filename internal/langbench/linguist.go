@@ -249,8 +249,8 @@ func ReadLinguistCheckout(dir string) (languages, heuristics []byte, err error) 
 	return languages, heuristics, nil
 }
 
-// heuristicPatternFlags is how connector.ClassifyDialect compiles a sniff
-// (internal/connector/classify_dialect.go sniffRegexp): multi-line, since
+// heuristicPatternFlags is how langclass.ClassifyDialect compiles a sniff
+// (internal/langclass/classify_dialect.go sniffRegexp): multi-line, since
 // linguist's Ruby patterns anchor lines with ^ and $.
 const heuristicPatternFlags = "(?m)"
 

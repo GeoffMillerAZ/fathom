@@ -1,13 +1,13 @@
 # cue — provenance and divergences
 
 LB-Q-cue, design `docs/design/language-breadth.md` §4, §13, §18.3 (T6). A native-engine dialect (no
-`tags.scm`, no doc spec): `internal/extractor/cueextract.go` reads a `.cue` file with the official
+`tags.scm`, no doc spec): `internal/extractor/cuelang/cueextract.go` reads a `.cue` file with the official
 parser, `cuelang.org/go/cue/parser` (Apache-2.0, a direct dependency at v0.16.1), which also binds
 each identifier to the declaration it names in the file (`astutil.Resolve`), and gives the
 document-path engine's cross-file pass (`fusion.ResolveDocXrefs`) its `DocResult`
-(`extractor.DocResulter`, `cuedoc.go`), resolved by the cue-import and cue-package strategies
-(`internal/fusion/cuexref.go`). The extractor was registered before the manifest (`register.go`
-maps `.cue` to it) and is upgraded in place, not ported.
+(`extractor.DocResulter`, `internal/extractor/cuelang/cuedoc.go`), resolved by the cue-import and cue-package strategies
+(`internal/fusion/cuexref.go`). The extractor was registered before the manifest (`internal/extractor/cuelang/register.go`
+registers it, and `langroute.WithCUE` maps `.cue` to it) and is upgraded in place, not ported.
 
 ## What it models
 

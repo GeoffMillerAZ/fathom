@@ -179,7 +179,7 @@ layer_rules: [
 		sentence: "internal/store must not import cgo-backed packages (ADR-020/025: the store stays pure Go; ADR-066: fathom is pure Go, cgo only in cmd/fathom's two darwin memory readers)."
 		enforce:  true
 		from: ["internal/store"]
-		to: ["internal/extractor", "internal/extractor/treesitter"]
+		to: ["internal/extractor", "internal/extractor/treesitter", "internal/langroute"]
 	},
 	{
 		id:       "core-no-mcp-or-cmd"

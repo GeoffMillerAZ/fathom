@@ -124,7 +124,7 @@ func bareGoAllowed(rel string) bool {
 
 // graphstoreGroup: the one place a handler may build a call graph.
 func graphstoreGroup(rel string) bool {
-	return rel == "internal/memo/graphstore.go" || rel == "cmd/fathom/console_graphstore.go"
+	return rel == "internal/graphmemo/graphstore.go" || rel == "cmd/fathom/console_graphstore.go"
 }
 
 // CheckFile applies every rule to one file's source. rel is its
