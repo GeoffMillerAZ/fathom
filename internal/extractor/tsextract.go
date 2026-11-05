@@ -422,6 +422,11 @@ type TSExtractor struct {
 	// this extractor's lifetime (LB-F4): measured in readings, not stored.
 	typeRefs atomic.Int64
 
+	// injectFault is the first injected range that failed in the extraction in
+	// progress (its dialect, line and reason), "" when none did. ExtractReport
+	// reads it; the host's symbols stand either way. Guarded by mu.
+	injectFault string
+
 	// parses counts every source parse this extractor ran (extract, file
 	// specs, injected ranges): the seam the one-parse test reads (EW-52).
 	parses atomic.Int64
@@ -598,7 +603,46 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	defer e.mu.Unlock()
 
 	nodes, _, err := e.extractNodesLocked(variant, service, relPath, src, nil)
+	e.injectFault = ""
 	return nodes, err
+}
+
+var _ ReportingExtractor = (*TSExtractor)(nil)
+
+// ExtractReport is Extract and, when an injected range failed to read (a
+// budget spent inside a <script>, say), a one-line reason: the host's symbols
+// stand and the file is not fully read (ReportingExtractor).
+func (e *TSExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
+	variant := e.variantFor(relPath, src)
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.injectFault = ""
+	nodes, _, err := e.extractNodesLocked(variant, service, relPath, src, nil)
+	why := e.injectFault
+	e.injectFault = ""
+	return nodes, why, err
+}
+
+// noteInjectFault records the first injected range that failed. Caller holds
+// e.mu.
+func (e *TSExtractor) noteInjectFault(inj tsInjection, err error) {
+	if e.injectFault != "" {
+		return
+	}
+	var be *tsengine.BudgetError
+	msg := err.Error()
+	if errors.As(err, &be) {
+		msg = be.Reason()
+	}
+	if i := strings.IndexByte(msg, '\n'); i >= 0 {
+		msg = msg[:i]
+	}
+	if len(msg) > 120 {
+		msg = msg[:120]
+	}
+	e.injectFault = fmt.Sprintf("injected %s range at line %d not read: %s", inj.dialect, inj.row+1, msg)
 }
 
 // ExtractWithFileSpecs is Extract and ExtractFileSpecs from one parse and one
@@ -910,6 +954,7 @@ func (e *TSExtractor) extractInjections(rules *tsDialectRules, injected []tsInje
 		v := tsDialectMap[inj.dialect].defaultVariant
 		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, false, nil)
 		if err != nil {
+			e.noteInjectFault(inj, err)
 			continue
 		}
 		out = append(out, nodes...)

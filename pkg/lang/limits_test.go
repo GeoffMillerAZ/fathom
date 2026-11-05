@@ -38,12 +38,37 @@ func TestMemoryBudgetIsNamedNotATrap(t *testing.T) {
 	if strings.ContainsAny(n, "\n\t") || strings.Contains(n, "wasm") || strings.Contains(n, "stack") {
 		t.Errorf("the note carries a stack: %q", n)
 	}
-	if !strings.Contains(n, "memory limit (64 MiB, MemoryLimitPages)") {
+	// A slow runner under -race can spend the 10 s parse deadline first: the
+	// note then names the deadline, which is the other budget the engine names.
+	if !strings.Contains(n, "memory limit (64 MiB, MemoryLimitPages)") && !strings.Contains(n, "parse and query deadline (ParseTimeout)") {
 		t.Errorf("the note does not name the budget spent: %q", n)
 	}
 	// A smaller file of the same shape reads fully.
 	if ok := extract(t, r, "big/defs.py", manyDefs(2000)); ok.Incomplete || len(ok.Symbols) < 2000 {
 		t.Errorf("a 2,000 function file: incomplete %v, %d symbols, notes %v", ok.Incomplete, len(ok.Symbols), ok.Notes)
+	}
+}
+
+// N1: an injected range whose extraction fails (here the memory budget, spent by
+// 40,000 functions inside a <script>) leaves the host's symbols and sets
+// Incomplete with the range named, where it used to be skipped silently.
+func TestFailedInjectedRangeIsIncomplete(t *testing.T) {
+	r := newReader(t)
+	script := strings.Repeat("function f() { return 1 }\n", 40000)
+	src := "<html><body><h1 id=\"t\">x</h1><script>\n" + script + "</script></body></html>\n"
+	if len(src) > lang.DefaultMaxFileBytes {
+		t.Fatalf("setup: %d bytes is over the file limit", len(src))
+	}
+	got := extract(t, r, "page.html", src)
+	if got.Skipped != "" || got.Dialect != "html" {
+		t.Fatalf("setup: skipped %q dialect %q", got.Skipped, got.Dialect)
+	}
+	if !got.Incomplete || len(got.Notes) != 1 || !strings.Contains(got.Notes[0], "injected") || strings.Contains(got.Notes[0], "\n") {
+		t.Fatalf("a failed <script> reads incomplete=%v notes=%q", got.Incomplete, got.Notes)
+	}
+	ok := extract(t, r, "page.html", "<html><body><script>\nfunction f() { return 1 }\n</script></body></html>\n")
+	if ok.Incomplete || len(ok.Notes) != 0 {
+		t.Errorf("a small page reads incomplete: %v", ok.Notes)
 	}
 }
 

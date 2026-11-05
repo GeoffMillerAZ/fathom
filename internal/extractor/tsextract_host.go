@@ -172,6 +172,7 @@ func (e *TSExtractor) extractHostedInjections(rules *tsDialectRules, injected []
 		}
 		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, true, isp)
 		if err != nil {
+			e.noteInjectFault(inj, err)
 			continue
 		}
 		for _, n := range nodes {
