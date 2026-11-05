@@ -5,8 +5,10 @@ package lang
 // in a Result, and it fails closed: what it cannot tell apart it withholds.
 //
 //   - Signature, code dialect (kind "language"): every quoted literal of every
-//     quote style reads ***, whatever its name or its place. Numbers, identifiers
-//     and unquoted text stay.
+//     quote style reads ***, whatever its name or its place: a literal that
+//     interpolates is one literal with the quotes inside its interpolation, and
+//     percent literals, sigils and heredocs are quote styles. Numbers,
+//     identifiers and unquoted text stay.
 //   - Signature, any other dialect: withheld (empty) unless the symbol's kind is
 //     on structuralKinds, the list of kinds whose Signature is structure and holds
 //     no value. The default is withheld, so a kind nobody listed fails closed.
@@ -41,7 +43,7 @@ var userinfoRe = regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.\-]*):(//?)([^/\\?#\s"
 
 // slashesRe finds the authority of a URL whose scheme is not written
 // (`//u:S@host/path`).
-var slashesRe = regexp.MustCompile(`(^|[^A-Za-z0-9+.\-:/])(//)([^/\\?#\s"'<>]*)@`)
+var slashesRe = regexp.MustCompile(`(^|[^A-Za-z0-9+\-:/])(//)([^/\\?#\s"'<>]*)@`)
 
 // bareRe finds user:password@host written with no scheme and no slashes (a
 // Dockerfile FROM, a Kubernetes image, a compose service): the userinfo starts
@@ -139,14 +141,303 @@ func imageScheme(scheme string) bool {
 	return s == "docker" || s == "oci"
 }
 
-// maskLiterals replaces what is between the quotes of every quoted literal in s
-// with ***: double, single and backtick quotes, the triple quotes of Python, the
-// one- or two-letter prefix of a literal (b, f, r, rb) staying where it is. An
-// escape (a backslash) does not end a double or single quoted literal, and a
-// literal that is never closed is masked to the end of the text, so a missing
-// quote withholds more and never less. A single quote that skip says opens no
-// literal (a Rust lifetime, an apostrophe in a sentence) is left as written.
+// maskLiterals replaces what is between the delimiters of every literal in a
+// code signature with ***, whatever its quote style:
+//
+//   - double, single and backtick quotes and the triple quotes of Python, the
+//     one- or two-letter prefix of a literal (b, f, r, rb) staying where it is;
+//   - the interpolation of a literal (`${...}` in JS, TS, Kotlin, Scala and Dart,
+//     `#{...}` in Ruby and Elixir, `\(...)` in Swift, `{...}` in a Python f-string
+//     or a C# `$"..."`), which may hold quoted literals of its own: they are part
+//     of the outer literal, and the outer literal ends at its own closing quote;
+//   - a percent literal (Ruby `%w[...]`, `%q(...)`, `%i[...]`), an Elixir sigil
+//     (`~S|...|`, `~w(...)`) and a heredoc (PHP `<<<EOT`, Ruby `<<~EOS`).
+//
+// An escape (a backslash) does not end a literal, and a literal that is never
+// closed is masked to the end of the text, so a missing delimiter withholds more
+// and never less. A single quote that skip says opens no literal (a Rust
+// lifetime, an apostrophe in a sentence) is left as written.
 func maskLiterals(s string, skip func(s string, i int) bool) string {
+	if !strings.ContainsAny(s, "\"'`%~<") {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		head, bodyEnd, next, ok := literalAt(s, i, skip)
+		if !ok {
+			b.WriteByte(s[i])
+			i++
+			continue
+		}
+		b.WriteString(s[i : i+head])
+		b.WriteString(redacted)
+		if bodyEnd < 0 {
+			break // never closed: the rest of the text is the literal
+		}
+		b.WriteString(s[bodyEnd:next])
+		i = next
+	}
+	return b.String()
+}
+
+// literalAt reports the literal that opens at s[i]. head is the length of its
+// opener (the quote, `%w[`, `<<<EOT`), bodyEnd the index where its closer
+// starts (-1 when it is never closed) and next the index after the closer. next
+// is 0 when no literal opens at i.
+func literalAt(s string, i int, skip func(string, int) bool) (head, bodyEnd, next int, ok bool) {
+	switch c := s[i]; c {
+	case '"', '\'', '`':
+		if c == '\'' && skip != nil && skip(s, i) {
+			return 0, 0, 0, false
+		}
+		n := quoteLen(s, i)
+		end := closeLiteral(s, i+n, literalSpec{closer: strings.Repeat(string(c), n), escapes: c != '`', interp: interpAt(s, i)})
+		return n, end, end + n, true
+	case '%':
+		if !percentOpens(s, i) {
+			return 0, 0, 0, false
+		}
+		open, closer := delimiters(s[i+2])
+		end := closeLiteral(s, i+3, literalSpec{open: open, closer: closer, escapes: true, interp: interpHash})
+		return 3, end, end + len(closer), true
+	case '~':
+		if !sigilOpens(s, i) {
+			return 0, 0, 0, false
+		}
+		j := i + 2
+		for j < len(s) && s[j] >= 'A' && s[j] <= 'Z' {
+			j++
+		}
+		open, closer := delimiters(s[j])
+		end := closeLiteral(s, j+1, literalSpec{open: open, closer: closer, escapes: true, interp: interpHash})
+		return j + 1 - i, end, end + len(closer), true
+	case '<':
+		id, headLen := heredocAt(s, i)
+		if id == "" {
+			return 0, 0, 0, false
+		}
+		end := indexWord(s, i+headLen, id)
+		return headLen, end, end + len(id), true
+	}
+	return 0, 0, 0, false
+}
+
+// A literal's interpolation, by the characters that open it.
+const (
+	interpNone  = 0
+	interpHash  = 1 // #{...}, ${...} and \(...)
+	interpBrace = 2 // {...}: a Python f-string, a C# $"..." string
+)
+
+// literalSpec describes one literal's body for closeLiteral.
+type literalSpec struct {
+	open    byte   // a nesting opener (the `[` of `%w[`), 0 for none
+	closer  string // what ends the literal
+	escapes bool
+	interp  int
+}
+
+// closeLiteral is the index of the closer of a literal whose body starts at
+// from, -1 for none. A quote inside an interpolation belongs to the literal.
+func closeLiteral(s string, from int, spec literalSpec) int {
+	depth := 0
+	for j := from; j < len(s); j++ {
+		c := s[j]
+		switch {
+		case c == '\\' && spec.escapes:
+			if spec.interp != interpNone && j+1 < len(s) && s[j+1] == '(' {
+				k := skipCode(s, j+2, '(', ')')
+				if k < 0 {
+					return -1
+				}
+				j = k
+				continue
+			}
+			j++
+		case (c == '$' || c == '#') && j+1 < len(s) && s[j+1] == '{':
+			k := skipCode(s, j+2, '{', '}')
+			if k < 0 {
+				return -1
+			}
+			j = k
+		case c == '{' && spec.interp&interpBrace != 0:
+			if j+1 < len(s) && s[j+1] == '{' {
+				j++ // an escaped brace
+				continue
+			}
+			k := skipCode(s, j+1, '{', '}')
+			if k < 0 {
+				return -1
+			}
+			j = k
+		case spec.open != 0 && c == spec.open:
+			depth++
+		case strings.HasPrefix(s[j:], spec.closer):
+			if depth == 0 {
+				return j
+			}
+			depth--
+		}
+	}
+	return -1
+}
+
+// skipCode is the index of the bracket that closes code whose opener was just
+// before from, -1 when it is never closed. A quote in the code opens a literal
+// that is read whole.
+func skipCode(s string, from int, open, closeCh byte) int {
+	depth := 0
+	for j := from; j < len(s); j++ {
+		switch c := s[j]; c {
+		case open:
+			depth++
+		case closeCh:
+			if depth == 0 {
+				return j
+			}
+			depth--
+		case '"', '\'', '`':
+			n := quoteLen(s, j)
+			end := closeLiteral(s, j+n, literalSpec{closer: strings.Repeat(string(c), n), escapes: c != '`', interp: interpAt(s, j)})
+			if end < 0 {
+				return -1
+			}
+			j = end + n - 1
+		}
+	}
+	return -1
+}
+
+// quoteLen is 3 for the triple quote of Python at i, 1 otherwise.
+func quoteLen(s string, i int) int {
+	if s[i] != '`' && strings.HasPrefix(s[i:], strings.Repeat(string(s[i]), 3)) {
+		return 3
+	}
+	return 1
+}
+
+// interpAt is how the literal opened by the quote at i interpolates. Every quote
+// takes `${`, `#{` and `\(`, which fails closed (a balanced pair of braces in a
+// plain string stays inside it, an unbalanced one withholds the rest). Only a
+// literal with the prefix of an f-string (f, rf, t) or of C# ($, $@) takes `{`.
+func interpAt(s string, i int) int {
+	j := i
+	for j > 0 && (isLetter(s[j-1]) || s[j-1] == '$' || s[j-1] == '@') {
+		j--
+	}
+	run := s[j:i]
+	if len(run) > 3 || (j > 0 && (isLetter(s[j-1]) || s[j-1] == '_' || s[j-1] >= '0' && s[j-1] <= '9')) {
+		return interpHash
+	}
+	if strings.ContainsAny(run, "fFtT$") {
+		return interpHash | interpBrace
+	}
+	return interpHash
+}
+
+func isLetter(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' }
+
+// identChar reports a byte an identifier holds.
+func identChar(c byte) bool { return isLetter(c) || c == '_' || c >= '0' && c <= '9' }
+
+// percentOpens reports a Ruby percent literal at i: `%` then one of q Q w W i I
+// r s x, then a delimiter, where the `%` is no modulo (it follows no identifier,
+// number or closing bracket).
+func percentOpens(s string, i int) bool {
+	if i+2 >= len(s) || !strings.ContainsRune("qQwWiIrsx", rune(s[i+1])) || !strings.ContainsRune("([{<|!/^~", rune(s[i+2])) {
+		return false
+	}
+	return i == 0 || !(identChar(s[i-1]) || s[i-1] == ')' || s[i-1] == ']')
+}
+
+// sigilOpens reports an Elixir sigil at i: `~`, one letter or a run of capitals,
+// then a delimiter that is no quote (a quote is read as a quoted literal).
+func sigilOpens(s string, i int) bool {
+	j := i + 1
+	if j >= len(s) || !isLetter(s[j]) {
+		return false
+	}
+	j++
+	if s[j-1] >= 'A' && s[j-1] <= 'Z' {
+		for j < len(s) && s[j] >= 'A' && s[j] <= 'Z' {
+			j++
+		}
+	}
+	return j < len(s) && strings.ContainsRune("/|([{<", rune(s[j]))
+}
+
+// delimiters is the nesting opener (0 when the delimiter does not nest) and the
+// closer of a literal opened by delim.
+func delimiters(delim byte) (open byte, closer string) {
+	switch delim {
+	case '(':
+		return '(', ")"
+	case '[':
+		return '[', "]"
+	case '{':
+		return '{', "}"
+	case '<':
+		return '<', ">"
+	}
+	return 0, string(delim)
+}
+
+// heredocAt reports the identifier of a heredoc that opens at i (PHP `<<<EOT`,
+// `<<<'EOT'`, Ruby `<<~EOS`, `<<-EOS`) and the length of its opener.
+func heredocAt(s string, i int) (id string, headLen int) {
+	rest := s[i:]
+	switch {
+	case strings.HasPrefix(rest, "<<<"):
+		headLen = 3
+	case strings.HasPrefix(rest, "<<~"), strings.HasPrefix(rest, "<<-"):
+		headLen = 3
+	default:
+		return "", 0
+	}
+	j := i + headLen
+	for j < len(s) && s[j] == ' ' {
+		j++
+	}
+	quote := byte(0)
+	if j < len(s) && (s[j] == '\'' || s[j] == '"') {
+		quote = s[j]
+		j++
+	}
+	start := j
+	for j < len(s) && identChar(s[j]) {
+		j++
+	}
+	if j == start || !isLetter(s[start]) && s[start] != '_' {
+		return "", 0
+	}
+	id = s[start:j]
+	if quote != 0 {
+		if j >= len(s) || s[j] != quote {
+			return "", 0
+		}
+		j++
+	}
+	return id, j - i
+}
+
+// indexWord is the index of the first occurrence of id as a whole word at or
+// after from, -1 for none.
+func indexWord(s string, from int, id string) int {
+	for j := from; j+len(id) <= len(s); j++ {
+		if strings.HasPrefix(s[j:], id) && (j == 0 || !identChar(s[j-1])) && (j+len(id) == len(s) || !identChar(s[j+len(id)])) {
+			return j
+		}
+	}
+	return -1
+}
+
+// maskQuoted replaces what is between the quotes of every quoted literal in s
+// with ***: double, single and backtick quotes, the triple quotes of Python. It
+// is the Notes rule, which reads a parser's message, not code. An escape does
+// not end a double or single quoted literal, and a literal that is never closed
+// is masked to the end of the text. A single quote that skip says opens no
+// literal is left as written.
+func maskQuoted(s string, skip func(s string, i int) bool) string {
 	if !strings.ContainsAny(s, "\"'`") {
 		return s
 	}
@@ -219,6 +510,9 @@ func apostrophe(s string, i int) bool {
 // carries the file's own text, so quoted text reads *** and a single word after a
 // colon that ends the message or a clause is dropped.
 func scrubNote(s string) string {
+	// A parser that found a literal token names its class and then the literal
+	// itself, unquoted (CUE: `found 'IDENT' S`): the class stays, the text goes.
+	s = literalTokenRe.ReplaceAllString(s, "${1}${2}")
 	// A quoted punctuation mark is the grammar the parser expected (`expected ',' or
 	// ']'`), never a word of the file, and stays.
 	s = punctuationQuoteRe.ReplaceAllStringFunc(s, func(m string) string {
@@ -227,7 +521,7 @@ func scrubNote(s string) string {
 		}
 		return "\x02" + m[1:2] + "\x02"
 	})
-	s = maskLiterals(s, apostrophe)
+	s = maskQuoted(s, apostrophe)
 	s = strings.NewReplacer("\x01", "'", "\x02", "\"").Replace(s)
 	return noteTokenRe.ReplaceAllStringFunc(s, func(m string) string {
 		sub := noteTokenRe.FindStringSubmatch(m)
@@ -237,6 +531,11 @@ func scrubNote(s string) string {
 		return ":" + sub[2]
 	})
 }
+
+// literalTokenRe is a token class in capitals (CUE's IDENT, INT, STRING,
+// ATTRIBUTE) after `found`, with the text of the file that follows it to the end
+// of the message or to a trailing `(and N more errors)`.
+var literalTokenRe = regexp.MustCompile(`(\bfound '[A-Z_]{3,}')[^\n]*?( \(and \d+ more errors?\))?$`)
 
 // punctuationQuoteRe is a quote around one character that is no letter, digit or
 // space.
@@ -365,25 +664,44 @@ func (res *Result) withhold(dialectKind string) {
 	if res.Dialect == "rust" {
 		skip = rustLifetime
 	}
+	// A Key is Package.Name (design rule 9), so it is rebuilt from the scrubbed
+	// parts: scrubbing the joined text separately can eat the package prefix
+	// (`pod.u:S@reg/i` reads as the user `pod.u`) or keep a userinfo the Name lost.
+	keys := map[string]string{}
 	for i := range res.Symbols {
 		s := &res.Symbols[i]
-		s.Name, s.Key, s.Package = withholdURLUserinfo(s.Name), withholdURLUserinfo(s.Key), withholdURLUserinfo(s.Package)
+		old := s.Key
+		s.Name, s.Package = withholdURLUserinfo(s.Name), withholdURLUserinfo(s.Package)
+		s.Key = symbolKey(s.Package, s.Name)
+		if _, seen := keys[old]; !seen {
+			keys[old] = s.Key
+		}
 		switch {
 		case code:
 			s.Signature = withholdURLUserinfo(maskLiterals(s.Signature, skip))
 		case structuralKind(s.Kind):
-			s.Signature = withholdURLUserinfo(s.Signature)
+			s.Signature = withholdURLUserinfo(structuralSignature(s.Kind, s.Signature))
 		default:
 			s.Signature = ""
 		}
 	}
 	for i := range res.References {
 		r := &res.References[i]
-		r.From, r.To, r.Raw = withholdURLUserinfo(r.From), withholdURLUserinfo(r.To), withholdURLUserinfo(r.Raw)
+		if k, ok := keys[r.From]; ok {
+			r.From = k
+		} else {
+			r.From = withholdURLUserinfo(r.From)
+		}
+		r.To, r.Raw = withholdURLUserinfo(r.To), withholdURLUserinfo(r.Raw)
 	}
 	for i := range res.Unresolved {
 		u := &res.Unresolved[i]
-		u.From, u.Raw = withholdURLUserinfo(u.From), withholdURLUserinfo(u.Raw)
+		if k, ok := keys[u.From]; ok {
+			u.From = k
+		} else {
+			u.From = withholdURLUserinfo(u.From)
+		}
+		u.Raw = withholdURLUserinfo(u.Raw)
 	}
 	for i := range res.Facts {
 		f := &res.Facts[i]

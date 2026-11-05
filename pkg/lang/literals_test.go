@@ -304,3 +304,143 @@ func TestFactValueUnderACredentialKeyIsMasked(t *testing.T) {
 		}
 	}
 }
+
+// The literals rule through real dialects: a default written with a nested
+// literal, a sigil, a percent literal or a heredoc reads *** in the Signature of
+// the function that holds it (MF2). Each source is valid for its tool.
+func TestSignatureWithholdsNestedAndNonQuoteLiterals(t *testing.T) {
+	r := newReader(t)
+	const s = sentinel
+	for _, tc := range []struct{ path, src string }{
+		{"a.py", `def f(x=f"{d["` + s + `"]}"):` + "\n    pass\n"},
+		{"a.rb", `def f(x = "a#{"` + s + `"}b")` + "\nend\n"},
+		{"b.rb", `def f(x = %w[` + s + `])` + "\nend\n"},
+		{"c.rb", `def f(x = %q(` + s + `))` + "\nend\n"},
+		{"d.rb", `def f(x = %i[` + s + `])` + "\nend\n"},
+		{"a.ex", "defmodule M do\n  def f(x \\\\ \"a#{\"" + s + "\"}\") do\n    x\n  end\nend\n"},
+		{"b.ex", "defmodule M do\n  def f(x \\\\ ~S|" + s + "|) do\n    x\n  end\nend\n"},
+		{"c.ex", "defmodule M do\n  def f(x \\\\ ~w(" + s + " " + s + ")) do\n    x\n  end\nend\n"},
+		{"a.kt", `fun f(x: String = "a${"` + s + `"}b") {}` + "\n"},
+		{"a.scala", `object O { def f(x: String = s"a${"` + s + `"}b") = x }` + "\n"},
+		{"a.dart", `void f({String x = '${"` + s + `"}'}) {}` + "\n"},
+		{"a.js", "function f(x = `a${`" + s + "`}b`) {}\n"},
+		{"a.ts", "function f(x: string = `a${`" + s + "`}b`) {}\n"},
+		{"a.php", "<?php\nfunction f($x = <<<EOT\n" + s + "\nEOT\n) {}\n"},
+		{"b.php", "<?php\nfunction f($x = <<<'EOT'\n" + s + "\nEOT\n) {}\n"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			res := extract(t, r, tc.path, tc.src)
+			if res.Skipped != "" || len(res.Symbols) == 0 {
+				t.Fatalf("the source is not read: %+v", res)
+			}
+			for _, sym := range res.Symbols {
+				if strings.Contains(sym.Signature, sentinel) {
+					t.Errorf("%s returns the literal: %q", sym.Name, sym.Signature)
+				}
+			}
+		})
+	}
+}
+
+// userinfoNameExtractor names symbols by an image reference with a userinfo, in
+// a package, and references each from its Key.
+type userinfoNameExtractor struct{}
+
+func (userinfoNameExtractor) Extract(_ context.Context, _ lang.File) (lang.Extracted, error) {
+	names := []string{"//u:" + sentinel + "@reg/j", "u:" + sentinel + "@reg/i:1", "https://u:" + sentinel + "@reg/k"}
+	var out lang.Extracted
+	for i, n := range names {
+		key := "pod." + n
+		out.Symbols = append(out.Symbols, lang.Symbol{Name: n, Package: "pod", Kind: "RowDef", Line: i + 1, Tier: "verified"})
+		out.References = append(out.References, lang.Reference{From: key, To: "x", Edge: "uses", Line: i + 1})
+		out.Unresolved = append(out.Unresolved, lang.Unresolved{From: key, Edge: "uses", Raw: "x", Reason: "dynamic", Line: i + 1})
+	}
+	return out, nil
+}
+
+// A Key is Package.Name (design rule 9) after the userinfo is dropped, for every
+// spelling of a userinfo, and a Reference or Unresolved From is the Key.
+func TestKeyIsPackageDotNameAfterTheUserinfoIsDropped(t *testing.T) {
+	m := lang.Match{ID: "ui-names", Kind: "tooling", Extensions: []string{".uin"}, Kinds: map[string]string{"RowDef": "function"}}
+	r := newReader(t, lang.WithExtractor(m, userinfoNameExtractor{}))
+	got := extract(t, r, "a.uin", "x")
+	if len(got.Symbols) != 3 {
+		t.Fatalf("%+v", got)
+	}
+	keys := map[string]bool{}
+	for _, s := range got.Symbols {
+		if s.Key != s.Package+"."+s.Name {
+			t.Errorf("Key %q is not Package.Name of %q.%q", s.Key, s.Package, s.Name)
+		}
+		keys[s.Key] = true
+	}
+	for _, ref := range got.References {
+		if !keys[ref.From] {
+			t.Errorf("Reference.From %q is no symbol's Key", ref.From)
+		}
+	}
+	for _, u := range got.Unresolved {
+		if !keys[u.From] {
+			t.Errorf("Unresolved.From %q is no symbol's Key", u.From)
+		}
+	}
+	if b, _ := json.Marshal(got); strings.Contains(string(b), sentinel) {
+		t.Errorf("the password is in the Result: %s", b)
+	}
+}
+
+func TestKubernetesImageUserinfoIsDroppedFromTheKey(t *testing.T) {
+	r := newReader(t)
+	res := extract(t, r, "pod.yaml", "apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\nspec:\n  containers:\n  - name: a\n    image: //u:"+sentinel+"@reg/j\n  - name: b\n    image: u:"+sentinel+"@reg/i:1\n")
+	if res.Dialect == "" || len(res.Symbols) < 3 {
+		t.Fatalf("the manifest is not read: %+v", res)
+	}
+	if b, _ := json.Marshal(res); strings.Contains(string(b), sentinel) {
+		t.Errorf("the password is in the Result: %s", b)
+	}
+	for _, s := range res.Symbols {
+		if s.Key != s.Package+"."+s.Name && !(s.Package == "" && s.Key == s.Name) {
+			t.Errorf("Key %q is not Package.Name of %q.%q", s.Key, s.Package, s.Name)
+		}
+	}
+}
+
+// A structural kind's Signature ends before any value: a one-line Thrift service
+// holds its body (and a parameter's default) on the line the Signature is read
+// from, and a GraphQL fragment's directives hold arguments (MF3).
+func TestStructuralSignatureEndsBeforeAValue(t *testing.T) {
+	r := newReader(t)
+	const s = sentinel
+	for _, tc := range []struct{ name, path, src, kind, want string }{
+		{"thrift one line", "a.thrift", `service A extends B { void f(1: string x = "` + s + `") }` + "\n", "ThriftService", "service A extends B"},
+		{"thrift body on the next line", "b.thrift", "service A {\n  void f(1: string x = \"" + s + "\")\n}\n", "ThriftService", "service A"},
+		{"graphql string argument", "a.graphql", `fragment F on T @dir(arg: "` + s + `") @other(x: """` + s + `""") { id }` + "\n", "GraphQLFragment", "fragment F on T"},
+		{"graphql enum argument", "b.graphql", "fragment F on T @d(a: " + s + ") { id }\n", "GraphQLFragment", "fragment F on T"},
+		{"graphql arguments across lines", "c.graphql", "fragment F on T\n  @d(\n    a: " + s + "\n  ) {\n  id\n}\n", "GraphQLFragment", "fragment F on T"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res := extract(t, r, tc.path, tc.src)
+			found := false
+			for _, sym := range res.Symbols {
+				if sym.Kind != tc.kind {
+					continue
+				}
+				found = true
+				if strings.Contains(sym.Signature, s) {
+					t.Errorf("the Signature returns a value: %q", sym.Signature)
+				}
+				if sym.Signature != tc.want {
+					t.Errorf("Signature %q, want %q", sym.Signature, tc.want)
+				}
+			}
+			if !found {
+				t.Fatalf("no %s symbol: %+v", tc.kind, res.Symbols)
+			}
+		})
+	}
+	for kind := range lang.StructuralCuts {
+		if _, ok := lang.StructuralKinds[kind]; !ok {
+			t.Errorf("%s is cut and not on the structural list", kind)
+		}
+	}
+}

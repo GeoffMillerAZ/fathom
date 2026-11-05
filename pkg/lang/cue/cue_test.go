@@ -87,3 +87,28 @@ func symbolNames(r lang.Result) []string {
 	}
 	return out
 }
+
+// A CUE parse error names the token it found and then the token's own text
+// (`found 'IDENT' S`). The text is the file's, so a Note never carries it.
+func TestParseNoteCarriesNoSourceText(t *testing.T) {
+	r := newReader(t, cue.Option())
+	const s = "SENTINEL9f3a"
+	for name, src := range map[string]string{
+		"ident":     "package p\na: 1\npassword " + s + "\n",
+		"number":    "package p\na: 1\npassword 12" + s + "\n",
+		"string":    "package p\na: 1\npassword \"" + s + "\"\n",
+		"attribute": "package p\na: 1\npassword @" + s + "(" + s + ")\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			res := extract(t, r, "p/a.cue", src)
+			if len(res.Notes) == 0 {
+				t.Fatalf("the source reads without a note: %+v", res)
+			}
+			for _, n := range res.Notes {
+				if strings.Contains(n, s) {
+					t.Errorf("a note echoes the file: %q", n)
+				}
+			}
+		})
+	}
+}

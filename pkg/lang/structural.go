@@ -1,5 +1,7 @@
 package lang
 
+import "strings"
+
 // structural.go -- the kinds of a non-code dialect whose Signature is returned.
 //
 // A Signature from a dialect that is no code (Kind "tooling": a manifest, a
@@ -68,6 +70,28 @@ var structuralKinds = map[string]string{
 	"TerragruntTerraform":    "the keyword of the terraform block",
 	"ThriftEnumValue":        "the enum member's name",
 	"ThriftService":          "the keyword, the service name and the service it extends",
+}
+
+// structuralCuts are the kinds whose Signature a parser may carry past the
+// structure: a query that captures no body ends it at the end of the first line,
+// and a definition written on one line holds its body there (a one-line Thrift
+// service, with the default of a parameter), and a GraphQL fragment's directives
+// follow its type condition and hold arguments. The Signature is cut at the first
+// of the characters listed, which is where a value can start.
+var structuralCuts = map[string]string{
+	"GraphQLFragment": "@{",
+	"ThriftService":   "{",
+}
+
+// structuralSignature is the part of a structural kind's Signature that is
+// structure.
+func structuralSignature(kind, sig string) string {
+	if cut, ok := structuralCuts[kind]; ok {
+		if i := strings.IndexAny(sig, cut); i >= 0 {
+			return strings.TrimSpace(sig[:i])
+		}
+	}
+	return sig
 }
 
 // structuralKind reports whether a Signature of this kind is returned from a
