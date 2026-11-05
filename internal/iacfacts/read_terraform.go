@@ -42,18 +42,33 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 // local chain ending in a variable default, is defaulted. A module call is read as a
 // relation and is never expanded, and nothing outside dir is read. Past the product's
 // limits the whole directory is refused with ErrLimit.
+//
+// It follows OpenTofu's file rules. A .tofu file shadows the .tf file of the same name, which
+// is not read at all. An override file (override.tf, *_override.tf, and the .tofu spellings)
+// adds no resource: every attribute or nested block it names reads unknown in the resource it
+// overrides, a variable default or local it overrides reads unknown, and the resource is read
+// once. Attributes are not merged, since the value that wins is not worth the guess.
 func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, error) {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return nil, fmt.Errorf("iacfacts: read module directory: %w", err)
 	}
 	var names []string
+	have := map[string]bool{}
 	for _, e := range entries {
-		if !e.Type().IsRegular() {
-			continue
+		if e.Type().IsRegular() {
+			have[e.Name()] = true
 		}
-		if ext := path.Ext(e.Name()); ext == ".tf" || ext == ".tofu" {
-			names = append(names, e.Name())
+	}
+	for n := range have {
+		switch path.Ext(n) {
+		case ".tf":
+			if have[strings.TrimSuffix(n, ".tf")+".tofu"] {
+				continue // shadowed, as OpenTofu does
+			}
+			names = append(names, n)
+		case ".tofu":
+			names = append(names, n)
 		}
 	}
 	sort.Strings(names)
@@ -82,16 +97,34 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 			return nil, err
 		}
 		set.SyntaxErrors += pf.nerr
+		pf.override = isOverrideFile(n)
 		files = append(files, pf)
 	}
-	env := &tfEnv{vars: map[string]*tfVar{}, locals: map[string]hclsyntax.Expression{}}
+	env := &tfEnv{vars: map[string]*tfVar{}, locals: map[string]hclsyntax.Expression{},
+		overVars: map[string]bool{}, overLocals: map[string]bool{}}
 	for _, f := range files {
-		env.collect(f.body)
+		if f.override {
+			env.collectOverrides(f.body)
+		} else {
+			env.collect(f.body)
+		}
 	}
 	r := newTFReader(newConfig(opts), env)
 	for _, f := range files {
+		if f.override {
+			continue
+		}
 		r.bad = f.bad
 		if err := r.readBody(set, f.body); err != nil {
+			return nil, err
+		}
+	}
+	for _, f := range files {
+		if !f.override {
+			continue
+		}
+		r.bad = f.bad
+		if err := r.applyOverrides(set, f.body); err != nil {
 			return nil, err
 		}
 	}
@@ -104,6 +137,14 @@ type tfParsed struct {
 	body *hclsyntax.Body
 	nerr int
 	bad  []hcl.Range
+	// override marks an override file, which only changes what the other files declare.
+	override bool
+}
+
+// isOverrideFile reports whether a file name is one OpenTofu treats as an override file.
+func isOverrideFile(name string) bool {
+	stem := strings.TrimSuffix(strings.TrimSuffix(name, ".tf"), ".tofu")
+	return stem == "override" || strings.HasSuffix(stem, "_override")
 }
 
 // parseTerraform lexes, bounds and parses one file. It returns ErrLimit past a limit.
@@ -142,6 +183,25 @@ type tfVar struct {
 type tfEnv struct {
 	vars   map[string]*tfVar
 	locals map[string]hclsyntax.Expression
+	// overVars and overLocals name the variable defaults and locals an override file replaces. Which value
+	// wins is not read, so a reference to one reads unknown.
+	overVars, overLocals map[string]bool
+}
+
+// collectOverrides records the variable defaults and locals an override file replaces.
+func (e *tfEnv) collectOverrides(body *hclsyntax.Body) {
+	for _, b := range body.Blocks {
+		switch {
+		case b.Type == "variable" && len(b.Labels) == 1:
+			if _, ok := b.Body.Attributes["default"]; ok {
+				e.overVars[b.Labels[0]] = true
+			}
+		case b.Type == "locals":
+			for name := range b.Body.Attributes {
+				e.overLocals[name] = true
+			}
+		}
+	}
 }
 
 func (e *tfEnv) collect(body *hclsyntax.Body) {
@@ -315,6 +375,58 @@ func (r *tfReader) walkBody(body *hclsyntax.Body, prefix string, w *tfWalk, iter
 		r.walkBody(b.Body, p, w, iters, depth+1, out)
 	}
 	w.top = top
+}
+
+// applyOverrides reads an override file's blocks and marks, in the resource each one overrides, every
+// attribute or nested block it names as unknown. A block with no base is ignored, as OpenTofu refuses it.
+func (r *tfReader) applyOverrides(set *ResourceSet, body *hclsyntax.Body) error {
+	var over ResourceSet
+	if err := r.readBody(&over, body); err != nil {
+		return err
+	}
+	for _, o := range over.Resources {
+		for i := range set.Resources {
+			base := &set.Resources[i]
+			if base.Mode != o.Mode || base.Type != o.Type || base.Name != o.Name {
+				continue
+			}
+			if o.Multiplicity.Kind != MultiSingle {
+				base.Multiplicity = Multiplicity{Kind: o.Multiplicity.Kind, Class: ClassUnknown, Refs: o.Multiplicity.Refs, Span: o.Multiplicity.Span}
+			}
+			if o.Provider != "" {
+				base.Provider = o.Provider
+			}
+			for _, a := range o.Attrs {
+				base.overrideAttr(a)
+			}
+			break
+		}
+	}
+	return nil
+}
+
+// topSegment is the first segment of an attribute path: the attribute, or the nested block it sits in.
+func topSegment(p string) string {
+	if i := strings.IndexAny(p, ".["); i >= 0 {
+		return p[:i]
+	}
+	return p
+}
+
+// overrideAttr reads unknown every attribute under the same top segment as a, which an override replaces
+// whole when it is a nested block, and adds a when the base never set it.
+func (r *Resource) overrideAttr(a Attr) {
+	seg := topSegment(a.Path)
+	found := false
+	for i := range r.Attrs {
+		if topSegment(r.Attrs[i].Path) == seg {
+			r.Attrs[i] = Attr{Path: r.Attrs[i].Path, Class: ClassUnknown, Span: r.Attrs[i].Span}
+			found = true
+		}
+	}
+	if !found {
+		r.Attrs = append(r.Attrs, Attr{Path: a.Path, Class: ClassUnknown, Span: a.Span})
+	}
 }
 
 func with(m map[string]bool, k string) map[string]bool {
@@ -578,6 +690,9 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			return readRes{class: ClassReference, refs: []string{ref}}
 		}
 		key := root + "." + attr.Name
+		if (root == "var" && r.env.overVars[attr.Name]) || (root == "local" && r.env.overLocals[attr.Name]) {
+			return readRes{class: ClassUnknown, refs: []string{ref}}
+		}
 		var expr hclsyntax.Expression
 		if root == "var" {
 			if v := r.env.vars[attr.Name]; v != nil {
