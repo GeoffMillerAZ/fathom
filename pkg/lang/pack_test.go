@@ -119,7 +119,15 @@ var builtInOwned = []struct{ path, src string }{
 	{"x.widget.go", "package a\n\nfunc W() {}\n"},
 	{"x.widget.tf", tfSrc},
 	{"infra/main.tf", tfSrc},
+	// read by a sniff, a glob or a shebang, not by an extension
+	{"bin/run", "#!/bin/bash\nset -e\necho hi\n"},
+	{"etc/nginx/sites-enabled/default", "server {\n  listen 80;\n}\n"},
+	{"Caddyfile.prod", "a.example {\n  reverse_proxy b:80\n}\n"},
 }
+
+// sniffOwned are the entries of builtInOwned a built-in reads, so the table
+// bites: a claim that took one would change its dialect.
+var sniffOwned = map[string]bool{"bin/run": true, "etc/nginx/sites-enabled/default": true, "Caddyfile.prod": true}
 
 func TestPackNeverTakesBuiltInOwnedFiles(t *testing.T) {
 	plain := newReader(t)
@@ -144,6 +152,9 @@ func TestPackNeverTakesBuiltInOwnedFiles(t *testing.T) {
 			for who, r := range readers {
 				for _, f := range builtInOwned {
 					want, got := extract(t, plain, f.path, f.src), extract(t, r, f.path, f.src)
+					if sniffOwned[f.path] && (want.Skipped != "" || want.Dialect == "") {
+						t.Fatalf("setup: the built-ins do not read %s (dialect %q skipped %q)", f.path, want.Dialect, want.Skipped)
+					}
 					if got.Dialect != want.Dialect || got.Skipped != want.Skipped || len(got.Symbols) != len(want.Symbols) || got.Level != want.Level {
 						t.Errorf("%s: %s read as %q level %q skipped %q with %d symbols; the built-ins read it as %q level %q with %d", who, f.path, got.Dialect, got.Level, got.Skipped, len(got.Symbols), want.Dialect, want.Level, len(want.Symbols))
 					}

@@ -5,7 +5,8 @@ package langroute
 // Router holds its own layer of classifier rules, tried after the specific
 // built-in dispatches and before an extension's generic fallback. A pack
 // dialect claims by basename, glob, sniff or an extension no built-in owns; it
-// cannot take a file a built-in reads.
+// cannot take a file a built-in reads by extension, nor one a built-in's
+// sniff, glob or shebang reads (the sniffed built-ins are asked first).
 
 import (
 	"fmt"

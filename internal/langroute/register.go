@@ -947,6 +947,13 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 		if !ok {
 			e, toolKind, ok = JSONSchemaDispatch(relPath, content) // a JSON Schema document, by its $schema or *.schema.json (LB-Q-json-schema)
 		}
+		if !ok && r.pack != nil {
+			// With a pack layer the sniffed built-ins come before it: an
+			// extensionless shebang script, nginx's sites-enabled/* and
+			// Caddyfile.* are a built-in's whatever a pack glob matches, and r.owned
+			// cannot see them (design §6, "after the specific built-ins").
+			e, ok = r.sniffedExtractor(relPath, content)
+		}
 		if !ok && !r.owned(strings.ToLower(ext)) {
 			// The pack layer: after every specific built-in claim above, before the
 			// extension's generic fallback, so a pack dialect can read a .json or .toml
@@ -957,7 +964,7 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 		if !ok {
 			e, ok = r.exts[ext]
 		}
-		if !ok {
+		if !ok && r.pack == nil {
 			e, ok = r.sniffedExtractor(relPath, content)
 		}
 	}
