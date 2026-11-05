@@ -14,7 +14,7 @@ import (
 // constant it must agree with.
 func TestPublicConstantValues(t *testing.T) {
 	for _, c := range []struct {
-		name, got, want, internal string
+		name, got, want, inner string
 	}{
 		{"PackEmpty", lang.PackEmpty, "empty", extractor.PackEmpty},
 		{"PackManifest", lang.PackManifest, "manifest", extractor.PackManifest},
@@ -38,8 +38,8 @@ func TestPublicConstantValues(t *testing.T) {
 		if c.got != c.want {
 			t.Errorf("%s = %q, want %q: a change to a public constant is a breaking change", c.name, c.got, c.want)
 		}
-		if c.got != c.internal {
-			t.Errorf("%s = %q but the internal constant it must agree with is %q", c.name, c.got, c.internal)
+		if c.got != c.inner {
+			t.Errorf("%s = %q but the internal constant it must agree with is %q", c.name, c.got, c.inner)
 		}
 	}
 	limit := lang.DefaultMaxFileBytes
