@@ -64,11 +64,14 @@ func (h *HelmChartExtractor) ExtractReport(service, relPath string, src []byte) 
 	}
 	var chart helmChart
 	// yaml.v3's decode is quadratic in a mapping's keys (maxDecodeMapKeys): the
-	// mappings it would decode are the root and each dependency.
-	safe := yamlMapDecodeSafe(root)
+	// mappings it would decode are the root, each dependency, and every mapping an
+	// alias or a merge brings in, wherever the anchor is written.
+	safe := yamlMapDecodeSafe(root) && yamlAliasesDecodeSafe(root)
 	if _, deps := k8sYEntry(root, "dependencies"); deps != nil {
-		for _, d := range deps.Content {
-			safe = safe && yamlMapDecodeSafe(d)
+		if list := yamlResolve(deps); list != nil {
+			for _, d := range list.Content {
+				safe = safe && yamlMapDecodeSafe(yamlResolve(d))
+			}
 		}
 	}
 	err := errYAMLDecodeUnsafe
@@ -107,11 +110,11 @@ func (h *HelmChartExtractor) ExtractReport(service, relPath string, src []byte) 
 	depsLine := 0
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		kn := root.Content[i]
-		vn := root.Content[i+1]
+		vn := yamlResolve(root.Content[i+1])
 		if kn.Value == "dependencies" {
 			depsLine = kn.Line
 			// Try to get per-dep lines from the sequence.
-			if vn.Kind == yaml.SequenceNode {
+			if vn != nil && vn.Kind == yaml.SequenceNode {
 				for di, depNode := range vn.Content {
 					if di < len(chart.Dependencies) {
 						dep := chart.Dependencies[di]

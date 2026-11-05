@@ -376,22 +376,16 @@ func k8sLiteral(v string) bool {
 
 func k8sYPath(n *yaml.Node, keys ...string) *yaml.Node {
 	for _, k := range keys {
-		if n == nil || n.Kind != yaml.MappingNode {
+		_, n = yamlLookup(n, k, false, 0)
+		if n == nil {
 			return nil
 		}
-		var next *yaml.Node
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			if n.Content[i].Value == k {
-				next = n.Content[i+1]
-				break
-			}
-		}
-		n = next
 	}
 	return n
 }
 
 func k8sYSeq(n *yaml.Node) []*yaml.Node {
+	n = yamlResolve(n)
 	if n == nil || n.Kind != yaml.SequenceNode {
 		return nil
 	}
@@ -399,6 +393,7 @@ func k8sYSeq(n *yaml.Node) []*yaml.Node {
 }
 
 func k8sYScalar(n *yaml.Node) string {
+	n = yamlResolve(n)
 	if n == nil || n.Kind != yaml.ScalarNode {
 		return ""
 	}
