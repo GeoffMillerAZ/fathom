@@ -15,8 +15,13 @@ import (
 // depth they sit in, so mixed runs are bounded together.
 //
 // Every check below reads one filtered stream, boundTokens, and none reads the raw lexer output. The parser's peeker
-// drops comments, and drops newlines inside any bracket but a brace, so a shape matched over raw adjacent tokens
-// (`[*]`, `%{if`) is missed by `[/**/*]` and by a newline between its tokens. The filter applies those rules once.
+// drops comments, and drops newlines inside any bracket, and inside a brace that opens a `for` expression (but not
+// inside an object constructor's or a block's brace), so a shape matched over raw adjacent tokens (`[*]`, `%{if`)
+// is missed by `[/**/*]` and by a newline between its tokens. The filter applies those rules once.
+//
+// Two shapes cost the parser quadratic time on valid syntax, so no depth guard sees them: a run of consecutive
+// literal tokens in one template (one per heredoc line or escape), which hclsyntax melds pairwise, and a run of `::`
+// in a function name, which it concatenates one segment at a time. Both are bounded here, before the parser runs.
 func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error) {
 	lexed, _ := hclsyntax.LexConfig(src, file, hcl.InitialPos)
 	if len(lexed) > MaxNodes {
@@ -35,6 +40,9 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 	quest := []int{0}
 	var ctlBase []int
 	splats, run, quests, ctl := 0, 0, 0, 0
+	// litRun counts consecutive literal tokens of one template and litWork sums their squares, which is the work
+	// hclsyntax's meld of them costs. nsRun counts the `::` of one function name.
+	litRun, litWork, nsRun := 0, 0, 0
 	endChain := func() {
 		top := len(chains) - 1
 		splats -= chains[top]
@@ -48,10 +56,28 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 	}
 	for i := 0; i < len(tokens); i++ {
 		t := tokens[i]
+		if t.Type == hclsyntax.TokenStringLit || t.Type == hclsyntax.TokenQuotedLit {
+			litRun++
+			litWork += 2*litRun - 1
+			if litWork > maxLiteralWork {
+				return nil, nil, limitErr(file, fmt.Sprintf("a template holds a run of %d literal pieces, past the %d-step melding budget", litRun, maxLiteralWork))
+			}
+		} else {
+			litRun = 0
+		}
+		if t.Type == hclsyntax.TokenDoubleColon {
+			nsRun++
+			if nsRun > MaxDepth {
+				return nil, nil, limitErr(file, fmt.Sprintf("a function name holds more than %d `::` segments", MaxDepth))
+			}
+		} else if t.Type != hclsyntax.TokenIdent {
+			nsRun = 0
+		}
 		switch t.Type {
 		case hclsyntax.TokenOBrack:
-			if i+2 < len(tokens) && tokens[i+1].Type == hclsyntax.TokenStar && tokens[i+2].Type == hclsyntax.TokenCBrack {
-				// A full splat `[*]`, adjacent in the filtered stream: one more level of parser recursion for the rest of the chain.
+			if i+1 < len(tokens) && tokens[i+1].Type == hclsyntax.TokenStar {
+				// A full splat `[*` and the token the parser reads as its close, whatever it is (`]` or, once the
+				// parser is recovering from an error, any token): one more level of parser recursion for the rest of the chain.
 				i += 2
 				run = 0
 				chains[len(chains)-1]++
@@ -142,27 +168,54 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 	return f, diags, nil
 }
 
+// maxLiteralWork bounds, over one file, the sum of the squares of its runs of consecutive literal tokens. One run of
+// 16,384 tokens, or many shorter runs adding up to as much, costs the parser about a tenth of a second.
+const maxLiteralWork = 1 << 28
+
 // boundTokens is the token stream the parser sees. Comments are dropped, except that a `#` or `//` comment absorbs
 // the newline that ends it and the parser turns it back into a newline token where newlines count. A newline is
-// dropped inside any bracket but a brace, as the parser's peeker does for parentheses, brackets and template
-// sequences.
+// dropped inside any bracket, and inside a brace whose first token is `for`, which the parser reads as a for
+// expression and so stops looking at newlines in. Of the tokens after `[*`, the one the parser reads as the splat's
+// close opens or closes nothing.
 func boundTokens(lexed hclsyntax.Tokens) []hclsyntax.Token {
 	out := make([]hclsyntax.Token, 0, len(lexed))
 	var open []hclsyntax.TokenType
-	for _, t := range lexed {
+	// afterBrack is 1 right after a `[` and 2 right after a `[` `*`.
+	afterBrack := 0
+	for i, t := range lexed {
 		if t.Type == hclsyntax.TokenComment {
 			if n := len(t.Bytes); n == 0 || t.Bytes[n-1] != '\n' {
 				continue
 			}
 			t.Type = hclsyntax.TokenNewline
 		}
+		if t.Type == hclsyntax.TokenNewline && len(open) > 0 && open[len(open)-1] != hclsyntax.TokenOBrace {
+			continue
+		}
+		if afterBrack == 2 {
+			afterBrack = 0
+			out = append(out, t)
+			continue
+		}
+		if afterBrack == 1 && t.Type == hclsyntax.TokenStar {
+			afterBrack = 2
+			open = open[:len(open)-1]
+			out = append(out, t)
+			continue
+		}
+		afterBrack = 0
 		switch t.Type {
-		case hclsyntax.TokenNewline:
-			if len(open) > 0 && open[len(open)-1] != hclsyntax.TokenOBrace {
-				continue
+		case hclsyntax.TokenOBrack:
+			open = append(open, t.Type)
+			afterBrack = 1
+		case hclsyntax.TokenOBrace:
+			if opensForExpr(lexed[i+1:]) {
+				// A for expression's brace drops newlines as a bracket does.
+				open = append(open, hclsyntax.TokenOBrack)
+			} else {
+				open = append(open, t.Type)
 			}
-		case hclsyntax.TokenOBrack, hclsyntax.TokenOBrace, hclsyntax.TokenOParen, hclsyntax.TokenTemplateInterp,
-			hclsyntax.TokenTemplateControl:
+		case hclsyntax.TokenOParen, hclsyntax.TokenTemplateInterp, hclsyntax.TokenTemplateControl:
 			open = append(open, t.Type)
 		case hclsyntax.TokenCBrace, hclsyntax.TokenCBrack, hclsyntax.TokenCParen, hclsyntax.TokenTemplateSeqEnd:
 			if len(open) > 0 {
@@ -172,4 +225,19 @@ func boundTokens(lexed hclsyntax.Tokens) []hclsyntax.Token {
 		out = append(out, t)
 	}
 	return out
+}
+
+// opensForExpr reports whether the first token after a brace, skipping newlines and comments, is the identifier
+// `for`, which is where the parser decides the brace opens a for expression.
+func opensForExpr(rest hclsyntax.Tokens) bool {
+	for _, t := range rest {
+		switch t.Type {
+		case hclsyntax.TokenNewline, hclsyntax.TokenComment:
+			continue
+		case hclsyntax.TokenIdent:
+			return string(t.Bytes) == "for"
+		}
+		return false
+	}
+	return false
 }
