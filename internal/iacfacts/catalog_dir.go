@@ -29,72 +29,112 @@ type IaCCatalogInfo struct {
 // replaced atomically. It returns the installed catalog, whose SHA256 the caller prints so the operator can
 // check it against `gh attestation verify`.
 func AddIaCCatalog(dir, src string) (IaCCatalogInfo, error) {
+	res, err := AddIaCCatalogReport(dir, src)
+	return res.Info, err
+}
+
+// IaCAddResult is what AddIaCCatalogReport installed and what it displaced.
+type IaCAddResult struct {
+	Info IaCCatalogInfo
+	// Replaced is true when a catalog of the same provider line was installed and the file took its place.
+	Replaced bool
+	// Dropped are releases the displaced catalog held that the added file does not, in version order. An add
+	// replaces its line, and `iac import` is the verb that merges.
+	Dropped []string
+}
+
+// AddIaCCatalogReport is AddIaCCatalog with what it displaced.
+func AddIaCCatalogReport(dir, src string) (IaCAddResult, error) {
 	if strings.Contains(src, "://") {
-		return IaCCatalogInfo{}, fmt.Errorf("iac add takes a local file path, not %q: fetch it with your own tools (gh release download, curl), then pass the path", src)
+		return IaCAddResult{}, fmt.Errorf("iac add takes a local file path, not %q: fetch it with your own tools (gh release download, curl), then pass the path", src)
 	}
 	st, err := os.Stat(src)
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCAddResult{}, err
 	}
 	if !st.Mode().IsRegular() {
-		return IaCCatalogInfo{}, fmt.Errorf("iac add: %s is not a regular file", src)
+		return IaCAddResult{}, fmt.Errorf("iac add: %s is not a regular file", src)
 	}
 	if st.Size() > MaxCatalogBytes {
-		return IaCCatalogInfo{}, refuse(RefuseCatalogBytes, "%s is %d bytes, over the %d byte bound", src, st.Size(), MaxCatalogBytes)
+		return IaCAddResult{}, refuse(RefuseCatalogBytes, "%s is %d bytes, over the %d byte bound", src, st.Size(), MaxCatalogBytes)
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCAddResult{}, err
 	}
 	tmp, err := os.CreateTemp(dir, ".add-*")
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCAddResult{}, err
 	}
 	defer func() { _ = os.Remove(tmp.Name()) }()
 	in, err := os.Open(src)
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCAddResult{}, err
 	}
 	// Copy at most cap + 1 bytes: a file that grows past the bound while it is read still refuses.
 	n, err := io.Copy(tmp, io.LimitReader(in, MaxCatalogBytes+1))
 	in.Close()
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCAddResult{}, err
 	}
 	if n > MaxCatalogBytes {
-		return IaCCatalogInfo{}, refuse(RefuseCatalogBytes, "%s is over the %d byte bound", src, MaxCatalogBytes)
+		return IaCAddResult{}, refuse(RefuseCatalogBytes, "%s is over the %d byte bound", src, MaxCatalogBytes)
 	}
 	if err := tmp.Close(); err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCAddResult{}, err
 	}
-	return installVerified(dir, tmp.Name())
+	info, prev, err := installVerified(dir, tmp.Name())
+	if err != nil {
+		return IaCAddResult{}, err
+	}
+	res := IaCAddResult{Info: info, Replaced: prev != nil}
+	if prev != nil {
+		held := map[string]bool{}
+		for _, v := range info.Manifest.Versions {
+			held[v] = true
+		}
+		for _, v := range prev.Versions {
+			if !held[v] {
+				res.Dropped = append(res.Dropped, v)
+			}
+		}
+		sortVersionStrings(res.Dropped)
+	}
+	return res, nil
 }
 
-// installVerified verifies the file at path, then moves it into dir under the name its manifest gives.
-func installVerified(dir, path string) (IaCCatalogInfo, error) {
+// installVerified verifies the file at path, then moves it into dir under the name its manifest gives. It returns
+// the manifest of the catalog it displaced, nil when the line had none installed.
+func installVerified(dir, path string) (IaCCatalogInfo, *IaCCatalogManifest, error) {
 	m, err := VerifyIaCCatalog(path)
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCCatalogInfo{}, nil, err
 	}
 	sum, err := fileSHA256(path)
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCCatalogInfo{}, nil, err
 	}
 	name := CatalogFileName(m)
 	if !safeCatalogName(name) {
-		return IaCCatalogInfo{}, fmt.Errorf("iac catalog: the manifest source %q does not make a safe file name", m.Source)
+		return IaCCatalogInfo{}, nil, fmt.Errorf("iac catalog: the manifest source %q does not make a safe file name", m.Source)
 	}
 	final := filepath.Join(dir, name)
 	if err := os.Chmod(path, 0o644); err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCCatalogInfo{}, nil, err
+	}
+	var prev *IaCCatalogManifest
+	if fileExists(final) {
+		if pm, err := ReadIaCCatalogManifest(final); err == nil {
+			prev = &pm
+		}
 	}
 	if err := os.Rename(path, final); err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCCatalogInfo{}, nil, err
 	}
 	st, err := os.Stat(final)
 	if err != nil {
-		return IaCCatalogInfo{}, err
+		return IaCCatalogInfo{}, nil, err
 	}
-	return IaCCatalogInfo{Name: name, Path: final, Bytes: st.Size(), Manifest: m, SHA256: sum}, nil
+	return IaCCatalogInfo{Name: name, Path: final, Bytes: st.Size(), Manifest: m, SHA256: sum}, prev, nil
 }
 
 func safeCatalogName(name string) bool {
@@ -213,7 +253,7 @@ func ImportIaCExportsReport(dir string, inputs []IaCImportInput, opts IaCWriterO
 	if _, err := w.WriteFile(tmp.Name()); err != nil {
 		return res, err
 	}
-	res.Info, err = installVerified(dir, tmp.Name())
+	res.Info, _, err = installVerified(dir, tmp.Name())
 	return res, err
 }
 

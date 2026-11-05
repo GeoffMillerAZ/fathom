@@ -92,17 +92,31 @@ func cmdIaCAdd(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: fathom iac add <catalog file> [--json]   (a local path only: fetch the file with your own tools first)")
 		return 1
 	}
-	info, err := iacfacts.AddIaCCatalog(iacCatalogDir(), lead)
+	res, err := iacfacts.AddIaCCatalogReport(iacCatalogDir(), lead)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	info := res.Info
 	if *jsonOut {
-		return writeIaCJSON(stdout, stderr, iacJSON(info))
+		return writeIaCJSON(stdout, stderr, iacAddJSON{iacCatalogJSON: iacJSON(info), Replaced: res.Replaced, Dropped: res.Dropped})
 	}
 	printIaCInstalled(stdout, "installed", info)
+	if res.Replaced {
+		fmt.Fprintln(stdout, "  replaced     the catalog already installed for this line; `fathom iac import` merges instead")
+	}
+	if len(res.Dropped) > 0 {
+		fmt.Fprintf(stdout, "  dropped      %s (the replaced catalog held them and this file does not)\n", strings.Join(res.Dropped, ", "))
+	}
 	fmt.Fprintln(stdout, "  check the sha256 against the publisher's attestation (gh attestation verify) before trusting the file")
 	return 0
+}
+
+// iacAddJSON is `iac add --json`: the installed catalog and what it displaced.
+type iacAddJSON struct {
+	iacCatalogJSON
+	Replaced bool     `json:"replaced"`
+	Dropped  []string `json:"dropped,omitempty"`
 }
 
 // iacImportUsage is the help text of `fathom iac import`.
@@ -126,6 +140,10 @@ func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 	tool := fs.String("tool", "", "the tool and version that produced the exports, recorded in the manifest")
 	replace := fs.Bool("replace", false, "replace a release the installed catalog holds with different content (default: refuse)")
 	jsonOut := fs.Bool("json", false, "emit the installed catalog as JSON")
+	fs.Usage = func() {
+		fmt.Fprintln(stderr, iacImportUsage)
+		fs.PrintDefaults()
+	}
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

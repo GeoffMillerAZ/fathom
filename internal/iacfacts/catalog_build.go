@@ -25,19 +25,22 @@ import (
 // under its sha256, so a resource that did not change between releases costs one blob. Identity schemas, provider
 // functions and descriptions are not carried. Replacement facts are absent until IF-13, and the manifest says so.
 type IaCCatalogWriter struct {
-	work     string
-	own      bool
-	lim      IaCLimits
-	kind     string
-	licence  string
-	tool     string
-	source   string
-	line     string
-	formats  map[string]string
-	fresh    []string
-	versions map[string]*iacVersionIndex
-	inputs   map[string]string
-	blobs    map[string]int64
+	work    string
+	own     bool
+	lim     IaCLimits
+	kind    string
+	licence string
+	tool    string
+	source  string
+	line    string
+	// replacement is the manifest's replacement value. Empty means absent: a writer fed exports has no replacement
+	// facts, and one that absorbed an installed catalog carries that catalog's claim forward.
+	replacement string
+	formats     map[string]string
+	fresh       []string
+	versions    map[string]*iacVersionIndex
+	inputs      map[string]string
+	blobs       map[string]int64
 }
 
 type iacVersionIndex struct {
@@ -433,6 +436,9 @@ func (w *IaCCatalogWriter) Manifest() (IaCCatalogManifest, error) {
 		Format: CatalogFormat, Kind: w.kind, Source: w.source, Line: w.line, Tool: w.tool,
 		SchemaFormat: w.formats[vs[len(vs)-1].Raw], Inputs: map[string]string{}, Licence: w.licence, Replacement: ReplacementAbsent,
 	}
+	if w.replacement != "" {
+		m.Replacement = w.replacement
+	}
 	for _, v := range vs {
 		m.Versions = append(m.Versions, v.Raw)
 		m.Inputs[v.Raw] = w.inputs[v.Raw]
@@ -692,6 +698,9 @@ func (w *IaCCatalogWriter) absorbCatalog(path string, replace bool) (absorbRepor
 		w.versions[v] = ix
 		w.inputs[v] = m.Inputs[v]
 		w.formats[v] = m.SchemaFormat
+	}
+	if w.replacement == "" {
+		w.replacement = m.Replacement
 	}
 	if w.licence == "" {
 		w.licence = m.Licence

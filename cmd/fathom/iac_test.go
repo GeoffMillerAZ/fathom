@@ -167,3 +167,61 @@ func TestIaCImportUsageExplainsTheExport(t *testing.T) {
 		}
 	}
 }
+
+// N12: `iac import --help` carries the scratch-directory text, not the generic flag list alone.
+func TestIaCImportHelpExplainsTheExport(t *testing.T) {
+	helpSandbox(t)
+	rc, out, errs := runIaC("import", "--help")
+	if rc != 0 {
+		t.Fatalf("rc %d %q %q", rc, out, errs)
+	}
+	for _, want := range []string{"ONE provider", "scratch directory", "tofu init", "not checked against the export", "--replace"} {
+		if !strings.Contains(out+errs, want) {
+			t.Errorf("iac import --help does not say %q:\n%s%s", want, out, errs)
+		}
+	}
+}
+
+// N12: an add over an installed line says it replaced it and which releases it dropped.
+func TestIaCAddSaysWhatItDropped(t *testing.T) {
+	home := helpSandbox(t)
+	a, b := filepath.Join(home, "a.json"), filepath.Join(home, "b.json")
+	iacTestExport(t, a, "name")
+	iacTestExport(t, b, "name", "extra")
+	installed := filepath.Join(home, "iac", "registry.opentofu.org_example_widget.v1.iaccat.zip")
+	keep := func(from string, args ...string) string {
+		t.Helper()
+		if rc, _, errs := runIaC(args...); rc != 0 {
+			t.Fatalf("%v: %q", args, errs)
+		}
+		dst := filepath.Join(home, from)
+		if err := os.WriteFile(dst, iacReadFile(t, installed), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if rc, _, errs := runIaC("remove", "registry.opentofu.org_example_widget.v1"); rc != 0 {
+			t.Fatalf("%q", errs)
+		}
+		return dst
+	}
+	wide := keep("wide.iaccat.zip", "import", "1.0.0="+a, "1.1.0="+b)
+	narrow := keep("narrow.iaccat.zip", "import", "1.1.0="+b)
+	if rc, out, errs := runIaC("add", wide); rc != 0 || strings.Contains(out, "replaced") || strings.Contains(out, "dropped") {
+		t.Fatalf("the first add displaces nothing: rc %d %q %q", rc, out, errs)
+	}
+	rc, out, errs := runIaC("add", narrow)
+	if rc != 0 || !strings.Contains(out, "replaced") || !strings.Contains(out, "dropped      1.0.0") {
+		t.Fatalf("an add that drops a release must say so: rc %d %q %q", rc, out, errs)
+	}
+	if rc, out, _ = runIaC("add", wide, "--json"); rc != 0 || !strings.Contains(out, `"replaced": true`) {
+		t.Fatalf("json: %q", out)
+	}
+}
+
+func iacReadFile(t *testing.T, p string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}

@@ -123,3 +123,75 @@ func TestImportIntoAnUnreadableInstalledCatalogIsAnErrorNotADrop(t *testing.T) {
 		t.Fatal("the corrupt catalog was replaced")
 	}
 }
+
+// N19: a merged import carries the installed catalog's replacement claim forward, and does not write absent over it.
+func TestImportKeepsTheInstalledCatalogsReplacementClaim(t *testing.T) {
+	tmp := t.TempDir()
+	e100 := writeExport(t, tmp, "a.json", map[string]any{"widget_thing": fxResource("a")})
+	e110 := writeExport(t, tmp, "b.json", map[string]any{"widget_thing": fxResource("a", "b")})
+	dir := filepath.Join(tmp, "iac")
+	// A published catalog that carries replacement facts: the writer stands in for the later source scan.
+	w, err := NewIaCCatalogWriter(IaCWriterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	f, _ := os.Open(e100)
+	if _, err := w.AddExport("1.0.0", f); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	w.replacement = "present"
+	pub := filepath.Join(tmp, "published.iaccat.zip")
+	if _, err := w.WriteFile(pub); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AddIaCCatalog(dir, pub); err != nil {
+		t.Fatal(err)
+	}
+	res, err := ImportIaCExportsReport(dir, []IaCImportInput{{"1.1.0", e110}}, IaCWriterOptions{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Merged || res.Info.Manifest.Replacement != "present" {
+		t.Fatalf("the merge must keep the published claim, got %q: %+v", res.Info.Manifest.Replacement, res)
+	}
+	// An import into a line that holds no claim still says absent.
+	fresh, err := ImportIaCExportsReport(filepath.Join(tmp, "iac2"), []IaCImportInput{{"1.0.0", e100}}, IaCWriterOptions{}, false)
+	if err != nil || fresh.Info.Manifest.Replacement != ReplacementAbsent {
+		t.Fatalf("%q %v", fresh.Info.Manifest.Replacement, err)
+	}
+}
+
+// N12: an add replaces its line, and says which releases that dropped.
+func TestAddReportsWhatItReplacedAndDropped(t *testing.T) {
+	tmp := t.TempDir()
+	e100 := writeExport(t, tmp, "a.json", map[string]any{"widget_thing": fxResource("a")})
+	e110 := writeExport(t, tmp, "b.json", map[string]any{"widget_thing": fxResource("a", "b")})
+	e120 := writeExport(t, tmp, "c.json", map[string]any{"widget_thing": fxResource("a", "b", "c")})
+	build := func(name string, ins ...IaCImportInput) string {
+		res, err := ImportIaCExportsReport(filepath.Join(tmp, name), ins, IaCWriterOptions{}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Info.Path
+	}
+	wide := build("wide", IaCImportInput{"1.0.0", e100}, IaCImportInput{"1.1.0", e110}, IaCImportInput{"1.2.0", e120})
+	narrow := build("narrow", IaCImportInput{"1.2.0", e120})
+	dir := filepath.Join(tmp, "iac")
+	first, err := AddIaCCatalogReport(dir, wide)
+	if err != nil || first.Replaced || len(first.Dropped) != 0 {
+		t.Fatalf("the first add displaces nothing: %+v %v", first, err)
+	}
+	second, err := AddIaCCatalogReport(dir, narrow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Replaced || strings.Join(second.Dropped, ",") != "1.0.0,1.1.0" || strings.Join(second.Info.Manifest.Versions, ",") != "1.2.0" {
+		t.Fatalf("an add over a line must name what it dropped: %+v", second)
+	}
+	third, err := AddIaCCatalogReport(dir, wide)
+	if err != nil || !third.Replaced || len(third.Dropped) != 0 {
+		t.Fatalf("a wider add drops nothing: %+v %v", third, err)
+	}
+}
