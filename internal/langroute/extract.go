@@ -8,6 +8,7 @@ package langroute
 import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/langclass"
 )
 
 // Extraction is the result of extracting one file outside a store.
@@ -25,6 +26,9 @@ type Extraction struct {
 	// Doc is the document engine's full result, set only by ExtractFileDoc for
 	// an extractor that has one.
 	Doc *extractor.DocResult
+	// PackDialect is the id of the pack dialect that read the file, "" for a
+	// built-in one.
+	PackDialect string
 }
 
 // ExtractFile runs ingest's gates (binary, size cap, the dialect gate) and
@@ -71,6 +75,10 @@ func (r *Router) extractFile(with extractor.Extractor, serviceID string, index f
 	case !ok:
 		return Extraction{Skipped: "no-extractor"}, nil
 	}
+	packDialect := PackDialectOf(tk)
+	if packDialect != "" && langclass.IsGeneratedOrMinified(relPath, content) {
+		return Extraction{Skipped: "generated"}, nil // the dialect gate's rule, for a pack dialect's file
+	}
 	tr, counts := e.(interface{ TypeRefs() int64 })
 	var before int64
 	if counts {
@@ -86,7 +94,7 @@ func (r *Router) extractFile(with extractor.Extractor, serviceID string, index f
 	} else {
 		nodes, err = e.Extract(serviceID, relPath, content)
 	}
-	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc}
+	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc, PackDialect: packDialect}
 	if counts {
 		out.TypeRefs = int(tr.TypeRefs() - before)
 	}

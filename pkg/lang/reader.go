@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/langclass"
+	"github.com/geoffmilleraz/fathom/internal/langlink"
 	"github.com/geoffmilleraz/fathom/internal/langroute"
 )
 
@@ -39,7 +41,10 @@ type Limits struct {
 type Option func(*config) error
 
 type config struct {
-	maxFile int
+	maxFile  int
+	packFS   fs.FS
+	natives  []nativeSpec
+	families []string
 }
 
 // WithLimits lowers the Reader's limits. A limit above the product's, or a
@@ -68,6 +73,8 @@ type Reader struct {
 	maxFile  int
 	levels   map[string]levelRow
 	dialects []DialectInfo
+	pack     *extractor.Pack      // the pack layer's dialects; nil for none
+	natives  map[string]Extractor // Go extractors, by dialect id
 }
 
 // New builds a Reader. It returns the error a bad option or a bad built-in
@@ -92,15 +99,74 @@ func New(opts ...Option) (r *Reader, err error) {
 	if err != nil {
 		return nil, err
 	}
-	dialects, err := dialectInfos(levels)
+	linked := map[string]bool{}
+	var routerOpts []langroute.Option
+	for _, name := range cfg.families {
+		if linked[name] {
+			continue
+		}
+		fam, ok := langlink.Lookup(name)
+		if !ok {
+			return nil, fmt.Errorf("lang: family %q is not linked: import its package (for CUE, github.com/geoffmilleraz/fathom/pkg/lang/cue)", name)
+		}
+		linked[name] = true
+		routerOpts = append(routerOpts, fam.Options()...)
+	}
+	dialects, err := dialectInfos(levels, linked)
 	if err != nil {
 		return nil, err
 	}
-	router, err := langroute.NewRouter()
+	router, err := langroute.NewRouter(routerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("lang: %w", err)
 	}
-	return &Reader{router: router, maxFile: cfg.maxFile, levels: levels, dialects: dialects}, nil
+	rd := &Reader{router: router, maxFile: cfg.maxFile, levels: levels, dialects: dialects}
+	if cfg.packFS != nil || len(cfg.natives) > 0 {
+		if err := rd.attachPack(cfg); err != nil {
+			router.Close()
+			return nil, err
+		}
+	}
+	return rd, nil
+}
+
+// attachPack validates the pack and the Go extractors together, compiles the
+// pack's queries and attaches the layer to the Reader's router. It changes
+// nothing on the Reader unless every dialect is accepted.
+func (r *Reader) attachPack(cfg config) error {
+	pack, err := extractor.NewPack(cfg.packFS)
+	if err != nil {
+		return publicPackError(err)
+	}
+	natives := map[string]Extractor{}
+	for _, n := range cfg.natives {
+		if !extractor.ValidNativeID(n.m.ID) {
+			return &PackError{Reason: PackManifest, Dialect: n.m.ID, Detail: fmt.Sprintf("id %q is not [a-z0-9-]+", n.m.ID)}
+		}
+		if err := pack.AddNative(n.dialect()); err != nil {
+			return publicPackError(err)
+		}
+		natives[n.m.ID] = n.e
+	}
+	built, err := pack.Build(context.Background())
+	if err != nil {
+		return publicPackError(err)
+	}
+	for id := range natives {
+		built[id] = nativeStub{}
+	}
+	if err := r.router.AttachPack(pack, built); err != nil {
+		for _, e := range built {
+			if ts, ok := e.(*extractor.TSExtractor); ok {
+				ts.Close()
+			}
+		}
+		return publicPackError(err)
+	}
+	r.pack, r.natives = pack, natives
+	r.dialects = append(r.dialects, packDialectInfos(r.levels, pack)...)
+	sort.Slice(r.dialects, func(i, j int) bool { return r.dialects[i].ID < r.dialects[j].ID })
+	return nil
 }
 
 // Close releases the Reader's pooled grammar modules. It is idempotent, and
@@ -170,15 +236,23 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		res.addSiblingNote(path, f.Siblings)
 		return res, nil
 	}
-	res.Dialect = langroute.DialectOf(ex.Extractor, ex.ToolKind, path, ex.Nodes)
-	res.Level, _ = levelOf(r.levels, res.Dialect)
-	if res.Dialect == "" {
+	if ex.PackDialect != "" {
+		if _, native := r.natives[ex.PackDialect]; native {
+			return r.extractNative(ctx, ex.PackDialect, File{Path: path, Src: f.Src, Siblings: f.Siblings}, res)
+		}
+		res.Dialect = ex.PackDialect
 		res.Level = LevelUnmeasured
+	} else {
+		res.Dialect = langroute.DialectOf(ex.Extractor, ex.ToolKind, path, ex.Nodes)
+		res.Level, _ = levelOf(r.levels, res.Dialect)
+		if res.Dialect == "" {
+			res.Level = LevelUnmeasured
+		}
 	}
 	if err != nil {
 		res.Notes = append(res.Notes, "extractor error: "+err.Error())
 	}
-	res.fill(ex)
+	res.fill(ex, r.canonicalKind)
 	res.addSiblingNote(path, f.Siblings)
 	res.sort()
 	return res, nil
@@ -193,6 +267,15 @@ func newResult(path string) Result {
 		Facts:      []Fact{},
 		Notes:      []string{},
 	}
+}
+
+// canonicalKind is the closed-vocabulary kind of a source kind, over the
+// built-in dialects and the pack's.
+func (r *Reader) canonicalKind(sk string) (string, bool) {
+	if r.pack != nil {
+		return r.pack.CanonicalKind(sk)
+	}
+	return extractor.CanonicalKind(sk)
 }
 
 // skipReason maps the router's reason onto the closed set. A file the router
@@ -224,14 +307,14 @@ func symbolKey(pkg, name string) string {
 }
 
 // fill converts the router's extraction into the public types.
-func (res *Result) fill(ex langroute.Extraction) {
+func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (string, bool)) {
 	keyOf := map[string]string{} // an entity's name -> its symbol key
 	for _, n := range ex.Nodes {
 		key := symbolKey(n.Package, n.Name)
 		if _, seen := keyOf[n.Name]; !seen {
 			keyOf[n.Name] = key
 		}
-		canonical, _ := extractor.CanonicalKind(string(n.Kind))
+		canonical, _ := canonicalKind(string(n.Kind))
 		res.Symbols = append(res.Symbols, Symbol{
 			Key: key, Name: n.Name, Package: n.Package, Kind: string(n.Kind), Canonical: canonical,
 			Line: n.Line, EndLine: n.EndLine, Signature: n.Signature, Tier: string(n.Tier),
@@ -368,13 +451,24 @@ func (res *Result) addSiblingNote(path string, siblings []string) {
 }
 
 // dialectInfos lists the manifest dialects and the native Go extractor.
-func dialectInfos(levels map[string]levelRow) ([]DialectInfo, error) {
+func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]DialectInfo, error) {
 	ds, err := extractor.LoadDialects()
 	if err != nil {
 		return nil, fmt.Errorf("lang: %w", err)
 	}
+	unlinked := map[string]bool{}
+	for family, ids := range langlink.FamilyDialects {
+		if !linked[family] {
+			for _, id := range ids {
+				unlinked[id] = true
+			}
+		}
+	}
 	out := make([]DialectInfo, 0, len(ds)+1)
 	for _, d := range ds {
+		if unlinked[d.ID] {
+			continue // a family this Reader did not link reads nothing: Dialects lists what it can read
+		}
 		set := map[string]bool{}
 		for _, e := range d.Match.Extensions {
 			set[strings.ToLower(e)] = true

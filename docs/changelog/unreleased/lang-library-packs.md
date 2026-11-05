@@ -1,0 +1,3 @@
+### Added
+
+- `lang.WithDialects(fsys)` adds a dialect pack to a `Reader`: tags dialects over a grammar the library embeds, and doc dialects, as `dialects/<id>/dialect.json` with their queries and doc specs. A pack is merged with the built-in dialects, held to the same manifest and cross-dialect rules, compiled at `New` and refused whole as a `*lang.PackError` with a reason (`empty`, `manifest`, `conflict`, `engine`, `injections`, `grammar`, `query`, `container`, `claims`, `route`). A pack dialect is tried after the specific built-in dialects and before an extension's generic reader, in id order, and cannot take a file a built-in dialect reads. `fathom-lang extract|dialects -pack DIR` reaches the same packs from tools not written in Go (ADR-092, LL-13).

@@ -132,3 +132,110 @@ func TestUsageAndErrors(t *testing.T) {
 		}
 	}
 }
+
+// samplePack is the pack the library's conformance test passes: a doc dialect
+// and a tags dialect over the thrift grammar.
+const samplePack = "../../pkg/lang/langtest/testdata/samplepack"
+
+func TestPackFlagReadsASamplePackEndToEnd(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "ui/clock.widget.json", `{"name":"Clock","kind":"timer","uses":["Battery"],"imports":["parts/battery.widget.json"]}`)
+	write(t, root, "idl/shop.thr", "struct Order {\n  1: i32 id\n}\n\nservice Shop {\n  void ping()\n}\n")
+	write(t, root, "idl/shop.thrift", "struct Order {\n  1: i32 id\n}\n")
+	var out, errw bytes.Buffer
+	args := []string{"extract", "-root", root, "-pack", samplePack, "ui/clock.widget.json", "idl/shop.thr", "idl/shop.thrift"}
+	if code := run(context.Background(), args, strings.NewReader(""), &out, &errw); code != 0 {
+		t.Fatalf("exit %d: %s", code, errw.String())
+	}
+	var got struct {
+		Files []struct {
+			Path   string `json:"path"`
+			Result struct {
+				Dialect string `json:"dialect"`
+				Level   string `json:"level"`
+				Skipped string `json:"skipped"`
+				Symbols []struct {
+					Name      string `json:"name"`
+					Kind      string `json:"kind"`
+					Canonical string `json:"canonical"`
+				} `json:"symbols"`
+				References []struct {
+					To   string `json:"to"`
+					Edge string `json:"edge"`
+				} `json:"references"`
+			} `json:"result"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("%v\n%s", err, out.String())
+	}
+	if len(got.Files) != 3 {
+		t.Fatalf("%d files: %s", len(got.Files), out.String())
+	}
+	w, s, b := got.Files[0].Result, got.Files[1].Result, got.Files[2].Result
+	if w.Dialect != "widget-spec" || w.Level != "unmeasured" || len(w.Symbols) != 1 || w.Symbols[0].Name != "Clock" || w.Symbols[0].Canonical != "resource" {
+		t.Errorf("widget: %+v", w)
+	}
+	edges := map[string]string{}
+	for _, r := range w.References {
+		edges[r.Edge] = r.To
+	}
+	if edges["imports"] != "ui/parts/battery.widget.json" || edges["call"] != "Battery" {
+		t.Errorf("widget references: %+v", w.References)
+	}
+	if s.Dialect != "thrift-lite" || len(s.Symbols) != 3 || s.Symbols[0].Kind != "ThriftLiteStruct" {
+		t.Errorf("thrift-lite: %+v", s)
+	}
+	if b.Dialect != "thrift" {
+		t.Errorf("a built-in file changed hands: %q", b.Dialect)
+	}
+
+	// The same files without the pack: the pack's files read as they did.
+	var plain, perr bytes.Buffer
+	if code := run(context.Background(), []string{"extract", "-root", root, "ui/clock.widget.json", "idl/shop.thr"}, strings.NewReader(""), &plain, &perr); code != 0 {
+		t.Fatalf("exit %d: %s", code, perr.String())
+	}
+	if strings.Contains(plain.String(), `"widget-spec"`) || strings.Contains(plain.String(), `"thrift-lite"`) {
+		t.Error("the pack's dialects read files without -pack")
+	}
+
+	out.Reset()
+	if code := run(context.Background(), []string{"dialects", "-pack", samplePack}, strings.NewReader(""), &out, &errw); code != 0 {
+		t.Fatalf("dialects exit %d: %s", code, errw.String())
+	}
+	for _, id := range []string{`"widget-spec"`, `"thrift-lite"`} {
+		if !strings.Contains(out.String(), id) {
+			t.Errorf("dialects -pack lacks %s", id)
+		}
+	}
+}
+
+func TestPackFlagRefusesABadPackWhole(t *testing.T) {
+	// Copy the sample pack and break one query: the CLI exits 1 with the reason
+	// and prints no result for any file.
+	dir := t.TempDir()
+	for _, f := range []string{
+		"dialects/widget-spec/dialect.json", "dialects/widget-spec/doc.json",
+		"dialects/thrift-lite/dialect.json",
+	} {
+		b, err := os.ReadFile(filepath.Join(samplePack, filepath.FromSlash(f)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		write(t, dir, f, string(b))
+	}
+	write(t, dir, "dialects/thrift-lite/tags.scm", "(no_such_node) @name @definition.struct\n")
+	write(t, dir, "x.widget.json", `{"name":"X"}`)
+	var out, errw bytes.Buffer
+	code := run(context.Background(), []string{"extract", "-root", dir, "-pack", dir, "x.widget.json"}, strings.NewReader(""), &out, &errw)
+	if code != 1 || out.Len() != 0 {
+		t.Fatalf("exit %d, stdout %q", code, out.String())
+	}
+	if !strings.Contains(errw.String(), "pack refused (query)") || !strings.Contains(errw.String(), "thrift-lite") {
+		t.Errorf("stderr: %s", errw.String())
+	}
+	errw.Reset()
+	if code := run(context.Background(), []string{"dialects", "-pack", filepath.Join(dir, "nowhere")}, strings.NewReader(""), &out, &errw); code != 1 || !strings.Contains(errw.String(), "pack refused (empty)") {
+		t.Errorf("missing pack dir: exit %d, stderr %s", code, errw.String())
+	}
+}

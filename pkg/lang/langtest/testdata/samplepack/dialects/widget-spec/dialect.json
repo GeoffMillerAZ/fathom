@@ -1,0 +1,25 @@
+{
+  "id": "widget-spec",
+  "display": "Widget specs (*.widget.json)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "widget-spec",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": ["**/*.widget.json"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "widget": { "source_kind": "WidgetDef", "canonical": "resource" }
+  },
+  "required_kinds": ["widget"],
+  "oracle_kinds": {},
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "widget-spec"
+}

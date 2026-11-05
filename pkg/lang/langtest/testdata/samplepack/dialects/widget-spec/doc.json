@@ -1,0 +1,13 @@
+{
+  "decode": "json",
+  "detect": { "globs": ["**/*.widget.json"] },
+  "entities": [
+    { "select": "$", "where": { "is_map": true, "has_key": ["name"] }, "kind": "resource", "source_kind": "WidgetDef", "name": ".name", "signature": ".kind" }
+  ],
+  "references": [
+    { "from": "resource", "select": "$.uses[*]", "value": "$", "to_kind": "resource", "edge": "uses" }
+  ],
+  "cross_file": [
+    { "select": "$.imports[*]", "value": "$", "resolve": "repo-path", "edge": "imports" }
+  ]
+}

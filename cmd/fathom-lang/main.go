@@ -2,8 +2,8 @@
 // as JSON, for tools not written in Go (ADR-092). It uses the standard flag
 // package only, so the binary's closure is the library's and nothing else.
 //
-//	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] PATH...
-//	fathom-lang dialects
+//	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR] PATH...
+//	fathom-lang dialects [-pack DIR]
 //
 // The JSON is compatibility surface: fields are added, never renamed.
 package main
@@ -25,12 +25,14 @@ import (
 )
 
 const usage = `usage:
-  fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] PATH...
-  fathom-lang dialects
+  fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR] PATH...
+  fathom-lang dialects [-pack DIR]
 
 extract reads each PATH (relative to -root, default the working directory)
 and prints {"files":[{"path":...,"result":...}]} as JSON.
-dialects prints every dialect with its measured level as JSON.`
+dialects prints every dialect with its measured level as JSON.
+-pack DIR adds the dialect pack in DIR (dialects/<id>/dialect.json and the
+queries and doc specs it names). A pack that breaks a rule is refused whole.`
 
 // maxWalk bounds -walk: the most files one sibling listing may hold.
 const maxWalk = 200000
@@ -80,6 +82,7 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 	siblings := fs.String("siblings", "", "file listing sibling paths, one per line ('-' reads standard input)")
 	walk := fs.Bool("walk", false, "use every file under -root as the sibling list")
 	cache := fs.String("cache", "", "directory for wazero's compilation cache (off by default)")
+	pack := fs.String("pack", "", "directory of a dialect pack to add")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -106,7 +109,7 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 		}
 		sibs = list
 	}
-	r, err := lang.New()
+	r, err := lang.New(packOptions(*pack)...)
 	if err != nil {
 		return err
 	}
@@ -132,10 +135,11 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 // cmdDialects prints every dialect with its measured level.
 func cmdDialects(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("dialects", flag.ContinueOnError)
+	pack := fs.String("pack", "", "directory of a dialect pack to add")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	r, err := lang.New()
+	r, err := lang.New(packOptions(*pack)...)
 	if err != nil {
 		return err
 	}
@@ -143,6 +147,14 @@ func cmdDialects(args []string, out io.Writer) error {
 	return writeJSON(out, struct {
 		Dialects []lang.DialectInfo `json:"dialects"`
 	}{r.Dialects()})
+}
+
+// packOptions is the option that adds the pack in dir, none for "".
+func packOptions(dir string) []lang.Option {
+	if dir == "" {
+		return nil
+	}
+	return []lang.Option{lang.WithDialects(os.DirFS(dir))}
 }
 
 func writeJSON(w io.Writer, v any) error {

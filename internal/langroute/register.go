@@ -875,6 +875,9 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 					if ae, ak, aok := AzurePipelineDispatch(relPath, content, idx); aok {
 						return ae, ak, true, false
 					}
+					if pe, pk, pok := r.packDispatch(relPath, content); pok {
+						return pe, pk, true, false // a pack dialect claims a YAML file no built-in classified
+					}
 					return nil, kind, false, true
 				}
 				e, ok = r.toolExts[kind]
@@ -917,6 +920,12 @@ func (r *Router) ResolveExtractor(relPath string, content []byte, idx *SiblingIn
 		}
 		if !ok {
 			e, toolKind, ok = JSONSchemaDispatch(relPath, content) // a JSON Schema document, by its $schema or *.schema.json (LB-Q-json-schema)
+		}
+		if !ok {
+			// The pack layer: after every specific built-in claim above, before the
+			// extension's generic fallback, so a pack dialect can read a .json or .toml
+			// file by basename, glob or sniff (design §6).
+			e, toolKind, ok = r.packDispatch(relPath, content)
 		}
 		if !ok {
 			e, ok = r.exts[ext]

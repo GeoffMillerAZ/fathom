@@ -199,35 +199,9 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 		if d.Engine != "tags" && d.Engine != "tags+doc" {
 			continue
 		}
-		rules, err := compileDialectRules(d)
+		spec, err := tagsSpec(dialectFS, d)
 		if err != nil {
 			return nil, nil, err
-		}
-		spec := &tsLangSpec{
-			name:           d.ID,
-			variantForExt:  map[string]tsVariant{},
-			defaultVariant: tsVariant{blob: d.Grammar.Blob, entryPoint: d.Grammar.EntryPoint, rules: rules},
-		}
-		for _, e := range d.Match.Extensions {
-			spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
-		}
-		for _, v := range d.Variants {
-			vrules, err := variantRules(d, v, rules)
-			if err != nil {
-				return nil, nil, err
-			}
-			vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: vrules}
-			for _, e := range v.Extensions {
-				spec.variantForExt[strings.ToLower(e)] = vv
-			}
-			if v.Sniff != "" {
-				re, err := regexp.Compile("(?m)" + v.Sniff)
-				if err != nil {
-					return nil, nil, fmt.Errorf("dialect %s: variant %s: sniff: %w", d.ID, v.ID, err)
-				}
-				vv.id = v.ID
-				spec.sniffVariants = append(spec.sniffVariants, tsSniffVariant{re: re, variant: vv})
-			}
 		}
 		all[d.ID] = spec
 		single[d.ID] = spec
@@ -257,16 +231,55 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 	return all, single, nil
 }
 
+// tagsSpec is the spec of one tags-engine dialect, its queries read from fsys.
+func tagsSpec(fsys fs.FS, d Dialect) (*tsLangSpec, error) {
+	rules, err := compileDialectRulesFS(fsys, d)
+	if err != nil {
+		return nil, err
+	}
+	spec := &tsLangSpec{
+		name:           d.ID,
+		variantForExt:  map[string]tsVariant{},
+		defaultVariant: tsVariant{blob: d.Grammar.Blob, entryPoint: d.Grammar.EntryPoint, rules: rules},
+	}
+	for _, e := range d.Match.Extensions {
+		spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
+	}
+	for _, v := range d.Variants {
+		vrules, err := variantRulesFS(fsys, d, v, rules)
+		if err != nil {
+			return nil, err
+		}
+		vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: vrules}
+		for _, e := range v.Extensions {
+			spec.variantForExt[strings.ToLower(e)] = vv
+		}
+		if v.Sniff != "" {
+			re, err := regexp.Compile("(?m)" + v.Sniff)
+			if err != nil {
+				return nil, fmt.Errorf("dialect %s: variant %s: sniff: %w", d.ID, v.ID, err)
+			}
+			vv.id = v.ID
+			spec.sniffVariants = append(spec.sniffVariants, tsSniffVariant{re: re, variant: vv})
+		}
+	}
+	return spec, nil
+}
+
 // variantRules is the rules a variant parses with: its dialect's, or, when
 // the variant names a tags query of its own (O732, LB-F385), a copy whose
 // query is that file's patterns before the dialect's — so a node both name
 // keeps the variant's definition (oneDefPerNode) — compiled on the variant's
 // own Parser (leaseFor keys the pool by variant).
 func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
+	return variantRulesFS(dialectFS, d, v, rules)
+}
+
+func variantRulesFS(fsys fs.FS, d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
 	if v.Queries == nil || v.Queries.Tags == "" {
 		return rules, nil
 	}
-	b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, v.Queries.Tags))
+	b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, v.Queries.Tags))
 	if err != nil {
 		return nil, fmt.Errorf("dialect %s: variant %s: %w", d.ID, v.ID, err)
 	}
@@ -286,7 +299,11 @@ func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRul
 }
 
 func compileDialectRules(d Dialect) (*tsDialectRules, error) {
-	query, err := dialectQuerySource(dialectFS, d)
+	return compileDialectRulesFS(dialectFS, d)
+}
+
+func compileDialectRulesFS(fsys fs.FS, d Dialect) (*tsDialectRules, error) {
+	query, err := dialectQuerySource(fsys, d)
 	if err != nil {
 		return nil, err
 	}
@@ -324,20 +341,20 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 		r.preprocess = pre
 	}
 	if d.Queries.Injections != "" {
-		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))
+		b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, d.Queries.Injections))
 		if err != nil {
 			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
 		}
 		r.injectionsQuery = string(b)
 	}
 	if d.Queries.References != "" {
-		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.References))
+		b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, d.Queries.References))
 		if err != nil {
 			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
 		}
 		r.refsQuery = string(b)
 	}
-	if err := r.loadLocalsQuery(dialectFS, d); err != nil {
+	if err := r.loadLocalsQuery(fsys, d); err != nil {
 		return nil, err
 	}
 	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
