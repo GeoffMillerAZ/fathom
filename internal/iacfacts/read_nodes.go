@@ -8,6 +8,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
@@ -44,6 +45,9 @@ type node struct {
 	// against a mapping of 40,000 keys looked each up by scanning them all.
 	exact  map[string]*node
 	folded map[string][]*node
+	// merge memoizes hasMerge: 0 not asked, 1 no merge key, 2 a merge key. A mapping of 85,000 keys asked about
+	// once per interpolation was scanned 180,000 times.
+	merge int8
 }
 
 // indexedPairs is the mapping size above which get and getFold use an index and not a scan.
@@ -92,26 +96,41 @@ func (n *node) foldAll(key string) []*node {
 	if n == nil || n.kind != nodeMap {
 		return nil
 	}
-	want := strings.ToLower(key)
 	if len(n.pairs) > indexedPairs {
 		if n.folded == nil {
 			n.folded = make(map[string][]*node, len(n.pairs))
 			for _, p := range n.pairs {
 				if p.key.kind == nodeScalar {
-					k := strings.ToLower(p.key.value)
+					k := foldKey(p.key.value)
 					n.folded[k] = append(n.folded[k], p.val)
 				}
 			}
 		}
-		return n.folded[want]
+		return n.folded[foldKey(key)]
 	}
 	var out []*node
 	for _, p := range n.pairs {
-		if p.key.kind == nodeScalar && strings.ToLower(p.key.value) == want {
+		if p.key.kind == nodeScalar && strings.EqualFold(p.key.value, key) {
 			out = append(out, p.val)
 		}
 	}
 	return out
+}
+
+// foldKey is the key two strings share exactly when strings.EqualFold says they are equal: every rune becomes the
+// smallest of its simple-fold orbit. pulumi-yaml matches record fields with EqualFold (ast/template.go parseRecord),
+// and strings.ToLower is not the same relation: it leaves U+017F (long s) alone, where EqualFold folds it to s, and
+// maps U+0130 to i, where EqualFold does not.
+func foldKey(s string) string { return strings.Map(foldRune, s) }
+
+func foldRune(r rune) rune {
+	m := r
+	for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+		if f < m {
+			m = f
+		}
+	}
+	return m
 }
 
 // getFold returns the value of the last key that equals key apart from case, or nil.
@@ -129,12 +148,16 @@ func (n *node) hasMerge() bool {
 	if n == nil || n.kind != nodeMap {
 		return false
 	}
-	for _, p := range n.pairs {
-		if p.key.kind == nodeScalar && p.key.value == "<<" {
-			return true
+	if n.merge == 0 {
+		n.merge = 1
+		for _, p := range n.pairs {
+			if p.key.kind == nodeScalar && p.key.value == "<<" {
+				n.merge = 2
+				break
+			}
 		}
 	}
-	return false
+	return n.merge == 2
 }
 
 // unreadableSection reports whether n stands where a mapping of resources should and is something the reader cannot

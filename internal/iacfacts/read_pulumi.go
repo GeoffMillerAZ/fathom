@@ -45,8 +45,9 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 	}
 	pr := &pulumiReader{cfg: newConfig(opts), resolving: map[string]bool{}, inners: map[string]readRes{},
 		resNames: nameMap(res), vars: nameMap(root.getFold("variables")),
-		// pulumi-yaml reads both spellings of the configuration section.
-		cfgs: nameMap(root.getFold("configuration"), root.getFold("config"))}
+		// pulumi-yaml reads both spellings of the configuration section, and a `config` entry replaces a
+		// `configuration` entry of the same name (ast.TemplateDecl.GetConfig), so config comes first.
+		cfgs: nameMap(root.getFold("config"), root.getFold("configuration"))}
 	w := &treeWalker{emitter: emitter{cfg: pr.cfg}, file: filePath, classify: pr.classifyNode}
 	pr.em, pr.file = &w.emitter, filePath
 	for _, p := range res.pairs {
@@ -310,10 +311,13 @@ func (p *pulumiReader) structural(n *node, depth int) readRes {
 		out := foldRes(parts)
 		if out.hasV {
 			m := make(map[string]any, len(parts))
+			keyBytes := 0
 			for i, pr := range n.pairs {
 				m[pr.key.value] = parts[i].val
+				keyBytes += len(pr.key.value) + 1
 			}
 			out.val = m
+			out = out.withBytes(keyBytes)
 		}
 		return out
 	}
