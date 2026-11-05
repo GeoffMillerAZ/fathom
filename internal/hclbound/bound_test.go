@@ -280,11 +280,17 @@ func TestInvalidDirectiveWithAnOpenBracketDoesNotHideLiterals(t *testing.T) {
 			refusedBy(t, "x = <<A\n%{f"+open+"}\n"+strings.Repeat("a\n", 100_000)+"A\n", readBounds, BoundTemplate)
 			refusedBy(t, "x = \"%{f"+open+"}"+strings.Repeat("$${", 200_000)+"\"\n", readBounds, BoundTemplate)
 		}
+		// N13: inside a dropped directive a `[*` is two plain tokens, so it hides no close.
+		for _, splat := range []string{"%{f [*}", "%{[*}", "%{f a[*}", "%{f [\n*}", "%{f [/**/*}"} {
+			refusedBy(t, "x = <<A\n"+splat+"\n"+strings.Repeat("a\n", 100_000)+"A\n", readBounds, BoundTemplate)
+		}
+		refusedBy(t, "x = \"%{f[*}"+strings.Repeat("$${", 200_000)+"\"\n", readBounds, BoundTemplate)
 		// A nested opener claims its own close, so the directive ends at the next one.
 		refusedBy(t, "x = <<A\n%{f ${(a} b}\n"+strings.Repeat("a\n", 100_000)+"A\n", readBounds, BoundTemplate)
 		// The shapes that read stay read.
 		reads(t, "a short template after the directive", "x = <<A\n%{f(}\n"+strings.Repeat("a\n", 1_000)+"A\n", readBounds)
 		reads(t, "a bracket closed inside the directive", "x = <<A\n%{f(a)}\n"+strings.Repeat("a\n", 1_000)+"A\n", readBounds)
 		reads(t, "code after the template", "x = <<A\n%{f(}\na\nA\ny = [1, 2]\nz = {a = 1}\n", readBounds)
+		reads(t, "a splat in a valid directive", "x = <<A\n%{if a[*]}b%{endif}\n"+strings.Repeat("a\n", 1_000)+"A\n", readBounds)
 	})
 }

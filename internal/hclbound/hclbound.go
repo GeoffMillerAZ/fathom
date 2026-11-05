@@ -192,7 +192,10 @@ func Check(src []byte, file string, b Bounds) *Refusal {
 		}
 		switch t.Type {
 		case hclsyntax.TokenOBrack:
-			if i+1 < len(tokens) && tokens[i+1].Type == hclsyntax.TokenStar {
+			if i+1 < len(tokens) && tokens[i+1].Type == hclsyntax.TokenStar && (len(tmpls) == 0 || tmpls[len(tmpls)-1].bad == 0) {
+				// Not in a dropped directive: there the parser is recovering, reads `[*` as two plain tokens and stops
+				// at the first `}` no nested opener claims, which the skip below would jump over (`%{f [*}`).
+				//
 				// A full splat `[*` and the token the parser reads as its close, whatever it is (`]` or, once the
 				// parser is recovering from an error, any token): one more level of parser recursion for the rest of the chain.
 				// The close opens or closes no bracket, but a quote or a heredoc it is still opens a template in the

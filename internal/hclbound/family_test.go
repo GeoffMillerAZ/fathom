@@ -59,7 +59,9 @@ func familyShapes(full bool) []shape {
 		// IAC34 and IAC35: a template the `[*` skips the opener of, and a directive the parser drops.
 		"[*<<B\nB\n]", "[*\"\"]", "%{}a\n", "%{foo}$${",
 		// a dropped directive that leaves a bracket open.
-		"%{f(}a\n", "%{f[}a\n", "%{f(${a}}a\n")
+		"%{f(}a\n", "%{f[}a\n", "%{f(${a}}a\n",
+		// N13: a `[*` right before the directive's close is two plain tokens to the parser, which stops at that close.
+		"%{f [*}a\n", "%{[*}a\n", "%{f a[*}a\n", "%{f [\n*}a\n", "%{f [/**/*}a\n")
 	var out []shape
 	for _, p := range prefixes {
 		for _, u := range units {
