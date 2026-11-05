@@ -414,7 +414,7 @@ func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (str
 		res.Unresolved = append(res.Unresolved, Unresolved{From: from(u.From), Edge: u.Edge, Raw: u.Raw, Reason: u.Reason, Line: u.Line})
 	}
 	for _, f := range d.Facts {
-		res.Facts = append(res.Facts, Fact{Entity: f.Entity, Key: f.Key, Value: f.Value, Line: f.Line})
+		res.Facts = append(res.Facts, Fact{Entity: from(f.Entity), Key: f.Key, Value: f.Value, Line: f.Line})
 	}
 }
 

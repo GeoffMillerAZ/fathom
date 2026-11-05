@@ -66,7 +66,7 @@ func ExampleReader_Dialects() {
 }
 
 // A Go extractor claims files by extension and answers for them. Its dialect
-// reads unmeasured until it ships a reading.
+// always reads unmeasured: no reading exists for it.
 func ExampleWithExtractor() {
 	r, err := lang.New(lang.WithExtractor(
 		lang.Match{ID: "row-spec", Kind: "tooling", Extensions: []string{".row"}, Kinds: map[string]string{"RowDef": "function"}},

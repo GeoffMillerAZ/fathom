@@ -115,6 +115,8 @@ type Extractor interface {
     error.
 
 type Fact struct {
+	// Entity is the Key of the symbol the fact belongs to, or the entity's name
+	// when it is no symbol of this file.
 	Entity string `json:"entity"`
 	Key    string `json:"key"`
 	Value  string `json:"value"`
@@ -180,19 +182,27 @@ func WithDialects(fsys fs.FS) Option
     they are, then compiled, and New returns a *PackError and no Reader when any
     dialect breaks one. A pack dialect claims files by basename, glob or sniff,
     or by an extension no built-in dialect owns. It is tried after the specific
-    built-in dialects and before an extension's generic reader, in id order,
-    so it cannot take a file a built-in dialect reads. Its queries run under the
-    same budget as the built-ins'. A pack dialect's Level is LevelUnmeasured.
-    queries.injections is not accepted in this version.
+    built-in dialects and before an extension's generic reader, so it cannot
+    take a file whose extension a built-in dialect owns, whatever its glob or
+    basename says. Among the pack's dialects an exact basename claim beats a
+    glob, a glob an extension, and equal claims go to the lower id. Its queries
+    run under the same budget as the built-ins'. A pack dialect's Level is
+    always LevelUnmeasured: no reading exists for it. queries.injections is not
+    accepted in this version. A glob that is not a pattern, an empty tags query,
+    a tags capture of a kind the manifest does not declare, a variant with
+    its own tags query and no id, and a file in a dialect directory that the
+    manifest does not name each refuse the pack.
 
     pkg/lang/langtest.CheckPack runs the same checks, then the pack's goldens.
 
 func WithExtractor(m Match, e Extractor) Option
     WithExtractor registers a Go extractor under the same routing rules as a
-    pack dialect: it is merged with the built-ins, tried in id order after the
-    specific built-ins and before an extension's generic reader, and refused
-    whole, as a *PackError, when it breaks a rule. Its dialect appears in
-    Dialects with Engine "native" and Level LevelUnmeasured.
+    pack dialect: it is merged with the built-ins, tried (basename, then glob,
+    then extension, then by id) after the specific built-ins and before an
+    extension's generic reader, never for a file whose extension a built-in
+    dialect owns, and refused whole, as a *PackError, when it breaks a rule. Its
+    dialect appears in Dialects with Engine "native" and Level LevelUnmeasured.
+    A context cancelled while the extractor runs is returned as the error.
 
 func WithLimits(l Limits) Option
     WithLimits lowers the Reader's limits. A limit above the product's, or a

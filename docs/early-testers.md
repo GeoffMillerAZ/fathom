@@ -32,8 +32,8 @@ Three ways, in this order.
 ### 1. Download a release archive
 
 Each [GitHub release](https://github.com/GeoffMillerAZ/fathom/releases) carries
-`fathom_<version>_<os>_<arch>.tar.gz` for darwin and linux on arm64 and amd64 (the binary,
-`LICENSE.md`, `README.md`) and a `checksums.txt` (sha256). GoReleaser builds them on one
+`fathom_<version>_<os>_<arch>.tar.gz` for darwin and linux on arm64 and amd64 (the `fathom` binary,
+`fathom-lang`, the language library as a command (`docs/use-cases/lang-library.md`), `LICENSE.md`, `README.md`) and a `checksums.txt` (sha256). GoReleaser builds them on one
 macOS runner (`.goreleaser.yaml`, `.github/workflows/release.yml`) with the same environment
 as the source build below: darwin with cgo and `MACOSX_DEPLOYMENT_TARGET=14.0`, Linux pure Go.
 
@@ -42,12 +42,12 @@ V=$(curl -fsSL 'https://api.github.com/repos/GeoffMillerAZ/fathom/releases?per_p
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
-mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
+mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom fathom-lang
 fathom version    # fathom v0.26.0 @ <commit>
 ```
 
 The binaries are **not signed or notarized**. A file downloaded through a macOS browser is
-quarantined; clear it with `xattr -d com.apple.quarantine fathom`. (`curl` does not set the flag.)
+quarantined; clear it with `xattr -d com.apple.quarantine fathom fathom-lang`. (`curl` does not set the flag.)
 
 Each archive and `checksums.txt` carries a build-provenance attestation, starting with v0.24.0. Verify a downloaded archive against this repository's release workflow:
 
@@ -63,6 +63,7 @@ binary that ran it into the hooks.
 
 ```sh
 go install github.com/geoffmilleraz/fathom/cmd/fathom@latest
+go install github.com/geoffmilleraz/fathom/cmd/fathom-lang@latest   # optional: the language library as a command
 ```
 
 macOS needs the Xcode Command Line Tools (cgo); Linux needs Go alone. It needs no

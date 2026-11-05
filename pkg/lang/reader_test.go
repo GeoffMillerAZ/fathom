@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -36,9 +37,32 @@ func extract(t *testing.T, r *lang.Reader, path, src string, siblings ...string)
 
 const tfSrc = "resource \"aws_s3_bucket\" \"b\" {\n  bucket = var.name\n}\nvariable \"name\" {}\n"
 
+// measured is the level and grade the readings give a dialect today, from the
+// generator that makes levels.json, so a test of "reads at its measured level"
+// does not hold a literal that a regrade moves. A regrade then fails
+// TestLevelsTableMatchesReadings alone, which `go generate ./pkg/lang` fixes.
+func measured(t *testing.T, id string) (level, grade string) {
+	t.Helper()
+	raw, err := langlevelsgen.Generate(filepath.Join("..", "..", "docs", "bench", "readings", "lang"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []langlevelsgen.Row
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		if r.ID == id {
+			return r.Level, r.Grade
+		}
+	}
+	t.Fatalf("no reading for %s", id)
+	return "", ""
+}
+
 func TestExtractTerraform(t *testing.T) {
 	res := extract(t, newReader(t), "infra/main.tf", tfSrc)
-	if res.Dialect != "terraform" || res.Skipped != "" || res.Level != "L3" {
+	if tfLevel, _ := measured(t, "terraform"); res.Dialect != "terraform" || res.Skipped != "" || res.Level != tfLevel {
 		t.Fatalf("dialect %q skipped %q level %q", res.Dialect, res.Skipped, res.Level)
 	}
 	var bucket *lang.Symbol
@@ -265,10 +289,12 @@ func TestDialects(t *testing.T) {
 			t.Errorf("%s has no level", d.ID)
 		}
 	}
-	if tf := byID["terraform"]; tf.Kind != "tooling" || tf.Engine != "doc" && tf.Engine != "native" && tf.Engine != "tags" || tf.Level != "L3" || tf.Grade != "excellent" {
-		t.Errorf("terraform: %+v", tf)
+	tfLevel, tfGrade := measured(t, "terraform")
+	if tf := byID["terraform"]; tf.Kind != "tooling" || tf.Engine != "doc" && tf.Engine != "native" && tf.Engine != "tags" || tf.Level != tfLevel || tf.Grade != tfGrade {
+		t.Errorf("terraform: %+v, want level %s grade %s", tf, tfLevel, tfGrade)
 	}
-	if g := byID["go"]; g.Engine != "native" || g.Level != "L4" || g.Matches[0] != ".go" {
+	if goLevel, _ := measured(t, "go"); byID["go"].Engine != "native" || byID["go"].Level != goLevel || byID["go"].Matches[0] != ".go" {
+		g := byID["go"]
 		t.Errorf("go: %+v", g)
 	}
 	if len(ds) < 100 {
@@ -301,5 +327,34 @@ func TestEveryManifestDialectHasAReadingOrSaysUnmeasured(t *testing.T) {
 		if d.Level == lang.LevelUnmeasured && d.Grade != "" {
 			t.Errorf("%s: an unmeasured dialect has grade %q", d.ID, d.Grade)
 		}
+	}
+}
+
+// N9: levels.json is generated, so two branches that each regraded a dialect
+// conflict in it and the answer is to regenerate, never to merge by hand.
+// .gitattributes gives it the regenerate-do-not-merge driver and `task regen`
+// regenerates it, so a conflict is settled by `task regen`.
+func TestLevelsTableMergesByRegeneration(t *testing.T) {
+	attrs, err := os.ReadFile(filepath.Join("..", "..", ".gitattributes"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`(?m)^pkg/lang/levels\.json merge=fathom-regen$`).Match(attrs) {
+		t.Error(".gitattributes does not give pkg/lang/levels.json the merge=fathom-regen driver")
+	}
+	task, err := os.ReadFile(filepath.Join("..", "..", "Taskfile.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	regen := regexp.MustCompile(`(?s)\n  regen:\n.*?\n\n`).Find(task)
+	if regen == nil || !bytes.Contains(regen, []byte("go generate ./pkg/lang")) {
+		t.Error("`task regen` does not run go generate ./pkg/lang")
+	}
+	skill, err := os.ReadFile(filepath.Join("..", "..", ".claude", "skills", "add-language", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(skill, []byte("go generate ./pkg/lang")) {
+		t.Error("the add-language recipe does not name the level-table regrade step")
 	}
 }

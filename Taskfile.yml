@@ -337,10 +337,11 @@ tasks:
         {{.GO}} run -p 4 ./cmd/indexbench lang-loop -root "$LANG_LOOP_ROOT" -subject "$LANG_LOOP_SUBJECT" -write="$write" -reading "$LANG_LOOP_READING" -oracle-config "$LANG_LOOP_ORACLES" {{.CLI_ARGS}}
 
   regen:
-    desc: Regenerate every committed generated file, in a fixed order (the language board, then the grammar provenance tables)
+    desc: Regenerate every committed generated file, in a fixed order (the language board, the grammar provenance tables, then the language library's level table)
     cmds:
       - go run ./cmd/indexbench lang-tracker > docs/languages.md.tmp && mv docs/languages.md.tmp docs/languages.md
       - go run ./cmd/indexbench provenance > internal/extractor/tsengine/grammars/PROVENANCE.md.tmp && mv internal/extractor/tsengine/grammars/PROVENANCE.md.tmp internal/extractor/tsengine/grammars/PROVENANCE.md
+      - go generate ./pkg/lang
 
   scripts-check:
     desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate), the script tests, and the app-kit mirror's closure manifest (DS-4)
@@ -554,6 +555,18 @@ tasks:
       - cp -f bin/fathom-lang "$HOME/.local/libexec/fathom/fathom-lang.new"
       - codesign -s fathom-dev --force --timestamp=none "$HOME/.local/libexec/fathom/fathom-lang.new"
       - mv -f "$HOME/.local/libexec/fathom/fathom-lang.new" "$HOME/.local/libexec/fathom/fathom-lang"
+      # ...and onto PATH the way fathom is: a symlink ~/.local/bin/fathom-lang at
+      # the installed binary (fathom init installs fathom's, cmd/fathom/shim.go).
+      # It replaces a symlink, never a real file someone put there, and a refusal
+      # is a warning: no deploy outcome depends on this name.
+      - |
+        link="$HOME/.local/bin/fathom-lang"
+        mkdir -p "$HOME/.local/bin"
+        if [ -e "$link" ] && [ ! -L "$link" ]; then
+          echo "deploy: $link is a real file, not a symlink — leaving it; fathom-lang is installed at $HOME/.local/libexec/fathom/fathom-lang" >&2
+        else
+          ln -sfn "$HOME/.local/libexec/fathom/fathom-lang" "$link"
+        fi
       - mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"
       # The operator's kill switch (`fathom daemon stop`) keeps the daemon
       # down on purpose: a kickstart would exit 0 at once and the health

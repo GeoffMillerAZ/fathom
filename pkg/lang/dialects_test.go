@@ -159,6 +159,7 @@ func TestGenericReadersAreNamedDialects(t *testing.T) {
 func TestFixturesHoldTheResultContract(t *testing.T) {
 	r := newReader(t)
 	empty := map[string]bool{}
+	factsKeyed := 0
 	scan := func(path string, src []byte) {
 		got, err := r.Extract(context.Background(), lang.File{Path: path, Src: src})
 		if err != nil {
@@ -172,11 +173,22 @@ func TestFixturesHoldTheResultContract(t *testing.T) {
 		if got.Skipped != "" && got.Level != "" {
 			t.Errorf("%s was skipped (%s) and carries level %q", path, got.Skipped, got.Level)
 		}
-		keys := map[string]bool{}
+		keys, names := map[string]bool{}, map[string]bool{}
 		for _, s := range got.Symbols {
 			keys[s.Key] = true
+			names[s.Name] = true
 			if s.Canonical == "" {
 				empty[s.Kind] = true
+			}
+		}
+		for _, fact := range got.Facts {
+			// A fact names its entity by Key, as a reference's From does: a Name
+			// that is no Key is the same entity read by the wrong name.
+			if !keys[fact.Entity] && names[fact.Entity] {
+				t.Errorf("%s: fact %+v names its entity by Name, not by Key", path, fact)
+			}
+			if fact.Entity != "" && keys[fact.Entity] {
+				factsKeyed++
 			}
 		}
 		for _, ref := range got.References {
@@ -200,6 +212,9 @@ func TestFixturesHoldTheResultContract(t *testing.T) {
 	scan("data.json", []byte(`{"a": 1}`))
 	scan("data.toml", []byte("a = 1\n[t]\nb = 2\n"))
 	scan("a/a.go", []byte("package a\n\ntype T struct{ F int }\ntype I interface{ M() }\nconst C = 1\nvar V = 2\nfunc (T) M() {}\nfunc F() {}\n"))
+	if factsKeyed == 0 {
+		t.Error("no dialect fixture holds a fact keyed by an entity's Key, so the Fact.Entity check saw nothing")
+	}
 	for kind := range empty {
 		if _, ok := extractor.HasNoCanonical(kind); !ok {
 			t.Errorf("kind %s reads an empty Canonical and is not on the no-canonical list", kind)

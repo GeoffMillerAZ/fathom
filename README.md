@@ -50,7 +50,7 @@ V=$(curl -fsSL 'https://api.github.com/repos/GeoffMillerAZ/fathom/releases?per_p
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
-mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
+mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom fathom-lang
 export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.26.0 @ <commit>
 ```
 
@@ -63,9 +63,9 @@ gh attestation verify "fathom_${V}_${OS}_${ARCH}.tar.gz" --repo GeoffMillerAZ/fa
 ```
 
 A macOS browser download carries a quarantine
-flag (`curl` does not set it); clear it with `xattr -d com.apple.quarantine fathom`.
+flag (`curl` does not set it); clear it with `xattr -d com.apple.quarantine fathom fathom-lang`.
 
-*Or `go install github.com/geoffmilleraz/fathom/cmd/fathom@latest`* (macOS needs the Xcode
+*Or `go install github.com/geoffmilleraz/fathom/cmd/fathom@latest`, and `.../cmd/fathom-lang@latest` for the language library as a command* (macOS needs the Xcode
 Command Line Tools for cgo; read end to end against v0.13.0 in
 [the install-path reading](docs/bench/readings/distribution/install-paths.md)).
 
@@ -75,6 +75,7 @@ Command Line Tools for cgo; read end to end against v0.13.0 in
 git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom  # macOS (Xcode CLT)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (no C compiler)
+CGO_ENABLED=0 go build -o bin/fathom-lang ./cmd/fathom-lang                       # the language library as a command (pure Go, both platforms)
 export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.26.0 @ <commit>
 ```
 

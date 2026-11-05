@@ -408,3 +408,23 @@ func TestExtractorGlobThatIsNotAPatternIsRefused(t *testing.T) {
 		t.Fatalf("refused as (%s, %s): %v", reason, dialect, err)
 	}
 }
+
+// N13: no mechanism loads a reading for a pack or extractor dialect, so the
+// docs must not promise that one can ship one.
+func TestDocsDoNotPromiseAPackReading(t *testing.T) {
+	for _, doc := range []string{"docs/design/lang-library.md", "docs/use-cases/lang-library.md", "pkg/lang/extend.go", "pkg/lang/example_test.go"} {
+		b, err := os.ReadFile("../../" + doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "ships a reading") || strings.Contains(string(b), "ship a reading") {
+			t.Errorf("%s says a pack dialect can ship a reading, which nothing loads", doc)
+		}
+	}
+	r := newReader(t, lang.WithDialects(os.DirFS(samplePack)))
+	for _, d := range r.Dialects() {
+		if (d.ID == "widget-spec" || d.ID == "thrift-lite") && (d.Level != lang.LevelUnmeasured || d.Grade != "") {
+			t.Errorf("%s reads level %q grade %q, want unmeasured", d.ID, d.Level, d.Grade)
+		}
+	}
+}

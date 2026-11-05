@@ -130,6 +130,8 @@ type Unresolved struct {
 
 // Fact is one scalar a dialect declares an entity writes.
 type Fact struct {
+	// Entity is the Key of the symbol the fact belongs to, or the entity's name
+	// when it is no symbol of this file.
 	Entity string `json:"entity"`
 	Key    string `json:"key"`
 	Value  string `json:"value"`
