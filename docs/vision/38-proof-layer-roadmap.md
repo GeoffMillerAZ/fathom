@@ -228,6 +228,10 @@ screen, and Rust in peers, where no source published a Rust-versus-Go benchmark)
 Each wave closes with its measurement rows (the `-M` rows of each plan) read and committed,
 honest either way.
 
+### 9.2b The language library (added 2026-11-04, ADR-092, G50)
+
+Fathom's language and tool understanding becomes usable alone: `pkg/lang`, resource reads with value classes, data packs and measured levels, for a named outside consumer. Plan LL-. It enables a policy tool without building one (`docs/design/lang-library.md`).
+
 ### 9.2a IaC facts (added 2026-11-02, ADR-091, G49)
 
 Owner-directed and outside the wave table: provider contracts for AWS, Azure, GCP, Kubernetes and Helm, then the Kubernetes

@@ -1,4 +1,4 @@
-# Scope: current goals, G39 to G49
+# Scope: current goals, G39 to G50
 
 Part of the scope router, `../scope.md` (the goal index, the compatibility surface and every section's member).
 
@@ -66,3 +66,7 @@ Done when: `docs/plans/iac-facts.md` phases 1 and 2 are proven for AWS, AzureRM,
 at least 0.90) and IF-M3 (upgrade impact on mined bump commits, precision at least 0.9) read PASS. Kill: IF-M0 reads no-go, or IF-M6 reads a powered
 null, which cuts the agent surfaces and keeps the CLI and `review_diff`.
 {bet: iac-facts, instrument: "fathom plans status", threshold: "IF-M1, IF-M2 and IF-M3 read PASS for the first five providers", review: 2027-02-28}
+
+**G50. Fathom's language and tool understanding works without the rest of fathom (ADR-092).**
+Done when: `docs/plans/lang-library.md` phases 1 to 4 are proven, LL-M1 (an outside consumer's closure and size), LL-M2 (routing byte-identical), and LL-M3 to LL-M5 (resource reads against tier-A oracles, path precision at least 0.99, recall at least 0.95, class agreement at least 0.98) read PASS, and a module outside this repository builds against a tagged release. Kill: no outside consumer has imported the door by 2027-05-04, which stops new public surface and keeps what shipped.
+{bet: lang-library, instrument: "fathom plans status", threshold: "LL-M1 to LL-M5 read PASS", review: 2027-02-28}

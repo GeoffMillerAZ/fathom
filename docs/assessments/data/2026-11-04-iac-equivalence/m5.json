@@ -1,0 +1,235 @@
+{
+ "sample": [
+  [
+   "aws_imagebuilder_infrastructure_configuration",
+   "AWS::ImageBuilder::InfrastructureConfiguration",
+   "terraform-provider-aws/internal/service/imagebuilder/infrastructure_configuration.go"
+  ],
+  [
+   "aws_ec2_transit_gateway_multicast_group_source",
+   "AWS::EC2::TransitGatewayMulticastGroupSource",
+   "terraform-provider-aws/internal/service/ec2/transitgateway_multicast_group_source.go"
+  ],
+  [
+   "aws_kendra_data_source",
+   "AWS::Kendra::DataSource",
+   "terraform-provider-aws/internal/service/kendra/data_source.go"
+  ],
+  [
+   "aws_notifications_managed_notification_additional_channel_association",
+   "AWS::Notifications::ManagedNotificationAdditionalChannelAssociation",
+   "terraform-provider-aws/internal/service/notifications/managed_notification_additional_channel_association.go"
+  ],
+  [
+   "aws_ec2_local_gateway_route_table_virtual_interface_group_association",
+   "AWS::EC2::LocalGatewayRouteTableVirtualInterfaceGroupAssociation",
+   "terraform-provider-aws/internal/service/ec2/outposts_local_gateway_route_table_virtual_interface_group_association.go"
+  ],
+  [
+   "aws_datazone_environment",
+   "AWS::DataZone::Environment",
+   "terraform-provider-aws/internal/service/datazone/environment.go"
+  ],
+  [
+   "aws_datasync_location_azure_blob",
+   "AWS::DataSync::LocationAzureBlob",
+   "terraform-provider-aws/internal/service/datasync/location_azure_blob.go"
+  ],
+  [
+   "aws_gamelift_fleet",
+   "AWS::GameLift::Fleet",
+   "terraform-provider-aws/internal/service/gamelift/fleet.go"
+  ],
+  [
+   "aws_apigatewayv2_stage",
+   "AWS::ApiGatewayV2::Stage",
+   "terraform-provider-aws/internal/service/apigatewayv2/stage.go"
+  ],
+  [
+   "aws_route53_resolver_firewall_config",
+   "AWS::Route53Resolver::FirewallConfig",
+   "terraform-provider-aws/internal/service/route53resolver/firewall_config.go"
+  ],
+  [
+   "aws_cloudwatch_dashboard",
+   "AWS::CloudWatch::Dashboard",
+   "terraform-provider-aws/internal/service/cloudwatch/dashboard.go"
+  ],
+  [
+   "aws_api_gateway_vpc_link",
+   "AWS::ApiGateway::VpcLink",
+   "terraform-provider-aws/internal/service/apigateway/vpc_link.go"
+  ],
+  [
+   "aws_dms_endpoint",
+   "AWS::DMS::Endpoint",
+   "terraform-provider-aws/internal/service/dms/endpoint.go"
+  ],
+  [
+   "aws_ec2_transit_gateway_multicast_group_member",
+   "AWS::EC2::TransitGatewayMulticastGroupMember",
+   "terraform-provider-aws/internal/service/ec2/transitgateway_multicast_group_member.go"
+  ],
+  [
+   "aws_networkfirewall_firewall_policy",
+   "AWS::NetworkFirewall::FirewallPolicy",
+   "terraform-provider-aws/internal/service/networkfirewall/firewall_policy.go"
+  ],
+  [
+   "aws_pinpoint_event_stream",
+   "AWS::Pinpoint::EventStream",
+   "terraform-provider-aws/internal/service/pinpoint/event_stream.go"
+  ],
+  [
+   "aws_iam_user_policy",
+   "AWS::IAM::UserPolicy",
+   "terraform-provider-aws/internal/service/iam/user_policy.go"
+  ],
+  [
+   "aws_ec2_secondary_network",
+   "AWS::EC2::SecondaryNetwork",
+   "terraform-provider-aws/internal/service/ec2/ec2_secondary_network.go"
+  ],
+  [
+   "aws_redshift_endpoint_authorization",
+   "AWS::Redshift::EndpointAuthorization",
+   "terraform-provider-aws/internal/service/redshift/endpoint_authorization.go"
+  ],
+  [
+   "aws_ec2_network_insights_analysis",
+   "AWS::EC2::NetworkInsightsAnalysis",
+   "terraform-provider-aws/internal/service/ec2/vpc_network_insights_analysis.go"
+  ],
+  [
+   "aws_sagemaker_image",
+   "AWS::SageMaker::Image",
+   "terraform-provider-aws/internal/service/sagemaker/image.go"
+  ],
+  [
+   "aws_sagemaker_app_image_config",
+   "AWS::SageMaker::AppImageConfig",
+   "terraform-provider-aws/internal/service/sagemaker/app_image_config.go"
+  ],
+  [
+   "aws_comprehend_entity_recognizer",
+   "AWS::Comprehend::EntityRecognizer",
+   "terraform-provider-aws/internal/service/comprehend/entity_recognizer.go"
+  ],
+  [
+   "aws_bedrockdataautomation_library",
+   "AWS::Bedrock::DataAutomationLibrary",
+   "terraform-provider-aws/internal/service/bedrockdataautomation/library.go"
+  ],
+  [
+   "aws_elasticache_parameter_group",
+   "AWS::ElastiCache::ParameterGroup",
+   "terraform-provider-aws/internal/service/elasticache/parameter_group.go"
+  ],
+  [
+   "aws_ram_resource_association",
+   "AWS::RAM::ResourceAssociation",
+   "terraform-provider-aws/internal/service/ram/resource_association.go"
+  ],
+  [
+   "aws_scheduler_schedule",
+   "AWS::Scheduler::Schedule",
+   "terraform-provider-aws/internal/service/scheduler/schedule.go"
+  ],
+  [
+   "aws_wafregional_web_acl",
+   "AWS::WAFRegional::WebACL",
+   "terraform-provider-aws/internal/service/wafregional/web_acl.go"
+  ],
+  [
+   "aws_api_gateway_deployment",
+   "AWS::ApiGateway::Deployment",
+   "terraform-provider-aws/internal/service/apigateway/deployment.go"
+  ],
+  [
+   "aws_service_discovery_http_namespace",
+   "AWS::ServiceDiscovery::HttpNamespace",
+   "terraform-provider-aws/internal/service/servicediscovery/http_namespace.go"
+  ]
+ ],
+ "table": {
+  "(False, False)": 42,
+  "(True, True)": 27,
+  "(True, False)": 7,
+  "(False, True)": 2
+ },
+ "disagreements": [
+  [
+   "aws_datazone_environment",
+   "AWS::DataZone::Environment",
+   "DomainIdentifier",
+   "domain_identifier",
+   "CFN createOnly",
+   "TF in-place"
+  ],
+  [
+   "aws_gamelift_fleet",
+   "AWS::GameLift::Fleet",
+   "LogPaths",
+   "log_paths",
+   "CFN createOnly",
+   "TF in-place"
+  ],
+  [
+   "aws_dms_endpoint",
+   "AWS::DMS::Endpoint",
+   "ElasticsearchSettings",
+   "elasticsearch_settings",
+   "CFN updatable",
+   "TF ForceNew"
+  ],
+  [
+   "aws_dms_endpoint",
+   "AWS::DMS::Endpoint",
+   "KinesisSettings",
+   "kinesis_settings",
+   "CFN updatable",
+   "TF ForceNew"
+  ],
+  [
+   "aws_comprehend_entity_recognizer",
+   "AWS::Comprehend::EntityRecognizer",
+   "VersionName",
+   "version_name",
+   "CFN createOnly",
+   "TF in-place"
+  ],
+  [
+   "aws_comprehend_entity_recognizer",
+   "AWS::Comprehend::EntityRecognizer",
+   "DataAccessRoleArn",
+   "data_access_role_arn",
+   "CFN createOnly",
+   "TF in-place"
+  ],
+  [
+   "aws_comprehend_entity_recognizer",
+   "AWS::Comprehend::EntityRecognizer",
+   "InputDataConfig",
+   "input_data_config",
+   "CFN createOnly",
+   "TF in-place"
+  ],
+  [
+   "aws_comprehend_entity_recognizer",
+   "AWS::Comprehend::EntityRecognizer",
+   "VolumeKmsKeyId",
+   "volume_kms_key_id",
+   "CFN createOnly",
+   "TF in-place"
+  ],
+  [
+   "aws_comprehend_entity_recognizer",
+   "AWS::Comprehend::EntityRecognizer",
+   "ModelKmsKeyId",
+   "model_kms_key_id",
+   "CFN createOnly",
+   "TF in-place"
+  ]
+ ],
+ "unresolved": 69
+}

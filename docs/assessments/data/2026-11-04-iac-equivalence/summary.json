@@ -1,0 +1,21 @@
+{
+ "date": "2026-11-04",
+ "pins": {
+  "hashicorp/aws": "6.72.0",
+  "hashicorp/awscc": "1.109.0",
+  "opentofu": "1.13.0",
+  "tpa_tag": "v6.72.0"
+ },
+ "cfn_types": 1876,
+ "aws": 1758,
+ "awscc": 1722,
+ "aws_exact": 836,
+ "awscc_exact": 1708,
+ "tier2": 52,
+ "miss_sample_labels": {
+  "none": 22,
+  "alias": 14,
+  "split": 12,
+  "svcdrop": 3
+ }
+}

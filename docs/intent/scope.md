@@ -1,10 +1,8 @@
 # Scope
 
-Where the edges are right now. Present tense; done goals are deleted, git remembers.
-Computed progress: `fathom plans status --service fathom` (computed on demand; never copied here).
+Where the edges are right now. Present tense; done goals are deleted, git remembers. Computed progress: `fathom plans status --service fathom` (computed on demand; never copied here).
 
-This file routes (K8): every goal and section lives byte-intact in the member named beside it under
-`scope/`, and `fathom intent audit` (U15) holds each listed id to the member that defines it.
+This file routes (K8): every goal and section lives byte-intact in the member named beside it under `scope/`, and `fathom intent audit` (U15) holds each listed id to the member that defines it.
 
 ## Current goals
 
@@ -49,14 +47,14 @@ doctrine` refuses it at load and names what it lacks (DP-4, ADR-026 amendment 20
 **G47. Intent records are checked at HEAD, or the checks are cut (ADR-087).** `scope/goals-3.md`\
 **G48. Fathom makes a reviewer more precise on GitHub ReviewBench, or guidance says unproven (ADR-088).** `scope/goals-3.md`\
 **G49. An agent changing infrastructure code knows what the change does before any plan runs (ADR-091).** `scope/goals-3.md`\
+**G50. Fathom's language and tool understanding works without the rest of fathom (ADR-092).** `scope/goals-3.md`\
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** `scope/goals-2.md`\
 **G12. The surface leads with the answers grep cannot give, and every answer is falsifiable (ADR-035).** `scope/goals-2.md`\
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** `scope/goals-2.md`
 
 ## Current boundaries
 
-Languages, surfaces, store, harnesses, the findings loop, the fleet, the substrate and the platform:
-`scope/boundaries.md`.
+Languages, surfaces, store, harnesses, the findings loop, the fleet, the substrate and the platform: `scope/boundaries.md`.
 
 ## Compatibility surface
 
@@ -139,7 +137,7 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   <dir> --json` (the `usedset.Result` shape: field names, unit kinds `go-package`, `embed`,
   `css-source`, `css-import`, `js-module`, `module-file`, kind-then-id order, `used_files`).
   Evidence: `cmd/fathom/report_used.go` (`TestCmdReportUsedJSONReasonsAndUnreached`).
-- `pkg/client` and `pkg/platform` exported Go API. Evidence: `pkg/client/client.go`.
+- `pkg/client`, `pkg/platform` and `pkg/lang` exported Go API (`pkg/lang`'s `Canonical` kinds included, a dialect's own `Kind` strings not). Evidence: `pkg/client/client.go`; `TestLangAPISnapshot` once it lands.
 - CLI verbs and their `--json` envelopes (law 10: every capability is a verb first).
 
 Pre-1.0: breaking changes bump minor. The line still gets written.

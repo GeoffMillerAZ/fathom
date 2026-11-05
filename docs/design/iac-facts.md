@@ -204,6 +204,12 @@ a type name, so Kubernetes and Pulumi reuse it with no format change, and a late
 an alias map without a migration. Not built: anything for CloudFormation, Crossplane, CDK or Bicep, IAM action catalogs, or
 GitHub Action inputs. F97 holds them. G18 stays as it is for package ecosystems whose sources are readable.
 
+## 13. CloudFormation (ADR-091 amendment, 2026-11-04)
+
+The owner moved CloudFormation forward, ahead of F97's trigger. Registry schemas state replacement in the contract: `createOnlyProperties` in 1,643 of 1,876 types (`docs/assessments/2026-11-04-iac-equivalence.md`). A catalog is keyed by `aws/cloudformation`, region and digest, built from AWS's public schema file and read as a local file. A template names no version, so binding reads `unversioned` with the catalog's date. Transform types such as `AWS::Serverless::*` read `unbound`. cfn-lint grades validity. No independent offline oracle exists for CloudFormation replacement: the resource specification's `UpdateType` agrees 99.93% across 1,872 types because the two share a source, so it only checks the reader (IF-CM2), and a change set needs credentials. An answer says the contract states it, which is true by reading, and IF-CM3's comparison with Terraform is the only independent evidence. Rows: IF-P7, IF-C1 to IF-C7, IF-CM1 to IF-CM3.
+
+Attribute reads for both tools come from `docs/design/lang-library.md` section 5, so the product's checks and the public door share one reader.
+
 ## Decision models
 
 None applies. Whether an attribute exists, forces replacement or changed between versions is a fact read from a contract, or
