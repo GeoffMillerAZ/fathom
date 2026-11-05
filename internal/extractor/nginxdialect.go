@@ -39,6 +39,7 @@ package extractor
 //     written; fusion.ResolveRouteRefs resolves it or discloses why not.
 
 import (
+	"fmt"
 	"path"
 	"sort"
 	"strings"
@@ -97,13 +98,14 @@ func (x *NginxExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 }
 
 // ExtractDoc implements DocResulter. Malformed input yields what its
-// well-formed statements declare and no error.
+// well-formed statements declare and no error; the repairs it took are
+// disclosed through DocResult.Incomplete.
 func (x *NginxExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
 	if textTooDeep(src, "{", "}", true) {
 		return DocResult{Incomplete: errTooDeep("nginx parse")}, nil
 	}
-	tree, _ := parseNginxTree(src)
-	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath)}
+	tree, fixes := parseNginxTree(src)
+	w := &confWalk{service: service, relPath: relPath, pkg: pkgFromPath(relPath), repairs: fixes, what: "nginx parse"}
 	root := path.Base(relPath)
 	w.node(root, kindNginxConfig, "", 1, confLastLine(src))
 	w.res.Roots = append(w.res.Roots, root)
@@ -118,6 +120,11 @@ func (x *NginxExtractor) ExtractDoc(service, relPath string, src []byte) (DocRes
 type confWalk struct {
 	service, relPath, pkg string
 	res                   DocResult
+	// repairs is how many repairs reading took (an unterminated string, a
+	// stray brace, a cut-short statement) and what names the reader in the
+	// reason; finish discloses a count above 0 through Incomplete.
+	repairs int
+	what    string
 }
 
 func (w *confWalk) node(name string, kind core.SourceKind, sig string, line, end int) int {
@@ -154,6 +161,9 @@ func (w *confWalk) route(from, raw string, line int) {
 // finish sorts the result deterministically (by line, then name; cross-file
 // references by line, edge, origin and target) and sorts each entity's calls.
 func (w *confWalk) finish() DocResult {
+	if w.repairs > 0 && w.res.Incomplete == "" {
+		w.res.Incomplete = fmt.Sprintf("%s: %d repair(s) to malformed input", w.what, w.repairs)
+	}
 	for i := range w.res.Nodes {
 		sort.Strings(w.res.Nodes[i].Calls)
 	}

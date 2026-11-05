@@ -186,7 +186,8 @@ func (x *goModWalk) cross(from, edge, raw, target, strategy string, syn *modfile
 }
 
 func (x *goModWalk) modFile(src []byte) {
-	f := parseGoModFile(src, func(b []byte) (*modfile.File, error) { return modfile.Parse(x.relPath, b, nil) })
+	f, why := parseGoModFile(src, func(b []byte) (*modfile.File, error) { return modfile.Parse(x.relPath, b, nil) })
+	x.res.Incomplete = why
 	if f == nil {
 		return
 	}
@@ -224,7 +225,8 @@ func (x *goModWalk) modFile(src []byte) {
 }
 
 func (x *goModWalk) workFile(src []byte) {
-	f := parseGoModFile(src, func(b []byte) (*modfile.WorkFile, error) { return modfile.ParseWork(x.relPath, b, nil) })
+	f, why := parseGoModFile(src, func(b []byte) (*modfile.WorkFile, error) { return modfile.ParseWork(x.relPath, b, nil) })
+	x.res.Incomplete = why
 	if f == nil {
 		return
 	}
@@ -322,16 +324,26 @@ func capString(s string, n int) string {
 // version disagree, a directive from a newer Go, a merge marker. A block left
 // open at the end of the file is closed. The parser stops at its first
 // lexical error, so the loop is bounded; a file still rejected after
-// goModRecoveryRounds, or rejected at no line, reads as nothing.
-func parseGoModFile[T any](src []byte, parse func([]byte) (*T, error)) *T {
+// goModRecoveryRounds, or rejected at no line, reads as nothing. The second
+// result is the one-line reason the file was not read as written ("" for a
+// file the parser accepted whole): the first rejection's message, and that
+// the rest of the file was read or none of it.
+func parseGoModFile[T any](src []byte, parse func([]byte) (*T, error)) (*T, string) {
+	why := ""
 	for range goModRecoveryRounds {
 		f, err := parse(src)
 		if err == nil {
-			return f
+			if why != "" {
+				why += "; rejected lines were skipped"
+			}
+			return f, why
+		}
+		if why == "" {
+			why = incompleteReason("go.mod parse", err)
 		}
 		var list modfile.ErrorList
 		if !errors.As(err, &list) {
-			return nil
+			return nil, why + "; file read as nothing"
 		}
 		lines := map[int]bool{}
 		unterminated := false
@@ -348,11 +360,11 @@ func parseGoModFile[T any](src []byte, parse func([]byte) (*T, error)) *T {
 			next = append(bytes.TrimRight(next, "\n"), "\n)\n"...)
 		}
 		if bytes.Equal(next, src) {
-			return nil
+			return nil, why + "; file read as nothing"
 		}
 		src = next
 	}
-	return nil
+	return nil, why + "; file read as nothing"
 }
 
 // blankLines returns src with the given 1-based lines emptied.

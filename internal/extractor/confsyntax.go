@@ -585,6 +585,9 @@ type caddyParser struct {
 
 // parseCaddyTree reads src into statements, with parseNginxTree's repairs.
 func parseCaddyTree(src []byte) ([]*confNode, int) {
+	if textTooDeep(src, "{", "}", true) {
+		return nil, 0 // the parser recurses per block; the caller refuses the file first
+	}
 	toks, fixes := confLex(src, caddyfileSyntax)
 	p := &caddyParser{lines: confLines(toks), eof: confLastLine(src)}
 	nodes := p.block(0)

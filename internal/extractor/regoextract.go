@@ -43,6 +43,7 @@ package extractor
 //     from every file that declares it.
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,8 +61,9 @@ const (
 type RegoExtractor struct{}
 
 var (
-	_ Extractor         = (*RegoExtractor)(nil)
-	_ FileSpecExtractor = (*RegoExtractor)(nil)
+	_ Extractor          = (*RegoExtractor)(nil)
+	_ FileSpecExtractor  = (*RegoExtractor)(nil)
+	_ ReportingExtractor = (*RegoExtractor)(nil)
 )
 
 // NewRegoExtractor returns the Rego dialect's extractor.
@@ -76,7 +78,19 @@ func (x *RegoExtractor) Close() {}
 // Extract implements Extractor. Malformed input yields what its readable
 // statements declare and no error.
 func (x *RegoExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
-	return parseRego(src).nodes(service, relPath), nil
+	nodes, _, err := x.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when reading took repairs (an unclosed
+// bracket or string, a stray closer), the reason (ReportingExtractor).
+func (x *RegoExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
+	f := parseRego(src)
+	why := ""
+	if f.repairs > 0 {
+		why = fmt.Sprintf("rego parse: %d repair(s) to malformed input", f.repairs)
+	}
+	return f.nodes(service, relPath), why, nil
 }
 
 // ExtractFileSpecs implements FileSpecExtractor.

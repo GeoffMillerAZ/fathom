@@ -39,6 +39,9 @@ func (j *JSONExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 func (j *JSONExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
 
+	if textTooDeep(src, "[{", "]}", false) {
+		return nil, errTooDeep("json decode"), nil
+	}
 	var root map[string]json.RawMessage
 	if err := json.Unmarshal(src, &root); err != nil {
 		// Not a JSON object (array/scalar/invalid) — return nothing, no error.

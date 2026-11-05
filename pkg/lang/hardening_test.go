@@ -2,6 +2,8 @@ package lang_test
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -122,39 +124,93 @@ func TestYAMLAliasBombIsRefused(t *testing.T) {
 }
 
 // F9: nesting inside the size limit must be refused, not recursed into. Go
-// reports a stack overflow as a fatal error that recover cannot catch, so a
-// failure here ends the test binary. Each reader below died on the input
-// shown, measured at 150 KB to 1.8 MB.
+// reports a stack overflow as a fatal error that recover cannot catch, so each
+// case runs in a subprocess: a fatal fails the case, not the whole run. Each
+// reader below died on the input shown, or is bounded only by a guard in the
+// extractor and not by the runtime. Every input is the deepest shape that fits
+// in the 2 MiB file limit.
+type deepCase struct {
+	name, path string
+	src        func() string
+	ctl        string
+}
+
+func rep(s string, n int) string { return strings.Repeat(s, n) }
+
+// fill is head, then as many lines of unit repeated per line as fit in 2 MiB
+// (a minified file is not read, so a line is kept short).
+func fill(head, unit string, perLine int) string {
+	line := rep(unit, perLine) + "\n"
+	return head + rep(line, (2<<20-len(head))/len(line))
+}
+
+const armSchema = `{"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#", "resources": `
+
+var deepCases = []deepCase{
+	{"terraform expression", "infra/main.tf", func() string { return "a = [\n" + rep("[\n", 400_000) }, "a = [\n[\n]\n]\n"},
+	{"terraform blocks", "infra/main.tf", func() string { return rep("b {\n", 400_000) }, "b {\n b {\n }\n}\n"},
+	{"tfvars", "infra/prod.tfvars", func() string { return "a = [\n" + rep("[\n", 900_000) }, "a = [1]\n"},
+	{"terragrunt", "live/terragrunt.hcl", func() string { return "a = [\n" + rep("[\n", 900_000) }, "inputs = {\n a = [1]\n}\n"},
+	{"packer", "img/web.pkr.hcl", func() string { return "a = [\n" + rep("[\n", 900_000) }, "source \"a\" \"b\" {\n x = [1]\n}\n"},
+	{"nomad", "jobs/web.nomad.hcl", func() string { return "job \"j\" {\n" + rep("b {\n", 400_000) }, "job \"j\" {\n}\n"},
+	{"cargo", "crate/Cargo.toml", func() string { return "a = [\n" + rep("[\n", 1_000_000) }, "[package]\nname = \"x\"\nversion = \"1.0.0\"\n"},
+	{"nginx", "etc/nginx.conf", func() string { return rep("a {\n", 450_000) }, "events {}\nhttp {\n  server {\n    listen 80;\n  }\n}\n"},
+	{"package.json", "package.json", func() string { return fill("{\"name\": \"x\", \"a\":\n", "[", 400) }, `{"name": "x", "version": "1.0.0"}`},
+	{"arm template (jsonc)", "deploy/azuredeploy.json", func() string { return fill(armSchema+"\n", "[", 400) }, armSchema + `[]}`},
+	{"caddyfile", "Caddyfile", func() string { return "a {\n" + rep("{\n", (2<<20-4)/2) }, "a.example {\n  reverse_proxy b:80\n}\n"},
+	{"pom.xml", "pom.xml", func() string { return fill("<project>\n", "<a>", 100) }, "<project><artifactId>x</artifactId><groupId>g</groupId></project>"},
+	{"proxysql.cnf (libconfig)", "proxysql.cnf", func() string { return fill("admin_variables=\n", "(", 400) }, "admin_variables=\n{\n  admin_credentials=\"admin:admin\"\n}\n"},
+}
+
+const deepChildEnv = "FATHOM_DEEP_CASE"
+
 func TestDeepNestingIsRefusedNotFatal(t *testing.T) {
-	r := newReader(t)
-	rep := func(s string, n int) string { return strings.Repeat(s, n) }
-	for _, tc := range []struct{ name, path, src, ctl string }{
-		{"terraform expression", "infra/main.tf", "a = [\n" + rep("[\n", 400_000), "a = [\n[\n]\n]\n"},
-		{"terraform blocks", "infra/main.tf", rep("b {\n", 400_000), "b {\n b {\n }\n}\n"},
-		{"tfvars", "infra/prod.tfvars", "a = [\n" + rep("[\n", 900_000), "a = [1]\n"},
-		{"terragrunt", "live/terragrunt.hcl", "a = [\n" + rep("[\n", 900_000), "inputs = {\n a = [1]\n}\n"},
-		{"packer", "img/web.pkr.hcl", "a = [\n" + rep("[\n", 900_000), "source \"a\" \"b\" {\n x = [1]\n}\n"},
-		{"nomad", "jobs/web.nomad.hcl", "job \"j\" {\n" + rep("b {\n", 400_000), "job \"j\" {\n}\n"},
-		{"cargo", "crate/Cargo.toml", "a = [\n" + rep("[\n", 1_000_000), "[package]\nname = \"x\"\nversion = \"1.0.0\"\n"},
-		{"nginx", "etc/nginx.conf", rep("a {\n", 450_000), "events {}\nhttp {\n  server {\n    listen 80;\n  }\n}\n"},
-	} {
+	for _, tc := range deepCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if len(tc.src) > 2<<20 {
-				t.Fatalf("the input is %d bytes, over the 2 MiB limit", len(tc.src))
-			}
-			ok := extract(t, r, tc.path, tc.ctl)
-			if ok.Skipped != "" || ok.Incomplete || len(ok.Notes) != 0 {
-				t.Fatalf("control: skipped %q incomplete=%v notes=%v", ok.Skipped, ok.Incomplete, ok.Notes)
-			}
-			got := extract(t, r, tc.path, tc.src)
-			if got.Skipped != "" {
-				t.Fatalf("skipped (%s), so no reader was reached", got.Skipped)
-			}
-			if !got.Incomplete || !hasReason(got.Notes) || !strings.Contains(strings.Join(got.Notes, " "), "nesting") {
-				t.Fatalf("incomplete=%v notes=%v", got.Incomplete, got.Notes)
+			cmd := exec.Command(os.Args[0], "-test.run=^TestDeepNestingChild$", "-test.count=1")
+			cmd.Env = append(os.Environ(), deepChildEnv+"="+tc.name)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				tail := string(out)
+				if len(tail) > 1500 {
+					tail = tail[:1500]
+				}
+				t.Fatalf("the reader did not refuse the nesting: %v\n%s", err, tail)
 			}
 		})
 	}
+}
+
+// TestDeepNestingChild is one case of the test above, run alone in its own
+// process; without the variable it does nothing.
+func TestDeepNestingChild(t *testing.T) {
+	name := os.Getenv(deepChildEnv)
+	if name == "" {
+		t.Skip("run by TestDeepNestingIsRefusedNotFatal")
+	}
+	for _, tc := range deepCases {
+		if tc.name != name {
+			continue
+		}
+		r := newReader(t)
+		src := tc.src()
+		if len(src) > 2<<20 {
+			t.Fatalf("the input is %d bytes, over the 2 MiB limit", len(src))
+		}
+		ok := extract(t, r, tc.path, tc.ctl)
+		if ok.Skipped != "" || ok.Incomplete || len(ok.Notes) != 0 {
+			t.Fatalf("control: skipped %q incomplete=%v notes=%v", ok.Skipped, ok.Incomplete, ok.Notes)
+		}
+		got := extract(t, r, tc.path, src)
+		if got.Skipped != "" {
+			t.Fatalf("skipped (%s), so no reader was reached", got.Skipped)
+		}
+		if !got.Incomplete || !hasReason(got.Notes) || !strings.Contains(strings.Join(got.Notes, " "), "nesting") {
+			t.Fatalf("incomplete=%v notes=%v", got.Incomplete, got.Notes)
+		}
+		return
+	}
+	t.Fatalf("no case %q", name)
 }
 
 // Brackets in a comment, a string or the middle of an nginx word are not

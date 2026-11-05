@@ -37,7 +37,19 @@ var incompleteCases = []struct {
 	{"notebook", "notebook", "nb/a.ipynb", `{"cells": [{"cell_type": "code", "source": ["def f():\n", "  pass\n"]}, {"cell_ty`,
 		`{"cells": [{"cell_type": "code", "source": ["def f():\n", "  pass\n"]}], "metadata": {"language_info": {"name": "python"}}, "nbformat": 4}`},
 	{"go", "goextract", "a/a.go", "package a\nfunc F( {\n", "package a\n\nfunc F() {}\n"},
+	{"nginx", "nginxdialect", "etc/nginx.conf", "server {\n  listen 80;\n", "events {}\nhttp {\n  server {\n    listen 80;\n  }\n}\n"},
+	{"nginx string", "nginxdialect", "etc/nginx.conf", "events {}\nhttp {\n  server {\n    return 200 \"ok;\n  }\n}\n", "events {}\nhttp {\n  server {\n    return 200 \"ok\";\n  }\n}\n"},
+	{"caddyfile", "caddyfiledialect", "Caddyfile", "a.example {\n  reverse_proxy b:80\n", "a.example {\n  reverse_proxy b:80\n}\n"},
+	{"haproxy", "haproxydialect", "haproxy.cfg", "frontend f\n  bind \"*:80\n  default_backend b\n", "frontend f\n  bind *:80\n  default_backend b\nbackend b\n  server s 127.0.0.1:80\n"},
+	{"rego", "regoextract", "policy/p.rego", "package p\n\nallow if {\n  input.x == [1\n}\n", "package p\n\nallow if {\n  input.x == 1\n}\n"},
+	{"go.mod", "gomoddialect", "go.mod", "module example.com/m\n\ngo 1.21\n\nrequire (\n<<<<<<< HEAD\n\texample.com/a v1.0.0\n)\n", "module example.com/m\n\ngo 1.21\n\nrequire example.com/a v1.0.0\n"},
+	{"go.work", "gomoddialect", "go.work", "go 1.21\n\nuse ./a\n<<<<<<< x\n", "go 1.21\n\nuse ./a\n"},
+	{"kubernetes embedded: later document", "k8sembed", "k/dash.yaml", k8sDash + "---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: c\n bad: [\n", k8sDash},
+	{"kubernetes embedded: the dashboard", "k8sembed", "k/dash.yaml", strings.Replace(k8sDash, `{"id": 1, "title": "p"}]}`, `{"id": 1, "title": "p"}`, 1), k8sDash},
 }
+
+// k8sDash is a ConfigMap that embeds a Grafana dashboard.
+const k8sDash = "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: dash\ndata:\n  d.json: |\n    {\"schemaVersion\": 36, \"uid\": \"d1\", \"title\": \"T\", \"panels\": [{\"id\": 1, \"title\": \"p\"}]}\n"
 
 func TestBrokenInputIsIncomplete(t *testing.T) {
 	r := newReader(t)
@@ -65,6 +77,29 @@ func TestBrokenInputIsIncomplete(t *testing.T) {
 			ok := extract(t, r, tc.path, tc.valid)
 			if ok.Incomplete || len(ok.Notes) != 0 {
 				t.Errorf("a valid %s file reads incomplete: %v", tc.path, ok.Notes)
+			}
+		})
+	}
+}
+
+// D4: a trailing empty YAML document (`---` at the end, or before a comment)
+// holds nothing to read, so a single-document dialect does not report it as an
+// unread document. A later document with content still does.
+func TestTrailingEmptyDocumentIsComplete(t *testing.T) {
+	r := newReader(t)
+	for _, tc := range []struct{ name, path, src string }{
+		{"cloudformation", "stack.yaml", "AWSTemplateFormatVersion: '2010-09-09'\nResources:\n  B:\n    Type: AWS::S3::Bucket\n"},
+		{"github actions", ".github/workflows/ci.yml", "name: ci\non: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: echo\n"},
+		{"compose", "docker-compose.yml", "services:\n  a:\n    image: x\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, tail := range []string{"---\n", "---\n# done\n", "---\n---\n", "---"} {
+				if got := extract(t, r, tc.path, tc.src+tail); got.Skipped != "" || got.Incomplete {
+					t.Errorf("tail %q: skipped %q incomplete=%v notes=%v", tail, got.Skipped, got.Incomplete, got.Notes)
+				}
+			}
+			if got := extract(t, r, tc.path, tc.src+"---\n---\nextra: 1\n"); !got.Incomplete {
+				t.Errorf("a later document with content reads complete: %v", got.Notes)
 			}
 		})
 	}

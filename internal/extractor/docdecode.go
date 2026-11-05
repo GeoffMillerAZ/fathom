@@ -52,18 +52,28 @@ func decodeDocReport(format string, src []byte, multi bool, yamlTags string) (ou
 		}
 		docs, partial, err = decodeYAMLDocReport(src, multi, yamlTags)
 	case "json":
+		if textTooDeep(src, "[{", "]}", false) {
+			return nil, "", tooDeepErr()
+		}
 		var n *docNode
 		n, partial, err = decodeJSONDocReport(src)
 		docs = []*docNode{n}
 	case "jsonc":
+		stripped := stripJSONC(src)
+		if textTooDeep(stripped, "[{", "]}", false) {
+			return nil, "", tooDeepErr()
+		}
 		var n *docNode
-		n, partial, err = decodeJSONDocReport(stripJSONC(src))
+		n, partial, err = decodeJSONDocReport(stripped)
 		docs = []*docNode{n}
 	case "toml":
 		var n *docNode
 		n, err = decodeTOMLDoc(src)
 		docs = []*docNode{n}
 	case "xml":
+		if xmlTooDeep(src) {
+			return nil, "", tooDeepErr()
+		}
 		var n *docNode
 		n, err = decodeXMLDoc(src)
 		docs = []*docNode{n}
@@ -76,6 +86,9 @@ func decodeDocReport(format string, src []byte, multi bool, yamlTags string) (ou
 		n, err = decodePgBouncerDoc(src)
 		docs = []*docNode{n}
 	case "libconfig":
+		if libconfigTooDeep(src) {
+			return nil, "", tooDeepErr()
+		}
 		var n *docNode
 		n, err = decodeLibconfigDoc(src)
 		docs = []*docNode{n}
@@ -162,6 +175,9 @@ func decodeYAMLDocReport(src []byte, multi bool, yamlTags string) ([]*docNode, s
 		}
 		if len(doc.Content) > 0 {
 			if !multi && len(out) > 0 {
+				if emptyYAMLDoc(doc.Content[0]) {
+					continue // a trailing `---`, alone or before a comment, holds nothing to read
+				}
 				partial = "yaml decode: documents after the first are not read"
 				break
 			}
@@ -172,6 +188,12 @@ func decodeYAMLDocReport(src []byte, multi bool, yamlTags string) ([]*docNode, s
 		}
 	}
 	return out, partial, nil
+}
+
+// emptyYAMLDoc reports whether n is what yaml.v3 yields for a document with no
+// content: a null scalar with an empty value.
+func emptyYAMLDoc(n *yaml.Node) bool {
+	return n.Kind == yaml.ScalarNode && n.Tag == "!!null" && n.Value == ""
 }
 
 // fromYAML converts a yaml.v3 node, following aliases (bounded depth, so
