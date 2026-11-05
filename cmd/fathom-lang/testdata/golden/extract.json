@@ -1,0 +1,126 @@
+{
+  "files": [
+    {
+      "path": "main.tf",
+      "result": {
+        "dialect": "terraform",
+        "language": "terraform",
+        "skipped": "",
+        "symbols": [
+          {
+            "key": "main.aws_s3_bucket.b",
+            "name": "aws_s3_bucket.b",
+            "package": "main",
+            "kind": "TerraformResource",
+            "canonical": "resource",
+            "line": 1,
+            "end_line": 3,
+            "signature": "resource \"aws_s3_bucket\" \"b\"",
+            "tier": "verified"
+          },
+          {
+            "key": "main.var.name",
+            "name": "var.name",
+            "package": "main",
+            "kind": "TerraformVariable",
+            "canonical": "variable_decl",
+            "line": 5,
+            "end_line": 5,
+            "signature": "variable \"name\"",
+            "tier": "verified"
+          }
+        ],
+        "references": [
+          {
+            "from": "main.aws_s3_bucket.b",
+            "to": "var.name",
+            "edge": "call",
+            "raw": "",
+            "strategy": "",
+            "line": 0
+          }
+        ],
+        "unresolved": [],
+        "facts": [],
+        "level": "L3",
+        "notes": []
+      }
+    },
+    {
+      "path": "a.go",
+      "result": {
+        "dialect": "go",
+        "language": "go",
+        "skipped": "",
+        "symbols": [
+          {
+            "key": "a.F",
+            "name": "F",
+            "package": "a",
+            "kind": "GoFunc",
+            "canonical": "",
+            "line": 3,
+            "end_line": 3,
+            "signature": "func F()",
+            "tier": "verified"
+          },
+          {
+            "key": "a.G",
+            "name": "G",
+            "package": "a",
+            "kind": "GoFunc",
+            "canonical": "",
+            "line": 5,
+            "end_line": 5,
+            "signature": "func G()",
+            "tier": "verified"
+          }
+        ],
+        "references": [
+          {
+            "from": "a.F",
+            "to": "a.G",
+            "edge": "call",
+            "raw": "",
+            "strategy": "",
+            "line": 0
+          }
+        ],
+        "unresolved": [],
+        "facts": [],
+        "level": "L4",
+        "notes": []
+      }
+    },
+    {
+      "path": "blob.bin",
+      "result": {
+        "dialect": "",
+        "language": "unclassified",
+        "skipped": "binary",
+        "symbols": [],
+        "references": [],
+        "unresolved": [],
+        "facts": [],
+        "level": "",
+        "notes": []
+      }
+    },
+    {
+      "path": "misc.yaml",
+      "result": {
+        "dialect": "",
+        "language": "yaml",
+        "skipped": "unclassified",
+        "symbols": [],
+        "references": [],
+        "unresolved": [],
+        "facts": [],
+        "level": "",
+        "notes": [
+          "siblings-empty: this file's classification reads sibling paths (chart, role or module roots), and none were given"
+        ]
+      }
+    }
+  ]
+}
