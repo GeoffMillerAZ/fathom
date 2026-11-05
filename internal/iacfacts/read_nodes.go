@@ -95,6 +95,20 @@ func (n *node) unreadableSection() bool {
 	return false
 }
 
+// isSecretFlag reports whether a secrecy flag (NoEcho, a Pulumi configuration entry's secret) is on, given its node,
+// nil when the entry does not name it. Only the literal false clears the flag. Anything the reader cannot tell from
+// true counts as true: yes (YAML 1.1 reads a boolean where yaml.v3 reads a string), 1, ${x}, !Ref D, an alias, a
+// mapping, a null. A merge key in the entry may carry the flag, so it counts as true too.
+func isSecretFlag(entry, flag *node) bool {
+	if entry.hasMerge() {
+		return true
+	}
+	if flag == nil {
+		return false
+	}
+	return !(flag.kind == nodeScalar && flag.tag == "" && strings.EqualFold(flag.value, "false"))
+}
+
 // scalarValue is a scalar's value as Go sees it.
 func (n *node) scalarValue() any {
 	switch n.typ {

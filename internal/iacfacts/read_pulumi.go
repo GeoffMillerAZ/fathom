@@ -242,10 +242,7 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 	case p.cfgs[name] != nil:
 		c := p.cfgs[name]
 		if d := c.get("default"); d != nil && d.kind == nodeScalar && ref == name {
-			secret := false
-			if sec := c.get("secret"); sec != nil && sec.kind == nodeScalar && strings.EqualFold(sec.value, "true") {
-				secret = true
-			}
+			secret := isSecretFlag(c, c.get("secret"))
 			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: p.cfg.values && !secret}
 		}
 		return readRes{class: ClassReference, refs: []string{ref}}

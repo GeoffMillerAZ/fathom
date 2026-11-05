@@ -51,9 +51,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 			if t := p.val.get("Type"); t != nil && strings.HasPrefix(t.value, "AWS::SSM::Parameter::Value<") {
 				prm.indirect = true
 			}
-			if ne := p.val.get("NoEcho"); ne != nil && ne.kind == nodeScalar && strings.EqualFold(ne.value, "true") {
-				prm.noEcho = true
-			}
+			prm.noEcho = isSecretFlag(p.val, p.val.get("NoEcho"))
 			cr.params[p.key.value] = prm
 		}
 	}
