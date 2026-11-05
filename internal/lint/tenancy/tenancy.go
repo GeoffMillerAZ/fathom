@@ -113,10 +113,11 @@ func bgCtxFile(rel string) bool {
 	return dir == "cmd/fathom/" && (strings.HasPrefix(base, "console_") || strings.HasPrefix(base, "servehttp"))
 }
 
-// bareGoAllowed: the packages that own goroutine lifetimes.
+// bareGoAllowed: the packages that own goroutine lifetimes. internal/readlimit owns the one goroutine of a read
+// deadline: it runs a function, and counts the ones it gave up on (ADR-092, the read guarantee).
 func bareGoAllowed(rel string) bool {
 	switch path.Dir(rel) {
-	case "internal/console", "internal/refresh", "internal/memo", "internal/tenancy":
+	case "internal/console", "internal/refresh", "internal/memo", "internal/tenancy", "internal/readlimit":
 		return true
 	}
 	return false
@@ -227,7 +228,7 @@ func (c *checker) checkSource(f *ast.File) {
 		switch x := n.(type) {
 		case *ast.GoStmt:
 			if !goOK {
-				c.add(RuleBareGo, x.Pos(), "go statement outside console.Jobs/refresh/memo/tenancy")
+				c.add(RuleBareGo, x.Pos(), "go statement outside console.Jobs/refresh/memo/tenancy/readlimit")
 			}
 		case *ast.CallExpr:
 			p, name, ok := c.pkgSel(x.Fun)

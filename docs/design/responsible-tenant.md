@@ -600,7 +600,7 @@ or data-flow analysis — so it is neither noisy nor silently ineffective:
 | `sources` | a reference to `SourcesForIngest`, `ListAllSymbols` or `callgraph.Build` in a handler package (`callgraph.Build` is allowed only in the `graphstore` group) |
 | `exec-noctx` | `exec.Command` (require `CommandContext`) |
 | `bg-ctx` | `context.Background()`/`TODO()` in `internal/mcp`, `cmd/fathom/console_*.go`, `servehttp.go` |
-| `bare-go` | a `go` statement outside `console.Jobs`, `refresh`, `memo`, `tenancy` |
+| `bare-go` | a `go` statement outside `console.Jobs`, `refresh`, `memo`, `tenancy`, `readlimit` (the read deadline's one goroutine, ADR-092) |
 | `pkg-map` | a package-level `map` var in `cmd/fathom` or `internal/mcp` (each needs an allowlist entry naming why it is not a cache, or it moves into `memo`) |
 | `raw-serve` | `http.Serve`, `http.ListenAndServe` |
 | `test-live-url` | a `:7575` literal in a `_test.go` file |
