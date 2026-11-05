@@ -749,16 +749,16 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 	if f, ok := x.spec.DecodeFiles[path.Base(relPath)]; ok {
 		format = f
 	}
-	docs, err := decodeDoc(format, src, x.spec.MultiDocument, x.spec.YAMLTags)
+	docs, partial, err := decodeDocReport(format, src, x.spec.MultiDocument, x.spec.YAMLTags)
 	if err != nil {
 		return DocResult{Incomplete: incompleteReason(format+" decode", err)}, nil
 	}
 	if len(docs) == 0 {
-		return DocResult{}, nil
+		return DocResult{Incomplete: partial}, nil
 	}
 	pkg := pkgFromPath(relPath)
 	base := path.Base(relPath)
-	var res DocResult
+	res := DocResult{Incomplete: partial}
 	var unique map[string]bool // a unique entity's names seen in this file, by source kind (K20)
 	for _, root := range docs {
 		if !hasKeys(root, x.spec.Detect.RequireKeys) {

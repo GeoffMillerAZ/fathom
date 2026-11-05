@@ -27,8 +27,18 @@ import (
 // every dialect but CloudFormation does; "cloudformation" reads a short-form
 // intrinsic as its long form, cfnIntrinsic).
 func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNode, error) {
+	docs, _, err := decodeDocReport(format, src, multi, yamlTags)
+	return docs, err
+}
+
+// decodeDocReport is decodeDoc plus partial: when the decode kept some
+// documents and could not read the rest (a later YAML document that fails, a
+// document after the first in a dialect that reads one, a JSON value after the
+// first), partial says why in one line. The documents returned do not change,
+// so the product's nodes are the same; only the language library's door reads
+// partial, to set Incomplete.
+func decodeDocReport(format string, src []byte, multi bool, yamlTags string) (out []*docNode, partial string, err error) {
 	var docs []*docNode
-	var err error
 	switch format {
 	case "yaml":
 		if looksTOML(src) {
@@ -40,14 +50,14 @@ func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNo
 				break
 			}
 		}
-		docs, err = decodeYAMLDoc(src, multi, yamlTags)
+		docs, partial, err = decodeYAMLDocReport(src, multi, yamlTags)
 	case "json":
 		var n *docNode
-		n, err = decodeJSONDoc(src)
+		n, partial, err = decodeJSONDocReport(src)
 		docs = []*docNode{n}
 	case "jsonc":
 		var n *docNode
-		n, err = decodeJSONDoc(stripJSONC(src))
+		n, partial, err = decodeJSONDocReport(stripJSONC(src))
 		docs = []*docNode{n}
 	case "toml":
 		var n *docNode
@@ -74,19 +84,19 @@ func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNo
 		n, err = decodeCompDB(src)
 		docs = []*docNode{n}
 	default:
-		return nil, fmt.Errorf("doc: unknown decode %q", format)
+		return nil, "", fmt.Errorf("doc: unknown decode %q", format)
 	}
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	out := docs[:0]
+	out = docs[:0]
 	for _, d := range docs {
 		if d != nil {
 			fixEndLines(d)
 			out = append(out, d)
 		}
 	}
-	return out, nil
+	return out, partial, nil
 }
 
 // tomlOpenRe matches the first meaningful line of a TOML document: a table
@@ -111,8 +121,32 @@ func looksTOML(src []byte) bool {
 // ── YAML ──────────────────────────────────────────────────────────────────
 
 func decodeYAMLDoc(src []byte, multi bool, yamlTags string) ([]*docNode, error) {
+	docs, _, err := decodeYAMLDocReport(src, multi, yamlTags)
+	return docs, err
+}
+
+// maxYAMLAliasNodes bounds the nodes one file's alias expansions may build.
+// An alias is followed by rebuilding its target, so a chain of anchors that
+// each reference the one before multiplies by its fan-out per level and a file
+// under 1 KB can ask for gigabytes. A real file's aliases expand to a few
+// hundred nodes; a file past the bound is refused whole.
+const maxYAMLAliasNodes = 100_000
+
+// yamlConv is one file's YAML-to-docNode conversion state.
+type yamlConv struct {
+	tags       string // DocSpec.YAMLTags
+	aliasNodes int    // nodes built while following an alias
+	inAlias    int    // > 0 while building an alias target
+	over       bool   // the alias bound was crossed; the conversion stopped
+}
+
+// decodeYAMLDocReport is decodeYAMLDoc plus the partial reason: the documents
+// before a bad one are kept, and a document that was not read says why.
+func decodeYAMLDocReport(src []byte, multi bool, yamlTags string) ([]*docNode, string, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(src))
+	conv := &yamlConv{tags: yamlTags}
 	var out []*docNode
+	partial := ""
 	for {
 		var doc yaml.Node
 		err := dec.Decode(&doc)
@@ -121,18 +155,23 @@ func decodeYAMLDoc(src []byte, multi bool, yamlTags string) ([]*docNode, error) 
 		}
 		if err != nil {
 			if len(out) > 0 {
-				return out, nil // keep the documents before the bad one
+				partial = incompleteReason("yaml decode", err) // keep the documents before the bad one
+				break
 			}
-			return nil, err
+			return nil, "", err
 		}
 		if len(doc.Content) > 0 {
-			out = append(out, fromYAML(doc.Content[0], 0, yamlTags))
-		}
-		if !multi {
-			break
+			if !multi && len(out) > 0 {
+				partial = "yaml decode: documents after the first are not read"
+				break
+			}
+			out = append(out, fromYAML(doc.Content[0], 0, conv))
+			if conv.over {
+				return nil, "", fmt.Errorf("yaml alias expansion exceeds %d nodes", maxYAMLAliasNodes)
+			}
 		}
 	}
-	return out, nil
+	return out, partial, nil
 }
 
 // fromYAML converts a yaml.v3 node, following aliases (bounded depth, so
@@ -140,12 +179,20 @@ func decodeYAMLDoc(src []byte, multi bool, yamlTags string) ([]*docNode, error) 
 // the node reads as its untagged value, the tag kept on the node for
 // refuse_templates (K20) — unless yamlTags names a scheme that reads it
 // (tagYAML).
-func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
-	if n == nil || depth > 64 {
+func fromYAML(n *yaml.Node, depth int, c *yamlConv) *docNode {
+	if n == nil || depth > 64 || c.over {
 		return nil
 	}
+	if c.inAlias > 0 {
+		if c.aliasNodes++; c.aliasNodes > maxYAMLAliasNodes {
+			c.over = true
+			return nil
+		}
+	}
 	if n.Kind == yaml.AliasNode {
-		out := fromYAML(n.Alias, depth+1, yamlTags)
+		c.inAlias++
+		out := fromYAML(n.Alias, depth+1, c)
+		c.inAlias--
 		if out != nil {
 			cp := *out
 			cp.line = n.Line
@@ -153,9 +200,9 @@ func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
 		}
 		return nil
 	}
-	if yamlTags == yamlTagsCloudFormation {
+	if c.tags == yamlTagsCloudFormation {
 		if name, ok := cfnIntrinsic(n.Tag); ok {
-			return cfnLongForm(n, name, depth, yamlTags)
+			return cfnLongForm(n, name, depth, c)
 		}
 	}
 	d := &docNode{line: n.Line, tag: yamlLocalTag(n.Tag)}
@@ -164,11 +211,11 @@ func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
 		d.kind = docMap
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			k, v := n.Content[i], n.Content[i+1]
-			vn := fromYAML(v, depth+1, yamlTags)
+			vn := fromYAML(v, depth+1, c)
 			if vn == nil {
 				vn = &docNode{kind: docNull}
 			}
-			if yamlTags == yamlTagsCloudFormation && k.Value == "Fn::GetAtt" && vn.kind == docScalar {
+			if c.tags == yamlTagsCloudFormation && k.Value == "Fn::GetAtt" && vn.kind == docScalar {
 				vn = cfnGetAttList(vn.scalar, v.Line)
 			}
 			vn.line = k.Line
@@ -177,7 +224,7 @@ func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
 	case yaml.SequenceNode:
 		d.kind = docSeq
 		for _, it := range n.Content {
-			if in := fromYAML(it, depth+1, yamlTags); in != nil {
+			if in := fromYAML(it, depth+1, c); in != nil {
 				d.items = append(d.items, in)
 			}
 		}
@@ -217,7 +264,7 @@ func cfnIntrinsic(tag string) (string, bool) {
 // cfnLongForm reads a tagged node `!Name v` as the one-key map {long name:
 // v}, on the tag's line; `!GetAtt A.B` is {Fn::GetAtt: [A, B]}, the list the
 // short form's dotted string abbreviates.
-func cfnLongForm(n *yaml.Node, name string, depth int, yamlTags string) *docNode {
+func cfnLongForm(n *yaml.Node, name string, depth int, c *yamlConv) *docNode {
 	var v *docNode
 	if name == "Fn::GetAtt" && n.Kind == yaml.ScalarNode {
 		v = cfnGetAttList(n.Value, n.Line)
@@ -227,7 +274,7 @@ func cfnLongForm(n *yaml.Node, name string, depth int, yamlTags string) *docNode
 		if inner.Kind == yaml.ScalarNode && inner.Value == "" {
 			inner.Tag = "!!null"
 		}
-		v = fromYAML(&inner, depth+1, yamlTags)
+		v = fromYAML(&inner, depth+1, c)
 	}
 	if v == nil {
 		v = &docNode{kind: docNull}
@@ -283,14 +330,24 @@ func tokenStart(src []byte, off int) int {
 }
 
 func decodeJSONDoc(src []byte) (*docNode, error) {
+	n, _, err := decodeJSONDocReport(src)
+	return n, err
+}
+
+// decodeJSONDocReport is decodeJSONDoc plus the partial reason: the value
+// that follows the first one is not read, and partial says so.
+func decodeJSONDocReport(src []byte) (*docNode, string, error) {
 	dec := json.NewDecoder(bytes.NewReader(src))
 	dec.UseNumber()
 	li := newLineIndex(src)
 	n, err := jsonValue(dec, src, li)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return n, nil
+	if _, terr := dec.Token(); !errors.Is(terr, io.EOF) {
+		return n, "json decode: content after the first value is not read", nil
+	}
+	return n, "", nil
 }
 
 func jsonValue(dec *json.Decoder, src []byte, li lineIndex) (*docNode, error) {
