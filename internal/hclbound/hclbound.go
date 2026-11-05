@@ -113,6 +113,18 @@ func Check(src []byte, file string, b Bounds) *Refusal {
 		splats -= chains[top]
 		chains[top] = 0
 	}
+	// popLevel closes the innermost open level and restores the counts it interrupted.
+	popLevel := func() {
+		endChain()
+		p := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		outer -= p.run + p.post
+		run, post = p.run, p.post
+		kinds = kinds[:len(kinds)-1]
+		chains = chains[:len(chains)-1]
+		quests -= quest[len(quest)-1]
+		quest = quest[:len(quest)-1]
+	}
 	tooDeep := func() *Refusal {
 		if len(kinds)+outer+run+post+splats+quests+ctl > b.MaxDepth {
 			return &Refusal{BoundDepth, fmt.Sprintf("nesting deeper than %d (brackets, operators, splats, conditionals and directives together) is not read", b.MaxDepth)}
@@ -126,8 +138,21 @@ func Check(src []byte, file string, b Bounds) *Refusal {
 			switch {
 			case f.bad > 0:
 				// Inside a directive the parser reads and drops: it makes no part, so the literals around it
-				// still meld (IAC35). It ends at the close that matches its opener.
-				if t.Type == hclsyntax.TokenTemplateSeqEnd && len(kinds) == f.bad {
+				// still meld (IAC35). The parser skips it with recover(`}`), which counts only the `${` and `%{`
+				// it meets against the `}` that ends them and no bracket, so the directive ends at the first `}`
+				// no nested opener claims, whatever brackets it left open (`%{f(}`). Those brackets are
+				// dropped here too, so the close below ends the directive's own level.
+				switch t.Type {
+				case hclsyntax.TokenTemplateInterp, hclsyntax.TokenTemplateControl:
+					f.badNest++
+				case hclsyntax.TokenTemplateSeqEnd:
+					if f.badNest > 0 {
+						f.badNest--
+						break
+					}
+					for len(kinds) > f.bad {
+						popLevel()
+					}
 					f.bad = 0
 				}
 			case t.Type == hclsyntax.TokenStringLit || t.Type == hclsyntax.TokenQuotedLit:
@@ -326,6 +351,7 @@ type tmplFrame struct {
 	runBytes, concat int64
 	prevLit          bool
 	bad              int
+	badNest          int // the `${` and `%{` met inside the dropped directive whose `}` has not come yet
 }
 
 // The melding budgets. maxMeldMoves is melds times parts, which a 30,000 line heredoc exceeds and a 20,000 line one

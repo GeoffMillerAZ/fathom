@@ -155,14 +155,42 @@ func hclExprRefs(x hclsyntax.Expression, key func(hcl.Traversal) string, fn func
 // (an interpolation-free quoted or heredoc string); ok is false for anything
 // that needs an evaluation context.
 func hclLiteralString(x hclsyntax.Expression) (string, bool) {
-	if x == nil {
-		return "", false
-	}
-	v, d := x.Value(nil)
-	if d.HasErrors() || !v.IsKnown() || v.IsNull() || v.Type() != cty.String {
+	v, ok := hclLiteralValue(x)
+	if !ok || !v.IsKnown() || v.IsNull() || v.Type() != cty.String {
 		return "", false
 	}
 	return v.AsString(), true
+}
+
+// hclLiteralValue evaluates x only when it is a literal: a LiteralValueExpr, or
+// a template with no interpolation or directive (a quoted or heredoc string),
+// inside any number of parentheses. Value recurses once per level of an
+// expression and a Go stack that outgrows its limit is a fatal error no recover
+// catches, so an operator chain or a conditional chain of a few hundred
+// thousand levels, small enough to be a file, must never reach it; the
+// expressions this skips need an evaluation context to give a value anyway.
+func hclLiteralValue(x hclsyntax.Expression) (cty.Value, bool) {
+	for {
+		p, ok := x.(*hclsyntax.ParenthesesExpr)
+		if !ok {
+			break
+		}
+		x = p.Expression
+	}
+	switch e := x.(type) {
+	case *hclsyntax.LiteralValueExpr:
+	case *hclsyntax.TemplateExpr:
+		if !e.IsStringLiteral() {
+			return cty.NilVal, false
+		}
+	default:
+		return cty.NilVal, false
+	}
+	v, d := x.Value(nil)
+	if d.HasErrors() {
+		return cty.NilVal, false
+	}
+	return v, true
 }
 
 // hclTupleItems is a list expression's elements (the expression itself for

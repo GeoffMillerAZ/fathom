@@ -57,7 +57,9 @@ func familyShapes(full bool) []shape {
 		// IAC29: the parser's recover(`}`) swallows the `]}` of a mismatched pair as one close while its frame stays.
 		"]}[{", "]}[{%{if a}", "{a]}[{", ")}[{", "]}({", "]]}[{",
 		// IAC34 and IAC35: a template the `[*` skips the opener of, and a directive the parser drops.
-		"[*<<B\nB\n]", "[*\"\"]", "%{}a\n", "%{foo}$${")
+		"[*<<B\nB\n]", "[*\"\"]", "%{}a\n", "%{foo}$${",
+		// a dropped directive that leaves a bracket open.
+		"%{f(}a\n", "%{f[}a\n", "%{f(${a}}a\n")
 	var out []shape
 	for _, p := range prefixes {
 		for _, u := range units {

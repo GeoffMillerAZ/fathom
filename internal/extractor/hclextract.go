@@ -191,7 +191,7 @@ func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.Symb
 			if b.Body != nil {
 				if attr, ok := b.Body.Attributes["source"]; ok {
 					d.sourcePresent = true
-					if v, diags := attr.Expr.Value(nil); !diags.HasErrors() && v.Type() == cty.String {
+					if v, ok := hclLiteralValue(attr.Expr); ok && v.Type() == cty.String {
 						sig = fmt.Sprintf("module %q { source = %q }", mName, v.AsString())
 						d.source = v.AsString()
 					}
