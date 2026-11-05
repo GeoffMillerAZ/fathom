@@ -1,9 +1,14 @@
 package readout
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomformat"
+	"github.com/geoffmilleraz/fathom/internal/langroute"
 )
 
 // TestReadoutDoesNotImportFusion pins LL-6 (ADR-092): the outline builds a
@@ -38,5 +43,46 @@ func TestNewOutlineRouter(t *testing.T) {
 	}
 	if _, ok := r.Exts()[".cue"]; !ok {
 		t.Error("the outline router lost the CUE extractor it had through the pipeline")
+	}
+}
+
+// TestNewOutlineRouterKeepsProductFormats pins the registrations the outline
+// had through the pipeline: fathom's config and plan formats (WithFormats) and
+// Timoni modules (WithTimoni) resolve through the router with their tool kinds.
+func TestNewOutlineRouterKeepsProductFormats(t *testing.T) {
+	r, err := newOutlineRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	plan, err := os.ReadFile(filepath.Join("..", "..", "docs", "plans", "lang-library.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name    string
+		rel     string
+		content []byte
+		want    langroute.ToolKind
+		notExt  string // an extension whose plain extractor must not be the one resolved
+	}{
+		{"fathom config", ".fathom/config.toml", []byte("[service]\n"), fathomformat.ToolFathomConfig, ""},
+		{"plan", "docs/plans/lang-library.md", plan, fathomformat.ToolFathomPlanRows, ""},
+		{"timoni module", "mod/timoni.cue", []byte("package main\n"), langroute.ToolTimoni, ".cue"},
+	}
+	for _, c := range cases {
+		e, kind, ok, _ := r.ResolveExtractor(c.rel, c.content, nil)
+		if !ok || e == nil {
+			t.Errorf("%s: no extractor claims %s", c.name, c.rel)
+			continue
+		}
+		if kind != c.want {
+			t.Errorf("%s: tool kind %q, want %q", c.name, kind, c.want)
+		}
+		// Without WithTimoni the .cue extractor still reads the file under the
+		// Timoni tag, so the kind alone does not prove the registration.
+		if c.notExt != "" && e == r.Exts()[c.notExt] {
+			t.Errorf("%s: resolved to the plain %s extractor, not the dialect's", c.name, c.notExt)
+		}
 	}
 }
