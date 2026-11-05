@@ -119,3 +119,37 @@ func TestNumberSpellingsOfOneIntegerReadAlike(t *testing.T) {
 		}
 	}
 }
+
+// IAC31: the IAC26 fix made 1e6 a float64, and scalarString printed a float64 with 'g', so "a${1e6}" read a1e+06 where
+// tofu prints a1000000. cty prints a number positionally, and so must the reader, from a literal or a default.
+func TestTerraformInterpolatesNumbersPositionally(t *testing.T) {
+	read := func(src string) Attr {
+		set, err := ReadTerraformFile("a.tf", []byte(src), WithValues())
+		if err != nil || len(set.Resources) != 1 {
+			t.Fatalf("%v %+v", err, set)
+		}
+		return attrOf(t, set.Resources[0], "x")
+	}
+	for expr, want := range map[string]string{
+		"1e6": "a1000000", "1000000.0": "a1000000", "1234567.5": "a1234567.5", "1e21": "a1000000000000000000000",
+		"0.00001": "a0.00001", "1.5": "a1.5", "100": "a100", "1e-7": "a0.0000001",
+		"12345678901234567890": "a12345678901234567890", "0.1000000000000000055511151231257827": "a0.1000000000000000055511151231257827",
+	} {
+		a := read(fmt.Sprintf("resource \"t\" \"n\" {\n  x = \"a${%s}\"\n}\n", expr))
+		if a.Value != want {
+			t.Errorf("a${%s}: %#v, want %q", expr, a.Value, want)
+		}
+	}
+	mod, err := ReadTerraformModule(fstest.MapFS{"main.tf": {Data: []byte("variable \"t\" {\n  default = 1e6\n}\nresource \"t\" \"n\" {\n  x = \"${var.t}s\"\n}\n")}}, ".", WithValues())
+	if err != nil || len(mod.Resources) != 1 {
+		t.Fatalf("%v %+v", err, mod)
+	}
+	if a := attrOf(t, mod.Resources[0], "x"); a.Value != "1000000s" || a.Class != ClassDefaulted {
+		t.Errorf("a defaulted 1e6: %+v", a)
+	}
+	// An exponent far past a float64's would print as a million digits: no string is known, and the read stays fast.
+	b := read("resource \"t\" \"n\" {\n  x = \"a${1e-99999999}\"\n}\n")
+	if b.Value != nil {
+		t.Errorf("1e-99999999 must not format: %#v", b.Value)
+	}
+}

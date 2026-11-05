@@ -191,7 +191,7 @@ const (
 	// resolves variables. Every node is visited a bounded number of times, so a file at MaxNodes stays inside it.
 	MaxReadVisits = 4 * MaxNodes
 	// MaxValueBytes bounds the logical size of one value a read builds under WithValues, counted the way a
-	// consumer would serialise it. A value past it refuses the whole input: a chain of doublings is small as
+	// consumer would serialise it: string bytes, mapping keys and ignore_changes names. A value past it refuses the whole input: a chain of doublings is small as
 	// source and enormous as a value.
 	MaxValueBytes = 1 << 20
 	// MaxTotalValueBytes bounds the logical size of every value one read keeps under WithValues. MaxValueBytes
@@ -394,6 +394,17 @@ type readRes struct {
 	big   bool
 	// charged marks a value already counted against MaxTotalValueBytes when it was built (emitter.hold).
 	charged bool
+}
+
+// withBytes adds n bytes the parts of a composite do not carry (the keys of a mapping, the names of a list) to its
+// logical size, and marks it big when that passes MaxValueBytes, as foldRes does. A value is sized as a consumer
+// serialises it, and a key is serialised once for every copy of the mapping that holds it.
+func (c readRes) withBytes(n int) readRes {
+	c.vsize += n
+	if c.hasV && c.vsize > MaxValueBytes {
+		c.hasV, c.big = false, true
+	}
+	return c
 }
 
 // partSize is the logical size of one part of a composite value.

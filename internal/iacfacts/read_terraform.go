@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -838,6 +839,7 @@ func with(m map[string]bool, k string) map[string]bool {
 // attribute paths, not references: [tags, ami] and all.
 func ignoreChanges(e hclsyntax.Expression, values bool) readRes {
 	var names []any
+	size := 0
 	switch x := e.(type) {
 	case *hclsyntax.ScopeTraversalExpr:
 		if len(x.Traversal) == 1 && x.Traversal.RootName() == "all" {
@@ -850,12 +852,14 @@ func ignoreChanges(e hclsyntax.Expression, values bool) readRes {
 			if !ok {
 				return readRes{}
 			}
-			names = append(names, renderTraversal(t.Traversal))
+			name := renderTraversal(t.Traversal)
+			names = append(names, name)
+			size += len(name) + 1
 		}
 		if names == nil {
 			names = []any{}
 		}
-		return readRes{class: ClassLiteral, val: names, hasV: values}
+		return readRes{class: ClassLiteral, val: names, hasV: values}.withBytes(size)
 	}
 	return readRes{}
 }
@@ -930,8 +934,13 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 			parts = append(parts, vals[i])
 		}
 		out := foldRes(parts)
-		if out.hasV {
+		for _, k := range keys {
+			// A literal key past MaxValueBytes is a value past it, though it is no part.
+			out.big = out.big || k.big
+		}
+		if out.hasV && !out.big {
 			m := make(map[string]any, len(x.Items))
+			keyBytes := 0
 			for i := range keys {
 				ks, ok := keys[i].val.(string)
 				if !ok {
@@ -940,8 +949,13 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 					return out
 				}
 				m[ks] = vals[i].val
+				if keys[i].class == ClassLiteral {
+					// A computed key is one of parts and is sized there.
+					keyBytes += len(ks) + 1
+				}
 			}
 			out.val = m
+			out = out.withBytes(keyBytes)
 		}
 		return out
 	case *hclsyntax.ObjectConsKeyExpr:
@@ -1028,9 +1042,19 @@ func scalarString(v any) (string, bool) {
 	case int64:
 		return big.NewInt(x).String(), true
 	case float64:
-		return new(big.Float).SetFloat64(x).Text('g', -1), true
+		// cty prints a number in positional form, whatever its size: 1e6 is 1000000 and 0.00001 is 0.00001.
+		return strconv.FormatFloat(x, 'f', -1, 64), true
 	case json.Number:
-		return string(x), true
+		// cty holds a number at 512 bits and prints it positionally. A text with an exponent past what a float64
+		// holds by a long way would print as a million digits, so such a number has no known string.
+		f, _, err := big.ParseFloat(string(x), 10, 512, big.ToNearestEven)
+		if err != nil {
+			return "", false
+		}
+		if exp := f.MantExp(nil); exp > 4096 || exp < -4096 {
+			return "", false
+		}
+		return f.Text('f', -1), true
 	}
 	return "", false
 }
