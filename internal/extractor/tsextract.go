@@ -273,15 +273,12 @@ func tagsSpec(fsys fs.FS, d Dialect) (*tsLangSpec, error) {
 	return spec, nil
 }
 
-// variantRules is the rules a variant parses with: its dialect's, or, when
-// the variant names a tags query of its own (O732, LB-F385), a copy whose
-// query is that file's patterns before the dialect's — so a node both name
-// keeps the variant's definition (oneDefPerNode) — compiled on the variant's
-// own Parser (leaseFor keys the pool by variant).
-func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
-	return variantRulesFS(dialectFS, d, v, rules)
-}
-
+// variantRulesFS is the rules a variant parses with, its queries read from
+// fsys: its dialect's, or, when the variant names a tags query of its own
+// (O732, LB-F385), a copy whose query is that file's patterns before the
+// dialect's — so a node both name keeps the variant's definition
+// (oneDefPerNode) — compiled on the variant's own Parser (leaseFor keys the pool
+// by variant).
 func variantRulesFS(fsys fs.FS, d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
 	if v.Queries == nil || v.Queries.Tags == "" {
 		return rules, nil
