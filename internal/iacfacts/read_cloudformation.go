@@ -2,6 +2,7 @@ package iacfacts
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -28,7 +29,8 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 	if root == nil || root.kind != nodeMap || res == nil || res.kind != nodeMap {
 		return set, nil
 	}
-	cr := &cfnReader{params: map[string]cfnParam{}, conds: root.get("Conditions")}
+	cr := &cfnReader{params: map[string]cfnParam{}, conds: root.get("Conditions"),
+		classMemo: map[*node]cfnClass{}, refMemo: map[*node][]string{}}
 	cr.cfg = newConfig(opts)
 	if ps := root.get("Parameters"); ps != nil && ps.kind == nodeMap {
 		for _, p := range ps.pairs {
@@ -70,6 +72,9 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		if w.err != nil {
 			return nil, w.err
 		}
+		if cr.over {
+			return nil, limitErr(filePath, fmt.Sprintf("more than %d intrinsic-function visits", MaxReadVisits))
+		}
 		set.Resources = append(set.Resources, r)
 	}
 	sortSet(set)
@@ -85,6 +90,31 @@ type cfnReader struct {
 	cfg    config
 	params map[string]cfnParam
 	conds  *node
+	// classMemo and refMemo make classification linear: a node is classified once, however many ways it is
+	// reached (an intrinsic's argument, a Sub definition used twice, a condition). nodes counts the first
+	// visits against MaxNodes, and over is set when the budget is spent.
+	classMemo map[*node]cfnClass
+	refMemo   map[*node][]string
+	nodes     int
+	over      bool
+}
+
+// cfnClass is a memoized classifyIntrinsic answer.
+type cfnClass struct {
+	res readRes
+	ok  bool
+}
+
+// spend counts one first visit of a node and reports whether the budget still holds.
+func (c *cfnReader) spend() bool {
+	if c.over {
+		return false
+	}
+	if c.nodes++; c.nodes > MaxReadVisits {
+		c.over = true
+		return false
+	}
+	return true
 }
 
 // condition reads a resource's Condition: the multiplicity is the condition, with the
@@ -127,10 +157,22 @@ func intrinsic(n *node) (string, *node, bool) {
 
 // classifyIntrinsic classifies an intrinsic function. It reports false for any other node.
 func (c *cfnReader) classifyIntrinsic(n *node, depth int) (readRes, bool) {
-	name, arg, ok := intrinsic(n)
-	if !ok {
+	if _, _, ok := intrinsic(n); !ok {
 		return readRes{}, false
 	}
+	if m, hit := c.classMemo[n]; hit {
+		return m.res, m.ok
+	}
+	if !c.spend() {
+		return readRes{class: ClassUnknown}, true
+	}
+	res, ok := c.classifyIntrinsicOnce(n, depth)
+	c.classMemo[n] = cfnClass{res, ok}
+	return res, ok
+}
+
+func (c *cfnReader) classifyIntrinsicOnce(n *node, depth int) (readRes, bool) {
+	name, arg, _ := intrinsic(n)
 	if depth > MaxDepth {
 		return readRes{class: ClassUnknown}, true
 	}
@@ -178,7 +220,7 @@ func (c *cfnReader) ref(name string) readRes {
 		return readRes{class: ClassExpression, refs: []string{name}}
 	}
 	if p, ok := c.params[name]; ok && p.def != nil && !p.indirect {
-		return readRes{class: ClassDefaulted, refs: []string{name}, val: p.def.scalarValue(), hasV: true}
+		return readRes{class: ClassDefaulted, refs: []string{name}, val: p.def.scalarValue(), hasV: c.cfg.values}
 	}
 	return readRes{class: ClassReference, refs: []string{name}}
 }
@@ -202,11 +244,11 @@ func (c *cfnReader) sub(arg *node, depth int) readRes {
 	for len(s) > 0 {
 		i := strings.Index(s, "${")
 		if i < 0 {
-			parts = append(parts, readRes{class: ClassLiteral, val: s, hasV: true})
+			parts = append(parts, readRes{class: ClassLiteral, val: s, hasV: c.cfg.values})
 			break
 		}
 		if i > 0 {
-			parts = append(parts, readRes{class: ClassLiteral, val: s[:i], hasV: true})
+			parts = append(parts, readRes{class: ClassLiteral, val: s[:i], hasV: c.cfg.values})
 		}
 		s = s[i+2:]
 		j := strings.IndexByte(s, '}')
@@ -216,14 +258,14 @@ func (c *cfnReader) sub(arg *node, depth int) readRes {
 		v := s[:j]
 		s = s[j+1:]
 		if lit, escaped := strings.CutPrefix(v, "!"); escaped {
-			parts = append(parts, readRes{class: ClassLiteral, val: "${" + lit + "}", hasV: true})
+			parts = append(parts, readRes{class: ClassLiteral, val: "${" + lit + "}", hasV: c.cfg.values})
 			continue
 		}
 		if d := defs.get(v); d != nil {
 			if r, ok := c.classifyIntrinsic(d, depth+1); ok {
 				parts = append(parts, r)
 			} else if d.kind == nodeScalar {
-				parts = append(parts, readRes{class: ClassLiteral, val: d.scalarValue(), hasV: true})
+				parts = append(parts, readRes{class: ClassLiteral, val: d.scalarValue(), hasV: c.cfg.values})
 			} else {
 				parts = append(parts, readRes{class: ClassExpression})
 			}
@@ -236,7 +278,7 @@ func (c *cfnReader) sub(arg *node, depth int) readRes {
 		}
 	}
 	if len(parts) == 0 {
-		return readRes{class: ClassLiteral, val: "", hasV: true}
+		return readRes{class: ClassLiteral, val: "", hasV: c.cfg.values}
 	}
 	if len(parts) == 1 {
 		return parts[0]
@@ -248,18 +290,34 @@ func (c *cfnReader) sub(arg *node, depth int) readRes {
 	return out
 }
 
-// collectRefs lists the references an intrinsic's argument reads.
+// collectRefs lists the references an intrinsic's argument reads. A node's answer is computed once.
 func (c *cfnReader) collectRefs(n *node, depth int) []string {
 	if n == nil || depth > MaxDepth {
 		return nil
 	}
+	if refs, hit := c.refMemo[n]; hit {
+		return refs
+	}
+	if !c.spend() {
+		return nil
+	}
+	out := c.collectRefsOnce(n, depth)
+	c.refMemo[n] = out
+	return out
+}
+
+func (c *cfnReader) collectRefsOnce(n *node, depth int) []string {
 	var out []string
 	if r, ok := c.classifyIntrinsic(n, depth); ok {
-		out = append(out, r.refs...)
 		name, arg, _ := intrinsic(n)
-		if name == "Ref" || name == "GetAtt" || name == "Sub" || name == "ImportValue" {
-			return sortedRefs(out)
+		switch {
+		case name == "Ref" || name == "GetAtt" || name == "Sub" || name == "ImportValue":
+			return sortedRefs(r.refs)
+		case r.class == ClassExpression:
+			// The classification already read the whole argument.
+			return sortedRefs(r.refs)
 		}
+		out = append(out, r.refs...)
 		n = arg
 	}
 	for _, p := range n.pairs {

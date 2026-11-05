@@ -167,6 +167,13 @@ const (
 	MaxDepth = 128
 	// MaxNodes bounds the syntax nodes one file may hold.
 	MaxNodes = 1 << 20
+	// MaxReadVisits bounds the first visits a template read makes while it classifies intrinsic functions and
+	// resolves variables. Every node is visited a bounded number of times, so a file at MaxNodes stays inside it.
+	MaxReadVisits = 4 * MaxNodes
+	// MaxValueBytes bounds the logical size of one value a read builds under WithValues, counted the way a
+	// consumer would serialise it. A value past it refuses the whole input: a chain of doublings is small as
+	// source and enormous as a value.
+	MaxValueBytes = 1 << 20
 	// MaxAttrs bounds the attributes one read may return.
 	MaxAttrs = 1 << 18
 	// MaxPathBytes bounds one attribute path.
@@ -269,6 +276,10 @@ func (e *emitter) emit(file string, out *[]Attr, p string, c readRes, span Span)
 		e.fail(file, fmt.Sprintf("more than %d attributes", MaxAttrs))
 		return
 	}
+	if c.big {
+		e.fail(file, fmt.Sprintf("a value is over %d bytes", MaxValueBytes))
+		return
+	}
 	at := Attr{Path: p, Class: c.class, Refs: sortedRefs(c.refs), Span: span}
 	if e.cfg.values && c.hasV && (c.class == ClassLiteral || c.class == ClassDefaulted) {
 		at.Value = c.val
@@ -283,4 +294,19 @@ type readRes struct {
 	refs  []string
 	val   any
 	hasV  bool
+	// vsize is the logical size of val, which a composite sums over its parts even when they share storage.
+	// big marks a value that went past MaxValueBytes: its hasV is false, and emit refuses the input.
+	vsize int
+	big   bool
+}
+
+// partSize is the logical size of one part of a composite value.
+func partSize(p readRes) int {
+	if p.vsize > 0 {
+		return p.vsize
+	}
+	if s, ok := p.val.(string); ok {
+		return len(s) + 1
+	}
+	return 8
 }

@@ -706,12 +706,12 @@ func (w *treeWalker) walk(n *node, path string, span Span, out *[]Attr, depth in
 			w.walk(it, path+"[*]", it.span, out, depth+1)
 		}
 	case nodeScalar:
-		w.emit(w.file, out, path, readRes{class: ClassLiteral, val: n.scalarValue(), hasV: true}, span)
+		w.emit(w.file, out, path, readRes{class: ClassLiteral, val: n.scalarValue(), hasV: w.cfg.values}, span)
 	default:
 		w.emit(w.file, out, path, readRes{class: ClassUnknown}, span)
 	}
 }
 
 func (w *treeWalker) emitLit(out *[]Attr, path string, span Span, v any) {
-	w.emit(w.file, out, path, readRes{class: ClassLiteral, val: v, hasV: true}, span)
+	w.emit(w.file, out, path, readRes{class: ClassLiteral, val: v, hasV: w.cfg.values}, span)
 }

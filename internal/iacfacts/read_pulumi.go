@@ -2,6 +2,7 @@ package iacfacts
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -32,7 +33,7 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 	if res == nil || res.kind != nodeMap {
 		return set, nil
 	}
-	pr := &pulumiReader{cfg: newConfig(opts), root: root, resolving: map[string]bool{}}
+	pr := &pulumiReader{cfg: newConfig(opts), root: root, resolving: map[string]bool{}, inners: map[string]readRes{}}
 	w := &treeWalker{emitter: emitter{cfg: pr.cfg}, file: filePath, classify: pr.classifyNode}
 	for _, p := range res.pairs {
 		if p.val.kind != nodeMap {
@@ -64,6 +65,9 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 		if w.err != nil {
 			return nil, w.err
 		}
+		if pr.over {
+			return nil, limitErr(filePath, fmt.Sprintf("more than %d expression visits", MaxReadVisits))
+		}
 		set.Resources = append(set.Resources, r)
 	}
 	sortSet(set)
@@ -74,6 +78,24 @@ type pulumiReader struct {
 	cfg       config
 	root      *node
 	resolving map[string]bool
+	// inners memoizes what a variable's value classifies as, so a chain such as v0: "${v1}${v1}" costs one
+	// classification per variable and not one per path. nodes counts visits against MaxNodes, and over is set
+	// when the budget is spent.
+	inners map[string]readRes
+	nodes  int
+	over   bool
+}
+
+// spend counts one node visit and reports whether the budget still holds.
+func (p *pulumiReader) spend() bool {
+	if p.over {
+		return false
+	}
+	if p.nodes++; p.nodes > MaxReadVisits {
+		p.over = true
+		return false
+	}
+	return true
 }
 
 // pulumiBuiltins are the fn:: builtins a program may call.
@@ -91,6 +113,9 @@ func (p *pulumiReader) classifyNode(n *node, depth int) (readRes, bool) {
 	if n == nil {
 		return readRes{}, false
 	}
+	if !p.spend() {
+		return readRes{class: ClassUnknown}, true
+	}
 	if n.kind == nodeMap && len(n.pairs) == 1 && n.pairs[0].key.kind == nodeScalar && strings.HasPrefix(n.pairs[0].key.value, "fn::") {
 		name := strings.TrimPrefix(n.pairs[0].key.value, "fn::")
 		arg := n.pairs[0].val
@@ -102,7 +127,7 @@ func (p *pulumiReader) classifyNode(n *node, depth int) (readRes, bool) {
 				if r, ok := p.classifyNode(arg, depth+1); ok {
 					return r, true
 				}
-				return readRes{class: ClassLiteral, val: arg.scalarValue(), hasV: true}, true
+				return readRes{class: ClassLiteral, val: arg.scalarValue(), hasV: p.cfg.values}, true
 			}
 		}
 		return readRes{class: ClassExpression, refs: p.collectRefs(arg, depth+1)}, true
@@ -119,16 +144,16 @@ func (p *pulumiReader) interpolation(s string, depth int) readRes {
 	for len(s) > 0 {
 		i := strings.Index(s, "${")
 		if i < 0 {
-			parts = append(parts, readRes{class: ClassLiteral, val: s, hasV: true})
+			parts = append(parts, readRes{class: ClassLiteral, val: s, hasV: p.cfg.values})
 			break
 		}
 		if i > 0 && s[i-1] == '$' {
-			parts = append(parts, readRes{class: ClassLiteral, val: s[:i-1] + "${", hasV: true})
+			parts = append(parts, readRes{class: ClassLiteral, val: s[:i-1] + "${", hasV: p.cfg.values})
 			s = s[i+2:]
 			continue
 		}
 		if i > 0 {
-			parts = append(parts, readRes{class: ClassLiteral, val: s[:i], hasV: true})
+			parts = append(parts, readRes{class: ClassLiteral, val: s[:i], hasV: p.cfg.values})
 		}
 		s = s[i+2:]
 		j := strings.IndexByte(s, '}')
@@ -166,26 +191,30 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 	case p.root.get("configuration").get(name) != nil:
 		c := p.root.get("configuration").get(name)
 		if d := c.get("default"); d != nil && d.kind == nodeScalar && ref == name {
-			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: true}
+			return readRes{class: ClassDefaulted, refs: []string{ref}, val: d.scalarValue(), hasV: p.cfg.values}
 		}
 		return readRes{class: ClassReference, refs: []string{ref}}
 	case p.root.get("variables").get(name) != nil:
 		if p.resolving[name] || depth > MaxDepth {
 			return readRes{class: ClassUnknown, refs: []string{ref}}
 		}
-		p.resolving[name] = true
-		v := p.root.get("variables").get(name)
-		var inner readRes
-		if r, ok := p.classifyNode(v, depth+1); ok {
-			inner = r
-		} else {
-			inner = p.structural(v, depth+1)
+		inner, done := p.inners[name]
+		if !done {
+			p.resolving[name] = true
+			v := p.root.get("variables").get(name)
+			if r, ok := p.classifyNode(v, depth+1); ok {
+				inner = r
+			} else {
+				inner = p.structural(v, depth+1)
+			}
+			delete(p.resolving, name)
+			p.inners[name] = inner
 		}
-		delete(p.resolving, name)
 		out := readRes{class: inner.class, refs: []string{ref}}
 		if ref == name && inner.hasV {
-			out.val, out.hasV = inner.val, true
+			out.val, out.hasV, out.vsize = inner.val, true, inner.vsize
 		}
+		out.big = inner.big
 		return out
 	}
 	return readRes{class: ClassUnknown, refs: []string{ref}}
@@ -193,7 +222,7 @@ func (p *pulumiReader) variable(expr string, depth int) readRes {
 
 // structural classifies a mapping, list or scalar whole, by folding its parts.
 func (p *pulumiReader) structural(n *node, depth int) readRes {
-	if depth > MaxDepth {
+	if depth > MaxDepth || !p.spend() {
 		return readRes{class: ClassUnknown}
 	}
 	if r, ok := p.classifyNode(n, depth); ok {
@@ -201,7 +230,7 @@ func (p *pulumiReader) structural(n *node, depth int) readRes {
 	}
 	switch n.kind {
 	case nodeScalar:
-		return readRes{class: ClassLiteral, val: n.scalarValue(), hasV: true}
+		return readRes{class: ClassLiteral, val: n.scalarValue(), hasV: p.cfg.values}
 	case nodeSeq:
 		parts := make([]readRes, len(n.items))
 		for i, it := range n.items {
@@ -236,7 +265,7 @@ func (p *pulumiReader) structural(n *node, depth int) readRes {
 
 // collectRefs lists the references a builtin's argument reads.
 func (p *pulumiReader) collectRefs(n *node, depth int) []string {
-	if n == nil || depth > MaxDepth {
+	if n == nil || depth > MaxDepth || !p.spend() {
 		return nil
 	}
 	var out []string

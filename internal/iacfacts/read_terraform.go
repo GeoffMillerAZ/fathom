@@ -480,6 +480,8 @@ func foldRes(parts []readRes) readRes {
 	allLitDef := true
 	for _, p := range parts {
 		out.refs = append(out.refs, p.refs...)
+		out.vsize += partSize(p)
+		out.big = out.big || p.big
 		if !p.hasV {
 			out.hasV = false
 		}
@@ -514,6 +516,9 @@ func foldRes(parts []readRes) readRes {
 	}
 	if out.class != ClassLiteral && out.class != ClassDefaulted {
 		out.hasV = false
+	}
+	if out.hasV && (out.big || out.vsize > MaxValueBytes) {
+		out.hasV, out.big = false, true
 	}
 	return out
 }
@@ -560,8 +565,9 @@ func (r *tfReader) classifyTraversal(t *hclsyntax.ScopeTraversalExpr, iters map[
 			out.class = ClassReference
 		}
 		if len(t.Traversal) == 2 && inner.hasV && (out.class == ClassLiteral || out.class == ClassDefaulted) {
-			out.val, out.hasV = inner.val, true
+			out.val, out.hasV, out.vsize = inner.val, true, inner.vsize
 		}
+		out.big = inner.big
 		return out
 	}
 	if iters[root] {
