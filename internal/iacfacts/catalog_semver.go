@@ -139,6 +139,10 @@ func ParseIaCConstraint(s string) (IaCConstraint, error) {
 				break
 			}
 		}
+		// OpenTofu's constraint parser has no `v` prefix: `v4.0.6` is an invalid constraint though 4.0.6 is not.
+		if strings.HasPrefix(part, "v") {
+			return IaCConstraint{}, fmt.Errorf("constraint %q: a version in a constraint takes no v prefix", s)
+		}
 		v, n, err := parseVersionParts(part)
 		if err != nil {
 			return IaCConstraint{}, fmt.Errorf("constraint %q: %w", s, err)
@@ -148,13 +152,23 @@ func ParseIaCConstraint(s string) (IaCConstraint, error) {
 	return c, nil
 }
 
-// Matches reports whether v satisfies every clause. A pre-release satisfies only a clause that names a pre-release,
-// as in Terraform.
+// Matches reports whether v satisfies every clause. A pre-release is never selected by a range, or by no constraint
+// at all. Only an `=` clause that names it exactly makes it eligible, and the other clauses must still hold. This is
+// what `tofu init` does: `>= 6.0.0` over 6.0.0 and 6.1.0-beta1 installs 6.0.0, `>= 6.1.0-beta1` finds nothing, and
+// `= 6.1.0-beta1, >= 6.0.0` installs the pre-release.
 func (c IaCConstraint) Matches(v IaCVersion) bool {
-	for _, cl := range c.clauses {
-		if v.Pre != "" && cl.v.Pre == "" {
+	if v.Pre != "" {
+		named := false
+		for _, cl := range c.clauses {
+			if cl.op == "=" && CompareIaCVersions(v, cl.v) == 0 {
+				named = true
+			}
+		}
+		if !named {
 			return false
 		}
+	}
+	for _, cl := range c.clauses {
 		cmp := CompareIaCVersions(v, cl.v)
 		ok := false
 		switch cl.op {

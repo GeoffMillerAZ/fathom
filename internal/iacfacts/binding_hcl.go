@@ -31,6 +31,17 @@ type bindCall struct {
 type bindModule struct {
 	required map[string]bindRequired
 	calls    []bindCall
+	// providerVersions holds the `version` of each `provider "<name>"` block by local name. OpenTofu deprecates the
+	// attribute but honours it and ANDs it with the required_providers constraint, across every block of the name.
+	providerVersions map[string][]string
+}
+
+// addProviderVersion records the version constraint a provider block sets.
+func (m *bindModule) addProviderVersion(name, constraint string) {
+	if m.providerVersions == nil {
+		m.providerVersions = map[string][]string{}
+	}
+	m.providerVersions[name] = append(m.providerVersions[name], constraint)
 }
 
 type bindEdge struct {
@@ -161,6 +172,23 @@ func (r *bindingReader) module(dir string) *bindModule {
 						r.readRequiredProviders(name, inner.Body, m.required)
 					}
 				}
+			case "provider":
+				if len(blk.Labels) != 1 {
+					continue
+				}
+				attr, ok := blk.Body.Attributes["version"]
+				if !ok {
+					continue
+				}
+				if override {
+					r.skip("%s sets the version of provider %q in an override file, which this reader does not merge, so the constraint is not known", name, blk.Labels[0])
+					continue
+				}
+				if s, ok := literalString(attr.Expr); ok && strings.TrimSpace(s) != "" {
+					m.addProviderVersion(blk.Labels[0], s)
+				} else {
+					r.skip("%s: the version of provider %q is not a non-empty literal string, which OpenTofu evaluates or rejects and this reader does not", name, blk.Labels[0])
+				}
 			case "module":
 				if len(blk.Labels) != 1 {
 					continue
@@ -212,6 +240,10 @@ func (r *bindingReader) readRequiredProviders(file string, body *hclsyntax.Body,
 	for _, name := range names {
 		attr := body.Attributes[name]
 		if s, ok := literalString(attr.Expr); ok { // the legacy `aws = "~> 5.0"` form
+			if strings.TrimSpace(s) == "" {
+				r.skip("%s: required_providers entry %q has an empty version constraint, which OpenTofu rejects", file, name)
+				continue
+			}
 			into[name] = bindRequired{constraint: s}
 			continue
 		}
@@ -222,13 +254,22 @@ func (r *bindingReader) readRequiredProviders(file string, body *hclsyntax.Body,
 		}
 		var req bindRequired
 		for _, it := range obj.Items {
-			key := hcl.ExprAsKeyword(it.KeyExpr)
-			if key != "source" && key != "version" {
+			key, ok := requiredKey(it.KeyExpr)
+			if !ok {
+				r.skip("%s: required_providers entry %q has a key that is neither a bare word nor a quoted string, which OpenTofu rejects", file, name)
+				continue
+			}
+			switch key {
+			case "source", "version":
+			case "configuration_aliases":
+				continue
+			default:
+				r.skip("%s: required_providers entry %q has the key %q, which OpenTofu rejects", file, name, key)
 				continue
 			}
 			s, ok := literalString(it.ValueExpr)
-			if !ok {
-				r.skip("%s: the %s of required_providers entry %q is not a literal string and was not read", file, key, name)
+			if !ok || (key == "version" && strings.TrimSpace(s) == "") || (key == "source" && strings.TrimSpace(s) == "") {
+				r.skip("%s: the %s of required_providers entry %q is not a non-empty literal string and was not read", file, key, name)
 				continue
 			}
 			if key == "source" {
@@ -239,6 +280,19 @@ func (r *bindingReader) readRequiredProviders(file string, body *hclsyntax.Body,
 		}
 		into[name] = req
 	}
+}
+
+// requiredKey reads an object key in a required_providers entry as OpenTofu does: a bare word is itself and a
+// quoted string is its literal. A parenthesised key is an expression, and anything else is no key at all.
+func requiredKey(e hclsyntax.Expression) (string, bool) {
+	k, ok := e.(*hclsyntax.ObjectConsKeyExpr)
+	if !ok || k.ForceNonLiteral {
+		return "", false
+	}
+	if kw := hcl.ExprAsKeyword(k.Wrapped); kw != "" {
+		return kw, true
+	}
+	return literalString(k.Wrapped)
 }
 
 func readModuleCall(dir string, blk *hclsyntax.Block) bindCall {
@@ -320,14 +374,24 @@ func (r *bindingReader) lockfile(name string) map[string]string {
 		return out
 	}
 	for _, blk := range body.Blocks {
-		if blk.Type != "provider" || len(blk.Labels) != 1 {
+		if blk.Type != "provider" {
 			continue
 		}
-		if attr, ok := blk.Body.Attributes["version"]; ok {
-			if s, ok := literalString(attr.Expr); ok {
-				out[strings.ToLower(blk.Labels[0])] = s
-			}
+		if len(blk.Labels) != 1 {
+			r.skip("%s holds a provider block with %d labels, which is not a lock entry, so a pin it holds may be hidden", name, len(blk.Labels))
+			continue
 		}
+		attr, ok := blk.Body.Attributes["version"]
+		if !ok {
+			r.skip("%s: the lock entry for %q has no version, so what it pins is not known", name, blk.Labels[0])
+			continue
+		}
+		s, ok := literalString(attr.Expr)
+		if !ok {
+			r.skip("%s: the version of the lock entry for %q is not a literal string, so what it pins is not known", name, blk.Labels[0])
+			continue
+		}
+		out[strings.ToLower(blk.Labels[0])] = s
 	}
 	return out
 }
@@ -408,11 +472,19 @@ func (r *bindingReader) checkMapping(e *bindEdge, local, alias, childSource stri
 	return fmt.Sprintf("module %q in %s maps %s to %s, which is %s, but the module's own provider is %s; Terraform rejects the pair", e.call.name, e.parent, key, expr, parentSource, childSource)
 }
 
-// findLockfiles walks the repository for .terraform.lock.hcl, skipping version-control and dependency trees.
-func findLockfiles(fsys fs.FS) (out, notes []string, truncated bool) {
+// findLockfiles walks the repository for .terraform.lock.hcl, skipping version-control and dependency trees. A
+// directory it could not read may hold a lockfile, so each one goes to unread and refuses the answer.
+func findLockfiles(fsys fs.FS) (out, notes, unread []string, truncated bool) {
 	visited := 0
 	_ = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
+			msg := fmt.Sprintf("%s could not be read during the lockfile search and was skipped", p)
+			for _, e := range unread {
+				if e == msg {
+					return nil
+				}
+			}
+			unread = append(unread, msg)
 			return nil
 		}
 		if visited++; visited > maxBindingWalk {
@@ -433,5 +505,5 @@ func findLockfiles(fsys fs.FS) (out, notes []string, truncated bool) {
 		return nil
 	})
 	sort.Strings(out)
-	return out, notes, truncated
+	return out, notes, unread, truncated
 }

@@ -124,10 +124,18 @@ Carried over from `docs/design/iac-provider-schemas.md`, without the authored ma
   exactly. A catalog serves a block only on the
   same host or between those two default registries. Any other host reads `unbound` unless a catalog for exactly that host
   is installed.
+- A lockfile pins the module graph of its own directory: one that no module call reaches is no pin for a module, which
+  reads `constraint-matched` with the lockfile named in a disclosure. A pin the module's constraint does not admit reads
+  `locked` with a disclosure that OpenTofu would stop at init. A `provider "x" { version = ... }` block is a constraint
+  OpenTofu honours (deprecated) and ANDs with `required_providers`, so the reader does too. A `required_providers` key is
+  a bare word or a quoted string, and a key that is neither, or is not `source`, `version` or `configuration_aliases`,
+  refuses the answer as it refuses `tofu init`. A repeated top-level `module` key in JSON reads as both blocks, and any
+  other repeated key refuses the answer. A lock entry that does not read is an unread input.
 - Provider constraints follow OpenTofu's Ruby-style parser: `~> 5` and `~> 5.0` are `>= 5.0, < 6`. An unreadable
-  constraint reads `unbound` with the reason. Binding reads `.tofu` files, override files and the JSON syntax with the reader's shadowing, follows a symbolic link to a
+  constraint reads `unbound` with the reason (`v4.0.6` is one, as in `tofu init`). A pre-release is selected only by an
+  `=` that names it, never by a range or by no constraint. Binding reads `.tofu` files, override files and the JSON syntax with the reader's shadowing, follows a symbolic link to a
   file, and skips dot files and editor backups, as OpenTofu does.
-- A bound that hides a root (more than 16 lockfiles, a stopped lockfile search, a module walk that stopped before it saw
+- A bound that hides a root (more than 16 lockfiles, a stopped lockfile search or a directory it could not list, a module walk that stopped before it saw
   every module) refuses that answer with a reason. It never answers from the roots it did read. So does an input it did
   not read: a file over 1 MiB or past the 256th file of a directory, a file past the nesting bound, a lockfile that does
   not parse, and a module call whose source is not a literal string, which OpenTofu resolves and the walk cannot.

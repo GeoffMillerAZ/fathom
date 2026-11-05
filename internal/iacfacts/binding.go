@@ -60,7 +60,7 @@ type IaCBindingRoot struct {
 	Dir string
 	// Version is what that root's lockfile pins for the block's provider; empty when it has no entry.
 	Version string
-	// Via says how the root reaches the module: "self", "module call" or "nearest lockfile".
+	// Via says how the root reaches the module: "self" or "module call".
 	Via string
 }
 
@@ -124,20 +124,27 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	req, declared := mod.required[local]
 	b.Source = normalizeProviderSource(req.source, local)
 	implied := providerHostImplied(req.source)
-	b.Constraint = req.constraint
+	constraint := req.constraint
+	if vs := mod.providerVersions[local]; len(vs) > 0 {
+		// OpenTofu honours a provider block's version beside required_providers and installs what satisfies all of them.
+		b.Disclosures = append(b.Disclosures, fmt.Sprintf("provider %q has block version constraints (%s), which OpenTofu deprecates but honours together with required_providers", local, strings.Join(vs, "; ")))
+		constraint = strings.Join(append(nonEmpty(req.constraint), vs...), ", ")
+	}
+	b.Constraint = constraint
 	if !declared {
 		b.Disclosures = append(b.Disclosures, fmt.Sprintf("provider %q is not in required_providers; Terraform implies %s", local, b.Source))
 	}
-	cons, consErr := ParseIaCConstraint(req.constraint)
+	cons, consErr := ParseIaCConstraint(constraint)
 
 	locks := q.Lockfiles
 	incomplete := ""
 	if locks == nil {
-		var found, notes []string
-		var cut bool
-		found, notes, cut = findLockfiles(q.Repo)
+		found, notes, unreadDirs, cut := findLockfiles(q.Repo)
 		locks = found
 		b.Disclosures = append(b.Disclosures, notes...)
+		for _, u := range unreadDirs {
+			rc.skip("%s", u)
+		}
 		if cut {
 			incomplete = fmt.Sprintf("the lockfile search stopped after %d entries, so a lockfile that reaches this module may be unread", maxBindingWalk)
 		}
@@ -180,20 +187,10 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		}
 	}
 	if len(b.Roots) == 0 && walkStopped == "" {
+		// A lockfile applies to the module graph of its own directory. Running OpenTofu in this module's directory
+		// reads that directory's lockfile and none above it, so one that no module call reaches is no pin for it.
 		if lf := nearestLockfile(locks, dir); lf != "" {
-			r := IaCBindingRoot{Dir: path.Dir(lf), Via: "nearest lockfile"}
-			if lock := rc.lockfile(lf); lock != nil {
-				var conflict, host string
-				r.Version, host, conflict = lockVersion(lock, b.Source, implied)
-				if conflict != "" {
-					mismatch = append(mismatch, fmt.Sprintf("%s: %s", lf, conflict))
-				}
-				if host != "" {
-					lockHosts[host] = true
-				}
-			}
-			b.Roots = append(b.Roots, r)
-			b.Disclosures = append(b.Disclosures, "no module call reaches this module from a lockfile root; the nearest lockfile above it was read")
+			b.Disclosures = append(b.Disclosures, fmt.Sprintf("the nearest lockfile above this module, %s, is not reached by any module call, so it pins nothing for this module", lf))
 		}
 	}
 	b.Disclosures = append(b.Disclosures, rc.notes...)
@@ -254,6 +251,11 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 		if consErr != nil {
 			b.Disclosures = append(b.Disclosures, "the version constraint is unreadable ("+consErr.Error()+"); the lockfile pin was used instead")
 		}
+		if consErr == nil {
+			if pv, err := ParseIaCVersion(b.Version); err == nil && !cons.Matches(pv) {
+				b.Disclosures = append(b.Disclosures, fmt.Sprintf("the lockfile pins %s, which the constraint %q does not admit; OpenTofu would stop at init until the constraint or the lock changes", b.Version, constraint))
+			}
+		}
 		if cat := pickCatalog(q.Catalogs, b.Source, func(v string) bool { return v == b.Version }); cat != nil {
 			b.Status, b.Catalog = BindLocked, cat.Name
 			b.noteHost(cat)
@@ -266,7 +268,7 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	default:
 		if consErr != nil {
 			b.Status = BindUnbound
-			b.Disclosures = append(b.Disclosures, fmt.Sprintf("the version constraint %q is unreadable (%v), so no release can be shown to satisfy it", req.constraint, consErr))
+			b.Disclosures = append(b.Disclosures, fmt.Sprintf("the version constraint %q is unreadable (%v), so no release can be shown to satisfy it", constraint, consErr))
 			return b
 		}
 		b.constraintMatch(q.Catalogs, cons, len(b.Roots))
@@ -349,7 +351,10 @@ func (b *IaCBinding) constraintMatch(catalogs []IaCCatalogInfo, cons IaCConstrai
 	b.Status, b.Version, b.Catalog = BindConstraintMatched, best, bestCat.Name
 	b.noteHost(bestCat)
 	reach := "no lockfile reaches this module"
-	if roots > 0 {
+	switch {
+	case roots == 1:
+		reach = fmt.Sprintf("1 lockfile root reaches this module but it does not pin %s", b.Source)
+	case roots > 1:
 		reach = fmt.Sprintf("%d lockfile roots reach this module but none pins %s", roots, b.Source)
 	}
 	if cons.Raw == "" {
@@ -385,6 +390,13 @@ func unboundNote(catalogs []IaCCatalogInfo, source, version, line string) string
 		}
 	}
 	return fmt.Sprintf("%s %s has no installed catalog%s%s; no nearest version is used", source, version, addLineNote(line), hostNote(catalogs, source))
+}
+
+func nonEmpty(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return []string{s}
 }
 
 func lineOf(version string) string {

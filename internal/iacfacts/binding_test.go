@@ -206,17 +206,6 @@ module "net" {
 	}
 }
 
-func TestBindingNearestLockfileFallback(t *testing.T) {
-	m := fstest.MapFS{
-		LockfileName:       lock("registry.terraform.io/hashicorp/aws", "5.100.0"),
-		"stacks/a/main.tf": file(reusableModule),
-	}
-	b := bindBlock(m, awsCatalogs, IaCBlockRef{Dir: "stacks/a", Type: "aws_instance"})
-	if b.Status != BindLocked || b.Version != "5.100.0" || b.Roots[0].Via != "nearest lockfile" {
-		t.Fatalf("%+v", b)
-	}
-}
-
 func TestBindingBoundsAreDisclosed(t *testing.T) {
 	m := fstest.MapFS{"main.tf": file(reusableModule)}
 	for i := 0; i < MaxBindingLockfiles+2; i++ {
@@ -328,7 +317,10 @@ func TestIaCConstraints(t *testing.T) {
 		{"!= 5.1.0", "5.1.0", false},
 		{"> 5.1.0, <= 5.3.0", "5.3.0", true},
 		{">= 5.0", "6.0.0-rc1", false},
-		{">= 6.0.0-rc1", "6.0.0-rc2", true},
+		// `tofu init` 1.13 against a mirror of 6.0.0 and 6.1.0-beta1: a range never selects a pre-release, even one
+		// it names (`>= 6.1.0-beta1` found nothing), and only an `=` that names it does.
+		{">= 6.0.0-rc1", "6.0.0-rc2", false},
+		{"= 6.0.0-rc2", "6.0.0-rc2", true},
 	} {
 		c, err := ParseIaCConstraint(tc.c)
 		if err != nil {
@@ -528,7 +520,7 @@ module "bad" {
 	// every reaching root lacks an entry: the reason does not claim no lockfile reaches.
 	none := fstest.MapFS{"main.tf": two["main.tf"], "examples/b/main.tf": two["examples/b/main.tf"], "examples/b/" + LockfileName: two["examples/b/"+LockfileName]}
 	b = bindBlock(none, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_lb_listener"})
-	if b.Status != BindConstraintMatched || strings.Contains(strings.Join(b.Disclosures, "|"), "no lockfile reaches") || !strings.Contains(strings.Join(b.Disclosures, "|"), "none pins") {
+	if b.Status != BindConstraintMatched || strings.Contains(strings.Join(b.Disclosures, "|"), "no lockfile reaches") || !strings.Contains(strings.Join(b.Disclosures, "|"), "1 lockfile root reaches this module but it does not pin") {
 		t.Fatalf("%+v", b)
 	}
 
