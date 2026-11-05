@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -574,4 +575,139 @@ func fileSHA256(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// absorbReport says what absorbing an installed catalog did to the writer.
+type absorbReport struct {
+	// kept are installed releases the writer did not hold. unchanged are releases both hold with equal content.
+	// replaced are releases both hold with different content, where the writer's won.
+	kept, unchanged, replaced []string
+}
+
+// absorbCatalog adds every release of the installed catalog at path that this writer does not hold, with its
+// blobs, so an import into a line merges instead of replacing it. A release both hold with different content is
+// refused unless replace is set, and then the writer's own wins. The installed catalog must verify whole: an
+// unreadable one is an error, never silently dropped.
+func (w *IaCCatalogWriter) absorbCatalog(path string, replace bool) (absorbReport, error) {
+	var rep absorbReport
+	m, err := verifyIaCCatalog(path, w.lim)
+	if err != nil {
+		return rep, fmt.Errorf("iac import: the installed catalog %s does not verify (%v); remove it or repair it before importing into its line", filepath.Base(path), err)
+	}
+	if m.Source != w.source || m.Line != w.line {
+		return rep, fmt.Errorf("iac import: the installed catalog %s holds %s line %s, not %s line %s", filepath.Base(path), m.Source, m.Line, w.source, w.line)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return rep, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return rep, err
+	}
+	z, err := openCatZip(f, st.Size(), w.lim)
+	if err != nil {
+		return rep, err
+	}
+	need := map[string]bool{}
+	adopt := map[string]*iacVersionIndex{}
+	var conflicts []string
+	for _, v := range m.Versions {
+		name := "versions/" + v + ".json"
+		e, ok, err := z.find(name)
+		if err != nil || !ok {
+			return rep, fmt.Errorf("iac import: the installed catalog %s lost %s", filepath.Base(path), name)
+		}
+		r, err := z.open(name, e, w.lim.IndexBytes, RefuseIndexBytes)
+		if err != nil {
+			return rep, err
+		}
+		buf, err := readEntryBytes(r, e)
+		if err != nil {
+			return rep, err
+		}
+		pi, err := parseVersionIndex(buf)
+		if err != nil {
+			return rep, fmt.Errorf("iac import: %s: %w", name, err)
+		}
+		ix := &iacVersionIndex{Provider: pi.provider, Resources: orEmpty(pi.resources), Data: orEmpty(pi.data), Ephemeral: orEmpty(pi.ephemeral)}
+		if cur, held := w.versions[v]; held {
+			switch {
+			case reflect.DeepEqual(cur, ix):
+				rep.unchanged = append(rep.unchanged, v)
+			case replace:
+				rep.replaced = append(rep.replaced, v)
+			default:
+				conflicts = append(conflicts, v)
+			}
+			continue
+		}
+		adopt[v] = ix
+		rep.kept = append(rep.kept, v)
+		if ix.Provider != "" {
+			need[ix.Provider] = true
+		}
+		for _, sec := range []map[string]string{ix.Resources, ix.Data, ix.Ephemeral} {
+			for _, a := range sec {
+				need[a] = true
+			}
+		}
+	}
+	if len(conflicts) > 0 {
+		return rep, fmt.Errorf("iac import: release(s) %s already in the installed catalog %s with different content: pass --replace to replace them, or import them under another line; nothing was changed", strings.Join(conflicts, ", "), filepath.Base(path))
+	}
+	for a := range need {
+		if _, held := w.blobs[a]; held {
+			delete(need, a)
+		}
+	}
+	err = z.each(func(name []byte, e catZipEntry) (bool, error) {
+		if len(name) != len("blobs/")+64 || string(name[:6]) != "blobs/" || !need[string(name[6:])] {
+			return false, nil
+		}
+		addr := string(name[6:])
+		r, err := z.open("blobs/"+addr, e, w.lim.BlobBytes, RefuseBlobBytes)
+		if err != nil {
+			return true, err
+		}
+		b, err := readEntryBytes(r, e)
+		if err != nil {
+			return true, err
+		}
+		if err := os.WriteFile(filepath.Join(w.work, addr), b, 0o644); err != nil {
+			return true, err
+		}
+		w.blobs[addr] = int64(len(b))
+		delete(need, addr)
+		return false, nil
+	})
+	if err != nil {
+		return rep, err
+	}
+	if len(need) > 0 {
+		return rep, fmt.Errorf("iac import: the installed catalog %s lacks %d blobs its indexes name", filepath.Base(path), len(need))
+	}
+	for v, ix := range adopt {
+		w.versions[v] = ix
+		w.inputs[v] = m.Inputs[v]
+		w.formats[v] = m.SchemaFormat
+	}
+	if w.licence == "" {
+		w.licence = m.Licence
+	}
+	if w.tool == "" {
+		w.tool = m.Tool
+	}
+	for _, l := range []*[]string{&rep.kept, &rep.unchanged, &rep.replaced} {
+		sortVersionStrings(*l)
+	}
+	return rep, nil
+}
+
+func orEmpty(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
 }

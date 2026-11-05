@@ -123,3 +123,47 @@ func TestIaCVerbImportsSeveralVersionsAsOneLine(t *testing.T) {
 		t.Fatalf("two lines are two catalogs: %q", out)
 	}
 }
+
+func TestIaCVerbImportMergesAndSaysWhatItDid(t *testing.T) {
+	home := helpSandbox(t)
+	a, b, c := filepath.Join(home, "a.json"), filepath.Join(home, "b.json"), filepath.Join(home, "c.json")
+	iacTestExport(t, a, "name")
+	iacTestExport(t, b, "name", "extra")
+	iacTestExport(t, c, "other")
+	if rc, _, errs := runIaC("import", "1.0.0="+a, "1.1.0="+b); rc != 0 {
+		t.Fatalf("%q", errs)
+	}
+	rc, out, errs := runIaC("import", "1.2.0="+c)
+	if rc != 0 || !strings.Contains(out, "merged into the catalog already installed") || !strings.Contains(out, "added        1.2.0") || !strings.Contains(out, "kept         1.0.0, 1.1.0") || !strings.Contains(out, "3 releases, 1.0.0 to 1.2.0") {
+		t.Fatalf("rc %d %q %q", rc, out, errs)
+	}
+	// a different export for a release that is installed is refused, then replaced with --replace.
+	rc, _, errs = runIaC("import", "1.1.0="+c)
+	if rc == 0 || !strings.Contains(errs, "--replace") {
+		t.Fatalf("rc %d %q", rc, errs)
+	}
+	rc, out, errs = runIaC("import", "1.1.0="+c, "--replace", "--json")
+	var got struct {
+		Merged   bool     `json:"merged"`
+		Replaced []string `json:"replaced"`
+		Kept     []string `json:"kept"`
+		Versions []string `json:"versions"`
+	}
+	if rc != 0 || json.Unmarshal([]byte(out), &got) != nil || !got.Merged || strings.Join(got.Replaced, ",") != "1.1.0" || strings.Join(got.Kept, ",") != "1.0.0,1.2.0" || strings.Join(got.Versions, ",") != "1.0.0,1.1.0,1.2.0" {
+		t.Fatalf("rc %d %q %q", rc, out, errs)
+	}
+}
+
+// N11: the help says an import takes one provider's export, how to make one, and that --version is not checked.
+func TestIaCImportUsageExplainsTheExport(t *testing.T) {
+	helpSandbox(t)
+	rc, _, errs := runIaC("import")
+	if rc == 0 {
+		t.Fatal("import with no input must fail")
+	}
+	for _, want := range []string{"ONE provider", "tofu providers schema -json", "scratch directory", "tofu init", "not checked against the export", "--replace", "merged"} {
+		if !strings.Contains(errs, want) {
+			t.Errorf("the import help does not say %q:\n%s", want, errs)
+		}
+	}
+}

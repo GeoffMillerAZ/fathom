@@ -116,45 +116,110 @@ type IaCImportInput struct {
 	Path    string
 }
 
-// ImportIaCExports builds a catalog from an operator's own `tofu providers schema -json` exports and installs it.
-// It is how a private provider, or a version no published catalog holds, gets facts 1 to 4 and 7. It carries no
-// replacement facts. All inputs must be the same provider and one major line.
+// IaCImportResult is what an import installed and how it relates to the catalog already installed for that line.
+type IaCImportResult struct {
+	Info  IaCCatalogInfo
+	Stats []IaCExportStats
+	// Merged is true when a catalog of the same provider line was installed and its releases were kept.
+	Merged bool
+	// Added are the releases the import brought that the line did not hold. Kept are installed releases the import
+	// did not name. Unchanged are named releases whose content equals the installed one. Replaced are named releases
+	// whose content differs and that --replace swapped. All are in version order.
+	Added, Kept, Unchanged, Replaced []string
+}
+
+// ImportIaCExports builds a catalog from an operator's own `tofu providers schema -json` exports and installs it,
+// refusing to replace a release of an installed catalog with different content. See ImportIaCExportsReport.
 func ImportIaCExports(dir string, inputs []IaCImportInput, opts IaCWriterOptions) (IaCCatalogInfo, []IaCExportStats, error) {
+	res, err := ImportIaCExportsReport(dir, inputs, opts, false)
+	return res.Info, res.Stats, err
+}
+
+// ImportIaCExportsReport builds a catalog from an operator's own `tofu providers schema -json` exports and installs
+// it. It is how a private provider, or a version no published catalog holds, gets facts 1 to 4 and 7. It carries no
+// replacement facts. Every export must be one provider and one major line.
+//
+// A catalog of that provider line already installed is merged, never dropped: every release it holds stays, the
+// named ones are added, and the result says which were added, kept, unchanged or replaced. A named release the
+// installed catalog already holds with different content is refused unless replace is set. Nothing is installed when
+// anything is refused.
+func ImportIaCExportsReport(dir string, inputs []IaCImportInput, opts IaCWriterOptions, replace bool) (IaCImportResult, error) {
+	var res IaCImportResult
 	if len(inputs) == 0 {
-		return IaCCatalogInfo{}, nil, errors.New("iac import: no export was named")
+		return res, errors.New("iac import: no export was named")
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return IaCCatalogInfo{}, nil, err
+		return res, err
 	}
 	w, err := NewIaCCatalogWriter(opts)
 	if err != nil {
-		return IaCCatalogInfo{}, nil, err
+		return res, err
 	}
 	defer w.Close()
-	var stats []IaCExportStats
 	for _, in := range inputs {
 		f, err := os.Open(in.Path)
 		if err != nil {
-			return IaCCatalogInfo{}, nil, err
+			return res, err
 		}
 		st, err := w.AddExport(in.Version, f)
 		f.Close()
 		if err != nil {
-			return IaCCatalogInfo{}, nil, fmt.Errorf("%s: %w", in.Path, err)
+			return res, fmt.Errorf("%s: %w", in.Path, err)
 		}
-		stats = append(stats, st)
+		res.Stats = append(res.Stats, st)
 	}
+	named := map[string]bool{}
+	for _, in := range inputs {
+		named[in.Version] = true
+	}
+	m, err := w.Manifest()
+	if err != nil {
+		return res, err
+	}
+	if existing := filepath.Join(dir, CatalogFileName(m)); fileExists(existing) {
+		rep, err := w.absorbCatalog(existing, replace)
+		if err != nil {
+			return res, err
+		}
+		res.Merged = true
+		res.Kept, res.Unchanged, res.Replaced = rep.kept, rep.unchanged, rep.replaced
+		held := map[string]bool{}
+		for _, v := range rep.kept {
+			held[v] = true
+		}
+		for _, v := range rep.unchanged {
+			held[v] = true
+		}
+		for _, v := range rep.replaced {
+			held[v] = true
+		}
+		for v := range named {
+			if !held[v] {
+				res.Added = append(res.Added, v)
+			}
+		}
+	} else {
+		for v := range named {
+			res.Added = append(res.Added, v)
+		}
+	}
+	sortVersionStrings(res.Added)
 	tmp, err := os.CreateTemp(dir, ".import-*")
 	if err != nil {
-		return IaCCatalogInfo{}, nil, err
+		return res, err
 	}
 	tmp.Close()
 	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := w.WriteFile(tmp.Name()); err != nil {
-		return IaCCatalogInfo{}, nil, err
+		return res, err
 	}
-	info, err := installVerified(dir, tmp.Name())
-	return info, stats, err
+	res.Info, err = installVerified(dir, tmp.Name())
+	return res, err
+}
+
+func fileExists(p string) bool {
+	st, err := os.Lstat(p)
+	return err == nil && st.Mode().IsRegular()
 }
 
 // ListIaCCatalogs reads the manifest of every catalog in dir, sorted by name. A file that is not a readable

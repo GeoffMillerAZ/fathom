@@ -105,11 +105,26 @@ func cmdIaCAdd(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// iacImportUsage is the help text of `fathom iac import`.
+const iacImportUsage = `usage: fathom iac import [--version V] [--licence SPDX] [--tool NAME] [--replace] [--json] <export.json | V=export.json>...
+
+An export is the output of ` + "`tofu providers schema -json`" + ` for exactly ONE provider. A multi-provider export is refused.
+Make one in a scratch directory whose configuration requires only that provider:
+  mkdir scratch && cd scratch
+  write a main.tf with one required_providers entry, then run: tofu init && tofu providers schema -json > export.json
+All inputs must be one major line of that provider. --version (or the V= prefix) is what YOU assert the export was
+made at: it is recorded as given and is not checked against the export.
+
+A catalog of the same provider line that is already installed is merged, never dropped: every release it holds stays,
+the exports you name are added, and the result lists what was added, kept, unchanged and replaced. A release you
+name that the installed catalog holds with different content is refused unless you pass --replace.`
+
 func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("iac import", stderr)
 	version := fs.String("version", "", "the provider version of a single export file (or write each input as VERSION=export.json)")
 	licence := fs.String("licence", "", "SPDX licence identifier to record in the manifest")
 	tool := fs.String("tool", "", "the tool and version that produced the exports, recorded in the manifest")
+	replace := fs.Bool("replace", false, "replace a release the installed catalog holds with different content (default: refuse)")
 	jsonOut := fs.Bool("json", false, "emit the installed catalog as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -124,8 +139,7 @@ func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if len(inputs) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom iac import [--version V] [--licence SPDX] [--tool NAME] <export.json | V=export.json>...")
-		fmt.Fprintln(stderr, "       an export is the output of `tofu providers schema -json` for one provider; all inputs must be one major line")
+		fmt.Fprintln(stderr, iacImportUsage)
 		return 1
 	}
 	var in []iacfacts.IaCImportInput
@@ -142,20 +156,43 @@ func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 		}
 		in = append(in, iacfacts.IaCImportInput{Version: v, Path: p})
 	}
-	info, stats, err := iacfacts.ImportIaCExports(iacCatalogDir(), in, iacfacts.IaCWriterOptions{Licence: *licence, Tool: *tool})
+	res, err := iacfacts.ImportIaCExportsReport(iacCatalogDir(), in, iacfacts.IaCWriterOptions{Licence: *licence, Tool: *tool}, *replace)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 	if *jsonOut {
-		return writeIaCJSON(stdout, stderr, iacJSON(info))
+		return writeIaCJSON(stdout, stderr, iacImportJSON{
+			iacCatalogJSON: iacJSON(res.Info), Merged: res.Merged, Added: res.Added, Kept: res.Kept, Unchanged: res.Unchanged, Replaced: res.Replaced,
+		})
 	}
-	printIaCInstalled(stdout, "imported", info)
-	for i, s := range stats {
+	printIaCInstalled(stdout, "imported", res.Info)
+	for i, s := range res.Stats {
 		fmt.Fprintf(stdout, "  %-12s %d resources, %d data sources, %d ephemeral\n", in[i].Version, s.Resources, s.Data, s.Ephemeral)
+	}
+	if res.Merged {
+		fmt.Fprintln(stdout, "  merged into the catalog already installed for this line")
+	}
+	for _, g := range []struct {
+		label string
+		vs    []string
+	}{{"added", res.Added}, {"kept", res.Kept}, {"unchanged", res.Unchanged}, {"replaced", res.Replaced}} {
+		if len(g.vs) > 0 {
+			fmt.Fprintf(stdout, "  %-12s %s\n", g.label, strings.Join(g.vs, ", "))
+		}
 	}
 	fmt.Fprintln(stdout, "  facts: attributes, required, sensitive, deprecated and upgrade impact; no replacement facts from an import")
 	return 0
+}
+
+// iacImportJSON is `iac import --json`: the installed catalog and how the import changed the line.
+type iacImportJSON struct {
+	iacCatalogJSON
+	Merged    bool     `json:"merged"`
+	Added     []string `json:"added"`
+	Kept      []string `json:"kept,omitempty"`
+	Unchanged []string `json:"unchanged,omitempty"`
+	Replaced  []string `json:"replaced,omitempty"`
 }
 
 func cmdIaCList(args []string, stdout, stderr io.Writer) int {
