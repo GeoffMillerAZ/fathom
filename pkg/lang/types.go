@@ -106,7 +106,8 @@ type Reference struct {
 	// From is the Key of the referencing symbol, or "" for a reference the
 	// document itself makes.
 	From string `json:"from"`
-	// To is the target exactly as the dialect names it: a Go call names
+	// To is the target as the dialect names it, with the userinfo of a URL
+	// dropped (a withheld value, see the package documentation): a Go call names
 	// package.Func, a Terraform reference var.name, a CloudFormation Ref the
 	// logical id, a cross-file reference the path, image or address the
 	// Strategy resolved. It is not necessarily a Key.
@@ -121,7 +122,8 @@ type Reference struct {
 	// otherwise the edge the dialect declares (uses, imports, depends_on and
 	// so on). Do not branch on an Edge across dialects.
 	Edge string `json:"edge"`
-	// Raw is the value as written, when it differs from To.
+	// Raw is the value as written, when it differs from To, with the userinfo of
+	// a URL dropped.
 	Raw string `json:"raw"`
 	// Strategy is how a document reference resolved (repo-path, image-ref,
 	// module-source and so on), empty for a call.

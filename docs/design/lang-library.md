@@ -73,12 +73,20 @@ Rules:
 2. **`Siblings`** is the optional path list that YAML classification reads. Empty is legal and is disclosed when it changes a verdict.
 3. **Errors, never panics.** `lang.New` returns the error a bad variant gives. `Extract` prevents what it can, and a panic in a
    built-in extractor that it did not prevent is that file's failure: an Incomplete reading with a one-line note ("the reader
-   failed on this input"), so one file never ends a batch. A stack overflow is fatal and cannot be recovered, so a recursive
-   parser is never handed a file nested past 10,000 levels. The count is the parser's own: the HCL and CUE guards read the tokens
-   of the lexer the parser reads (brackets, prefix operators, conditionals, splats, field labels, and the chain of selectors,
-   calls and indexes applied to a bracket), the proto guard reads the tokens of its scanner, and nginx and Caddyfile refuse in
-   the parser, which carries the block depth. A second reading of the raw text drifts from the parser, so none is kept for
-   those. A TOML document of more than 40,000 keys is refused too: go-toml's repeat check is quadratic (60,000 keys took 4 s).
+   failed on this input"), so one file never ends a batch. A stack overflow is fatal and cannot be recovered, and a parser
+   whose cost grows with the square of its input cannot be interrupted, so such a parser is handed a file only after a guard
+   has counted what it recurses on or spends its time on, and a file past a bound reads Incomplete with the reason. The count
+   is the parser's own: the HCL and CUE guards read the tokens of the lexer the parser reads (brackets, prefix operators,
+   conditionals, splats, field labels, the chain of selectors, calls and indexes applied to a bracket, and in HCL the template
+   directives a body leaves open and the literal pieces of one template; a `{for ...}` expression, whose newlines the parser
+   ignores, is not reset at a newline). The CUE guard scans a copy in which `@` is an operator, since the scanner reads an
+   attribute by recursion and no guard that drives it survives, and counts lexical errors, which the parser keeps in a list it
+   searches linearly. The proto guard reads the tokens of its scanner and counts brackets, `-` and a comment where a literal is
+   expected, and runs of tokens no statement ends. nginx and Caddyfile refuse in the parser, which carries the block depth. A
+   second reading of the raw text drifts from the parser, so none is kept for those. A TOML document of more than 40,000 keys is
+   refused too: go-toml's repeat check is quadratic (60,000 keys took 4 s). A guard is a belief about a parser, so a shape no
+   guard counts is not promised refused: each belief has a test over a family of shapes at the size the guard must refuse and
+   the size of a flat file it must read.
    There is a fuzz target, and a test cuts every dialect fixture at four points and fails on a panic.
 4. **Concurrency.** A `Reader` is safe for concurrent use and deterministic: equal inputs give byte-equal JSON.
 5. **Compilation cache.** The wazero runtime is process-wide, so the on-disk cache is a package function, `lang.EnableCompilationCache(dir)`. It errors on a second directory and refuses a group- or world-writable one, because the cache holds machine code (LB-F26). It is off by default.
@@ -114,12 +122,15 @@ Rules:
 11. **Value domains.** `Dialect` is "" only when nothing read the file. The generic JSON and TOML readers have ids
     (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and a level on a read one. A file
     owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
-12. **Withheld values.** A `Result` never carries a credential (ADR-069 decision 2, ADR-065 decision 2). One pass over the finished
-    `Result` drops the userinfo of a URL wherever a string from the file lands (a name, a key, a reference target or its raw
-    spelling, an unresolved target, a fact), keeping an ssh account that has no password, and masks in a `Signature` a string
-    literal bound to a name that says it holds a credential (`password`, `api_key`, `token`, `secret`, `auth`), the value of a
-    credential flag (`--password`, `--token`, `curl -u user:pass`) and an Authorization header. It is a list of patterns, not a
-    proof: a credential in a shape it does not recognise is not withheld, and the pass is tested against the shapes that leaked.
+12. **Withheld values.** The door withholds the places a credential is found, and says so (ADR-069 decision 2, ADR-065
+    decision 2). One pass over the finished `Result` drops the userinfo of a URL wherever a string from the file lands (a name,
+    a key, a reference target or its raw spelling, an unresolved target, a fact), keeping an ssh account that has no password and
+    the image of a `docker` or `oci` reference; the userinfo ends at the first `/`, `\`, `?` or `#`, so the host of a URL is
+    never changed. It masks a string literal bound to a name or a key (`=`, `:=`, `:`), whatever the name is, where it is a
+    parameter's default (inside parentheses), a rule's value or a fact's value, and returns the program of a task and not its
+    text, because a script holds a credential in more shapes than a pattern covers. The value of a credential flag and an
+    Authorization header are masked in the rest of a `Signature`. A credential in another place (a name, a label, a literal that
+    is an argument, a block's own attributes) is returned as written, so the door promises the places and not the absence.
     Iac resource values are separate and opt in (section 5).
 
 ## 4. The cuts
