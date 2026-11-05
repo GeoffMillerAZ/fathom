@@ -12,6 +12,7 @@
 package iacfacts
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -114,7 +115,10 @@ type Attr struct {
 	Path  string
 	Class Class
 	// Value is set only under WithValues, and only for literal and defaulted classes
-	// whose value could be computed without evaluating a function.
+	// whose value could be computed without evaluating a function. A number is an int64 when it is an integer in
+	// range, a float64 when float64 holds it exactly, a json.Number with its exact text when it is finite as float64
+	// and does not fit either, and its source text as a string when it is past float64's range (1e999). The rule is
+	// the same for every tool and syntax, and json.Marshal of a Value never fails.
 	Value any
 	// Refs are the static references the value reads, sorted: var.x, aws_s3_bucket.logs.id,
 	// Param, Res.Arn. They name things, never values.
@@ -386,6 +390,9 @@ func partSize(p readRes) int {
 	}
 	if s, ok := p.val.(string); ok {
 		return len(s) + 1
+	}
+	if n, ok := p.val.(json.Number); ok {
+		return len(n) + 1
 	}
 	return 8
 }

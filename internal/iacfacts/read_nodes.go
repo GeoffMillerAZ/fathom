@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -112,14 +111,8 @@ func isSecretFlag(entry, flag *node) bool {
 // scalarValue is a scalar's value as Go sees it.
 func (n *node) scalarValue() any {
 	switch n.typ {
-	case "int":
-		if i, err := strconv.ParseInt(n.value, 0, 64); err == nil {
-			return i
-		}
-	case "float":
-		if f, err := strconv.ParseFloat(n.value, 64); err == nil {
-			return f
-		}
+	case "int", "float":
+		return numberValue(n.value)
 	case "bool":
 		switch strings.ToLower(n.value) {
 		case "true":
@@ -747,12 +740,9 @@ func (p *jsonParser) value(depth int) (*node, error) {
 			p.i++
 		}
 		text := string(p.s[start:p.i])
-		typ := "int"
-		if _, err := strconv.ParseInt(text, 10, 64); err != nil {
-			if _, err := strconv.ParseFloat(text, 64); err != nil {
-				return nil, errSyntax
-			}
-			typ = "float"
+		typ := jsonNumberType(text)
+		if typ == "" {
+			return nil, errSyntax
 		}
 		return &node{kind: nodeScalar, typ: typ, value: text, span: p.ix.span(start, p.i)}, nil
 	}

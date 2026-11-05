@@ -1,6 +1,7 @@
 package iacfacts
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -731,12 +732,12 @@ func (r *tfReader) classify(e hclsyntax.Expression, iters map[string]bool, depth
 			// The parser's placeholder for an expression it could not read.
 			return readRes{class: ClassUnknown}
 		}
-		return readRes{class: ClassLiteral, val: ctyToGo(x.Val), hasV: r.cfg.values}
+		return readRes{class: ClassLiteral, val: r.literalValue(x, false), hasV: r.cfg.values}
 	case *hclsyntax.UnaryOpExpr:
 		// A negative number is a constant as written, as it is for OpenTofu: from_port = -1. Any other unary
 		// operator is computed, and so is a negation of anything but a number literal.
 		if lit, ok := x.Val.(*hclsyntax.LiteralValueExpr); ok && x.Op == hclsyntax.OpNegate && lit.Val.IsKnown() && lit.Val.Type() == cty.Number {
-			return readRes{class: ClassLiteral, val: ctyToGo(lit.Val.Negate()), hasV: r.cfg.values}
+			return readRes{class: ClassLiteral, val: r.literalValue(lit, true), hasV: r.cfg.values}
 		}
 		return readRes{class: ClassExpression, refs: r.variableRefs(e, iters)}
 	case *hclsyntax.TemplateExpr:
@@ -857,6 +858,8 @@ func scalarString(v any) (string, bool) {
 		return big.NewInt(x).String(), true
 	case float64:
 		return new(big.Float).SetFloat64(x).Text('g', -1), true
+	case json.Number:
+		return string(x), true
 	}
 	return "", false
 }
@@ -1021,7 +1024,37 @@ func renderTraversal(t hcl.Traversal) string {
 	return sb.String()
 }
 
-// ctyToGo converts a constant to a plain Go value.
+// literalValue is the Go value of a literal, negated when neg. A number that is an integer in int64 range is an int64,
+// as cty holds it; any other number goes through numberValue with the text the file wrote, so 1e999 is never +Inf.
+func (r *tfReader) literalValue(lit *hclsyntax.LiteralValueExpr, neg bool) any {
+	v := lit.Val
+	if neg {
+		v = v.Negate()
+	}
+	if v.IsNull() || !v.IsKnown() || v.Type() != cty.Number {
+		return ctyToGo(v)
+	}
+	bf := v.AsBigFloat()
+	if bf.IsInt() {
+		if i, acc := bf.Int64(); acc == big.Exact {
+			return i
+		}
+	}
+	text := bf.Text('g', -1)
+	if r.pf != nil {
+		if rng := lit.SrcRange; rng.Start.Byte >= 0 && rng.End.Byte <= len(r.pf.src) && rng.Start.Byte < rng.End.Byte {
+			if t := string(r.pf.src[rng.Start.Byte:rng.End.Byte]); jsonNumberType(t) != "" {
+				text = t
+				if neg {
+					text = "-" + t
+				}
+			}
+		}
+	}
+	return numberValue(text)
+}
+
+// ctyToGo converts a constant to a plain Go value. A number is read by literalValue, which has the source text.
 func ctyToGo(v cty.Value) any {
 	if v.IsNull() || !v.IsKnown() {
 		return nil
@@ -1032,14 +1065,7 @@ func ctyToGo(v cty.Value) any {
 	case cty.Bool:
 		return v.True()
 	case cty.Number:
-		bf := v.AsBigFloat()
-		if bf.IsInt() {
-			if i, acc := bf.Int64(); acc == big.Exact {
-				return i
-			}
-		}
-		f, _ := bf.Float64()
-		return f
+		return numberValue(v.AsBigFloat().Text('g', -1))
 	}
 	return nil
 }
