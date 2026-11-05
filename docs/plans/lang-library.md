@@ -29,20 +29,20 @@ A commit that moves code behind a claimed row re-anchors that row in the same co
 - [x] `langtest.CheckPack` runs a pack's validation, required kinds and goldens {id: LL-15, symbol: CheckPack, package: pkg/lang/langtest, library: true, reason: "the deliverable is the conformance API pack authors import", needs: LL-13}
 - [x] `pkg/lang/cue` adds CUE and Timoni extraction by import {id: LL-16, symbol: Option, package: pkg/lang/cue, library: true, reason: "the deliverable is the import that opts in to CUE", needs: "LL-7,LL-10"}
 - [x] `cmd/fathom-lang extract|dialects` prints the door as JSON, with stdlib flags only {id: LL-17, symbol: cmdExtract, package: cmd/fathom-lang, needs: LL-10}
-- [ ] Release builds publish `fathom-lang` beside `fathom` {id: LL-18, oracle: lexical, path: .goreleaser.yaml, pattern: "cmd/fathom-lang", needs: LL-17}
-- [ ] `task deploy` installs `fathom-lang` beside `fathom` {id: LL-19, oracle: lexical, path: Taskfile.yml, pattern: "fathom-lang", needs: LL-17}
+- [x] Release builds publish `fathom-lang` beside `fathom` {id: LL-18, oracle: lexical, path: .goreleaser.yaml, pattern: "cmd/fathom-lang", needs: LL-17}
+- [x] `task deploy` installs `fathom-lang` beside `fathom` {id: LL-19, oracle: lexical, path: Taskfile.yml, pattern: "fathom-lang", needs: LL-17}
 
 ## Phase 3: standing alone
 
-- [ ] A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP or `net/http`, or passes its package budget {id: LL-20, symbol: TestLangClosure, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any forbidden dependency", needs: LL-11}
-- [ ] A test fails if the door opens a socket or writes a file without a cache directory {id: LL-21, symbol: TestLangNeverDialsOrWrites, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any dial or write", needs: LL-11}
-- [ ] The exported API is pinned by a `go doc -all` snapshot {id: LL-22, symbol: TestLangAPISnapshot, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on an unreviewed API change", needs: LL-11}
-- [ ] An outside module builds against the door offline {id: LL-23, symbol: TestOutsideModuleBuilds, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it builds the outside module", needs: LL-11}
-- [ ] Fuzz seeds run in the normal test run: `Extract` never panics and holds its limits {id: LL-24, symbol: FuzzExtract, package: pkg/lang, skip_test: true, skip: "the fuzz target is the anchor", needs: LL-11}
-- [ ] Equal inputs give byte-equal JSON under concurrent use and `-race` {id: LL-25, symbol: TestExtractConcurrentDeterministic, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any difference", needs: LL-11}
-- [ ] Docs: `docs/use-cases/lang-library.md` with `## Maintained`, godoc examples, `docs/usage.md`, the compatibility surface, a CLI review in `docs/app-kit.md` and a change note {id: LL-26, oracle: lexical, path: docs/use-cases/lang-library.md, pattern: "^## Maintained", needs: "LL-11,LL-17"}
-- [ ] `fathom-lang`'s JSON is pinned by a golden test, as compatibility surface {id: LL-27, symbol: TestFathomLangJSONGolden, package: cmd/fathom-lang, skip_test: true, skip: "the test is the anchor: it fails on an unreviewed JSON change", needs: LL-17}
-- [ ] (op) An outside consumer's closure and binary size read against the design's bar {id: LL-M1, oracle: lexical, path: docs/bench/readings/lang-library/m1-closure.md, pattern: "^LL-M1 verdict:", needs: "LL-20,LL-23"}
+- [x] A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP or `net/http`, or passes its package budget {id: LL-20, symbol: TestLangClosure, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any forbidden dependency", needs: LL-11}
+- [x] A test fails if the door opens a socket or writes a file without a cache directory {id: LL-21, symbol: TestLangNeverDialsOrWrites, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any dial or write", needs: LL-11}
+- [x] The exported API is pinned by a `go doc -all` snapshot {id: LL-22, symbol: TestLangAPISnapshot, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on an unreviewed API change", needs: LL-11}
+- [x] An outside module builds against the door offline {id: LL-23, symbol: TestOutsideModuleBuilds, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it builds the outside module", needs: LL-11}
+- [x] Fuzz seeds run in the normal test run: `Extract` never panics and holds its limits {id: LL-24, symbol: FuzzExtract, package: pkg/lang, skip_test: true, skip: "the fuzz target is the anchor", needs: LL-11}
+- [x] Equal inputs give byte-equal JSON under concurrent use and `-race` {id: LL-25, symbol: TestExtractConcurrentDeterministic, package: pkg/lang, skip_test: true, skip: "the test is the anchor: it fails on any difference", needs: LL-11}
+- [x] Docs: `docs/use-cases/lang-library.md` with `## Maintained`, godoc examples, `docs/usage.md`, the compatibility surface, a CLI review in `docs/app-kit.md` and a change note {id: LL-26, oracle: lexical, path: docs/use-cases/lang-library.md, pattern: "^## Maintained", needs: "LL-11,LL-17"}
+- [x] `fathom-lang`'s JSON is pinned by a golden test, as compatibility surface {id: LL-27, symbol: TestFathomLangJSONGolden, package: cmd/fathom-lang, skip_test: true, skip: "the test is the anchor: it fails on an unreviewed JSON change", needs: LL-17}
+- [x] (op) An outside consumer's closure and binary size read against the design's bar {id: LL-M1, oracle: lexical, path: docs/bench/readings/lang-library/m1-closure.md, pattern: "^LL-M1 verdict:", needs: "LL-20,LL-23"}
 - [ ] (op) A module outside this repository builds and runs against a tagged release through the Go proxy {id: LL-M7, oracle: lexical, path: docs/bench/readings/lang-library/m7-outside-module.md, pattern: "^LL-M7 verdict:", needs: "LL-M1,LL-18"}
 
 ## Phase 4: resource reads
