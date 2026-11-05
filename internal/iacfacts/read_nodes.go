@@ -835,14 +835,16 @@ func (w *treeWalker) walk(n *node, path string, span Span, out *[]Attr, depth in
 	}
 }
 
-// walkPairs walks the entries of a mapping. A YAML merge key (`<<: *base`) may carry any key, and a Fn::Transform
-// beside other keys (AWS::Include) may add any, so neither can be read from the entries shown: the mapping gets one
-// unknown attribute at its own path and is counted in unread, which the caller adds to the syntax errors. Absence
-// is never silent: a check for a key must not see it as unset.
+// walkPairs walks the entries of a mapping. A YAML merge key (`<<: *base`) may carry any key, a Fn::Transform or a
+// Fn::ForEach::Name beside other keys (AWS::Include, the language extensions' loop) may add any, and a key that is
+// not a scalar (a sequence, a mapping, an alias) has no name to put in a path, so none can be read from the entries
+// shown: the mapping gets one unknown attribute at its own path and is counted in unread, which the caller adds to
+// the syntax errors. Absence is never silent: a check for a key must not see it as unset.
 func (w *treeWalker) walkPairs(n *node, path string, span Span, out *[]Attr, childDepth int) {
 	hidden := false
 	for _, p := range n.pairs {
-		if p.key.kind == nodeScalar && (p.key.value == "<<" || (p.key.value == "Fn::Transform" && len(n.pairs) > 1)) {
+		if p.key.kind != nodeScalar || p.key.value == "<<" ||
+			(len(n.pairs) > 1 && (p.key.value == "Fn::Transform" || strings.HasPrefix(p.key.value, "Fn::ForEach::"))) {
 			hidden = true
 			continue
 		}

@@ -31,6 +31,9 @@ func ReadPulumiYAMLFile(filePath string, src []byte, opts ...Option) (*ResourceS
 	if root == nil || root.kind != nodeMap {
 		return set, nil
 	}
+	if root.hasMerge() {
+		set.SyntaxErrors++ // `<<: *base` at the root may carry resources, variables or configuration
+	}
 	res := root.get("resources")
 	if res.unreadableSection() {
 		// `resources: *all`, `${v}`, a list: which resources the program declares is not known.

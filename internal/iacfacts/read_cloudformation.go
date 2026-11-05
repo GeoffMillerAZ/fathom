@@ -30,6 +30,9 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 	if root == nil || root.kind != nodeMap {
 		return set, nil
 	}
+	if root.hasMerge() {
+		set.SyntaxErrors++ // `<<: *base` at the root may carry Resources, Parameters or Conditions
+	}
 	res := root.get("Resources")
 	if res.unreadableSection() {
 		// `Resources: *all`, `!If`, `${v}`: which resources the template declares is not known.
