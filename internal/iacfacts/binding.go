@@ -119,8 +119,7 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 	}
 	rc := &bindingReader{fsys: q.Repo, mods: map[string]*bindModule{}}
 	mod := rc.module(dir)
-	b.Disclosures = append(b.Disclosures, rc.notes...)
-	rc.notes = nil
+	b.Disclosures = append(b.Disclosures, rc.takeNotes()...)
 	req, declared := mod.required[local]
 	b.Source = normalizeProviderSource(req.source, local)
 	implied := providerHostImplied(req.source)
@@ -193,7 +192,7 @@ func ResolveIaCBinding(q IaCBindingQuery) IaCBinding {
 			b.Disclosures = append(b.Disclosures, fmt.Sprintf("the nearest lockfile above this module, %s, is not reached by any module call, so it pins nothing for this module", lf))
 		}
 	}
-	b.Disclosures = append(b.Disclosures, rc.notes...)
+	b.Disclosures = append(b.Disclosures, rc.takeNotes()...)
 
 	unread := ""
 	if len(rc.unread) > 0 {

@@ -55,25 +55,57 @@ type bindingReader struct {
 	mods  map[string]*bindModule
 	locks map[string]map[string]string
 	notes []string
+	// seen holds every note kept, kept their number and dropped the number that did not fit, reported the part of
+	// that already said.
+	seen                    map[string]struct{}
+	kept, dropped, reported int
 	// unread lists the reasons an input binding needed was not read. A definite answer from the inputs that were
 	// read could be contradicted by the ones that were not, so any entry refuses the answer.
 	unread []string
 }
 
+// maxBindingNotes bounds the disclosures one answer carries. Every note is distinct text, and a module of dynamic
+// sources reached by many roots wrote one per source per root, a number of strings that grew with the product.
+const maxBindingNotes = 256
+
+// maxBindingUnread bounds the reasons kept for a refused answer, of which the answer names the first.
+const maxBindingUnread = 8
+
 func (r *bindingReader) note(format string, args ...any) {
 	n := fmt.Sprintf(format, args...)
-	for _, e := range r.notes {
-		if e == n {
-			return
-		}
+	if _, dup := r.seen[n]; dup {
+		return
 	}
+	if r.kept >= maxBindingNotes {
+		r.dropped++
+		return
+	}
+	if r.seen == nil {
+		r.seen = map[string]struct{}{}
+	}
+	r.seen[n] = struct{}{}
+	r.kept++
 	r.notes = append(r.notes, n)
+}
+
+// takeNotes returns the notes recorded since the last call, and says once more how many did not fit.
+func (r *bindingReader) takeNotes() []string {
+	out := r.notes
+	r.notes = nil
+	if r.dropped > r.reported {
+		out = append(out, fmt.Sprintf("%d more disclosures past the first %d were dropped", r.dropped-r.reported, maxBindingNotes))
+		r.reported = r.dropped
+	}
+	return out
 }
 
 // skip records an input that was not read: a disclosure, and a reason the answer is refused.
 func (r *bindingReader) skip(format string, args ...any) {
 	n := fmt.Sprintf(format, args...)
 	r.note("%s", n)
+	if len(r.unread) >= maxBindingUnread {
+		return
+	}
 	for _, e := range r.unread {
 		if e == n {
 			return
@@ -107,7 +139,7 @@ func (r *bindingReader) readBounded(name string) ([]byte, bool) {
 func (r *bindingReader) parse(src []byte, name string) (body *hclsyntax.Body, hadErrors bool) {
 	f, diags, err := parseHCLBounded(name, src)
 	if err != nil {
-		r.skip("%s nests operators or brackets past the read bound and was skipped", name)
+		r.skip("%s nests, or repeats a template piece or a function namespace, past the read bound and was skipped", name)
 		return nil, true
 	}
 	if diags.HasErrors() {

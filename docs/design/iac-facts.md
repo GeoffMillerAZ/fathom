@@ -129,8 +129,9 @@ Carried over from `docs/design/iac-provider-schemas.md`, without the authored ma
   `locked` with a disclosure that OpenTofu would stop at init. A `provider "x" { version = ... }` block is a constraint
   OpenTofu honours (deprecated) and ANDs with `required_providers`, so the reader does too. A `required_providers` key is
   a bare word or a quoted string, and a key that is neither, or is not `source`, `version` or `configuration_aliases`,
-  refuses the answer as it refuses `tofu init`. A repeated top-level `module` key in JSON reads as both blocks, and any
-  other repeated key refuses the answer. A lock entry that does not read is an unread input.
+  refuses the answer as it refuses `tofu init`. A repeated top-level `module` key in JSON reads as both blocks, and a
+  repeated `terraform` or `provider` key refuses the answer, as does a repeated key inside any of the three. Binding
+  reads no other top-level key, so a repeated `variable` or `resource` does not refuse it. A lock entry that does not read is an unread input.
 - Provider constraints follow OpenTofu's Ruby-style parser: `~> 5` and `~> 5.0` are `>= 5.0, < 6`. An unreadable
   constraint reads `unbound` with the reason (`v4.0.6` is one, as in `tofu init`). A pre-release is selected only by an
   `=` that names it, never by a range or by no constraint. Binding reads `.tofu` files, override files and the JSON syntax with the reader's shadowing, follows a symbolic link to a
