@@ -33,6 +33,16 @@ func TestFathomLangJSONGolden(t *testing.T) {
 	// golden pins the field and not the state of a reading.
 	checkGolden(t, "extract.json", levelValue.ReplaceAll(out.Bytes(), []byte(`"level": "<level>"`)))
 
+	// The supervised child is the default, and a batch that faults nowhere prints the same bytes in process.
+	var inProcess bytes.Buffer
+	inArgs := append([]string{"extract", "-in-process"}, args[1:]...)
+	if code := run(context.Background(), inArgs, strings.NewReader(""), &inProcess, &errw); code != 0 {
+		t.Fatalf("extract -in-process exit %d: %s", code, errw.String())
+	}
+	if !bytes.Equal(out.Bytes(), inProcess.Bytes()) {
+		t.Errorf("supervised and -in-process output differ\n--- supervised\n%s\n--- in process\n%s", out.Bytes(), inProcess.Bytes())
+	}
+
 	out.Reset()
 	if code := run(context.Background(), []string{"dialects"}, strings.NewReader(""), &out, &errw); code != 0 {
 		t.Fatalf("dialects exit %d: %s", code, errw.String())
