@@ -228,8 +228,7 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		}
 		return res, nil
 	}
-	index := func() *langroute.SiblingIndex { return siblingIndex(path, f.Siblings) }
-	ex, err := r.router.ExtractFileDocSteps(ctx.Err, serviceID, index, path, f.Src)
+	ex, err := r.route(ctx, path, f)
 	if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
 		return Result{}, err // the context ended between two stages of this file
 	}
@@ -254,6 +253,10 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 		}
 		res.Level, _ = levelOf(r.levels, res.Dialect)
 	}
+	if res.Dialect == "" && err != nil {
+		res.Dialect = langroute.DialectOf(nil, "", path, nil) // an extractor that failed has no content to name it by
+		res.Level, _ = levelOf(r.levels, res.Dialect)
+	}
 	if err != nil {
 		res.Notes = append(res.Notes, errorNote(err))
 		res.Incomplete = true
@@ -270,6 +273,22 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 	res.addSiblingNote(path, f.Siblings)
 	res.sort()
 	return res, nil
+}
+
+// route reads f through the router. A panic in a built-in extractor is the
+// file's failure, not the caller's: it comes back as the error an extractor
+// returns, which Extract reports as an Incomplete reading, so one file's input
+// cannot end the batch it is in. (A stack overflow is fatal and cannot be
+// caught, so the extractors that recurse refuse a nesting past maxNesting
+// before they reach the parser.)
+func (r *Reader) route(ctx context.Context, path string, f File) (ex langroute.Extraction, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			ex, err = langroute.Extraction{}, fmt.Errorf("the reader failed on this input: %v", p)
+		}
+	}()
+	index := func() *langroute.SiblingIndex { return siblingIndex(path, f.Siblings) }
+	return r.router.ExtractFileDocSteps(ctx.Err, serviceID, index, path, f.Src)
 }
 
 // refineGoTypes sets the Canonical of each GoType symbol from its declaration:

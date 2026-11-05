@@ -519,7 +519,7 @@ func regoRef(ts []regoTok, i int) ([]regoTerm, int) {
 			default:
 				terms = append(terms, regoTerm{kind: regoTermOther})
 			}
-			j = k + 1
+			j = min(k+1, len(ts)) // regoClose is len(ts) for a bracket never closed
 		default:
 			return terms, j
 		}
@@ -625,7 +625,7 @@ func (f *regoFile) rule(ts []regoTok) {
 	fn := j < len(ts) && ts[j].is("(")
 	after := j
 	if fn {
-		after = regoClose(ts, j) + 1
+		after = min(regoClose(ts, j)+1, len(ts)) // regoClose is len(ts) for a bracket never closed
 	}
 	hasValue := after < len(ts) && (ts[after].is(":=") || ts[after].is("="))
 	hasBody, depth := false, 0
