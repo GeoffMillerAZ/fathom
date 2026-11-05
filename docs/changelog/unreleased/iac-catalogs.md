@@ -1,0 +1,3 @@
+### Added
+
+- `fathom iac add|import|list|remove` manages IaC provider catalogs under `$FATHOM_HOME/iac`. `add` takes a local file only, verifies the whole catalog (every bound, every blob against its address) and prints its sha256; `import` builds a catalog from `tofu providers schema -json` exports you ran yourself, one major line per catalog. Nothing is downloaded and no provider is run (ADR-091, IF-1 to IF-5, IF-7). A catalog holds every release of one provider major line and carries no replacement facts yet. No answer surface reads a catalog until the later rows land, so no existing answer changes.
