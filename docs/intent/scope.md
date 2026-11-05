@@ -137,7 +137,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   <dir> --json` (the `usedset.Result` shape: field names, unit kinds `go-package`, `embed`,
   `css-source`, `css-import`, `js-module`, `module-file`, kind-then-id order, `used_files`).
   Evidence: `cmd/fathom/report_used.go` (`TestCmdReportUsedJSONReasonsAndUnreached`).
-- `pkg/client`, `pkg/platform` and `pkg/lang` exported Go API (`pkg/lang`'s `Canonical` kinds included, a dialect's own `Kind` strings not). Evidence: `pkg/client/client.go`; `TestLangAPISnapshot` once it lands.
+- `pkg/client`, `pkg/platform` and `pkg/lang` exported Go API (`pkg/lang`'s `Canonical` kinds included, a dialect's own `Kind` strings not). Evidence: `pkg/client/client.go`, `TestLangAPISnapshot` (`pkg/lang`, `pkg/lang/cue`, `pkg/lang/langtest`).
+- `fathom-lang extract|dialects` JSON (ADR-092): `lang.Result` and `lang.DialectInfo` field names, additive only. Evidence: `TestFathomLangJSONGolden`.
 - CLI verbs and their `--json` envelopes (law 10: every capability is a verb first).
 
 Pre-1.0: breaking changes bump minor. The line still gets written.

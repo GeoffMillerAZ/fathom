@@ -1,0 +1,3 @@
+### Added
+
+- `fathom-lang` ships beside `fathom`: release archives carry it for darwin and linux on amd64 and arm64 (pure Go), and `task deploy` installs it signed next to the daemon binary without changing how `fathom` is deployed. `fathom-lang`'s JSON is compatibility surface, pinned by a golden test, and `pkg/lang`, `pkg/lang/cue` and `pkg/lang/langtest` are pinned by a `go doc -all` snapshot. The library's closure (no store, fusion, connector, MCP, `net/http` or CUE; at most 80 non-standard packages), its no-socket and no-file-write behavior, an offline outside-module build, a fuzz target and a concurrent determinism test are gate tests (ADR-092, LL-18 to LL-27). Guide: `docs/use-cases/lang-library.md`.
