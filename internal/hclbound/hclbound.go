@@ -329,16 +329,47 @@ func Check(src []byte, file string, b Bounds) *Refusal {
 
 // isDirective reports whether the token at tokens[i] is the keyword that makes the `%{` before it a directive the
 // parser keeps as a part of its template: if, else, endif, for or endfor. Any other `%{` is an error the parser
-// reports and drops.
+// reports and drops, and so is a `for` whose header is not NAME [, NAME] in (parser_template.go recovers and adds no
+// part).
 func isDirective(tokens []hclsyntax.Token, i int) bool {
 	if i >= len(tokens) || tokens[i].Type != hclsyntax.TokenIdent {
 		return false
 	}
 	switch string(tokens[i].Bytes) {
-	case "if", "else", "endif", "for", "endfor":
+	case "if", "else", "endif", "endfor":
 		return true
+	case "for":
+		return forHeader(tokens, i+1)
 	}
 	return false
+}
+
+// forHeader reports whether tokens[i:] open with what the parser requires after `for`: an Ident, an optional comma and
+// Ident, then the Ident `in`. The parser reads these with newlines off, so a newline token between them is skipped.
+func forHeader(tokens []hclsyntax.Token, i int) bool {
+	next := func(want hclsyntax.TokenType) bool {
+		for i < len(tokens) && tokens[i].Type == hclsyntax.TokenNewline {
+			i++
+		}
+		if i >= len(tokens) || tokens[i].Type != want {
+			return false
+		}
+		i++
+		return true
+	}
+	if !next(hclsyntax.TokenIdent) {
+		return false
+	}
+	if i < len(tokens) && tokens[i].Type == hclsyntax.TokenComma {
+		i++
+		if !next(hclsyntax.TokenIdent) {
+			return false
+		}
+	}
+	for i < len(tokens) && tokens[i].Type == hclsyntax.TokenNewline {
+		i++
+	}
+	return i < len(tokens) && tokens[i].Type == hclsyntax.TokenIdent && string(tokens[i].Bytes) == "in"
 }
 
 // pendingOps are the operators and postfix steps an open bracket interrupted.
@@ -358,9 +389,10 @@ type tmplFrame struct {
 }
 
 // The melding budgets. maxMeldMoves is melds times parts, which a 30,000 line heredoc exceeds and a 20,000 line one
-// does not, and maxMeldBytes is the bytes the concatenations copy. A template under them costs the parser well under
-// a second. The file budgets add up the templates, so many templates each just under the template budget cannot sum
-// to minutes.
+// does not, and maxMeldBytes is the bytes the concatenations copy. They price the literal melds the guard can count
+// from the token stream, and no more: a template under them can still cost the parser seconds, and a cost shape the
+// guard does not price returns by the read deadline (ADR-092's read guarantee), not by this bound. The file budgets
+// add up the templates, so many templates each just under the template budget cannot sum past the file budgets.
 const (
 	maxMeldMoves     = 1 << 29
 	maxMeldBytes     = 1 << 31

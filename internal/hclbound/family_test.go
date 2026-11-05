@@ -61,7 +61,9 @@ func familyShapes(full bool) []shape {
 		// a dropped directive that leaves a bracket open.
 		"%{f(}a\n", "%{f[}a\n", "%{f(${a}}a\n",
 		// N13: a `[*` right before the directive's close is two plain tokens to the parser, which stops at that close.
-		"%{f [*}a\n", "%{[*}a\n", "%{f a[*}a\n", "%{f [\n*}a\n", "%{f [/**/*}a\n")
+		"%{f [*}a\n", "%{[*}a\n", "%{f a[*}a\n", "%{f [\n*}a\n", "%{f [/**/*}a\n",
+		// N14: a `%{for` whose header the parser drops.
+		"a%{for}a%{endfor}", "a%{for x}a%{endfor}", "a%{for x,}a%{endfor}", "a%{for x y}a%{endfor}", "a%{for}a%{endif}", "%{endfor}a%{for}a\n")
 	var out []shape
 	for _, p := range prefixes {
 		for _, u := range units {

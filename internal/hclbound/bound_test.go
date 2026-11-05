@@ -271,6 +271,27 @@ func TestStrayCloserKeepsTheNewlineHiddenInAForBrace(t *testing.T) {
 	reads(t, "half the run", "x = {for a in b : a => ) "+strings.Repeat("!", 100)+"a}\n", readBounds)
 }
 
+// N14: a `%{for` whose header is not NAME [, NAME] in is dropped by the parser with no part, so the literals either
+// side of it meld. Counting it as a kept part priced those melds at zero: 1.7 MB of `a%{for}a%{endfor}` read and cost
+// the parser 4.3 s.
+func TestDroppedForDirectiveDoesNotHideLiterals(t *testing.T) {
+	within(t, 90*time.Second, "n14", func() {
+		for _, unit := range []string{"a%{for}a%{endfor}", "a%{for x}a%{endfor}", "a%{for x,}a%{endfor}", "a%{for x y}a%{endfor}", "a%{for}a%{endif}"} {
+			for _, bounds := range []Bounds{extractorBounds, readBounds} {
+				refusedBy(t, "x = \""+strings.Repeat(unit, 100_000)+"\"\n", bounds, BoundTemplate)
+			}
+		}
+		for _, bounds := range []Bounds{extractorBounds, readBounds} {
+			refusedBy(t, "x = <<A\n"+strings.Repeat("%{endfor}a%{for}a\n", 100_000)+"A\n", bounds, BoundTemplate)
+		}
+		// A valid header is a kept part, and a short template of it reads.
+		for _, valid := range []string{"%{for x in y}", "%{for k, v in y}", "%{for\nx in y}"} {
+			reads(t, "valid for "+valid, "x = \"a"+valid+"a%{endfor}\"\n", readBounds)
+		}
+		reads(t, "valid for, many", "x = \""+strings.Repeat("a%{for x in y}a%{endfor}", 10_000)+"\"\n", readBounds)
+	})
+}
+
 // the parser skips a directive it drops with recover(`}`), which counts the `${` and `%{` it meets against the
 // `}` that ends them and no bracket. A bracket the directive leaves open (`%{f(}`) does not keep it open: the literals
 // after it still meld, so they are priced. 781 KB of this shape took 1m31s of CPU.
