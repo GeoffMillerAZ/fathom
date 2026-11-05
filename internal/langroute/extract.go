@@ -20,6 +20,11 @@ type Extraction struct {
 	// TypeRefs is the type references the tags engine captured in this
 	// file (design §3.4: counted in the reading, never stored).
 	TypeRefs int
+	// Extractor is the extractor that ran, nil when none did.
+	Extractor extractor.Extractor
+	// Doc is the document engine's full result, set only by ExtractFileDoc for
+	// an extractor that has one.
+	Doc *extractor.DocResult
 }
 
 // ExtractFile runs ingest's gates (binary, size cap, the dialect gate) and
@@ -29,6 +34,18 @@ type Extraction struct {
 // that memoizes the index builds it for those files alone. with, when not nil, is the extractor to run in place of dispatch's
 // choice, the retirement protocol's parity run (LB-F18, design §11).
 func (r *Router) ExtractFile(with extractor.Extractor, serviceID string, index func() *SiblingIndex, relPath string, content []byte) (Extraction, error) {
+	return r.extractFile(with, serviceID, index, relPath, content, false)
+}
+
+// ExtractFileDoc is ExtractFile for the language library's door: the same gates
+// and dispatch, and for an extractor with a document-engine result (the nodes
+// are that result's nodes) the whole result in Extraction.Doc, so facts,
+// cross-file references and refused references are not dropped.
+func (r *Router) ExtractFileDoc(serviceID string, index func() *SiblingIndex, relPath string, content []byte) (Extraction, error) {
+	return r.extractFile(nil, serviceID, index, relPath, content, true)
+}
+
+func (r *Router) extractFile(with extractor.Extractor, serviceID string, index func() *SiblingIndex, relPath string, content []byte, wantDoc bool) (Extraction, error) {
 	if BinaryExcluded(relPath, content) {
 		return Extraction{Skipped: "binary"}, nil
 	}
@@ -59,10 +76,28 @@ func (r *Router) ExtractFile(with extractor.Extractor, serviceID string, index f
 	if counts {
 		before = tr.TypeRefs()
 	}
-	nodes, err := e.Extract(serviceID, relPath, content)
-	out := Extraction{Nodes: nodes, ToolKind: tk}
+	var nodes []core.SymbolNode
+	var err error
+	var doc *extractor.DocResult
+	if dr, isDoc := e.(extractor.DocResulter); wantDoc && isDoc && ownsDocResult(e, relPath) {
+		var res extractor.DocResult
+		res, err = dr.ExtractDoc(serviceID, relPath, content)
+		nodes, doc = res.Nodes, &res
+	} else {
+		nodes, err = e.Extract(serviceID, relPath, content)
+	}
+	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc}
 	if counts {
 		out.TypeRefs = int(tr.TypeRefs() - before)
 	}
 	return out, err
+}
+
+// ownsDocResult is false for a tags+doc dialect's file the tags engine owns,
+// which has no document result and is read by Extract.
+func ownsDocResult(e extractor.Extractor, relPath string) bool {
+	if td, ok := e.(*extractor.TagsDocExtractor); ok {
+		return td.IsDocFile(relPath)
+	}
+	return true
 }
