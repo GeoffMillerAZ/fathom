@@ -251,6 +251,13 @@ func tagsSpec(fsys fs.FS, d Dialect) (*tsLangSpec, error) {
 			return nil, err
 		}
 		vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: vrules}
+		if vrules != rules {
+			// A variant with a tags query of its own is keyed by its id, so its
+			// parser and compiled query are its own: the pool and the compiled
+			// query cache are keyed by dialect, blob, entry point and variant id,
+			// and two variants of one entry point would share the first compiled.
+			vv.id = v.ID
+		}
 		for _, e := range v.Extensions {
 			spec.variantForExt[strings.ToLower(e)] = vv
 		}

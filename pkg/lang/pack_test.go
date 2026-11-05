@@ -256,6 +256,40 @@ func TestPackRefusedWhole(t *testing.T) {
 		}},
 		{"extension the router owns, no dialect declares", lang.PackRoute, "thrift-lite", func(f fstest.MapFS) fs.FS { setFile(f, thrift, `[".thr"]`, `[".go"]`); return f }},
 		{"glob ending in an owned extension", lang.PackRoute, "widget-spec", func(f fstest.MapFS) fs.FS { setFile(f, widget, `"**/*.widget.json"`, `"**/*.go"`); return f }},
+		{"glob that is not a pattern", lang.PackClaims, "widget-spec", func(f fstest.MapFS) fs.FS {
+			setFile(f, widget, `"**/*.widget.json"`, `"[abc"`)
+			return f
+		}},
+		{"tags query with no pattern", lang.PackQuery, "thrift-lite", func(f fstest.MapFS) fs.FS {
+			f["dialects/thrift-lite/tags.scm"] = &fstest.MapFile{Data: []byte("; nothing here\n\n")}
+			return f
+		}},
+		{"capture of a kind the manifest does not declare", lang.PackQuery, "thrift-lite", func(f fstest.MapFS) fs.FS {
+			f["dialects/thrift-lite/tags.scm"] = &fstest.MapFile{Data: []byte("(struct_definition type: (identifier) @name) @definition.nope\n")}
+			return f
+		}},
+		{"variant tags query that does not compile", lang.PackQuery, "thrift-lite", func(f fstest.MapFS) fs.FS {
+			setFile(f, thrift, `"variants": []`, `"variants": [{"id": "alt", "entry_point": "tree_sitter_thrift", "extensions": [".thy"], "queries": {"tags": "alt.scm"}}]`)
+			f["dialects/thrift-lite/alt.scm"] = &fstest.MapFile{Data: []byte("(no_such_node_type) @name @definition.struct\n")}
+			return f
+		}},
+		{"variant tags query without an id", lang.PackManifest, "thrift-lite", func(f fstest.MapFS) fs.FS {
+			setFile(f, thrift, `"variants": []`, `"variants": [{"id": "", "entry_point": "tree_sitter_thrift", "extensions": [".thy"], "queries": {"tags": "alt.scm"}}]`)
+			f["dialects/thrift-lite/alt.scm"] = &fstest.MapFile{Data: []byte("(struct_definition type: (identifier) @name) @definition.struct\n")}
+			return f
+		}},
+		{"manifest misspelled", lang.PackManifest, "zz-typo", func(f fstest.MapFS) fs.FS {
+			f["dialects/zz-typo/dialect.jsn"] = f[thrift]
+			return f
+		}},
+		{"file the manifest does not name", lang.PackManifest, "thrift-lite", func(f fstest.MapFS) fs.FS {
+			f["dialects/thrift-lite/tag.scm"] = f["dialects/thrift-lite/tags.scm"]
+			return f
+		}},
+		{"file beside the dialects", lang.PackManifest, "", func(f fstest.MapFS) fs.FS {
+			f["dialects/README.md"] = &fstest.MapFile{Data: []byte("x")}
+			return f
+		}},
 		{"sniff on an owned extension", lang.PackRoute, "widget-spec", func(f fstest.MapFS) fs.FS {
 			setFile(f, widget, `"sniff": null`, `"sniff": {"extensions": [".go"], "pattern": "^widget", "priority": 5}`)
 			return f
@@ -343,4 +377,34 @@ func TestPackReaderConcurrentAndDeterministic(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestPackVariantsKeepTheirOwnQueries(t *testing.T) {
+	// An extension-keyed variant with a tags query of its own is compiled, and
+	// reads its extension with that query, not with the dialect's.
+	fsys := sampleFS(t)
+	d := string(fsys["dialects/thrift-lite/dialect.json"].Data)
+	d = strings.Replace(d, `"variants": []`, `"variants": [{"id": "alt", "entry_point": "tree_sitter_thrift", "extensions": [".thy"], "queries": {"tags": "alt.scm"}}]`, 1)
+	fsys["dialects/thrift-lite/dialect.json"].Data = []byte(d)
+	fsys["dialects/thrift-lite/alt.scm"] = &fstest.MapFile{Data: []byte("(struct_definition type: (identifier) @name) @definition.service\n")}
+	r := newReader(t, lang.WithDialects(fsys))
+	src := "struct Order {\n  1: i32 id\n}\n"
+	for i := 0; i < 2; i++ { // twice, and in both orders, so the first compiled query cannot win by luck
+		alt := extract(t, r, "a.thy", src)
+		def := extract(t, r, "a.thr", src)
+		if len(alt.Symbols) == 0 || alt.Symbols[0].Kind != "ThriftLiteService" {
+			t.Fatalf("the variant's extension read %+v, want the variant's query (ThriftLiteService)", alt.Symbols)
+		}
+		if len(def.Symbols) == 0 || def.Symbols[0].Kind != "ThriftLiteStruct" {
+			t.Fatalf("the dialect's extension read %+v, want the dialect's query (ThriftLiteStruct)", def.Symbols)
+		}
+	}
+}
+
+func TestExtractorGlobThatIsNotAPatternIsRefused(t *testing.T) {
+	m := lang.Match{ID: "aaa-rows", Globs: []string{"[abc"}, Kinds: map[string]string{"RowDef": "function"}}
+	_, err := lang.New(lang.WithExtractor(m, &rowExtractor{}))
+	if reason, dialect := packReason(t, err); reason != lang.PackClaims || dialect != "aaa-rows" {
+		t.Fatalf("refused as (%s, %s): %v", reason, dialect, err)
+	}
 }

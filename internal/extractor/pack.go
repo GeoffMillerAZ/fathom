@@ -15,7 +15,9 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
@@ -97,6 +99,7 @@ func NewPack(fsys fs.FS) (*Pack, error) {
 	if fsys == nil {
 		return p, nil
 	}
+	byDir := map[string]Dialect{}
 	manifests, err := fs.Glob(fsys, "dialects/*/dialect.json")
 	if err != nil {
 		return nil, &PackError{Reason: PackManifest, Err: err}
@@ -127,8 +130,155 @@ func NewPack(fsys fs.FS) (*Pack, error) {
 				return nil, &PackError{Reason: PackManifest, Dialect: d.ID, Err: err}
 			}
 		}
+		byDir[dir] = d
+	}
+	if err := auditPackFiles(fsys, byDir); err != nil {
+		return nil, err
 	}
 	return p, nil
+}
+
+// checkGlobs refuses a glob that is not a valid pattern. The router matches a
+// glob segment by segment with path.Match, which treats a bad pattern as a
+// match of nothing, so a dialect with one would silently claim no file.
+func checkGlobs(id string, globs []string) error {
+	for _, g := range globs {
+		for _, seg := range strings.Split(g, "/") {
+			if seg == "**" {
+				continue
+			}
+			if _, err := path.Match(seg, ""); err != nil {
+				return packErr(PackClaims, id, "glob %q is not a valid pattern: %v", g, err)
+			}
+		}
+	}
+	return nil
+}
+
+// queryDefinition matches a @definition.<kind> capture in a tags query.
+var queryDefinition = regexp.MustCompile(`@definition\.([A-Za-z0-9_.\-]*[A-Za-z0-9_])`)
+
+// stripQueryComments drops the comments of a tree-sitter query, leaving string
+// literals alone.
+func stripQueryComments(src string) string {
+	var b strings.Builder
+	inStr := false
+	for i := 0; i < len(src); i++ {
+		c := src[i]
+		switch {
+		case inStr:
+			b.WriteByte(c)
+			if c == '\\' && i+1 < len(src) {
+				i++
+				b.WriteByte(src[i])
+			} else if c == '"' {
+				inStr = false
+			}
+		case c == '"':
+			inStr = true
+			b.WriteByte(c)
+		case c == ';':
+			for i < len(src) && src[i] != '\n' {
+				i++
+			}
+			b.WriteByte('\n')
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
+}
+
+// checkPackTags holds a tags dialect's queries to the rules a compile cannot:
+// a query with no pattern reads nothing, a @definition.<kind> capture the
+// manifest does not declare reads nothing, and a variant that names a tags
+// query of its own needs an id, because the engine keys its parser and compiled
+// query by dialect, grammar, entry point and variant id, so two variants of one
+// entry point without ids would share the first one compiled.
+func checkPackTags(fsys fs.FS, dir, id string, d Dialect) error {
+	check := func(file string) error {
+		b, err := fs.ReadFile(fsys, path.Join("dialects", dir, file))
+		if err != nil {
+			return &PackError{Reason: PackQuery, Dialect: id, Err: err}
+		}
+		q := stripQueryComments(string(b))
+		if strings.TrimSpace(q) == "" {
+			return packErr(PackQuery, id, "tags query %s holds no pattern", file)
+		}
+		for _, m := range queryDefinition.FindAllStringSubmatch(q, -1) {
+			if _, ok := d.Kinds[m[1]]; !ok {
+				return packErr(PackQuery, id, "tags query %s captures @definition.%s, which the manifest declares no kind for (kinds: %s)", file, m[1], strings.Join(sortedKindKeys(d), ", "))
+			}
+		}
+		return nil
+	}
+	if d.Queries.Tags != "" {
+		if err := check(d.Queries.Tags); err != nil {
+			return err
+		}
+	}
+	seen := map[string]bool{}
+	for _, v := range d.Variants {
+		if v.Queries == nil || v.Queries.Tags == "" {
+			continue
+		}
+		if v.ID == "" || seen[v.ID] {
+			return packErr(PackManifest, id, "a variant with its own tags query needs a unique id (variant %q)", v.ID)
+		}
+		seen[v.ID] = true
+		if err := check(v.Queries.Tags); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// auditPackFiles refuses what a pack's dialects directory holds that no
+// manifest names: a directory without a dialect.json (a manifest misspelled
+// dialect.jsn leaves its dialect out silently), a file beside the dialects, and
+// a file in a dialect's directory that its manifest does not name. A testdata
+// directory (the goldens langtest.CheckPack reads) is the one exception.
+func auditPackFiles(fsys fs.FS, byDir map[string]Dialect) error {
+	entries, err := fs.ReadDir(fsys, "dialects")
+	if err != nil {
+		return &PackError{Reason: PackManifest, Err: err}
+	}
+	for _, e := range entries {
+		d, ok := byDir[e.Name()]
+		switch {
+		case !e.IsDir():
+			return packErr(PackManifest, "", "dialects/%s is a file; a dialect is a directory holding dialect.json", e.Name())
+		case !ok:
+			return packErr(PackManifest, e.Name(), "dialects/%s holds no dialect.json", e.Name())
+		}
+		named := map[string]bool{"dialect.json": true}
+		for _, f := range []string{d.Queries.Tags, d.Queries.Imports, d.Queries.Injections, d.Queries.References, d.Queries.Locals} {
+			named[f] = true
+		}
+		if d.Engine == "doc" {
+			if d.Doc != "" {
+				named[d.Doc] = true
+			} else {
+				named["doc.json"] = true
+			}
+		}
+		for _, v := range d.Variants {
+			if v.Queries != nil {
+				named[v.Queries.Tags] = true
+			}
+		}
+		files, err := fs.ReadDir(fsys, path.Join("dialects", e.Name()))
+		if err != nil {
+			return &PackError{Reason: PackManifest, Dialect: e.Name(), Err: err}
+		}
+		for _, f := range files {
+			if named[f.Name()] || (f.IsDir() && f.Name() == "testdata") {
+				continue
+			}
+			return packErr(PackManifest, d.ID, "dialects/%s/%s is not a file the manifest names (a misspelled dialect.json or query name?)", e.Name(), f.Name())
+		}
+	}
+	return nil
 }
 
 // checkPackDialect holds one pack manifest to the pack-only rules, then to
@@ -160,8 +310,16 @@ func (p *Pack) checkPackDialect(fsys fs.FS, dir string, d Dialect) error {
 	if !dialectClaimsAFile(d) {
 		return packErr(PackClaims, id, "claims no extension, basename, glob or sniff")
 	}
+	if err := checkGlobs(id, d.Match.Globs); err != nil {
+		return err
+	}
 	if err := checkDialect(fsys, dir, d); err != nil {
 		return &PackError{Reason: PackManifest, Dialect: id, Err: err}
+	}
+	if d.Engine == "tags" {
+		if err := checkPackTags(fsys, dir, id, d); err != nil {
+			return err
+		}
 	}
 	if d.Engine == "tags" && !embeddedGrammar(d.Grammar.Blob) {
 		return packErr(PackGrammar, id, "grammar %q is not one fathom embeds", d.Grammar.Blob)
@@ -219,6 +377,9 @@ func (p *Pack) AddNative(d Dialect) error {
 	}
 	if len(d.Match.Shebangs) > 0 || d.Match.Container != nil {
 		return packErr(PackClaims, d.ID, "match.shebangs and match.container are not accepted")
+	}
+	if err := checkGlobs(d.ID, d.Match.Globs); err != nil {
+		return err
 	}
 	if err := checkDialect(emptyFS{}, d.ID, d); err != nil {
 		return &PackError{Reason: PackManifest, Dialect: d.ID, Err: err}
