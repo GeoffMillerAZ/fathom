@@ -19,6 +19,7 @@
     {
       "from": "",
       "to": "parts/battery.widget.json",
+      "to_key": "",
       "edge": "imports",
       "raw": "",
       "strategy": "repo-path",
@@ -27,14 +28,16 @@
     {
       "from": "clock.widget.Clock",
       "to": "Battery",
-      "edge": "call",
+      "to_key": "",
+      "edge": "uses",
       "raw": "",
       "strategy": "",
-      "line": 0
+      "line": 4
     }
   ],
   "unresolved": [],
   "facts": [],
   "level": "unmeasured",
+  "incomplete": false,
   "notes": []
 }

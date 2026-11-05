@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"bytes"
+	"io"
 	"regexp"
 	"sort"
 	"strings"
@@ -30,12 +31,24 @@ func NewHelmChartExtractor() *HelmChartExtractor { return &HelmChartExtractor{} 
 // Extract parses a Helm Chart.yaml and returns SymbolNodes.
 // It never returns a non-nil error.
 func (h *HelmChartExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := h.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when the file could not be decoded, the reason
+// (ReportingExtractor).
+func (h *HelmChartExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
 
 	// Parse into a yaml.Node so we can obtain line numbers.
 	var doc yaml.Node
-	if err := yaml.NewDecoder(bytes.NewReader(src)).Decode(&doc); err != nil || len(doc.Content) == 0 {
-		return nil, nil
+	if err := yaml.NewDecoder(bytes.NewReader(src)).Decode(&doc); err != nil {
+		if err == io.EOF {
+			return nil, "", nil
+		}
+		return nil, incompleteReason("yaml decode", err), nil
+	} else if len(doc.Content) == 0 {
+		return nil, "", nil
 	}
 	root := doc.Content[0] // mapping node
 
@@ -51,10 +64,10 @@ func (h *HelmChartExtractor) Extract(service, relPath string, src []byte) ([]cor
 	}
 	var chart helmChart
 	if err := root.Decode(&chart); err != nil {
-		return nil, nil
+		return nil, incompleteReason("chart decode", err), nil
 	}
 	if chart.Name == "" {
-		return nil, nil
+		return nil, "", nil
 	}
 
 	// Line of the document root (fallback to 1).
@@ -148,7 +161,7 @@ func (h *HelmChartExtractor) Extract(service, relPath string, src []byte) ([]cor
 		}
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes, "", nil
 }
 
 // ─── HelmValuesExtractor ─────────────────────────────────────────────────────
@@ -185,15 +198,27 @@ const helmValuesMaxDepth = 8
 // recursing into nested mappings (dotted names). It never returns a non-nil
 // error.
 func (h *HelmValuesExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := h.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when the file could not be decoded, the reason
+// (ReportingExtractor).
+func (h *HelmValuesExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
 
 	var doc yaml.Node
-	if err := yaml.NewDecoder(bytes.NewReader(src)).Decode(&doc); err != nil || len(doc.Content) == 0 {
-		return nil, nil
+	if err := yaml.NewDecoder(bytes.NewReader(src)).Decode(&doc); err != nil {
+		if err == io.EOF {
+			return nil, "", nil
+		}
+		return nil, incompleteReason("yaml decode", err), nil
+	} else if len(doc.Content) == 0 {
+		return nil, "", nil
 	}
 	root := doc.Content[0]
 	if root.Kind != yaml.MappingNode {
-		return nil, nil
+		return nil, "", nil
 	}
 
 	var nodes []core.SymbolNode
@@ -205,7 +230,7 @@ func (h *HelmValuesExtractor) Extract(service, relPath string, src []byte) ([]co
 		}
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes, "", nil
 }
 
 // walkHelmValuesMapping emits one KindHelmValue node per key in mapping and

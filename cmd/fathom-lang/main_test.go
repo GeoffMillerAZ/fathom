@@ -180,7 +180,7 @@ func TestPackFlagReadsASamplePackEndToEnd(t *testing.T) {
 	for _, r := range w.References {
 		edges[r.Edge] = r.To
 	}
-	if edges["imports"] != "ui/parts/battery.widget.json" || edges["call"] != "Battery" {
+	if edges["imports"] != "ui/parts/battery.widget.json" || edges["uses"] != "Battery" {
 		t.Errorf("widget references: %+v", w.References)
 	}
 	if s.Dialect != "thrift-lite" || len(s.Symbols) != 3 || s.Symbols[0].Kind != "ThriftLiteStruct" {

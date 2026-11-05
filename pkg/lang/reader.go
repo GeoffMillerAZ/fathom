@@ -251,8 +251,14 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error) {
 	}
 	if err != nil {
 		res.Notes = append(res.Notes, "extractor error: "+err.Error())
+		res.Incomplete = true
+	}
+	if ex.Incomplete != "" {
+		res.Notes = append(res.Notes, "incomplete: "+ex.Incomplete)
+		res.Incomplete = true
 	}
 	res.fill(ex, r.canonicalKind)
+	res.resolveTargets()
 	res.addSiblingNote(path, f.Siblings)
 	res.sort()
 	return res, nil
@@ -273,9 +279,11 @@ func newResult(path string) Result {
 // built-in dialects and the pack's.
 func (r *Reader) canonicalKind(sk string) (string, bool) {
 	if r.pack != nil {
-		return r.pack.CanonicalKind(sk)
+		if c, ok := r.pack.CanonicalKind(sk); ok {
+			return c, true
+		}
 	}
-	return extractor.CanonicalKind(sk)
+	return extractor.DoorCanonicalKind(sk)
 }
 
 // skipReason maps the router's reason onto the closed set. A file the router
@@ -306,6 +314,13 @@ func symbolKey(pkg, name string) string {
 	return pkg + "." + name
 }
 
+// edgeCall is the Edge of a call; edgeReference the Edge of a same-file
+// reference from a document dialect that declared none.
+const (
+	edgeCall      = "call"
+	edgeReference = "reference"
+)
+
 // fill converts the router's extraction into the public types.
 func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (string, bool)) {
 	keyOf := map[string]string{} // an entity's name -> its symbol key
@@ -319,8 +334,36 @@ func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (str
 			Key: key, Name: n.Name, Package: n.Package, Kind: string(n.Kind), Canonical: canonical,
 			Line: n.Line, EndLine: n.EndLine, Signature: n.Signature, Tier: string(n.Tier),
 		})
+	}
+	// A document dialect's same-file references carry the edge it declared and
+	// the line they are written on (DocResult.Refs). Anything else in a node's
+	// Calls is a call, or a plain reference when a document dialect gave no detail.
+	type refDetail struct {
+		edge string
+		line int
+	}
+	detail := map[[2]string][]refDetail{}
+	if ex.Doc != nil {
+		for _, r := range ex.Doc.Refs {
+			k := [2]string{r.From, r.To}
+			detail[k] = append(detail[k], refDetail{r.Edge, r.Line})
+		}
+	}
+	for _, n := range ex.Nodes {
+		key := symbolKey(n.Package, n.Name)
 		for _, c := range n.Calls {
-			res.References = append(res.References, Reference{From: key, To: strings.TrimPrefix(c, serviceID+"::"), Edge: "call"})
+			to := strings.TrimPrefix(c, serviceID+"::")
+			if ds := detail[[2]string{n.Name, c}]; len(ds) > 0 {
+				for _, d := range ds {
+					res.References = append(res.References, Reference{From: key, To: to, Edge: d.edge, Line: d.line})
+				}
+				continue
+			}
+			edge := edgeCall
+			if ex.Doc != nil {
+				edge = edgeReference
+			}
+			res.References = append(res.References, Reference{From: key, To: to, Edge: edge})
 		}
 	}
 	d := ex.Doc
@@ -349,6 +392,36 @@ func (res *Result) fill(ex langroute.Extraction, canonicalKind func(string) (str
 	}
 	for _, f := range d.Facts {
 		res.Facts = append(res.Facts, Fact{Entity: f.Entity, Key: f.Key, Value: f.Value, Line: f.Line})
+	}
+}
+
+// resolveTargets sets each same-file reference's ToKey: the Key of the one
+// symbol its To equals by Key or by Name, empty when none or several do.
+func (res *Result) resolveTargets() {
+	byKey := map[string][]int{}
+	byName := map[string][]int{}
+	for i, s := range res.Symbols {
+		byKey[s.Key] = append(byKey[s.Key], i)
+		byName[s.Name] = append(byName[s.Name], i)
+	}
+	for i := range res.References {
+		r := &res.References[i]
+		r.ToKey = ""
+		if r.Strategy != "" {
+			continue // a cross-file reference names something outside this file
+		}
+		match := map[int]bool{}
+		for _, j := range byKey[r.To] {
+			match[j] = true
+		}
+		for _, j := range byName[r.To] {
+			match[j] = true
+		}
+		if len(match) == 1 {
+			for j := range match {
+				r.ToKey = res.Symbols[j].Key
+			}
+		}
 	}
 }
 
@@ -468,6 +541,9 @@ func dialectInfos(levels map[string]levelRow, linked map[string]bool) ([]Dialect
 	for _, d := range ds {
 		if unlinked[d.ID] {
 			continue // a family this Reader did not link reads nothing: Dialects lists what it can read
+		}
+		if !langroute.DoorReadable(d.ID) {
+			continue // refused by its plan row, or read only by the product's router: Extract skips its files
 		}
 		set := map[string]bool{}
 		for _, e := range d.Match.Extensions {

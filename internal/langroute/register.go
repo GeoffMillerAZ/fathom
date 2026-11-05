@@ -8,6 +8,7 @@ package langroute
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -806,6 +807,31 @@ func (r *Router) sniffedExtractor(relPath string, content []byte) (extractor.Ext
 // is an ExtractorEpoch bump. Jinja2 is dispatched after its patched grammar
 // passed the full 520-file oracle regrade and tenancy floor (LB-Q-jinja2-rest).
 var refusedDialects = map[string]bool{"swift": true, "tcl": true, "vimscript": true}
+
+// productOnlyDialects are the manifest dialects only the product's router
+// reads: fathom's own formats, claimed through WithFormats (the fathomformat
+// package) and never linked into the language library. A Reader without them
+// reads these files as the generic reader of their extension does.
+var productOnlyDialects = map[string]bool{
+	"fathom-config": true, "fathom-plan-rows": true, "fathom-concerns": true, "fathom-layer-packs": true,
+}
+
+// ProductOnlyDialects is the sorted ids of the dialects only the product reads.
+func ProductOnlyDialects() []string {
+	out := make([]string, 0, len(productOnlyDialects))
+	for id := range productOnlyDialects {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// DoorReadable reports whether a library Reader can read files of the manifest
+// dialect id: false for a dialect whose plan row refused it and for one only
+// the product reads. The language library lists no other dialect as readable.
+func DoorReadable(id string) bool {
+	return !refusedDialects[id] && !productOnlyDialects[id]
+}
 
 // RegisterExtractor registers an extractor for the given file extension
 // (including leading dot, e.g. ".py"). It replaces any existing extractor for

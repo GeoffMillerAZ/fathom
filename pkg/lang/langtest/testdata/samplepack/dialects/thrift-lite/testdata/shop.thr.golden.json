@@ -52,5 +52,6 @@
   "unresolved": [],
   "facts": [],
   "level": "unmeasured",
+  "incomplete": false,
   "notes": []
 }

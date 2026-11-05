@@ -29,6 +29,10 @@ type Extraction struct {
 	// PackDialect is the id of the pack dialect that read the file, "" for a
 	// built-in one.
 	PackDialect string
+	// Incomplete is the extractor's one-line reason it could not fully read the
+	// file, "" when it did. Only ExtractFileDoc sets it; the product's
+	// ExtractFile never does, so its behavior and node output are unchanged.
+	Incomplete string
 }
 
 // ExtractFile runs ingest's gates (binary, size cap, the dialect gate) and
@@ -87,14 +91,17 @@ func (r *Router) extractFile(with extractor.Extractor, serviceID string, index f
 	var nodes []core.SymbolNode
 	var err error
 	var doc *extractor.DocResult
+	var incomplete string
 	if dr, isDoc := e.(extractor.DocResulter); wantDoc && isDoc && ownsDocResult(e, relPath) {
 		var res extractor.DocResult
 		res, err = dr.ExtractDoc(serviceID, relPath, content)
-		nodes, doc = res.Nodes, &res
+		nodes, doc, incomplete = res.Nodes, &res, res.Incomplete
+	} else if re, reports := e.(extractor.ReportingExtractor); wantDoc && reports {
+		nodes, incomplete, err = re.ExtractReport(serviceID, relPath, content)
 	} else {
 		nodes, err = e.Extract(serviceID, relPath, content)
 	}
-	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc, PackDialect: packDialect}
+	out := Extraction{Nodes: nodes, ToolKind: tk, Extractor: e, Doc: doc, PackDialect: packDialect, Incomplete: incomplete}
 	if counts {
 		out.TypeRefs = int(tr.TypeRefs() - before)
 	}

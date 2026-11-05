@@ -112,8 +112,10 @@ type Match struct {
 	Kinds map[string]string
 }
 
-// Extracted is what an Extractor reads from one file. Symbol.Key and
-// Symbol.Canonical are derived by the Reader and ignored here.
+// Extracted is what an Extractor reads from one file. Symbol.Key,
+// Symbol.Canonical and Reference.ToKey are derived by the Reader and ignored
+// here. Reference.Edge is the extractor's own relation name and is passed
+// through.
 type Extracted struct {
 	Symbols    []Symbol
 	References []Reference
@@ -193,6 +195,7 @@ func (r *Reader) extractNative(ctx context.Context, id string, f File, res Resul
 	got, err := r.natives[id].Extract(ctx, f)
 	if err != nil {
 		res.Notes = append(res.Notes, "extractor error: "+err.Error())
+		res.Incomplete = true
 	}
 	res.Dialect = id
 	res.Level = LevelUnmeasured
@@ -204,6 +207,7 @@ func (r *Reader) extractNative(ctx context.Context, id string, f File, res Resul
 	res.References = append(res.References, got.References...)
 	res.Unresolved = append(res.Unresolved, got.Unresolved...)
 	res.Facts = append(res.Facts, got.Facts...)
+	res.resolveTargets()
 	res.addSiblingNote(f.Path, f.Siblings)
 	res.sort()
 	return res, nil

@@ -34,15 +34,17 @@
           {
             "from": "main.aws_s3_bucket.b",
             "to": "var.name",
-            "edge": "call",
+            "to_key": "main.var.name",
+            "edge": "references",
             "raw": "",
             "strategy": "",
-            "line": 0
+            "line": 2
           }
         ],
         "unresolved": [],
         "facts": [],
         "level": "L3",
+        "incomplete": false,
         "notes": []
       }
     },
@@ -58,7 +60,7 @@
             "name": "F",
             "package": "a",
             "kind": "GoFunc",
-            "canonical": "",
+            "canonical": "function",
             "line": 3,
             "end_line": 3,
             "signature": "func F()",
@@ -69,7 +71,7 @@
             "name": "G",
             "package": "a",
             "kind": "GoFunc",
-            "canonical": "",
+            "canonical": "function",
             "line": 5,
             "end_line": 5,
             "signature": "func G()",
@@ -80,6 +82,7 @@
           {
             "from": "a.F",
             "to": "a.G",
+            "to_key": "a.G",
             "edge": "call",
             "raw": "",
             "strategy": "",
@@ -89,6 +92,7 @@
         "unresolved": [],
         "facts": [],
         "level": "L4",
+        "incomplete": false,
         "notes": []
       }
     },
@@ -103,6 +107,7 @@
         "unresolved": [],
         "facts": [],
         "level": "",
+        "incomplete": false,
         "notes": []
       }
     },
@@ -117,6 +122,7 @@
         "unresolved": [],
         "facts": [],
         "level": "",
+        "incomplete": false,
         "notes": [
           "siblings-empty: this file's classification reads sibling paths (chart, role or module roots), and none were given"
         ]

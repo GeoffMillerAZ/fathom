@@ -102,7 +102,7 @@ func hclToolOf(relPath string) string {
 
 // ExtractDoc implements DocResulter.
 func (x *HCLToolsExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	body, err := hclParseBody(relPath, src)
+	body, incomplete, err := hclParseBody(relPath, src)
 	if err != nil {
 		return DocResult{}, err
 	}
@@ -110,6 +110,7 @@ func (x *HCLToolsExtractor) ExtractDoc(service, relPath string, src []byte) (Doc
 		return DocResult{}, nil
 	}
 	w := newHCLWalk(service, relPath, src)
+	w.incomplete = incomplete
 	switch hclToolOf(relPath) {
 	case "packer":
 		if strings.HasSuffix(relPath, ".pkrvars.hcl") {

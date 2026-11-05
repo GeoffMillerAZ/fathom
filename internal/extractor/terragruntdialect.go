@@ -325,7 +325,7 @@ func tgDependencyFile(p string) string {
 }
 
 func (x *TerragruntExtractor) extract(service, relPath string, src []byte) (DocResult, []TerragruntUnresolved, error) {
-	body, err := hclParseBody(relPath, src)
+	body, incomplete, err := hclParseBody(relPath, src)
 	if err != nil {
 		return DocResult{}, nil, err
 	}
@@ -333,6 +333,7 @@ func (x *TerragruntExtractor) extract(service, relPath string, src []byte) (DocR
 		return DocResult{}, nil, nil
 	}
 	w := newHCLWalk(service, relPath, src)
+	w.incomplete = incomplete
 	root := path.Base(relPath)
 	w.add(root, kindTGConfig, "", 1, w.lines, nil)
 	dir := path.Dir(relPath)

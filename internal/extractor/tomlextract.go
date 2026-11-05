@@ -22,13 +22,24 @@ func NewTOMLExtractor() *TOMLExtractor { return &TOMLExtractor{} }
 // Extract parses TOML source bytes and returns SymbolNodes for each top-level
 // key. Output is sorted by Name for determinism (line is always 0 for TOML).
 func (t *TOMLExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, _, err := t.ExtractReport(service, relPath, src)
+	return nodes, err
+}
+
+// ExtractReport is Extract and, when the file could not be decoded, the reason
+// (ReportingExtractor).
+func (t *TOMLExtractor) ExtractReport(service, relPath string, src []byte) ([]core.SymbolNode, string, error) {
 	pkg := pkgFromPath(relPath)
 
 	var m map[string]any
-	_ = toml.Unmarshal(src, &m) // best-effort; partial decode is fine
+	// Best effort: a partial decode is kept, and the failure is the reason.
+	reason := ""
+	if err := toml.Unmarshal(src, &m); err != nil {
+		reason = incompleteReason("toml decode", err)
+	}
 
 	if len(m) == 0 {
-		return nil, nil
+		return nil, reason, nil
 	}
 
 	// Collect keys in sorted order for determinism.
@@ -56,5 +67,5 @@ func (t *TOMLExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 		})
 	}
 
-	return nodes, nil
+	return nodes, reason, nil
 }

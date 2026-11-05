@@ -97,8 +97,10 @@ type Extracted struct {
 	Unresolved []Unresolved
 	Facts      []Fact
 }
-    Extracted is what an Extractor reads from one file. Symbol.Key and
-    Symbol.Canonical are derived by the Reader and ignored here.
+    Extracted is what an Extractor reads from one file. Symbol.Key,
+    Symbol.Canonical and Reference.ToKey are derived by the Reader and ignored
+    here. Reference.Edge is the extractor's own relation name and is passed
+    through.
 
 type Extractor interface {
 	Extract(ctx context.Context, f File) (Extracted, error)
@@ -230,16 +232,32 @@ func (r *Reader) Extract(ctx context.Context, f File) (Result, error)
     returns what it did read, and Notes says what failed.
 
 type Reference struct {
+	// From is the Key of the referencing symbol, or "" for a reference the
+	// document itself makes.
 	From string `json:"from"`
-	To   string `json:"to"`
-	// Edge names the relation: "call" for a call, otherwise the dialect's.
+	// To is the target exactly as the dialect names it: a Go call names
+	// package.Func, a Terraform reference var.name, a CloudFormation Ref the
+	// logical id, a cross-file reference the path, image or address the
+	// Strategy resolved. It is not necessarily a Key.
+	To string `json:"to"`
+	// ToKey is the Key of the symbol in the same file that To names, when To
+	// equals exactly one symbol's Key or Name, and empty otherwise (a target
+	// in another file, an ambiguous name, a cross-file reference).
+	ToKey string `json:"to_key"`
+	// Edge names the relation: "call" for a call, "reference" for a plain
+	// reference from a document dialect that declares no relation, and
+	// otherwise the edge the dialect declares (uses, imports, depends_on and
+	// so on). Do not branch on an Edge across dialects.
 	Edge string `json:"edge"`
 	// Raw is the value as written, when it differs from To.
 	Raw string `json:"raw"`
 	// Strategy is how a document reference resolved (repo-path, image-ref,
 	// module-source and so on), empty for a call.
 	Strategy string `json:"strategy"`
-	Line     int    `json:"line"`
+	// Line is the line the reference is written on. 0 means the engine does
+	// not record one: calls read by the tree-sitter and Go engines carry no
+	// line.
+	Line int `json:"line"`
 }
     Reference is one edge from a symbol (or the document, From "") to a target.
 
@@ -258,6 +276,13 @@ type Result struct {
 	// LevelUnmeasured. It is what readings proved about the dialect, not a
 	// promise about this file.
 	Level string `json:"level"`
+	// Incomplete is true when an engine could not fully read the file: the
+	// symbols, references and facts above are what it did read, and Notes says
+	// why. False means no engine reported a failure, which is not a promise
+	// that every construct was read: the tree-sitter dialects recover from a
+	// syntax error without reporting it. A policy tool that must not pass a
+	// file it could not read should refuse when Incomplete is true.
+	Incomplete bool `json:"incomplete"`
 	// Notes disclose what the Reader could not know and that may have changed
 	// the result. Empty when nothing did.
 	Notes []string `json:"notes"`
@@ -273,7 +298,11 @@ type Sniff struct {
     Pattern (a Go regular expression, matched across lines).
 
 type Symbol struct {
-	// Key is Package and Name joined the way References name a symbol.
+	// Key is the symbol's identity within its file: Package and Name joined by
+	// a dot, or Name alone when Package is empty. Reference.From and
+	// Reference.ToKey hold Keys. A dialect names a reference target as it
+	// writes it (Reference.To), which equals a Key only when the dialect
+	// writes targets the way it names definitions; ToKey is the join.
 	Key     string `json:"key"`
 	Name    string `json:"name"`
 	Package string `json:"package"`

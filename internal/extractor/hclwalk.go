@@ -20,16 +20,16 @@ import (
 // hclParseBody parses src as HCL native syntax. A file with syntax errors
 // still yields the body hclsyntax recovered (best effort, as the terraform
 // dialect does); only a nil file is an error.
-func hclParseBody(relPath string, src []byte) (*hclsyntax.Body, error) {
+func hclParseBody(relPath string, src []byte) (*hclsyntax.Body, string, error) {
 	f, diags := hclsyntax.ParseConfig(src, relPath, hcl.Pos{Line: 1, Column: 1})
 	if f == nil {
 		if diags.HasErrors() {
-			return nil, fmt.Errorf("hcl parse %s: %s", relPath, diags.Error())
+			return nil, "", fmt.Errorf("hcl parse %s: %s", relPath, diags.Error())
 		}
-		return nil, nil
+		return nil, "", nil
 	}
 	body, _ := f.Body.(*hclsyntax.Body)
-	return body, nil
+	return body, hclIncomplete(diags), nil
 }
 
 // hclWalk collects one file's entities and cross-file references.
@@ -37,8 +37,10 @@ type hclWalk struct {
 	service, relPath, pkg string
 	nodes                 []core.SymbolNode
 	cross                 []DocCrossFileRef
+	refs                  []DocLocalRef // the detail of the nodes' Calls
 	seen                  map[string]int
 	lines                 int
+	incomplete            string // the parse reported errors (DocResult.Incomplete)
 }
 
 func newHCLWalk(service, relPath string, src []byte) *hclWalk {
@@ -64,6 +66,7 @@ func (w *hclWalk) add(name string, kind core.SourceKind, sig string, line, end i
 		Service: w.service, Package: w.pkg, Name: name, Kind: kind, FilePath: w.relPath,
 		Line: line, EndLine: end, Signature: sig, Tier: core.TierVerified, Calls: refKeys(refs),
 	})
+	w.refs = append(w.refs, hclLocalRefs(name, refs)...)
 	return name
 }
 
@@ -93,7 +96,7 @@ func (w *hclWalk) result(roots ...string) DocResult {
 		}
 		return a.Target < b.Target
 	})
-	return DocResult{Nodes: w.nodes, CrossFile: w.cross, Roots: roots}
+	return DocResult{Nodes: w.nodes, CrossFile: w.cross, Refs: w.refs, Roots: roots, Incomplete: w.incomplete}
 }
 
 // hclSortedAttrs is a body's attributes in source order.

@@ -295,6 +295,14 @@ type DocCrossFileRef struct {
 	ToKind string
 }
 
+// DocLocalRef is one same-file reference of an entity: To is the target as the
+// dialect names it, Edge the relation the dialect declared, Line where it is
+// written.
+type DocLocalRef struct {
+	From, To, Edge string
+	Line           int
+}
+
 // DocResult is one file's extraction.
 type DocResult struct {
 	Nodes     []core.SymbolNode
@@ -312,6 +320,14 @@ type DocResult struct {
 	// Facts every fact (DocSpec.Facts), each by line.
 	Matchers []DocMatcherSet
 	Facts    []DocFact
+	// Refs is the detail of the nodes' Calls: for each entity, every target it
+	// references with the edge the dialect declared and the line of the
+	// reference (0 when unknown). The product reads Calls and ignores Refs.
+	Refs []DocLocalRef
+	// Incomplete is a one-line reason the extractor could not fully read the
+	// file ("" when it did): a decode failure the extractor swallows. The
+	// product ignores it; the language library's door reports it.
+	Incomplete string
 }
 
 var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true, "compile-commands": true}
@@ -734,7 +750,10 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		format = f
 	}
 	docs, err := decodeDoc(format, src, x.spec.MultiDocument, x.spec.YAMLTags)
-	if err != nil || len(docs) == 0 {
+	if err != nil {
+		return DocResult{Incomplete: incompleteReason(format+" decode", err)}, nil
+	}
+	if len(docs) == 0 {
 		return DocResult{}, nil
 	}
 	pkg := pkgFromPath(relPath)
@@ -817,6 +836,16 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		}
 		for _, h := range hits {
 			calls := map[string]bool{}
+			// note records a reference: the target in the node's Calls, and
+			// its edge and line in DocResult.Refs (the first line per edge and target).
+			seen := map[[2]string]int{}
+			note := func(to, edge string, line int) {
+				calls[to] = true
+				k := [2]string{edge, to}
+				if l, dup := seen[k]; !dup || (line > 0 && (l == 0 || line < l)) {
+					seen[k] = line
+				}
+			}
 			for i := range x.refs {
 				cr := &x.refs[i]
 				if !containsStr(cr.froms, h.ent.Kind) && !containsStr(cr.froms, h.ent.SourceKind) {
@@ -833,14 +862,14 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 							if (cr.DeclaredOnly && !declared[cr.ToKind][v]) || (v == h.name && (cr.ToKind == h.ent.Kind || cr.ToKind == h.ent.SourceKind)) {
 								continue
 							}
-							calls[v] = true
+							note(v, cr.Edge, m.node.line)
 						}
 						continue
 					}
 					if cr.scan != nil {
 						for _, v := range scanStrings(m.node, cr.scan, nil) {
 							if !cr.DeclaredOnly || declared[cr.ToKind][v] {
-								calls[v] = true
+								note(v, cr.Edge, m.node.line)
 							}
 						}
 						continue
@@ -859,9 +888,12 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 							// resourceId in its properties) is no reference.
 							continue
 						}
-						calls[v] = true
+						note(v, cr.Edge, lv.line)
 					}
 				}
+			}
+			for k, line := range seen {
+				res.Refs = append(res.Refs, DocLocalRef{From: h.name, To: k[1], Edge: k[0], Line: line})
 			}
 			res.Nodes = append(res.Nodes, core.SymbolNode{
 				Service:   service,
@@ -987,6 +1019,16 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 			return a.Name < b.Name
 		}
 		return a.Kind < b.Kind
+	})
+	sort.Slice(res.Refs, func(i, j int) bool {
+		a, b := res.Refs[i], res.Refs[j]
+		if a.From != b.From {
+			return a.From < b.From
+		}
+		if a.To != b.To {
+			return a.To < b.To
+		}
+		return a.Edge < b.Edge
 	})
 	sort.SliceStable(res.CrossFile, func(i, j int) bool {
 		a, b := res.CrossFile[i], res.CrossFile[j]
