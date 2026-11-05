@@ -32,7 +32,8 @@ type IaCCatalogWriter struct {
 	tool     string
 	source   string
 	line     string
-	schemaFm string
+	formats  map[string]string
+	fresh    []string
 	versions map[string]*iacVersionIndex
 	inputs   map[string]string
 	blobs    map[string]int64
@@ -61,7 +62,7 @@ type IaCWriterOptions struct {
 func NewIaCCatalogWriter(opts IaCWriterOptions) (*IaCCatalogWriter, error) {
 	w := &IaCCatalogWriter{
 		kind: KindTerraformProvider, licence: opts.Licence, tool: opts.Tool, lim: opts.Limits,
-		versions: map[string]*iacVersionIndex{}, inputs: map[string]string{}, blobs: map[string]int64{},
+		versions: map[string]*iacVersionIndex{}, inputs: map[string]string{}, blobs: map[string]int64{}, formats: map[string]string{},
 	}
 	if w.lim == (IaCLimits{}) {
 		w.lim = DefaultIaCLimits()
@@ -103,8 +104,14 @@ type IaCExportStats struct {
 
 // AddExport reads one `tofu providers schema -json` export as the given version. The export is streamed, one
 // schema in memory at a time. A schema over the blob bound or the depth bound refuses the whole export, naming it.
-func (w *IaCCatalogWriter) AddExport(version string, export io.Reader) (IaCExportStats, error) {
-	var st IaCExportStats
+func (w *IaCCatalogWriter) AddExport(version string, export io.Reader) (st IaCExportStats, err error) {
+	w.fresh = nil
+	defer func() {
+		if err != nil {
+			w.dropFresh() // a refused export leaves none of its blobs behind
+		}
+		w.fresh = nil
+	}()
 	v, err := ParseIaCVersion(version)
 	if err != nil {
 		return st, err
@@ -181,7 +188,8 @@ func (w *IaCCatalogWriter) AddExport(version string, export io.Reader) (IaCExpor
 		return st, errors.New("iac catalog: the export holds no schemas")
 	}
 	st.InputSHA256 = hex.EncodeToString(h.Sum(nil))
-	w.source, w.line, w.schemaFm = st.Source, line, firstNonEmpty(w.schemaFm, format)
+	w.source, w.line = st.Source, line
+	w.formats[version] = format
 	w.versions[version] = ix
 	w.inputs[version] = st.InputSHA256
 	st.Resources, st.Data, st.Ephemeral = len(ix.Resources), len(ix.Data), len(ix.Ephemeral)
@@ -193,6 +201,15 @@ func firstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// dropFresh removes the blobs the failed export wrote, so a refused export leaves no orphan in the work directory
+// or in the catalog.
+func (w *IaCCatalogWriter) dropFresh() {
+	for _, a := range w.fresh {
+		_ = os.Remove(filepath.Join(w.work, a))
+		delete(w.blobs, a)
+	}
 }
 
 func (w *IaCCatalogWriter) addProvider(dec *json.Decoder, ix *iacVersionIndex, st *IaCExportStats) error {
@@ -281,6 +298,7 @@ func (w *IaCCatalogWriter) putSchema(name string, raw json.RawMessage) (string, 
 			return "", err
 		}
 		w.blobs[addr] = int64(len(pruned))
+		w.fresh = append(w.fresh, addr)
 	}
 	return addr, nil
 }
@@ -313,8 +331,26 @@ func skipToken(dec *json.Decoder) error {
 	return dec.Decode(&skip)
 }
 
-// pruneIaCSchema keeps names, types and flags of a {version, block} schema and drops descriptions. Descriptions
-// live on a block or an attribute object, never in the attribute map, so an attribute named "description" stays.
+// The pruner is an allowlist: only the fields below survive, so a prose field a provider adds later (a deprecation
+// message, a description under a new name) never reaches a catalog. An attribute named "description" stays, since
+// names live in the attribute map and the allowlist applies to the fields of one schema object.
+var (
+	keepSchema     = map[string]bool{"version": true, "block": true}
+	keepBlock      = map[string]bool{"attributes": true, "block_types": true, "deprecated": true}
+	keepAttribute  = map[string]bool{"type": true, "nested_type": true, "required": true, "optional": true, "computed": true, "sensitive": true, "deprecated": true, "write_only": true}
+	keepNestedType = map[string]bool{"attributes": true, "nesting_mode": true, "min_items": true, "max_items": true}
+	keepBlockType  = map[string]bool{"nesting_mode": true, "block": true, "min_items": true, "max_items": true}
+)
+
+func keepOnly(m map[string]any, allow map[string]bool) {
+	for k := range m {
+		if !allow[k] {
+			delete(m, k)
+		}
+	}
+}
+
+// pruneIaCSchema keeps names, types and flags of a {version, block} schema and drops everything else.
 func pruneIaCSchema(raw json.RawMessage) ([]byte, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
@@ -322,6 +358,7 @@ func pruneIaCSchema(raw json.RawMessage) ([]byte, error) {
 	if err := dec.Decode(&s); err != nil {
 		return nil, err
 	}
+	keepOnly(s, keepSchema)
 	if blk, ok := s["block"].(map[string]any); ok {
 		pruneBlock(blk)
 	}
@@ -335,8 +372,7 @@ func pruneIaCSchema(raw json.RawMessage) ([]byte, error) {
 }
 
 func pruneBlock(b map[string]any) {
-	delete(b, "description")
-	delete(b, "description_kind")
+	keepOnly(b, keepBlock)
 	if attrs, ok := b["attributes"].(map[string]any); ok {
 		for _, a := range attrs {
 			if am, ok := a.(map[string]any); ok {
@@ -347,6 +383,7 @@ func pruneBlock(b map[string]any) {
 	if bts, ok := b["block_types"].(map[string]any); ok {
 		for _, bt := range bts {
 			if bm, ok := bt.(map[string]any); ok {
+				keepOnly(bm, keepBlockType)
 				if inner, ok := bm["block"].(map[string]any); ok {
 					pruneBlock(inner)
 				}
@@ -356,9 +393,9 @@ func pruneBlock(b map[string]any) {
 }
 
 func pruneAttribute(a map[string]any) {
-	delete(a, "description")
-	delete(a, "description_kind")
+	keepOnly(a, keepAttribute)
 	if nt, ok := a["nested_type"].(map[string]any); ok {
+		keepOnly(nt, keepNestedType)
 		if attrs, ok := nt["attributes"].(map[string]any); ok {
 			for _, x := range attrs {
 				if am, ok := x.(map[string]any); ok {
@@ -390,9 +427,10 @@ func (w *IaCCatalogWriter) Manifest() (IaCCatalogManifest, error) {
 		vs = append(vs, v)
 	}
 	sort.Slice(vs, func(i, j int) bool { return CompareIaCVersions(vs[i], vs[j]) < 0 })
+	// The export format is the newest release's, so the order exports were added in cannot change the bytes.
 	m := IaCCatalogManifest{
 		Format: CatalogFormat, Kind: w.kind, Source: w.source, Line: w.line, Tool: w.tool,
-		SchemaFormat: w.schemaFm, Inputs: map[string]string{}, Licence: w.licence, Replacement: ReplacementAbsent,
+		SchemaFormat: w.formats[vs[len(vs)-1].Raw], Inputs: map[string]string{}, Licence: w.licence, Replacement: ReplacementAbsent,
 	}
 	for _, v := range vs {
 		m.Versions = append(m.Versions, v.Raw)
@@ -460,8 +498,20 @@ func (w *IaCCatalogWriter) WriteFile(path string) (IaCBuildResult, error) {
 		}
 		entries++
 	}
-	addrs := make([]string, 0, len(w.blobs))
-	for a := range w.blobs {
+	// Only blobs a version index names go in: a blob nothing refers to is an orphan add would refuse.
+	referenced := map[string]bool{}
+	for _, ix := range w.versions {
+		if ix.Provider != "" {
+			referenced[ix.Provider] = true
+		}
+		for _, sec := range []map[string]string{ix.Resources, ix.Data, ix.Ephemeral} {
+			for _, a := range sec {
+				referenced[a] = true
+			}
+		}
+	}
+	addrs := make([]string, 0, len(referenced))
+	for a := range referenced {
 		addrs = append(addrs, a)
 	}
 	sort.Strings(addrs)
