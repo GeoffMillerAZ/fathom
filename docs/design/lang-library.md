@@ -55,8 +55,8 @@ r, err := lang.New(
 defer r.Close()
 
 res, err := r.Extract(ctx, lang.File{Path: "main.tf", Src: src, Siblings: paths})
-// res.Dialect, res.Language, res.Skipped (binary, oversize, generated, ambiguous, unclassified), res.Symbols,
-// res.References, res.Unresolved, res.Facts, res.Level
+// res.Dialect, res.Language, res.Skipped (binary, oversize, generated, ambiguous, unclassified, not-linked), res.Symbols,
+// res.References, res.Unresolved, res.Facts, res.Level, res.Incomplete, res.Notes
 
 for _, d := range r.Dialects() { /* id, kind, engine, matches, measured level and grade */ }
 ```
@@ -66,7 +66,10 @@ Rules:
 1. **Own types.** Public types are defined in `pkg/lang`, with no internal type in an exported signature. Fathom's ingest fields
    (`Service`, `Complexity`) stay out. A symbol carries `Kind` (the dialect's own name, for example `TerraformResource`) and
    `Canonical` (the closed vocabulary in `internal/extractor/canonical.go`). `Canonical` values are compatibility surface and only
-   grow. `Kind` values are not, or language breadth would freeze.
+   grow. `Kind` values are not, or language breadth would freeze. Every kind an extractor emits has a `Canonical`: a manifest
+   declares it, the native table in `canonical.go` holds the kinds no manifest declares (Go, and the generic JSON and TOML readers),
+   and a kind with no canonical meaning (`K8sFact`, `TerraformProvider`) is on an explicit list with its reason. A test fails on an
+   empty `Canonical` anywhere else.
 2. **`Siblings`** is the optional path list that YAML classification reads. Empty is legal and is disclosed when it changes a verdict.
 3. **Errors, never panics.** `lang.New` returns the error a bad variant gives. `Extract` recovers nothing it can prevent and has a
    fuzz target.
@@ -75,7 +78,32 @@ Rules:
 6. **Limits.** The product's limits apply (2 MiB file, 64 MiB module, binary and generated sniffs). `WithLimits` may lower them. No
    option raises a module's memory cap.
 7. **Measured levels.** `Level` and `Dialects()` report what readings proved, from `docs/bench/readings/lang/*.json`, through a generated
-   and embedded table with a drift test. A pack dialect reads `unmeasured` unless it ships a reading.
+   and embedded table with a drift test. A pack dialect, and a dialect a Go extractor declares, always reads `unmeasured` in this
+   version: no mechanism loads a pack's reading, and a claim to the contrary would be untrue. `Dialects()` lists only what `Extract`
+   reads: a dialect refused by its plan row (swift, tcl, vimscript), one only the product reads (fathom's own formats), and one
+   whose family is not linked (CUE) are not listed, and a test makes every listed dialect read a sample of its own.
+8. **Incomplete.** `Result.Incomplete` is true when an engine could not fully read the file, and `Notes` carries a one-line reason
+   with no stack. A policy tool that must not pass a file it could not read refuses on it. The doc engine, the HCL reader, the
+   Kubernetes, Helm and generic JSON and TOML readers, and a Go extractor's error set it. The tree-sitter dialects recover from a
+   syntax error without reporting it, and the pinned grammar blobs export no `has_error`, so for them `false` means no engine
+   reported a failure, which the type documents. The decode failure travels on an internal field (`DocResult.Incomplete`,
+   `ReportingExtractor`) that only the door reads, so the product's behavior and node output do not change: routing parity is
+   byte-identical.
+9. **References.** A `Reference` has `To`, the target exactly as the dialect names it (a Go call `pkg.Func`, a Terraform `var.name`,
+   a CloudFormation logical id), and `ToKey`, the `Key` of the one symbol of the same file that `To` equals by `Key` or `Name`,
+   else empty (another file, an ambiguous name, a cross-file reference). `Edge` is the relation the dialect declared (`ref`,
+   `depends_on`, `uses`, `references`), `call` for a call, and `reference` for a document dialect that declares none. `Line` is
+   where the reference is written, 0 when the engine records none (calls read by the Go and tree-sitter engines). `Symbol.Key` is
+   `Package.Name`, and only a Go call target is already one.
+10. **Context and the deadline.** `Extract` checks its context on entry, after dispatch settles on an extractor, and after the
+    extractor returns, never inside a parse: a deadline shorter than one parse is returned when that parse ends, not at once, and
+    the result of a file read past its deadline is not returned. The engine's own 10 s parse and query deadline is the one stated
+    exception to byte-equal output: a file that runs past it reads as incomplete with the budget named, and a slower machine can
+    fail where a faster one does not. So does the grammar module's 64 MiB memory limit, which a 690 KB Python file of 30,000
+    functions exceeds: it reads incomplete with the limit named, and no option raises it.
+11. **Value domains.** `Dialect` is "" only when nothing read the file. The generic JSON and TOML readers have ids
+    (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and a level on a read one. A file
+    owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
 
 ## 4. The cuts
 
@@ -172,9 +200,9 @@ Dialects are already data, and the private `loadDialects(fs.FS)` already takes a
 | A catalog | `iac.OpenCatalog(path)` | IF rows |
 | A new grammar | a wasm blob and an ABI check | deferred, row LL-40, with F29 |
 
-**The built-in router is process-wide and immutable.** `dialectRules()` is a process-wide Once read by free dispatch functions, so per-Reader built-ins are not realistic. Each Reader adds a pack layer with its own classifier rules, tried after the specific built-ins and before the generic fallback for each extension, in `id` order. A plain "built-ins first" would kill the main case, because the generic path claims every `.json` and `.toml`. A pack claims by glob, basename or sniff, and may not claim an extension a built-in owns outright.
+**The built-in router is process-wide and immutable.** `dialectRules()` is a process-wide Once read by free dispatch functions, so per-Reader built-ins are not realistic. Each Reader adds a pack layer with its own classifier rules, tried after the specific built-ins and before the generic fallback for each extension, in `id` order. A plain "built-ins first" would kill the main case, because the generic path claims every `.json` and `.toml`. A pack claims by glob, basename or sniff, and may not claim a file whose extension a built-in owns outright: a glob such as `**/*` or a basename such as `main.tf` is accepted and never routed to the pack for a `.tf`, `.go` or `.md` file, and a test holds that claim table for packs and Go extractors.
 
-Rules: a pack is merged with the built-ins and then validated by the same `checkDialect` and cross-dialect rules, and refused whole with a reason. Its queries are compiled at `New`, because `checkDialect` only stats them and "refused whole" would otherwise be false. `CanonicalKind`, `SensitiveKind` and the query readers learn the pack's FS. A pack's `queries.injections` are refused in this version. Queries run under the same query budget. A pack is data and runs no code on the host. `pkg/lang/langtest.CheckPack` runs validation, required
+Rules: a pack is merged with the built-ins and then validated by the same `checkDialect` and cross-dialect rules, and refused whole with a reason. Its queries are compiled at `New`, because `checkDialect` only stats them and "refused whole" would otherwise be false. `CanonicalKind` and the query readers learn the pack's FS. `SensitiveKind` does not: the door returns no source snippet for a sensitive entity to withhold, so a pack's `sensitive` flag has no reader in this version and the dead accessors were removed. Refused whole, with a reason: a glob that is not a valid pattern, an empty tags query, a tags capture of a kind the manifest does not declare, a variant that names its own tags query without an id (every variant is compiled), and any file or directory under `dialects/` that no manifest names (a typo'd `dialect.jsn` included). A pack's `queries.injections` are refused in this version. Queries run under the same query budget. A pack is data and runs no code on the host. `pkg/lang/langtest.CheckPack` runs validation, required
 kinds and the pack's own goldens. `fathom-lang --pack DIR` gives tools not written in Go the same packs.
 
 The product loads no pack. A repository-controlled query running in a daemon is a different trust decision, not taken here.
@@ -196,11 +224,15 @@ if** an outside consumer reports a real version conflict. The closure test keeps
 
 Each is a plan row, in the gate.
 
-1. A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP, `net/http`, or more than the budgeted package count.
+1. A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP, `net/http`, or more than the budgeted package count (79: the consumer bar of 80 includes the consumer's own package).
 2. A no-dial and no-write test: the library opens no socket and writes no file unless a cache directory was given.
-   `net` stays in the closure through wazero, so the test watches behavior, and the closure test forbids `net/http`.
+   `net` stays in the closure through wazero, so the test watches behavior, and the closure test forbids `net/http`. A second test
+   reads the source of every fathom package the door links: a file-system write may appear only in a file that writes a path its
+   caller gave, with no absolute path as a literal.
 3. An API snapshot from `go doc -all`, so a break is deliberate.
-4. An outside module under `pkg/lang/testdata/consumer` builds offline, so importing it from outside is proven, not assumed.
+4. An outside module under `pkg/lang/testdata/consumer` builds offline, so importing it from outside is proven, not assumed. It
+   commits its own tidied `go.mod` and `go.sum` and builds with `-mod=readonly` and `GOPROXY=off`, so it holds on a module cache
+   that holds only what `go mod download` of the root module fetches.
 5. Fuzz targets on `Extract`, `ReadFile` and `OpenCatalog`, with seeds in the normal test run.
 6. A concurrent determinism test under `-race`.
 7. A use-case doc with `## Maintained`, runnable examples in godoc, and a change note.

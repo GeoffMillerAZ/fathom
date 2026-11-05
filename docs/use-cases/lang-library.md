@@ -33,21 +33,25 @@ if err != nil { /* a bad option or pack: the error says which */ }
 defer r.Close()
 
 res, err := r.Extract(ctx, lang.File{Path: "infra/main.tf", Src: src, Siblings: paths})
-// res.Dialect, res.Skipped, res.Symbols, res.References, res.Unresolved, res.Facts, res.Level, res.Notes
+// res.Dialect, res.Skipped, res.Symbols, res.References, res.Unresolved, res.Facts, res.Level, res.Incomplete, res.Notes
 ```
 
 - **Bytes and a path.** `Path` is repository-relative with forward slashes. `Siblings` (the other paths in the same repository) is optional: some classifications read it (an Ansible role, a Helm chart, a Timoni module), and `Notes` says so when leaving it out may have changed the answer.
 - **Skipped, with a reason.** A file no dialect reads is not an error. `Skipped` is one of `binary`, `oversize`, `generated`, `ambiguous`, `unclassified` or `not-linked`, and a skipped file has no facts.
+- **Incomplete.** `res.Incomplete` is true when an engine could not fully read the file, and `Notes` gives a one-line reason (a decode failure, or the budget a very large file spent, such as the grammar module's 64 MiB memory limit). A policy tool that must not pass a file it could not read should refuse on it. The tree-sitter dialects recover from a syntax error without reporting it, so `false` means no engine reported a failure, not that every construct was read.
+- **References.** `Reference.To` is the target as the dialect writes it, and `ToKey` is the `Key` of the one symbol of the same file it names, empty otherwise (another file, an ambiguous name). `Edge` is the relation the dialect declared (`ref`, `depends_on`, `uses`, `references`), `call` for a call, and `reference` for a document dialect that declares none. `Line` is where it is written, 0 when the engine records none (a call read by the Go or a tree-sitter engine).
 - **`Canonical` and `Kind`.** `Symbol.Canonical` is a closed cross-dialect vocabulary that only grows, and is compatibility surface. `Symbol.Kind` is each dialect's own name (for example `TerraformResource`) and changes as a language improves: do not branch on a `Kind` across dialects.
 - **Concurrency and determinism.** A `Reader` is safe for concurrent use. Equal inputs give byte-equal JSON.
 - **No side effects.** The library opens no socket and writes no file. The one opt-in is `lang.EnableCompilationCache(dir)`, which keeps the compiled grammars (machine code) in `dir`; it refuses a directory that a group or other user can write, and errors on a second directory.
 - **Limits.** Files over 2 MiB are skipped. `WithLimits` may lower the limit, never raise it.
+- **Context.** `Extract` checks `ctx` on entry and between a file's stages (after dispatch and after the engine returns), never inside a parse: a deadline shorter than one parse is reported when that parse ends, not at once. The engine's own 10 second parse and query deadline is the one wall-clock input to a `Result`: a file that runs past it reads `Incomplete` with the deadline named, so a slower machine can read fewer files fully than a faster one.
+- **Dialect and Level.** `Dialect` is "" only for a skipped file. The JSON and TOML files no dialect claims are read by `generic-json` and `generic-toml`, which `Dialects` lists as unmeasured. `Level` is "" on a skipped file.
 
 The runnable versions are the godoc examples on `Reader.Extract`, `Reader.Dialects` and `WithExtractor`.
 
 ### Packs and extractors
 
-`lang.WithDialects(fsys)` adds a dialect pack (`dialects/<id>/dialect.json` with the queries and doc specs it names) to a `Reader`. It is merged with the built-in dialects, held to the same rules, compiled at `New` and refused whole with a `*lang.PackError` (a `Pack*` reason) when any rule breaks. `lang.WithExtractor(match, e)` registers a Go extractor under the same routing rules. A pack or extractor dialect reads `unmeasured` until it ships a reading. Run `langtest.CheckPack` in the pack's own tests.
+`lang.WithDialects(fsys)` adds a dialect pack (`dialects/<id>/dialect.json` with the queries and doc specs it names) to a `Reader`. It is merged with the built-in dialects, held to the same rules, compiled at `New` and refused whole with a `*lang.PackError` (a `Pack*` reason) when any rule breaks. `lang.WithExtractor(match, e)` registers a Go extractor under the same routing rules. A pack or extractor dialect always reads `unmeasured` in this version: no mechanism loads a reading for it. A pack may not take a file whose extension a built-in dialect owns (a glob of `**/*` still reads `.tf` and `.go` files with their own dialects), and is refused whole for a glob that is not a pattern, an empty tags query, a tags capture of a kind the manifest does not declare, an extension variant whose own query does not compile, and any file in a dialect directory the manifest does not name. Run `langtest.CheckPack` in the pack's own tests.
 
 ---
 
@@ -58,7 +62,7 @@ fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack D
 fathom-lang dialects [-pack DIR]
 ```
 
-`extract` prints `{"files":[{"path":...,"result":...}]}`, `dialects` prints `{"dialects":[...]}`. Both are JSON with the field names of `lang.Result` and `lang.DialectInfo`. The output is compatibility surface for tools not written in Go: fields are added, never renamed, and a change is a reviewed edit of the goldens under `cmd/fathom-lang/testdata/golden`. Exit 0 on success, 1 on an error, 2 on misuse.
+`extract` prints `{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]}`, `dialects` prints `{"schema_version":1,"dialects":[...]}`. Both are JSON with the field names of `lang.Result` and `lang.DialectInfo`. PATH may be absolute or relative to `-root`. A file that cannot be read has an `error` and a null `result`, and the other files are still read. The output is compatibility surface for tools not written in Go: fields are added, never renamed, `schema_version` changes only with a break, and a change is a reviewed edit of the goldens under `cmd/fathom-lang/testdata/golden`. Exit 0 when every file was read, 1 when a file could not be read or the run failed, 2 on misuse (a bad flag, no PATH, an unknown command). The command links no CUE: a `.cue` file reads `Skipped: not-linked`, and a Go program adds CUE with `pkg/lang/cue`.
 
 ```
 $ fathom-lang extract -root infra main.tf | jq '.files[0].result | {dialect, level, symbols: [.symbols[].name]}'
@@ -71,7 +75,7 @@ Release archives carry `fathom-lang` beside `fathom`, and `task deploy` installs
 
 ## Setup & notes
 
-- **Import cost.** An outside module that imports `pkg/lang` links at most 80 non-standard packages and builds a stripped binary under 30 MiB (reading: `docs/bench/readings/lang-library/m1-closure.md`). `TestLangClosure` fails if the door reaches fathom's store, fusion, connectors, MCP server, `net/http` or CUE, and `TestOutsideModuleBuilds` builds a real outside module offline against this tree.
+- **Import cost.** An outside module that imports `pkg/lang` links at most 80 non-standard packages (79 for the library itself, whose own package is the 80th) and builds a stripped binary under 30 MiB (reading: `docs/bench/readings/lang-library/m1-closure.md`). `TestLangClosure` fails if the door reaches fathom's store, fusion, connectors, MCP server, `net/http` or CUE, and `TestOutsideModuleBuilds` builds a real outside module offline against this tree.
 - **One module.** `pkg/lang` lives in fathom's module, so a consumer takes fathom's Go version and dependency pins. A nested module is kept open (design `docs/design/lang-library.md` section 7) and will be cut if a real consumer reports a version conflict.
 - **API changes are deliberate.** `TestLangAPISnapshot` holds `go doc -all` for the three packages. After an intended change run `go test ./pkg/lang -run TestLangAPISnapshot -args -update-api` and read the diff of `pkg/lang/testdata/api`.
 - **What it does not do.** Resource attribute reads, catalogs and policy checks are separate work (ADR-091, ADR-092) and are not in this guide yet.
