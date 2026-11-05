@@ -12,20 +12,27 @@
 // API. Symbol.Canonical is a closed vocabulary that only grows; Symbol.Kind
 // is each dialect's own name and may change as a language improves.
 //
-// Withheld values. A Result is not promised to carry no credential, but it
-// withholds the places one is found. The userinfo of a URL is dropped wherever a
-// string from the file lands (a name, a key, a reference target or its raw
-// spelling, an unresolved target, a fact), keeping an ssh account that has no
-// password and the image of a docker or oci reference; a userinfo ends at the
-// first '/', '?' or '#', so the host of a URL is never changed. A string literal
-// a Signature binds to a name or a key is masked as *** where it is a parameter's
-// default, a rule's value or a dictionary entry, and in every fact value. The text
-// of a script (a package.json or composer.json script, any task) is not returned,
-// only the program it runs, because a credential can sit in a script in more
-// shapes than a pattern covers. A credential flag (--password, -u user:pass) and
-// an Authorization header are masked in the rest of a Signature. A credential in
-// any other place (a name, a label, a literal that is an argument, a block's own
-// attributes) is returned as written.
+// Withheld values. This is not a secret scanner, and a Result is not promised
+// to carry no credential. It follows one rule about which of the file's own
+// text it returns, and the rule fails closed. In a Signature from a code
+// dialect (a DialectInfo of Kind "language") every quoted literal of every
+// quote style reads ***, in its own quotes, whatever its name or its place;
+// numbers, identifiers and unquoted text stay. A Signature from any other
+// dialect is empty unless the symbol's Kind is one whose Signature is
+// structure and holds no value (a keyword or a declared name, on a list this
+// package holds and its tests check), so the text of a script is never
+// returned and a Kind added later is withheld until it is listed. A Fact value
+// under a key whose last segment looks like a credential (password, passwd,
+// secret, token, apikey, credential, private_key, in any case or separator)
+// reads ***, as does a literal that a fact value binds with =, := or :; other
+// Fact values are returned as written. The userinfo of a URL, written with or
+// without its scheme (user:password@host, //user:password@host), is dropped
+// wherever a string from the file lands, keeping the ssh account git and the
+// image of a docker or oci reference that a digest follows; a userinfo ends at
+// the first '/', '?' or '#', so the host of a URL is never changed. Notes carry
+// a reason and a line, never the file's text. Everything else (a symbol's name,
+// a reference target and its raw spelling, a value the rule does not name) is
+// returned as written, and an image reference is available in Reference.To.
 //
 // Reading hostile input. Two boundaries, and each promises only what it can
 // keep. In process, Extract returns by a deadline (DefaultReadDeadline, lowered

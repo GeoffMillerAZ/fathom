@@ -126,7 +126,8 @@ Rules:
     - **Guards that stay.** Where nothing in process survives a failure the guard stays: a parser that recurses on nesting is handed
       no file nested past 10,000 levels, since a stack overflow is fatal. There is one HCL guard (`internal/hclbound`, used by
       the extractors and by the stand-alone reads), whose refusal states the bound that fired. A few parsers also refuse a shape
-      that cost them hours (a run of tokens no statement ends, a flood of lexical errors, a TOML document of 40,000 keys). A
+      that cost them hours or never returned (a run of tokens no statement ends, a flood of lexical errors, a TOML document of 40,000
+      keys or a table header of 64 segments, a proto file with a bracket open at its end). A
       refused file reads `Incomplete` with the reason. Cost shapes get no new guard unless a tiny file hangs or holds gigabytes.
       **No shape is promised refused, and no shape is promised bounded in time or memory in process**: the deadline bounds the
       caller's wait and the process boundary bounds the damage. Each guard has a test over a family of shapes, at the size it
@@ -134,15 +135,20 @@ Rules:
 11. **Value domains.** `Dialect` is "" only when nothing read the file. The generic JSON and TOML readers have ids
     (`generic-json`, `generic-toml`), listed by `Dialects()` as unmeasured, so a file they read has a `Dialect`. `Level` is "" on a skipped file and a level on a read one. A file
     owned by a basename (`envoy.json`, `kong.json`) whose content check fails is labelled by the reader that read it.
-12. **Withheld values.** The door withholds the places a credential is found, and says so (ADR-069 decision 2, ADR-065
-    decision 2). One pass over the finished `Result` drops the userinfo of a URL wherever a string from the file lands (a name,
-    a key, a reference target or its raw spelling, an unresolved target, a fact), keeping an ssh account that has no password and
-    the image of a `docker` or `oci` reference; the userinfo ends at the first `/`, `\`, `?` or `#`, so the host of a URL is
-    never changed. It masks a string literal bound to a name or a key (`=`, `:=`, `:`), whatever the name is, where it is a
-    parameter's default (inside parentheses), a rule's value or a fact's value, and returns the program of a task and not its
-    text, because a script holds a credential in more shapes than a pattern covers. The value of a credential flag and an
-    Authorization header are masked in the rest of a `Signature`. A credential in another place (a name, a label, a literal that
-    is an argument, a block's own attributes) is returned as written, so the door promises the places and not the absence.
+12. **Withheld values.** The door follows one rule about which of the file's own text it returns, and the rule fails closed
+    (ADR-069 decision 2, ADR-065 decision 2, ADR-092). It is not a secret scanner. In a `Signature` from a code dialect
+    (`DialectInfo.Kind` `language`) every quoted literal of every quote style reads `***`, whatever its name or its place;
+    numbers, identifiers and unquoted text stay. A `Signature` from any other dialect is empty unless the symbol's `Kind`
+    (never its `Canonical`) is on `structuralKinds`, each entry with a one-line reason why its `Signature` is a keyword or
+    a declared name and holds no value; a test holds the list, so a new kind is withheld until it is listed. A `Fact` value
+    under a key whose last segment looks like a credential (password, passwd, secret, token, apikey, credential,
+    private_key) reads `***`, as does a literal a fact value binds with `=`, `:=` or `:`; other `Fact` values are returned as
+    written. One pass drops the userinfo of a URL, with or without its scheme, wherever a string from the file lands (a name,
+    a key, a reference target or its raw spelling, an unresolved target, a fact), keeping the ssh account `git` and the image
+    of a `docker` or `oci` reference that a digest follows; the userinfo ends at the first `/`, `\`, `?` or `#`, so the host of
+    a URL is never changed. `Notes` carry a reason and a line, never the file's text: a parser's quoted text reads `***` and a
+    word after a colon is dropped. A symbol name, a reference target and a value the rule does not name are returned as
+    written, so the door promises the rule and not the absence of a credential; an image reference stays in `Reference.To`.
     Iac resource values are separate and opt in (section 5).
 
 ## 4. The cuts

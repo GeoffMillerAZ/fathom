@@ -50,10 +50,10 @@ func TestSecretsAreWithheld(t *testing.T) {
 	}
 }
 
-// A credential is withheld by where it sits, not by what it looks like: every
-// shape below read through the pattern list that preceded this one. A script's
-// text is not returned (its program is), and a string literal bound to a name or
-// a key in a signature is masked whatever the name is.
+// A credential is withheld by the rule, not by a list of names or places: every
+// shape below read through the lists that preceded it. A script's text is not
+// returned, a Signature from a dialect that is no code is withheld unless its kind
+// is structural, and every quoted literal in a code Signature reads ***.
 func TestSecretsAreWithheldByPlace(t *testing.T) {
 	const s = "SENTINEL9f3a"
 	r := newReader(t)
@@ -79,6 +79,16 @@ func TestSecretsAreWithheldByPlace(t *testing.T) {
 		{"python connection string", "a.py", "def f(dsn=\"host=x password=" + s + "\"):\n    pass\n"},
 		{"typescript backtick", "a.ts", "export function f(password = `" + s + "`): void {}\n"},
 		{"rego adminpass", "p.rego", "package p\n\nadminpass := \"" + s + "\"\n"},
+		{"rego function rule", "p.rego", "package p\n\nf(x) := \"" + s + "\"\ng(x) = \"" + s + "\"\nl contains \"" + s + "\"\n"},
+		{"php constants and fields", "a.php", "<?php\nconst TOKEN = \"" + s + "\";\nconst PASSWORD = \"" + s + "\";\nclass A { public $secret = \"" + s + "\"; }\nenum E: string { case Password = '" + s + "'; }\n"},
+		{"dart constants", "a.dart", "const token = \"" + s + "\";\nfinal password = \"" + s + "\";\nclass A { static const apiKey = \"" + s + "\"; }\n"},
+		{"thrift constant", "a.thrift", "const string PASSWORD = \"" + s + "\"\n"},
+		{"bicep parameter default", "main.bicep", "param token string = '" + s + "'\n"},
+		{"actions run step", ".github/workflows/ci.yml", "name: ci\non: push\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n    - name: a\n      run: curl --user a:" + s + " x\n    - run: mysql -p" + s + "\n    - run: PASSWORD=" + s + " node x\n    - run: export TOKEN=" + s + "\n    - run: \"curl -H 'X-Api-Key: " + s + "' x\"\n"},
+		{"actions input default", "action.yml", "name: a\ninputs:\n  token:\n    description: t\n    default: " + s + "\nruns:\n  using: node20\n  main: index.js\n"},
+		{"lefthook command", "lefthook.yml", "pre-commit:\n  commands:\n    a:\n      run: curl --user a:" + s + " x\n    b:\n      run: mysql -p" + s + "\n"},
+		{"pyproject script", "pyproject.toml", "[project]\nname = \"x\"\nversion = \"1\"\n\n[project.scripts]\nrun = \"curl --user a:" + s + "\"\n"},
+		{"package.json bin", "package.json", `{"name":"x","version":"1.0.0","bin":{"run":"curl --user a:` + s + `"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := extract(t, r, tc.path, tc.src)
@@ -90,15 +100,15 @@ func TestSecretsAreWithheldByPlace(t *testing.T) {
 			}
 		})
 	}
-	// What is withheld is the script's arguments, not the task: the name stays and
-	// the program is returned.
+	// What is withheld is the script, not the task: the name stays and the text of
+	// the script is not returned.
 	got := extract(t, r, "package.json", script("curl --user a:"+s+" https://example.com"))
 	var seen bool
 	for _, sym := range got.Symbols {
 		if sym.Name == "run" {
 			seen = true
-			if sym.Signature != "curl" {
-				t.Errorf("the script's signature is %q, want its program", sym.Signature)
+			if sym.Signature != "" {
+				t.Errorf("the script's signature is %q, want it withheld", sym.Signature)
 			}
 		}
 	}
@@ -109,13 +119,12 @@ func TestSecretsAreWithheldByPlace(t *testing.T) {
 
 // The userinfo ends where the authority does. An @ in the query or the fragment
 // belongs to the URL's tail, the host is the text before it, and a scrub that ran
-// across `?` or `#` moved the host to one the file's author chose.
+// across `?` or `#` moved the host to one the file's author chose. Where a
+// Signature is withheld (a Terraform module, a Helm dependency) the URL is not in
+// the Result at all, and nothing is moved.
 func TestUserinfoScrubDoesNotMoveTheHost(t *testing.T) {
 	r := newReader(t)
 	for _, tc := range []struct{ name, path, src, url string }{
-		{"terraform query", "infra/main.tf", "module \"m\" {\n  source = \"https://evil.example?x=@trusted.example/mod.zip\"\n}\n", "https://evil.example?x=@trusted.example/mod.zip"},
-		{"terraform fragment", "infra/main.tf", "module \"m\" {\n  source = \"https://evil.example#@trusted.example/mod.zip\"\n}\n", "https://evil.example#@trusted.example/mod.zip"},
-		{"helm repository", "chart/Chart.yaml", "apiVersion: v2\nname: c\nversion: 1.0.0\ndependencies:\n- name: d\n  version: 1.0.0\n  repository: https://evil.example?x=@trusted.example\n", "https://evil.example?x=@trusted.example"},
 		{"kustomize resource", "k/kustomization.yaml", "resources:\n- https://evil.example?x=@trusted.example/base\n", "https://evil.example?x=@trusted.example/base"},
 		{"actions docker image", ".github/workflows/ci.yml", "name: ci\non: push\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: docker://alpine@sha256:abc123\n", "docker://alpine@sha256:abc123"},
 	} {
@@ -124,6 +133,19 @@ func TestUserinfoScrubDoesNotMoveTheHost(t *testing.T) {
 			b, _ := json.Marshal(got)
 			if !strings.Contains(string(b), tc.url) {
 				t.Errorf("%s is not in the Result as written (symbols %d, references %d, incomplete=%v): %s", tc.url, len(got.Symbols), len(got.References), got.Incomplete, b)
+			}
+		})
+	}
+	for _, tc := range []struct{ name, path, src string }{
+		{"terraform query", "infra/main.tf", "module \"m\" {\n  source = \"https://evil.example?x=@trusted.example/mod.zip\"\n}\n"},
+		{"terraform fragment", "infra/main.tf", "module \"m\" {\n  source = \"https://evil.example#@trusted.example/mod.zip\"\n}\n"},
+		{"helm repository", "chart/Chart.yaml", "apiVersion: v2\nname: c\nversion: 1.0.0\ndependencies:\n- name: d\n  version: 1.0.0\n  repository: https://evil.example?x=@trusted.example\n"},
+	} {
+		t.Run(tc.name+" is withheld", func(t *testing.T) {
+			got := extract(t, r, tc.path, tc.src)
+			b, _ := json.Marshal(got)
+			if strings.Contains(string(b), "https://trusted.example") || strings.Contains(string(b), "//trusted.example") {
+				t.Errorf("the host was moved: %s", b)
 			}
 		})
 	}

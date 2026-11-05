@@ -325,11 +325,11 @@ func (r *Reader) read(ctx context.Context, path string, f File, res Result) (Res
 		res.Incomplete = true
 	}
 	if ex.Incomplete != "" {
-		res.Notes = append(res.Notes, "incomplete: "+ex.Incomplete)
+		res.Notes = append(res.Notes, "incomplete: "+scrubNote(ex.Incomplete))
 		res.Incomplete = true
 	}
 	res.fill(ex, r.canonicalKind(ex.PackDialect != ""))
-	res.withhold()
+	res.withhold(r.dialectKind(res.Dialect))
 	if _, isGo := ex.Extractor.(*extractor.GoExtractor); isGo {
 		res.refineGoTypes(f.Src)
 	}
@@ -386,7 +386,7 @@ func errorNote(err error) string {
 	if len(line) > 200 {
 		line = line[:200]
 	}
-	return "extractor error: " + strings.TrimSpace(line)
+	return "extractor error: " + scrubNote(strings.TrimSpace(line))
 }
 
 func newResult(path string) Result {
@@ -398,6 +398,21 @@ func newResult(path string) Result {
 		Facts:      []Fact{},
 		Notes:      []string{},
 	}
+}
+
+// dialectKind is the Kind ("language" or "tooling") of the dialect the Reader
+// lists under id, and "" for one it does not list, which the literals rule reads
+// as a dialect that is no code.
+func (r *Reader) dialectKind(id string) string {
+	for _, d := range r.dialects {
+		if d.ID == id {
+			if d.Kind == "" {
+				return "language"
+			}
+			return d.Kind
+		}
+	}
+	return ""
 }
 
 // canonicalKind is the closed-vocabulary kind of a source kind. A pack's kind

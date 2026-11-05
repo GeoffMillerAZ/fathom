@@ -1,21 +1,25 @@
 package lang
 
-// redact.go -- the door withholds secret-bearing values (design section 1, ADR-069
-// decision 2): a Result never carries the credential a URL, a command line or a
-// default value holds. The extractors read a file's text into names, signatures
-// and reference targets, so the withholding is one pass over the finished Result
-// and no extractor has to remember it.
+// redact.go -- the door's literals rule (ADR-092, design section 1 rule 12). This
+// is not a secret scanner. It is a rule about which of the file's own text lands
+// in a Result, and it fails closed: what it cannot tell apart it withholds.
 //
-// What it withholds is chosen by where a value sits, not by what the value looks
-// like, because a list of credential-shaped names and flags is never complete (a
-// `dbpassword` default, `curl --user` and `mysql -pS` each read through the list
-// that preceded this one): the userinfo of a URL, every string literal a
-// signature binds to a name or a key where a value is not the point of the
-// declaration (a parameter's default, a rule's value, a fact's value, a
-// dictionary entry), and the text of a script, of which only the program is
-// returned. What is in none of those places (a name, a label, a literal that is an
-// argument, a block's own attributes) is returned as written, so a credential in
-// a place the door does not look is not promised withheld.
+//   - Signature, code dialect (kind "language"): every quoted literal of every
+//     quote style reads ***, whatever its name or its place. Numbers, identifiers
+//     and unquoted text stay.
+//   - Signature, any other dialect: withheld (empty) unless the symbol's kind is
+//     on structuralKinds, the list of kinds whose Signature is structure and holds
+//     no value. The default is withheld, so a kind nobody listed fails closed.
+//     A kind is selected by its Kind, never by its Canonical.
+//   - Fact values: a value under a key whose last segment looks like a credential
+//     reads ***, and a value bound to a literal by = := or : is masked. Other Fact
+//     values are returned as written.
+//   - The userinfo of a URL is dropped wherever a string from the file lands, and
+//     so is the userinfo of a scheme-less authority (user:pass@host, //u:p@host).
+//   - Notes carry a reason and a line, never source text.
+//
+// A symbol name, a reference target, a reference's raw spelling and any value the
+// rule does not name are returned as written.
 
 import (
 	"regexp"
@@ -35,13 +39,23 @@ const redacted = "***"
 // part of the match's scheme or sits before it.
 var userinfoRe = regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.\-]*):(//?)([^/\\?#\s"'<>]*)@`)
 
+// slashesRe finds the authority of a URL whose scheme is not written
+// (`//u:S@host/path`).
+var slashesRe = regexp.MustCompile(`(^|[^A-Za-z0-9+.\-:/])(//)([^/\\?#\s"'<>]*)@`)
+
+// bareRe finds user:password@host written with no scheme and no slashes (a
+// Dockerfile FROM, a Kubernetes image, a compose service): the userinfo starts
+// after a space, a quote or a delimiter and holds a colon.
+var bareRe = regexp.MustCompile(`(^|[\s"'=,(\[{>|;])([A-Za-z0-9._~%+\-]+:[^\s/\\?#"'<>@]*)@([A-Za-z0-9\[])`)
+
 // digestRe is what follows the @ of an image reference pinned by digest.
 var digestRe = regexp.MustCompile(`^(?:sha256|sha384|sha512):[0-9A-Fa-f]+`)
 
-// withholdURLUserinfo drops the userinfo of every URL in s that has a password
-// or a token in it. An ssh user (`ssh://git@host`) names an account, not a
-// secret, and stays, and so does the image of a `docker://` reference (a GitHub
-// Actions `uses: docker://alpine@sha256:...`), where the @ is a digest pin.
+// withholdURLUserinfo drops the userinfo of every URL in s. The one account that
+// stays is `git` in an ssh URL (`ssh://git@github.com/o/r.git`, the name of the
+// service's account, not a secret), and the image of a docker or oci reference
+// whose @ is a digest pin (`docker://alpine@sha256:...`, a GitHub Actions
+// `uses: docker://alpine@sha256:...`).
 func withholdURLUserinfo(s string) string {
 	if !strings.Contains(s, "@") {
 		return s
@@ -57,6 +71,32 @@ func withholdURLUserinfo(s string) string {
 		b.WriteString(scheme + ":" + slashes)
 		last = ix[1]
 	}
+	if last > 0 {
+		b.WriteString(s[last:])
+		s = b.String()
+	}
+	if !strings.Contains(s, "@") {
+		return s
+	}
+	s = slashesRe.ReplaceAllString(s, "${1}${2}")
+	return withholdBareUserinfo(s)
+}
+
+// withholdBareUserinfo drops user:password@ from text that has no scheme. A
+// scheme written as `mailto:dev@example.com`, and an image pinned by digest
+// (`alpine:3.19@sha256:...`), are not a user and a password.
+func withholdBareUserinfo(s string) string {
+	var b strings.Builder
+	last := 0
+	for _, ix := range bareRe.FindAllStringSubmatchIndex(s, -1) {
+		userinfo := s[ix[4]:ix[5]]
+		scheme := userinfo[:strings.IndexByte(userinfo, ':')]
+		if bareScheme(scheme) || digestRe.MatchString(s[ix[5]+1:]) {
+			continue
+		}
+		b.WriteString(s[last:ix[4]])
+		last = ix[5] + 1 // past the @
+	}
 	if last == 0 {
 		return s
 	}
@@ -64,16 +104,27 @@ func withholdURLUserinfo(s string) string {
 	return b.String()
 }
 
-// keepUserinfo reports whether the userinfo before an @ is no credential: an ssh
-// account (no password), or the name of an image in a docker reference, which has
-// no colon, or has one and is followed by a digest (`docker://alpine:3.19@sha256:...`).
+// bareScheme reports a URI scheme whose rest is an account and a host, not a
+// user and a password.
+func bareScheme(s string) bool {
+	switch strings.ToLower(s) {
+	case "mailto", "sip", "sips", "xmpp", "im", "acct", "tel", "callto", "skype":
+		return true
+	}
+	return false
+}
+
+// keepUserinfo reports whether the userinfo before an @ is no credential: the
+// ssh account `git`, or the name of an image in a docker or oci reference that a
+// digest follows (`docker://alpine:3.19@sha256:...`).
 func keepUserinfo(scheme, userinfo, rest string) bool {
-	colon := strings.Contains(userinfo, ":")
 	switch {
+	case len(scheme) == 1:
+		return true // a drive letter: C:/me@corp/m is a path
 	case sshScheme(scheme):
-		return !colon
+		return userinfo == "git"
 	case imageScheme(scheme):
-		return !colon || digestRe.MatchString(rest)
+		return digestRe.MatchString(rest)
 	}
 	return false
 }
@@ -88,9 +139,125 @@ func imageScheme(scheme string) bool {
 	return s == "docker" || s == "oci"
 }
 
-// literalRe finds a string literal: double, single or triple quoted, a backtick
-// template, and the one- or two-letter prefix of a Python or Rust literal (b, f,
-// r, rb, u).
+// maskLiterals replaces what is between the quotes of every quoted literal in s
+// with ***: double, single and backtick quotes, the triple quotes of Python, the
+// one- or two-letter prefix of a literal (b, f, r, rb) staying where it is. An
+// escape (a backslash) does not end a double or single quoted literal, and a
+// literal that is never closed is masked to the end of the text, so a missing
+// quote withholds more and never less. A single quote that skip says opens no
+// literal (a Rust lifetime, an apostrophe in a sentence) is left as written.
+func maskLiterals(s string, skip func(s string, i int) bool) string {
+	if !strings.ContainsAny(s, "\"'`") {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		q := s[i]
+		if q != '"' && q != '\'' && q != '`' {
+			b.WriteByte(q)
+			i++
+			continue
+		}
+		if q == '\'' && skip != nil && skip(s, i) {
+			b.WriteByte(q)
+			i++
+			continue
+		}
+		n := 1
+		if q != '`' && strings.HasPrefix(s[i:], strings.Repeat(string(q), 3)) {
+			n = 3
+		}
+		end := closingQuote(s, i+n, q, n)
+		b.WriteString(strings.Repeat(string(q), n))
+		b.WriteString(redacted)
+		if end < 0 {
+			break // never closed: the rest of the text is the literal
+		}
+		b.WriteString(strings.Repeat(string(q), n))
+		i = end + n
+	}
+	return b.String()
+}
+
+// closingQuote is the index of the quote that closes a literal whose body starts
+// at from, -1 for none.
+func closingQuote(s string, from int, q byte, n int) int {
+	closer := strings.Repeat(string(q), n)
+	for j := from; j < len(s); j++ {
+		switch {
+		case s[j] == '\\' && q != '`':
+			j++
+		case strings.HasPrefix(s[j:], closer):
+			return j
+		}
+	}
+	return -1
+}
+
+// rustLifetime reports whether the single quote at i opens a lifetime: an
+// identifier that is not closed by another quote (`'a'` is a character).
+func rustLifetime(s string, i int) bool {
+	j := i + 1
+	if j >= len(s) || !(unicode.IsLetter(rune(s[j])) || s[j] == '_') {
+		return false
+	}
+	for j < len(s) && (unicode.IsLetter(rune(s[j])) || unicode.IsDigit(rune(s[j])) || s[j] == '_') {
+		j++
+	}
+	return j >= len(s) || s[j] != '\''
+}
+
+// apostrophe reports whether the single quote at i sits inside a word
+// (`couldn't`), where it is no quote.
+func apostrophe(s string, i int) bool {
+	return i > 0 && i+1 < len(s) && unicode.IsLetter(rune(s[i-1])) && unicode.IsLetter(rune(s[i+1]))
+}
+
+// scrubNote reduces a parser's message to the reason and the line it gives. A
+// parser quotes the text it stopped at (`found "S"`, `setting "S" has no = or :`)
+// and some name it unquoted after a colon (`unknown directive: S`); a Note never
+// carries the file's own text, so quoted text reads *** and a single word after a
+// colon that ends the message or a clause is dropped.
+func scrubNote(s string) string {
+	// A quoted punctuation mark is the grammar the parser expected (`expected ',' or
+	// ']'`), never a word of the file, and stays.
+	s = punctuationQuoteRe.ReplaceAllStringFunc(s, func(m string) string {
+		if m[0] == '\'' {
+			return "\x01" + m[1:2] + "\x01"
+		}
+		return "\x02" + m[1:2] + "\x02"
+	})
+	s = maskLiterals(s, apostrophe)
+	s = strings.NewReplacer("\x01", "'", "\x02", "\"").Replace(s)
+	return noteTokenRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := noteTokenRe.FindStringSubmatch(m)
+		if sub[1] == "EOF" || numeric(sub[1]) {
+			return m
+		}
+		return ":" + sub[2]
+	})
+}
+
+// punctuationQuoteRe is a quote around one character that is no letter, digit or
+// space.
+var punctuationQuoteRe = regexp.MustCompile(`'[^\w\s'"\x01\x02]'|"[^\w\s'"\x01\x02]"`)
+
+// noteTokenRe is a single word after a colon that ends the message or a clause
+// (`unknown directive: S`, `unknown directive: S; the line was skipped`).
+var noteTokenRe = regexp.MustCompile(`: ([^\s:;,"'()]+)(;|,|\)|$)`)
+
+func numeric(s string) bool {
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return s != ""
+}
+
+// literalRe finds a string literal in a fact's value: double, single or triple
+// quoted, a backtick template, and the one- or two-letter prefix of a Python or
+// Rust literal (b, f, r, rb, u).
 var literalRe = regexp.MustCompile("[A-Za-z]{0,2}(?:\"\"\"(?s:.*?)\"\"\"|'''(?s:.*?)'''|\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|`[^`]*`)")
 
 // bound reports whether the text before a literal binds it to a name or a key: it
@@ -118,22 +285,17 @@ func maskLiteral(lit string) string {
 }
 
 // maskBoundLiterals masks the string literals in s that are bound to a name or a
-// key, whatever the name is: a default (`def f(dbpassword="x")`), a rule value
-// (`adminpass := "x"`), an entry (`{"password": "x"}`) or a connection string.
-// Unless whole is set, only a literal inside parentheses is masked (a parameter's
-// default): a block's attribute (`module "m" { source = "x" }`) is the value the
-// declaration is read for, and its credentials are the userinfo of its URLs.
-func maskBoundLiterals(s string, whole bool) string {
+// key by `=`, `:=` or `:`, whatever the name is: a fact's value `password = "x"`,
+// a dictionary entry or a connection string.
+func maskBoundLiterals(s string) string {
 	var b strings.Builder
-	last, seen, depth := 0, 0, 0
+	last := 0
 	for _, ix := range literalRe.FindAllStringIndex(s, -1) {
-		depth += strings.Count(s[seen:ix[0]], "(") - strings.Count(s[seen:ix[0]], ")")
-		seen = ix[1]
 		lit := s[ix[0]:ix[1]]
 		if ix[0] > 0 && unicode.IsLetter(rune(s[ix[0]-1])) && unicode.IsLetter(rune(lit[0])) {
 			continue // the letters belong to a longer word, not to a prefix
 		}
-		if !bound(s[:ix[0]]) || !(whole || depth > 0) {
+		if !bound(s[:ix[0]]) {
 			continue
 		}
 		b.WriteString(s[last:ix[0]])
@@ -148,22 +310,19 @@ func maskBoundLiterals(s string, whole bool) string {
 }
 
 // cliSecretRe finds the value of a command-line flag that carries a credential
-// (`--password x`, `--token=x`, `-u user:pass`) and of an Authorization header.
-// It covers what a Signature that is not a script holds (a task's text is not
-// returned, see scriptProgram), so it is not where a script is made safe.
+// (`--password x`, `--token=x`, `-u user:pass`) and of an Authorization header,
+// in a fact's value.
 var cliSecretRe = regexp.MustCompile(
 	`(?i)(--?(?:password|passwd|pass|token|api-?key|secret|auth(?:orization)?|bearer|access-?key)(?:\s+|=))([^\s'"$%-][^\s'"]*)` +
 		`|(\s-u\s+)([^\s'"$%]+:[^\s'"]+)` +
 		`|(authorization:\s*(?:bearer|basic|token)?\s*)([^\s'"$]+)`)
 
-// withholdSecrets masks, in a Signature (a declaration's text) or a fact's value,
-// the userinfo of a URL, the string literals bound to a name or a key (all of
-// them when whole is set, as in a rule or a fact; those in parentheses otherwise,
-// see maskBoundLiterals), the value of a credential flag, and an Authorization
-// header's value.
-func withholdSecrets(s string, whole bool) string {
+// withholdFactValue masks, in a fact's value, the userinfo of a URL, the string
+// literals bound to a name or a key, the value of a credential flag and an
+// Authorization header's value. Any other fact value is returned as written.
+func withholdFactValue(s string) string {
 	s = withholdURLUserinfo(s)
-	s = maskBoundLiterals(s, whole)
+	s = maskBoundLiterals(s)
 	if strings.ContainsAny(s, "-:") {
 		s = cliSecretRe.ReplaceAllStringFunc(s, func(m string) string {
 			sub := cliSecretRe.FindStringSubmatch(m)
@@ -178,38 +337,44 @@ func withholdSecrets(s string, whole bool) string {
 	return s
 }
 
-// scriptProgram is the program a script's text runs first, and "" when that is
-// not a plain name. A script (a package.json or composer.json script, a task's
-// command) is free text in which a credential can sit in a flag, a header, an
-// environment assignment or a password glued to its option (`mysql -pS`), in more
-// shapes than a pattern covers, so the door returns the program and not the text.
-// Leading `NAME=value` assignments are skipped, and are never returned.
-func scriptProgram(s string) string {
-	for _, w := range strings.Fields(s) {
-		if i := strings.Index(w, "="); i > 0 && !strings.ContainsAny(w[:i], "/.") {
-			continue // an environment assignment
-		}
-		for _, r := range w {
-			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune("_-./", r)) {
-				return ""
-			}
-		}
-		return w
+// credentialWords are what a fact key's last segment holds when its value is a
+// credential, after the case and the separators (`_`, `-`) are dropped.
+var credentialWords = []string{"password", "passwd", "secret", "token", "apikey", "credential", "privatekey"}
+
+// credentialKey reports whether the last segment of a fact's key looks like a
+// credential: `labels.password`, `env.DB_PASSWORD`, `clientSecret`, `api-key`.
+func credentialKey(key string) bool {
+	if i := strings.LastIndexAny(key, "./"); i >= 0 {
+		key = key[i+1:]
 	}
-	return ""
+	key = strings.NewReplacer("_", "", "-", "", " ", "").Replace(strings.ToLower(key))
+	for _, w := range credentialWords {
+		if strings.Contains(key, w) {
+			return true
+		}
+	}
+	return false
 }
 
-// withhold applies the door's withholding to a finished Result in place:
-// credentials in a URL everywhere a string from the file lands, bound literals and
-// credential flags in a Signature, and a script's text in place of its program.
-func (res *Result) withhold() {
+// withhold applies the door's literals rule to a finished Result in place.
+// dialectKind is the Kind ("language" or "tooling") of the dialect that read the
+// file, and "" when it is not known, which reads as a dialect that is no code.
+func (res *Result) withhold(dialectKind string) {
+	code := dialectKind == "language"
+	var skip func(string, int) bool
+	if res.Dialect == "rust" {
+		skip = rustLifetime
+	}
 	for i := range res.Symbols {
 		s := &res.Symbols[i]
-		s.Name, s.Key = withholdURLUserinfo(s.Name), withholdURLUserinfo(s.Key)
-		if s.Canonical == "task" {
-			s.Signature = scriptProgram(s.Signature)
-		} else {
-			s.Signature = withholdSecrets(s.Signature, s.Canonical == "rule")
+		s.Name, s.Key, s.Package = withholdURLUserinfo(s.Name), withholdURLUserinfo(s.Key), withholdURLUserinfo(s.Package)
+		switch {
+		case code:
+			s.Signature = withholdURLUserinfo(maskLiterals(s.Signature, skip))
+		case structuralKind(s.Kind):
+			s.Signature = withholdURLUserinfo(s.Signature)
+		default:
+			s.Signature = ""
 		}
 	}
 	for i := range res.References {
@@ -222,6 +387,11 @@ func (res *Result) withhold() {
 	}
 	for i := range res.Facts {
 		f := &res.Facts[i]
-		f.Entity, f.Value = withholdURLUserinfo(f.Entity), withholdSecrets(f.Value, true)
+		f.Entity = withholdURLUserinfo(f.Entity)
+		if credentialKey(f.Key) && f.Value != "" {
+			f.Value = redacted
+		} else {
+			f.Value = withholdFactValue(f.Value)
+		}
 	}
 }

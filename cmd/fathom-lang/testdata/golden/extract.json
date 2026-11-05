@@ -17,7 +17,7 @@
             "canonical": "resource",
             "line": 1,
             "end_line": 3,
-            "signature": "resource \"aws_s3_bucket\" \"b\"",
+            "signature": "",
             "tier": "verified"
           },
           {
@@ -28,7 +28,7 @@
             "canonical": "variable_decl",
             "line": 5,
             "end_line": 5,
-            "signature": "variable \"name\"",
+            "signature": "",
             "tier": "verified"
           }
         ],

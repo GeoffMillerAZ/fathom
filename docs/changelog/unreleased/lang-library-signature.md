@@ -1,3 +1,3 @@
 ### Changed
 
-- `Symbol.Signature` of a symbol whose `Canonical` is `task` (a `package.json` or `composer.json` script) is the program the script runs, not its text. A string literal bound to a name in a parameter default or a rule is masked whatever the name is, where it was masked only for a credential-like name.
+- `Symbol.Signature` follows one fail-closed rule in the language library. In a code dialect every quoted literal reads `***`, whatever its name or its place. In any other dialect it is empty unless the symbol's `Kind` is one whose `Signature` is a keyword or a declared name, so the text of a script, a default, a version and an image are not returned there (an image stays in `Reference.To`). A `Fact` value under a key that looks like a credential reads `***`, the userinfo of a URL is dropped with or without its scheme, and a `Note` carries a reason and a line, never the file's text. The library is not a secret scanner.

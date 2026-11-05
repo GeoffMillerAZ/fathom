@@ -223,7 +223,7 @@ func (r *Reader) extractNative(ctx context.Context, id string, f File, res Resul
 	res.References = append(res.References, got.References...)
 	res.Unresolved = append(res.Unresolved, got.Unresolved...)
 	res.Facts = append(res.Facts, got.Facts...)
-	res.withhold()
+	res.withhold(r.dialectKind(id))
 	res.resolveTargets()
 	res.addSiblingNote(f.Path, f.Siblings)
 	res.sort()

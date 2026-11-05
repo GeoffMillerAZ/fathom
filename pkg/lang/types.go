@@ -61,7 +61,8 @@ type Result struct {
 	// it could not read should refuse when Incomplete is true.
 	Incomplete bool `json:"incomplete"`
 	// Notes disclose what the Reader could not know and that may have changed
-	// the result. Empty when nothing did.
+	// the result. Empty when nothing did. A note carries a reason and a line,
+	// never the file's text.
 	Notes []string `json:"notes"`
 }
 
@@ -95,7 +96,11 @@ type Symbol struct {
 	Canonical string `json:"canonical"`
 	Line      int    `json:"line"`
 	// EndLine is the last line, 0 when the extractor does not compute it.
-	EndLine   int    `json:"end_line"`
+	EndLine int `json:"end_line"`
+	// Signature is the declaration's text, under the rule in the package
+	// documentation: every quoted literal of a code dialect reads ***, and it
+	// is empty for a symbol of a dialect that is no code unless the symbol's
+	// Kind is one whose Signature is structure and holds no value.
 	Signature string `json:"signature"`
 	// Tier is how the symbol was established: verified, pre-scan,
 	// doc-claimed, sme-stated or assumed.
@@ -150,8 +155,12 @@ type Fact struct {
 	// when it is no symbol of this file.
 	Entity string `json:"entity"`
 	Key    string `json:"key"`
-	Value  string `json:"value"`
-	Line   int    `json:"line"`
+	// Value is returned as written, except that it reads *** under a key whose
+	// last segment looks like a credential (password, secret, token, apikey)
+	// and where it binds a literal with =, := or :, and the userinfo of a URL
+	// is dropped (see the package documentation).
+	Value string `json:"value"`
+	Line  int    `json:"line"`
 }
 
 // DialectInfo describes one dialect a Reader can read.
