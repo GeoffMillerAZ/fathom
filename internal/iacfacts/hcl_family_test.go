@@ -3,6 +3,7 @@ package iacfacts
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"runtime/debug"
@@ -47,11 +48,26 @@ func hclFamilyShapes(full bool) []hclShape {
 		}
 	}
 	// Units longer than the sweep reaches: the ones found by reading the parser, and the ones that cost it time.
-	units = append(units, "\n[*]", "\n?a", "[*)", "*)[", "*}[", "}[*", "::a", "a\n", "\\n", "[\n*]", "%{if a}", "%{for a in b}", "${a", "\n!", ".*")
+	units = append(units, "\n[*]", "\n?a", "[*)", "*)[", "*}[", "}[*", "::a", "a\n", "\\n", "[\n*]", "%{if a}", "%{for a in b}", "${a", "\n!", ".*",
+		// IAC29: the parser's recover(`}`) swallows the `]}` of a mismatched pair as one close while its frame stays.
+		"]}[{", "]}[{%{if a}", "{a]}[{", ")}[{", "]}({", "]]}[{")
 	var out []hclShape
 	for _, p := range prefixes {
 		for _, u := range units {
 			out = append(out, hclShape{p, u})
+		}
+	}
+	// IAC29 sat past every unit the sweep above reaches, which is at most three tokens. A fixed-seed random sweep
+	// of units of four to seven tokens covers the shapes nobody has named yet.
+	rnd := rand.New(rand.NewSource(29))
+	rtoks := []string{"[", "]", "*", "(", ")", "{", "}", "\n", "a", ".", "?", ":", "!", "-", "for", "=>", "/**/", ",", "::", "\"", "<<A\n", "%{if a}", "%{endif}", "${", "1", "in", "if"}
+	for i := 0; i < 250; i++ {
+		var u strings.Builder
+		for j, n := 0, 4+rnd.Intn(4); j < n; j++ {
+			u.WriteString(rtoks[rnd.Intn(len(rtoks))])
+		}
+		for _, p := range prefixes[:3] {
+			out = append(out, hclShape{p, u.String()})
 		}
 	}
 	return out
