@@ -13,15 +13,20 @@ import (
 // overflow is a fatal error no recover can catch, so a 300 KB run of `!` or `-` or of `[*]` must be refused before
 // the parser sees it. A run of prefix operators and the splats of a chain count as nesting, added to the bracket
 // depth they sit in, so mixed runs are bounded together.
+//
+// Every check below reads one filtered stream, boundTokens, and none reads the raw lexer output. The parser's peeker
+// drops comments, and drops newlines inside any bracket but a brace, so a shape matched over raw adjacent tokens
+// (`[*]`, `%{if`) is missed by `[/**/*]` and by a newline between its tokens. The filter applies those rules once.
 func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error) {
-	tokens, _ := hclsyntax.LexConfig(src, file, hcl.InitialPos)
-	if len(tokens) > MaxNodes {
-		return nil, nil, limitErr(file, fmt.Sprintf("%d tokens, over %d", len(tokens), MaxNodes))
+	lexed, _ := hclsyntax.LexConfig(src, file, hcl.InitialPos)
+	if len(lexed) > MaxNodes {
+		return nil, nil, limitErr(file, fmt.Sprintf("%d tokens, over %d", len(lexed), MaxNodes))
 	}
+	tokens := boundTokens(lexed)
 	// chains holds, per open bracket level (index 0 is the file), the `[*]` steps of the traversal chain being
 	// read at that level. A closed `]` does not shrink the parser's stack, since the recursion keeps going for every
 	// later step of the chain, so the count lives until a token that cannot continue the chain. A newline ends a
-	// chain at the top of a file or of a block body, and is whitespace inside any other bracket.
+	// chain at the top of a file or of a block body.
 	chains := []int{0}
 	var kinds []hclsyntax.TokenType
 	// quest counts, per bracket level, the `?` whose `:` has not come yet, and ctl the template `%{if}` and `%{for}`
@@ -46,7 +51,7 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 		switch t.Type {
 		case hclsyntax.TokenOBrack:
 			if i+2 < len(tokens) && tokens[i+1].Type == hclsyntax.TokenStar && tokens[i+2].Type == hclsyntax.TokenCBrack {
-				// A full splat `[*]`: one more level of parser recursion for the rest of the chain.
+				// A full splat `[*]`, adjacent in the filtered stream: one more level of parser recursion for the rest of the chain.
 				i += 2
 				run = 0
 				chains[len(chains)-1]++
@@ -135,4 +140,36 @@ func parseHCLBounded(file string, src []byte) (*hcl.File, hcl.Diagnostics, error
 	}
 	f, diags := hclsyntax.ParseConfig(src, file, hcl.InitialPos)
 	return f, diags, nil
+}
+
+// boundTokens is the token stream the parser sees. Comments are dropped, except that a `#` or `//` comment absorbs
+// the newline that ends it and the parser turns it back into a newline token where newlines count. A newline is
+// dropped inside any bracket but a brace, as the parser's peeker does for parentheses, brackets and template
+// sequences.
+func boundTokens(lexed hclsyntax.Tokens) []hclsyntax.Token {
+	out := make([]hclsyntax.Token, 0, len(lexed))
+	var open []hclsyntax.TokenType
+	for _, t := range lexed {
+		if t.Type == hclsyntax.TokenComment {
+			if n := len(t.Bytes); n == 0 || t.Bytes[n-1] != '\n' {
+				continue
+			}
+			t.Type = hclsyntax.TokenNewline
+		}
+		switch t.Type {
+		case hclsyntax.TokenNewline:
+			if len(open) > 0 && open[len(open)-1] != hclsyntax.TokenOBrace {
+				continue
+			}
+		case hclsyntax.TokenOBrack, hclsyntax.TokenOBrace, hclsyntax.TokenOParen, hclsyntax.TokenTemplateInterp,
+			hclsyntax.TokenTemplateControl:
+			open = append(open, t.Type)
+		case hclsyntax.TokenCBrace, hclsyntax.TokenCBrack, hclsyntax.TokenCParen, hclsyntax.TokenTemplateSeqEnd:
+			if len(open) > 0 {
+				open = open[:len(open)-1]
+			}
+		}
+		out = append(out, t)
+	}
+	return out
 }
