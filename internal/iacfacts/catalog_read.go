@@ -203,7 +203,21 @@ func ReadIaCCatalogManifest(path string) (IaCCatalogManifest, error) {
 // proves each blob hashes to its address, that every address an index names exists, and that every version in the
 // manifest has an index. It returns the manifest.
 func VerifyIaCCatalog(path string) (IaCCatalogManifest, error) {
-	return verifyIaCCatalog(path, DefaultIaCLimits())
+	m, err := verifyIaCCatalog(path, DefaultIaCLimits())
+	if err != nil {
+		return m, err
+	}
+	// One live lookup per version proves the read path end to end on the installed bytes.
+	for _, v := range m.Versions {
+		if _, err := ReadIaCCatalog(path, IaCCatalogRequest{Version: v, Kind: SectionProvider}); err != nil {
+			var ref *IaCRefusal
+			if errors.As(err, &ref) && ref.Code == RefuseNotFound {
+				continue // a catalog without a provider block is still a catalog
+			}
+			return m, wholeCatalog(err)
+		}
+	}
+	return m, nil
 }
 
 func verifyIaCCatalog(path string, lim IaCLimits) (IaCCatalogManifest, error) {
@@ -302,16 +316,6 @@ func verifyIaCCatalog(path string, lim IaCLimits) (IaCCatalogManifest, error) {
 	}
 	if len(want) > 0 {
 		return m, corruptf("%d blob addresses named by version indexes are missing from the catalog", len(want))
-	}
-	// One live lookup per version proves the read path end to end on the installed bytes.
-	for _, v := range m.Versions {
-		if _, err := readIaCCatalog(path, IaCCatalogRequest{Version: v, Kind: SectionProvider}, lim); err != nil {
-			var ref *IaCRefusal
-			if errors.As(err, &ref) && ref.Code == RefuseNotFound {
-				continue // a catalog without a provider block is still a catalog
-			}
-			return m, wholeCatalog(err)
-		}
 	}
 	return m, nil
 }

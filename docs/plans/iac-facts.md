@@ -23,11 +23,11 @@ plans stay under `workspace/`.
 
 ## Phase 1: catalogs and facts 1 to 4
 
-- [ ] `ReadIaCCatalog` reads one version index and one blob from a catalog under the design's bounds, refusing the whole input at cap + 1, decoding only the requested path and holding one fact under 8 MiB on the largest blob {id: IF-1, symbol: ReadIaCCatalog, package: internal/iacfacts, needs: IF-M0}
-- [ ] `fathom iac add|import|list|remove`; `add` takes a local path only, and `import` builds a catalog from an operator's export {id: IF-2, symbol: cmdIaC, package: cmd/fathom, needs: IF-1}
-- [ ] I56 holds in code: no product path of this package dials, proven by a test that fails on a dial {id: IF-3, symbol: TestIaCFactsNeverDials, package: internal/iacfacts, skip_test: true, skip: "the test is the anchor: it fails on any dial from the package", needs: IF-1}
-- [ ] `cmd/iaccatalog` builds a deterministic catalog from a pin list and receipts it: two builds are byte-identical {id: IF-4, symbol: buildCatalog, package: cmd/iaccatalog, needs: IF-M0}
-- [ ] `calibration/iac/pins.yaml` pins the first five providers by major line, version and archive sha256 {id: IF-5, oracle: lexical, path: calibration/iac/pins.yaml, pattern: "hashicorp/aws", needs: IF-M0}
+- [x] `ReadIaCCatalog` reads one version index and one blob from a catalog under the design's bounds, refusing the whole input at cap + 1, decoding only the requested path and holding one fact under 8 MiB on the largest blob {id: IF-1, symbol: ReadIaCCatalog, package: internal/iacfacts, needs: IF-M0}
+- [x] `fathom iac add|import|list|remove`; `add` takes a local path only, and `import` builds a catalog from an operator's export {id: IF-2, symbol: cmdIaC, package: cmd/fathom, needs: IF-1}
+- [x] I56 holds in code: no product path of this package dials, proven by a test that fails on a dial {id: IF-3, symbol: TestIaCFactsNeverDials, package: internal/iacfacts, skip_test: true, skip: "the test is the anchor: it fails on any dial from the package", needs: IF-1}
+- [x] `cmd/iaccatalog` builds a deterministic catalog from a pin list and receipts it: two builds are byte-identical {id: IF-4, symbol: buildCatalog, package: cmd/iaccatalog, needs: IF-M0}
+- [x] `calibration/iac/pins.yaml` pins the first five providers by major line, version and archive sha256 {id: IF-5, oracle: lexical, path: calibration/iac/pins.yaml, pattern: "hashicorp/aws", needs: IF-M0}
 - [ ] A CI workflow publishes catalogs as release assets with attestations, no secrets beyond the release token {id: IF-6, oracle: lexical, path: .github/workflows/iac-catalogs.yml, pattern: "attest", needs: "IF-4,IF-P8,IF-11"}
 - [ ] `ResolveIaCBinding` answers locked, constraint-matched, ambiguous or unbound for a block, through the lockfile, `required_providers`, aliases and module mappings, with the reusable-module-plus-examples fixture {id: IF-7, symbol: ResolveIaCBinding, package: internal/iacfacts, needs: IF-1}
 - [ ] `CheckAttributeUse` walks a block's attributes and static traversals against a schema: unknown, unset required, deprecated, sensitive {id: IF-8, symbol: CheckAttributeUse, package: internal/iacfacts, needs: IF-7}

@@ -39,7 +39,7 @@ var awsCatalogs = []IaCCatalogInfo{
 	fxCat("registry.opentofu.org/hashicorp/aws", "6.0.0", "6.72.0"),
 }
 
-func bind(fsys fstest.MapFS, cats []IaCCatalogInfo, ref IaCBlockRef) IaCBinding {
+func bindBlock(fsys fstest.MapFS, cats []IaCCatalogInfo, ref IaCBlockRef) IaCBinding {
 	return ResolveIaCBinding(IaCBindingQuery{Repo: fsys, Catalogs: cats, Block: ref})
 }
 
@@ -60,7 +60,7 @@ func TestBindingReusableModulePlusExamples(t *testing.T) {
 	}
 
 	t.Run("one root locks it", func(t *testing.T) {
-		b := bind(repo("5.100.0", ""), awsCatalogs, ref)
+		b := bindBlock(repo("5.100.0", ""), awsCatalogs, ref)
 		if b.Status != BindLocked || b.Version != "5.100.0" || b.Source != "registry.terraform.io/hashicorp/aws" || len(b.Roots) != 1 || b.Roots[0].Via != "module call" || b.Roots[0].Dir != "examples/basic" {
 			t.Fatalf("%+v", b)
 		}
@@ -73,14 +73,14 @@ func TestBindingReusableModulePlusExamples(t *testing.T) {
 	})
 
 	t.Run("two roots that agree still lock it", func(t *testing.T) {
-		b := bind(repo("5.100.0", "5.100.0"), awsCatalogs, ref)
+		b := bindBlock(repo("5.100.0", "5.100.0"), awsCatalogs, ref)
 		if b.Status != BindLocked || b.Version != "5.100.0" || len(b.Roots) != 2 {
 			t.Fatalf("%+v", b)
 		}
 	})
 
 	t.Run("roots that disagree are ambiguous, with no first-root choice", func(t *testing.T) {
-		b := bind(repo("5.100.0", "6.72.0"), awsCatalogs, ref)
+		b := bindBlock(repo("5.100.0", "6.72.0"), awsCatalogs, ref)
 		if b.Status != BindAmbiguous || b.Version != "" || b.Catalog != "" || strings.Join(b.Candidates, ",") != "5.100.0,6.72.0" || len(b.Roots) != 2 {
 			t.Fatalf("%+v", b)
 		}
@@ -88,12 +88,12 @@ func TestBindingReusableModulePlusExamples(t *testing.T) {
 
 	t.Run("no lockfile constraint-matches the highest satisfying release", func(t *testing.T) {
 		m := fstest.MapFS{"main.tf": file(reusableModule)}
-		b := bind(m, awsCatalogs, ref)
+		b := bindBlock(m, awsCatalogs, ref)
 		if b.Status != BindConstraintMatched || b.Version != "6.72.0" || b.Constraint != ">= 5.0, < 7.0" || len(b.Roots) != 0 {
 			t.Fatalf("%+v", b)
 		}
 		m["main.tf"] = file(strings.Replace(reusableModule, ">= 5.0, < 7.0", "~> 5.0", 1))
-		if b = bind(m, awsCatalogs, ref); b.Version != "5.100.0" || b.Status != BindConstraintMatched {
+		if b = bindBlock(m, awsCatalogs, ref); b.Version != "5.100.0" || b.Status != BindConstraintMatched {
 			t.Fatalf("~> 5.0 should bind 5.100.0: %+v", b)
 		}
 		if !strings.Contains(strings.Join(b.Disclosures, "|"), "no root has been shown to install") {
@@ -102,14 +102,14 @@ func TestBindingReusableModulePlusExamples(t *testing.T) {
 	})
 
 	t.Run("a locked version without a catalog is unbound and names the line, never a nearest version", func(t *testing.T) {
-		b := bind(repo("5.101.0", ""), awsCatalogs, ref)
+		b := bindBlock(repo("5.101.0", ""), awsCatalogs, ref)
 		if b.Status != BindUnbound || b.Version != "" || b.Catalog != "" || b.AddLine != "5" || b.Locked != "5.101.0" {
 			t.Fatalf("%+v", b)
 		}
 		if d := strings.Join(b.Disclosures, "|"); !strings.Contains(d, "line 5") && !strings.Contains(d, "the 5 line") || !strings.Contains(d, "no nearest version") {
 			t.Fatalf("disclosure %v", b.Disclosures)
 		}
-		b = bind(repo("4.67.0", ""), awsCatalogs, ref)
+		b = bindBlock(repo("4.67.0", ""), awsCatalogs, ref)
 		if b.Status != BindUnbound || b.AddLine != "4" || !strings.Contains(strings.Join(b.Disclosures, "|"), "major line 4") {
 			t.Fatalf("%+v", b)
 		}
@@ -118,11 +118,11 @@ func TestBindingReusableModulePlusExamples(t *testing.T) {
 
 func TestBindingNoCatalogForTheConstraint(t *testing.T) {
 	m := fstest.MapFS{"main.tf": file(strings.Replace(reusableModule, ">= 5.0, < 7.0", "~> 4.0", 1))}
-	b := bind(m, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_instance"})
+	b := bindBlock(m, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_instance"})
 	if b.Status != BindUnbound || b.AddLine != "4" || b.Version != "" {
 		t.Fatalf("%+v", b)
 	}
-	b = bind(m, nil, IaCBlockRef{Dir: ".", Type: "aws_instance"})
+	b = bindBlock(m, nil, IaCBlockRef{Dir: ".", Type: "aws_instance"})
 	if b.Status != BindUnbound {
 		t.Fatalf("%+v", b)
 	}
@@ -146,11 +146,11 @@ resource "google_compute_instance" "b" { provider = google-beta.eu }
 		fxCat("registry.terraform.io/hashicorp/google", "6.1.0", "6.50.0"),
 		fxCat("registry.terraform.io/hashicorp/google-beta", "6.2.0"),
 	}
-	plain := bind(m, cats, IaCBlockRef{Dir: ".", Type: "google_compute_instance"})
+	plain := bindBlock(m, cats, IaCBlockRef{Dir: ".", Type: "google_compute_instance"})
 	if plain.Source != "registry.terraform.io/hashicorp/google" || plain.Version != "6.50.0" || plain.LocalName != "google" {
 		t.Fatalf("%+v", plain)
 	}
-	beta := bind(m, cats, IaCBlockRef{Dir: ".", Type: "google_compute_instance", Provider: "google-beta.eu"})
+	beta := bindBlock(m, cats, IaCBlockRef{Dir: ".", Type: "google_compute_instance", Provider: "google-beta.eu"})
 	if beta.Source != "registry.terraform.io/hashicorp/google-beta" || beta.Version != "6.2.0" || beta.LocalName != "google-beta" || beta.Alias != "eu" {
 		t.Fatalf("the provider meta-argument names the provider, not the type prefix: %+v", beta)
 	}
@@ -162,7 +162,7 @@ func TestBindingImpliedProviderIsDisclosed(t *testing.T) {
 		"examples/x/main.tf":         file(`module "m" { source = "../.." }`),
 		"examples/x/" + LockfileName: lock("registry.terraform.io/hashicorp/aws", "5.100.0"),
 	}
-	b := bind(m, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_s3_bucket"})
+	b := bindBlock(m, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_s3_bucket"})
 	if b.Status != BindLocked || b.Source != "registry.terraform.io/hashicorp/aws" {
 		t.Fatalf("%+v", b)
 	}
@@ -192,15 +192,15 @@ module "net" {
 		}
 	}
 	ref := IaCBlockRef{Dir: "modules/net", Type: "aws_vpc"}
-	ok := bind(repo(amazonDecl("hashicorp/aws")), awsCatalogs, ref)
+	ok := bindBlock(repo(amazonDecl("hashicorp/aws")), awsCatalogs, ref)
 	if ok.Status != BindLocked || ok.Version != "5.100.0" || len(ok.Roots) != 1 || ok.Roots[0].Dir != "." {
 		t.Fatalf("a mapped child resolves through the root lockfile: %+v", ok)
 	}
-	aliased := bind(repo(amazonDecl("hashicorp/aws")), awsCatalogs, IaCBlockRef{Dir: "modules/net", Type: "aws_vpc", Provider: "aws.east"})
+	aliased := bindBlock(repo(amazonDecl("hashicorp/aws")), awsCatalogs, IaCBlockRef{Dir: "modules/net", Type: "aws_vpc", Provider: "aws.east"})
 	if aliased.Status != BindLocked {
 		t.Fatalf("%+v", aliased)
 	}
-	bad := bind(repo(amazonDecl("acme/aws")), awsCatalogs, ref)
+	bad := bindBlock(repo(amazonDecl("acme/aws")), awsCatalogs, ref)
 	if bad.Status != BindAmbiguous || !strings.Contains(strings.Join(bad.Disclosures, "|"), "Terraform rejects") {
 		t.Fatalf("a mapping to a different provider has no honest binding: %+v", bad)
 	}
@@ -211,7 +211,7 @@ func TestBindingNearestLockfileFallback(t *testing.T) {
 		LockfileName:       lock("registry.terraform.io/hashicorp/aws", "5.100.0"),
 		"stacks/a/main.tf": file(reusableModule),
 	}
-	b := bind(m, awsCatalogs, IaCBlockRef{Dir: "stacks/a", Type: "aws_instance"})
+	b := bindBlock(m, awsCatalogs, IaCBlockRef{Dir: "stacks/a", Type: "aws_instance"})
 	if b.Status != BindLocked || b.Version != "5.100.0" || b.Roots[0].Via != "nearest lockfile" {
 		t.Fatalf("%+v", b)
 	}
@@ -222,19 +222,19 @@ func TestBindingBoundsAreDisclosed(t *testing.T) {
 	for i := 0; i < MaxBindingLockfiles+2; i++ {
 		m[fmt.Sprintf("roots/r%02d/%s", i, LockfileName)] = lock("registry.terraform.io/hashicorp/aws", "5.100.0")
 	}
-	b := bind(m, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_instance"})
+	b := bindBlock(m, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_instance"})
 	if !strings.Contains(strings.Join(b.Disclosures, "|"), "the first 16 by path") {
 		t.Fatalf("%v", b.Disclosures)
 	}
 	big := fstest.MapFS{"main.tf": &fstest.MapFile{Data: []byte(strings.Repeat("# pad\n", maxBindingFileBytes/6+10))}}
-	b = bind(big, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_instance"})
+	b = bindBlock(big, awsCatalogs, IaCBlockRef{Dir: ".", Type: "aws_instance"})
 	if !strings.Contains(strings.Join(b.Disclosures, "|"), "read bound") {
 		t.Fatalf("%v", b.Disclosures)
 	}
 }
 
 func TestBindingBuiltinTerraformProvider(t *testing.T) {
-	b := bind(fstest.MapFS{}, awsCatalogs, IaCBlockRef{Dir: ".", Type: "terraform_remote_state"})
+	b := bindBlock(fstest.MapFS{}, awsCatalogs, IaCBlockRef{Dir: ".", Type: "terraform_remote_state"})
 	if b.Status != BindUnbound || len(b.Disclosures) == 0 {
 		t.Fatalf("%+v", b)
 	}
@@ -252,7 +252,7 @@ func TestBindingReadsInstalledCatalogs(t *testing.T) {
 		t.Fatalf("%v %v", cats, bad)
 	}
 	m := fstest.MapFS{"main.tf": file("terraform {\n  required_providers {\n    widget = { source = \"registry.opentofu.org/example/widget\", version = \"~> 1.0\" }\n  }\n}\n")}
-	b := bind(m, cats, IaCBlockRef{Dir: ".", Type: "widget_thing"})
+	b := bindBlock(m, cats, IaCBlockRef{Dir: ".", Type: "widget_thing"})
 	if b.Status != BindConstraintMatched || b.Version != "1.1.0" || b.Catalog != cats[0].Name {
 		t.Fatalf("%+v", b)
 	}
