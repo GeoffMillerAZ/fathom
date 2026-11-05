@@ -161,7 +161,7 @@ relation and are never expanded. Helm is not rendered.
 the default of a `sensitive` or `ephemeral` Terraform variable, a CloudFormation `NoEcho` parameter, a Pulumi `secret` configuration entry and
 `fn::secret`. A literal on an attribute a bound contract marks sensitive or write-only stays withheld too. In both cases a check still learns
 that a literal or default is there, which is what "no hardcoded secret" asks. A value past `MaxValueBytes` (1 MiB, counted as a consumer would
-serialise it) refuses the whole input. The
+serialise it) refuses the whole input, and so do the values of one read past `MaxTotalValueBytes` (16 MiB) in all. The
 product never calls `WithValues`, proven by a test that fails on any such call outside `pkg/lang`, `cmd/fathom-lang` and tests, and a
 planted sentinel appears in no store row.
 

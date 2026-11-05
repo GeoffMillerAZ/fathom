@@ -186,6 +186,10 @@ const (
 	// consumer would serialise it. A value past it refuses the whole input: a chain of doublings is small as
 	// source and enormous as a value.
 	MaxValueBytes = 1 << 20
+	// MaxTotalValueBytes bounds the logical size of every value one read keeps under WithValues. MaxValueBytes
+	// bounds one value, and a thousand attributes that each sit just under it are a gigabyte of strings. A read
+	// past it is refused whole, the way a value past MaxValueBytes is.
+	MaxTotalValueBytes = 16 << 20
 	// MaxAttrs bounds the attributes one read may return.
 	MaxAttrs = 1 << 18
 	// MaxPathBytes bounds one attribute path.
@@ -300,7 +304,9 @@ func unionRefs(lists ...[]string) []string {
 type emitter struct {
 	cfg   config
 	attrs int
-	err   error
+	// valBytes is the running logical size of the values kept so far.
+	valBytes int
+	err      error
 }
 
 func (e *emitter) fail(file, what string) {
@@ -329,6 +335,10 @@ func (e *emitter) emit(file string, out *[]Attr, p string, c readRes, span Span)
 	}
 	at := Attr{Path: p, Class: c.class, Refs: sortedRefs(c.refs), Span: span}
 	if e.cfg.values && c.hasV && (c.class == ClassLiteral || c.class == ClassDefaulted) {
+		if e.valBytes += partSize(c); e.valBytes > MaxTotalValueBytes {
+			e.fail(file, fmt.Sprintf("the values of one read are over %d bytes in all", MaxTotalValueBytes))
+			return
+		}
 		at.Value = c.val
 	}
 	*out = append(*out, at)
