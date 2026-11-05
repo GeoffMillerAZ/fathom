@@ -10,9 +10,10 @@ package extractor
 // quote string end each did):
 //
 //   - hclsyntax (Terraform, Packer, Nomad, Terragrunt, docker-bake): the lexer's
-//     tokens, with a run of prefix operators, conditionals, splats and postfix
-//     brackets counted as levels (NestMeter); also the cue parser, in package
-//     cuelang, with the scanner driven as the parser drives it.
+//     tokens, counted by internal/hclbound, the one HCL guard (brackets, runs of
+//     prefix operators, conditionals, splats and open directives as levels, and
+//     the melding cost of a template); the cue parser, in package cuelang, uses
+//     NestMeter, with the scanner driven as the parser drives it.
 //   - nginx and Caddyfile: the parsers carry the block depth and refuse by it.
 //   - proto: text/scanner in the parser's own mode.
 //   - TOML (go-toml): a scan by TOML's rules that counts brackets and the dots
@@ -27,8 +28,7 @@ import (
 	"fmt"
 	"text/scanner"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/geoffmilleraz/fathom/internal/hclbound"
 )
 
 // MaxNesting is the deepest nesting a recursive parser is handed.
@@ -135,154 +135,19 @@ func (m *NestMeter) Op() bool {
 // statements): its operators no longer nest the next one.
 func (m *NestMeter) EndExpr() { m.run = 0 }
 
-// maxTemplatePieces is the most literal pieces one template may hold in a row.
-// hclsyntax melds the pieces of a template pairwise (a delete from the slice and
-// a string concatenation per piece), so n pieces cost n*n/2 moves: 100,000 pieces
-// took 4 s and 250,000 took 23 s inside a 2 MiB file. The lexer ends a piece at
-// every `$` and `%` that does not open a sequence, so a shell script in a heredoc
-// is thousands of pieces and a file of `$` lines is millions.
-const maxTemplatePieces = 20_000
-
-// hclRefusal is why src, as HCL, is not handed to the parser: it nests deeper than
-// maxNesting or holds a template of more than maxTemplatePieces pieces, and "" when
-// it is read. It
-// counts the lexer's tokens, which are iterative and know a string from code,
-// so a bracket in a comment or a string is not counted and one in an
-// interpolation is. What the parser recurses on, besides brackets: a unary
-// operator (`!` or `-`) parses its operand by calling itself, so does each `?` of
-// a conditional, and so does each `*` of a splat (`a[*].b[*].c`, whose rest nests
-// inside it), so a run of any of them is as deep as the same run of brackets. And
-// a template directive nests the directives its body opens: `%{if a}` and
-// `%{for a in b}` stay open until `%{endif}` or `%{endfor}`, past the sequence
-// that opened them, and the template parser recurses once per open one.
-//
-// A run is the operators of one expression: it ends at a comma, at a newline
-// where the parser reads a newline as the end of a statement or an item (the top
-// level, a block's body and an object constructor, not inside brackets, a call, a
-// sequence or a for-expression, `{for ...}`, where the parser ignores newlines),
-// and when its bracket closes.
+// hclRefusal is why src, as HCL, is not handed to the parser, and "" when it is
+// read. The guard is internal/hclbound, shared with the stand-alone reads
+// (internal/iacfacts): it counts what the parser recurses on (brackets, a run of
+// prefix operators, conditionals, splats, open template directives) against
+// MaxNesting, and prices the quadratic melding of a template's literal pieces
+// and of a function name's `::` segments. It counts the lexer's tokens, which
+// know a string from code, so a bracket in a comment or a string is not counted
+// and one in an interpolation is. The reason names the bound that fired.
 func hclRefusal(src []byte) string {
-	toks, _ := hclsyntax.LexConfig(src, "nesting", hcl.Pos{Line: 1, Column: 1})
-	var m NestMeter
-	deep := errTooDeep("hcl parse")
-	pieces := 0 // literal pieces of the template being read, in a row
-	// directive is what the keyword after a `%{` opened: 'D' for if and for, 'E'
-	// for endif and endfor, 0 for anything else (and until the keyword is read).
-	var directive byte
-	afterControl := false
-	for i, t := range toks {
-		if afterControl && t.Type != hclsyntax.TokenNewline && t.Type != hclsyntax.TokenComment {
-			afterControl = false
-			if t.Type == hclsyntax.TokenIdent {
-				switch string(t.Bytes) {
-				case "if", "for":
-					directive = 'D'
-				case "endif", "endfor":
-					directive = 'E'
-				}
-			}
-		}
-		if t.Type == hclsyntax.TokenStringLit || t.Type == hclsyntax.TokenQuotedLit {
-			if pieces++; pieces > maxTemplatePieces {
-				return TooLongReason("hcl parse")
-			}
-			continue
-		}
-		pieces = 0
-		switch t.Type {
-		case hclsyntax.TokenOBrace:
-			kind := byte('{')
-			if hclForFollows(toks[i+1:]) {
-				kind = 'F'
-			}
-			if m.Open(kind) {
-				return deep
-			}
-		case hclsyntax.TokenOBrack:
-			if m.Open('[') {
-				return deep
-			}
-		case hclsyntax.TokenOParen:
-			if m.Open('(') {
-				return deep
-			}
-		case hclsyntax.TokenTemplateInterp:
-			if m.Open('%') {
-				return deep
-			}
-		case hclsyntax.TokenTemplateControl:
-			afterControl, directive = true, 0
-			if m.Open('%') {
-				return deep
-			}
-		case hclsyntax.TokenOQuote:
-			if m.Open('"') {
-				return deep
-			}
-		case hclsyntax.TokenOHeredoc:
-			if m.Open('<') {
-				return deep
-			}
-		case hclsyntax.TokenCBrace:
-			kind := byte('{')
-			if m.Innermost() == 'F' {
-				kind = 'F'
-			}
-			if m.CloseOperand(kind) {
-				return deep
-			}
-		case hclsyntax.TokenCBrack:
-			if m.CloseOperand('[') {
-				return deep
-			}
-		case hclsyntax.TokenCParen:
-			if m.CloseOperand('(') {
-				return deep
-			}
-		case hclsyntax.TokenTemplateSeqEnd:
-			m.Close('%')
-			switch directive {
-			case 'D':
-				if m.Open('D') {
-					return deep
-				}
-			case 'E':
-				m.CloseThrough('D')
-			}
-			directive = 0
-		case hclsyntax.TokenCQuote:
-			m.CloseThrough('"')
-		case hclsyntax.TokenCHeredoc:
-			m.CloseThrough('<')
-		case hclsyntax.TokenBang, hclsyntax.TokenMinus, hclsyntax.TokenQuestion, hclsyntax.TokenStar:
-			if m.Op() {
-				return deep
-			}
-		case hclsyntax.TokenComma:
-			m.EndExpr()
-		case hclsyntax.TokenNewline:
-			if k := m.Innermost(); k == 0 || k == '{' {
-				m.EndExpr()
-			}
-		}
+	if r := hclbound.Check(src, "nesting", hclbound.Bounds{MaxDepth: MaxNesting}); r != nil {
+		return "hcl parse: " + r.Reason
 	}
 	return ""
-}
-
-// hclForFollows reports whether the next token of rest that the parser sees (it
-// skips newlines and comments there) is the `for` that makes the brace before it
-// a for-expression, whose newlines mean nothing.
-func hclForFollows(rest []hclsyntax.Token) bool {
-	for _, t := range rest {
-		switch t.Type {
-		case hclsyntax.TokenNewline, hclsyntax.TokenComment:
-			continue
-		case hclsyntax.TokenIdent:
-			return string(t.Bytes) == "for"
-		}
-		return false
-	}
-	return false
 }
 
 // maxRun is the most tokens a parser is handed in a row that none of its loops
