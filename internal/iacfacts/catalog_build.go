@@ -33,6 +33,8 @@ type IaCCatalogWriter struct {
 	tool    string
 	source  string
 	line    string
+	// date is a CloudFormation catalog's build day.
+	date string
 	// replacement is the manifest's replacement value. Empty means absent: a writer fed exports has no replacement
 	// facts, and one that absorbed an installed catalog carries that catalog's claim forward.
 	replacement string
@@ -285,6 +287,12 @@ func (w *IaCCatalogWriter) putSchema(name string, raw json.RawMessage) (string, 
 	if err != nil {
 		return "", fmt.Errorf("iac catalog: schema %s: %w", name, err)
 	}
+	return w.putPruned(name, pruned)
+}
+
+// putPruned checks an already pruned schema against the blob and depth bounds, spills it under its address and
+// returns the address.
+func (w *IaCCatalogWriter) putPruned(name string, pruned []byte) (string, error) {
 	if int64(len(pruned)) > w.lim.BlobBytes {
 		return "", refuse(RefuseBlobBytes, "schema %s is %d bytes pruned, over the %d byte blob bound; the whole export is refused", name, len(pruned), w.lim.BlobBytes)
 	}
@@ -425,6 +433,9 @@ func (w *IaCCatalogWriter) Manifest() (IaCCatalogManifest, error) {
 	if len(w.versions) == 0 {
 		return IaCCatalogManifest{}, errors.New("iac catalog: no export was added")
 	}
+	if w.kind == KindCloudFormation {
+		return w.cfnManifest(), nil
+	}
 	vs := make([]IaCVersion, 0, len(w.versions))
 	for s := range w.versions {
 		v, _ := ParseIaCVersion(s)
@@ -449,6 +460,9 @@ func (w *IaCCatalogWriter) Manifest() (IaCCatalogManifest, error) {
 // CatalogFileName is the name an installed catalog takes: the address and the major line, so two lines of one
 // provider are two files and the file says which.
 func CatalogFileName(m IaCCatalogManifest) string {
+	if m.Kind == KindCloudFormation {
+		return strings.ReplaceAll(m.Source, "/", "_") + "." + m.Line + catalogSuffix
+	}
 	return strings.ReplaceAll(m.Source, "/", "_") + ".v" + m.Line + ".iaccat.zip"
 }
 

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/iacfacts"
 )
@@ -224,4 +226,66 @@ func iacReadFile(t *testing.T, p string) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// iacTestSchemaZip writes a synthetic CloudFormation registry zip: one made-up type. Nothing comes from AWS (IF-P7).
+func iacTestSchemaZip(t *testing.T, path string) {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: "example-widget-thing.json", Method: zip.Deflate, Modified: time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := `{"typeName":"Example::Widget::Thing","description":"prose","properties":{"Name":{"type":"string"},"Arn":{"type":"string"}},` +
+		`"required":["Name"],"createOnlyProperties":["/properties/Name"],"readOnlyProperties":["/properties/Arn"],"additionalProperties":false}`
+	if _, err := w.Write([]byte(schema)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestIaCVerbImportCloudFormationRegion(t *testing.T) {
+	home := helpSandbox(t)
+	zp := filepath.Join(home, "schemas.zip")
+	iacTestSchemaZip(t, zp)
+
+	if rc, _, errs := runIaC("import", zp, "--region", "us-east-1", "--version", "1.0.0"); rc == 0 || !strings.Contains(errs, "--version does not apply") {
+		t.Fatalf("version with region: rc %d %q", rc, errs)
+	}
+	if rc, _, errs := runIaC("import", zp, "--region", "../x"); rc == 0 || !strings.Contains(errs, "region") {
+		t.Fatalf("bad region: rc %d %q", rc, errs)
+	}
+	rc, out, errs := runIaC("import", zp, "--region", "us-east-1")
+	if rc != 0 || errs != "" || !strings.Contains(out, "imported aws_cloudformation.us-east-1.iaccat.zip") || !strings.Contains(out, "date         2026-10-30") || !strings.Contains(out, "replacement  contract") {
+		t.Fatalf("import: rc %d %q %q", rc, out, errs)
+	}
+	catalog := filepath.Join(home, "iac", "aws_cloudformation.us-east-1.iaccat.zip")
+	m, err := iacfacts.ReadIaCCatalogManifest(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := iacfacts.ReadIaCCatalog(catalog, iacfacts.IaCCatalogRequest{Version: m.Versions[0], Kind: iacfacts.SectionResource, Type: "Example::Widget::Thing", Path: []string{"createOnlyProperties"}})
+	if err != nil || string(f.Value) != `["/properties/Name"]` {
+		t.Fatalf("the imported catalog does not answer: %s %v", f.Value, err)
+	}
+
+	rc, out, _ = runIaC("import", "--region", "us-east-1", "--json", zp)
+	var got iacImportCFNJSON
+	if rc != 0 || json.Unmarshal([]byte(out), &got) != nil || !got.Replaced || !got.Unchanged || got.Types != 1 || got.Region != "us-east-1" || len(got.SchemaDigest) != 64 || got.Source != "aws/cloudformation" {
+		t.Fatalf("re-import --json: rc %d %q", rc, out)
+	}
+
+	rc, out, _ = runIaC("list")
+	if rc != 0 || !strings.Contains(out, "aws_cloudformation.us-east-1.iaccat.zip") || !strings.Contains(out, "replacement contract") {
+		t.Fatalf("list: %q", out)
+	}
+	if rc, _, errs = runIaC("import", "--region", "us-east-1"); rc == 0 || !strings.Contains(errs, "usage") {
+		t.Fatalf("no input: rc %d %q", rc, errs)
+	}
 }

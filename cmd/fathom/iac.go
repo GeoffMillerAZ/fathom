@@ -121,6 +121,7 @@ type iacAddJSON struct {
 
 // iacImportUsage is the help text of `fathom iac import`.
 const iacImportUsage = `usage: fathom iac import [--version V] [--licence SPDX] [--tool NAME] [--replace] [--json] <export.json | V=export.json>...
+       fathom iac import --region REGION [--json] <schemas.zip>
 
 An export is the output of ` + "`tofu providers schema -json`" + ` for exactly ONE provider. A multi-provider export is refused.
 Make one in a scratch directory whose configuration requires only that provider:
@@ -131,13 +132,19 @@ made at: it is recorded as given and is not checked against the export.
 
 A catalog of the same provider line that is already installed is merged, never dropped: every release it holds stays,
 the exports you name are added, and the result lists what was added, kept, unchanged and replaced. A release you
-name that the installed catalog holds with different content is refused unless you pass --replace.`
+name that the installed catalog holds with different content is refused unless you pass --replace.
+
+CloudFormation: ` + "`fathom iac import --region REGION <schemas.zip>`" + ` reads the registry schema zip you fetched yourself into the catalog
+for that region (source aws/cloudformation). Nothing is downloaded. A region holds one snapshot, so a new zip replaces the
+region's catalog and the result says whether the content changed. The catalog states its build day, and an answer states
+it too, because a template names no version. --version does not apply.`
 
 func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("iac import", stderr)
 	version := fs.String("version", "", "the provider version of a single export file (or write each input as VERSION=export.json)")
 	licence := fs.String("licence", "", "SPDX licence identifier to record in the manifest")
 	tool := fs.String("tool", "", "the tool and version that produced the exports, recorded in the manifest")
+	region := fs.String("region", "", "import a CloudFormation registry schema zip (one input) as the catalog of this region, for example us-east-1")
 	replace := fs.Bool("replace", false, "replace a release the installed catalog holds with different content (default: refuse)")
 	jsonOut := fs.Bool("json", false, "emit the installed catalog as JSON")
 	fs.Usage = func() {
@@ -159,6 +166,9 @@ func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 	if len(inputs) == 0 {
 		fmt.Fprintln(stderr, iacImportUsage)
 		return 1
+	}
+	if *region != "" {
+		return cmdIaCImportCFN(*region, *version, inputs, iacfacts.IaCWriterOptions{Licence: *licence, Tool: *tool}, *jsonOut, stdout, stderr)
 	}
 	var in []iacfacts.IaCImportInput
 	for _, a := range inputs {
@@ -200,6 +210,64 @@ func cmdIaCImport(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	fmt.Fprintln(stdout, "  facts: attributes, required, sensitive, deprecated and upgrade impact; no replacement facts from an import")
+	return 0
+}
+
+// iacImportCFNJSON is `iac import --region --json`.
+type iacImportCFNJSON struct {
+	iacCatalogJSON
+	Region       string `json:"region"`
+	SchemaDigest string `json:"schema_digest"`
+	Date         string `json:"date,omitempty"`
+	Types        int    `json:"types"`
+	Replaced     bool   `json:"replaced"`
+	Unchanged    bool   `json:"unchanged,omitempty"`
+	Previous     string `json:"previous,omitempty"`
+}
+
+// cmdIaCImportCFN is `fathom iac import --region R <schemas.zip>`: a registry schema zip the operator fetched becomes
+// the region's CloudFormation catalog (IF-C1).
+func cmdIaCImportCFN(region, version string, inputs []string, opts iacfacts.IaCWriterOptions, jsonOut bool, stdout, stderr io.Writer) int {
+	if version != "" {
+		fmt.Fprintln(stderr, "error: --version does not apply to a CloudFormation schema zip: the catalog is keyed by region and schema digest")
+		return 1
+	}
+	if len(inputs) != 1 {
+		fmt.Fprintln(stderr, "usage: fathom iac import --region REGION <schemas.zip>   (one registry schema zip you fetched yourself)")
+		return 1
+	}
+	res, err := iacfacts.ImportCloudFormationSchema(iacCatalogDir(), inputs[0], region, opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	if jsonOut {
+		return writeIaCJSON(stdout, stderr, iacImportCFNJSON{
+			iacCatalogJSON: iacJSON(res.Info), Region: region, SchemaDigest: res.Stats.Digest, Date: res.Stats.Date,
+			Types: res.Stats.Types, Replaced: res.Replaced, Unchanged: res.Unchanged, Previous: res.Previous,
+		})
+	}
+	m := res.Info.Manifest
+	fmt.Fprintf(stdout, "imported %s\n", res.Info.Name)
+	fmt.Fprintf(stdout, "  source       %s\n", m.Source)
+	fmt.Fprintf(stdout, "  region       %s\n", region)
+	fmt.Fprintf(stdout, "  schema       %s (%d types)\n", res.Stats.Digest, res.Stats.Types)
+	if res.Stats.Date != "" {
+		fmt.Fprintf(stdout, "  date         %s\n", res.Stats.Date)
+	}
+	fmt.Fprintf(stdout, "  replacement  %s\n", m.Replacement)
+	fmt.Fprintf(stdout, "  sha256       %s\n", res.Info.SHA256)
+	fmt.Fprintf(stdout, "  path         %s\n", res.Info.Path)
+	switch {
+	case res.Unchanged:
+		fmt.Fprintln(stdout, "  replaced     the catalog already installed for this region, with the same content")
+	case res.Replaced:
+		fmt.Fprintf(stdout, "  replaced     the catalog already installed for this region (schema %s)\n", res.Previous)
+	}
+	if res.Stats.Skipped > 0 || res.Stats.Other > 0 {
+		fmt.Fprintf(stdout, "  skipped      %d JSON files without a typeName, %d files that are not JSON\n", res.Stats.Skipped, res.Stats.Other)
+	}
+	fmt.Fprintln(stdout, "  facts: required, create-only, read-only, write-only and deprecated properties, each from the schema field that states it")
 	return 0
 }
 
