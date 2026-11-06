@@ -117,3 +117,47 @@ func TestReadPulumiYAMLNotAProgram(t *testing.T) {
 		t.Fatal("syntax error not counted")
 	}
 }
+
+// fn::secret keeps the class of its argument whatever the argument's shape, and never its value. A list or mapping
+// literal inside fn::secret reads literal, as the same literal does unwrapped, so a check for a hardcoded secret
+// sees it.
+func TestReadPulumiSecretKeepsTheClassOfAStructure(t *testing.T) {
+	const src = `name: demo
+runtime: yaml
+variables:
+  vl:
+    fn::secret: [a, b]
+  vm:
+    fn::rawSecret: {k: v}
+resources:
+  r:
+    type: aws:s3/bucket:Bucket
+    properties:
+      l1: [a, b]
+      l2: {fn::secret: [a, b]}
+      o2: {fn::secret: {k: v}}
+      s: {fn::secret: hunter2}
+      viaList: ${vl}
+      viaMap: ${vm}
+      e:
+        fn::secret:
+          fn::join: ["-", [a, b]]
+`
+	set, err := ReadPulumiYAMLFile("Pulumi.yaml", []byte(src), WithValues())
+	if err != nil || len(set.Resources) != 1 {
+		t.Fatalf("%v %+v", err, set)
+	}
+	got := map[string]Attr{}
+	for _, a := range set.Resources[0].Attrs {
+		got[a.Path] = a
+	}
+	for path, want := range map[string]Class{"l2": ClassLiteral, "o2": ClassLiteral, "s": ClassLiteral, "viaList": ClassLiteral, "viaMap": ClassLiteral, "e": ClassExpression} {
+		a, ok := got[path]
+		if !ok || a.Class != want {
+			t.Errorf("%s: %+v, want class %s", path, a, want)
+		}
+		if a.Value != nil {
+			t.Errorf("%s: a secret's value reached the read: %#v", path, a.Value)
+		}
+	}
+}

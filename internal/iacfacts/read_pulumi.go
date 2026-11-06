@@ -208,6 +208,12 @@ func (p *pulumiReader) classifyNode(n *node, depth int) (readRes, bool) {
 				}
 				return readRes{class: ClassLiteral}, true
 			}
+			if arg.kind == nodeSeq || arg.kind == nodeMap {
+				// A list or mapping keeps the class its parts fold to, as the same literal unwrapped does.
+				r := p.structural(arg, depth+1)
+				r.hasV, r.val = false, nil
+				return r, true
+			}
 		}
 		return readRes{class: ClassExpression, refs: p.collectRefs(arg, depth+1)}, true
 	}
