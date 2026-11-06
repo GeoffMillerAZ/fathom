@@ -8,7 +8,7 @@ The unknown rate of resource reads is 10.0% on Terraform (9 of 90 pairs) and 6.1
 - The rules, subjects and tags were chosen by a model, by text counts on the source, from a candidate list one model could name. The pool is not a sample of public infrastructure code. Every subject is a public repository at a pinned commit.
 - The unit is (rule, matching resource). Terraform data sources and module calls never match. A (rule, subject) with no matching resource is n/a: 156 of 200 for Terraform, 147 of 200 for CloudFormation. Three Terraform rules (R06, R12, R17) and four CloudFormation rules (R11, R13, R16, R17) had no matching resource anywhere, so the rate rests on 17 and 16 rules.
 - Reads use `pkg/lang/iac` with no options: `ReadModule` for a Terraform directory, `ReadFile` for a template. No read failed, and every subject read with 0 syntax errors and 0 dropped entries.
-- The scorer is `calibration/iac/unknownrate` (`go run ./calibration/iac/unknownrate -dest DIR -mode md|json|audit`, subjects from `fetch.sh DIR`). Toolchain go1.27.3, darwin/arm64.
+- The scorer is `calibration/iac/unknownrate` (`go run ./calibration/iac/unknownrate -dest DIR -rules calibration/iac/unknownrate/rules.json -subjects calibration/iac/unknownrate/subjects.tsv -mode md|json|audit`, from the repository root, subjects from `fetch.sh DIR`). Toolchain go1.27.3, darwin/arm64.
 
 ## Result
 
@@ -148,8 +148,8 @@ Judgement calls an auditor could read the other way, all marked agree:
 
 ```
 calibration/iac/unknownrate/fetch.sh DIR
-go run ./calibration/iac/unknownrate -dest DIR -mode md      # the tables above
-go run ./calibration/iac/unknownrate -dest DIR -mode audit   # the 50 pairs with source
+go run ./calibration/iac/unknownrate -dest DIR -rules calibration/iac/unknownrate/rules.json -subjects calibration/iac/unknownrate/subjects.tsv -mode md      # the tables above
+go run ./calibration/iac/unknownrate -dest DIR -rules calibration/iac/unknownrate/rules.json -subjects calibration/iac/unknownrate/subjects.tsv -mode audit   # the 50 pairs with source
 ```
 
 Pins are in `calibration/iac/unknownrate/subjects.tsv`, rules in `rules.json`, definitions in `PREREGISTRATION.md`. Nothing derived from provider or CloudFormation registry schemas is used: the rules name types and paths, and the reader's own output is the only reading scored.
