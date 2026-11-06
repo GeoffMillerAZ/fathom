@@ -168,6 +168,18 @@ func TestImportCatalogFromACloudFormationZip(t *testing.T) {
 	if key := attrByPath(t, ct, "Tags[*].Key"); key.Replacement == nil || key.Replacement.Class != "replace" {
 		t.Fatalf("Tags[*].Key %+v", key)
 	}
+	// A read-only property cannot be set, so it is not optional. Under the Terraform convention optional plus
+	// computed means a user may set it.
+	if arn.Optional || arn.Required || !arn.Computed {
+		t.Fatalf("a read-only property claims optional or required: %+v", arn)
+	}
+	if name.Optional || !size.Optional {
+		t.Fatalf("top-level optional: Name %+v Size %+v", name, size)
+	}
+	// The pruned schema keeps no nested required list, so a nested entry states neither required nor optional.
+	if key := attrByPath(t, ct, "Tags[*].Key"); key.Required || key.Optional {
+		t.Fatalf("a nested entry claims required or optional the schema does not support: %+v", key)
+	}
 	if ct.ReplacementFacts != "contract" || len(ct.Digest) != 64 {
 		t.Fatalf("contract %+v", ct)
 	}

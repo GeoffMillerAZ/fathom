@@ -76,7 +76,7 @@ func cfnContractAttrs(blob []byte) ([]ContractAttr, error) {
 	}
 	out := []ContractAttr{}
 	for name, p := range s.Properties {
-		ent := ContractAttr{Path: name, Required: required[name], Optional: !required[name], Computed: readOnly[name], WriteOnly: writeOnly[name],
+		ent := ContractAttr{Path: name, Required: required[name], Optional: !required[name] && !readOnly[name], Computed: readOnly[name], WriteOnly: writeOnly[name],
 			Deprecated: deprecated[name], Replacement: repl[name], JSONPath: "properties." + name}
 		var str string
 		if json.Unmarshal(p.Type, &str) == nil {
@@ -90,9 +90,10 @@ func cfnContractAttrs(blob []byte) ([]ContractAttr, error) {
 		out = append(out, ent)
 		delete(repl, name)
 	}
-	// What is left names a nested property of the schema.
+	// What is left names a nested property of the schema. The pruned schema keeps no nested required list, so the
+	// entry states neither required nor optional.
 	for path, r := range repl {
-		out = append(out, ContractAttr{Path: path, Optional: true, Replacement: r, JSONPath: field[path]})
+		out = append(out, ContractAttr{Path: path, Replacement: r, JSONPath: field[path]})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
