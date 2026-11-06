@@ -496,3 +496,119 @@ resource "widget_thing" "a" {
 		t.Errorf("a deprecated attribute written as blocks is deprecated: %+v", c.Findings)
 	}
 }
+
+// F2-depth: every segment of a block-form path is judged against the type tree, not only the first member. The
+// types are shaped like the aws ones tofu validate rejects at depth: a member the object does not have, a list of
+// strings written as a block, and a map written as a block.
+func TestCheckAttributeUseBlockFormDepth(t *testing.T) {
+	str := "string"
+	jar := []any{"object", map[string]any{
+		"jar":        str,
+		"args":       []any{"list", str},
+		"properties": []any{"map", str},
+		"inner":      []any{"list", []any{"object", map[string]any{"deep": str}}},
+	}, []any{"args", "properties"}}
+	step := []any{"object", map[string]any{
+		"name":            str,
+		"hadoop_jar_step": []any{"list", jar},
+	}}
+	ing := []any{"object", map[string]any{"cidr_blocks": []any{"list", str}, "from_port": "number"}}
+	creds := []any{"object", map[string]any{"user": str}}
+	res := map[string]any{"version": 1, "block": map[string]any{
+		"attributes": map[string]any{
+			"step":    fxAttr(map[string]any{"type": []any{"set", step}}),
+			"ingress": fxAttr(map[string]any{"type": []any{"set", ing}}),
+			"creds":   fxAttr(map[string]any{"type": []any{"set", creds}, "sensitive": true, "write_only": true}),
+		},
+	}}
+	cats, list := chkCatalogs(t, map[string]any{"widget_thing": res})
+	repo := fstest.MapFS{"main.tf": file(chkProviders + `
+resource "widget_thing" "ok" {
+  step {
+    name = "a"
+    hadoop_jar_step {
+      jar = "j"
+      inner {
+        deep = "d"
+      }
+    }
+  }
+  ingress {
+    from_port = 1
+  }
+  creds {
+    user = "u"
+  }
+}
+resource "widget_thing" "bad" {
+  step {
+    hadoop_jar_step {
+      bogus_nested = 1
+    }
+  }
+  step {
+    hadoop_jar_step {
+      properties {
+        a = "b"
+      }
+    }
+  }
+  step {
+    hadoop_jar_step {
+      inner {
+        nope = 1
+      }
+    }
+  }
+  ingress {
+    cidr_blocks {
+      x = 1
+    }
+  }
+}
+`)}
+	got := chkModule(t, repo, cats, list, IaCModuleQuery{})
+	byBlock := map[string]IaCBlockCheck{}
+	for _, b := range got.Blocks {
+		byBlock[b.Block] = b
+	}
+	ok := byBlock["widget_thing.ok"].Check
+	if len(ok.Findings) != 0 {
+		t.Errorf("valid nested block form is no finding: %+v", ok.Findings)
+	}
+	written := map[string]IaCWrittenAttr{}
+	for _, w := range ok.Written {
+		written[w.Path] = w
+	}
+	for _, p := range []string{"step[*].name", "step[*].hadoop_jar_step[*].jar", "step[*].hadoop_jar_step[*].inner[*].deep", "ingress[*].from_port"} {
+		if w, found := written[p]; !found || !w.Known || w.Fact == nil {
+			t.Errorf("%s: a member the type names reads known: %+v", p, w)
+		}
+	}
+	if w := written["creds[*].user"]; !w.Known || strings.Join(w.Flags, ",") != "sensitive,write_only" {
+		t.Errorf("a member of a sensitive write-only value carries both flags: %+v", w)
+	}
+	bad := byBlock["widget_thing.bad"].Check
+	badWritten := map[string]IaCWrittenAttr{}
+	for _, w := range bad.Written {
+		badWritten[w.Path] = w
+	}
+	for _, p := range []string{
+		"step[*].hadoop_jar_step[*].bogus_nested",
+		"step[*].hadoop_jar_step[*].properties[*].a",
+		"step[*].hadoop_jar_step[*].inner[*].nope",
+		"ingress[*].cidr_blocks[*].x",
+	} {
+		if w := badWritten[p]; w.Known || w.Fact != nil {
+			t.Errorf("%s: tofu rejects it, so it must not read known: %+v", p, w)
+		}
+		if !hasFinding(bad, FindingUnknownAttribute, p) {
+			t.Errorf("%s: no unknown-attribute finding in %+v", p, bad.Findings)
+		}
+	}
+	for _, f := range findingsOf(bad, FindingUnknownAttribute) {
+		if !strings.Contains(f.Fact.Path, "attributes.") || !strings.HasSuffix(f.Fact.Path, ".type") {
+			t.Errorf("%s: the finding cites the type path, got %q", f.Path, f.Fact.Path)
+		}
+	}
+}

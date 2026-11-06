@@ -224,25 +224,13 @@ func (ck *attrChecker) checkResource(r *Resource, c *IaCContract) {
 								Binding: status, Message: fmt.Sprintf("%q is deprecated in %s %s", pathUpTo(a.Path, i), c.Type, c.Fact.Version), Fact: ref})
 						}
 						segs := strings.Split(a.Path, ".")
-						if last || at.Members == nil {
+						if last || at.Type == nil || at.Type.Elem.Members == nil {
 							w.Known = true
 							w.Flags = at.Names()
 							w.Fact = &ref
 							break
 						}
-						member := strings.TrimSuffix(segs[i+1], "[*]")
-						typeRef := c.ref(append(blockJSONPath(names), "attributes", name, "type")...)
-						opt, ok := at.Members[member]
-						if !ok {
-							ck.add(IaCFinding{Kind: FindingUnknownAttribute, Block: ck.block, Path: a.Path, Via: ViaAttribute, File: a.Span.File, Line: a.Span.StartLine,
-								Binding: status, Message: fmt.Sprintf("%q is not a member of %q in %s %s: its type has no such member", a.Path, pathUpTo(a.Path, i), c.Type, c.Fact.Version), Fact: typeRef})
-							break
-						}
-						w.Known = true
-						if opt {
-							w.Flags = []string{"optional"}
-						}
-						w.Fact = &typeRef
+						ck.judgeBlockForm(&w, a, c, at, segs, i, c.ref(append(blockJSONPath(names), "attributes", name, "type")...))
 						break
 					}
 					ck.unknown(r, a, c, names, name, blk.Attrs[name] != nil)
@@ -289,6 +277,53 @@ func (ck *attrChecker) checkResource(r *Resource, c *IaCContract) {
 	}
 	if len(c.Block.Blocks) > 0 {
 		ck.disclose("required nested blocks are not checked: a block written empty leaves no trace in the read")
+	}
+}
+
+// judgeBlockForm walks the segments of a path written under a block-form attribute (a list or set of objects
+// written as blocks) through the attribute's type, one segment at a time, as tofu does. at is the attribute and i
+// the index of its segment in the path. A member the object does not have is an unknown attribute, and a member
+// that is not itself a list or set of objects, written as a block, is in the wrong form: both cite the type and
+// leave the row unknown. A member of a sensitive or write-only value is sensitive or write-only. A segment whose
+// type the contract does not state ends the walk, known and unjudged below it.
+func (ck *attrChecker) judgeBlockForm(w *IaCWrittenAttr, a Attr, c *IaCContract, at *IaCContractAttr, segs []string, i int, typeRef IaCFactRef) {
+	finding := func(msg string) {
+		ck.add(IaCFinding{Kind: FindingUnknownAttribute, Block: ck.block, Path: a.Path, Via: ViaAttribute, File: a.Span.File, Line: a.Span.StartLine,
+			Binding: ck.in.Binding.Status, Message: msg, Fact: typeRef})
+	}
+	known := func(opt bool) {
+		w.Known = true
+		w.Flags = IaCAttrFlags{Optional: opt, Sensitive: at.Sensitive, WriteOnly: at.WriteOnly}.Names()
+		w.Fact = &typeRef
+	}
+	obj := at.Type.Elem
+	for j := i + 1; j < len(segs); j++ {
+		name := strings.TrimSuffix(segs[j], "[*]")
+		isBlock := strings.HasSuffix(segs[j], "[*]")
+		parent := pathUpTo(a.Path, j-1)
+		m, ok := obj.Members[name]
+		if !ok {
+			finding(fmt.Sprintf("%q is not a member of %q in %s %s: its type has no such member", a.Path, parent, c.Type, c.Fact.Version))
+			return
+		}
+		last := j == len(segs)-1
+		t := m.Type
+		switch {
+		case isBlock && t != nil && t.Kind != "dynamic" && !t.BlockCollection():
+			finding(fmt.Sprintf("%q is written in the wrong form: %q is %s in the type of %q in %s %s, not a list or set of objects, so it cannot be written as a block",
+				a.Path, pathUpTo(a.Path, j), t.Kind, pathUpTo(a.Path, i), c.Type, c.Fact.Version))
+			return
+		case last, t == nil, t.Kind == "dynamic":
+			known(m.Optional)
+			return
+		case isBlock && t.BlockCollection() && t.Elem.Members != nil:
+			obj = t.Elem
+		case !isBlock && t.Kind == "object" && t.Members != nil:
+			obj = t
+		default:
+			known(m.Optional) // the type states no members below here, so nothing below is judged
+			return
+		}
 	}
 }
 

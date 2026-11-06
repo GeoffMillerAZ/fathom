@@ -49,58 +49,92 @@ type IaCContractAttr struct {
 	// BlockForm is true for an attribute whose type is a list or set of objects. Terraform and OpenTofu accept
 	// block syntax for such an attribute (attributes as blocks), so a block of that name is not a wrong form.
 	BlockForm bool
-	// Members names the members of a block-form attribute's object type, true for one the type marks optional.
-	// It is nil when the type states none, and then the members are not checked.
-	Members map[string]bool
+	// Type is the attribute's decoded cty type, nil when the contract states none or it did not parse. Each object
+	// member keeps its own type and optional marker, so a written path is judged segment by segment.
+	Type *IaCType
 }
 
-// objectCollection reports whether a schema type is a list or set of objects: ["list",["object",{...}]].
-func objectCollection(t json.RawMessage) bool {
-	var outer []json.RawMessage
-	if json.Unmarshal(t, &outer) != nil || len(outer) != 2 {
-		return false
+// IaCType is a decoded cty type: a primitive (string, number, bool, dynamic), a collection (list, set, map, tuple)
+// or an object.
+type IaCType struct {
+	Kind string
+	// Elem is the element type of a list, set or map.
+	Elem *IaCType
+	// Members are the members of an object. It is nil when the type states none, and then the members are not
+	// checked.
+	Members map[string]IaCTypeMember
+}
+
+// IaCTypeMember is one member of an object type.
+type IaCTypeMember struct {
+	Type     *IaCType
+	Optional bool
+}
+
+// BlockCollection reports whether the type is a list or set of objects, which Terraform and OpenTofu accept in
+// block syntax.
+func (t *IaCType) BlockCollection() bool {
+	return t != nil && (t.Kind == "list" || t.Kind == "set") && t.Elem != nil && t.Elem.Kind == "object"
+}
+
+// maxIaCTypeDepth bounds the nesting a type is decoded to. A deeper type reads as dynamic, which no path is judged
+// against.
+const maxIaCTypeDepth = 64
+
+// parseIaCType decodes a cty type from its JSON form: "string", ["list","string"],
+// ["object",{"a":"number"},["a"]]. It returns nil for a type that does not parse.
+func parseIaCType(raw json.RawMessage) *IaCType { return parseIaCTypeAt(raw, 0) }
+
+func parseIaCTypeAt(raw json.RawMessage, depth int) *IaCType {
+	if len(raw) == 0 {
+		return nil
+	}
+	if depth > maxIaCTypeDepth {
+		return &IaCType{Kind: "dynamic"}
+	}
+	var prim string
+	if json.Unmarshal(raw, &prim) == nil {
+		return &IaCType{Kind: prim}
+	}
+	var parts []json.RawMessage
+	if json.Unmarshal(raw, &parts) != nil || len(parts) == 0 {
+		return nil
 	}
 	var kind string
-	if json.Unmarshal(outer[0], &kind) != nil || (kind != "list" && kind != "set") {
-		return false
-	}
-	var elem []json.RawMessage
-	if json.Unmarshal(outer[1], &elem) != nil || len(elem) == 0 {
-		return false
-	}
-	var ek string
-	return json.Unmarshal(elem[0], &ek) == nil && ek == "object"
-}
-
-// objectMembers reads the member names of the object in a list or set of objects, and which of them the type marks
-// optional: ["list",["object",{"a":"number"},["a"]]]. It returns nil when the type is no such collection.
-func objectMembers(t json.RawMessage) map[string]bool {
-	if !objectCollection(t) {
+	if json.Unmarshal(parts[0], &kind) != nil {
 		return nil
 	}
-	var outer, elem []json.RawMessage
-	if json.Unmarshal(t, &outer) != nil || json.Unmarshal(outer[1], &elem) != nil || len(elem) < 2 {
-		return nil
-	}
-	var names map[string]json.RawMessage
-	if json.Unmarshal(elem[1], &names) != nil {
-		return nil
-	}
-	out := make(map[string]bool, len(names))
-	for n := range names {
-		out[n] = false
-	}
-	if len(elem) > 2 {
-		var opt []string
-		if json.Unmarshal(elem[2], &opt) == nil {
-			for _, n := range opt {
-				if _, ok := out[n]; ok {
-					out[n] = true
+	t := &IaCType{Kind: kind}
+	switch kind {
+	case "list", "set", "map":
+		if len(parts) > 1 {
+			t.Elem = parseIaCTypeAt(parts[1], depth+1)
+		}
+	case "object":
+		if len(parts) < 2 {
+			return t
+		}
+		var names map[string]json.RawMessage
+		if json.Unmarshal(parts[1], &names) != nil {
+			return t
+		}
+		t.Members = make(map[string]IaCTypeMember, len(names))
+		for n, m := range names {
+			t.Members[n] = IaCTypeMember{Type: parseIaCTypeAt(m, depth+1)}
+		}
+		if len(parts) > 2 {
+			var opt []string
+			if json.Unmarshal(parts[2], &opt) == nil {
+				for _, n := range opt {
+					if m, ok := t.Members[n]; ok {
+						m.Optional = true
+						t.Members[n] = m
+					}
 				}
 			}
 		}
 	}
-	return out
+	return t
 }
 
 // IaCContractBlock is a resource's schema block, or a nested block's.
@@ -171,7 +205,8 @@ func (w blockWire) decode() *IaCContractBlock {
 }
 
 func (a attrWire) decode() *IaCContractAttr {
-	out := &IaCContractAttr{IaCAttrFlags: IaCAttrFlags{Required: a.Required, Optional: a.Optional, Computed: a.Computed, Sensitive: a.Sensitive, Deprecated: a.Deprecated, WriteOnly: a.WriteOnly}, BlockForm: objectCollection(a.Type), Members: objectMembers(a.Type)}
+	ty := parseIaCType(a.Type)
+	out := &IaCContractAttr{IaCAttrFlags: IaCAttrFlags{Required: a.Required, Optional: a.Optional, Computed: a.Computed, Sensitive: a.Sensitive, Deprecated: a.Deprecated, WriteOnly: a.WriteOnly}, BlockForm: ty.BlockCollection(), Type: ty}
 	if a.NestedType != nil {
 		out.Nested = make(map[string]*IaCContractAttr, len(a.NestedType.Attributes))
 		for n, x := range a.NestedType.Attributes {
