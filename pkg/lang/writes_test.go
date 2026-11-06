@@ -148,7 +148,7 @@ func TestLangWritesOnlyToCallerPaths(t *testing.T) {
 	}
 }
 
-// LL-34, IF-C5: the resource-read door writes nothing either. The catalog builder and directory manager in
+// LL-34, IF-C5: the resource-read door writes nothing either. The catalog builder, directory manager and CloudFormation importer in
 // internal/iacfacts are linked with the package though the door calls neither, so they are named here, each writing to a
 // directory or path its caller gave.
 func TestIacWritesOnlyToCallerPaths(t *testing.T) {
@@ -156,6 +156,7 @@ func TestIacWritesOnlyToCallerPaths(t *testing.T) {
 	allowed := map[string]bool{
 		"internal/iacfacts/catalog_build.go": true,
 		"internal/iacfacts/catalog_dir.go":   true,
+		"internal/iacfacts/catalog_cfn.go":   true,
 	}
 	for _, problem := range writeFindings(t, files, allowed) {
 		t.Error(problem)
