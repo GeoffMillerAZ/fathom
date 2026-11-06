@@ -69,7 +69,8 @@ const CFNSource = "aws/cloudformation"
 const ReplacementContract = "contract"
 
 // ReplacementAbsent marks a catalog that carries no replacement facts. The Go source scan that adds them is
-// IF-13, so every catalog built before it says so explicitly rather than by omission.
+// IF-13, so a catalog built from a provider export says so explicitly rather than by omission. A CloudFormation
+// catalog says ReplacementContract.
 const ReplacementAbsent = "absent"
 
 // IaCCatalogManifest is manifest.json. The file name and the manifest both say the provider's major line.

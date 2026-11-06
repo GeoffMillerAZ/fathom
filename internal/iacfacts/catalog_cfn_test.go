@@ -220,3 +220,36 @@ func TestCloudFormationImportRefusals(t *testing.T) {
 		t.Fatalf("a URL was not refused as non-local: %v", err)
 	}
 }
+
+// A pointer to a property that the object it resolves to does not have is unresolved, so its entry states neither
+// required nor optional. The leaf is held to the same test as every segment before it. Nothing here comes from AWS
+// (IF-P7).
+func TestCFNNestedRequiredLeafMustExist(t *testing.T) {
+	str := map[string]any{"type": "string"}
+	schema := map[string]any{
+		"properties": map[string]any{
+			"Config": map[string]any{"$ref": "#/definitions/Config"},
+			"Rules":  map[string]any{"type": "array", "items": map[string]any{"$ref": "#/definitions/Rule"}},
+		},
+		"definitions": map[string]any{
+			"Config": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"Type": str, "Mode": str}, "required": []any{"Type"}},
+			"Rule":   map[string]any{"type": "object", "properties": map[string]any{"Key": str}, "required": []any{"Key"}},
+		},
+		"createOnlyProperties": []any{
+			"/properties/Config/Type", "/properties/Config/Mode", "/properties/Config/Nope",
+			"/properties/Rules/*/Key", "/properties/Rules/*/Nope",
+		},
+	}
+	got := cfnNestedRequired(schema)
+	want := map[string]bool{"Config.Type": true, "Config.Mode": false, "Rules[*].Key": true}
+	for p, req := range want {
+		if r, ok := got[p]; !ok || r != req {
+			t.Errorf("%s: resolved %v required %v, want resolved with required %v", p, ok, r, req)
+		}
+	}
+	for _, p := range []string{"Config.Nope", "Rules[*].Nope"} {
+		if _, ok := got[p]; ok {
+			t.Errorf("%s: a property its object does not have reads resolved: %v", p, got)
+		}
+	}
+}

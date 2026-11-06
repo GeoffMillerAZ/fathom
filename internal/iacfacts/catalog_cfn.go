@@ -341,7 +341,8 @@ const maxCFNRefDepth = 16
 //
 // A pointer is walked from the root: a name steps into the property of the object so far, "*" into the items of an
 // array, and a "#/definitions/..." $ref is followed at every step. The leaf is resolved when the object holding it
-// declares properties.
+// declares properties and declares the leaf among them. A segment, the leaf included, that its object does not have
+// leaves the pointer unresolved.
 func cfnNestedRequired(s map[string]any) map[string]bool {
 	out := map[string]bool{}
 	for _, l := range []string{"createOnlyProperties", "conditionalCreateOnlyProperties"} {
@@ -386,6 +387,9 @@ func cfnNestedLeaf(root map[string]any, ptr string) (required, resolved bool) {
 			return false, false
 		}
 		if last {
+			if _, has := props[seg]; !has {
+				return false, false
+			}
 			for _, r := range cfnStrings(obj["required"]) {
 				if r == seg {
 					return true, true
