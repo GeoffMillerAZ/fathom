@@ -1,0 +1,144 @@
+{
+  "tool": "cloudformation",
+  "reading": "LL-M4",
+  "selection_rule": "Preregistered before any reader or oracle ran on these subjects. Public repositories, each at the pinned commit. A template is a file ending .yaml, .yml or .json, at most 512 KiB, whose text holds the word AWSTemplateFormatVersion and a top-level Resources key, outside any directory named in skip_dirs. Candidates are ordered by sha256(repo + '/' + path) and the first per_repo_cap are kept. The rule reads file text and paths only. The oracle may later reject a selected template (cfn-lint cannot decode it) and the reading counts each rejection by file.",
+  "skip_dirs": [
+    ".git",
+    ".github",
+    "node_modules"
+  ],
+  "per_repo_cap": 15,
+  "oracle": "cfn-lint 1.52.1 cfnlint.decode.decode, run by calibration/oracles/lang-library/cfn_reads_oracle.py",
+  "repos": [
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "sha": "a0f43bc6d20813052892546f445037cf84c75b54"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "sha": "69e2756413cf2fa0b7743bd118be4a4264755ff8"
+    }
+  ],
+  "selected": [
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "ECS/FargateLaunchType/clusters/private-vpc.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/OperatingSystems/ubuntu20.04_cfn-hup.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/AmazonCloudWatchAgent/ssm/redhat.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/CodeBuildAndCodePipeline/cloudformation-codebuild-template.json"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/VPCPeering/templates/VPCPeering-Accepter.main.cfn.json"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "ElasticLoadBalancing/ELBWithLockedDownAutoScaledInstances.json"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/DirectoryServiceSettings/templates/DIRECTORY_SETTINGS.cfn.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "CloudFormation/CustomResources/getfromjson/src/template.yml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/AmazonCloudWatchAgent/inline/redhat.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "ElasticLoadBalancing/ELBGuidedAutoScalingRollingUpgrade.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/OperatingSystems/Ubuntu22.04_cfn-hup.json"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "Solutions/ADConnector/templates/ADCONNECTOR.cfn.json"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "ElastiCache/Elasticache-snapshot.json"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "ECS/EC2LaunchType/services/public-service.yaml"
+    },
+    {
+      "repo": "aws-cloudformation/aws-cloudformation-templates",
+      "path": "EKS/template.yaml"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/network_connector_globals.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/input/function_policy_with_conditional_managed_policy_name.yaml"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/aws-us-gov/http_api_openapi_with_propagate_tags.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/aws-us-gov/capacity_provider_managed_resource_tags.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/aws-cn/microvm_image_globals.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/aws-us-gov/microvm_image_minimal.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/schema_validation_2.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/input/msk_with_mtls_auth.yaml"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/function_with_self_managed_kafka_oauth.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/api_rest_paths_with_if_condition_openapi_no_value_then_case.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/self_managed_kafka_with_SERVER_ROOT_CA_CERTIFICATE_and_auth_mechanism.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/aws-us-gov/function_with_function_url_config_and_autopublishalias.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/api_rest_paths_with_if_condition_swagger_no_value_else_case.json"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "integration/setup/example-sar-app.yaml"
+    },
+    {
+      "repo": "aws/serverless-application-model",
+      "path": "tests/translator/output/aws-us-gov/capacity_provider_global_with_functions.json"
+    }
+  ]
+}
