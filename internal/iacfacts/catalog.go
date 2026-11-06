@@ -56,7 +56,17 @@ func DefaultIaCLimits() IaCLimits {
 const (
 	// KindTerraformProvider is a Terraform or OpenTofu provider catalog: one provider, one major line.
 	KindTerraformProvider = "terraform-provider"
+	// KindCloudFormation is one region's CloudFormation registry schemas (ADR-091 amendment). The catalog's Line is the
+	// region and it holds exactly one snapshot, labelled by a digest over the schema zip's entry names and bodies.
+	KindCloudFormation = "cloudformation-registry"
 )
+
+// CFNSource is the source a CloudFormation catalog carries.
+const CFNSource = "aws/cloudformation"
+
+// ReplacementContract marks a catalog whose replacement facts are read from the schema's own createOnlyProperties.
+// It is the contract's statement and not an independent check (docs/design/iac-facts.md section 13).
+const ReplacementContract = "contract"
 
 // ReplacementAbsent marks a catalog that carries no replacement facts. The Go source scan that adds them is
 // IF-13, so every catalog built before it says so explicitly rather than by omission.
@@ -78,6 +88,10 @@ type IaCCatalogManifest struct {
 	Inputs      map[string]string `json:"inputs"`
 	Licence     string            `json:"licence,omitempty"`
 	Replacement string            `json:"replacement"`
+	// Date is the day the schema zip was built, taken from its newest entry time and empty when the zip carries none.
+	// A CloudFormation catalog only: a template names no version, so an answer states this date. The date is not in
+	// the digest, and it is a function of the input zip, so a build stays deterministic.
+	Date string `json:"date,omitempty"`
 }
 
 // Refusal codes. The first three refuse the whole catalog wherever they fire, the rest refuse the whole catalog at

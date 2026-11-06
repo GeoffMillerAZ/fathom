@@ -176,7 +176,19 @@ func checkManifestHead(format int, kind, source, line string, versions int) erro
 	if format != CatalogFormat {
 		return refuse(RefuseFormat, "the catalog is format %d, this build reads format %d", format, CatalogFormat)
 	}
-	if kind != KindTerraformProvider {
+	switch kind {
+	case KindTerraformProvider:
+	case KindCloudFormation:
+		if source != CFNSource {
+			return corruptf("a CloudFormation catalog names the source %q, not %s", source, CFNSource)
+		}
+		if !cfnRegionRE.MatchString(line) {
+			return corruptf("a CloudFormation catalog names the region %q", line)
+		}
+		if versions != 1 {
+			return corruptf("a CloudFormation catalog holds one snapshot, not %d", versions)
+		}
+	default:
 		return refuse(RefuseFormat, "the catalog kind %q is not one this build reads", kind)
 	}
 	if source == "" || line == "" || versions == 0 {
@@ -522,6 +534,9 @@ func wholeCatalog(err error) error {
 
 // checkManifestVersions requires sorted, unique, valid versions that all sit in the manifest's major line.
 func checkManifestVersions(m IaCCatalogManifest) error {
+	if m.Kind == KindCloudFormation {
+		return checkCFNVersion(m)
+	}
 	var prev IaCVersion
 	for i, s := range m.Versions {
 		v, err := ParseIaCVersion(s)
