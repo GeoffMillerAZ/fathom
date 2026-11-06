@@ -49,6 +49,9 @@ type IaCContractAttr struct {
 	// BlockForm is true for an attribute whose type is a list or set of objects. Terraform and OpenTofu accept
 	// block syntax for such an attribute (attributes as blocks), so a block of that name is not a wrong form.
 	BlockForm bool
+	// Members names the members of a block-form attribute's object type, true for one the type marks optional.
+	// It is nil when the type states none, and then the members are not checked.
+	Members map[string]bool
 }
 
 // objectCollection reports whether a schema type is a list or set of objects: ["list",["object",{...}]].
@@ -67,6 +70,37 @@ func objectCollection(t json.RawMessage) bool {
 	}
 	var ek string
 	return json.Unmarshal(elem[0], &ek) == nil && ek == "object"
+}
+
+// objectMembers reads the member names of the object in a list or set of objects, and which of them the type marks
+// optional: ["list",["object",{"a":"number"},["a"]]]. It returns nil when the type is no such collection.
+func objectMembers(t json.RawMessage) map[string]bool {
+	if !objectCollection(t) {
+		return nil
+	}
+	var outer, elem []json.RawMessage
+	if json.Unmarshal(t, &outer) != nil || json.Unmarshal(outer[1], &elem) != nil || len(elem) < 2 {
+		return nil
+	}
+	var names map[string]json.RawMessage
+	if json.Unmarshal(elem[1], &names) != nil {
+		return nil
+	}
+	out := make(map[string]bool, len(names))
+	for n := range names {
+		out[n] = false
+	}
+	if len(elem) > 2 {
+		var opt []string
+		if json.Unmarshal(elem[2], &opt) == nil {
+			for _, n := range opt {
+				if _, ok := out[n]; ok {
+					out[n] = true
+				}
+			}
+		}
+	}
+	return out
 }
 
 // IaCContractBlock is a resource's schema block, or a nested block's.
@@ -137,7 +171,7 @@ func (w blockWire) decode() *IaCContractBlock {
 }
 
 func (a attrWire) decode() *IaCContractAttr {
-	out := &IaCContractAttr{IaCAttrFlags: IaCAttrFlags{Required: a.Required, Optional: a.Optional, Computed: a.Computed, Sensitive: a.Sensitive, Deprecated: a.Deprecated, WriteOnly: a.WriteOnly}, BlockForm: objectCollection(a.Type)}
+	out := &IaCContractAttr{IaCAttrFlags: IaCAttrFlags{Required: a.Required, Optional: a.Optional, Computed: a.Computed, Sensitive: a.Sensitive, Deprecated: a.Deprecated, WriteOnly: a.WriteOnly}, BlockForm: objectCollection(a.Type), Members: objectMembers(a.Type)}
 	if a.NestedType != nil {
 		out.Nested = make(map[string]*IaCContractAttr, len(a.NestedType.Attributes))
 		for n, x := range a.NestedType.Attributes {

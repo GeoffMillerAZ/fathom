@@ -404,3 +404,95 @@ resource "widget_thing" "b" {
 		}
 	}
 }
+
+// IF-8: a required list or set of objects written as blocks, static or dynamic, is written. Block form writes only
+// rule[*].member paths, so the attribute path itself never appears.
+func TestCheckAttributeUseRequiredAttributeAsBlocks(t *testing.T) {
+	obj := []any{"object", map[string]any{"port": "number"}}
+	res := map[string]any{"version": 1, "block": map[string]any{
+		"attributes": map[string]any{
+			"ingress": fxAttr(map[string]any{"type": []any{"set", obj}, "required": true, "optional": false}),
+			"egress":  fxAttr(map[string]any{"type": []any{"list", obj}, "required": true, "optional": false}),
+		},
+	}}
+	cats, list := chkCatalogs(t, map[string]any{"widget_thing": res})
+	repo := fstest.MapFS{"main.tf": file(chkProviders + `
+resource "widget_thing" "a" {
+  ingress {
+    port = 1
+  }
+  dynamic "egress" {
+    for_each = [1]
+    content {
+      port = egress.value
+    }
+  }
+}
+resource "widget_thing" "b" {
+}
+`)}
+	got := chkModule(t, repo, cats, list, IaCModuleQuery{})
+	byBlock := map[string]IaCBlockCheck{}
+	for _, b := range got.Blocks {
+		byBlock[b.Block] = b
+	}
+	if a := byBlock["widget_thing.a"]; len(a.Check.Findings) != 0 {
+		t.Errorf("required attributes written as blocks are set: %+v", a.Check.Findings)
+	}
+	for _, p := range []string{"ingress", "egress"} {
+		if !hasFinding(byBlock["widget_thing.b"].Check, FindingRequiredUnset, p) {
+			t.Errorf("%s: an unwritten required attribute stays a finding: %+v", p, byBlock["widget_thing.b"].Check.Findings)
+		}
+	}
+}
+
+// IF-8: a member of a block-form attribute is judged against the attribute's object type, as tofu does: a member
+// the type names reads known with only the flags the type states, a member it does not name is an unknown
+// attribute citing the type, and a deprecated attribute written as blocks is a deprecated finding.
+func TestCheckAttributeUseBlockFormMembers(t *testing.T) {
+	obj := []any{"object", map[string]any{"port": "number", "proto": "string"}, []any{"proto"}}
+	res := map[string]any{"version": 1, "block": map[string]any{
+		"attributes": map[string]any{
+			"ingress": fxAttr(map[string]any{"type": []any{"set", obj}, "computed": true}),
+			"old":     fxAttr(map[string]any{"type": []any{"list", []any{"object", map[string]any{"x": "number"}}}, "deprecated": true}),
+		},
+	}}
+	cats, list := chkCatalogs(t, map[string]any{"widget_thing": res})
+	repo := fstest.MapFS{"main.tf": file(chkProviders + `
+resource "widget_thing" "a" {
+  ingress {
+    port         = 1
+    proto        = "tcp"
+    not_a_field  = 2
+  }
+  old {
+    x = 1
+  }
+}
+`)}
+	got := chkModule(t, repo, cats, list, IaCModuleQuery{})
+	if len(got.Blocks) != 1 {
+		t.Fatalf("blocks: %+v", got.Blocks)
+	}
+	c := got.Blocks[0].Check
+	written := map[string]IaCWrittenAttr{}
+	for _, w := range c.Written {
+		written[w.Path] = w
+	}
+	if w := written["ingress[*].port"]; !w.Known || len(w.Flags) != 0 || w.Fact == nil || !strings.HasSuffix(w.Fact.Path, "attributes.ingress.type") {
+		t.Errorf("a member the type names reads known with no borrowed flags: %+v", w)
+	}
+	if w := written["ingress[*].proto"]; !w.Known || strings.Join(w.Flags, ",") != "optional" {
+		t.Errorf("an optional object member reads optional: %+v", w)
+	}
+	if w := written["ingress[*].not_a_field"]; w.Known || w.Fact != nil {
+		t.Errorf("a misspelled member reads unknown: %+v", w)
+	}
+	fs := findingsOf(c, FindingUnknownAttribute)
+	if len(fs) != 1 || fs[0].Path != "ingress[*].not_a_field" || !strings.HasSuffix(fs[0].Fact.Path, "attributes.ingress.type") {
+		t.Errorf("unknown-attribute findings: %+v", fs)
+	}
+	if !hasFinding(c, FindingDeprecated, "old[*]") && !hasFinding(c, FindingDeprecated, "old") {
+		t.Errorf("a deprecated attribute written as blocks is deprecated: %+v", c.Findings)
+	}
+}

@@ -216,12 +216,33 @@ func (ck *attrChecker) checkResource(r *Resource, c *IaCContract) {
 				nb := blk.Blocks[name]
 				if nb == nil {
 					if at := blk.Attrs[name]; at != nil && at.BlockForm {
-						// A list or set of objects is also written as blocks: the attribute is known, and its
-						// members are not checked.
-						w.Known = true
-						w.Flags = at.Names()
+						// A list or set of objects is also written as blocks. The attribute is known, and a
+						// member is judged against the object type the attribute states, as tofu does.
 						ref := c.ref(append(blockJSONPath(names), "attributes", name)...)
-						w.Fact = &ref
+						if at.Deprecated {
+							ck.add(IaCFinding{Kind: FindingDeprecated, Block: ck.block, Path: pathUpTo(a.Path, i), Via: ViaAttribute, File: a.Span.File, Line: a.Span.StartLine,
+								Binding: status, Message: fmt.Sprintf("%q is deprecated in %s %s", pathUpTo(a.Path, i), c.Type, c.Fact.Version), Fact: ref})
+						}
+						segs := strings.Split(a.Path, ".")
+						if last || at.Members == nil {
+							w.Known = true
+							w.Flags = at.Names()
+							w.Fact = &ref
+							break
+						}
+						member := strings.TrimSuffix(segs[i+1], "[*]")
+						typeRef := c.ref(append(blockJSONPath(names), "attributes", name, "type")...)
+						opt, ok := at.Members[member]
+						if !ok {
+							ck.add(IaCFinding{Kind: FindingUnknownAttribute, Block: ck.block, Path: a.Path, Via: ViaAttribute, File: a.Span.File, Line: a.Span.StartLine,
+								Binding: status, Message: fmt.Sprintf("%q is not a member of %q in %s %s: its type has no such member", a.Path, pathUpTo(a.Path, i), c.Type, c.Fact.Version), Fact: typeRef})
+							break
+						}
+						w.Known = true
+						if opt {
+							w.Flags = []string{"optional"}
+						}
+						w.Fact = &typeRef
 						break
 					}
 					ck.unknown(r, a, c, names, name, blk.Attrs[name] != nil)
@@ -297,6 +318,18 @@ func (ck *attrChecker) unknown(r *Resource, a Attr, c *IaCContract, names []stri
 		Binding: ck.in.Binding.Status, Message: msg, Fact: c.ref(blockJSONPath(names)...)})
 }
 
+// writtenAsBlocks reports whether a list or set of objects was written as blocks, static or dynamic: block form
+// writes only full[*] and full[*].member paths, never full itself.
+func writtenAsBlocks(written map[string]bool, full string) bool {
+	prefix := full + "[*]"
+	for p := range written {
+		if p == prefix || strings.HasPrefix(p, prefix+".") {
+			return true
+		}
+	}
+	return false
+}
+
 func (ck *attrChecker) checkRequired(r *Resource, c *IaCContract, written map[string]bool, unknownLevels map[string]bool) {
 	// The block levels the file wrote: every prefix that ends in a block segment.
 	levels := map[string]bool{"": true}
@@ -348,7 +381,7 @@ func (ck *attrChecker) checkRequired(r *Resource, c *IaCContract, written map[st
 			if level != "" {
 				full = level + "." + n
 			}
-			if written[full] {
+			if written[full] || writtenAsBlocks(written, full) {
 				continue
 			}
 			ck.add(IaCFinding{Kind: FindingRequiredUnset, Block: ck.block, Path: full, Via: ViaAttribute, File: r.Span.File, Line: line,
