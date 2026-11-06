@@ -215,6 +215,15 @@ func (ck *attrChecker) checkResource(r *Resource, c *IaCContract) {
 			if isBlock {
 				nb := blk.Blocks[name]
 				if nb == nil {
+					if at := blk.Attrs[name]; at != nil && at.BlockForm {
+						// A list or set of objects is also written as blocks: the attribute is known, and its
+						// members are not checked.
+						w.Known = true
+						w.Flags = at.Names()
+						ref := c.ref(append(blockJSONPath(names), "attributes", name)...)
+						w.Fact = &ref
+						break
+					}
 					ck.unknown(r, a, c, names, name, blk.Attrs[name] != nil)
 					break
 				}

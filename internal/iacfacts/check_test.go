@@ -349,3 +349,58 @@ output "d" {
 		t.Errorf("the override and JSON files are named, got %v", set.Skipped)
 	}
 }
+
+// IF-8: a list or set of objects is an attribute that tofu also accepts as blocks, static or dynamic. That is not a
+// wrong form. A scalar or a list of scalars written as a block still is.
+func TestCheckAttributeUseAcceptsAttributesAsBlocks(t *testing.T) {
+	res := map[string]any{"version": 1, "block": map[string]any{
+		"attributes": map[string]any{
+			"ingress": fxAttr(map[string]any{"type": []any{"set", []any{"object", map[string]any{"port": "number"}}}, "computed": true}),
+			"egress":  fxAttr(map[string]any{"type": []any{"list", []any{"object", map[string]any{"port": "number"}}}}),
+			"size":    fxAttr(map[string]any{"type": "number"}),
+			"names":   fxAttr(map[string]any{"type": []any{"list", "string"}}),
+			"tags":    fxAttr(map[string]any{"type": []any{"map", "string"}}),
+		},
+	}}
+	cats, list := chkCatalogs(t, map[string]any{"widget_thing": res})
+	repo := fstest.MapFS{"main.tf": file(chkProviders + `
+resource "widget_thing" "a" {
+  ingress {
+    port = 1
+  }
+  ingress {
+    port = 2
+  }
+  dynamic "egress" {
+    for_each = [1]
+    content {
+      port = egress.value
+    }
+  }
+}
+resource "widget_thing" "b" {
+  size {
+    x = 1
+  }
+  names {
+    x = 1
+  }
+  tags {
+    x = 1
+  }
+}
+`)}
+	got := chkModule(t, repo, cats, list, IaCModuleQuery{})
+	byBlock := map[string]IaCBlockCheck{}
+	for _, b := range got.Blocks {
+		byBlock[b.Block] = b
+	}
+	if a := byBlock["widget_thing.a"]; len(a.Check.Findings) != 0 {
+		t.Errorf("attributes written as blocks are no finding: %+v", a.Check.Findings)
+	}
+	for _, p := range []string{"size[*].x", "names[*].x", "tags[*].x"} {
+		if !hasFinding(byBlock["widget_thing.b"].Check, FindingUnknownAttribute, p) {
+			t.Errorf("%s: no wrong-form finding in %+v", p, byBlock["widget_thing.b"].Check.Findings)
+		}
+	}
+}

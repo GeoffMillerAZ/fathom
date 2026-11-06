@@ -46,6 +46,27 @@ type IaCContractAttr struct {
 	IaCAttrFlags
 	// Nested is set for an attribute whose value is an object with its own attributes.
 	Nested map[string]*IaCContractAttr
+	// BlockForm is true for an attribute whose type is a list or set of objects. Terraform and OpenTofu accept
+	// block syntax for such an attribute (attributes as blocks), so a block of that name is not a wrong form.
+	BlockForm bool
+}
+
+// objectCollection reports whether a schema type is a list or set of objects: ["list",["object",{...}]].
+func objectCollection(t json.RawMessage) bool {
+	var outer []json.RawMessage
+	if json.Unmarshal(t, &outer) != nil || len(outer) != 2 {
+		return false
+	}
+	var kind string
+	if json.Unmarshal(outer[0], &kind) != nil || (kind != "list" && kind != "set") {
+		return false
+	}
+	var elem []json.RawMessage
+	if json.Unmarshal(outer[1], &elem) != nil || len(elem) == 0 {
+		return false
+	}
+	var ek string
+	return json.Unmarshal(elem[0], &ek) == nil && ek == "object"
 }
 
 // IaCContractBlock is a resource's schema block, or a nested block's.
@@ -82,12 +103,13 @@ type blockWire struct {
 }
 
 type attrWire struct {
-	Required   bool `json:"required"`
-	Optional   bool `json:"optional"`
-	Computed   bool `json:"computed"`
-	Sensitive  bool `json:"sensitive"`
-	Deprecated bool `json:"deprecated"`
-	WriteOnly  bool `json:"write_only"`
+	Type       json.RawMessage `json:"type"`
+	Required   bool            `json:"required"`
+	Optional   bool            `json:"optional"`
+	Computed   bool            `json:"computed"`
+	Sensitive  bool            `json:"sensitive"`
+	Deprecated bool            `json:"deprecated"`
+	WriteOnly  bool            `json:"write_only"`
 	NestedType *struct {
 		Attributes map[string]attrWire `json:"attributes"`
 	} `json:"nested_type"`
@@ -115,7 +137,7 @@ func (w blockWire) decode() *IaCContractBlock {
 }
 
 func (a attrWire) decode() *IaCContractAttr {
-	out := &IaCContractAttr{IaCAttrFlags: IaCAttrFlags{Required: a.Required, Optional: a.Optional, Computed: a.Computed, Sensitive: a.Sensitive, Deprecated: a.Deprecated, WriteOnly: a.WriteOnly}}
+	out := &IaCContractAttr{IaCAttrFlags: IaCAttrFlags{Required: a.Required, Optional: a.Optional, Computed: a.Computed, Sensitive: a.Sensitive, Deprecated: a.Deprecated, WriteOnly: a.WriteOnly}, BlockForm: objectCollection(a.Type)}
 	if a.NestedType != nil {
 		out.Nested = make(map[string]*IaCContractAttr, len(a.NestedType.Attributes))
 		for n, x := range a.NestedType.Attributes {
