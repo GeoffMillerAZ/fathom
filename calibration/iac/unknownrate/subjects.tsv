@@ -1,0 +1,27 @@
+# id	tool	kind	repo	sha	path
+tf-r1	terraform	reusable	ManagedKube/kubernetes-ops	676eb812478fc31e20229bf4c81ba67e1333b55f	terraform-modules/aws/airflow
+tf-r2	terraform	reusable	nozaq/terraform-aws-secure-baseline	8e41fb01fd50bdb041f61c438223cde0f1453e54	modules/secure-bucket
+tf-r3	terraform	reusable	brikis98/terraform-up-and-running-code	27a3beaf842dbe2a582e29f64373dfb793374ba8	code/terraform/04-terraform-module/module-example/modules/services/webserver-cluster
+tf-r4	terraform	reusable	brikis98/terraform-up-and-running-code	27a3beaf842dbe2a582e29f64373dfb793374ba8	code/terraform/05-tips-and-tricks/loops-and-if-statements/modules/services/webserver-cluster
+tf-r5	terraform	reusable	terraform-aws-modules/terraform-aws-ec2-instance	4dfedcdd1f26006009c52439bbadba40a76ddb79	.
+tf-d1	terraform	deployed	aws-samples/aws-security-reference-architecture-examples	66007b579cbc6810d7ecab1dd0abe856a5706037	aws_sra_examples/terraform/solutions/inspector/configuration
+tf-d2	terraform	deployed	aws-samples/aws-security-reference-architecture-examples	66007b579cbc6810d7ecab1dd0abe856a5706037	aws_sra_examples/terraform/solutions/security_hub/configuration
+tf-d3	terraform	deployed	bridgecrewio/terragoat	729f8da62c6a85ce4af5ad3d123de97776d954c4	terraform/aws
+tf-d4	terraform	deployed	futurice/terraform-examples	c191f7bcb0fa786b68c7b3904b6f3bbb90881fc6	aws/aws_ec2_ebs_docker_host
+tf-d5	terraform	deployed	futurice/terraform-examples	c191f7bcb0fa786b68c7b3904b6f3bbb90881fc6	aws/wordpress_fargate
+cfn-r1	cloudformation	reusable	widdix/aws-cf-templates	f4c49a4c4648dd6047939b1a98281ce4748b739e	ecs/cluster.yaml
+cfn-r2	cloudformation	reusable	widdix/aws-cf-templates	f4c49a4c4648dd6047939b1a98281ce4748b739e	jenkins/jenkins2-ha-agents.yaml
+cfn-r3	cloudformation	reusable	aws-ia/cfn-ps-hashicorp-vault	2e3dacf335af3c3730a430de9cfdd7b1406403ab	templates/quickstart-hashicorp-vault.template.yaml
+cfn-r4	cloudformation	reusable	aws-quickstart/quickstart-amazon-aurora-postgresql	a6b7cd712b552f8e5227b59765ff2b83ad47beb5	templates/aurora_postgres.template.yaml
+cfn-r5	cloudformation	reusable	aws-quickstart/quickstart-linux-bastion	b0284b7e4580e415ede5a280f591adbb414f3373	templates/linux-bastion-entrypoint-existing-vpc.template.yaml
+cfn-d1	cloudformation	deployed	aws-cloudformation/aws-cloudformation-templates	a0f43bc6d20813052892546f445037cf84c75b54	Solutions/WebApp/webapp.yaml
+cfn-d2	cloudformation	deployed	aws-cloudformation/aws-cloudformation-templates	a0f43bc6d20813052892546f445037cf84c75b54	ECS/EC2LaunchType/clusters/private-vpc.yaml
+cfn-d3	cloudformation	deployed	aws-cloudformation/aws-cloudformation-samples	c63b9a1e9769a52663de6e84e2ed3fd207685bb3	modules/VpcWizard/fragments/vpc.json
+cfn-d4	cloudformation	deployed	aws-samples/aws-security-reference-architecture-examples	66007b579cbc6810d7ecab1dd0abe856a5706037	aws_sra_examples/solutions/account/account_alternate_contacts/templates/sra-account-alternate-contacts.yaml
+cfn-d5	cloudformation	deployed	aws-samples/aws-security-reference-architecture-examples	66007b579cbc6810d7ecab1dd0abe856a5706037	aws_sra_examples/solutions/config/config_org/templates/sra-config-org-configuration.yaml
+pu-r1	pulumi	reusable	pulumi/templates	fcf64bd79d3829b3c6557ab2a35a423a15e1e2a7	vm-aws-yaml/Pulumi.yaml
+pu-r2	pulumi	reusable	pulumi/templates	fcf64bd79d3829b3c6557ab2a35a423a15e1e2a7	static-website-aws-yaml/Pulumi.yaml
+pu-r3	pulumi	reusable	pulumi/templates	fcf64bd79d3829b3c6557ab2a35a423a15e1e2a7	serverless-aws-yaml/Pulumi.yaml
+pu-d1	pulumi	deployed	pulumi/examples	f89873d4c8ab2ce9ae25f1e6a7aad4ca1fd28ff2	aws-yaml-langserve/Pulumi.yaml
+pu-d2	pulumi	deployed	pulumi/examples	f89873d4c8ab2ce9ae25f1e6a7aad4ca1fd28ff2	aws-yaml-ansible-wordpress/Pulumi.yaml
+pu-d3	pulumi	deployed	pulumi/examples	f89873d4c8ab2ce9ae25f1e6a7aad4ca1fd28ff2	webserver-yaml/Pulumi.yaml
