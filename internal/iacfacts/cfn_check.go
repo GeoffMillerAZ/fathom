@@ -60,6 +60,8 @@ type cfnBlob struct {
 	Properties           map[string]json.RawMessage `json:"properties"`
 	Required             []string                   `json:"required"`
 	AdditionalProperties *bool                      `json:"additionalProperties"`
+	CreateOnly           []string                   `json:"createOnlyProperties"`
+	CondCreateOnly       []string                   `json:"conditionalCreateOnlyProperties"`
 	ReadOnly             []string                   `json:"readOnlyProperties"`
 	Deprecated           []string                   `json:"deprecatedProperties"`
 }
@@ -76,10 +78,20 @@ type cfnBlob struct {
 // walk (an intrinsic, an alias, a merge) proves no unknown or missing property. Only top-level properties are
 // checked: a nested path reads as its top-level property, and nested schema facts are not walked.
 func CheckCloudFormationUse(catalogs []IaCCatalogInfo, region string, r Resource) CFNUse {
-	u := CFNUse{Name: r.Name, Type: r.Type, Binding: CFNBinding{Version: CFNUnversioned}}
-	unbound := func(format string, args ...any) CFNUse {
-		u.Binding.Note = fmt.Sprintf(format, args...)
+	u, b, digest, ok := resolveCFN(catalogs, region, r)
+	if !ok {
 		return u
+	}
+	return checkCFNProperties(u, b, digest, r)
+}
+
+// resolveCFN picks the catalog for one CloudFormation resource and reads its type's schema. ok is false when the
+// binding is unbound, whose Note says why. digest is the sha256 of the schema blob the facts are read from.
+func resolveCFN(catalogs []IaCCatalogInfo, region string, r Resource) (u CFNUse, b cfnBlob, digest string, ok bool) {
+	u = CFNUse{Name: r.Name, Type: r.Type, Binding: CFNBinding{Version: CFNUnversioned}}
+	unbound := func(format string, args ...any) (CFNUse, cfnBlob, string, bool) {
+		u.Binding.Note = fmt.Sprintf(format, args...)
+		return u, cfnBlob{}, "", false
 	}
 	if r.Tool != ToolCloudFormation {
 		return unbound("%s is not a CloudFormation resource", r.Name)
@@ -124,7 +136,6 @@ func CheckCloudFormationUse(catalogs []IaCCatalogInfo, region string, r Resource
 		}
 		return unbound("the catalog %s could not answer for %s: %v", cat.Name, r.Type, err)
 	}
-	var b cfnBlob
 	if err := json.Unmarshal(fact.Value, &b); err != nil {
 		return unbound("the catalog %s holds an unreadable schema for %s: %v", cat.Name, r.Type, err)
 	}
@@ -134,7 +145,11 @@ func CheckCloudFormationUse(catalogs []IaCCatalogInfo, region string, r Resource
 		date = "an unrecorded date"
 	}
 	u.Binding.Note = fmt.Sprintf("a template names no version, so the facts are the registry schemas of region %s as of %s (catalog %s, schema digest %s); the contract states them", m.Line, date, cat.Name, u.Binding.Schema)
+	return u, b, fact.Digest, true
+}
 
+// checkCFNProperties walks a resolved resource's Properties against its schema.
+func checkCFNProperties(u CFNUse, b cfnBlob, digest string, r Resource) CFNUse {
 	set := map[string]Span{} // top-level property name to its first span
 	walkable := true
 	for _, a := range r.Attrs {
@@ -148,7 +163,7 @@ func CheckCloudFormationUse(catalogs []IaCCatalogInfo, region string, r Resource
 		}
 	}
 	add := func(kind, prop string, sp Span, pointer, path string) {
-		u.Findings = append(u.Findings, CFNFinding{Kind: kind, Property: prop, Span: sp, Pointer: pointer, Path: path, Digest: fact.Digest})
+		u.Findings = append(u.Findings, CFNFinding{Kind: kind, Property: prop, Span: sp, Pointer: pointer, Path: path, Digest: digest})
 	}
 	ro, dep := pointerSet(b.ReadOnly), pointerSet(b.Deprecated)
 	for name, sp := range set {

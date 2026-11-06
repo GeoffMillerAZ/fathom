@@ -29,6 +29,15 @@ attributes with flags, `findings`) and `review_diff` adds an `iac` section for c
 Every fact cites `catalog`, `version`, `digest` and the JSON `path`. With no catalog neither
 answer changes (`docs/design/iac-facts.md` section 6).
 
+A CloudFormation catalog (`fathom iac import --region`) does the same for a CloudFormation
+resource: `symbol_context` adds an `iac` block (the `unversioned` binding with the catalog's
+region and date, `findings` for unknown, missing-required, read-only and deprecated
+properties, and `replacement_if_changed` for the properties the resource writes that its
+schema lists as create-only or conditional create-only), and `review_diff` adds
+`iac.cloudformation` for changed templates. With `since`, a changed create-only property is a
+`forces-replacement` finding and a conditional one `may-replace`. The schema states the
+replacement and no change set confirmed it. With no CloudFormation catalog neither answer changes.
+
 Deletion checks on Go fields disclose `field_references_indexed: false` and keep
 recorded referents without proving absence. See the [investigation contract](mcp-tools/investigation.md#investigation-tools).
 

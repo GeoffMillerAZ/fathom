@@ -209,7 +209,16 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// against installed catalogs. Absent without a catalog, and on a
 		// dated review, which reads the tree as it stands.
 		if !asOf.active() {
-			if iac := reviewIaCFindings(ctx, backend, p.Service, p.ChangedFiles); iac != nil {
+			// IF-C4: the same for changed CloudFormation templates, under
+			// iac.cloudformation, with replacement findings against in.Base.
+			iac := reviewIaCFindings(ctx, backend, p.Service, p.ChangedFiles)
+			if cfn := reviewCFNFindings(ctx, backend, p.Service, p.ChangedFiles, in.Base); cfn != nil {
+				if iac == nil {
+					iac = map[string]any{}
+				}
+				iac["cloudformation"] = cfn
+			}
+			if iac != nil {
 				payload["iac"] = iac
 			}
 		}

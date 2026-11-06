@@ -380,7 +380,12 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// carries the binding, the version and what its contract says about
 		// the attributes it wrote. Absent unless a catalog is installed.
 		if sctx.Def.Name != "" {
-			if iac := symbolContextIaCFacts(ctx, backend, p.Service, sctx.Def); iac != nil {
+			iac := symbolContextIaCFacts(ctx, backend, p.Service, sctx.Def)
+			if iac == nil {
+				// IF-C3: a CloudFormation resource, against the registry-schema catalog.
+				iac = symbolContextCFNFacts(ctx, backend, p.Service, sctx.Def)
+			}
+			if iac != nil {
 				result["iac"] = iac
 			}
 		}
