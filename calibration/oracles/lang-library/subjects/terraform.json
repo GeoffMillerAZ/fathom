@@ -1,0 +1,221 @@
+{
+  "tool": "terraform",
+  "reading": "LL-M3",
+  "selection_rule": "Preregistered before any reader or oracle ran on these subjects. Public repositories, each at the pinned commit. A root is a directory that directly holds .tf files and passes all of: (1) at least one managed resource block; (2) every resource and data block type, and every provider block, belongs to a provider in providers (the type prefix before the first underscore, aws_s3_bucket is aws); (3) every module block has a local source (starting ./ or ../), because the oracle is run offline after the pinned provider mirror; (4) every required_providers entry names a provider in providers, from the hashicorp namespace; (5) the directory holds no .tofu, .tf.json or override file; (6) it is not under a wrappers directory. Candidates are ordered by sha256(repo + '/' + path) and the first per_repo_cap are kept. The rule reads file text and paths only. The oracle may later reject a selected root (init or show fails offline) and the reading counts each rejection by root.",
+  "providers": [
+    "aws",
+    "cloudinit",
+    "helm",
+    "http",
+    "local",
+    "null",
+    "time",
+    "tls"
+  ],
+  "per_repo_cap": 6,
+  "oracle": "tofu show -json -config after tofu init -backend=false with the pinned filesystem provider mirror (calibration/oracles/terraform/pins.json), tofu 1.13.0",
+  "repos": [
+    {
+      "repo": "terraform-aws-modules/terraform-aws-vpc",
+      "sha": "b3abd6df2ecf052451a361ed55b8f06f8742a795"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "sha": "9afa4fc8c8f1e0b3fd913474c1bef8d0c454b235"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-security-group",
+      "sha": "b3c1b2e8beff9671960f874f5569d77c803b0127"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "sha": "da8e6a8673933ee651f0f0fe611d5ac6b9f9bcb9"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-kms",
+      "sha": "d25e459bd43d8d0bdff7c250ba6b237a12be7381"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-rds",
+      "sha": "175da043429cbbe41c512f976105719f6d0e538c"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-alb",
+      "sha": "6c6e48c10d450d01cf6715346e926df0b858efc2"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-lambda",
+      "sha": "e73238631a030105fc8d09789033cc0bfed83310"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-ec2-instance",
+      "sha": "4dfedcdd1f26006009c52439bbadba40a76ddb79"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-sns",
+      "sha": "4538b7e208f5bbd6c9972f427f85c9bd735aedad"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-sqs",
+      "sha": "a68b4d515f9ccc729fb8bf84c6760c6b91302ce0"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-dynamodb-table",
+      "sha": "b6cc515760466a455ff0acb97b16151fdca4511e"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-autoscaling",
+      "sha": "2a249e91c798fdf85ab60c3b1592cc5e11805cc4"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-cloudfront",
+      "sha": "5b9a0a480220b84f29f02d84ff71dd5340953f68"
+    }
+  ],
+  "selected": [
+    {
+      "repo": "terraform-aws-modules/terraform-aws-vpc",
+      "path": "modules/flow-log"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-vpc",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-vpc",
+      "path": "examples/ipam"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-vpc",
+      "path": "modules/vpc-endpoints"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "path": "modules/account-public-access"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "path": "modules/vectors"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "path": "modules/table-bucket"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "path": "modules/notification"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-s3-bucket",
+      "path": "modules/file-system"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-security-group",
+      "path": "generate"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-security-group",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "path": "examples/iam-group"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "path": "modules/iam-role-for-service-accounts"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "path": "examples/iam-role"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "path": "modules/iam-read-only-policy"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "path": "modules/iam-group"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-iam",
+      "path": "modules/iam-account"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-kms",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-kms",
+      "path": "examples/complete"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-rds",
+      "path": "modules/db_subnet_group"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-rds",
+      "path": "modules/db_instance_automated_backups_replication"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-rds",
+      "path": "modules/db_parameter_group"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-rds",
+      "path": "modules/db_instance_role_association"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-rds",
+      "path": "modules/db_option_group"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-alb",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-alb",
+      "path": "modules/lb_trust_store"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-lambda",
+      "path": "modules/deploy"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-lambda",
+      "path": "modules/alias"
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-ec2-instance",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-sns",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-sqs",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-dynamodb-table",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-autoscaling",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-cloudfront",
+      "path": "."
+    },
+    {
+      "repo": "terraform-aws-modules/terraform-aws-cloudfront",
+      "path": "modules/trust_store"
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "tool": "pulumi-yaml",
+  "reading": "LL-M5",
+  "selection_rule": "Preregistered before any reader or oracle ran on these subjects. Public repositories, each at the pinned commit. A program is a Pulumi.yaml or Pulumi.yml whose text has a top-level runtime of yaml (either `runtime: yaml` or `runtime:` with a `name: yaml` line) and a top-level resources key, and holds neither ${PROJECT} nor ${DESCRIPTION} (an uninstantiated template). Candidates are ordered by sha256(repo + '/' + path) and the first per_repo_cap are kept. The rule reads file text and paths only. The oracle may later reject a selected program (pulumi-yaml's loader refuses it) and the reading counts each rejection by file.",
+  "per_repo_cap": 15,
+  "oracle": "calibration/oracles/pulumi-yaml-go (pulumi-yaml v1.36.0 template parse), the -props-out report",
+  "repos": [
+    {
+      "repo": "pulumi/examples",
+      "sha": "f89873d4c8ab2ce9ae25f1e6a7aad4ca1fd28ff2"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "sha": "a71c3da0ab8842812f88a49a0f4954c9e64b88a8"
+    }
+  ],
+  "selected": [
+    {
+      "repo": "pulumi/examples",
+      "path": "aws-yaml-static-website/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "aws-yaml-langserve/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "webserver-yaml/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "azure-yaml-app-service/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "aws-yaml-ansible-wordpress/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "kubernetes-yaml/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "random-yaml/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "aws-yaml-eks/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "azure-yaml-container-apps/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "azure-yaml-static-website/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "yaml-math-and-objects/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/examples",
+      "path": "azure-yaml-aks-managed-identity/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/resource-properties-config/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/invalid-resource-object/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "examples/resource-config/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "examples/random/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/type-fail/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/component-consumption-test/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/component/program/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "examples/awsx-fargate/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "examples/kubernetes/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "examples/webserver/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/resource-ordering/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/parameterized/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/resource-secret/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/local/Pulumi.yaml"
+    },
+    {
+      "repo": "pulumi/pulumi-yaml",
+      "path": "pkg/tests/testdata/component-consumption-tagged/Pulumi.yaml"
+    }
+  ]
+}
