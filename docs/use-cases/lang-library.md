@@ -20,8 +20,9 @@ It is not a query engine. Nothing is stored, nothing is joined across files, and
 |---|---|---|
 | `pkg/lang` | Go package | `lang.New`, `Reader.Extract` (one `Result` per file: dialect, symbols, references, unresolved references, facts, level, notes), `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits`, `EnableCompilationCache` |
 | `pkg/lang/cue` | Go package | `cue.Option()` links CUE and Timoni extraction. Without it `pkg/lang` links no `cuelang.org/go` and a `.cue` file reads `Skipped: not-linked` |
+| `pkg/lang/iac` | Go package | `iac.ReadFile` and `iac.ReadModule`: the resources, data sources and module calls of Terraform, OpenTofu, CloudFormation and Pulumi YAML, each attribute with a path, a class, its references and a span (see Resource reads) |
 | `pkg/lang/langtest` | Go package | `CheckPack`: a pack's validation, required kinds and goldens, for pack authors |
-| `cmd/fathom-lang` | Binary (stdlib flags only) | `extract` and `dialects`, printing the same facts as JSON for tools not written in Go |
+| `cmd/fathom-lang` | Binary (stdlib flags only) | `extract`, `dialects`, `resources` and `contract`, printing the same facts as JSON for tools not written in Go |
 
 ---
 
@@ -63,6 +64,9 @@ The runnable versions are the godoc examples on `Reader.Extract`, `Reader.Dialec
 fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
                     [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
 fathom-lang dialects [-pack DIR]
+fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
+                      [-in-process] PATH...
+fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 ```
 
 `extract` prints `{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]}`, `dialects` prints `{"schema_version":1,"dialects":[...]}`. Both are JSON with the field names of `lang.Result` and `lang.DialectInfo`. PATH may be absolute or relative to `-root`. A file that cannot be read has an `error` and a null `result`, and the other files are still read. `extract` reads in a child process it supervises (see Reading hostile input). The output is compatibility surface for tools not written in Go: fields are added, never renamed, `schema_version` changes only with a break, and a change is a reviewed edit of the goldens under `cmd/fathom-lang/testdata/golden`. Exit 0 when every file was read, 1 when a file could not be read or the run failed, 2 on misuse (a bad flag, no PATH, an unknown command). The command links no CUE: a `.cue` file reads `Skipped: not-linked`, and a Go program adds CUE with `pkg/lang/cue`.
@@ -81,7 +85,48 @@ Release archives carry `fathom-lang` beside `fathom`, and `task deploy` installs
 - **Import cost.** An outside module that imports `pkg/lang` links 81 non-standard packages today (80 for the library itself, its own package among them, and the consumer's `main`; LL-M1's recorded bar of 80 is one under and awaits an owner decision, design section 8) and builds a stripped binary under 30 MiB (reading: `docs/bench/readings/lang-library/m1-closure.md`). `TestLangClosure` fails if the door reaches fathom's store, fusion, connectors, MCP server, `net/http` or CUE, and `TestOutsideModuleBuilds` builds a real outside module offline against this tree.
 - **One module.** `pkg/lang` lives in fathom's module, so a consumer takes fathom's Go version and dependency pins. A nested module is kept open (design `docs/design/lang-library.md` section 7) and will be cut if a real consumer reports a version conflict.
 - **API changes are deliberate.** `TestLangAPISnapshot` holds `go doc -all` for the three packages. After an intended change run `go test ./pkg/lang -run TestLangAPISnapshot -args -update-api` and read the diff of `pkg/lang/testdata/api`.
-- **What it does not do.** Resource attribute reads, catalogs and policy checks are separate work (ADR-091, ADR-092) and are not in this guide yet.
+- **What it does not do.** Policy checks and baselines are separate work (ADR-091, ADR-092). Resource reads are below.
+
+---
+
+## Resource reads
+
+`pkg/lang/iac` keeps what extraction discards: a resource's attributes. It never runs `init`, a plan, a provider or a program, and never expands a module.
+
+```go
+set, err := iac.ReadFile(ctx, "infra/main.tf", src)      // one file, routed by path and content
+set, err := iac.ReadModule(ctx, os.DirFS(root), "infra") // one Terraform directory: variable defaults and locals resolved
+// set.Resources[i].{Tool, Mode, Type, Name, Provider, Span, Attrs, Multiplicity}, set.SyntaxErrors, set.Dropped
+```
+
+- **Routing.** `.tf` and `.tofu` read as Terraform or OpenTofu. `.tf.json` and `.tofu.json` are not read (no resource, one syntax error). `Pulumi.yaml` reads as Pulumi YAML. A `.yaml`, `.yml`, `.json` or `.template` file reads as CloudFormation when it names a template format version, or has a `Resources` key and an `AWS::`, `Custom::` or `Alexa::` type. Any other file returns a `*iac.NoReaderError`.
+- **Classes.** Each `Attr` has a `Path` (`versioning[*].enabled`: every nested block and list element takes `[*]`), a `Class`, the `Refs` its value reads and a `Span`. `literal` is written as a constant, `defaulted` resolves only through a variable default or a local chain ending in one, `reference` names another resource, data source, module output or parameter, `expression` is computed, and `unknown` could not be classified (a broken expression, or an override file that replaces it). Absence is not a class: "this attribute is unset" comes from comparing a read with a contract.
+- **Values.** `Attr.Value` is empty unless the caller passes `iac.WithValues()`. Even then the reader withholds what its source marks secret (a `sensitive` or `ephemeral` variable's default, a `NoEcho` parameter, a Pulumi secret and `fn::secret`), and the attribute still reads `literal` or `defaulted`, so a check learns that a literal or default is there. A value past 1 MiB, or values past 16 MiB in all, refuse the whole input with `iac.ErrLimit`. An error never carries a value from the file.
+- **Absence is never silent.** A section the reader cannot walk reads one `unknown` attribute with an empty path and counts in `SyntaxErrors`; a resource entry it does not read is named in `Dropped`.
+- **Deadline.** Both reads take a context and return by `iac.DefaultReadDeadline` (30 seconds; `iac.WithDeadline(d)` lowers it, never raises it) with `iac.ErrDeadline`. The reader is abandoned, not stopped. After `GOMAXPROCS` abandoned reads are running a read starts nothing and returns `iac.ErrBusy`. A file over `iac.MaxFileBytes` (2 MiB), a directory over 64 MiB or 4,096 files refuses with `iac.ErrLimit`.
+- **Determinism.** Every slice is non-nil and sorted, and equal inputs give byte-equal JSON.
+
+`fathom-lang resources` prints the reads as JSON (see From a shell): `{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]}`, where `result` has the field names of `iac.ResourceSet`. It reads in the supervised child `extract` uses, with `-deadline`, `-max-memory` and `-in-process`. `-module DIR` reads a Terraform directory as a module and is the first entry. A resource read has no `Incomplete` form, so a file whose child was killed has an `error` that starts `read-killed:` and a null `result`, and the run exits 1. A file no reader reads (a `.go` file) has an `error` too.
+
+### Contracts
+
+A catalog is a deterministic zip of one provider's major line that an operator builds from a local `tofu providers schema -json` export (`fathom iac import`, with a `fathom` binary) and installs; nothing here downloads one. `iac.OpenCatalog(path)` validates its manifest (format, kind, source, line, a version list that is valid, ascending and inside the line) and reads no schema. Each lookup opens the zip, reads one version index and one blob, and closes it, so a `Catalog` holds no file and no memo.
+
+```go
+cat, err := iac.OpenCatalog("aws.v6.iaccat.zip")
+ct, err := cat.Contract(cat.Source(), "6.2.0", "aws_s3_bucket") // exact version; a nearest one is never answered
+// ct.Attributes[i]: Path (versioning[*].enabled), Type, Required, Optional, Computed, Sensitive, WriteOnly, Deprecated, Replacement, JSONPath
+```
+
+`Contract` looks the type up as a resource, then a data source, then an ephemeral resource (`KindContract` asks for one), and `ct.Digest` and `ct.Catalog` with each attribute's `JSONPath` let a reader check an answer against the catalog. A type or version the catalog lacks is a `*iac.CatalogError` that matches `iac.ErrNotFound`. A catalog carries replacement facts (what changing an attribute does to the resource, with the source it came from) only once the Go source scan lands: until then `ct.ReplacementFacts` is `absent` and every `Replacement` is nil.
+
+```
+$ fathom-lang contract -catalog aws.v6.iaccat.zip -version 6.2.0 aws_s3_bucket versioning
+```
+
+prints `{"schema_version":1,"contract":{...}}` with the attributes at and under `versioning`. With only `-catalog` it prints the catalog's source, line and versions. A type, version or provider the catalog lacks exits 1 with the reason on standard error.
+
+The runnable versions are the godoc examples on `iac.ReadFile`, `iac.ReadModule` and `iac.OpenCatalog`.
 
 ---
 
@@ -90,7 +135,7 @@ Release archives carry `fathom-lang` beside `fathom`, and `task deploy` installs
 A parser can hang, allocate without bound or overflow the stack on a file of a few kilobytes, and guards have not ended that: each round of review closed the shapes it named and found new ones. So the library promises two boundaries.
 
 - **In process, a deadline.** `Reader.Extract` returns by `lang.DefaultReadDeadline` (30 seconds; `WithLimits(lang.Limits{ReadDeadline: d})` lowers it). A read that overruns reads `Incomplete` with a `read-deadline:` note and none of its facts. The parser is abandoned, not stopped: it keeps its CPU and memory until it returns. After `GOMAXPROCS` abandoned reads are still running, `Extract` starts nothing and returns `Skipped` `busy`, and recovers when they finish. A fatal stack overflow, a parser that never returns and a read that allocates without bound still take the calling process down or starve it.
-- **Across a process, a kill.** `fathom-lang extract` is the way to read input you do not trust. It reads in a child process it supervises, and kills and restarts the child when a file takes longer than the deadline plus a margin, when the child dies for any reason, or when it holds more than `-max-memory` (4 GiB by default).
+- **Across a process, a kill.** `fathom-lang extract` (and `resources`, which runs the same supervisor) is the way to read input you do not trust. It reads in a child process it supervises, and kills and restarts the child when a file takes longer than the deadline plus a margin, when the child dies for any reason, or when it holds more than `-max-memory` (4 GiB by default).
 
 A file the supervisor killed does not stop the batch. Its entry has no error and an `Incomplete` result with one note that says why, and the files around it read as they would have:
 
@@ -111,4 +156,4 @@ Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as fo
 
 ## Maintained
 
-This doc covers: `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract and dialects commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources and contract commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.

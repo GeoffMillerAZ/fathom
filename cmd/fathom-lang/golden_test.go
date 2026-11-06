@@ -50,6 +50,59 @@ func TestFathomLangJSONGolden(t *testing.T) {
 	checkGolden(t, "dialects.json", shapeOfDialects(t, out.Bytes()))
 }
 
+// LL-35: the JSON of resources and contract is compatibility surface too. The reads run in the supervised child by
+// default, and a batch that faults nowhere prints the same bytes in process. A value the source marks secret is in no
+// golden, with or without -values.
+func TestResourcesJSONGolden(t *testing.T) {
+	src := filepath.Join("testdata", "golden", "src")
+	for _, c := range []struct {
+		name     string
+		args     []string
+		wantExit int
+	}{
+		// a.go has no resource reader: its entry has an error and the run exits 1, like an unreadable file in extract.
+		{"resources.json", []string{"resources", "-root", src, "main.tf", "cfn.yaml", "Pulumi.yaml", "a.go"}, 1},
+		{"resources-values.json", []string{"resources", "-values", "-root", src, "-module", "mod", "cfn.yaml", "Pulumi.yaml"}, 0},
+	} {
+		var out, errw bytes.Buffer
+		if code := run(context.Background(), c.args, strings.NewReader(""), &out, &errw); code != c.wantExit {
+			t.Fatalf("%v: exit %d, want %d: %s", c.args, code, c.wantExit, errw.String())
+		}
+		checkGolden(t, c.name, out.Bytes())
+		for _, secret := range []string{"golden-noecho-sentinel", "golden-sensitive-sentinel"} {
+			if strings.Contains(out.String(), secret) {
+				t.Errorf("%s holds %q, which the source marks secret", c.name, secret)
+			}
+		}
+		var inProcess bytes.Buffer
+		inArgs := append([]string{"resources", "-in-process"}, c.args[1:]...)
+		if code := run(context.Background(), inArgs, strings.NewReader(""), &inProcess, &errw); code != c.wantExit {
+			t.Fatalf("%v: exit %d, want %d: %s", inArgs, code, c.wantExit, errw.String())
+		}
+		if !bytes.Equal(out.Bytes(), inProcess.Bytes()) {
+			t.Errorf("%s: supervised and -in-process output differ\n--- supervised\n%s\n--- in process\n%s", c.name, out.Bytes(), inProcess.Bytes())
+		}
+	}
+}
+
+func TestContractJSONGolden(t *testing.T) {
+	cat := filepath.Join("..", "..", "pkg", "lang", "iac", "testdata", "registry.opentofu.org_example_widget.v1.iaccat.zip")
+	for _, c := range []struct {
+		name string
+		args []string
+	}{
+		{"contract-catalog.json", []string{"contract", "--catalog", cat}},
+		{"contract-type.json", []string{"contract", "--catalog", cat, "widget_thing"}},
+		{"contract-attr.json", []string{"contract", "--catalog", cat, "-version", "1.0.0", "widget_thing", "rule"}},
+	} {
+		var out, errw bytes.Buffer
+		if code := run(context.Background(), c.args, strings.NewReader(""), &out, &errw); code != 0 {
+			t.Fatalf("%v: exit %d: %s", c.args, code, errw.String())
+		}
+		checkGolden(t, c.name, out.Bytes())
+	}
+}
+
 // levelValue matches a measured level in the extract output: L1 to L4 or none.
 // "unmeasured" is not a reading and stays literal.
 var levelValue = regexp.MustCompile(`"level": "(L[1-4]|none)"`)

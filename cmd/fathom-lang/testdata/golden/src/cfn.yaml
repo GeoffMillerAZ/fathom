@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  Env:
+    Type: String
+    Default: dev
+  DbPassword:
+    Type: String
+    NoEcho: true
+    Default: golden-noecho-sentinel
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${Env}-logs"
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: env
+          Value: !Ref Env
+      Password: !Ref DbPassword

@@ -5,9 +5,15 @@
 //	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
 //	    [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
 //	fathom-lang dialects [-pack DIR]
+//	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
+//	    [-in-process] PATH...
+//	fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 //
 // PATH may be relative to -root or absolute. A file that cannot be read is a
 // result of its own (its error is in the JSON) and the batch goes on.
+//
+// resources prints the resources and attributes an infrastructure-as-code file declares (pkg/lang/iac), in the same
+// supervised child as extract. contract prints what a provider catalog an operator built states about a type.
 //
 // extract reads in a supervised child process by default (supervise.go): a
 // parser that never returns, a fatal stack overflow or a read that allocates
@@ -43,6 +49,9 @@ const usage = `usage:
   fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
                       [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
   fathom-lang dialects [-pack DIR]
+  fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
+                        [-in-process] PATH...
+  fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 
 extract reads each PATH (absolute, or relative to -root, default the working
 directory) and prints {"schema_version":1,"files":[{"path":...,"error":...,
@@ -59,7 +68,21 @@ ends the child (a fatal stack overflow, any other death) or whose read takes the
 child past -max-memory (default 4GiB) is a result that reads Incomplete, with a
 note that says why, and the batch goes on in a new child. -in-process turns this
 off and reads in this process; its output is the same for a batch that does not
-fault.`
+fault.
+resources reads the Terraform, OpenTofu, CloudFormation and Pulumi YAML files it is
+given, and with -module DIR one Terraform directory as a module, and prints
+{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]} with the
+field names of iac.ResourceSet: each resource with its attributes, each attribute
+with a path, a class (literal, defaulted, reference, expression or unknown), its
+references and a span. A value is printed only under -values, and a value the
+source marks secret never is. It reads in the supervised child that extract uses
+and takes the same -deadline, -max-memory and -in-process; a file whose child was
+killed has an error and a null result. A file no reader reads has an error.
+contract prints a catalog's source, line and versions, with only -catalog; with
+TYPE, what the catalog states about that type (default: the highest version and
+the catalog's own source), with each attribute's type, required, optional,
+computed, sensitive, deprecated and replacement facts; with TYPE and ATTR, only
+that attribute and the attributes nested under it.`
 
 // schemaVersion is the version of the JSON shape both commands print. It
 // changes only with a break; added fields do not change it.
@@ -90,6 +113,10 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 		err = cmdExtract(ctx, args[1:], in, out)
 	case "dialects":
 		err = cmdDialects(args[1:], out)
+	case "resources":
+		err = cmdResources(ctx, args[1:], in, out)
+	case "contract":
+		err = cmdContract(args[1:], out)
 	case "-h", "-help", "--help", "help":
 		fmt.Fprintln(out, usage)
 		return 0
@@ -111,13 +138,16 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 	return 0
 }
 
-// fileResult is one file's entry in the extract output. Error is "" for a file
-// that was read, and Result is null for one that was not.
-type fileResult struct {
-	Path   string       `json:"path"`
-	Error  string       `json:"error"`
-	Result *lang.Result `json:"result"`
+// entry is one file's entry in the extract and resources output. Error is "" for
+// a file that was read, and Result is null for one that was not.
+type entry[T any] struct {
+	Path   string `json:"path"`
+	Error  string `json:"error"`
+	Result T      `json:"result"`
 }
+
+// fileResult is an entry of extract's output.
+type fileResult = entry[*lang.Result]
 
 // cmdExtract reads each named file and prints its result as JSON, in a
 // supervised child unless -in-process says otherwise.

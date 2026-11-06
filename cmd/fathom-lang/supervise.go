@@ -1,6 +1,8 @@
 package main
 
-// supervise.go -- the process boundary of fathom-lang extract (ADR-092, the read guarantee).
+// supervise.go -- the process boundary of fathom-lang extract and resources (ADR-092, the read guarantee). Both
+// commands run the same supervisor, parameterised by a task: the child's arguments, the entry of a killed item and
+// the name an item is shown by.
 //
 // pkg/lang returns by a deadline, but Go cannot interrupt a goroutine and a fatal stack overflow or a parser that
 // allocates without bound ends or starves the process that runs it. So extract reads in a child: this same binary,
@@ -100,8 +102,28 @@ type childHello struct {
 	Fatal string `json:"fatal"`
 }
 
-// runChild is the child's half: build the Reader, say so, and answer one path per line until standard input ends.
+// runChild is extract's child half: build the Reader, say so, and answer one path per line until standard input ends.
 func runChild(ctx context.Context, cfg readConfig, root string, memory uint64, in io.Reader, out io.Writer) error {
+	return serveChild(ctx, memory, in, out, func(hdr childHeader) (func(context.Context, string) (fileResult, error), func(), error) {
+		rootAbs, err := filepath.Abs(root)
+		if err != nil {
+			return nil, nil, err
+		}
+		r, err := lang.New(cfg.options()...)
+		if err != nil {
+			return nil, nil, err
+		}
+		read := func(ctx context.Context, p string) (fileResult, error) {
+			return readOne(ctx, r, rootAbs, hdr.Siblings, p)
+		}
+		return read, func() { r.Close() }, nil
+	})
+}
+
+// serveChild is the child's half for every command: read the header, open the command's reader (which says why it
+// cannot be built as a fatal hello), say it is ready, and answer one item per line until standard input ends.
+func serveChild[T any](ctx context.Context, memory uint64, in io.Reader, out io.Writer,
+	open func(hdr childHeader) (read func(context.Context, string) (entry[T], error), done func(), err error)) error {
 	watchMemory(memory, func() { os.Exit(exitMemory) })
 	br := bufio.NewReaderSize(in, 1<<20)
 	bw := bufio.NewWriterSize(out, 1<<20)
@@ -114,17 +136,13 @@ func runChild(ctx context.Context, cfg readConfig, root string, memory uint64, i
 	if err := json.Unmarshal(line, &hdr); err != nil {
 		return fmt.Errorf("supervised child: bad header: %w", err)
 	}
-	rootAbs, err := filepath.Abs(root)
-	if err != nil {
-		return err
-	}
-	r, err := lang.New(cfg.options()...)
+	read, done, err := open(hdr)
 	if err != nil {
 		enc.Encode(childHello{Fatal: err.Error()})
 		bw.Flush()
 		return err
 	}
-	defer r.Close()
+	defer done()
 	enc.Encode(childHello{Ready: true})
 	if err := bw.Flush(); err != nil {
 		return err
@@ -136,7 +154,7 @@ func runChild(ctx context.Context, cfg readConfig, root string, memory uint64, i
 			if jerr := json.Unmarshal(line, &p); jerr != nil {
 				return fmt.Errorf("supervised child: bad path line: %w", jerr)
 			}
-			fr, rerr := readOne(ctx, r, rootAbs, hdr.Siblings, p)
+			fr, rerr := read(ctx, p)
 			if rerr != nil {
 				return rerr
 			}
@@ -174,13 +192,49 @@ func watchMemory(limit uint64, exit func()) {
 	time.AfterFunc(memoryPoll, poll)
 }
 
+// task is what differs between the commands that read in a supervised child: the arguments that start the child, the
+// entry of a file whose child was killed, whether an entry says the child abandoned a parser, and the name a path is
+// shown by.
+type task[T any] struct {
+	childArgs func(root string, memory uint64) []string
+	killed    func(path, why string) entry[T]
+	abandoned func(entry[T]) bool
+	shown     func(root, item string) string
+}
+
+// extractTask is extract's task.
+func extractTask(cfg readConfig, cache string) task[*lang.Result] {
+	return task[*lang.Result]{
+		childArgs: func(root string, memory uint64) []string {
+			args := []string{"extract", "-supervised-child", "-root", root, "-deadline", cfg.deadline.String(), "-max-memory", strconv.FormatUint(memory, 10)}
+			if cfg.pack != "" {
+				args = append(args, "-pack", cfg.pack)
+			}
+			if cache != "" {
+				args = append(args, "-cache", cache)
+			}
+			return args
+		},
+		killed:    killedResult,
+		abandoned: abandoned,
+		shown: func(root, p string) string {
+			_, shown, _ := resolvePath(root, p)
+			return shown
+		},
+	}
+}
+
 // extractSupervised reads every path through a child the parent kills and restarts as the file in hand makes it fail.
 func extractSupervised(ctx context.Context, cfg readConfig, rootAbs, cache string, memory uint64, sibs, paths []string) ([]fileResult, bool, error) {
-	sup := &supervisor{cfg: cfg, root: rootAbs, cache: cache, memory: memory, sibs: sibs}
+	return superviseAll(ctx, &supervisor[*lang.Result]{deadline: cfg.deadline, root: rootAbs, memory: memory, sibs: sibs, task: extractTask(cfg, cache)}, paths)
+}
+
+// superviseAll reads every item through sup and stops it at the end. It reports whether an entry has an error.
+func superviseAll[T any](ctx context.Context, sup *supervisor[T], items []string) ([]entry[T], bool, error) {
 	defer sup.stop()
-	files := []fileResult{}
+	files := []entry[T]{}
 	unreadable := false
-	for _, p := range paths {
+	for _, p := range items {
 		fr, err := sup.read(ctx, p)
 		if err != nil {
 			return nil, false, err
@@ -192,12 +246,12 @@ func extractSupervised(ctx context.Context, cfg readConfig, rootAbs, cache strin
 }
 
 // supervisor owns the current child, if there is one.
-type supervisor struct {
-	cfg    readConfig
-	root   string
-	cache  string
-	memory uint64
-	sibs   []string
+type supervisor[T any] struct {
+	deadline time.Duration
+	root     string
+	memory   uint64
+	sibs     []string
+	task     task[T]
 
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
@@ -207,26 +261,14 @@ type supervisor struct {
 
 // line reads the child's next output line, waiting at most d. It is the child that ends a wait that times out:
 // the caller kills it, which closes the pipe the read is blocked on.
-func (s *supervisor) line(ctx context.Context, d time.Duration) ([]byte, readlimit.Outcome, error) {
+func (s *supervisor[T]) line(ctx context.Context, d time.Duration) ([]byte, readlimit.Outcome, error) {
 	out := s.out
 	return readlimit.Run(ctx, nil, d, func() ([]byte, error) { return out.ReadBytes('\n') })
 }
 
-// childArgs are the arguments that start a child with the parent's reading flags. Paths go on standard input.
-func (s *supervisor) childArgs() []string {
-	args := []string{"extract", "-supervised-child", "-root", s.root, "-deadline", s.cfg.deadline.String(), "-max-memory", strconv.FormatUint(s.memory, 10)}
-	if s.cfg.pack != "" {
-		args = append(args, "-pack", s.cfg.pack)
-	}
-	if s.cache != "" {
-		args = append(args, "-cache", s.cache)
-	}
-	return args
-}
-
 // start launches a child and waits for it to say it is ready.
-func (s *supervisor) start(ctx context.Context) error {
-	cmd, err := childCommand(ctx, s.childArgs())
+func (s *supervisor[T]) start(ctx context.Context) error {
+	cmd, err := childCommand(ctx, s.task.childArgs(s.root, s.memory))
 	if err != nil {
 		return err
 	}
@@ -274,34 +316,34 @@ func (s *supervisor) start(ctx context.Context) error {
 // read asks the child for one path, starting or restarting it as needed. A file whose read ends the child, or passes
 // its time, is a result that reads Incomplete; the error is for a run that cannot go on (a cancelled context, a
 // child that will not start).
-func (s *supervisor) read(ctx context.Context, p string) (fileResult, error) {
+func (s *supervisor[T]) read(ctx context.Context, p string) (entry[T], error) {
 	if s.cmd == nil {
 		if err := s.start(ctx); err != nil {
-			return fileResult{}, err
+			return entry[T]{}, err
 		}
 	}
-	_, shown, _ := resolvePath(s.root, p)
+	shown := s.task.shown(s.root, p)
 	path, _ := json.Marshal(p)
 	if _, err := s.stdin.Write(append(path, '\n')); err != nil {
-		return killedResult(shown, "the reader process ended before it took this file ("+s.reap()+")"), nil
+		return s.task.killed(shown, "the reader process ended before it took this file ("+s.reap()+")"), nil
 	}
-	b, out, err := s.line(ctx, s.cfg.deadline+killMargin)
+	b, out, err := s.line(ctx, s.deadline+killMargin)
 	switch {
 	case out == readlimit.Canceled:
 		s.kill()
-		return fileResult{}, fmt.Errorf("%s: %w", shown, err)
+		return entry[T]{}, fmt.Errorf("%s: %w", shown, err)
 	case out == readlimit.DeadlineExceeded:
 		s.kill()
-		return killedResult(shown, fmt.Sprintf("the reader process passed the %v read deadline and a %v margin on this file and was killed", s.cfg.deadline, killMargin)), nil
+		return s.task.killed(shown, fmt.Sprintf("the reader process passed the %v read deadline and a %v margin on this file and was killed", s.deadline, killMargin)), nil
 	case err != nil:
-		return killedResult(shown, "the reader process ended while it read this file ("+s.reap()+")"), nil
+		return s.task.killed(shown, "the reader process ended while it read this file ("+s.reap()+")"), nil
 	}
-	var fr fileResult
+	var fr entry[T]
 	if err := json.Unmarshal(b, &fr); err != nil {
 		s.kill()
-		return killedResult(shown, "the reader process answered with something other than a result"), nil
+		return s.task.killed(shown, "the reader process answered with something other than a result"), nil
 	}
-	if abandoned(fr) {
+	if s.task.abandoned(fr) {
 		s.kill() // the child gave up on a parser that is still running: end it rather than let it burn a core
 	}
 	return fr, nil
@@ -333,7 +375,7 @@ func killedResult(path, why string) fileResult {
 }
 
 // kill ends the child and reaps it.
-func (s *supervisor) kill() {
+func (s *supervisor[T]) kill() {
 	if s.cmd == nil {
 		return
 	}
@@ -345,7 +387,7 @@ func (s *supervisor) kill() {
 
 // reap waits for the child, which is ending or was killed, and says how it ended. A child that has not exited
 // after waitGrace is killed. The next read starts a new one.
-func (s *supervisor) reap() string {
+func (s *supervisor[T]) reap() string {
 	cmd, tail := s.cmd, s.stderr
 	s.cmd, s.stdin, s.out, s.stderr = nil, nil, nil, nil
 	if cmd == nil {
@@ -378,7 +420,7 @@ func waitChild(cmd *exec.Cmd) error {
 }
 
 // stop ends the child at the end of a run: closing its standard input makes it exit, and a child that does not is killed.
-func (s *supervisor) stop() {
+func (s *supervisor[T]) stop() {
 	if s.cmd == nil {
 		return
 	}
