@@ -39,13 +39,16 @@ A Properties or properties value that is not a mapping is one leaf with the empt
 
 | Oracle class | Terraform | CloudFormation | Pulumi YAML |
 |---|---|---|---|
-| constant | `constant_value` | a scalar | a null, boolean, number or string with no interpolation |
+| constant | `constant_value` | a scalar, and a `Fn::Sub` with nothing left to substitute (no `${name}`, or only `${!x}` escapes and names its map binds to constants) | a null, boolean, number or string with no interpolation |
 | references | `references` | any intrinsic (`Ref`, `Fn::*`) whose argument names a Ref, GetAtt, ImportValue or Sub variable | a symbol or interpolation, or a builtin whose arguments hold one |
 | empty | `{}` (a function with no static answer) | an intrinsic that names none | a builtin that holds no symbol, and `${pulumi.*}` |
 
 Pulumi follows a symbol rooted in a declared variable to the class of the variable's value, as the reader's documentation says it
 does, and `fn::secret` and `fn::rawSecret` take the class of their argument. A symbol rooted in nothing declared is `unresolved`.
-A CloudFormation pseudo parameter (`AWS::Region`) is a reference to the oracle.
+A CloudFormation pseudo parameter (`AWS::Region`) is a reference to the oracle. A path several blocks or list elements write has one oracle
+leaf per occurrence, and a reader leaf agrees when some occurrence of the same path agrees with its class (one reader leaf per distinct class).
+The oracle scripts were written after the first commit of this directory (the subjects) and before any oracle ran on a subject; this
+paragraph and the `Fn::Sub` row above were settled in that gap.
 
 **Mapping of reader class to oracle class, exactly the design's:**
 

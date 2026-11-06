@@ -487,7 +487,12 @@ func firstLine(s string) string {
 func main() {
 	subj := flag.String("subject", "", "subject checkout")
 	filesOut := flag.String("files-out", "", "write the project files the loaders accept here (lang-oracle -only)")
+	propsList := flag.String("props-list", "", "LL-M5: a file of key<TAB>Pulumi.yaml lines; write every resource attribute leaf (see props.go) to -props-out")
+	propsOut := flag.String("props-out", "", "LL-M5: the -props-list report")
 	flag.Parse()
+	if *propsList != "" {
+		os.Exit(propsMain(*propsList, *propsOut))
+	}
 	if *subj == "" {
 		fmt.Fprintln(os.Stderr, "usage: pulumi-yaml-oracle -subject <dir> [-files-out <txt>] > <out.json>")
 		os.Exit(2)
