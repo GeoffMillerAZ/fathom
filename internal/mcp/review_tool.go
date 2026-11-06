@@ -205,6 +205,14 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		}
 
 		payload := v.Payload(persisted)
+		// IF-10: the attribute findings of changed Terraform files, read
+		// against installed catalogs. Absent without a catalog, and on a
+		// dated review, which reads the tree as it stands.
+		if !asOf.active() {
+			if iac := reviewIaCFindings(ctx, backend, p.Service, p.ChangedFiles); iac != nil {
+				payload["iac"] = iac
+			}
+		}
 		if len(sources.excluded) > 0 {
 			excluded := make([]reviewSourceExclusion, 0, len(sources.excluded))
 			for path, reason := range sources.excluded {

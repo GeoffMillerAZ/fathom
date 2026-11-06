@@ -376,6 +376,15 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			}
 		}
 
+		// IaC contract facts (IF-9): a Terraform resource or data source
+		// carries the binding, the version and what its contract says about
+		// the attributes it wrote. Absent unless a catalog is installed.
+		if sctx.Def.Name != "" {
+			if iac := symbolContextIaCFacts(ctx, backend, p.Service, sctx.Def); iac != nil {
+				result["iac"] = iac
+			}
+		}
+
 		// Cross-service callers/callees (P1-2, closing O12(a)): g/sctx above
 		// are built from p.Service's own nodes only, so a call crossing a
 		// service boundary — e.g. fathom's cmdInstrument calling agentic-

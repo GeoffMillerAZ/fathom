@@ -340,10 +340,14 @@ type symbolContextResult struct {
 	SnippetTruncated bool         `json:"snippet_truncated,omitempty"`
 	// SnippetWithheld (LB-F367): why no snippet is served, a definition in a
 	// file whose values may be secrets; present only then.
-	SnippetWithheld     string `json:"snippet_withheld,omitempty"`
-	TypedEdges          any    `json:"typed_edges,omitempty"`
-	CrossServiceCallees []any  `json:"cross_service_callees,omitempty"`
-	CrossServiceCallers []any  `json:"cross_service_callers,omitempty"`
+	SnippetWithheld string `json:"snippet_withheld,omitempty"`
+	// IaC (IF-9): a Terraform resource or data source's binding, version,
+	// required arguments unset and written attributes with their flags;
+	// present only when an IaC catalog is installed.
+	IaC                 any   `json:"iac,omitempty"`
+	TypedEdges          any   `json:"typed_edges,omitempty"`
+	CrossServiceCallees []any `json:"cross_service_callees,omitempty"`
+	CrossServiceCallers []any `json:"cross_service_callers,omitempty"`
 	// Elision (RC-19): present only when fitToolBudget cut "callers" or
 	// "callees".
 	Elision string `json:"elision,omitempty"`
@@ -502,6 +506,9 @@ type reviewDiffResult struct {
 	// Layers (GL-22): changed_files grouped by blast radius, in review
 	// order — leaf, shared-callee, cross-service-provider.
 	Layers []diffLayer `json:"layers,omitempty"`
+	// IaC (IF-10): attribute findings of changed Terraform files; present
+	// only when an IaC catalog is installed and such a file changed.
+	IaC any `json:"iac,omitempty"`
 }
 
 // reviewDimensionStatus remains available when dispatch elides detailed dimensions.

@@ -22,6 +22,13 @@ statuses and counts, the primary receipt band and deterministic detail prefixes,
 named omissions and logged elision counts; small results are unchanged. See
 [change review](use-cases/change-review.md) for the disclosure contract.
 
+With an IaC catalog installed (`fathom iac`), `symbol_context` on a Terraform resource or
+data source adds an `iac` block (binding status and version, `required_unset`, `written`
+attributes with flags, `findings`) and `review_diff` adds an `iac` section for changed
+`.tf` and `.tofu` files (unknown, required-unset, deprecated and sensitive-output findings).
+Every fact cites `catalog`, `version`, `digest` and the JSON `path`. With no catalog neither
+answer changes (`docs/design/iac-facts.md` section 6).
+
 Deletion checks on Go fields disclose `field_references_indexed: false` and keep
 recorded referents without proving absence. See the [investigation contract](mcp-tools/investigation.md#investigation-tools).
 
