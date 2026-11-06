@@ -77,8 +77,9 @@ func (t *IaCType) BlockCollection() bool {
 	return t != nil && (t.Kind == "list" || t.Kind == "set") && t.Elem != nil && t.Elem.Kind == "object"
 }
 
-// maxIaCTypeDepth bounds the nesting a type is decoded to. A deeper type reads as dynamic, which no path is judged
-// against.
+// maxIaCTypeDepth bounds the nesting a type is decoded to. A type below the cap decodes to nil, the same as a type
+// the contract does not state, and no path is judged against it. It never decodes to the cty type dynamic, which a
+// provider states and which means any value fits.
 const maxIaCTypeDepth = 64
 
 // parseIaCType decodes a cty type from its JSON form: "string", ["list","string"],
@@ -90,7 +91,7 @@ func parseIaCTypeAt(raw json.RawMessage, depth int) *IaCType {
 		return nil
 	}
 	if depth > maxIaCTypeDepth {
-		return &IaCType{Kind: "dynamic"}
+		return nil
 	}
 	var prim string
 	if json.Unmarshal(raw, &prim) == nil {

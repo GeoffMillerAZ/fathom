@@ -1,6 +1,7 @@
 package iacfacts
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -610,5 +611,92 @@ resource "widget_thing" "bad" {
 		if !strings.Contains(f.Fact.Path, "attributes.") || !strings.HasSuffix(f.Fact.Path, ".type") {
 			t.Errorf("%s: the finding cites the type path, got %q", f.Path, f.Fact.Path)
 		}
+	}
+}
+
+// IF-8: tofu accepts block syntax only for a list or set whose element type is an object, so a member of cty type
+// dynamic written as a block is in the wrong form like any other member that is not a list or set of objects. A
+// dynamic member written as an argument stays known: any value fits it.
+func TestCheckAttributeUseBlockFormDynamicMemberIsWrongForm(t *testing.T) {
+	cfg := []any{"object", map[string]any{"dyn": "dynamic", "name": "string"}}
+	res := map[string]any{"version": 1, "block": map[string]any{
+		"attributes": map[string]any{"cfg": fxAttr(map[string]any{"type": []any{"set", cfg}})},
+	}}
+	cats, list := chkCatalogs(t, map[string]any{"widget_thing": res})
+	repo := fstest.MapFS{"main.tf": file(chkProviders + `
+resource "widget_thing" "bad" {
+  cfg {
+    dyn {
+      y = 1
+    }
+  }
+}
+resource "widget_thing" "ok" {
+  cfg {
+    dyn = 1
+  }
+}
+`)}
+	got := chkModule(t, repo, cats, list, IaCModuleQuery{})
+	byBlock := map[string]IaCBlockCheck{}
+	for _, b := range got.Blocks {
+		byBlock[b.Block] = b
+	}
+	bad := byBlock["widget_thing.bad"].Check
+	for _, w := range bad.Written {
+		if w.Path == "cfg[*].dyn[*].y" && w.Known {
+			t.Errorf("a dynamic member written as a block must not read known: %+v", w)
+		}
+	}
+	fs := findingsOf(bad, FindingUnknownAttribute)
+	if len(fs) != 1 || fs[0].Path != "cfg[*].dyn[*].y" || !strings.Contains(fs[0].Message, "wrong form") {
+		t.Errorf("a dynamic member written as a block is wrong form: %+v", fs)
+	}
+	ok := byBlock["widget_thing.ok"].Check
+	if len(ok.Findings) != 0 {
+		t.Errorf("a dynamic member written as an argument is no finding: %+v", ok.Findings)
+	}
+	for _, w := range ok.Written {
+		if w.Path == "cfg[*].dyn" && !w.Known {
+			t.Errorf("a dynamic member written as an argument reads known: %+v", w)
+		}
+	}
+}
+
+// nestedIaCType spells a cty type that nests list-of-object levels deep, as JSON.
+func nestedIaCType(levels int) []any {
+	t := []any{"object", map[string]any{"leaf": "string"}}
+	for i := 0; i < levels; i++ {
+		t = []any{"object", map[string]any{"m": []any{"list", t}}}
+	}
+	return t
+}
+
+// A type nested past the decode cap has its tail unstated: the cap reads as nil, not as the cty type dynamic, so
+// one value never means both "the provider said dynamic" and "this was cut off".
+func TestParseIaCTypeDepthCapStatesNothing(t *testing.T) {
+	raw, err := json.Marshal(nestedIaCType(80))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ty := parseIaCType(raw)
+	var walk func(*IaCType, int) int
+	walk = func(ty *IaCType, depth int) int {
+		if ty == nil {
+			return depth
+		}
+		if ty.Kind == "dynamic" {
+			t.Fatalf("the cap produced a dynamic type at depth %d", depth)
+		}
+		switch {
+		case ty.Kind == "object" && ty.Members != nil:
+			return walk(ty.Members["m"].Type, depth+1)
+		case ty.Elem != nil || ty.Kind == "list":
+			return walk(ty.Elem, depth+1)
+		}
+		return depth
+	}
+	if d := walk(ty, 0); d > maxIaCTypeDepth+2 {
+		t.Errorf("walk ended at %d, past the cap", d)
 	}
 }

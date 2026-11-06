@@ -285,7 +285,10 @@ func (ck *attrChecker) checkResource(r *Resource, c *IaCContract) {
 // the index of its segment in the path. A member the object does not have is an unknown attribute, and a member
 // that is not itself a list or set of objects, written as a block, is in the wrong form: both cite the type and
 // leave the row unknown. A member of a sensitive or write-only value is sensitive or write-only. A segment whose
-// type the contract does not state ends the walk, known and unjudged below it.
+// type the contract does not state ends the walk with no known claim and no finding. The decoder reads a type nested
+// past its depth cap (maxIaCTypeDepth) as unstated, so a member cut off by the cap, or a list or set whose element
+// type it cut off, is not judged. A member of type dynamic is judged like any other: written as a block it is in the
+// wrong form, written as an argument it is known.
 func (ck *attrChecker) judgeBlockForm(w *IaCWrittenAttr, a Attr, c *IaCContract, at *IaCContractAttr, segs []string, i int, typeRef IaCFactRef) {
 	finding := func(msg string) {
 		ck.add(IaCFinding{Kind: FindingUnknownAttribute, Block: ck.block, Path: a.Path, Via: ViaAttribute, File: a.Span.File, Line: a.Span.StartLine,
@@ -308,12 +311,19 @@ func (ck *attrChecker) judgeBlockForm(w *IaCWrittenAttr, a Attr, c *IaCContract,
 		}
 		last := j == len(segs)-1
 		t := m.Type
-		switch {
-		case isBlock && t != nil && t.Kind != "dynamic" && !t.BlockCollection():
+		if t == nil {
+			return // the type is unstated: the member is not judged
+		}
+		if isBlock && !t.BlockCollection() {
+			if (t.Kind == "list" || t.Kind == "set") && t.Elem == nil {
+				return // the element type is unstated: the member is not judged
+			}
 			finding(fmt.Sprintf("%q is written in the wrong form: %q is %s in the type of %q in %s %s, not a list or set of objects, so it cannot be written as a block",
 				a.Path, pathUpTo(a.Path, j), t.Kind, pathUpTo(a.Path, i), c.Type, c.Fact.Version))
 			return
-		case last, t == nil, t.Kind == "dynamic":
+		}
+		switch {
+		case last, t.Kind == "dynamic":
 			known(m.Optional)
 			return
 		case isBlock && t.BlockCollection() && t.Elem.Members != nil:
