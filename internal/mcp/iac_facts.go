@@ -55,20 +55,13 @@ func (c corpusFS) resolve(name string) (string, error) {
 	return real, nil
 }
 
+// Open resolves name inside the corpus. fs.ReadDir lists a directory through Open, so the same resolver refuses a link that leaves it.
 func (c corpusFS) Open(name string) (fs.File, error) {
 	real, err := c.resolve(name)
 	if err != nil {
 		return nil, err
 	}
 	return os.Open(real)
-}
-
-func (c corpusFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	real, err := c.resolve(name)
-	if err != nil {
-		return nil, err
-	}
-	return os.ReadDir(real)
 }
 
 type iacRootJSON struct {
