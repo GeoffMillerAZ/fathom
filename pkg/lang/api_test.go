@@ -20,6 +20,7 @@ func TestLangAPISnapshot(t *testing.T) {
 	for _, pkg := range []struct{ dir, golden string }{
 		{".", "lang.txt"},
 		{"./cue", "cue.txt"},
+		{"./iac", "iac.txt"},
 		{"./langtest", "langtest.txt"},
 	} {
 		cmd := exec.Command("go", "doc", "-all", pkg.dir)

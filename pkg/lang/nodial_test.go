@@ -16,9 +16,11 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/pkg/lang"
+	"github.com/geoffmilleraz/fathom/pkg/lang/iac"
 )
 
 // LL-21 (design section 8, row 2): the library opens no socket and writes no
@@ -135,6 +137,7 @@ func TestNoDialHelper(t *testing.T) {
 		}
 	}
 	r.Dialects()
+	readResources(t)
 	if err := r.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +162,44 @@ func TestNoDialHelper(t *testing.T) {
 	t.Log("CLEAN")
 }
 
+// iacFiles are the files the resource reads are asked about: one per reader.
+var iacFiles = map[string]string{
+	"infra/main.tf":      tfSrc,
+	"stack/cfn.yaml":     "AWSTemplateFormatVersion: \"2010-09-09\"\nResources:\n  B:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: logs\n",
+	"app/Pulumi.yaml":    "name: demo\nruntime: yaml\nresources:\n  logs:\n    type: aws:s3/bucket:Bucket\n    properties:\n      bucket: x\n",
+	"infra/main.tf.json": "{}",
+}
+
+// readResources runs every public resource read and the catalog reads, which must open no socket and write no
+// file either (LL-34, IF-C5).
+func readResources(t *testing.T) {
+	t.Helper()
+	for p, src := range iacFiles {
+		if _, err := iac.ReadFile(context.Background(), p, []byte(src), iac.WithValues()); err != nil {
+			t.Fatalf("iac.ReadFile %s: %v", p, err)
+		}
+	}
+	mod := fstest.MapFS{"m/main.tf": {Data: []byte(tfSrc)}}
+	if _, err := iac.ReadModule(context.Background(), mod, "m", iac.WithValues()); err != nil {
+		t.Fatalf("iac.ReadModule: %v", err)
+	}
+	cat := os.Getenv("LANG_NODIAL_CATALOG")
+	if cat == "" {
+		t.Fatal("no catalog path was passed to the child")
+	}
+	c, err := iac.OpenCatalog(cat)
+	if err != nil {
+		t.Fatalf("iac.OpenCatalog: %v", err)
+	}
+	vs := c.Versions()
+	if len(vs) == 0 {
+		t.Fatal("the catalog lists no version")
+	}
+	if _, err := c.Contract(c.Source(), vs[len(vs)-1], "widget_thing"); err != nil {
+		t.Fatalf("Catalog.Contract: %v", err)
+	}
+}
+
 // runNoDialChild runs TestNoDialHelper in mode with every writable root
 // pointed into scratch, and returns the child's output and the scratch dirs.
 func runNoDialChild(t *testing.T, mode string, extra ...string) (out string, dirs map[string]string) {
@@ -175,6 +216,11 @@ func runNoDialChild(t *testing.T, mode string, extra ...string) (out string, dir
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The fixture catalog is read where it lies, outside the scratch directories the child must not write in.
+	catalog, err := filepath.Abs(filepath.Join("iac", "testdata", "registry.opentofu.org_example_widget.v1.iaccat.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.Command(exe, "-test.run=^TestNoDialHelper$", "-test.v")
 	cmd.Dir = dirs["cwd"]
 	// The parent's environment first, then the overrides: the last value of a
@@ -182,7 +228,7 @@ func runNoDialChild(t *testing.T, mode string, extra ...string) (out string, dir
 	cmd.Env = append(append(os.Environ(),
 		"HOME="+dirs["home"], "TMPDIR="+dirs["tmp"], "XDG_CACHE_HOME="+dirs["xdg"],
 		"GOCACHE="+dirs["xdg"], "GOTMPDIR="+dirs["tmp"],
-		noDialModeEnv+"="+mode, "LANG_NODIAL_CACHE="+dirs["cache"],
+		noDialModeEnv+"="+mode, "LANG_NODIAL_CACHE="+dirs["cache"], "LANG_NODIAL_CATALOG="+catalog,
 	), extra...)
 	b, err := cmd.CombinedOutput()
 	if err != nil {

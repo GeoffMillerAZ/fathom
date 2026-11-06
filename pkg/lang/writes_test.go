@@ -87,9 +87,9 @@ func writeFindings(t *testing.T, files map[string][]byte, allowed map[string]boo
 
 // closureSources reads the non-test Go files of every fathom package the door
 // links, keyed by repository-relative path.
-func closureSources(t *testing.T) map[string][]byte {
+func closureSources(t *testing.T, pkg, want string) map[string][]byte {
 	t.Helper()
-	cmd := exec.Command("go", "list", "-e", "-deps", "-json=ImportPath,Standard,Dir,GoFiles", ".")
+	cmd := exec.Command("go", "list", "-e", "-deps", "-json=ImportPath,Standard,Dir,GoFiles", pkg)
 	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -130,18 +130,37 @@ func closureSources(t *testing.T) map[string][]byte {
 			files[filepath.ToSlash(rel)] = b
 		}
 	}
-	if len(files) < 20 || files["pkg/lang/reader.go"] == nil {
-		t.Fatalf("read %d source files and not pkg/lang/reader.go", len(files))
+	if len(files) < 10 || files[want] == nil {
+		t.Fatalf("read %d source files and not %s", len(files), want)
 	}
 	return files
 }
 
 func TestLangWritesOnlyToCallerPaths(t *testing.T) {
-	files := closureSources(t)
+	files := closureSources(t, ".", "pkg/lang/reader.go")
 	for _, problem := range writeFindings(t, files, callerPathWriters) {
 		t.Error(problem)
 	}
 	for path := range callerPathWriters {
+		if files[path] == nil {
+			t.Errorf("the allowlist names %s, which the door no longer links; remove it", path)
+		}
+	}
+}
+
+// LL-34, IF-C5: the resource-read door writes nothing either. The catalog builder and directory manager in
+// internal/iacfacts are linked with the package though the door calls neither, so they are named here, each writing to a
+// directory or path its caller gave.
+func TestIacWritesOnlyToCallerPaths(t *testing.T) {
+	files := closureSources(t, "./iac", "pkg/lang/iac/read.go")
+	allowed := map[string]bool{
+		"internal/iacfacts/catalog_build.go": true,
+		"internal/iacfacts/catalog_dir.go":   true,
+	}
+	for _, problem := range writeFindings(t, files, allowed) {
+		t.Error(problem)
+	}
+	for path := range allowed {
 		if files[path] == nil {
 			t.Errorf("the allowlist names %s, which the door no longer links; remove it", path)
 		}

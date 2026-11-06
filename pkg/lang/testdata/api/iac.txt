@@ -1,0 +1,383 @@
+package iac // import "github.com/geoffmilleraz/fathom/pkg/lang/iac"
+
+Package iac reads what an infrastructure-as-code file declares: each resource,
+data source or module call, and each attribute it sets, with a path,
+a value class and a span. It is part of fathom's language library (ADR-092,
+docs/design/lang-library.md section 5) and, like pkg/lang, needs no store,
+daemon, index, git or network.
+
+A read never runs init, a plan, a provider or a program, and never expands
+a module. It reads Terraform and OpenTofu (.tf, .tofu, and a directory as
+one module), CloudFormation and SAM templates (YAML or JSON) and Pulumi YAML
+programs.
+
+# Classes, not values
+
+Every attribute reads as one of five classes: literal (written as a constant),
+defaulted (resolves only through a variable default or a local chain ending
+in one), reference (names another resource, data source, module output or
+parameter), expression (computed, with no static answer) or unknown (the reader
+could not classify it). Absence is not a class: "this attribute is unset" comes
+from comparing a read with a contract.
+
+Attr.Value is empty unless the caller passes WithValues. Even then the reader
+withholds what its source marks secret (a sensitive or ephemeral Terraform
+variable's default, a CloudFormation NoEcho parameter, a Pulumi secret and
+fn::secret), and the caller still learns that a literal or default is there.
+
+# The read guarantee
+
+ReadFile and ReadModule return by a deadline, DefaultReadDeadline, which
+WithDeadline may lower and nothing raises. Go cannot interrupt a goroutine, so a
+read that overruns is abandoned, not stopped: it keeps its CPU until it returns
+on its own and its result is discarded. Once GOMAXPROCS abandoned reads are
+still running, a read starts nothing and returns ErrBusy. A caller reading input
+it does not trust reads through a process it can kill: `fathom-lang resources`
+does, by default.
+
+Output is deterministic. Every slice is non-nil and sorted, and equal inputs
+give byte-equal JSON.
+
+CONSTANTS
+
+const (
+	ToolTerraform      = "terraform"
+	ToolCloudFormation = "cloudformation"
+	ToolPulumi         = "pulumi"
+)
+    Tool values of Resource.Tool.
+
+const (
+	ModeManaged   = "managed"
+	ModeData      = "data"
+	ModeModule    = "module"
+	ModeEphemeral = "ephemeral"
+)
+    Mode values of Resource.Mode. A module call is a resource-like relation and
+    is never expanded.
+
+const DefaultReadDeadline = 30 * time.Second
+    DefaultReadDeadline is how long ReadFile and ReadModule wait for one read:
+    30 seconds, the same bound as lang.DefaultReadDeadline. WithDeadline may
+    lower it, never raise it. The value is a literal; TestPublicConstantValues
+    holds it to pkg/lang's.
+
+const MaxFileBytes = 2 * 1024 * 1024
+    MaxFileBytes is the largest file a read accepts, the product's own limit
+    of 2 MiB. A larger file is refused whole with ErrLimit. A directory read
+    accepts 64 MiB across its files and 4,096 files. The value is a literal;
+    TestPublicConstantValues holds it.
+
+
+VARIABLES
+
+var ErrBusy = errors.New("read-busy: reads that passed their deadline are still running, so this read was not started")
+    ErrBusy is returned, with nothing read, when GOMAXPROCS reads that passed
+    their deadline are still running. It clears as they finish.
+
+var ErrDeadline = errors.New("read-deadline: the read passed its deadline and was abandoned, so none of its facts are returned")
+    ErrDeadline is returned by a read that passed its deadline. The reader is
+    abandoned, not stopped, and none of its facts are returned.
+
+var ErrLimit = iacfacts.ErrLimit
+    ErrLimit is wrapped by every refusal at a limit: a file or directory over
+    its size, more attributes than a read holds, a value past its bound.
+    The message names the limit and a count, never source text.
+
+var ErrNotFound = errors.New("iac catalog: not found")
+    ErrNotFound matches (errors.Is) a lookup the catalog cannot answer:
+    a version it does not hold, a type it does not list or a provider it was not
+    built for.
+
+
+TYPES
+
+type Attr struct {
+	// Path is versioning[*].enabled or rule[*].id: every nested Terraform block segment takes [*], one block or
+	// several, and so does every CloudFormation or Pulumi list element. A resource's own lifecycle block is
+	// meta-configuration and takes none. The path is empty for the one attribute at the root that stands for a
+	// Properties value the reader could not walk (an intrinsic, an alias, an interpolation); it reads unknown.
+	Path  string `json:"path"`
+	Class Class  `json:"class"`
+	// Value is set only under WithValues, and only for literal and defaulted classes whose value could be
+	// computed without evaluating a function, and never for what the source marks secret. A number is an int64
+	// when it is an integer in range written without a fraction or exponent, a float64 when float64 holds it
+	// exactly, a json.Number with its exact text when it is finite as float64 and does not fit either, and its
+	// source text as a string when it is past float64's range. json.Marshal of a Value never fails.
+	Value any `json:"value,omitempty"`
+	// Refs are the static references the value reads, sorted: var.x, aws_s3_bucket.logs.id, Param, Res.Arn.
+	// They name things, never values.
+	Refs []string `json:"refs"`
+	Span Span     `json:"span"`
+}
+    Attr is one attribute of a resource.
+
+type Catalog struct {
+	// Has unexported fields.
+}
+    Catalog is a provider contract catalog an operator placed on disk
+    (docs/design/iac-facts.md section 4): a deterministic zip of one provider's
+    major line, holding every stable release's resource, data source and
+    ephemeral resource schemas as names, types and flags. OpenCatalog validates
+    its manifest and keeps nothing else: each lookup opens the zip, reads one
+    version index and one blob, and closes it. A Catalog holds no file handle
+    and no memo, is safe for concurrent use, and is never closed.
+
+    The library fetches nothing. A catalog is built by the operator from a local
+    schema export, with their own tools.
+
+func OpenCatalog(path string) (*Catalog, error)
+    OpenCatalog opens the catalog at path and validates its manifest:
+    the format, the kind, a provider source and major line, and a version list
+    that is valid, ascending and inside the line. A catalog over its size or
+    entry bound, or with a corrupt manifest, is refused with a *CatalogError.
+    Opening reads no schema.
+
+func (c *Catalog) Contract(source, version, typ string) (*Contract, error)
+    Contract returns the type's contract at an exact version. The type is looked
+    up as a resource, then as a data source, then as an ephemeral resource,
+    and Contract.Kind says which answered: a type that is both a resource and
+    a data source reads as the resource, and KindContract asks for the other.
+    It opens the catalog, reads one version index and one blob, and closes it.
+
+    source is the provider address, which must be the catalog's (lower case;
+    no host is the default registry, and the two default registries stand in
+    for each other). version must be one of Versions: a nearest version is
+    never answered. A type or version the catalog lacks is a *CatalogError that
+    matches ErrNotFound.
+
+func (c *Catalog) KindContract(source, version string, kind Kind, typ string) (*Contract, error)
+    KindContract is Contract for one kind.
+
+func (c *Catalog) Line() string
+    Line is the provider's major version: one catalog holds every release of one
+    line.
+
+func (c *Catalog) ReplacementFacts() string
+    ReplacementFacts is the catalog's own claim about replacement facts:
+    "absent" for a catalog that carries none.
+
+func (c *Catalog) Source() string
+    Source is the provider address the catalog was built for, host included.
+
+func (c *Catalog) Versions() []string
+    Versions lists the releases the catalog holds, oldest first.
+
+type CatalogError struct {
+	Scope  string
+	Code   string
+	Reason string
+}
+    CatalogError is a catalog or one answer that a bound or a check refused.
+    Code is one of catalog-bytes, entries, manifest-bytes, index-bytes,
+    blob-bytes, depth, fact-bytes, corrupt, format or not-found, and Scope is
+    "catalog" when the whole catalog is refused and "answer" when one lookup is.
+    Reason is a sentence a caller can print and holds no schema text.
+
+func (e *CatalogError) Error() string
+
+func (e *CatalogError) Is(target error) bool
+    Is reports a not-found error as ErrNotFound.
+
+type Class string
+    Class is how an attribute's value is known.
+
+const (
+	// ClassLiteral: written as a constant. A check may treat it as a fact.
+	ClassLiteral Class = "literal"
+	// ClassDefaulted: resolves only through a variable default or a local chain ending in one. A check may treat
+	// it as an assumption an operator can override.
+	ClassDefaulted Class = "defaulted"
+	// ClassReference: names another resource, data source, module output or parameter. A check may treat it as a
+	// relation.
+	ClassReference Class = "reference"
+	// ClassExpression: computed, with no static answer. A check treats it as unknown.
+	ClassExpression Class = "expression"
+	// ClassUnknown: the reader could not classify it. A check treats it as unknown.
+	ClassUnknown Class = "unknown"
+)
+    The five classes. Absence is not one.
+
+type Contract struct {
+	Catalog string `json:"catalog"`
+	Source  string `json:"source"`
+	Version string `json:"version"`
+	Kind    Kind   `json:"kind"`
+	Type    string `json:"type"`
+	// Digest is the sha256 of the schema blob.
+	Digest string `json:"digest"`
+	// ReplacementFacts is the catalog's claim about replacement facts ("absent" when it carries none).
+	ReplacementFacts string         `json:"replacement_facts"`
+	Attributes       []ContractAttr `json:"attributes"`
+}
+    Contract is what a catalog states about one type at one version. Every fact
+    cites the catalog, the version and the digest of the blob it was read from.
+
+type ContractAttr struct {
+	// Path spells a nested block with [*], as the resource reads do: versioning[*].enabled. A block's own entry is
+	// versioning[*]. An attribute with nested attributes spells list and set nesting with [*] and the rest with a dot.
+	Path string `json:"path"`
+	// Block is true for a nested block, whose own entry carries MinItems and MaxItems.
+	Block bool `json:"block"`
+	// Type is the attribute's type as the schema export writes it ("string", or JSON such as ["list","string"]),
+	// "nested_type" for an attribute that holds nested attributes, and "" for a block.
+	Type       string `json:"type"`
+	Required   bool   `json:"required"`
+	Optional   bool   `json:"optional"`
+	Computed   bool   `json:"computed"`
+	Sensitive  bool   `json:"sensitive"`
+	WriteOnly  bool   `json:"write_only"`
+	Deprecated bool   `json:"deprecated"`
+	MinItems   int    `json:"min_items"`
+	MaxItems   int    `json:"max_items"`
+	// Replacement is nil when the catalog states none for this attribute.
+	Replacement *Replacement `json:"replacement"`
+	// JSONPath is where in the type's schema blob the entry was read, dot-joined, so a reader can check it.
+	JSONPath string `json:"json_path"`
+}
+    ContractAttr is one attribute or nested block of a type's contract.
+
+type Dropped struct {
+	Name string `json:"name"`
+}
+    Dropped names a resource-section entry that was not read as a resource:
+    a Fn::ForEach, an alias, a merge-only entry, a value that is not a mapping,
+    an entry without a type, or a Terraform data source inside a check block
+    (check.NAME.data.TYPE.NAME). Absence is never silent: a resource that is in
+    neither Resources nor Dropped does not exist in the file.
+
+type Kind string
+    Kind names the section of a catalog a type is looked up in.
+
+const (
+	KindResource   Kind = "resource"
+	KindDataSource Kind = "data_source"
+	KindEphemeral  Kind = "ephemeral_resource"
+)
+    The kinds a catalog holds.
+
+type Multiplicity struct {
+	Kind  MultiplicityKind `json:"kind"`
+	Class Class            `json:"class"`
+	Refs  []string         `json:"refs"`
+	Span  Span             `json:"span"`
+}
+    Multiplicity is the instance count of a resource. Class is the class of
+    the count, for_each or condition expression, and is "" for MultiSingle.
+    Refs names what the expression reads.
+
+type MultiplicityKind string
+    MultiplicityKind is how many instances a resource declares.
+
+const (
+	MultiSingle    MultiplicityKind = "single"
+	MultiCount     MultiplicityKind = "count"
+	MultiForEach   MultiplicityKind = "for_each"
+	MultiCondition MultiplicityKind = "condition"
+)
+    The kinds of Multiplicity.Kind.
+
+type NoReaderError struct {
+	// Path is the path the caller gave.
+	Path string
+}
+    NoReaderError is the error of a file that no reader here reads.
+
+func (e *NoReaderError) Error() string
+
+type Option func(*config) error
+    Option configures a read.
+
+func WithDeadline(d time.Duration) Option
+    WithDeadline lowers the time a read may take. A deadline above
+    DefaultReadDeadline, or one that is not positive, is an error: no option
+    raises the bound.
+
+func WithValues() Option
+    WithValues keeps Attr.Value, which is empty without it. It is the only way a
+    value is returned. The reader still withholds what its source marks secret,
+    and refuses an input whose values pass its bounds.
+
+type Replacement struct {
+	// Class is "replace", "conditional" or "unknown".
+	Class string `json:"class"`
+	// Provenance names the provider source the fact was read from.
+	Provenance string `json:"provenance"`
+}
+    Replacement is one attribute's replacement fact: what changing it does to
+    the resource, and where the claim came from. A catalog carries replacement
+    facts only when its manifest says so (Catalog.ReplacementFacts is not
+    "absent"), and an answer never says a change is safe: it says what the
+    contract states.
+
+type Resource struct {
+	// Tool is a Tool* value, and Mode a Mode* value.
+	Tool string `json:"tool"`
+	Mode string `json:"mode"`
+	// Type is aws_s3_bucket, AWS::S3::Bucket or aws:s3/bucket:Bucket.
+	Type string `json:"type"`
+	Name string `json:"name"`
+	// Provider is the provider selection a Terraform resource states (aws.west), and "" for the rest.
+	Provider     string       `json:"provider"`
+	Span         Span         `json:"span"`
+	Attrs        []Attr       `json:"attrs"`
+	Multiplicity Multiplicity `json:"multiplicity"`
+}
+    Resource is one resource, data source or module call.
+
+type ResourceSet struct {
+	Resources []Resource `json:"resources"`
+	// SyntaxErrors counts the syntax errors the parser reported, keys a mapping repeats, YAML documents after the
+	// first (which are not read), values the reader could not walk, a resource section that is not a mapping and a
+	// resource whose merge key may carry its properties. A read still returns the resources it could parse, and an
+	// attribute it could not read is unknown, never what a parser's recovery guessed.
+	SyntaxErrors int       `json:"syntax_errors"`
+	Dropped      []Dropped `json:"dropped"`
+}
+    ResourceSet is what one read returned. Resources are sorted by span and
+    attributes by path, then span.
+
+func ReadFile(ctx context.Context, filePath string, src []byte, opts ...Option) (*ResourceSet, error)
+    ReadFile reads one file's resources. The reader is chosen by the path and,
+    for a YAML or JSON template, by the content: .tf and .tofu read as Terraform
+    or OpenTofu, .tf.json and .tofu.json as its JSON syntax (which is not read:
+    the result holds no resource and one syntax error), Pulumi.yaml as Pulumi
+    YAML, and any other .yaml, .yml, .json or .template file that reads as
+    a CloudFormation template as CloudFormation. Any other file returns a
+    *NoReaderError.
+
+    Path is only a name and a classifier: nothing is read from disk, and it is
+    the File of every Span. src is not modified. A file past MaxFileBytes is
+    refused with ErrLimit. The read returns by DefaultReadDeadline (lowered by
+    WithDeadline) with ErrDeadline, and with ErrBusy while GOMAXPROCS abandoned
+    reads are running. A context that ends first returns its error and abandons
+    the read the same way.
+
+    An error never carries a value from the file.
+
+func ReadModule(ctx context.Context, fsys fs.FS, dir string, opts ...Option) (*ResourceSet, error)
+    ReadModule reads one Terraform or OpenTofu directory of fsys as a module:
+    every .tf and .tofu file directly in dir, with variable defaults
+    and locals resolved across them, so an attribute that reads var.x,
+    or a local chain ending in a variable default, is defaulted. It follows
+    OpenTofu's file rules: a .tofu file shadows the .tf file of the same name,
+    an override file adds no resource and marks what it names unknown, dot files
+    and editor backups are skipped. A module call reads as a relation and is
+    never expanded, and no other directory is listed. Spans name the files as
+    dir joined with the file name.
+
+    dir is an fs.ValidPath ("." for the root of fsys). The directory is refused
+    with ErrLimit past 4,096 files, 2 MiB a file or 64 MiB in all. The deadline,
+    busy and context rules are ReadFile's.
+
+type Span struct {
+	File      string `json:"file"`
+	StartLine int    `json:"start_line"`
+	StartCol  int    `json:"start_col"`
+	EndLine   int    `json:"end_line"`
+	EndCol    int    `json:"end_col"`
+}
+    Span is a region of a source file. Lines and columns are 1-based, columns
+    count characters and not bytes, and the end is exclusive. File is the path
+    the caller gave.
+

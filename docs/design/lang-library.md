@@ -123,6 +123,7 @@ Rules:
       hand reads `Incomplete` with a `read-killed:` note, and the batch goes on with the next file. `-in-process` turns this off.
       Output is byte-equal in both modes for a batch that faults nowhere. A consumer that reads input it does not trust uses this
       boundary, from the command or by running the library in a process of its own.
+      The resource reads (`iac.ReadFile`, `iac.ReadModule`, section 5) keep the same two boundaries.
     - **Guards that stay.** Where nothing in process survives a failure the guard stays: a parser that recurses on nesting is handed
       no file nested past 10,000 levels, since a stack overflow is fatal. There is one HCL guard (`internal/hclbound`, used by
       the extractors and by the stand-alone reads), whose refusal states the bound that fired. A few parsers also refuse a shape
@@ -188,9 +189,21 @@ Extraction today keeps a resource's type and name and discards its attributes (`
 checks, need more. Resource reads are the one new capability.
 
 ```go
-set, err := iac.ReadFile(path, src)                  // one file
-set, err := iac.ReadModule(fsys, dir)                // one Terraform directory: variable defaults and locals
+set, err := iac.ReadFile(ctx, path, src)             // one file, routed by path and content
+set, err := iac.ReadModule(ctx, fsys, dir)           // one Terraform directory: variable defaults and locals
 ```
+
+Both take a context (owner amendment, 2026-11-05: a public read without one could not honor ADR-092's read guarantee later without a
+breaking change) and follow `pkg/lang`'s read guarantee (section 3 rule 10): they return by `iac.DefaultReadDeadline` (30 s, lowered by
+`iac.WithDeadline`, never raised) with `ErrDeadline`, abandon the reader the way `Extract` does, share one process-wide count of abandoned
+reads and return `ErrBusy` once `GOMAXPROCS` of them are running, and refuse past the size limit with `ErrLimit` (2 MiB a file, 64 MiB and 4,096
+files a directory). The reads are in `internal/iacfacts` and the deadline and busy mechanism is `internal/readlimit`, the code `Extract` uses.
+`ReadFile` routes `.tf` and `.tofu` to Terraform, `.tf.json` and `.tofu.json` to Terraform's JSON syntax (not read: no resource and one syntax
+error), `Pulumi.yaml` to Pulumi YAML and a `.yaml`, `.yml`, `.json` or `.template` file that reads as a CloudFormation template (a template format
+version, or a `Resources` key with an `AWS::`, `Custom::` or `Alexa::` type) to CloudFormation. Any other file returns a `*NoReaderError`. The
+public types (`ResourceSet`, `Resource`, `Attr`, `Span`, `Multiplicity`, `Dropped`) are the package's own, converted from the reader's.
+`fathom-lang resources` prints the reads as JSON in the same supervised child as `extract`, so a consumer reading input it does not trust has
+the process boundary too.
 
 ```go
 type Resource struct {

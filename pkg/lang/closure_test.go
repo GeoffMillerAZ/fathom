@@ -63,12 +63,12 @@ func closureProblems(pkgs []listedPackage) []string {
 	return problems
 }
 
-// goListDeps runs go list on the package in the working directory. Any
-// failure is the caller's to fail on: a closure that cannot be measured is not
-// a closure that holds.
-func goListDeps(t *testing.T) []listedPackage {
+// goListDeps runs go list on pkg (a path relative to the working directory)
+// and requires want among its dependencies. Any failure is the caller's to
+// fail on: a closure that cannot be measured is not a closure that holds.
+func goListDeps(t *testing.T, pkg, want string) []listedPackage {
 	t.Helper()
-	cmd := exec.Command("go", "list", "-e", "-deps", "-json=ImportPath,Standard,Error", ".")
+	cmd := exec.Command("go", "list", "-e", "-deps", "-json=ImportPath,Standard,Error", pkg)
 	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -88,9 +88,9 @@ func goListDeps(t *testing.T) []listedPackage {
 		pkgs = append(pkgs, p)
 	}
 	if len(pkgs) < 10 || !slices.ContainsFunc(pkgs, func(p listedPackage) bool {
-		return p.ImportPath == "github.com/geoffmilleraz/fathom/pkg/lang"
+		return p.ImportPath == want
 	}) {
-		t.Fatalf("go list -deps returned %d packages and not pkg/lang itself", len(pkgs))
+		t.Fatalf("go list -deps %s returned %d packages and not %s itself", pkg, len(pkgs), want)
 	}
 	return pkgs
 }
@@ -99,7 +99,16 @@ func goListDeps(t *testing.T) []listedPackage {
 // or CUE, and stays inside its package budget. It fails, never skips, when go
 // list does not run.
 func TestLangClosure(t *testing.T) {
-	for _, problem := range closureProblems(goListDeps(t)) {
+	for _, problem := range closureProblems(goListDeps(t, ".", "github.com/geoffmilleraz/fathom/pkg/lang")) {
+		t.Error(problem)
+	}
+}
+
+// LL-34: the resource-read door holds the same closure. pkg/lang/iac reaches
+// no store, fusion, connector, MCP, net/http or CUE, and stays inside the same
+// budget (it is a good deal smaller: it links no grammar).
+func TestIacClosure(t *testing.T) {
+	for _, problem := range closureProblems(goListDeps(t, "./iac", "github.com/geoffmilleraz/fathom/pkg/lang/iac")) {
 		t.Error(problem)
 	}
 }
