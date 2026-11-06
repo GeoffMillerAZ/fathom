@@ -22,7 +22,7 @@ It is not a query engine. Nothing is stored, nothing is joined across files, and
 | `pkg/lang/cue` | Go package | `cue.Option()` links CUE and Timoni extraction. Without it `pkg/lang` links no `cuelang.org/go` and a `.cue` file reads `Skipped: not-linked` |
 | `pkg/lang/iac` | Go package | `iac.ReadFile` and `iac.ReadModule`: the resources, data sources and module calls of Terraform, OpenTofu, CloudFormation and Pulumi YAML, each attribute with a path, a class, its references and a span (see Resource reads) |
 | `pkg/lang/langtest` | Go package | `CheckPack`: a pack's validation, required kinds and goldens, for pack authors |
-| `cmd/fathom-lang` | Binary (stdlib flags only) | `extract`, `dialects`, `resources` and `contract`, printing the same facts as JSON for tools not written in Go |
+| `cmd/fathom-lang` | Binary (stdlib flags only) | `extract`, `dialects`, `resources`, `contract` and `catalog import`, printing the same facts as JSON for tools not written in Go |
 
 ---
 
@@ -67,6 +67,8 @@ fathom-lang dialects [-pack DIR]
 fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                       [-in-process] PATH...
 fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
+fathom-lang catalog import -dir DIR [-version V] [-licence SPDX] [-tool NAME] [-replace] <export.json | V=export.json>...
+fathom-lang catalog import -dir DIR -region REGION [-licence SPDX] <schemas.zip>
 ```
 
 `extract` prints `{"schema_version":1,"files":[{"path":...,"error":...,"result":...}]}`, `dialects` prints `{"schema_version":1,"dialects":[...]}`. Both are JSON with the field names of `lang.Result` and `lang.DialectInfo`. PATH may be absolute or relative to `-root`. A file that cannot be read has an `error` and a null `result`, and the other files are still read. `extract` reads in a child process it supervises (see Reading hostile input). The output is compatibility surface for tools not written in Go: fields are added, never renamed, `schema_version` changes only with a break, and a change is a reviewed edit of the goldens under `cmd/fathom-lang/testdata/golden`. Exit 0 when every file was read, 1 when a file could not be read or the run failed, 2 on misuse (a bad flag, no PATH, an unknown command). The command links no CUE: a `.cue` file reads `Skipped: not-linked`, and a Go program adds CUE with `pkg/lang/cue`.
@@ -110,7 +112,7 @@ set, err := iac.ReadModule(ctx, os.DirFS(root), "infra") // one Terraform direct
 
 ### Contracts
 
-A catalog is a deterministic zip of one provider's major line that an operator builds from a local `tofu providers schema -json` export (`fathom iac import`, with a `fathom` binary) and installs; nothing here downloads one. `iac.OpenCatalog(path)` validates its manifest (format, kind, source, line, a version list that is valid, ascending and inside the line) and reads no schema. Each lookup opens the zip, reads one version index and one blob, and closes it, so a `Catalog` holds no file and no memo.
+A catalog is a deterministic zip of one provider's major line that an operator builds from a local `tofu providers schema -json` export and installs; nothing here downloads one. `iac.ImportCatalog` builds it with the code `fathom iac import` uses, so a consumer needs no `fathom` binary (see Building a catalog). `iac.OpenCatalog(path)` validates its manifest (format, kind, source, line, a version list that is valid, ascending and inside the line) and reads no schema. Each lookup opens the zip, reads one version index and one blob, and closes it, so a `Catalog` holds no file and no memo.
 
 ```go
 cat, err := iac.OpenCatalog("aws.v6.iaccat.zip")
@@ -118,7 +120,7 @@ ct, err := cat.Contract(cat.Source(), "6.2.0", "aws_s3_bucket") // exact version
 // ct.Attributes[i]: Path (versioning[*].enabled), Type, Required, Optional, Computed, Sensitive, WriteOnly, Deprecated, Replacement, JSONPath
 ```
 
-`Contract` looks the type up as a resource, then a data source, then an ephemeral resource (`KindContract` asks for one), and `ct.Digest` and `ct.Catalog` with each attribute's `JSONPath` let a reader check an answer against the catalog. A type or version the catalog lacks is a `*iac.CatalogError` that matches `iac.ErrNotFound`. A catalog carries replacement facts (what changing an attribute does to the resource, with the source it came from) only once the Go source scan lands: until then `ct.ReplacementFacts` is `absent` and every `Replacement` is nil.
+`Contract` looks the type up as a resource, then a data source, then an ephemeral resource (`KindContract` asks for one), and `ct.Digest` and `ct.Catalog` with each attribute's `JSONPath` let a reader check an answer against the catalog. A type or version the catalog lacks is a `*iac.CatalogError` that matches `iac.ErrNotFound`. A catalog carries replacement facts (what changing an attribute does to the resource, with the source it came from) only when its manifest says so: a catalog built from exports has none until the Go source scan lands (`ct.ReplacementFacts` is `absent` and every `Replacement` is nil), and a CloudFormation catalog's are the registry schemas' own `createOnlyProperties` and `conditionalCreateOnlyProperties` (`contract`), with a nested pointer such as `/properties/Tags/*/Key` spelled `Tags[*].Key`.
 
 ```
 $ fathom-lang contract -catalog aws.v6.iaccat.zip -version 6.2.0 aws_s3_bucket versioning
@@ -126,7 +128,24 @@ $ fathom-lang contract -catalog aws.v6.iaccat.zip -version 6.2.0 aws_s3_bucket v
 
 prints `{"schema_version":1,"contract":{...}}` with the attributes at and under `versioning`. With only `-catalog` it prints the catalog's source, line and versions. A type, version or provider the catalog lacks exits 1 with the reason on standard error.
 
-The runnable versions are the godoc examples on `iac.ReadFile`, `iac.ReadModule` and `iac.OpenCatalog`.
+### Building a catalog
+
+```go
+res, err := iac.ImportCatalog(iac.ImportRequest{
+    Dir:     "catalogs",
+    Exports: []iac.Export{{Version: "6.2.0", Path: "aws-6.2.0.json"}}, // tofu providers schema -json, one provider
+})
+cat, err := iac.OpenCatalog(res.Path)
+```
+
+```
+$ fathom-lang catalog import -dir catalogs -version 6.2.0 aws-6.2.0.json
+$ fathom-lang catalog import -dir catalogs -region us-east-1 schemas.zip
+```
+
+An export is the output of `tofu providers schema -json` for exactly one provider and one major line, made at the version you assert (it is recorded as given and not checked). A catalog built from exports carries attributes, required, sensitive, deprecated and upgrade-impact facts and no replacement facts, and its manifest says `replacement: absent`; so do `res.ReplacementFacts` and `res.Facts`. A catalog already in `Dir` for the same line is merged, never dropped: the result lists what was added, kept, unchanged and replaced, and a release whose content differs is refused unless `Replace` is set. A CloudFormation registry schema zip you fetched builds that region's catalog (`SchemaZip` with `Region`; source `aws/cloudformation`, one snapshot per region, keyed by a digest that ignores the zip's embedded build time, with `Date` the day it was built). Nothing is downloaded, a URL is refused, and nothing is installed when anything is refused. `catalog import` prints `{"schema_version":1,"catalog":{...}}` with the path, source, line, versions and `replacement_facts`.
+
+The runnable versions are the godoc examples on `iac.ReadFile`, `iac.ReadModule`, `iac.OpenCatalog` and `iac.ImportCatalog`.
 
 ---
 
@@ -156,4 +175,4 @@ Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as fo
 
 ## Maintained
 
-This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources and contract commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.

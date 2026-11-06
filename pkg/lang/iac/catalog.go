@@ -202,7 +202,11 @@ func (c *Catalog) KindContract(source, version string, kind Kind, typ string) (*
 	if err != nil {
 		return nil, catalogErr(err)
 	}
-	attrs, err := contractAttrs(fact.Value)
+	read := contractAttrs
+	if c.m.Kind == iacfacts.KindCloudFormation {
+		read = cfnContractAttrs
+	}
+	attrs, err := read(fact.Value)
 	if err != nil {
 		return nil, &CatalogError{Scope: iacfacts.ScopeAnswer, Code: iacfacts.RefuseCorrupt, Reason: fmt.Sprintf("the schema of %s %s is not one this build reads: %v", kind, typ, err)}
 	}

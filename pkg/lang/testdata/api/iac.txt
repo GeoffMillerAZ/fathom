@@ -246,6 +246,88 @@ type Dropped struct {
     (check.NAME.data.TYPE.NAME). Absence is never silent: a resource that is in
     neither Resources nor Dropped does not exist in the file.
 
+type Export struct {
+	Version string
+	Path    string
+}
+    Export is one `tofu providers schema -json` file and the provider version
+    the operator asserts it was made at. The version is recorded as given and is
+    not checked against the export.
+
+type ImportRequest struct {
+	// Dir is the directory the catalog is installed in, created when it is missing. A catalog's file name comes from
+	// its manifest, so one provider line, or one CloudFormation region, has one file in Dir.
+	Dir string
+	// Exports are the exports of ONE provider and one major line, one per release. A multi-provider export is
+	// refused. Make one in a scratch directory whose configuration requires only that provider:
+	// `tofu init && tofu providers schema -json > export.json`.
+	Exports []Export
+	// SchemaZip is a CloudFormation registry schema zip the operator fetched, Region the region it is for
+	// (us-east-1). A region holds one snapshot, so a new zip replaces the region's catalog.
+	SchemaZip string
+	Region    string
+	// Licence is the SPDX identifier recorded in the manifest, and Tool names the tool that made the exports.
+	Licence string
+	Tool    string
+	// Replace swaps a release the installed catalog holds with different content. Without it that is refused. It
+	// does not apply to a schema zip.
+	Replace bool
+}
+    ImportRequest names what to build a catalog from and where to install it.
+    Exactly one input is set: Exports, or SchemaZip with Region. Every path is a
+    local file, and nothing is downloaded.
+
+type ImportResult struct {
+	// Path is the installed file, Name its file name, SHA256 its digest and Bytes its size. Source is the provider
+	// address (aws/cloudformation for a schema zip), Line the provider's major version or the region, and Versions the
+	// releases it holds, oldest first (one sha256-<12 hex> snapshot label for a schema zip).
+	Path, Name, SHA256 string
+	Bytes              int64
+	Source, Line       string
+	Versions           []string
+	// ReplacementFacts is the manifest's own claim: "absent" for a catalog built from exports, which carries facts
+	// 1 to 4 and 7 and no replacement facts, and "contract" for a schema zip, whose replacement facts are the
+	// schema's createOnlyProperties and conditionalCreateOnlyProperties.
+	ReplacementFacts string
+	// Facts says in a sentence what the catalog carries.
+	Facts string
+
+	// Exports only. Merged is true when a catalog of the same provider line was installed and its releases were
+	// kept. Added are the releases the import brought, Kept the installed releases it did not name, Unchanged the
+	// named releases whose content equals the installed one and Replaced the ones Replace swapped. All are in
+	// version order.
+	Merged                           bool
+	Added, Kept, Unchanged, Replaced []string
+
+	// Schema zip only. Types is the resource types read, SchemaDigest the sha256 over the zip's entry names and
+	// bodies (its embedded build time is ignored) and Date the day the zip was built. SnapshotReplaced is true when
+	// the region already had a catalog, PreviousDigest is that catalog's digest and SnapshotUnchanged is true when
+	// it equals the new one.
+	Types              int
+	SchemaDigest, Date string
+	SnapshotReplaced   bool
+	PreviousDigest     string
+	SnapshotUnchanged  bool
+}
+    ImportResult is the catalog an import installed.
+
+func ImportCatalog(req ImportRequest) (*ImportResult, error)
+    ImportCatalog builds a provider contract catalog from local files and
+    installs it in req.Dir. It is the builder `fathom iac import` uses,
+    so a library consumer needs no fathom binary: a `tofu providers schema
+    -json` export becomes a catalog with attributes, required, sensitive,
+    deprecated and upgrade-impact facts and no replacement facts, and says so
+    in its manifest; a CloudFormation registry schema zip becomes a region's
+    catalog whose replacement facts are the schemas' own. Open the result with
+    OpenCatalog(res.Path).
+
+    An import into a directory that already holds the same provider line merges:
+    every release held stays, the named ones are added, and the result lists
+    what was added, kept, unchanged and replaced. Nothing is installed when
+    anything is refused. A refusal of a bound or a check is a *CatalogError;
+    a bad request or an unreadable file is a plain error. ImportCatalog reads
+    and writes only the paths in req.
+
 type Kind string
     Kind names the section of a catalog a type is looked up in.
 

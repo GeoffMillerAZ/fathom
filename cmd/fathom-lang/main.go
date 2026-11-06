@@ -8,12 +8,14 @@
 //	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
 //	    [-in-process] PATH...
 //	fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
+//	fathom-lang catalog import -dir DIR [-version V] [-region R] [-licence SPDX] [-tool NAME] [-replace] INPUT...
 //
 // PATH may be relative to -root or absolute. A file that cannot be read is a
 // result of its own (its error is in the JSON) and the batch goes on.
 //
 // resources prints the resources and attributes an infrastructure-as-code file declares (pkg/lang/iac), in the same
-// supervised child as extract. contract prints what a provider catalog an operator built states about a type.
+// supervised child as extract. contract prints what a provider catalog an operator built states about a type. catalog import builds one from a local
+// `tofu providers schema -json` export or a CloudFormation registry schema zip.
 //
 // extract reads in a supervised child process by default (supervise.go): a
 // parser that never returns, a fatal stack overflow or a read that allocates
@@ -52,6 +54,8 @@ const usage = `usage:
   fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                         [-in-process] PATH...
   fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
+  fathom-lang catalog import -dir DIR [-version V] [-licence SPDX] [-tool NAME] [-replace] <export.json | V=export.json>...
+  fathom-lang catalog import -dir DIR -region REGION [-licence SPDX] <schemas.zip>
 
 extract reads each PATH (absolute, or relative to -root, default the working
 directory) and prints {"schema_version":1,"files":[{"path":...,"error":...,
@@ -82,7 +86,17 @@ contract prints a catalog's source, line and versions, with only -catalog; with
 TYPE, what the catalog states about that type (default: the highest version and
 the catalog's own source), with each attribute's type, required, optional,
 computed, sensitive, deprecated and replacement facts; with TYPE and ATTR, only
-that attribute and the attributes nested under it.`
+that attribute and the attributes nested under it.
+catalog import builds a catalog from files you made, with the builder fathom iac import
+uses, installs it in DIR and prints {"schema_version":1,"catalog":{...}}: its path, source,
+line, versions and replacement_facts. An export is the output of
+tofu providers schema -json for exactly one provider (one major line), made at the
+version you pass with -version or write as V=export.json. A catalog built from exports
+carries attributes, required, sensitive, deprecated and upgrade impact and no
+replacement facts, and its manifest says so. A catalog already in DIR for the same line
+is merged, never dropped, and a release with different content is refused unless
+-replace. With -region the input is a CloudFormation registry schema zip you fetched,
+imported as that region's catalog. Nothing is downloaded.`
 
 // schemaVersion is the version of the JSON shape both commands print. It
 // changes only with a break; added fields do not change it.
@@ -117,6 +131,8 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 		err = cmdResources(ctx, args[1:], in, out)
 	case "contract":
 		err = cmdContract(args[1:], out)
+	case "catalog":
+		err = cmdCatalog(args[1:], out)
 	case "-h", "-help", "--help", "help":
 		fmt.Fprintln(out, usage)
 		return 0

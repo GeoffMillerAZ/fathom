@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"testing/fstest"
 
 	"github.com/geoffmilleraz/fathom/pkg/lang/iac"
@@ -82,4 +84,49 @@ func ExampleOpenCatalog() {
 	// rule[*].port required=true sensitive=false
 	// secret required=false sensitive=true
 	// settings[*].mode required=true sensitive=false
+}
+
+// ImportCatalog builds a catalog from a `tofu providers schema -json` export you made, with no fathom binary. The
+// catalog carries attributes, required, sensitive and deprecated flags and no replacement facts, and its manifest
+// says so. A CloudFormation registry schema zip builds a region's catalog through ImportRequest.SchemaZip and Region.
+func ExampleImportCatalog() {
+	dir, err := os.MkdirTemp("", "iac-import")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	export := filepath.Join(dir, "export.json")
+	err = os.WriteFile(export, []byte(`{"format_version":"1.0","provider_schemas":{"registry.opentofu.org/example/widget":{
+  "provider":{"version":0,"block":{"attributes":{}}},
+  "resource_schemas":{"widget_thing":{"version":1,"block":{"attributes":{
+    "name":{"type":"string","required":true},
+    "size":{"type":"number","optional":true}}}}},
+  "data_source_schemas":{}}}}`), 0o644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	res, err := iac.ImportCatalog(iac.ImportRequest{
+		Dir:     filepath.Join(dir, "catalogs"),
+		Exports: []iac.Export{{Version: "1.0.0", Path: export}},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(res.Source, res.Versions, res.ReplacementFacts)
+
+	cat, err := iac.OpenCatalog(res.Path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ct, err := cat.Contract(cat.Source(), "1.0.0", "widget_thing")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, a := range ct.Attributes {
+		fmt.Printf("%s required=%v\n", a.Path, a.Required)
+	}
+	// Output:
+	// registry.opentofu.org/example/widget [1.0.0] absent
+	// name required=true
+	// size required=false
 }
