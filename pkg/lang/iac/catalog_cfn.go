@@ -16,7 +16,8 @@ import (
 // carries a Replacement whose provenance names the schema field. A nested pointer such as /properties/Tags/*/Key
 // adds an entry at Tags[*].Key. The importer reads the nested object's required list from the raw schema, through
 // definitions and $ref, and the entry then reads required, or optional unless read-only, as a top-level one does.
-// An entry whose object it could not resolve states neither.
+// An entry takes write_only, deprecated and computed from the schema's own lists by its path. One whose object it
+// could not resolve states neither required nor optional.
 
 type cfnSchemaJSON struct {
 	Properties map[string]struct {
@@ -99,9 +100,10 @@ func cfnContractAttrs(blob []byte) ([]ContractAttr, error) {
 	// it when it resolved that object, and then the entry reads as a top-level one does. When it could not, the
 	// entry states neither required nor optional.
 	for path, r := range repl {
-		ent := ContractAttr{Path: path, Replacement: r, JSONPath: field[path]}
+		// write_only, deprecated and computed come from the schema's own lists by path, resolved or not.
+		ent := ContractAttr{Path: path, Replacement: r, JSONPath: field[path], WriteOnly: writeOnly[path], Deprecated: deprecated[path], Computed: readOnly[path]}
 		if req, ok := s.Nested[path]; ok {
-			ent.Required, ent.Optional, ent.Computed = req, !req && !readOnly[path], readOnly[path]
+			ent.Required, ent.Optional = req, !req && !readOnly[path]
 		}
 		out = append(out, ent)
 	}

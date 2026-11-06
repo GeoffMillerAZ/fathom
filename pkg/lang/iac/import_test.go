@@ -309,3 +309,45 @@ func TestImportCatalogCloudFormationNestedRequired(t *testing.T) {
 		}
 	}
 }
+
+// A nested entry takes write_only, deprecated and computed from the schema's own lists by its path, whether or not
+// the importer resolved the object that holds it. Only required and optional wait on the resolution.
+func TestImportCatalogCloudFormationNestedFlags(t *testing.T) {
+	str := map[string]any{"type": "string"}
+	zipPath := cfnZipOf(t, map[string]any{
+		"typeName": "Example::Widget::Thing",
+		"properties": map[string]any{
+			"Config": map[string]any{"$ref": "#/definitions/Config"},
+			"Loose":  map[string]any{"type": "object"},
+		},
+		"definitions": map[string]any{
+			"Config": map[string]any{"type": "object", "properties": map[string]any{"Mode": str, "Plain": str}},
+		},
+		"createOnlyProperties": []string{"/properties/Config/Mode", "/properties/Config/Plain", "/properties/Loose/Thing"},
+		"writeOnlyProperties":  []string{"/properties/Config/Mode", "/properties/Loose/Thing"},
+		"deprecatedProperties": []string{"/properties/Config/Mode", "/properties/Loose/Thing"},
+		"readOnlyProperties":   []string{"/properties/Loose/Thing"},
+	})
+	res, err := iac.ImportCatalog(iac.ImportRequest{Dir: t.TempDir(), SchemaZip: zipPath, Region: "us-east-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, err := iac.OpenCatalog(res.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct, err := cat.Contract("aws/cloudformation", res.Versions[0], "Example::Widget::Thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string][5]bool{ // write_only, deprecated, computed, required, optional
+		"Config.Mode":  {true, true, false, false, true},   // resolved
+		"Config.Plain": {false, false, false, false, true}, // resolved, in no list
+		"Loose.Thing":  {true, true, true, false, false},   // unresolved: flags still read, required and optional do not
+	} {
+		a := attrByPath(t, ct, path)
+		if got := [5]bool{a.WriteOnly, a.Deprecated, a.Computed, a.Required, a.Optional}; got != want {
+			t.Errorf("%s: write_only/deprecated/computed/required/optional %v, want %v", path, got, want)
+		}
+	}
+}
