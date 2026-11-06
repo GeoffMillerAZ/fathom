@@ -256,7 +256,7 @@ relation and are never expanded. Helm is not rendered.
 **Values.** `Value` is empty unless the caller passes `iac.WithValues()`. Even then, the reader itself withholds what its source marks secret, before any contract is bound:
 the default of a `sensitive` or `ephemeral` Terraform variable, a CloudFormation `NoEcho` parameter, a Pulumi `secret` configuration entry and
 `fn::secret`. A read binds no contract, so it does not withhold by contract: a caller that reads with `WithValues` and binds a `Contract`
-itself drops the values the contract marks sensitive or write-only (LL-43, deferred). A check still learns that a literal or default is there,
+itself drops the values the contract marks sensitive or write-only (LL-43, deferred; ADR-092 decision 7, amended 2026-11-06). A check still learns that a literal or default is there,
 which is what "no hardcoded secret" asks. A value past `MaxValueBytes` (1 MiB, counted as a consumer would
 serialise it: string bytes, numbers at the length they print at, mapping keys and `ignore_changes` names included) refuses the whole input, and so do the values of one read past `MaxTotalValueBytes` (16 MiB) in all. The
 product never calls `WithValues`, proven by a test that fails on any such call outside `pkg/lang`, `cmd/fathom-lang` and tests, and a
