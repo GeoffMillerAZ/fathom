@@ -19,28 +19,30 @@ to carry no credential. It follows one rule about which of the file's own
 text it returns, and the rule fails closed. A Signature from a code dialect
 (a DialectInfo of Kind "language") on a list this package holds and its tests
 check, each of whose string and char literal forms opens with a quote character,
-is kept up to its first quote character (', " or a backtick) and reads *** from
-there on. There is no pairing and no grammar: a quote that opens no literal (a
-comment's apostrophe, a digit separator, a quote in a regex) cuts too, and only
-a Rust lifetime or label is kept. Over-masking is accepted; a value written
-before the first quote stays, and so do the prefix characters of a literal (r,
-b, u8, R, @, $, #, f). A Signature from any other code dialect is empty.
-A Signature from a dialect that is no code is empty unless the symbol's Kind is
-one whose Signature is structure and holds no value (a keyword or a declared
-name, on a list this package holds and its tests check), and a Signature that
-list keeps is cut at its first quote the same way, so the text of a script
-is never returned and a Kind added later is withheld until it is listed.
-A Fact value under a key whose last segment looks like a credential (password,
-passwd, secret, token, apikey, credential, private_key, in any case or
-separator) reads ***, as does a literal that a fact value binds with =,
-:= or :; other Fact values are returned as written. The userinfo of a URL,
-written with or without its scheme (user:password@host, //user:password@host),
-is dropped wherever a string from the file lands, keeping the ssh account git
-and the image of a docker or oci reference that a digest follows; a userinfo
-ends at the first '/', '?' or '#', so the host of a URL is never changed. Notes
-carry a reason and a line, never the file's text. Everything else (a symbol's
-name, a reference target and its raw spelling, a value the rule does not name)
-is returned as written, and an image reference is available in Reference.To.
+is kept up to its first quote character (', " or a backtick) and reads ***
+from there on (javascript, typescript and scala also from their first <,
+where JSX text and XML literals open). There is no pairing and no grammar:
+a quote that opens no literal (a comment's apostrophe, a digit separator,
+a quote in a regex) cuts too, and only a Rust lifetime or label is kept.
+Over-masking is accepted; a value written before the first quote stays,
+and so do the prefix characters of a literal (r, b, u8, R, @, $, #, f). A
+Signature from any other code dialect is empty. A Signature from a dialect that
+is no code is empty unless the symbol's Kind is one whose Signature is structure
+and holds no value (a keyword or a declared name, on a list this package holds
+and its tests check), and a Signature that list keeps is cut at its first quote
+the same way, so the text of a script is never returned and a Kind added later
+is withheld until it is listed. A Fact value under a key whose last segment
+looks like a credential (password, passwd, secret, token, apikey, credential,
+private_key, in any case or separator) reads ***, as does a literal that a
+fact value binds with =, := or :; other Fact values are returned as written.
+The userinfo of a URL, written with or without its scheme (user:password@host,
+//user:password@host), is dropped wherever a string from the file lands,
+keeping the ssh account git and the image of a docker or oci reference that a
+digest follows; a userinfo ends at the first '/', '?' or '#', so the host of a
+URL is never changed. Notes carry a reason and a line, never the file's text.
+Everything else (a symbol's name, a reference target and its raw spelling,
+a value the rule does not name) is returned as written, and an image reference
+is available in Reference.To.
 
 Reading hostile input. Two boundaries, and each promises only what it can keep.
 In process, Extract returns by a deadline (DefaultReadDeadline, lowered by

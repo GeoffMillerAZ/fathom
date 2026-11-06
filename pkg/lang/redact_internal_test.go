@@ -177,7 +177,7 @@ func TestCutAtQuote(t *testing.T) {
 		{"empty", ``, ``, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := cutAtQuote(tc.in, tc.rust); got != tc.want {
+			if got := cutAtQuote(tc.in, tc.rust, false); got != tc.want {
 				t.Errorf("cutAtQuote(%q, %v)\n got %q\nwant %q", tc.in, tc.rust, got, tc.want)
 			}
 		})
@@ -271,13 +271,13 @@ var quoteLedLiterals = map[string][]string{
 	"dart":       {`'S'`, `"S"`, `r'S'`, `r"S"`, `'''S'''`, `"""S"""`, `'a$S'`},
 	"go":         {`"S"`, "`S`", `'S'`},
 	"java":       {`"S"`, `'S'`, "\"\"\"\nS\n\"\"\""},
-	"javascript": {`"S"`, `'S'`, "`S`", "`a${S}`", "tag`S`"},
+	"javascript": {`"S"`, `'S'`, "`S`", "`a${S}`", "tag`S`", `<b>S</b>`},
 	"kotlin":     {`"S"`, `"""S"""`, `'S'`, `"a$S"`},
 	"python":     {`"S"`, `'S'`, `b"S"`, `r"S"`, `u"S"`, `f"S"`, `rb"S"`, `Rb"S"`, `br'S'`, `t"S"`, `"""S"""`, `'''S'''`},
 	"rust":       {`"S"`, `r"S"`, `r#"S"#`, `r##"S"##`, `b"S"`, `br#"S"#`, `c"S"`, `cr#"S"#`, `'S'`, `b'S'`},
-	"scala":      {`"S"`, `"""S"""`, `s"S"`, `f"S"`, `raw"S"`, `'S'`, `'S`},
+	"scala":      {`"S"`, `"""S"""`, `s"S"`, `f"S"`, `raw"S"`, `'S'`, `'S`, `<b>S</b>`},
 	"swift":      {`"S"`, `"""S"""`, `#"S"#`, `##"S"##`, `#"""S"""#`},
-	"typescript": {`"S"`, `'S'`, "`S`", "`a${S}`", "tag`S`"},
+	"typescript": {`"S"`, `'S'`, "`S`", "`a${S}`", "tag`S`", `<b>S</b>`},
 }
 
 // Every literal form of every dialect on quoteLed, wherever it sits in a
@@ -310,5 +310,37 @@ func TestQuoteLedSignatureDropsURLUserinfo(t *testing.T) {
 	res.withhold("language")
 	if got, want := res.Symbols[0].Signature, `def f(u=https://h.example/x, s=***`; got != want {
 		t.Errorf("Signature %q, want %q", got, want)
+	}
+}
+
+// JSX child text and Scala XML literals open with a < and no quote, so a dialect
+// that reads them (angleLed) is also cut at its first <, over-masking generics.
+func TestCutAtQuoteAndAngle(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want string
+		angle          bool
+	}{
+		{"a < is no cut by default", `function f(a: Array<number>)`, `function f(a: Array<number>)`, false},
+		{"jsx text cuts at the <", `function f(a = <b>x</b>)`, `function f(a = ***`, true},
+		{"an xml literal cuts at the <", `def f(n: Node = <b>x</b>)`, `def f(n: Node = ***`, true},
+		{"a generic cuts at the <", `function f(a: Array<number>)`, `function f(a: Array***`, true},
+		{"the < before the quote wins", `f(a = <b>x</b>, s = "y")`, `f(a = ***`, true},
+		{"the quote before the < wins", `f(s = "y", a = <b>x</b>)`, `f(s = ***`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cutAtQuote(tc.in, false, tc.angle); got != tc.want {
+				t.Errorf("cutAtQuote(%q, angle %v)\n got %q\nwant %q", tc.in, tc.angle, got, tc.want)
+			}
+		})
+	}
+}
+
+// angleLed names dialects that quoteLed already lists: a < cut adds to the quote
+// cut and never replaces it.
+func TestAngleLedDialectsAreQuoteLed(t *testing.T) {
+	for id := range angleLed {
+		if _, ok := quoteLed[id]; !ok {
+			t.Errorf("%s is on angleLed and not on quoteLed", id)
+		}
 	}
 }

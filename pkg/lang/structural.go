@@ -76,11 +76,17 @@ var structuralKinds = map[string]string{
 // structure: a query that captures no body ends it at the end of the first line,
 // and a definition written on one line holds its body there (a one-line Thrift
 // service, with the default of a parameter), and a GraphQL fragment's directives
-// follow its type condition and hold arguments. The Signature is cut at the first
-// of the characters listed, which is where a value can start.
+// follow its type condition and hold arguments, and a Nix attribute path may hold
+// an interpolation, ${...}, whose expression can carry an unquoted URI or path
+// literal. The Signature is cut at the first of the characters listed, which is
+// where a value can start.
 var structuralCuts = map[string]string{
 	"GraphQLFragment": "@{",
 	"ThriftService":   "{",
+	"NixAttribute":    "$",
+	"NixOption":       "$",
+	"NixPackage":      "$",
+	"NixVariable":     "$",
 }
 
 // structuralSignature is the part of a structural kind's Signature that is

@@ -138,7 +138,8 @@ Rules:
 12. **Withheld values.** The door follows one rule about which of the file's own text it returns, and the rule fails closed
     (ADR-069 decision 2, ADR-065 decision 2, ADR-092). It is not a secret scanner. In a `Signature` from a code dialect
     (`DialectInfo.Kind` `language`) on a list a test holds (each entry cites the language reference rule that every string and char
-    literal form of the language opens with a quote character, possibly after identifier or sigil prefix characters) the `Signature`
+    literal form of the language opens with a quote character, possibly after identifier or sigil prefix characters;
+    javascript, typescript and scala, which also read JSX text and XML literals that open with `<`, are cut at their first `<` too) the `Signature`
     is kept up to its first quote character (`'`, `"` or a backtick) and everything from the quote on reads `***`. There is no pairing, no
     closer search and no per-dialect quote grammar: a quote that opens no literal (a comment's apostrophe, a digit separator, a
     quote in a regex) cuts too, and a Rust lifetime or label is the one quote kept. Prefix characters before the quote stay.

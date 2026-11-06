@@ -496,6 +496,9 @@ func TestStructuralSignatureEndsBeforeAValue(t *testing.T) {
 		{"thrift body on the next line", "b.thrift", "service A {\n  void f(1: string x = \"" + s + "\")\n}\n", "ThriftService", "service A"},
 		{"graphql string argument", "a.graphql", `fragment F on T @dir(arg: "` + s + `") @other(x: """` + s + `""") { id }` + "\n", "GraphQLFragment", "fragment F on T"},
 		{"graphql enum argument", "b.graphql", "fragment F on T @d(a: " + s + ") { id }\n", "GraphQLFragment", "fragment F on T"},
+		{"nix interpolated uri", "a.nix", "{\n  b.${builtins.baseNameOf https://" + s + ".example/y} = 2;\n}\n", "NixAttribute", "b."},
+		{"nix interpolated path", "b.nix", "{\n  c.${toString ./" + s + "} = 3;\n}\n", "NixAttribute", "c."},
+		{"nix interpolated option", "c.nix", "{\n  options.programs.${baseNameOf ./" + s + "}.enable = true;\n}\n", "NixOption", "options.programs."},
 		{"graphql arguments across lines", "c.graphql", "fragment F on T\n  @d(\n    a: " + s + "\n  ) {\n  id\n}\n", "GraphQLFragment", "fragment F on T"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -616,6 +619,11 @@ var quoteLedForms = []struct {
 	{"dart", "a.dart", "void f%d({String a = %s}) {}\n", []string{`'S'`, `"S"`, `r'S'`, `r"S"`, `'''S'''`, `"""S"""`}},
 	{"java", "a.java", "class C%d { void f(String a, @A(%s) int b) {} }\n", []string{`"S"`, `'S'`, "\"\"\"\n S\n \"\"\""}},
 	{"rust", "a.rs", "#[doc = %s]\nfn f%d() {}\n", []string{`"S"`, `r"S"`, `r#"S"#`, `b"S"`, `br#"S"#`, `c"S"`, `'S'`, `b'S'`}},
+	{"javascript", "a.jsx", "function f%d({ who = %s }) {}\n", []string{`<b>S</b>`, `<>S</>`, `<a href="x">S</a>`}},
+	{"javascript", "a.js", "export default function Hello%d({ who = %s }) {}\n", []string{`<b>S</b>`}},
+	{"javascript", "b.jsx", "const g%d = (x = %s) => x;\n", []string{`<i>S</i>`}},
+	{"typescript", "a.tsx", "export function U%d({ z = %s }: { z?: any }) {}\n", []string{`<em>S</em>`, `<>S</>`}},
+	{"scala", "b.scala", "object O%d { def f(n: scala.xml.Node = %s) = n }\n", []string{`<b>S</b>`, `<a href="x">S</a>`}},
 	{"go", "a.go", "package p\n\nfunc F%d(a [len(%s)]int) {}\n", []string{`"S"`, "`S`"}},
 	{"c", "a.c", "static const char *K%d = %s;\nvoid g%d(const char *a) {}\n", []string{`"S"`, `L"S"`, `u8"S"`, `u"S"`, `U"S"`, `'S'`}},
 }

@@ -5,9 +5,12 @@ package lang
 // in a Result, and it fails closed: what it cannot tell apart it withholds.
 //
 //   - Signature, code dialect (kind "language") on quoteLed, the list of dialects
-//     each of whose literal forms opens with a quote character: the Signature is
-//     kept up to its first quote character (', " or a backtick) and everything
-//     from the quote on reads ***. There is no pairing, no closer search and no
+//     each of whose string and char literal forms opens with a quote character:
+//     the Signature is kept up to its first quote character (', " or a backtick)
+//     and everything from the quote on reads ***. A dialect on angleLed (javascript
+//     and typescript, which read JSX, and scala, which reads XML literals) is cut
+//     at its first < as well, since JSX text and XML open with < and no quote.
+//     Regex and comment bodies are not literal forms of this rule and stay. There is no pairing, no closer search and no
 //     grammar of any dialect: a quote that opens no literal (a comment's
 //     apostrophe, a digit separator, a quote in a regex) cuts too, and Rust's
 //     lifetimes and labels are the one exception. Over-masking is accepted.
@@ -176,9 +179,13 @@ var quoteLed = map[string]string{
 // literal (a comment's apostrophe, a digit separator, a quote in a regex) cuts
 // too, since over-masking is the price of a rule that cannot be fooled. In Rust a
 // ' that starts a lifetime or a label stays (rustLifetime).
-func cutAtQuote(sig string, rust bool) string {
+func cutAtQuote(sig string, rust, angle bool) string {
 	for i := 0; i < len(sig); i++ {
 		switch sig[i] {
+		case '<':
+			if angle {
+				return sig[:i] + redacted
+			}
 		case '"', '`':
 			return sig[:i] + redacted
 		case '\'':
@@ -189,6 +196,16 @@ func cutAtQuote(sig string, rust bool) string {
 		}
 	}
 	return sig
+}
+
+// angleLed is the list of quote-led dialects that also read a literal form which
+// opens with a < and no quote: JSX child text in javascript and typescript (and so
+// in .jsx and .tsx), XML literals in scala. A Signature of these dialects is also
+// cut at its first <, which over-masks a generic, a comparison and a type bound.
+var angleLed = map[string]string{
+	"javascript": "JSX (React JSX specification): element child text opens after the > of a tag, and the element opens with <",
+	"typescript": "TypeScript reads JSX in .tsx: element child text opens after the > of a tag, and the element opens with <",
+	"scala":      "Scala spec 10 (XML expressions): an XML literal opens with <, in Scala 2.13 and still in Scala 3",
 }
 
 // maskQuoted replaces what is between the quotes of every quoted literal in s
@@ -438,6 +455,7 @@ func (res *Result) withhold(dialectKind string) {
 	code := dialectKind == "language"
 	_, quoteLedDialect := quoteLed[res.Dialect]
 	rust := res.Dialect == "rust"
+	_, angle := angleLed[res.Dialect]
 	// A Key is Package.Name (design rule 9), so it is rebuilt from the scrubbed
 	// parts: scrubbing the joined text separately can eat the package prefix
 	// (`pod.u:S@reg/i` reads as the user `pod.u`) or keep a userinfo the Name lost.
@@ -452,11 +470,11 @@ func (res *Result) withhold(dialectKind string) {
 		}
 		switch {
 		case code && quoteLedDialect:
-			s.Signature = withholdURLUserinfo(cutAtQuote(s.Signature, rust))
+			s.Signature = withholdURLUserinfo(cutAtQuote(s.Signature, rust, angle))
 		case code:
 			s.Signature = "" // a code dialect nobody classified as quote-led withholds
 		case structuralKind(s.Kind):
-			s.Signature = withholdURLUserinfo(cutAtQuote(structuralSignature(s.Kind, s.Signature), false))
+			s.Signature = withholdURLUserinfo(cutAtQuote(structuralSignature(s.Kind, s.Signature), false, false))
 		default:
 			s.Signature = ""
 		}

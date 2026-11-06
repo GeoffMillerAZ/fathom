@@ -18,7 +18,8 @@
 // DialectInfo of Kind "language") on a list this package holds and its tests
 // check, each of whose string and char literal forms opens with a quote
 // character, is kept up to its first quote character (', " or a backtick) and
-// reads *** from there on. There is no pairing and no grammar: a quote that
+// reads *** from there on (javascript, typescript and scala also from their
+// first <, where JSX text and XML literals open). There is no pairing and no grammar: a quote that
 // opens no literal (a comment's apostrophe, a digit separator, a quote in a
 // regex) cuts too, and only a Rust lifetime or label is kept. Over-masking is
 // accepted; a value written before the first quote stays, and so do the
