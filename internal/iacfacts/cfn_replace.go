@@ -6,6 +6,7 @@ package iacfacts
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -186,7 +187,27 @@ func (l srcLines) text(sp Span) (string, bool) {
 // one, and no value leaves this function.
 func attrSig(a Attr, lines srcLines) string {
 	t, _ := lines.text(a.Span)
-	return string(a.Class) + "\x00" + strings.Join(a.Refs, ",") + "\x00" + t
+	return string(a.Class) + "\x00" + strings.Join(a.Refs, ",") + "\x00" + spelling(t)
+}
+
+// shortTag matches a YAML short-form intrinsic tag such as !Sub, at the start of a token.
+var shortTag = regexp.MustCompile(`(^|[\s\[{,])!([A-Za-z]+)`)
+
+// spelling reduces the text of a span to its words, so the same value spelled another way reads as itself: a quoted
+// scalar, the long and short forms of an intrinsic (!Sub and Fn::Sub), a GetAtt as a list or as Res.Attr, and a JSON
+// template rewritten as YAML. Quotes, brackets, braces, colons, commas and dots separate words and are dropped, so
+// a change that only moves such a punctuation mark between words reads as no change: a miss, which the check
+// prefers to a false alarm. No value is read or kept.
+func spelling(t string) string {
+	t = shortTag.ReplaceAllString(t, "${1}Fn::${2}")
+	t = strings.ReplaceAll(t, "Fn::Ref", "Ref")
+	t = strings.Map(func(r rune) rune {
+		if strings.ContainsRune("\"'{}[]:,.", r) {
+			return ' '
+		}
+		return r
+	}, t)
+	return strings.Join(strings.Fields(t), " ")
 }
 
 // attrSigs groups a resource's attributes by path into one comparable string each.
@@ -215,7 +236,7 @@ func attrSigs(r Resource, src []byte) (sigs map[string]string, spans map[string]
 // CheckCloudFormationChange compares a resource as the base wrote it with the head, and reports each changed
 // property the head's schema says forces replacement (create-only) or may (conditional create-only). baseSrc and
 // headSrc are the templates the resources were read from: a property is changed when its class, its references or the
-// source text of its span differ, so no value is read or kept. A resource whose Properties either side
+// words of its span differ (see spelling), so no value is read or kept and a respelled value is no change. A resource whose Properties either side
 // wrote through an intrinsic the reader could not walk proves no change, and a Type that changed is a different
 // resource: both are said in Notes. The binding is CheckCloudFormationUse's. The schema states the replacement, so
 // an answer says the contract states it, never that a change set confirms it.

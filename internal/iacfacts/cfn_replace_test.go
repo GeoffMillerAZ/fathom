@@ -165,3 +165,61 @@ func TestCFNPointerPath(t *testing.T) {
 		}
 	}
 }
+
+// A change is a change of value, not of spelling: a quoted scalar, the long and short spellings of an intrinsic
+// and a JSON template rewritten as YAML claim nothing when no value moved. No read carries values, so the check
+// normalizes what the span covers.
+func TestCheckCloudFormationChangeIgnoresSpelling(t *testing.T) {
+	cats := cfnChangeCats(t, nil)
+	chg := func(baseFile, base, headFile, head string) CFNChange {
+		t.Helper()
+		read := func(file, src string) Resource {
+			set, err := ReadCloudFormationFile(file, []byte(src))
+			if err != nil || len(set.Resources) != 1 {
+				t.Fatalf("read %s: %v %v", file, err, set)
+			}
+			return set.Resources[0]
+		}
+		return CheckCloudFormationChange(cats, "us-east-1", read(baseFile, base), read(headFile, head), []byte(base), []byte(head))
+	}
+	for name, h := range map[string]string{
+		"double quotes": strings.Replace(cfnWidget, "Name: a", `Name: "a"`, 1),
+		"single quotes": strings.Replace(cfnWidget, "Name: a", `Name: 'a'`, 1),
+		"quoted number": strings.Replace(cfnWidget, "Size: 3", `Size: "3"`, 1),
+	} {
+		if got := chg("t.yaml", cfnWidget, "t.yaml", h); changeKinds(got) != "" {
+			t.Errorf("%s: %q", name, changeKinds(got))
+		}
+	}
+	// A real change under quotes is still a change.
+	if got := chg("t.yaml", cfnWidget, "t.yaml", strings.Replace(cfnWidget, "Name: a", `Name: "b"`, 1)); changeKinds(got) != "forces-replacement:Name:changed" {
+		t.Errorf("quoted change: %q", changeKinds(got))
+	}
+	const asJSON = `{"Resources": {"W": {"Type": "Example::Widget::Thing", "Properties": {
+  "Name": {"Ref": "P"},
+  "Size": {"Fn::Sub": "n-${Q}"},
+  "Tags": [{"Key": "k"}]}}}}
+`
+	const asYAML = `Resources:
+  W:
+    Type: Example::Widget::Thing
+    Properties:
+      Name: !Ref P
+      Size: !Sub "n-${Q}"
+      Tags:
+        - Key: k
+`
+	if got := chg("t.json", asJSON, "t.yaml", asYAML); changeKinds(got) != "" {
+		t.Errorf("JSON to YAML: %q", changeKinds(got))
+	}
+	if got := chg("t.yaml", asYAML, "t.json", asJSON); changeKinds(got) != "" {
+		t.Errorf("YAML to JSON: %q", changeKinds(got))
+	}
+	// A literal part of an intrinsic that changed is still a change.
+	if got := chg("t.json", asJSON, "t.yaml", strings.Replace(asYAML, "n-${Q}", "m-${Q}", 1)); changeKinds(got) != "may-replace:Size:changed" {
+		t.Errorf("changed Sub: %q", changeKinds(got))
+	}
+	if got := chg("t.json", asJSON, "t.yaml", strings.Replace(asYAML, "!Ref P", "!Ref R", 1)); changeKinds(got) != "forces-replacement:Name:changed" {
+		t.Errorf("changed Ref: %q", changeKinds(got))
+	}
+}
