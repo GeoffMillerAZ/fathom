@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "main.tf",
+      "error": "",
+      "result": {
+        "resources": [
+          {
+            "tool": "terraform",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "b",
+            "provider": "",
+            "span": {
+              "file": "main.tf",
+              "start_line": 1,
+              "start_col": 1,
+              "end_line": 3,
+              "end_col": 2
+            },
+            "attrs": [
+              {
+                "path": "bucket",
+                "class": "reference",
+                "refs": [
+                  "var.name"
+                ],
+                "span": {
+                  "file": "main.tf",
+                  "start_line": 2,
+                  "start_col": 3,
+                  "end_line": 2,
+                  "end_col": 20
+                }
+              }
+            ],
+            "multiplicity": {
+              "kind": "single",
+              "class": "",
+              "refs": [],
+              "span": {
+                "file": "",
+                "start_line": 0,
+                "start_col": 0,
+                "end_line": 0,
+                "end_col": 0
+              }
+            }
+          }
+        ],
+        "syntax_errors": 0,
+        "dropped": []
+      }
+    },
+    {
+      "path": "cfn.yaml",
+      "error": "",
+      "result": {
+        "resources": [
+          {
+            "tool": "cloudformation",
+            "mode": "managed",
+            "type": "AWS::S3::Bucket",
+            "name": "Bucket",
+            "provider": "",
+            "span": {
+              "file": "cfn.yaml",
+              "start_line": 11,
+              "start_col": 3,
+              "end_line": 20,
+              "end_col": 32
+            },
+            "attrs": [
+              {
+                "path": "BucketName",
+                "class": "defaulted",
+                "refs": [
+                  "Env"
+                ],
+                "span": {
+                  "file": "cfn.yaml",
+                  "start_line": 14,
+                  "start_col": 7,
+                  "end_line": 14,
+                  "end_col": 37
+                }
+              },
+              {
+                "path": "Password",
+                "class": "defaulted",
+                "refs": [
+                  "DbPassword"
+                ],
+                "span": {
+                  "file": "cfn.yaml",
+                  "start_line": 20,
+                  "start_col": 7,
+                  "end_line": 20,
+                  "end_col": 32
+                }
+              },
+              {
+                "path": "Tags[*].Key",
+                "class": "literal",
+                "refs": [],
+                "span": {
+                  "file": "cfn.yaml",
+                  "start_line": 18,
+                  "start_col": 11,
+                  "end_line": 18,
+                  "end_col": 19
+                }
+              },
+              {
+                "path": "Tags[*].Value",
+                "class": "defaulted",
+                "refs": [
+                  "Env"
+                ],
+                "span": {
+                  "file": "cfn.yaml",
+                  "start_line": 19,
+                  "start_col": 11,
+                  "end_line": 19,
+                  "end_col": 26
+                }
+              },
+              {
+                "path": "VersioningConfiguration.Status",
+                "class": "literal",
+                "refs": [],
+                "span": {
+                  "file": "cfn.yaml",
+                  "start_line": 16,
+                  "start_col": 9,
+                  "end_line": 16,
+                  "end_col": 24
+                }
+              }
+            ],
+            "multiplicity": {
+              "kind": "single",
+              "class": "",
+              "refs": [],
+              "span": {
+                "file": "",
+                "start_line": 0,
+                "start_col": 0,
+                "end_line": 0,
+                "end_col": 0
+              }
+            }
+          }
+        ],
+        "syntax_errors": 0,
+        "dropped": []
+      }
+    },
+    {
+      "path": "Pulumi.yaml",
+      "error": "",
+      "result": {
+        "resources": [
+          {
+            "tool": "pulumi",
+            "mode": "managed",
+            "type": "aws:s3/bucket:Bucket",
+            "name": "logs",
+            "provider": "",
+            "span": {
+              "file": "Pulumi.yaml",
+              "start_line": 4,
+              "start_col": 3,
+              "end_line": 8,
+              "end_col": 19
+            },
+            "attrs": [
+              {
+                "path": "acl",
+                "class": "literal",
+                "refs": [],
+                "span": {
+                  "file": "Pulumi.yaml",
+                  "start_line": 8,
+                  "start_col": 7,
+                  "end_line": 8,
+                  "end_col": 19
+                }
+              },
+              {
+                "path": "bucket",
+                "class": "literal",
+                "refs": [],
+                "span": {
+                  "file": "Pulumi.yaml",
+                  "start_line": 7,
+                  "start_col": 7,
+                  "end_line": 7,
+                  "end_col": 22
+                }
+              }
+            ],
+            "multiplicity": {
+              "kind": "single",
+              "class": "",
+              "refs": [],
+              "span": {
+                "file": "",
+                "start_line": 0,
+                "start_col": 0,
+                "end_line": 0,
+                "end_col": 0
+              }
+            }
+          }
+        ],
+        "syntax_errors": 0,
+        "dropped": []
+      }
+    },
+    {
+      "path": "a.go",
+      "error": "iac: no reader for a.go: it is not Terraform or OpenTofu (.tf, .tofu, .tf.json), CloudFormation (a YAML or JSON template) or Pulumi.yaml",
+      "result": null
+    }
+  ]
+}

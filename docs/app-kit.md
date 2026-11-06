@@ -1273,7 +1273,7 @@ propagation claimed.
 
 ## fathom-lang CLI review (LL-26, 2026-11-04)
 
-Contribution disposition: **reasoned divergence**. `fathom-lang extract|dialects` uses the
+Contribution disposition: **reasoned divergence**. `fathom-lang extract|dialects|resources|contract` uses the
 standard `flag` package and prints JSON, not Cobra chrome. Discovery: `search_capabilities(query="command",
 profile="cli")` returned `cli.command` (Cobra help, versions, completion, signal-aware exit) and
 `cli.config`, catalog revision `1e5ce694e0cbbb1826dcc8f3513b045ec2ec97a0433b2e57f637efd107f47811`.
@@ -1285,4 +1285,4 @@ an error, or a file that cannot be read, exits 1 with the reason on standard err
 every file), and stdout is JSON with a `schema_version` whose shape is pinned by
 `TestFathomLangJSONGolden`. No upstream kit change is needed; a stdlib-only variant of the command
 chrome would be the reusable contribution if a second tool wants the same closure bar.
-Consumer proof: `TestUsageAndErrors`, `TestExtractAbsolutePathsAndPerFileErrors` and `TestFathomLangJSONGolden` in `cmd/fathom-lang`.
+Consumer proof: `TestUsageAndErrors`, `TestExtractAbsolutePathsAndPerFileErrors`, `TestFathomLangJSONGolden`, `TestResourcesJSONGolden`, `TestContractJSONGolden` and `TestResourcesMisuse` in `cmd/fathom-lang`. `resources` and `contract` (LL-35, IF-C5) keep the same contract: a file whose child was killed has an error and a null result (a resource read has no `Incomplete` form), so the run exits 1.

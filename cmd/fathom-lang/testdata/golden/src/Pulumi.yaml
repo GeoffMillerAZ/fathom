@@ -1,0 +1,8 @@
+name: demo
+runtime: yaml
+resources:
+  logs:
+    type: aws:s3/bucket:Bucket
+    properties:
+      bucket: my-logs
+      acl: private

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "catalog": {
+    "catalog": "../../pkg/lang/iac/testdata/registry.opentofu.org_example_widget.v1.iaccat.zip",
+    "source": "registry.opentofu.org/example/widget",
+    "line": "1",
+    "versions": [
+      "1.0.0",
+      "1.1.0"
+    ],
+    "replacement_facts": "absent"
+  }
+}
