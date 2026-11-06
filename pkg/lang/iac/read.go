@@ -89,7 +89,7 @@ func newConfig(opts []Option) (config, error) {
 	return c, nil
 }
 
-func (c config) internal() []iacfacts.Option {
+func (c config) factOptions() []iacfacts.Option {
 	if c.values {
 		return []iacfacts.Option{iacfacts.WithValues()}
 	}
@@ -156,7 +156,7 @@ func ReadFile(ctx context.Context, filePath string, src []byte, opts ...Option) 
 	if len(src) > MaxFileBytes {
 		return nil, fmt.Errorf("%w: %s: file is %d bytes, over %d", ErrLimit, p, len(src), MaxFileBytes)
 	}
-	iopts := c.internal()
+	iopts := c.factOptions()
 	return guarded(ctx, c, func() (*iacfacts.ResourceSet, error) { return read(p, src, iopts...) })
 }
 
@@ -202,6 +202,6 @@ func ReadModule(ctx context.Context, fsys fs.FS, dir string, opts ...Option) (*R
 	if !fs.ValidPath(dir) {
 		return nil, fmt.Errorf("iac: dir %q is not a valid fs path (slash-separated, no .. or leading slash; \".\" is the root)", dir)
 	}
-	iopts := c.internal()
+	iopts := c.factOptions()
 	return guarded(ctx, c, func() (*iacfacts.ResourceSet, error) { return iacfacts.ReadTerraformModule(fsys, dir, iopts...) })
 }
