@@ -47,18 +47,18 @@ A commit that moves code behind a claimed row re-anchors that row in the same co
 
 ## Phase 4: resource reads
 
-- [ ] `ReadTerraformFile` reads resources, data sources and module calls with attribute paths, classes and spans {id: LL-30, symbol: ReadTerraformFile, package: internal/iacfacts}
-- [ ] `ReadTerraformModule` adds variable defaults and locals across one directory, as `defaulted`, without expanding modules {id: LL-31, symbol: ReadTerraformModule, package: internal/iacfacts, needs: LL-30}
-- [ ] `ReadCloudFormationFile` reads `Properties`, intrinsic functions, `Condition` and parameter defaults, in YAML and JSON {id: LL-32, symbol: ReadCloudFormationFile, package: internal/iacfacts}
-- [ ] `ReadPulumiYAMLFile` reads resources and properties {id: LL-33, symbol: ReadPulumiYAMLFile, package: internal/iacfacts}
-- [ ] `iac.ReadFile` and `iac.ReadModule` are the public door, with values empty unless `WithValues` is passed {id: LL-34, symbol: ReadFile, package: pkg/lang/iac, needs: LL-10}
-- [ ] `fathom-lang resources` prints reads as JSON {id: LL-35, symbol: cmdResources, package: cmd/fathom-lang, needs: LL-10}
-- [ ] A sensitive or write-only literal stays withheld under `WithValues` when a contract is bound, and the product never passes `WithValues`, with a planted sentinel in no store row {id: LL-36, symbol: TestResourceValuesNeverReachTheStore, package: internal/iacfacts, skip_test: true, skip: "the test is the anchor: it fails on a call outside the door or a sentinel in a row", needs: LL-34}
-- [ ] Fuzz seeds on the readers {id: LL-37, symbol: FuzzReadFile, package: pkg/lang/iac, skip_test: true, skip: "the fuzz target is the anchor", needs: LL-34}
-- [ ] (op) Terraform reads against `tofu show -json -config` on public subjects chosen before reading, under the design's three oracle classes {id: LL-M3, oracle: lexical, path: docs/bench/readings/lang-library/m3-terraform-reads.md, pattern: "^LL-M3 verdict:", needs: LL-31}
-- [ ] (op) CloudFormation reads against cfn-lint's decode on the dialect's subjects {id: LL-M4, oracle: lexical, path: docs/bench/readings/lang-library/m4-cloudformation-reads.md, pattern: "^LL-M4 verdict:", needs: LL-32}
-- [ ] (op) Pulumi YAML reads against its own loader {id: LL-M5, oracle: lexical, path: docs/bench/readings/lang-library/m5-pulumi-yaml-reads.md, pattern: "^LL-M5 verdict:", needs: LL-33}
-- [ ] (op) ctl: the unknown rate per design section 10, with the subject rule and the 20 rules committed before reading {id: LL-M6, oracle: lexical, path: docs/bench/readings/lang-library/m6-unknown-rate.md, pattern: "^LL-M6 verdict:", needs: "LL-M3,LL-M4,LL-M5"}
+- [x] `ReadTerraformFile` reads resources, data sources and module calls with attribute paths, classes and spans {id: LL-30, symbol: ReadTerraformFile, package: internal/iacfacts}
+- [x] `ReadTerraformModule` adds variable defaults and locals across one directory, as `defaulted`, without expanding modules {id: LL-31, symbol: ReadTerraformModule, package: internal/iacfacts, needs: LL-30}
+- [x] `ReadCloudFormationFile` reads `Properties`, intrinsic functions, `Condition` and parameter defaults, in YAML and JSON {id: LL-32, symbol: ReadCloudFormationFile, package: internal/iacfacts}
+- [x] `ReadPulumiYAMLFile` reads resources and properties {id: LL-33, symbol: ReadPulumiYAMLFile, package: internal/iacfacts}
+- [x] `iac.ReadFile` and `iac.ReadModule` are the public door, with values empty unless `WithValues` is passed {id: LL-34, symbol: ReadFile, package: pkg/lang/iac, needs: LL-10}
+- [x] `fathom-lang resources` prints reads as JSON {id: LL-35, symbol: cmdResources, package: cmd/fathom-lang, needs: LL-10}
+- [x] A sensitive or write-only literal stays withheld under `WithValues` when a contract is bound, and the product never passes `WithValues`, with a planted sentinel in no store row {id: LL-36, symbol: TestResourceValuesNeverReachTheStore, package: internal/iacfacts, skip_test: true, skip: "the test is the anchor: it fails on a call outside the door or a sentinel in a row", needs: LL-34}
+- [x] Fuzz seeds on the readers {id: LL-37, symbol: FuzzReadFile, package: pkg/lang/iac, skip_test: true, skip: "the fuzz target is the anchor", needs: LL-34}
+- [x] (op) Terraform reads against `tofu show -json -config` on public subjects chosen before reading, under the design's three oracle classes {id: LL-M3, oracle: lexical, path: docs/bench/readings/lang-library/m3-terraform-reads.md, pattern: "^LL-M3 verdict:", needs: LL-31}
+- [x] (op) CloudFormation reads against cfn-lint's decode on the dialect's subjects {id: LL-M4, oracle: lexical, path: docs/bench/readings/lang-library/m4-cloudformation-reads.md, pattern: "^LL-M4 verdict:", needs: LL-32}
+- [x] (op) Pulumi YAML reads against its own loader {id: LL-M5, oracle: lexical, path: docs/bench/readings/lang-library/m5-pulumi-yaml-reads.md, pattern: "^LL-M5 verdict:", needs: LL-33}
+- [x] (op) ctl: the unknown rate per design section 10, with the subject rule and the 20 rules committed before reading {id: LL-M6, oracle: lexical, path: docs/bench/readings/lang-library/m6-unknown-rate.md, pattern: "^LL-M6 verdict:", needs: "LL-M3,LL-M4,LL-M5"}
 
 ## Deferred
 
