@@ -21,12 +21,12 @@ func processCPU() time.Duration {
 	return time.Duration(ru.Utime.Nano() + ru.Stime.Nano())
 }
 
-// cpuWithin fails the test when fn spends more than d of CPU. The quadratic shapes below spend minutes.
+// cpuWithin fails the test when fn spends more than d of CPU, d scaled by raceSlowdown. The quadratic shapes below
+// spend minutes.
 func cpuWithin(t *testing.T, d time.Duration, name string, fn func()) {
 	t.Helper()
-	before := processCPU()
-	fn()
-	if used := processCPU() - before; used > d {
+	d *= raceSlowdown
+	if used := cpuOf(fn); used > d {
 		t.Errorf("%s: spent %v of CPU, over %v", name, used, d)
 	}
 }

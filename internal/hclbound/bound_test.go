@@ -30,8 +30,11 @@ func reads(t *testing.T, name, src string, b Bounds) {
 	}
 }
 
+// within fails the test when fn has not returned after d, scaled by raceSlowdown. It guards against a hang: the
+// costs the guard prices are held by the refusals themselves.
 func within(t *testing.T, d time.Duration, name string, fn func()) {
 	t.Helper()
+	d *= raceSlowdown
 	done := make(chan struct{})
 	go func() { defer close(done); fn() }()
 	select {
@@ -275,7 +278,7 @@ func TestStrayCloserKeepsTheNewlineHiddenInAForBrace(t *testing.T) {
 // side of it meld. Counting it as a kept part priced those melds at zero: 1.7 MB of `a%{for}a%{endfor}` read and cost
 // the parser 4.3 s.
 func TestDroppedForDirectiveDoesNotHideLiterals(t *testing.T) {
-	within(t, 90*time.Second, "n14", func() {
+	within(t, 20*time.Second, "n14", func() {
 		for _, unit := range []string{"a%{for}a%{endfor}", "a%{for x}a%{endfor}", "a%{for x,}a%{endfor}", "a%{for x y}a%{endfor}", "a%{for}a%{endif}"} {
 			for _, bounds := range []Bounds{extractorBounds, readBounds} {
 				refusedBy(t, "x = \""+strings.Repeat(unit, 100_000)+"\"\n", bounds, BoundTemplate)

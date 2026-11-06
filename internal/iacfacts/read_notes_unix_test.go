@@ -14,20 +14,32 @@ import (
 )
 
 // N1: suspect compared every attribute with every reported error: 80,000 attributes and 400,000 errors took 53 s.
+// The read of both is held to a multiple of reading each alone, measured in the same run, so the bound holds on any
+// machine: an attribute x error scan costs thousands of times the parts.
 func TestSuspectDoesNotScanEveryErrorPerAttribute(t *testing.T) {
 	var sb strings.Builder
-	sb.WriteString("resource \"t\" \"n\" {\n")
 	const attrs = 80_000
 	for i := 0; i < attrs; i++ {
 		fmt.Fprintf(&sb, "  a%d = 1\n", i)
 	}
-	sb.WriteString("}\n" + strings.Repeat("\x01", 400_000))
-	cpuWithin(t, 10*time.Second, "attributes x errors", func() {
-		set, err := ReadTerraformFile("a.tf", []byte(sb.String()))
-		if err != nil || set.SyntaxErrors == 0 || len(set.Resources) != 1 || len(set.Resources[0].Attrs) != attrs {
-			t.Errorf("%v", err)
+	body, tail := sb.String(), strings.Repeat("\x01", 400_000)
+	read := func(src string) *ResourceSet {
+		set, err := ReadTerraformFile("a.tf", []byte(src))
+		if err != nil {
+			t.Fatal(err)
 		}
-	})
+		return set
+	}
+	parts := cpuOf(func() { read("resource \"t\" \"n\" {\n" + body + "}\n") }) +
+		cpuOf(func() { read("resource \"t\" \"n\" {\n}\n" + tail) })
+	var set *ResourceSet
+	got := cpuOf(func() { set = read("resource \"t\" \"n\" {\n" + body + "}\n" + tail) })
+	if limit := 3*parts + time.Second; got > limit {
+		t.Errorf("attributes x errors: spent %v of CPU, the parts alone %v, limit %v", got, parts, limit)
+	}
+	if set.SyntaxErrors == 0 || len(set.Resources) != 1 || len(set.Resources[0].Attrs) != attrs {
+		t.Errorf("read %d syntax errors, %d resources", set.SyntaxErrors, len(set.Resources))
+	}
 }
 
 // N2: an override that names many attributes under one top segment reset the whole segment for each of them.
