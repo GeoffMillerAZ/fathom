@@ -16,8 +16,9 @@ import (
 // carries a Replacement whose provenance names the schema field. A nested pointer such as /properties/Tags/*/Key
 // adds an entry at Tags[*].Key. The importer reads the nested object's required list from the raw schema, through
 // definitions and $ref, and the entry then reads required, or optional unless read-only, as a top-level one does.
-// An entry takes write_only, deprecated and computed from the schema's own lists by its path. One whose object it
-// could not resolve states neither required nor optional.
+// An entry takes write_only, deprecated and computed from the schema's own lists: a flag holds when the entry's
+// path or the path of a property above it is in the list, so a member of a write-only property is write-only.
+// A computed entry is never optional. One whose object it could not resolve states neither required nor optional.
 
 type cfnSchemaJSON struct {
 	Properties map[string]struct {
@@ -52,6 +53,20 @@ func topNames(ptrs []string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// flagged reports whether a list of paths holds the path or a proper prefix of it that ends at a member or an
+// element, so a flag a schema states on a property covers every member under it.
+func flagged(set map[string]bool, path string) bool {
+	if set[path] {
+		return true
+	}
+	for i := 0; i < len(path); i++ {
+		if (path[i] == '.' || path[i] == '[') && set[path[:i]] {
+			return true
+		}
+	}
+	return false
 }
 
 // cfnContractAttrs flattens a CloudFormation schema blob into the attribute list, sorted by path.
@@ -100,10 +115,11 @@ func cfnContractAttrs(blob []byte) ([]ContractAttr, error) {
 	// it when it resolved that object, and then the entry reads as a top-level one does. When it could not, the
 	// entry states neither required nor optional.
 	for path, r := range repl {
-		// write_only, deprecated and computed come from the schema's own lists by path, resolved or not.
-		ent := ContractAttr{Path: path, Replacement: r, JSONPath: field[path], WriteOnly: writeOnly[path], Deprecated: deprecated[path], Computed: readOnly[path]}
+		// write_only, deprecated and computed come from the schema's own lists, resolved or not, and hold for a member of
+		// a listed property. A computed entry is never optional.
+		ent := ContractAttr{Path: path, Replacement: r, JSONPath: field[path], WriteOnly: flagged(writeOnly, path), Deprecated: flagged(deprecated, path), Computed: flagged(readOnly, path)}
 		if req, ok := s.Nested[path]; ok {
-			ent.Required, ent.Optional = req, !req && !readOnly[path]
+			ent.Required, ent.Optional = req, !req && !ent.Computed
 		}
 		out = append(out, ent)
 	}

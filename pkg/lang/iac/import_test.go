@@ -310,7 +310,7 @@ func TestImportCatalogCloudFormationNestedRequired(t *testing.T) {
 	}
 }
 
-// A nested entry takes write_only, deprecated and computed from the schema's own lists by its path, whether or not
+// A nested entry takes write_only, deprecated and computed from the schema's own lists, whether or not
 // the importer resolved the object that holds it. Only required and optional wait on the resolution.
 func TestImportCatalogCloudFormationNestedFlags(t *testing.T) {
 	str := map[string]any{"type": "string"}
@@ -348,6 +348,59 @@ func TestImportCatalogCloudFormationNestedFlags(t *testing.T) {
 		a := attrByPath(t, ct, path)
 		if got := [5]bool{a.WriteOnly, a.Deprecated, a.Computed, a.Required, a.Optional}; got != want {
 			t.Errorf("%s: write_only/deprecated/computed/required/optional %v, want %v", path, got, want)
+		}
+	}
+}
+
+// A flag the schema states on a property holds for the members under it: a member of a write-only, deprecated or
+// read-only property is write-only, deprecated or computed, and a computed entry is never optional. A property
+// that merely shares a name prefix does not pass its flag down.
+func TestImportCatalogCloudFormationParentFlagsCoverMembers(t *testing.T) {
+	str := map[string]any{"type": "string"}
+	obj := func(m map[string]any) map[string]any { return map[string]any{"type": "object", "properties": m} }
+	zipPath := cfnZipOf(t, map[string]any{
+		"typeName": "Example::Widget::Thing",
+		"properties": map[string]any{
+			"Secret":   map[string]any{"$ref": "#/definitions/Group"},
+			"Old":      map[string]any{"$ref": "#/definitions/Group"},
+			"Derived":  map[string]any{"$ref": "#/definitions/Group"},
+			"Items":    map[string]any{"type": "array", "items": map[string]any{"$ref": "#/definitions/Group"}},
+			"Plain":    map[string]any{"$ref": "#/definitions/Group"},
+			"SecretIt": map[string]any{"$ref": "#/definitions/Group"},
+		},
+		"definitions": map[string]any{"Group": obj(map[string]any{"Child": str, "Leaf": obj(map[string]any{"Deep": str})})},
+		"createOnlyProperties": []string{
+			"/properties/Secret/Child", "/properties/Old/Child", "/properties/Derived/Child", "/properties/Items/*/Child",
+			"/properties/Plain/Child", "/properties/SecretIt/Child", "/properties/Secret/Leaf/Deep",
+		},
+		"writeOnlyProperties":  []string{"/properties/Secret", "/properties/Items/*"},
+		"deprecatedProperties": []string{"/properties/Old"},
+		"readOnlyProperties":   []string{"/properties/Derived"},
+	})
+	res, err := iac.ImportCatalog(iac.ImportRequest{Dir: t.TempDir(), SchemaZip: zipPath, Region: "us-east-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, err := iac.OpenCatalog(res.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct, err := cat.Contract("aws/cloudformation", res.Versions[0], "Example::Widget::Thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string][4]bool{ // write_only, deprecated, computed, optional
+		"Secret.Child":     {true, false, false, true},
+		"Secret.Leaf.Deep": {true, false, false, true},
+		"Old.Child":        {false, true, false, true},
+		"Derived.Child":    {false, false, true, false},
+		"Items[*].Child":   {true, false, false, true},
+		"Plain.Child":      {false, false, false, true},
+		"SecretIt.Child":   {false, false, false, true},
+	} {
+		a := attrByPath(t, ct, path)
+		if got := [4]bool{a.WriteOnly, a.Deprecated, a.Computed, a.Optional}; got != want {
+			t.Errorf("%s: write_only/deprecated/computed/optional %v, want %v", path, got, want)
 		}
 	}
 }
