@@ -264,7 +264,9 @@ func closingQuote(s string, from int, q byte, n int) int {
 
 // rustLifetime reports whether the ' at i starts a lifetime or a label: an ASCII
 // identifier and then a character that is not another '. (`'a'` is a char literal;
-// an identifier that ends the text has no character after it and reads as a quote.)
+// an identifier that ends the text has no character after it and reads as a quote,
+// as does one the extractor's … truncation follows, since the char's closing quote
+// may be what was cut.)
 func rustLifetime(s string, i int) bool {
 	j := i + 1
 	if j >= len(s) || !(isLetter(s[j]) || s[j] == '_') {
@@ -273,7 +275,7 @@ func rustLifetime(s string, i int) bool {
 	for j < len(s) && (isLetter(s[j]) || s[j] == '_' || s[j] >= '0' && s[j] <= '9') {
 		j++
 	}
-	return j < len(s) && s[j] != '\''
+	return j < len(s) && s[j] != '\'' && !strings.HasPrefix(s[j:], "…")
 }
 
 func isLetter(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' }

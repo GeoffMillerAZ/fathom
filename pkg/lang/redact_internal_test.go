@@ -172,6 +172,7 @@ func TestCutAtQuote(t *testing.T) {
 		{"a char of a lifetime shape is a quote", `const C: char = 'a';`, `const C: char = ***`, true},
 		{"an escaped char cuts", `const C: char = '\n';`, `const C: char = ***`, true},
 		{"a lifetime at the end reads as a quote", `fn f<'a`, `fn f<***`, true},
+		{"a char cut by truncation reads as a quote", "fn f<'a>(a: [u8; 'Q…", "fn f<'a>(a: [u8; ***", true},
 		{"a rust lifetime is a quote elsewhere", `fn f<'a>(x)`, `fn f<***`, false},
 		{"a rust raw string cuts at its quote", `#[doc = r#"x"#]`, `#[doc = r#***`, true},
 		{"empty", ``, ``, false},
