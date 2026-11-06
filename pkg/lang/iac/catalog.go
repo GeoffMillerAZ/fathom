@@ -107,15 +107,19 @@ type ContractAttr struct {
 	Block bool `json:"block"`
 	// Type is the attribute's type as the schema export writes it ("string", or JSON such as ["list","string"]),
 	// "nested_type" for an attribute that holds nested attributes, and "" for a block.
-	Type       string `json:"type"`
-	Required   bool   `json:"required"`
-	Optional   bool   `json:"optional"`
-	Computed   bool   `json:"computed"`
-	Sensitive  bool   `json:"sensitive"`
-	WriteOnly  bool   `json:"write_only"`
-	Deprecated bool   `json:"deprecated"`
-	MinItems   int    `json:"min_items"`
-	MaxItems   int    `json:"max_items"`
+	Type string `json:"type"`
+	// Required and Optional state whether a user must or may set the attribute. Both false with Computed true is an
+	// attribute only the provider sets. Both false with Computed false means the catalog states neither: a
+	// CloudFormation nested entry whose object the importer could not resolve. Read that as unknown, never as optional
+	// or as unrequired. A block entry states MinItems and MaxItems instead.
+	Required   bool `json:"required"`
+	Optional   bool `json:"optional"`
+	Computed   bool `json:"computed"`
+	Sensitive  bool `json:"sensitive"`
+	WriteOnly  bool `json:"write_only"`
+	Deprecated bool `json:"deprecated"`
+	MinItems   int  `json:"min_items"`
+	MaxItems   int  `json:"max_items"`
 	// Replacement is nil when the catalog states none for this attribute.
 	Replacement *Replacement `json:"replacement"`
 	// JSONPath is where in the type's schema blob the entry was read, dot-joined, so a reader can check it.

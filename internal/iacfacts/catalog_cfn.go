@@ -177,8 +177,9 @@ func (w *IaCCatalogWriter) addCloudFormation(region string, zr *zip.Reader) (st 
 }
 
 // pruneCFNSchema keeps what a check reads from one registry schema: the type name, the top-level property names with
-// their JSON types, the required list, whether other properties are allowed, and the five fact lists. Descriptions,
-// definitions and every other field are dropped. A file without a string typeName returns an empty type name.
+// their JSON types, the required list, whether other properties are allowed, and the five fact lists. A nested create-only
+// property whose parent object the schema resolves also carries whether that object requires it ("nested").
+// Descriptions, definitions and every other field are dropped. A file without a string typeName returns an empty type name.
 func pruneCFNSchema(raw []byte) (string, []byte, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
@@ -215,6 +216,9 @@ func pruneCFNSchema(raw []byte) (string, []byte, error) {
 	}
 	for _, l := range cfnLists {
 		out[l] = cfnStrings(s[l])
+	}
+	if nested := cfnNestedRequired(s); len(nested) > 0 {
+		out["nested"] = nested
 	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -324,4 +328,94 @@ func ImportCloudFormationSchema(dir, zipPath, region string, opts IaCWriterOptio
 		res.Unchanged = res.Previous == res.Stats.Digest
 	}
 	return res, nil
+}
+
+// maxCFNRefDepth bounds the $ref hops of one nested lookup, so a schema whose definition refers to itself reads
+// unresolved and never loops.
+const maxCFNRefDepth = 16
+
+// cfnNestedRequired states, for each nested create-only pointer whose parent object the schema resolves, whether the
+// nested property is in that object's required list. The pruned schema keeps no definitions, so the importer reads
+// them here, once, from the raw schema. A pointer it cannot resolve is left out, and a catalog entry for it states
+// neither required nor optional.
+//
+// A pointer is walked from the root: a name steps into the property of the object so far, "*" into the items of an
+// array, and a "#/definitions/..." $ref is followed at every step. The leaf is resolved when the object holding it
+// declares properties.
+func cfnNestedRequired(s map[string]any) map[string]bool {
+	out := map[string]bool{}
+	for _, l := range []string{"createOnlyProperties", "conditionalCreateOnlyProperties"} {
+		for _, ptr := range cfnStrings(s[l]) {
+			path, ok := CFNPointerPath(ptr)
+			if !ok || !strings.ContainsAny(path, ".[") {
+				continue
+			}
+			if req, ok := cfnNestedLeaf(s, ptr); ok {
+				out[path] = req
+			}
+		}
+	}
+	return out
+}
+
+func cfnNestedLeaf(root map[string]any, ptr string) (required, resolved bool) {
+	rest, _ := strings.CutPrefix(ptr, "/properties/")
+	unescape := strings.NewReplacer("~1", "/", "~0", "~")
+	segs := strings.Split(rest, "/")
+	node := root
+	for i, seg := range segs {
+		seg = unescape.Replace(seg)
+		obj := cfnResolve(root, node)
+		if obj == nil {
+			return false, false
+		}
+		last := i == len(segs)-1
+		if seg == "*" {
+			if last {
+				return false, false
+			}
+			items, _ := obj["items"].(map[string]any)
+			if items == nil {
+				return false, false
+			}
+			node = items
+			continue
+		}
+		props, ok := obj["properties"].(map[string]any)
+		if !ok {
+			return false, false
+		}
+		if last {
+			for _, r := range cfnStrings(obj["required"]) {
+				if r == seg {
+					return true, true
+				}
+			}
+			return false, true
+		}
+		child, _ := props[seg].(map[string]any)
+		if child == nil {
+			return false, false
+		}
+		node = child
+	}
+	return false, false
+}
+
+// cfnResolve follows "#/definitions/Name" references from node and returns the schema object they end at, or nil
+// when a reference is of another shape, dangles, or runs past maxCFNRefDepth hops.
+func cfnResolve(root, node map[string]any) map[string]any {
+	for hops := 0; node != nil; hops++ {
+		ref, ok := node["$ref"].(string)
+		if !ok {
+			return node
+		}
+		name, ok := strings.CutPrefix(ref, "#/definitions/")
+		if !ok || hops >= maxCFNRefDepth {
+			return nil
+		}
+		defs, _ := root["definitions"].(map[string]any)
+		node, _ = defs[name].(map[string]any)
+	}
+	return nil
 }

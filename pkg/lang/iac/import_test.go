@@ -176,7 +176,8 @@ func TestImportCatalogFromACloudFormationZip(t *testing.T) {
 	if name.Optional || !size.Optional {
 		t.Fatalf("top-level optional: Name %+v Size %+v", name, size)
 	}
-	// The pruned schema keeps no nested required list, so a nested entry states neither required nor optional.
+	// Tags declares no items, so the importer cannot resolve the object that holds Key: the entry states neither
+	// required nor optional.
 	if key := attrByPath(t, ct, "Tags[*].Key"); key.Required || key.Optional {
 		t.Fatalf("a nested entry claims required or optional the schema does not support: %+v", key)
 	}
@@ -227,5 +228,84 @@ func TestImportCatalogRefuses(t *testing.T) {
 	_ = errors.As(err, &ce) // a refusal is a *CatalogError, any other failure a plain error; both name the cause
 	if !strings.Contains(err.Error(), "provider") {
 		t.Errorf("error %v", err)
+	}
+}
+
+// cfnZipOf writes a one-schema zip from a made-up schema. Nothing here comes from AWS (IF-P7).
+func cfnZipOf(t testing.TB, schema map[string]any) string {
+	t.Helper()
+	b, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: "example-widget-thing.json", Method: zip.Deflate, Modified: time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Write(b)
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(t.TempDir(), "schemas.zip")
+	if err := os.WriteFile(p, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// IF-C1: a nested entry reads required from the nested object's own required list, resolved through definitions and
+// $ref and through array items. An entry whose object the importer cannot resolve states neither required nor
+// optional.
+func TestImportCatalogCloudFormationNestedRequired(t *testing.T) {
+	str := map[string]any{"type": "string"}
+	zipPath := cfnZipOf(t, map[string]any{
+		"typeName": "Example::Widget::Thing",
+		"properties": map[string]any{
+			"Config": map[string]any{"$ref": "#/definitions/Config"},
+			"Rules":  map[string]any{"type": "array", "items": map[string]any{"$ref": "#/definitions/Rule"}},
+			"Loose":  map[string]any{"type": "object"},
+			"Loop":   map[string]any{"$ref": "#/definitions/Loop"},
+		},
+		"definitions": map[string]any{
+			"Config": map[string]any{"type": "object", "properties": map[string]any{"Type": str, "Mode": str, "Stamp": str}, "required": []string{"Type"}},
+			"Rule":   map[string]any{"type": "object", "properties": map[string]any{"Key": str, "Value": str}, "required": []string{"Key"}},
+			"Loop":   map[string]any{"$ref": "#/definitions/Loop"},
+		},
+		"required": []string{"Config"},
+		"createOnlyProperties": []string{
+			"/properties/Config/Type", "/properties/Config/Mode", "/properties/Config/Stamp",
+			"/properties/Rules/*/Key", "/properties/Rules/*/Value",
+			"/properties/Loose/Thing", "/properties/Absent/Thing", "/properties/Loop/Thing",
+		},
+		"readOnlyProperties": []string{"/properties/Config/Stamp"},
+	})
+	res, err := iac.ImportCatalog(iac.ImportRequest{Dir: t.TempDir(), SchemaZip: zipPath, Region: "us-east-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, err := iac.OpenCatalog(res.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct, err := cat.Contract("aws/cloudformation", res.Versions[0], "Example::Widget::Thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string][3]bool{ // required, optional, computed
+		"Config.Type":    {true, false, false},
+		"Config.Mode":    {false, true, false},
+		"Config.Stamp":   {false, false, true},
+		"Rules[*].Key":   {true, false, false},
+		"Rules[*].Value": {false, true, false},
+		"Loose.Thing":    {false, false, false},
+		"Absent.Thing":   {false, false, false},
+		"Loop.Thing":     {false, false, false},
+	} {
+		a := attrByPath(t, ct, path)
+		if got := [3]bool{a.Required, a.Optional, a.Computed}; got != want {
+			t.Errorf("%s: required/optional/computed %v, want %v", path, got, want)
+		}
 	}
 }

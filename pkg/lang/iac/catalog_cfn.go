@@ -14,7 +14,9 @@ import (
 // types, the required list, and the lists the schema states its facts in. Contract spells it as it spells a
 // provider schema: a top-level property is a path of its own, and a create-only or conditional create-only property
 // carries a Replacement whose provenance names the schema field. A nested pointer such as /properties/Tags/*/Key
-// adds an entry at Tags[*].Key. Nested properties otherwise are not in the pruned schema.
+// adds an entry at Tags[*].Key. The importer reads the nested object's required list from the raw schema, through
+// definitions and $ref, and the entry then reads required, or optional unless read-only, as a top-level one does.
+// An entry whose object it could not resolve states neither.
 
 type cfnSchemaJSON struct {
 	Properties map[string]struct {
@@ -26,6 +28,9 @@ type cfnSchemaJSON struct {
 	ReadOnly       []string `json:"readOnlyProperties"`
 	WriteOnly      []string `json:"writeOnlyProperties"`
 	Deprecated     []string `json:"deprecatedProperties"`
+	// Nested maps a nested create-only path to whether its parent object requires it. A path the importer could
+	// not resolve is absent.
+	Nested map[string]bool `json:"nested"`
 }
 
 // nameSet is the set of property names the schema's required list holds, which are names and not pointers.
@@ -90,10 +95,15 @@ func cfnContractAttrs(blob []byte) ([]ContractAttr, error) {
 		out = append(out, ent)
 		delete(repl, name)
 	}
-	// What is left names a nested property of the schema. The pruned schema keeps no nested required list, so the
+	// What is left names a nested property of the schema. The importer carries whether the nested object requires
+	// it when it resolved that object, and then the entry reads as a top-level one does. When it could not, the
 	// entry states neither required nor optional.
 	for path, r := range repl {
-		out = append(out, ContractAttr{Path: path, Replacement: r, JSONPath: field[path]})
+		ent := ContractAttr{Path: path, Replacement: r, JSONPath: field[path]}
+		if req, ok := s.Nested[path]; ok {
+			ent.Required, ent.Optional, ent.Computed = req, !req && !readOnly[path], readOnly[path]
+		}
+		out = append(out, ent)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
