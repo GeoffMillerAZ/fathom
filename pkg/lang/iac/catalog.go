@@ -241,7 +241,8 @@ type attrJSON struct {
 	Sensitive  bool            `json:"sensitive"`
 	WriteOnly  bool            `json:"write_only"`
 	Deprecated bool            `json:"deprecated"`
-	// Replacement is read when a catalog carries replacement facts (IF-13); none does yet.
+	// Replacement is read when a catalog carries replacement facts: a CloudFormation catalog does, from the schema's
+	// create-only lists, and a Terraform catalog does not until IF-13.
 	Replacement *Replacement `json:"replacement"`
 }
 
