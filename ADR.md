@@ -6549,3 +6549,394 @@ reads below its threshold with its oracle available for two releases; the consum
 **Retired pin (decision, 2026-11-04).** `TestSnapshot_NameIndexSharedByReaders` moved with the snapshot to `internal/graphmemo` as `TestGraphSnapshot_NameIndexSharedByReaders`, reading byte accounting through a helper because the group's `stats` is private to `memo`. The assertion is unchanged, and I51 now names the new test.
 
  **Revisit when.** An outside consumer reports a version conflict (nested module). A consumer asks for another capability (F99). LL-M6 reads over its bar on both tools (say so in the guidance, and keep the door). LL-M1 reads FAIL with CUE split (name what holds the closure). No outside consumer has imported the door by 2027-05-04 (stop adding public surface, and keep what ships).
+
+## ADR-093: The proof layer, sharpened: a four-case rule for where determinism wins, four planes, one answer contract, one registry of named queries (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / architecture. Vision: `docs/vision/46-proof-at-the-moment-of-change.md`. Plan: `docs/plans/realignment.md` (ENG, CHG, RLN, WIR, CUT, LIB, FCT, UND, INB, TUN). Proposes goals G51 and G52, invariant I71 and principle P25 (ADR-096 proposes G53). Sharpens vision 38. Supersedes ADR-069 decision 13 (answer basis) by I71. Amends ADR-086. Adds one line to ADR-001.
+
+**Request (2026-11-12).** "make fathom the one-stop shop for agentic development, with natural-language understanding on a deterministic engine". The architect reframed it: where does a deterministic engine change the outcome of agent-built software, and how does the whole product get there?
+
+**Context.** A 49-lane read-only inventory, two adversarial critique passes and a rewrite found the following. Proof works: the gate caught claimed-over-verified in 180 of 436 runs in five days, and strict verify read 2,117 of 2,117 claimed rows on main. No agent-outcome win exists: the newest home bench reads 41 of 47 against grep's 44 of 47 at 1.81 times the tokens, and change tasks and bug localization are nulls. Those readings were taken on an engine that timed out, so they partly measure the bug. Pushed advice has shown no benefit, and lossy output compression is closed by measurement. The thesis "a deterministic engine understands better, cheaper and more reliably than a model at query time" is true for verdicts, unproven for context, and the evidence cannot yet tell a bad idea from a bad delivery.
+
+**Decision.**
+1. *The four-case rule.* In order of evidence: (1) verdicts and computed sets at forced channels win, and are proven. (2) Structure inside the agent's own action is untested here and default off until a reading wins. (3) Optional tools the agent may choose are level with the best lookup tools, since agents grep first. (4) Prose pushed into context has shown no benefit, and ADR-080's holdouts judge it. Every program and future is judged by this rule and by the five-clause admission test: computable from facts or attested results, a verdict or a set, an existing forced channel or verb, an oracle fathom does not own, and a named consumer or a net deletion.
+2. *Position kept.* Fathom stays the proof layer of vision 38. "One-stop shop" is read as the one layer other tools plug into: it reads what others compute and emits what only it can prove.
+3. *Four planes, one engine.* Facts (what is true), intent (what is meant), work (what is happening) and proof (what holds, joining the other three). The planes are a data taxonomy. ADR-001's three code layers are unchanged.
+4. *One answer contract (I71).* Graph tools and named queries answer with a state (holds, violated, unknown), the weakest evidence class, spans, unknowns with reasons and the read set. An empty result cannot be built without a reason. Other verbs convert as they are touched. ADR-069's answer basis is the contract's first field.
+5. *One registry of named queries.* Typed parameters, a cost class, an oracle test and an answer in the contract. Verify oracles, lifecycle conditions, question shapes, fleet standards and attention items reference it. There is no query language.
+6. *Natural language is an interface over named queries.* A question matches a closed set of named queries and the answer is rendered from cited rows. A model may classify the question through the decision port once the site passes calibration. A model never writes the answer. ADR-084 to ADR-086 are kept with their kill on 2027-03-31. ADR-086 is amended: the intent trace walks typed links once heads are typed (ADR-094), since sampled doc-link precision was about 17 of 25. The question-shape router is a new verb with its own bar and the old `ask` spine keeps its kill on 2027-01-31. ADR-073's refusal of an MCP `ask` tool holds.
+7. *Compile once, prove, run forever (P25).* A check or named query proven by fixtures costs nothing per use and does not drift.
+8. *Proposed goals.* G51: one team outside the owner's fleet runs the gate for four weeks and files what broke (instrument: the trial report, default under OQ2 is "fleet only" recorded on 2027-01-31). G52: reading lanes are staffed, so the roughly 310 open measurement rows are run and filed with verdict lines. G53, the engine presence bar, is proposed by ADR-096.
+9. *Measures of world class, by mid-2027.* False-done fewer in the gated arm on repositories fathom does not own. Presence at 97% answered and under 1% abandoned. Local state in 2 seconds with every remote age shown. Repeated sub-agent exploration halved from 69.9%. One public benchmark reading where the fathom arm beats grep at no more than 1.25 times the tokens, with a powered null withdrawing the claim in public. The thesis itself read on the named-query set against a query-time model tool. One outside team. Minutes per landing measured, then halved.
+
+**Decision models.** One site: `shape`, a choice among named queries for a question. With provider `none`, pattern match decides, and an unmatched question gets a refusal that names the nearest shapes. Opt-out: the existing switches. Kill: the site stays off until calibration passes, and the understanding bench reading (kill 2027-03-31) decides the rest. A model never writes an answer (I62).
+
+**Alternatives rejected.**
+- *Keep the position unsharpened.* Leaves "better than grep" and "pushed advice" claims untested and unjudged. Wins if: never, the rule costs one line per idea.
+- *A fathom query language.* Wins if: never. Named queries with typed parameters cover the uses.
+- *A model-written answer path.* Fails the proof position. Wins if: never on the verdict path.
+- *Cut pushed advice on a clock.* ADR-080 already has an effect holdout that never auto-disables. Wins if: AD-M4 reads zero twice, then the recommendation to the owner is opt-in.
+
+**Consequences.** Every later record cites the rule instead of re-arguing it. The answer contract is a type, so silent success shrinks to what the type allows. The proposed goals need instruments before they count, and G51 needs an owner answer (OQ2). ADR-001 gains one line: the four planes are a data taxonomy.
+
+**Revisit when.** These are the realignment's own kill conditions.
+- RT-M15 still fails after ENG-1 to ENG-6: the hook path gets only what answers in time, and what-if verdicts are not built.
+- The record syntax trial ties: records keep labelled heads and the question closes.
+- False-done reads null on the PLAN family with adequate power: the proof position itself is re-examined before any other program continues.
+- A powered null on the public benchmark reading or the named-query reading: withdraw that claim in public and plan for the proof layer without the understanding claim.
+
+## ADR-094: Every record kind has a typed head, lifecycle conditions are computed at HEAD, data with no prose is CUE, and a trial chooses the head syntax (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / architecture. Design: `docs/design/typed-records.md`. Plan: `docs/plans/typed-records.md` (REC-). Proposes invariants I70, I72, I75 and the P17 clause. Builds ADR-087 decisions 2 to 4 for every kind. Amends ADR-087, ADR-074 R1, ADR-026, ADR-018, ADR-055, the CUE non-goal and invariants I47, I52.
+
+**Request (2026-11-12).** Make records machine-readable, with state machines, so intent can be queried and conditions evaluated. The word "state machines" is ambiguous: this record reads it as record lifecycles, and state machines in the code under analysis wait as a future (OQ14, default lifecycles).
+
+**Context.** Plans and futures have CUE schemas. The status vocabulary and three lifecycle checks accepted on 2026-10-28 have no code. Statuses appear in four spellings and no condition is evaluable. ADR-026's condition evaluation waited on people writing annotations, and nobody did in 30 days. The draft overreached by proposing to reverse three rulings and author everything in CUE: the critique showed the kill could not fire and a cheaper design was missing.
+
+**Decision.**
+1. *Type every head.* A kind's head is typed when at least one machine consumer reads its fields. Every kind passes. This decides whether a head is typed, not the syntax it is authored in.
+2. *Three containers.* Data with no prose (lanes, capabilities, standards, the named-query catalog, the knob map, reading heads, lifecycle declarations) is CUE from birth. Records with prose (decisions, invariants, goals, futures, questions, incidents, observations, asks) keep one typed head and a markdown body in one file, and until the trial reads the head is the labelled lines people write today, parsed and vetted. Plan rows stay markdown grammar v2 with new keys: `lane`, `wave`, `feature`, `gate` and `capability`.
+3. *Authored against derived (I70).* A record that writes a derived field fails vet. CUE declares a vocabulary and Go implements each condition, computed at the current commit. ADR-018's rejection of authored transition tables is unchanged, with one dated note.
+4. *Typed conditions.* `date`, `record`, `reading` and `manual` with a `review_by`. A one-time tool pass gives every existing condition a `review_by`, so the audit evaluates all of them by date on day one. A condition graph refuses a cycle.
+5. *One loader.* `internal/records` is a leaf behind the dialect port. The plan parser is the permanent markdown dialect behind it. What is deleted is direct calls that bypass the port, proven by `gone:` rows.
+6. *Ids are allocated and defined once (I72).* A link resolves, an id comes from a lane range and is defined in exactly one file. The integrator mints ids until `fathom rec new` lands, then lanes allocate, decision ids included.
+7. *Vet is its own gate step (I75).* `fathom rec vet` runs at pre-commit and in the gate. The lifecycle evaluator has no side effect and no clock of its own. `fathom verify` exit codes are unchanged, so a broken decision record never reads as an unproven row.
+8. *Read verbs.* `rec query`, `rec show` and `why` over typed links. No new MCP tool. `obligations` may also return the records that govern a path on request.
+9. *The syntax trial.* A preregistered paired trial on shadow copies: A0 labelled lines, A1 YAML front matter, A2 a CUE block at the top of the markdown file, A3 a `.cue` file beside a markdown body. Thirty records per kind. A non-control arm is adopted only when its drop in silent errors clears the control-versus-control noise floor and first-write validity is not worse than control by more than two points. A tie goes to control. It starts when the 2026-11-17 readings are read, runs under its own spend cap (OQ10) and does not wait on the engine.
+10. *Amendments.* ADR-087: decisions 2, 3 and 4 are built and generalized, its wins-if governs authored syntax only and gains a third trigger (the trial reads a win for a non-control arm), and decisions 5 and 6 stand. ADR-074 R1: rejection of CUE-as-source stands until the trial reads, and its stated costs (records three times larger, readers are models) get a measurement (REC-M4). ADR-075 is unchanged and AP-M1 is read first. The CUE non-goal keeps its rule and gains one revisit trigger: the trial reads a win. Hand-authored CUE data has been in scope since 2026-10-17, and the short prose fields of such data are data fields. P17 gains "intent heads are typed". ADR-055's feature map becomes the `capability` record kind. Invariants I47 and I52 are re-read, and under this record an invariant's rung is derived from its `enforced_by` links.
+11. *Gates.* `rec vet`, lane path ownership and generated-equals-committed for rendered numbers join the gate. The markdown plan tests and I22 are kept.
+
+**Decision models.** One site: `condition_kind`, a choice among condition kinds for a prose condition. With provider `none` every condition is `manual` with a `review_by`, the day-one state. Opt-out: the existing switches. Kill: below 50% of proposals accepted unchanged on 40. Drafting a head from a prose ask is generation, outside the port's kinds, and its acceptance is the vet. No judgment sets a ruling or a condition (I62).
+
+**Alternatives rejected.**
+- *Author every record in CUE now.* The premise overreached and the kill could not fire. Wins if: the trial reads a win for A2 or A3.
+- *Hand-annotated conditions.* Failed in 30 days. Wins if: never as the only path.
+- *A state machine engine for specs.* Wins if: never. Conditions are computed, not transitioned.
+- *Split the decision file now.* Wins if: the conflict trigger of ADR-075 fires after AP-M1.
+
+**Consequences.** About 400 plan titles are backfilled by tool in one main-thread batch. Adopters' plans are untouched. The labelled-line parser stays until the trial reads. A kind that cannot reach zero unparsed without rewriting keeps a counted share.
+
+**Revisit when.**
+- The syntax trial reads a win for a non-control arm: move heads kind by kind (REC-12).
+- The trial ties: records keep labelled heads and the question closes.
+- A second evaluator exists: the loader may move to the kit.
+- More than 20% of kinds cannot reach zero unparsed.
+
+## ADR-095: The table freeze gates on fathom's own tenancy clauses plus a per-change cost row (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / architecture. Design: `docs/design/responsible-tenant.md` section 18. Plan: `docs/plans/realignment.md` (ENG-3, ENG-4). Amends ADR-049 decision 2. Conditional until a fresh tenant-clause week is read (OQ5).
+
+**Request (2026-11-12).** Unblock the engine and the table programs. The second tenancy reading (2026-10-26) put the question on the record itself: should the freeze gate on the tenant clauses alone, with host-starved minutes reported.
+
+**Context.** ADR-049 decision 2 forbids a new table, cache or background job until RT-M1 reads PASS. RT-M1 read FAIL on 2026-10-19 and 2026-10-26 on its availability clause. Refuse minutes were 136 to 547 a day in the first window and 140 to 265 in the second, all host-starved, mostly on the swap-volume floor. Fathom's own clauses held in both windows (2026-10-12 to 2026-10-25): no self-caused refuse minute, no exit rung, no unclean exit, peak footprint 3.47 GB under the 4 GiB mark. Shedding fell from 2,994 minutes to 307 after RT-192. No reading has been taken since.
+
+**Decision.**
+1. *Gate on what fathom controls.* The freeze lifts on the tenant clauses alone, with host-starved minutes reported next to them.
+2. *Three conditions.* (a) A fresh seven-day read of the tenant clauses, taken after RT-195 and RT-197 deploy. (b) Each change that adds a table, cache or job carries a cost row: a cost class, an allocation ceiling, its footprint delta under shed, and the ten-times scale test that invariant I48 already asks of tools. A lint fails a change without one (ENG-3). (c) A revert trigger: a later read with a self-caused refuse minute above the bar reverts the change.
+3. *A second week is the revert check.* The fresh read cannot see what the re-warm will spend, since RT-195 and RT-197 keep nothing resident. So a second tenant-clause week after RT-196 deploys is the check, with the footprint clause named.
+4. *What it unblocks.* The graph re-warm (RT-196) and the row-level patch (RT-198), the system graph tables, the dependency plane and gate-receipt columns. It does not unblock the largest latency fix (ADR-096), which was never frozen. Stall signals need no table, because they are computed at render.
+5. *Conditional record.* The amendment lands as a conditional record, and fan-out does not wait for the fresh week.
+
+**Decision models.** None applies. The clauses are measured and the cost row is a lint.
+
+**Alternatives rejected.**
+- *Keep gating on host-starved minutes too.* Blocks work on a condition fathom cannot move. Wins if: a tenant-clause week shows fathom itself causes refuse minutes.
+- *Lift the freeze without a cost row.* Invites table sprawl. Wins if: never.
+- *Wait for RT-M1 to pass.* It failed twice on swap that fathom does not own. Wins if: the owner answers no to OQ5, which is the default unanswered.
+
+**Consequences.** The table count becomes a tracked number. If the owner does not answer OQ5, the engine re-warm and the table programs wait, as they do today. The change that accepts this record re-points RT-196 and RT-198 in `docs/plans/responsible-tenant.md` from RT-M1 to ENG-3 and ENG-M2. This proposal leaves those rows as they are.
+
+**Revisit when.**
+- The fresh tenant-clause week reads a self-caused refuse minute above the bar: keep the freeze.
+- The post-RT-196 week reads a footprint breach: revert the change that caused it.
+- The fresh read is taken on a different host than the two that held: the amendment stays conditional until a read on a matching host, and the reading says which host it used.
+
+## ADR-096: Engine presence is the first objective: graph-backed answers arrive inside the hook deadline, and every miss is named (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / architecture. Design: `docs/design/responsible-tenant.md` section 18. Plan: `docs/plans/realignment.md` (ENG-1 to ENG-11). Proposes goal G53 and principle P27. Amends ADR-041 decision 3 through the existing row RT-199 and invariant I21's evidence.
+
+**Request (2026-11-12).** Make the engine reliable, because "an answer that arrives after the deadline is not an answer", and because every earlier bench reading was taken on a timing-out engine.
+
+**Context.** The committed harness reading has 0% abandoned, 48.5% answered (all `verify_plan`) and pre-edit `blast_radius` declined 50 of 50 times, because a 500 ms hook cannot start a 17 to 25 second build. In the call log `blast_radius` returned an error on 57% of calls in 30 days and `obligations`, the edit loop's workhorse, was abandoned on 8.2% (1,370 of 16,654 on the edit hook). One function is 96% of the cold build. An index over constructor-scoped calls takes it under one second, identical on 25 snapshots. A package patch that equals a rebuild replaces one that differed on 13 of 24 commits. A re-warm after eviction covers the watermark moves that cause 67% of evictions. The fix has sat specified and unbuilt for seventeen days.
+
+**Decision.**
+1. *The bar, stated once.* First, RT-M15 reads PASS: at least half of hook-path graph calls answered and evictions without re-warm at most 10%. Also pre-edit `blast_radius` itself answers at least half, so the bar cannot pass on `verify_plan` alone. Then a seven-day reading on the build fleet with each hook-path tool reported apart, under 1% abandoned for every one including `obligations`, and the answered share raised toward 97% by reading. The bar is read weekly and shown on the fleet view.
+2. *P27: an answer that arrives after the deadline is not an answer.*
+3. *Build the specified rows.* ENG-1 (RT-195, not frozen) and ENG-2 (RT-197) are main-thread work before fan-out. ENG-11 (bound abandonment of `obligations`) runs beside them. After the freeze amendment ENG-3 and ENG-4 (RT-196, RT-199) follow, then ENG-5 (RT-M15 under scripted commit traffic), and ENG-6 (RT-198) only if RT-M15 reads under half answered. The lanes that carry them are ordered in `docs/design/parallel-lanes.md`.
+4. *Report apart.* Answered, declined by name and abandoned, per tool and caller (ENG-7). Session and lane id on every call-log and hook row (ENG-9). Gate-clone verify runs recorded under the checkout they verify (ENG-10).
+5. *One lookup verb on the hook path* (ENG-8). Hooks call `query_symbols`, which is off the default surface and 30% abandoned. It merges into `find_symbol` on the hook path.
+6. *No new invariant.* Three of I21's four tests run against a cache with no production caller, and go with the cache. Its fourth test and I51 remain its evidence.
+7. *No paid proof starts before RT-M15 passes.* Free steps (fact proofs, forward logging, readiness harnesses) start at the H0 exit.
+
+**Decision models.** None applies. Latency and answered share are measured.
+
+**Alternatives rejected.**
+- *Accept declined hook calls as the cost of graph tools.* Every outcome reading then measures the bug. Wins if: never.
+- *Wait for the freeze amendment first.* The largest fix was never frozen. Wins if: never.
+- *A second store for the graph.* Violates the one-store rule of ADR-049 decision 12. Wins if: never.
+
+**Consequences.** Outcome spend waits on RT-M15. Dead code goes: the graph cache with no production caller and its tests.
+
+**Revisit when.**
+- RT-M15 still fails after ENG-1 to ENG-6: the hook path gets only what answers in time and what-if verdicts are not built (ADR-093).
+- Per-RAM-class fit (RT-M10) shows the bar cannot hold on a smaller host.
+- ENG-M1 reads under 1% abandoned for every tool: raise the answered bar.
+
+## ADR-097: A channel created from now on does not push prose by default until a reading wins (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / policy. Design: `docs/design/advice-delivery.md`. Plan: `docs/plans/realignment.md` (RLN) and `docs/plans/advice-delivery.md` (AD-). Proposes invariant I73 and a clause for P16. Keeps ADR-080 as the judge of pushed advice. Touches ADR-016 and ADR-036.
+
+**Request (2026-11-12).** Decide where fathom informs the agent and where it only decides, using what the readings show.
+
+**Context.** A first sample found 12 of 211 served rules relevant, a corrected sample 9 of 24, and the reading's verdict is that benefit cannot be judged until delivery is fixed. In the guards pilot the rule was served before the edit in 4 of 8 tasks and violated as often as control. Lossy compression and compaction carry are closed by measurement.
+
+**Decision.**
+1. *Default off.* A channel created after this record does not push prose by default without a won reading (I73). This applies to the in-band channels of ADR-093 case 2 as well. Existing channels follow ADR-080 and are not touched.
+2. *Exempt, because they are proofs.* Denies on checkable rules (ADR-038), claim-moment refusals, pin lines, hazard findings and what-if verdicts.
+3. *P16 gains a clause.* "Decisions are delivered by configuration. Information is pulled, or offered inside the agent's own action after a reading."
+4. *ADR-080 stands.* Its holdout reading (AD-M4) reopens policy after two consecutive zero-effect readings and never auto-disables a channel.
+5. *Work that follows.* Land AD-7, run AD-M1, build the holdout log (AD-20 to AD-22), read AD-M4. If AD-M4 reads zero twice, the architect's recommendation to the owner is opt-in.
+6. *Obligations stay narrow.* `TestObligationsCorpusNeverWidensToIntent` is kept. Governing records reach an agent on pull, and at the edit only as checkable guards.
+
+**Decision models.** None applies. Delivery policy is configuration and its judge is a deterministic holdout.
+
+**Alternatives rejected.**
+- *Cut pushed advice on a clock.* ADR-080 already judges it. Wins if: AD-M4 reads zero twice.
+- *Turn new in-band channels on and measure after.* Repeats the pushed-advice result. Wins if: a replay reading shows a win before launch.
+
+**Consequences.** New in-band cards ship as labs cards with replay first. Firing is never counted as helping.
+
+**Revisit when.**
+- AD-M4 reads zero effect twice in a row: policy reopens and the recommendation is opt-in.
+- A labs card wins its preregistered reading: it may default on.
+
+## ADR-098: The work plane: fathom reads and shows lane state from operator-moved files and still never schedules, assigns or acts (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / scope. Design: `docs/design/fleet-picture.md`. Plan: `docs/plans/fleet-picture.md` (FLT-). Amends the dispatch non-goal, ADR-078 decision 5 and, in the open, its "Revisit when: never".
+
+**Request (2026-11-12).** A steering view in four questions, in the order asked: the ground, progress, lanes and relations, showing what is happening across the fleet and tying it to the plan and to proof.
+
+**Context.** No surveyed product ties fleet state to a plan and to proof. Session boards are common and none shows verified progress or overlap. The dispatch non-goal says fathom "never watches", and a lane picture watches. The first draft pulled lane state over ssh and synced issue labels, and the critique showed both break kept invariants.
+
+**Decision.**
+1. *Amend the non-goal in the open.* Fathom never schedules, retries, spawns, assigns or acts on a machine. It may read and display work state that the operator's tools record. No task tracker and no workflow engine stay as written. ADR-049 decision 4 (a view writes nothing) is the guard and is cited, not restated.
+2. *Split ADR-078 decision 5.* Its "monitor" clause is amended. Scheduling, placement and host load stay refused. Lane state is not host load. It is leases, hook rows, gate receipts and git state, which are facts about work. This overrides the dispatch non-goal's "Revisit when: never", and this record says so.
+3. *State is a fold over files.* Existing files plus one new lane file per machine, appended by the existing hooks, with a lane id, session id, harness, model, host label, event kind, target path and row id, and no content. The fold is computed at render over a bounded tail. A resident fold waits for the freeze amendment with its own cost row.
+4. *Across machines, the operator moves files.* Invariant I14 and ADR-083 are unchanged and fathom dials nothing. It exports lane state to a local path and reads from a local path. Transport is the operator's: a synced directory (the recommendation, OQ12), git refs, or the operator's own ssh pipe. The export is content-free.
+5. *Honest freshness.* Local state in under 2 seconds. Remote state as fresh as the transport, with the age of the newest row per machine shown on every panel. A daemon that is down, an unreadable file and a machine not heard from are each a named state.
+6. *The board writes nothing.* No view sets a phase, a claim or an assignment. Fathom writes no issue and no label. The forge's queue is shown from a file the operator exports.
+7. *Do not rebuild what harnesses ship.* Session lists, transcripts, token meters and worktree management stay with the harness and the multiplexer. The board links by lane and adds proof, intent, overlap and staleness.
+8. *Build order.* Ground, progress, lanes, relations. Fix attribution (ENG-9) before any lane panel ships, because a board over a fifth of the rows would mislead. Fix the browser proof (FLT-0) before new pages land. Reuse the progress, work, sessions and operate pages, and add a lanes page and the attention list.
+9. *Rendering.* New panels are projections in the console package, each a verb first (`fleet health`, `fleet lanes`, `fleet overlap`, `fleet attention`). ADR-045 keeps "pages do not move content under the reader", so the board uses notify and refresh until the kit offers a live region, which is a kit contribution with its own kit decision.
+10. *Reused joins.* ADR-051's joins are reused, not rebuilt. U1 is the cost side, U5 routes lane classes to the cheapest model that proves its rows, U10 is built with the system graph, and U7 merges into the landing bundle.
+
+**Decision models.** None applies. Every panel is computed and the stall signals stay deterministic at provider `none`.
+
+**Alternatives rejected.**
+- *Pull lane state over ssh.* Breaks I14 and ADR-083. Wins if: never.
+- *Sync issue labels.* Fathom writes no issue and no label. Wins if: never.
+- *A dispatch loop or kanban write-back.* Stays refused. Wins if: the owner reverses the non-goal explicitly.
+- *Keep the non-goal text and build the board anyway.* Hides a reversal in code. Wins if: never.
+
+**Consequences.** The non-goal text changes and ADR-049 decision 4 gets a test. The risk is the thin end of a tracker, and the mitigation is the text that names what stays refused.
+
+**Revisit when.**
+- A view writes a phase, a claim or an assignment: revert the view.
+- The kit ships a live region: adopt it for the board.
+- Threat-model answer arrives for remote and hosted channels: weigh remote transport again.
+
+## ADR-099: The hazard engine: fathom's static work on infrastructure is value-free change and contract hazards, and the check kernel waits on the owner's written ask (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / architecture. Design: `docs/design/change-hazards.md`, adopted as written. Plan: `docs/plans/change-hazards.md` (HZ-). Amends ADR-091 (adds the CDK oracle) and `iac` in `review_diff`. No revisit trigger on a record it amends has fired: this is an owner reprioritization, as the CloudFormation amendment to ADR-091 was. Re-reads ADR-092's closure budget. ADR-063 O11 and ADR-092 decision 10 are amended only if OQ3 is answered with a written ask.
+
+**Request (2026-11-12).** "strengthen static analysis and policy as code on the library". Taken literally this produces a scanner, and scanners are free, mature and already in the agent's write path. The better question: what does fathom hold that a scanner does not, and what is the smallest thing that turns it into verdicts nobody else can give?
+
+**Context.** The answer is two data assets joined: versioned provider contracts with replacement facts, and a diff of two classed fact sets. A critique killed five draft claims. Trivy's Go API carries resolvable, explicit and default on every value. `cdk diff --template` already maps the resource specification to will-replace and may-replace offline. Semgrep and Snyk ship agent hooks and Trivy ships an MCP server. Trivy expands modules statically and fathom does not, so on module-heavy code Trivy resolves more values today. No evaluator exists in fathom (the LL-M6 scorer reads a class at a rule path), and building one reverses a week-old owner decision. The CloudFormation change check exists (IF-C4) and is unmeasured. Terraform's side is specified and unbuilt (IF-13, IF-14, IF-17).
+
+**Decision.** Reshape, narrower than the ask. Reject the policy engine and build the hazard engine.
+1. *One line divides the work.* Checks that need only class, contract and change (H1 to H9) belong to the product and fit the existing records, since the product already emits such findings. Checks that need values (V1 to V7) belong to the owner's policy tool. Fathom keeps V checks only as bench fixtures that calibrate a kernel.
+2. *The product never reads a value* (ADR-092 decision 7, I69). Hazards: H1 stateful resource replaced, H2 Terraform address renamed with no `moved` block, H3 protection attribute changed or removed, H4 `count`/`for_each` switched or key changed with no covering `moved`, H5 provability lost, H6 provider upgrade impact on attributes in use, H7 deprecated attribute in use, H8 literal on a contract-sensitive attribute, H9 sensitive value reaches an unmarked output.
+3. *The fact model.* `Resource` and `Attr` with class, references as one-hop relations inside a declared read set, the contract at the bound provider version, structured blocks, and a `ChangeSet` of two fact sets by address with class transitions. Code facts are never inputs to a check. They join afterwards as ranking and scope.
+4. *Verdict shape.* Violated, satisfied or unknown under strong Kleene logic. "Not applicable" is a scope outcome decided before evaluation. `all` over an empty set holds and `any` over an empty set does not, pinned in truth-table tests. `Basis` is the weakest class that decided: literal, defaulted, absent, contract or relation. Expression and unknown never decide. Absent follows per-type semantics, and absence is not a violation when an account-level default sits outside the read set, which is an unknown with that reason. Every verdict carries spans, unknowns with reasons, the check digest, the catalog digest and the read set. Relation checks conclude only in a closed read set, and an unexpanded module call makes the verdict unknown with that reason. This is ADR-093's answer contract.
+5. *`iac` becomes a seventh review dimension* with `Checked` and `Reason`, so a missing catalog is a stated absence (I38). This is an output schema change with a change note. No new MCP tool.
+6. *ADR-091 records `cdk diff --template`* as the independent CloudFormation replacement oracle. Replacement semantics for H1: create-only is a lower bound, conditional create-only is may-replace and maps to unknown, a type with no update handler always replaces.
+7. *The check kernel* (`pkg/lang/check`, importing only `pkg/lang/iac`, rows HZ-13 to HZ-18) starts only on the owner's written ask (OQ3, default hazard engine only). The recommendation is the library, because class semantics without evaluation semantics are ambiguous. The rule language, if built, is data in a closed total predicate algebra, canonical JSON with CUE as the authoring layer. Rego, CEL and CUE unification are rejected for now.
+8. *Refused.* A scanner, a rule corpus, rule packs in core, code analyzers for memory and lifetime (F90), a model in the verdict path, a SARIF door (ADR-040's reasons stand), plan files in the product (I56, a plan reader exists only in the bench). The review kit ingests scanners and fathom ranks imported findings by what changed code reaches. Waivers are not fathom's (ADR-040), but the reader emits inline suppressions as facts.
+9. *First uplift.* Terraform and OpenTofu with the AWS provider, the one place the thesis is unrefuted. CloudFormation is the calibrated twin. Kubernetes second, Helm third. The pre-write delta is a labs card (HZ-19) under ADR-091 decision 7.
+10. *Order and stop rules.* HZ-0 to HZ-2 need no new engine and measure what exists. HZ-3 to HZ-7 are additive facts. HZ-8 to HZ-12 are the product's bet. If HZ-1 reads under its 0.85 floor against `cdk diff`, that is fixed first. If HZ-9 precision on Terraform is under 0.9, hazards get no agent surface. If HZ-17 shows Trivy decides far more at equal soundness, the kernel stays small and the advice to the policy tool is to take values from Trivy or a plan and hazards and contracts from fathom. HZ-M1 to HZ-M7 are the preregistered readings.
+11. *The catalog is the moat.* Finish IF-13 and IF-6 first. Licence and publication of the catalog are the owner's call at split time (OQ4, default current licence and no publication).
+
+**Decision models.** None applies. The H checks are class, contract and change joins with nothing to judge. A model must not resolve an unknown or judge a security property (I62). Drafting a check from prose is generation, outside the port's kinds, and belongs to the policy tool as an authoring aid.
+
+**Alternatives rejected.**
+- *A scanner or a policy engine in core.* Free, mature scanners beat it on breadth. Wins if: never as drift toward the mean.
+- *Rego as the authoring language.* Wins if: an adopter brings a corpus they will not rewrite.
+- *CEL.* The strongest alternative. Wins if: a Kubernetes adopter wants admission policy expressions run locally unchanged.
+- *CUE unification as the evaluator.* Breaks a non-goal and the door's closure. Wins if: over 20% of proposed checks cannot be said in the algebra.
+- *A SARIF door.* Wins if: ADR-040's three reasons are answered.
+- *Plan files in the product.* Wins if: I56 is amended by the owner. Not proposed.
+
+**Consequences.** The product holds no secret because it reads no value. Breadth stays with scanners. An incumbent could close the Terraform gap in a release, and the mitigation is the catalog. Public surface grows on a door with no outside import until 2027-05-04, so surface additions are limited to what a named consumer needs. ADR-092's closure budget (80 packages against a bar of 80) is re-read and a release containing the door is tagged.
+
+**Revisit when.**
+- HZ-1 reads under 0.85 against `cdk diff`: fix it before any other hazard row.
+- HZ-9 precision on Terraform reads under 0.9: no agent surface for hazards.
+- HZ-17 shows Trivy decides far more at equal soundness: keep the kernel small.
+- The owner gives the written ask for the kernel: amend ADR-063 O11 and ADR-092 decision 10 in that change.
+- An incumbent ships versioned replacement contracts: the catalog moat is gone, reread.
+
+## ADR-100: Proof at the moment of change: what-if verdicts at the edit as labs cards, and a proof-carrying landing (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / architecture. Vision: `docs/vision/46-proof-at-the-moment-of-change.md`. Plan: `docs/plans/realignment.md` (CHG-1 to CHG-7). Extends ADR-081, touches ADR-038 and ADR-067. The flagship.
+
+**Request (2026-11-12).** Tied to the one-stop-shop ask: make the product something nobody else can do, at a forced channel.
+
+**Context.** Delivery at the edit is table stakes, since scanners already ship edit hooks. What is not table stakes is what the verdict is computed from, and that it speaks only on a transition. Every part exists or is specified: conservation, the pre-edit hook, the pre-write delta card, exact-tree receipts, tests selected by reads. In the 30 days before the append-point fixes, 263 of 523 merges conflicted (247 on append points, 63 inside one function). A landing carries no proof today and the integrator re-runs identical trees.
+
+**Decision.**
+1. *At the edit.* What-if verdicts on the proposed text before it is written: a conserved surface lost, a wiring break, a replacement hazard, a duplicate of an existing symbol. Each speaks only on a transition, fits the payload cap of I35 and runs inside the 500 ms pre-edit cap. Each starts as a replay card (CHG-1) reporting eligible, fired, right and noise against the post-write signal for the same hazard. It is built only if it passes replay with lower noise (CHG-2). The infrastructure card is HZ-19 and keeps its gate.
+2. *At the landing.* A lane's push carries a bundle: an exact-tree gate receipt, verify verdicts, the affected-test set and its overlap with what main reaches. The integrator accepts in seconds and CI samples full runs as the outside oracle. A sampled run that disagrees with a bundle is an incident (CHG-5, CHG-6). ADR-081 is extended and exact-tree acceptance turns on.
+3. *Overlap forecast.* Used to order merges. PG-3 owns it and the fleet view renders it (CHG-7). F82's replay found 63 same-function conflicts.
+4. *Tests.* A suspect set on a red test, and shell unwrap so wrapped test runs are seen (83% unseen in the baseline) (CHG-3). Strength floors for agent-written tests through attested results, with fathom running nothing (CHG-4). ADR-067: attested execution evidence becomes an input to `wired`, because static reach was wrong both ways in CV-M13. ADR-090 is unchanged until TQ-M8 reads PASS.
+5. *Landing needs no harness parity.* Only the edit half does.
+6. *Stop rule.* A what-if verdict that fails replay is not built. Denies on checkable rules stay under ADR-038 and are exempt from ADR-097.
+
+**Decision models.** None applies. Each verdict is computed from facts and contracts.
+
+**Alternatives rejected.**
+- *Inform with prose at the edit.* Case 4 of ADR-093. Wins if: a replay reading shows a win.
+- *Re-run the identical tree at every landing.* Costs minutes per landing for no new information. Wins if: a sampled run disagrees with a bundle often enough to void the bundle.
+- *A merge queue first.* Wins if: a CI-gated merge queue exists (ADR-090's own wins-if), which is the path to a lighter lane gate.
+
+**Consequences.** Replay logging must exist before any card can be judged. The landing half depends on gate receipts being turned on, and they are built and off.
+
+**Revisit when.**
+- Fewer than two what-if verdicts pass replay inside the pre-edit deadline: the edit half is not built.
+- A sampled CI run disagrees with a bundle: incident, and reread CHG-6.
+- TQ-M8 reads PASS: lighten the lane gate.
+
+## ADR-101: One proof program: capability cards, three proofs in order, proof liveness (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** process / architecture. Design: `docs/design/proof-program.md`. Plan: `docs/plans/proof-program.md` (BEN-). Proposes invariant I74. Merges the programs of ADR-031 to ADR-034 and ADR-082 into one, and keeps ADR-080 and ADR-085.
+
+**Request (2026-11-12).** Prove each capability alone, then together, then tune, and never let proof go stale.
+
+**Context.** The free layers are excellent. The paid layer has not produced a number anyone could tune by: the scenario ledger holds 893 rows and about $486 of spend, with no row showing fathom ahead of grep on the registered criterion and about $183 on rows flagged with an instrument defect. 660 of 893 rows have two trials, the model is recorded as an alias, and in the first round the wired arm ran with no tools connected. The comparison is too coarse (all of fathom against grep) and the engine contaminated the readings. Delivery cannot be replayed from what is logged today. A reading carries no fingerprint of what it measured. Bench code is about 120,000 lines with tests across six commands, and about 310 open plan rows are readings, most runnable and unassigned.
+
+**Decision.**
+1. *The unit is a capability card.* A CUE record with surface keys, the claim in one sentence, the stratum where an effect is predicted, the stratum where none is, and three proofs. A shipped surface with no card fails a closure check.
+2. *Three proofs, each gating the next.* Fact proof (is the answer right, $0, an outside oracle on a pinned corpus and a holdout). Delivery proof (does it reach the agent in time and get acted on, against the base rate with the capability held out, by forward logging). Outcome proof (does the task end better, paid and paired). No outcome spend is approved for a card whose delivery proof is under its bar.
+3. *Outcomes in order of how well determinism can move them.* False-done, collateral damage, task success, tokens to green and cost per success, minutes per landing. Outcome proof is an ablation inside the wired arm. The whole-product comparison against an agent with grep stays as one headline arm per release.
+4. *Proof liveness (I74).* Every reading is a record with an input fingerprint: corpus digest, fathom commit, extractor epoch, harness and model pins, and the reach set. It derives live, stale or void. A release note or guide may not state a claim whose reading is stale. This is certificate liveness (I43) applied to every number fathom publishes.
+5. *One program.* The strengths bench, bench prep, feature labs, the context bench and the review bench merge into one command outside the product binary with one driver, one ledger and a unique key per cell. The home bench stops being a source of claims. The ambient A/B, if the owner agrees (OQ6), is succeeded by ADR-080's deterministic holdouts.
+6. *Readiness before spend.* No paid cell runs until the scripted harnesses pass: null, oracle, wrong patch, flake, scripted wired and scripted grep. Paid steps need a wire stamp on every cell, those harnesses, RT-M15 passing, a signed preregistration and an approved spend row. Budgets are per card, approved by row, with the cap in the driver. The first paid dollar goes to false-done on tasks with rows that are false by construction.
+7. *Together, then tuning.* With three cards at outcome proof, one combined run (all on, all off, all minus each card that cleared the noise floor). A full factorial is refused on cost. Every knob is data with the reading that set it. Tune on a development split, confirm once on held-out data, and a second read of a held-out split demotes it.
+8. *The flywheel.* An observation closes with a verdict, a fix carries its own red-to-green commit, the card's stale readings re-run and the card's condition updates on the fleet view.
+9. *Reading lanes.* The open measurement rows are staffed as lanes that run one preregistered measurement and file it with its verdict line.
+10. *Kept practices.* Preregistration, oracles fathom does not own, no model judge on any primary metric, published nulls, no pilot cited before its second reading, an incomplete run never reports a win, firing never counted as helping, and a zero-effect holdout reopens policy without auto-disabling (ADR-080). A feature map becomes the `capability` kind (ADR-094). A secondary grader on the understanding bench (off by default, valid only at an agreement of 0.6 or better with person labels) is the one model site.
+
+**Decision models.** One site: a secondary grader on the understanding bench. With provider `none` the primary anchor match stands alone. Opt-out: off by default. Kill: agreement under 0.6 with person labels. No model judge on any primary metric.
+
+**Alternatives rejected.**
+- *All of fathom against grep as the only comparison.* A null does not say which part failed. Wins if: never as the only comparison.
+- *A full factorial.* Refused on cost. Wins if: the power table prices it affordably.
+- *Replay delivery from old logs.* Hook rows do not record the cited target and the hook log keeps about a week. Wins if: old sessions carry enough for a card, and then it is labelled replay.
+- *More approvals instead of readiness harnesses.* Wins if: never, the harnesses are deterministic and cheap.
+
+**Consequences.** Three things must be built before delivery proof exists: the deterministic holdout log, the cited target on every hook row, and an archive for the hook log. Stale readings re-run in the gate when free and queue with a cost estimate when paid.
+
+**Revisit when.**
+- A card's delivery proof reads under its bar: no outcome spend for that card.
+- False-done reads null on the PLAN family with adequate power: re-examine the proof position (ADR-093).
+- A paired power table shows the budget cannot reach any card's effect size: reduce to fact and delivery proof only.
+
+## ADR-102: Every harness that builds fathom is measured (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** process. Plan: `docs/plans/proof-program.md` (BEN-) and `docs/plans/realignment.md` (WIR). Amends ADR-029 decision 6.
+
+**Request (2026-11-12).** Wire the product into every harness that builds it, and prove it, with the build fleet's own cost in view.
+
+**Context.** ADR-029 decision 6 keeps measurement to one harness. The build fleet uses two. A second harness has 8 hand-pasted hook entries and 16 of 28 capabilities absent. One harness's demotion clock expired and the page still prints tier A. No reading can say fathom was wired without a wire stamp.
+
+**Decision.**
+1. *Every harness that builds fathom gets* a wire stamp per session, a cost reading and a bench arm. An absent capability is named in the descriptor.
+2. *The harness matrix is rendered, not typed.* The tier a page prints follows the demotion clock.
+3. *Cost per proven row per harness and model* (ADR-051's scorecard, U5) routes lane classes to the cheapest model that proves its rows.
+4. *The managed daemon and Linux.* The managed daemon is macOS only while cloud lanes run Linux, and CI is the only Linux witness. A service unit, a Linux reading and required CI are rows in existing programs (PG-8 of `docs/plans/realignment.md`), not a new program.
+5. *Security rows.* Release archives carry a build-provenance attestation from the release workflow, and a stranger has not yet read one. The full endpoint exposes writes and model spend with no auth. `ingest`, `compile_layer`, `remove_service` and `rename_service` leave the unauthenticated endpoint and stay as CLI verbs. The attestation reading and the endpoint change are rows in the wiring program (WIR-6, WIR-7).
+
+**Decision models.** None applies. A stamp is a recorded fact and the matrix is rendered.
+
+**Alternatives rejected.**
+- *Keep measurement to one harness.* A harness with 16 of 28 capabilities absent is measured by guess. Wins if: only one harness builds fathom.
+- *Wire both harnesses by hand.* Drifts. Wins if: never.
+
+**Consequences.** Every bench cell names the harness and the capabilities present. Single-harness readings are labelled as such.
+
+**Revisit when.**
+- Only one harness builds fathom: decision 6 of ADR-029 applies again.
+- A harness ships a feature that makes a capability card redundant: close the card and say so.
+
+## ADR-103: Ruling classes: what the architect records, what waits for the owner (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** process / policy. Plan: `docs/plans/realignment.md` (RLN). Revisits `docs/intent/autonomy.md` by reference. That file is not edited while this record is proposed. The change that accepts it edits the file. Its revisit trigger has fired: a CI runner and outside lanes exist (OQ9).
+
+**Request (2026-11-12).** The owner asked the architect to decide, and will inspect before acceptance.
+
+**Context.** Readings are the bottleneck and rulings second. About 310 of 903 open plan rows are measurements, about 67 of those name the owner, a ruling or spend, and the rest can be run today with nobody assigned. On the queue, 4 of 108 items wait on a ruling. Separately, nine goals are past review with no verdict and 22 questions are open. Scheduled readings pass unread: the intent-practice readings are due 2026-11-17 and a lifecycle reading 2026-12-15.
+
+**Decision.**
+1. *Class A: recorded by the architect, reversible by the owner.* A reading's verdict against its preregistered bar, a goal review, and a cut whose kill fired. Each is a record the owner can reverse.
+2. *Class B: a weekly batch of typed questions.* Each has a recommendation and a default that applies after seven days.
+3. *Class C: owner only.* Spend above a cap, licence, publication and anything irreversible.
+4. *The weekly batch lists every Class A ruling made that week,* so drift is visible.
+5. *ReviewDue* is a condition on every goal, reading and record, shown on the attention list (ADR-094).
+6. *An `ask` record kind* holds the raw words, the uplifted ask and links to what it spawned. This realignment's eleven asks are filed first.
+7. *Reading lanes* are a lane class from the first wave (ADR-101).
+8. *Branch protection.* A protected main with required CI and a second integrator are proposed, with the second integrator not yet needed (OQ9, default classes adopted and main unprotected).
+
+**Decision models.** None applies. The classes are process.
+
+**Alternatives rejected.**
+- *Every ruling waits for the owner.* Leaves 22 questions and nine reviews open. Wins if: the owner reverses a Class A ruling often enough to show drift.
+- *Architect decides everything.* Class C stays owner-only: spend, licence, publication and irreversibility. Wins if: never.
+
+**Consequences.** Delegated rulings may drift from what the owner wants, and the mitigation is that each is reversible and listed weekly. `docs/intent/autonomy.md` needs an edit by the change that accepts this record.
+
+**Revisit when.**
+- The owner reverses more than a few Class A rulings in one batch: tighten Class A.
+- A second contributor arrives and needs a contributor guide: extend the ladder.
+- A protected main with required CI is adopted: update the autonomy file again.
+
+## ADR-104: Subtraction has the rank of a build program: cuts where a kill fired, owner-reviewed preference cuts, parks, and a kept list (2026-11-12)
+
+**Status.** Proposed 2026-11-12 (architect ruling, owner review pending). **Type.** product / scope. Plan: `docs/plans/realignment.md` (CUT). Proposes principle P26 and retires invariant I5 with ADR-006. Amends ADR-006, ADR-071, ADR-042, ADR-056, ADR-073, ADR-023, ADR-028 and goals past review.
+
+**Request (2026-11-12).** Revisit rejected and deferred ideas, combine backlog items into better ones, and say what to remove.
+
+**Context.** About 496,000 non-test Go lines exist after five months, 144,000 of them in one `package main`. Several kills have fired and the code remains.
+
+**Decision.**
+1. *Cuts where a kill fired* (each with a `gone:` row and a reopening condition). Readouts' lossy lean rules, read-outline as a lossy view, saved raw output and dedupe view (RO-M0 CUT at 0.535% against 4%, RO-M19 STOP at 0.40% against 1%). Carry-across at compaction (CA-M1 STOP, 0.5 re-reads against 2). The `route` and `rank_within_tier` decision sites (45.7% right at 0.9 confidence, minus 0.19 paired mean). `internal/concern`, `internal/graph`, `internal/lookup`, `internal/journal`, `internal/resultcache`, `internal/scenariobenchwired` and the cached call graph with no production caller (no product importer). `gen-status-cue` and the `gen-claude-md` alias. Designs for work already cut are marked retired. The home bench as a source of claims. The legacy single-file friction log after its entries are split.
+2. *Preference cuts, for the owner (OQ6, default stay frozen).* Assess lanes (ADR-046) and the hidden `assess` and `research` verbs, frozen "until an owner pull" with readings never run. Goal G2, the ambient A/B and its verbs `arm`, `rate`, `retro` and `flywheel`, with zero admissible treatment units since August. Law 12 stays.
+3. *Parked, with the clock or trigger named.* Index snapshots (reopen on a named team consumer), incident maps and telemetry links stage B (until a consumer is named), concern-fact waves 3 and 4 and the platform rows (kill 2027-01-31), portable receipts waves 3 to 5, Claude Code mods phases 2 to 4 (kill 2027-01-31), and the old `ask` spine (kill 2027-01-31). `cmd/fathom` as one package is parked, since verbs register per file and a split would unbind 563 claimed rows.
+4. *Smaller amendments.* ADR-006 retires to historical and `internal/concern` is deleted (55 of 58 tools exempt, no product importer), and I5 retires with it. ADR-042, ADR-056 and ADR-073 keep the port and withdraw the `route` and `rank_within_tier` sites, with one record for the futures behind the unrun kill screen. ADR-071's lossy track is withdrawn. ADR-023 gains a committed-baseline regression gate. ADR-028 is kept and the operator guidance that sends agents to a removed docs reader is fixed. ADR-052 has no change now, and a permissive licence is decided at split time. ADR-068 waves 3 to 5 follow their own consumer gates. ADR-069 decisions 11, 12, 14 and 15 stay parked. Invariant I21's evidence is repointed (ADR-096) and I58 is re-read.
+5. *Surface.* The 8-tool default surface and law 4 are kept. Eleven extended tools with zero or near-zero calls in 30 days leave the extended surface and stay as CLI: `outline`, `find_callers`, `repo_map`, `references`, `pack_context`, `localize`, `test_impact`, `staleness_report`, `findings_near`, `rename_service`, `cross_repo_callers`. Each returns on off-surface demand (SR-M3 has been open for 45 days). `pkg/platform` leaves the compatibility surface and `pkg/client` is a door or not a promise. Console pages with no views in the 30-day log are cut (FLT-9).
+6. *Goals past review.* G3's bet closes (4 of 20 units) and the threads stay. G4 closes. G7 waves 1 and 2 are removed as met in August. G9 closes with its FAIL recorded, succeeded by the proof program. G11 merges into the answer contract and G12 closes. G13 merges into the fleet picture. G14 is kept and re-scoped. G2 is under decision 2. The architect may record these verdicts under ADR-103 (OQ7, default recorded as architect rulings, reversible).
+7. *P26: one rule, one source.* A number or a list in prose is rendered or tested. Hand-typed numbers in README, overview and early-tester notes are fixed (README says 37 and 63 where the board says 45 and 74). Minutes per gated landing, lines in `package main` and every count in README or a guide become tested numbers once measured.
+8. *Each build program names what it deletes.* Lines per wave is a tracked number.
+9. *Kept, so nobody cuts it by accident.* Done means proven and wired (ADR-018 with its 2026-09-28 amendment). The honesty floor (ADR-027, I38). Pure Go, one binary, one embedded store, no second store (ADR-020, ADR-025, ADR-066, ADR-049 decision 12). The non-goals on connectors, with the clause that operator-placed files are the only door for outside facts, and on CUE as an engine, chat, a hosted backend, a token dashboard, grep blocking, a separate spec repository, a transformation engine and the Node toolchain. The 8-tool default surface (ADR-053). The decision port, default none, consented and killable (ADR-073). Preregistration, oracles fathom does not own, published nulls (ADR-031, ADR-033, ADR-085). Fathom never acts on what it does not own (law 15, I63, ADR-060, ADR-089). Org-agnostic, loopback, no downloads (ADR-011, ADR-083, I56). The tenancy ladder (ADR-047). The public door pattern (ADR-092) and the kit boundaries (ADR-063). ADR-051's joins. Continuity threads. The invariants I8, I17, I59, I43, I44, I45, I57, I62, I63 (proof spine) and I10, I14, I56, I64, I66 (trust boundary).
+
+**Decision models.** None applies. Each cut is computed from a fired kill or is a scope call.
+
+**Alternatives rejected.**
+- *Withdraw index snapshots and fold threads into lanes.* The first stays parked as its own kill prescribes, and the second was a preference with no fired kill. Wins if: a named consumer or a reading says otherwise.
+- *Split the 144,000-line command package before fan-out.* Verbs already register per file and the split unbinds 563 claimed rows. Wins if: future F98's trigger fires.
+- *Cut on a calendar.* Wins if: never. Every cut says whether a kill fired or it is preference.
+
+**Consequences.** Git keeps history, so nothing is archived. A `gone:` row proves each deletion. Preference cuts wait on the owner and do not hold up fan-out.
+
+**Revisit when.**
+- A parked item's named consumer appears or its clock arrives.
+- An extended tool cut returns on off-surface demand.
+- The owner answers OQ6: cut or keep the preference items.
