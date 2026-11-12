@@ -1,0 +1,112 @@
+# The library roadmap: programs LP-1 to LP-7
+
+Status: Proposed 2026-11-12 (architect ruling, owner review pending).
+
+Grammar v2 (`docs/plans/README.md`). Prefixes: LP- (a program's done row), LIB- (library rows, LIB-1, LIB-4 and LIB-6 live in `docs/plans/realignment.md`, where LIB-2, LIB-3 and LIB-5 are retired as `[-]` rows), RL- (resource-lifetime rows, RL-Mn their readings), LREG- (register entries that wait on a trigger). Design: `docs/design/library-roadmap.md` (its sections 5, 7 and 12 are this plan). Decisions: ADR-092 (the library), ADR-099 (the hazard engine), ADR-105 to ADR-107 (ADR-107 opens the lifetime lane). Goal context: `docs/vision/46-proof-at-the-moment-of-change.md`.
+
+Rows owned by other plans are named by id in `needs` and never copied: the hazard rows are HZ-n in `docs/plans/change-hazards.md`, the infrastructure facts rows are IF-n in `docs/plans/iac-facts.md`, the library rows are LL-n in `docs/plans/lang-library.md`, and the main schedule is `docs/plans/realignment.md`. This plan holds only the rows those plans do not have: the licence notice, the closure bar, the hazard binary entry, stateful type candidates, the fact delta, the reading benchmark fixtures, the lifetime lane, one done row per program, and the register.
+
+Readings live under `docs/bench/readings/library-roadmap/`, one file per row, each opening with a verdict line. A row flips only through `fathom verify --service fathom --plan docs/plans/library-roadmap.md`. Every row below is open. No row here adds a store table, a background job or a value read. The product never reads a value (ADR-092 decision 7).
+
+Stop rules (from the design, section 9):
+
+- If HZ-1 reads under 0.85, the live CloudFormation finding drops to advice wording and is fixed before any other hazard row.
+- If HZ-9 precision reads under 0.9, Terraform hazards get no agent surface. The binary and the benchmark still state the reading.
+- If RL-4 audit precision reads under 0.7 or it shows no gain over the tenancy lint, or RL-3 is not above the union of the linters, that check is cut and its reading is published.
+- 2027-01-31: OQ3 and OQ15 are read with OQ2. With no answer the kernel stays unbuilt and the entries that need T-IaC stay closed.
+- 2027-05-04: ADR-092's revisit. With no outside importer, stop adding public surface. If HZ-9 has not reached 0.9 on the same date, hazard work stops at the rows that feed the reading.
+
+## LP-1 Release and door health
+
+Goal: a stranger can fetch, build and run the library from a tag. Done when a tag contains the door and LL-M7 passes.
+
+- [ ] (op) The release archives carry a licence notice for the embedded grammars (55 since v0.23.0, 54 under MIT and one under Apache-2.0), generated from the grammar lock, and the release check fails without it {id: LIB-12, oracle: lexical, path: docs/bench/readings/library-roadmap/lib-12-licence-notice.md, pattern: "^LIB-12 verdict:"}
+- [ ] (op) LL-M1 re-read: the door links 80 packages against a bar of 80 and a consumer links 81, so the reading decides the bar (80 as written, or 81 with the two guard packages named) and states whether ADR-092's revisit on LL-M1 has fired {id: LIB-11, oracle: lexical, path: docs/bench/readings/library-roadmap/lib-11-closure-bar.md, pattern: "^LIB-11 verdict:", needs: "lang-library.md#LL-M1"}
+- [ ] (op) LP-1 done: a tag contains the door (`realignment.md#LIB-1`, which waits on LIB-12, LIB-11 and a green wave on main), LL-M7 passes through the Go proxy, and the API snapshots hold {id: LP-1, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-1-release.md, pattern: "^LP-1 verdict:", needs: "LIB-12,LIB-11,realignment.md#LIB-1,lang-library.md#LL-M7"}
+
+LL-43 (a literal on a contract-sensitive attribute stays withheld) is an existing row in `docs/plans/lang-library.md`. Its trigger fires when HZ-4 binds a contract during a read. LL-40, LL-41 and LL-42 stay deferred with their triggers unchanged. LIB-8 (widen the values scan) is withdrawn because its premise was false: the test that keeps values out of the product already flags a product call that opts in, and has a seeded case.
+
+## LP-2 Facts for hazards
+
+Goal: the reader states everything a hazard needs, and every unknown has a reason and a next step. Done when no unknown in the three infrastructure readers lacks a closed reason and a `decidable_by`, and LL-M6 is re-read under its bar. The fact rows are HZ-3 (unknown reasons, read set and `decidable_by`), HZ-4 (structured blocks and the binding resolver), HZ-6 (the change set) and HZ-5 (class and span per member, entered only when a hazard needs it or M4 ranks it first). HZ-4 and the resolver are also the use U-62.
+
+- [ ] (op) LP-2 done: HZ-3, HZ-4 and HZ-6 are claimed, no unknown lacks a closed reason and a `decidable_by`, and LL-M6 is re-read under its bar {id: LP-2, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-2-hazard-facts.md, pattern: "^LP-2 verdict:", needs: "change-hazards.md#HZ-3,change-hazards.md#HZ-4,change-hazards.md#HZ-6,lang-library.md#LL-M6"}
+
+## LP-3 Contracts and catalogs
+
+Goal: versioned contracts with replacement facts, and catalogs a stranger can verify. Done when replacement facts are present, each provider has a recorded licence finding, and catalogs for the pinned lines are release assets with attestations. The rows are IF-13, IF-11, IF-12, IF-M1 and IF-6 in `docs/plans/iac-facts.md`. IF-6 enters on `realignment.md#LIB-1`, IF-11, signed releases (`realignment.md#WIR-6`) and OQ4.
+
+- [ ] (op) Stateful type candidates: a published list is tried first, a model may propose more, a person accepts each into the list the catalog builder compiles with its provenance. The list is a declared baseline, so a hazard fact resting on an entry carries the evidence class `declared context`. Graded by agreement of the list with a published list or a hand key on a stated sample, since replay cannot grade it. Built with HZ-9, which uses the list, so neither row waits on the other {id: LIB-9, oracle: lexical, path: docs/bench/readings/library-roadmap/lib-9-stateful-candidates.md, pattern: "^LIB-9 verdict:"}
+- [ ] (op) LP-3 done: replacement facts are present, each provider has a recorded licence finding (a provider that fails stays operator-built), catalogs for the pinned lines are release assets whose attestations verify {id: LP-3, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-3-catalogs.md, pattern: "^LP-3 verdict:", needs: "iac-facts.md#IF-13,iac-facts.md#IF-11,iac-facts.md#IF-12,iac-facts.md#IF-M1,iac-facts.md#IF-6"}
+
+## LP-4 Change and hazards
+
+Goal: "what will this change destroy", from two versions of text and a catalog, with no plan, no credentials and no value read. Done when H1, H2, H4 and H6 read on Terraform and H1 on CloudFormation at their floors, in the binary. The main roadmap's PG-3 closes on this. Consumer: the replay reading, the public benchmark, and the CloudFormation finding that is already live. Readings: M1 by replay against the plan of head over a state built from base, through a bench plan reader. M2 against `cdk diff`.
+
+The hazard rows are HZ-0, HZ-1, HZ-9, HZ-10, HZ-11 and HZ-17 in `docs/plans/change-hazards.md`, and IF-13, IF-15, IF-M2, IF-M3, IF-CM3 in `docs/plans/iac-facts.md`. Where this roadmap differs from the hazard plan as written: HZ-1 is a reading row of its own against `cdk diff` and first in its wave. HZ-10 gains H5 and runs beside IF-13. HZ-9 is the computation and the reading, with the `review_diff` flag staying IF-14 and opening at 0.9. HZ-11 enters on two catalog versions on disk. HZ-17 is a scheduled reading lane. HZ-12 keeps H3 and H8 in the register. HZ-15 splits so the bench plan reader is built with the M1 harness. IF-M2 amends its `needs` to IF-13, IF-15 and LIB-7. The design lists the reasons in section 6.
+
+- [ ] (op) A hazard entry in the library binary: the change set and hazard facts as JSON for two trees, provisional, with a schema version. Its JSON shape is a contract set on the main roadmap, and the replay harness and the benchmark read it {id: LIB-7, oracle: lexical, path: docs/bench/readings/library-roadmap/lib-7-hazard-entry.md, pattern: "^LIB-7 verdict:", needs: "change-hazards.md#HZ-6,change-hazards.md#HZ-10"}
+- [ ] (op) LP-4 done: H1, H2, H4 and H6 read on Terraform and H1 on CloudFormation at their floors in the binary, HZ-9 at 0.9 or its stop rule fired, HZ-1 at 0.85 {id: LP-4, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-4-hazards.md, pattern: "^LP-4 verdict:", needs: "LIB-7,change-hazards.md#HZ-1,change-hazards.md#HZ-M1,change-hazards.md#HZ-11,iac-facts.md#IF-13"}
+
+## LP-5 Resource lifetime and best practices
+
+Goal: say where a resource, a goroutine or a container can outlive its bound, and where the detectors are not looking. Done when site facts are graded in the door, RL-5 reports its number, and RL-4 and RL-3 have each passed or met their kill. Each reading compares with the incumbent and each can lose. Consumer: this repository is Go, and its gate runs the tenancy lint and the race detector. Per-function best practice stays with linters. RL-3 and RL-4 open a lane that F90 and the hazard design refused, so they wait on ADR-107 and a cost reading each. None of this runs on the hook path, and only RL-2 is door surface. The rows that pair with this program live on the main roadmap: RL-1 and RL-6 (with FCT-6), RL-9 and RL-8 (with CHG-10).
+
+- [ ] (op) RL-M0: lifetime site facts (acquire candidates, release calls, `defer`, `go` statements, lock and unlock, the loops that contain them, scoped constructs) agree with the tenancy lint's own findings on this repository and with SSA truth for Go {id: RL-M0, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-m0-site-facts.md, pattern: "^RL-M0 verdict:"}
+- [ ] Lifetime site facts in the door (E22), Go first from the reader's existing function walk, other languages as query-pack data lanes. Enters when the lint's port (RL-9) or one of RL-5, RL-4, RL-3 is scheduled. A new fact kind needs a graded reading {id: RL-2, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-2-site-facts.md, pattern: "^RL-2 verdict:", needs: "RL-M0"}
+- [ ] (op) Leak-detector coverage: which spawn sites a test reached under a leak detector, graded by mutants that remove a join or a stop. It reports where the detector is not looking, starts at zero, and has no bar and no kill. Needs the operator to turn on the runtime's leak profile in tests {id: RL-5, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-5-leak-coverage.md, pattern: "^RL-5 verdict:", needs: "RL-2"}
+- [ ] (op) RL-M2: growth and bound hazards for Go (request-reachable insert into a long-lived container nothing deletes from, request-reachable spawn with no visible bound, `defer` or timer made in a loop, work started with nothing that can stop it) beat the tenancy lint on this repository and the runtime's leak profile on the goroutine half, labels from a public concurrency-bug suite and public fix commits. Kill: audit precision under 0.7 or no gain over the lint. Computed at ingest after a cost reading under the store's cost gate (`realignment.md#ENG-3`) and ADR-107 {id: RL-M2, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-m2-growth.md, pattern: "^RL-M2 verdict:", needs: "RL-2,realignment.md#ENG-3"}
+- [ ] Growth and bound hazards for Go, hosted in the product's typed pass and not in the door {id: RL-4, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-4-growth-hazards.md, pattern: "^RL-4 verdict:", needs: "RL-M2"}
+- [ ] (op) RL-M1: acquire and release pairing for Go across functions, three-valued with escape as an unknown carrying a reason, never a pass. Public fix commits that add a missing release are the labels, recall on the parent at matched noise on the fixed head against the union of the linters, preregistered. Kill: not above the union. Needs ADR-107, the engine presence bar (PG-1) and a cost reading for the typed pass (E23) {id: RL-M1, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-m1-pairing.md, pattern: "^RL-M1 verdict:", needs: "RL-2,realignment.md#ENG-M1"}
+- [ ] Acquire and release pairing for Go: files, connections, response bodies, rows, cancel functions, tickers, locks. A constructor that returns an open resource passes the duty to its caller along typed edges {id: RL-3, oracle: lexical, path: docs/bench/readings/library-roadmap/rl-3-pairing.md, pattern: "^RL-3 verdict:", needs: "RL-M1"}
+- [ ] (op) LP-5 done: site facts graded in the door, RL-5 reports its number, RL-4 and RL-3 each passed or met their kill {id: LP-5, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-5-lifetime.md, pattern: "^LP-5 verdict:", needs: "RL-2,RL-5,RL-4,RL-3"}
+
+## LP-6 Uses beyond hazards
+
+Goal: build each primitive once, where a reader exists, so the uses that reduce to it follow. Done when the delta feeds a what-if card and the bench, and the reading benchmark has its fathom arm.
+
+- [ ] (op) The fact delta: symbols and facts removed, added or changed between two versions of one file, an internal package with code card kinds first (U-1, U-2, U-40). For infrastructure it is the change set (HZ-6). Built by the what-if lane inside CHG-1 (`realignment.md#CHG-1`) and tracked here. It enters with the hook prerequisites and flips when the first delta-tier what-if card passes replay, so CHG-1 does not wait on this row {id: LIB-13, oracle: lexical, path: docs/bench/readings/library-roadmap/lib-13-fact-delta.md, pattern: "^LIB-13 verdict:", needs: "realignment.md#CHG-8"}
+- [ ] (op) Fixtures and oracles for the reading benchmark (U-55) under its three rules: preregistered questions an agent needs, native-tier oracles only, no oracle written by fathom's authors. BEN-11 then waits on this row and the paid gate {id: LIB-14, oracle: lexical, path: docs/bench/readings/library-roadmap/lib-14-benchmark-fixtures.md, pattern: "^LIB-14 verdict:", needs: "proof-program.md#BEN-5"}
+- [ ] (op) LP-6 done: the delta feeds a what-if card and the bench's collateral-damage reading, and the reading benchmark has its fathom arm {id: LP-6, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-6-beyond-hazards.md, pattern: "^LP-6 verdict:", needs: "LIB-13,LIB-14"}
+
+## LP-7 Kernel and acceptance, on OQ3
+
+Not scheduled. On a yes to OQ3 it starts after HZ-3, HZ-4 and HZ-6, with HZ-13 and HZ-14 (verdict and check schemas, the kernel), HZ-15, HZ-16 and HZ-18 (soundness, mutation operators, agreement on value checks) from the hazard plan.
+
+- [-] (op) The draft acceptance test: fidelity against labels fathom did not derive, strength by derived mutants, a receipt that binds the check, label and catalog digests, and a person still accepts the check. A seeded misread sentence is refused, and a draft with no outside labels is advice only {id: LIB-10, disposition: deferred, reason: "the kernel is not built until OQ3 reads yes, and nothing would consume the acceptance test before then", trigger: "OQ3 answered yes (the owner says yes, the policy tool's first design names evaluation through the library, or an outside adopter asks in writing), and HZ-14 landed"}
+
+## Register: futures with their triggers
+
+Each row moves when its trigger fires. OQ15 satisfies T-IaC. Where a trigger names a second condition, it still needs that one. None is scheduled.
+
+Entries whose row lives in another plan are held there with their triggers and are not copied here: H3 and H8 (`change-hazards.md#HZ-12`), suppressions as facts (HZ-7), E4 or E5 (HZ-20), Kubernetes and Helm contracts (HZ-21, IF-18 to IF-20, IF-M4, use U-47), an IAM policy document model (HZ-22, E13), and the product reading through the door (`realignment.md#LIB-4`). The ids LREG-1, LREG-3, LREG-5, LREG-8, LREG-14 and LREG-16 are retired for that reason.
+
+- [-] Pre-commit hook and pull-request check on the binary (CAP-29, CAP-30) {id: LREG-2, disposition: deferred, reason: "no outside repository uses the binary yet", trigger: "HZ-9 at 0.9 and an outside repository named in writing, with IF-6 for the pull-request check"}
+- [-] Sizing of requests and limits against attested recommendations {id: RL-10, disposition: deferred, reason: "a change delta for requests, limits and probes already exists and is judged elsewhere, so only sizing is new and it has no consumer", trigger: "a fleet repository with manifests or an adopter"}
+- [-] Pulumi catalog and uses (IF-21, IF-22, IF-M5) {id: LREG-4, disposition: deferred, reason: "waits behind the Kubernetes contracts", trigger: "after HZ-21, same trigger as HZ-21"}
+- [-] A plan summary with every index step and instance key hashed (CAP-11, E19) {id: LREG-6, disposition: deferred, reason: "needs a record change and has no consumer", trigger: "T-IaC, and a record change for the plan summary"}
+- [-] Evidence-class annotation on other scanners' findings, through a review-kit producer entry (CAP-31) {id: LREG-7, disposition: deferred, reason: "the review kit has not asked", trigger: "the review kit asks in writing, and a reading shows a precision gain against plan truth"}
+- [-] A context source in the read set (E18) {id: LREG-9, disposition: deferred, reason: "no platform repository is indexed", trigger: "T-IaC and a platform repository in the index"}
+- [-] Catalog diff as data (CAP-32) {id: LREG-10, disposition: deferred, reason: "no named user", trigger: "IF-6 and IF-17 shipped"}
+- [-] Lifetime contracts for dependencies, per version which calls acquire and what releases them {id: RL-7, disposition: deferred, reason: "needs the dependency API index and a passed pairing check", trigger: "the dependency API index exists and RL-3 passed"}
+- [-] Cloud resource and cost joins: attested exports joined by resource identity {id: RL-11, disposition: deferred, reason: "declared waste shapes stay value checks for the policy tool", trigger: "T-IaC and main FCT-6"}
+- [-] A class conformance suite (CAP-28) {id: LREG-11, disposition: deferred, reason: "no outside reader exists", trigger: "the library is released and one outside reader asks"}
+- [-] Mutants as data (CAP-18) {id: LREG-12, disposition: deferred, reason: "no adopter with a policy suite", trigger: "an adopter with a policy suite asks, and attested test results are live (main CHG-4)"}
+- [-] A cross-file resolver for config dialects (E16) {id: LREG-13, disposition: deferred, reason: "only the CUE family links across files today and use is unproven", trigger: "main's census for FCT-11 shows use"}
+- [-] Enum, default and pattern in contracts (E9) {id: LREG-15, disposition: deferred, reason: "the Terraform source licence is unchecked and no check needs them", trigger: "a licence check for the Terraform source, and a check that needs them"}
+- [-] A public Go API for hazard facts {id: LREG-17, disposition: deferred, reason: "F99 allows no further door without a named consumer", trigger: "a consumer named in writing (F99)"}
+- [-] The contract check as a binary subcommand outside the product (U-14), which needs a small pinned catalog and no installed provider {id: LREG-18, disposition: deferred, reason: "an outside wedge that fails only the consumer clause", trigger: "catalogs published and audited (IF-6, IF-11) and a consumer"}
+- [-] Interface diff for Terraform modules and Helm charts between two tags (U-8) {id: LREG-19, disposition: deferred, reason: "an outside wedge that fails only the consumer clause", trigger: "T-IaC, or a module maintainer asks"}
+- [-] The fact delta as a binary subcommand {id: LREG-20, disposition: deferred, reason: "the delta is internal until it has a consumer", trigger: "LIB-13 landed and a consumer outside the product asks"}
+- [-] The rest of the input inventory: base image pins, chart dependency versions, provider constraints (U-21) {id: LREG-21, disposition: deferred, reason: "constraints are values the door withholds", trigger: "a consumer, and a ruling on constraints"}
+- [-] A JSON Schema document for the fact JSON, for other policy engines (U-52) {id: LREG-22, disposition: deferred, reason: "no outside engine has asked", trigger: "an outside engine or the policy tool asks"}
+- [-] A validity grader for model-written infrastructure code (U-56) {id: LREG-23, disposition: deferred, reason: "a grader is an evaluator, which ADR-092 decision 10 leaves outside the library", trigger: "the policy tool or an evaluation builder asks"}
+- [-] An estate inventory inside an air gap, with file classification by measured level (U-58, U-67), a candidate vehicle for OQ2 {id: LREG-24, disposition: deferred, reason: "no outside adopter", trigger: "an outside adopter"}
+- [-] A conformance kit that grades other readers by the library's method (U-60), with CAP-28 {id: LREG-25, disposition: deferred, reason: "no outside reader exists", trigger: "the library is released and one outside reader asks"}
+- [-] Structure in place of text for a third-party model (U-64) {id: LREG-26, disposition: deferred, reason: "no adopter with a data-egress rule", trigger: "an adopter with a data-egress rule asks"}
+- [-] Test selection for infrastructure changes by touched resource (U-59) {id: LREG-27, disposition: deferred, reason: "no infrastructure repository to select tests in", trigger: "T-IaC"}
+- [-] Question and answer sets generated from facts, for outside use only (U-57) {id: LREG-28, disposition: deferred, reason: "needs the catalog licence decision", trigger: "OQ4 is answered and someone asks"}
+- [-] Control flow and def-use for languages other than Go {id: RL-12, disposition: refused, reason: "own build refused, site facts and ingest serve instead. Wins if typed edges are default for three languages and a consumer fleet is not Go. Re-read 2027-06-30"}
+- [-] A built-in best-practice corpus {id: LREG-29, disposition: refused, reason: "F90 refuses a general best-practice linter. Wins if a fleet language has no analyzer worth ingesting. Re-read 2027-06-30"}
+
+Also refused, with no row: a default rule pack, own per-function analyzers, a language server, a library MCP surface, workflow and migration linting, leases on resource addresses, and transpiling open rules into the kernel's algebra.

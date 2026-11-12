@@ -13,6 +13,10 @@ RT-M15 passing, a signed preregistration and an approved spend row, with the cap
 under `docs/bench/readings/proof-program/`, one file per row, each opening with a verdict line. A row flips only through
 `fathom verify --service fathom --plan docs/plans/proof-program.md`. Every row is open.
 
+Two exceptions to the paid gate: BEN-10 and BEN-11 are public benchmarks whose model arms never call the daemon, so those arms
+are excused from RT-M15 and the wire stamp (`realignment.md#ENG-5`, `realignment.md#WIR-1`). They still need the readiness
+harnesses (BEN-2), a signed preregistration and an approved spend row (OQ10). Their scanner and fathom arms cost nothing.
+
 Readings that `docs/plans/realignment.md` also names are owned there and recorded here once. BEN-M3, BEN-M4, BEN-M6, BEN-M8 and
 BEN-M9 write the proof program's ledger entry for a verdict that the realignment row reads, and wait on that row. No reading is
 taken twice. Each paid row waits on `realignment.md#ENG-5` (RT-M15 passing) and `realignment.md#WIR-1` (a wire stamp).
@@ -35,7 +39,7 @@ taken twice. Each paid row waits on `realignment.md#ENG-5` (RT-M15 passing) and 
 
 ## Phase 3: subjects, task bank, statistics
 
-- [ ] Subject admission rules per subject (applications before libraries, development and held-out splits) and the task bank of seven families: PLAN, HAZ, FIX, LOC, REV, LANE, ASK, each with an oracle fathom does not own {id: BEN-5, symbol: AdmitSubject, package: internal/benchledger, needs: BEN-1}
+- [ ] Subject admission rules per subject (applications before libraries, development and held-out splits) and the task bank of seven families: PLAN, HAZ, FIX, LOC, REV, LANE, ASK, each with an oracle fathom does not own. Gains false-by-construction rows for configuration dialects (development split only) and a lane of its own, since the benchmarks below wait on it {id: BEN-5, symbol: AdmitSubject, package: internal/benchledger, needs: BEN-1}
 - [ ] Statistics: three outcomes (confirmed, refuted, inconclusive), equivalence tests for predicted nulls, Holm across primaries, a noise floor, a power table, and pins on every cell {id: BEN-6, symbol: ClassifyOutcome, package: internal/benchstats, needs: BEN-1}
 - [ ] (op) A/A reading: one arm against itself sets the noise floor, and one shakedown gives the power table that sets n (spend cap per OQ10) {id: BEN-M7, oracle: lexical, path: docs/bench/readings/proof-program/m7-noise-floor.md, pattern: "^BEN-M7 verdict:", needs: "BEN-2,BEN-5,BEN-6,realignment.md#ENG-5,realignment.md#WIR-1"}
 
@@ -43,6 +47,11 @@ taken twice. Each paid row waits on `realignment.md#ENG-5` (RT-M15 passing) and 
 
 - [ ] (op) Outcome proof for the first three cards, PLAN family first (verify gate, false-done), preregistered, each card as wired against wired minus the card {id: BEN-7, oracle: lexical, path: docs/bench/readings/proof-program/outcome-first-three.md, pattern: "^BEN-7 verdict:", needs: "BEN-M7,BEN-M1,BEN-M2,BEN-M3,realignment.md#ENG-5,realignment.md#WIR-1"}
 - [ ] (op) Combined run priced from the power table: all on, all off, all on minus each card whose effect cleared the noise floor. The interaction estimate is a finding to investigate, never a headline {id: BEN-8, oracle: lexical, path: docs/bench/readings/proof-program/combined-run.md, pattern: "^BEN-8 verdict:", needs: "BEN-7,realignment.md#ENG-5,realignment.md#WIR-1"}
-- [ ] Proof liveness: every reading carries an input fingerprint (corpus digest, fathom commit, extractor epochs, pins, reach set) and derives live, stale or void. A stale reading blocks a claim line in a release note or guide {id: BEN-9, symbol: ReadingLiveness, package: internal/benchledger, needs: "BEN-1,BEN-3"}
+- [ ] Proof liveness: every reading carries an input fingerprint (corpus digest, fathom commit, extractor epochs, pins, reach set) and derives live, stale or void. A hazard fact also carries the catalog digest and version it was computed against (FCT-8). A stale reading blocks a claim line in a release note or guide {id: BEN-9, symbol: ReadingLiveness, package: internal/benchledger, needs: "BEN-1,BEN-3"}
 - [ ] (op) Tuning: every knob as data (knob, card, stratum, metric, value, the reading that set it), tuned on development data and confirmed once on held-out data. The knob map is TUN-1 and the held-out confirmation is TUN-3, read there. This row records their verdict {id: BEN-M8, oracle: lexical, path: docs/bench/readings/proof-program/m8-knob-map.md, pattern: "^BEN-M8 verdict:", needs: "BEN-8,BEN-9,realignment.md#TUN-3"}
 - [ ] (op) The public understanding benchmarks and the thesis arm on the ASK family (ADR-085), read as UND-M1 and UND-M2. This row records their verdict {id: BEN-M9, oracle: lexical, path: docs/bench/readings/proof-program/m9-understanding.md, pattern: "^BEN-M9 verdict:", needs: "BEN-5,BEN-6,BEN-M7,realignment.md#UND-M2,realignment.md#ENG-5,realignment.md#WIR-1"}
+
+## Phase 5: public benchmarks on ground fathom does not own
+
+- [ ] (op) Hazard replay as a public benchmark (the HAZ family made public): public infrastructure history labelled by a plan, three kinds of arm (fathom through the library binary, scanners, and a model reviewer), and the labels published with the bias of synthesized state stated. ENTRY: HZ-9 at its reading, and BEN-5 for subject admission. The scanner arms and the fathom arm cost nothing. The model arm needs the paid gate and never calls the daemon. Preregistered {id: BEN-10, oracle: lexical, path: docs/bench/readings/proof-program/ben-10-hazard-benchmark.md, pattern: "^BEN-10 verdict:", needs: "BEN-1,BEN-2,BEN-5,change-hazards.md#HZ-9,change-hazards.md#HZ-10,library-roadmap.md#LIB-7"}
+- [ ] (op) A reading benchmark: a model's reading of a configuration or infrastructure file graded against the tool's own evaluator, under three rules: preregistered questions an agent needs, native-tier oracles only, and no oracle written by fathom's authors. ENTRY: BEN-5, the paid gate, and the fixtures and oracles of library row LIB-14. Preregistered {id: BEN-11, oracle: lexical, path: docs/bench/readings/proof-program/ben-11-reading-benchmark.md, pattern: "^BEN-11 verdict:", needs: "BEN-2,BEN-5,library-roadmap.md#LIB-14"}

@@ -1,7 +1,7 @@
 # 46 - Proof at the moment of change: fathom re-envisioned from first principles
 
 Status: Proposed 2026-11-12 (architect ruling, owner review pending). The owner asked the architect to decide, and will
-inspect before acceptance. Records: ADR-093 to ADR-104. Designs: `docs/design/change-hazards.md`,
+inspect before acceptance. Records: ADR-093 to ADR-107. Designs: `docs/design/change-hazards.md`, `docs/design/library-roadmap.md`, `docs/design/beyond-determinism.md`,
 `docs/design/typed-records.md`, `docs/design/fleet-picture.md`, `docs/design/proof-program.md`,
 `docs/design/parallel-lanes.md`. Plan: `docs/plans/realignment.md` (the roadmap, horizons and critical path of
 section 14 live there too). Assessment: `docs/assessments/2026-11-12-realignment.md`. Position: `docs/vision/38-proof-layer-roadmap.md`
@@ -15,8 +15,8 @@ most useful part.
 
 Codes in this file carry the prefix V: V-U uplift, V-F finding, V-T thesis holds, V-N thesis fails, V-D decision, V-R
 risk, V-C critique correction, V-M measure, OQ owner question. Repository ids are written with their kind: goal G2,
-future F82, invariant I14. Proposed record ids: invariants I70 to I75, principles P25 to P27, goals G51 (one outside
-team runs the gate), G52 (readings are staffed) and G53 (the engine presence bar). Decisions are ADR-093 to ADR-104.
+future F82, invariant I14. Proposed record ids: invariants I70 to I77, principles P25 to P27, goals G51 (one outside
+team runs the gate), G52 (readings are staffed) and G53 (the engine presence bar). Decisions are ADR-093 to ADR-107. OQ15 is the one new owner question of the second round.
 
 ## 1. Words used here
 
@@ -27,8 +27,10 @@ team runs the gate), G52 (readings are staffed) and G53 (the engine presence bar
 - **Reading**: a committed measurement with a verdict.
 - **Lane**: one unit of parallel work with owned paths and a proof. Not a session, a machine or a queue item.
 - **Named query**: a registered, parameterized computation over facts that answers in the answer contract.
-- **Hazard engine**: value-free change and contract checks in the product. **Check kernel**: an optional evaluator in
-  the language library, built only on the owner's written ask.
+- **Hazard engine**: value-free change and contract checks, computed in the language library's implementation package and
+  binary and delivered by the product. A **hazard fact** is what the library computes and a **hazard finding** is what
+  the product delivers at a channel. **Check kernel**: an optional evaluator in the language library, not built now and
+  scheduled only on a yes to OQ3.
 
 ## 2. The uplifted ask
 
@@ -115,6 +117,10 @@ Fails or unproven:
 - V-N10 Breadth of infrastructure rules and value resolution on module-heavy code. Free scanners and a plan both beat
   fathom (`docs/design/change-hazards.md`).
 
+These two lists are targets and not refusals (ADR-105). Each of the fifteen targets (V-N1 to V-N10 here and A-N1 to
+A-N6 of the policy review, where V-N10 has two halves, A-N1 and A-N2) gets a path of the owner's ladder, a measurement, and a scheduled
+row or a trigger. Section 14c counts them.
+
 Consequence for natural language: language in, facts out. A question matches one of a closed set of named queries. The
 answer is rendered from cited rows in the answer contract. A model may classify the question through the decision port
 once that site passes calibration. A model never writes the answer.
@@ -142,12 +148,19 @@ Fathom stays the proof layer of vision 38 (ADR-093). This vision sharpens it in 
    reference named queries. There is no query language.
 4. **Decide at forced channels. Inform inside the agent's own action, and only after a reading.** A new channel that
    pushes prose is never on by default without a won reading (ADR-097).
-5. **Models at authoring time only.** Behind the decision port, default none. The run-time path is deterministic.
+5. **Models at authoring time only.** Behind the decision port, default none. The run-time path is deterministic. A
+   drafted check or rule is admitted only through the acceptance rule (ADR-106, I76): it agrees with labels fathom did
+   not derive, it kills every mutant derived from it with the predicted transition, and a person accepts it and writes
+   it into the repository. There are two drafters and no judge. At run time the caller is the model, and fathom
+   scaffolds it with a cited set, the unknowns and a bounded question. For batch authoring the drafter is the layer
+   compiler's pipeline. A paired or hybrid source never raises an evidence class (I77).
 
 **The flagship: proof at the moment of change (V-U4, ADR-100).** Two forced channels, one program.
 
 - At the edit: what-if verdicts on the proposed text before it is written. A conserved surface lost, a wiring break, a
-  replacement hazard, a duplicate of an existing symbol. Each speaks only on a transition.
+  replacement hazard, a duplicate of an existing symbol. Each speaks only on a transition. The edit half has two tiers.
+  The delta tier is an internal fact delta for the code card kinds, starting with a removed exported symbol or route. It
+  needs no graph and waits on the hook prerequisites (CHG-8). The reach tier needs the graph and waits on RT-M15.
 - At the landing: a lane's push carries its proof. Verify verdicts, an exact-tree gate receipt, the affected-test set
   and its overlap with what main reaches. The integrator accepts in seconds and CI samples full runs as the outside
   oracle.
@@ -172,13 +185,13 @@ Everything not listed is kept as it is. Program ids (PG-n) are the programs of s
 | Facts | Graph answers on the hook path | declined or late | uplift: RT-195 to RT-199 | PG-1 |
 | Facts | Proof verbs beyond Go, typed edges by default | Go-shaped | uplift | PG-5 |
 | Facts | Cross-service links, dependencies, owners | library only, unbuilt, unwired | build after the freeze amendment | PG-5 |
-| Facts | Infrastructure contracts and replacement facts | CloudFormation built, Terraform specified | uplift | PG-9 |
+| Facts | Infrastructure contracts and replacement facts | CloudFormation built, Terraform specified | uplift | library roadmap (LP-3) |
 | Intent | Typed heads for every record kind, lifecycle conditions | accepted, unbuilt | build | PG-2 |
 | Intent | Head syntax (labelled lines, YAML, CUE) | undecided | trial | PG-2 |
 | Intent | Lanes, capabilities, standards, named queries as data | none | build as CUE from birth | PG-2 |
 | Work | Lane picture, overlap forecast, landing bundle | separate verbs | uplift | PG-3, PG-6 |
 | Proof | Verify gate, wired check, conservation, certifications | proven | keep | |
-| Proof | Hazard engine (value-free change and contract checks) | half built | build: HZ-0 to HZ-12, with HZ-8 checking the PG-9 prerequisites | PG-3 |
+| Proof | Hazard engine (value-free change and contract checks) | half built | build: HZ-0 to HZ-12, with HZ-8 checking the library roadmap's prerequisites (LP-3) | PG-3 |
 | Proof | What-if verdicts at the edit | a labs card | prove by replay, then build | PG-3 |
 | Proof | Proof-carrying landing | receipts built, off | build | PG-3 |
 | Proof | Mutation-killed strength on agent-written tests | ladder exists, unused | uplift through attested results | PG-3 |
@@ -199,6 +212,10 @@ Admission test. All five must hold, for outside slices and for fathom's own prog
 3. It rides an existing forced channel or verb. No new tool on the default surface.
 4. An oracle fathom does not own can grade it.
 5. It has a named consumer, or it deletes more than it adds.
+
+Clause 5 is applied row by row, to old rows and new ones alike. A row marked FUTURE is a register entry with a trigger and
+not a roadmap row. Scanners stay "pair". Where fathom cannot prove, it pairs with what can and proves the borrowed
+answer.
 
 | Slice sold elsewhere | Verdict | Why |
 |---|---|---|
@@ -247,11 +264,15 @@ Each decision lands as a record. The mapping is in section 13.
 - V-D5 Type every record head now. Choose head syntax by trial. New data kinds are CUE from birth.
 - V-D6 Amend the freeze to gate on fathom's own tenancy clauses plus a per-change cost row.
 - V-D7 Admit the work plane as read-only observation from operator-moved files.
-- V-D8 Build the hazard engine. The check kernel waits on the owner's written ask.
+- V-D8 Build the hazard engine in the library's implementation package and binary. The product delivers it. The check
+  kernel is not built now and waits on a yes to OQ3, read on 2027-01-31.
 - V-D9 Natural language is an interface over named queries. The understanding bench and its kill stand.
 - V-D10 Inform in-band as labs cards with replay first. Nothing in-band is default-on without a reading.
 - V-D11 Subtraction has the rank of a build program.
 - V-D12 Reading lanes are a lane class. Unread measurements are staffed like code.
+- V-D14 The win ladder. Every loss on the two lists of section 4 has a path, a measurement and a date (ADR-105). A paired
+  or hybrid source never raises an evidence class, and a draft is never served until it passes the acceptance rule
+  (ADR-106).
 - V-D13 Order: rulings and unfrozen engine fixes, then four core programs in parallel lanes, then proof, then
   default-on and tuning. Wiring plumbing for the proof channels runs from the start. Tuning is last, as asked.
 
@@ -298,19 +319,20 @@ to decide, so every row has a default and the default is what the plan assumes u
 | # | Question | Options | Recommendation | Default if unanswered |
 |---|---|---|---|---|
 | OQ1 | Product or force multiplier (open in the intent corpus as question Q4) | product, force multiplier | product, proven on the fleet first | product |
-| OQ2 | Name one outside team for a four-week trial of the gate | name one, fleet only | name one by 2027-01-31 | record "fleet only" on that date |
-| OQ3 | Check kernel: in the library on your written ask, or fixtures only. Is "the product never reads a value" the line (see `docs/design/change-hazards.md`) | library, policy tool | library, on the written ask | hazard engine only, no kernel |
-| OQ4 | Licence for the library door and the catalog format, and whether the catalog is published | permissive at split time, keep | decide at split time, publish the catalog | current licence stays, no publication |
+| OQ2 | Name one outside team for a four-week trial of the gate. A second vehicle is possible: a pull-request check for infrastructure changes, if the named team has infrastructure code | name one with either vehicle, fleet only | name one by 2027-01-31, either vehicle | record "fleet only" on that date |
+| OQ3 | Restated as a yes or no. Where the checks live is answered: the library. Build the check kernel in the library: yes or no? Yes schedules HZ-13 to HZ-16, HZ-18 and the acceptance test (LIB-10) after HZ-3, HZ-4 and HZ-6. "The product never reads a value" stands, since the owner did not speak to it (see `docs/design/change-hazards.md`) | yes, no | yes once the policy tool has a first design that evaluates through the library | no on 2027-01-31, hazards only |
+| OQ4 | Licence for the library door and the catalog format, and whether the catalog is published | permissive at split time, keep | decide at split time, publish the catalog. Unchanged, and IF-6 (catalog attestations) waits on it | current licence stays, no publication |
 | OQ5 | Freeze amendment: gate on fathom's own tenancy clauses plus a per-change cost row | yes, no | yes | the engine re-warm and the table programs wait |
 | OQ6 | The cuts that are preference, not fired kills: assess lanes, the ambient A/B goal | cut, keep frozen | cut | stay frozen |
 | OQ7 | The nine overdue goal reviews: may the architect record the verdicts | yes, owner reviews each | yes | recorded as architect rulings, reversible |
 | OQ8 | Record head syntax: decide by the paired trial | trial, rule now for CUE, rule now for markdown | trial, after the two scheduled readings | trial |
 | OQ9 | Ruling classes, a protected main with required CI, a second integrator | each yes or no | yes, yes, none yet | classes adopted, main unprotected |
-| OQ10 | Spend: the bench shakedown cap, a separate cap for the record syntax trial, and which harnesses are arms | amounts | $120 for the shakedown, a small cap for the trial, both build harnesses | no paid spend, and the trial does not run |
+| OQ10 | Spend: the bench shakedown cap, a separate cap for the record syntax trial, and which harnesses are arms, and spend for the model arms of the hazard benchmark and the reading benchmark (neither calls the daemon) | amounts | $120 for the shakedown, a small cap for the trial, both build harnesses, and a small cap for each model arm | no paid spend, and the trial does not run, the hazard benchmark runs with scanner arms only and the reading benchmark does not run |
 | OQ11 | First fan-out size | four to ten lanes | six lanes plus two reading lanes | six plus two |
 | OQ12 | Fleet transport between your machines | synced directory, git refs, your own ssh pipe | synced directory | synced directory |
 | OQ13 | Largest repository fathom promises to serve | a number | the architect proposes one from a reading | architect's number |
 | OQ14 | Ask 3 said "state machines". Record lifecycles, or also state machines in the code under analysis | lifecycles, both | lifecycles now, the second as a future | lifecycles |
+| OQ15 | New. Name one outside adopter with infrastructure code, or confirm a fleet repository from the census (UND-1). It satisfies T-IaC. Each register entry that names T-IaC still needs its own second condition | name one, confirm a fleet repository, neither | read the census first, then name one by 2027-01-31, together with OQ2 | the entries that need T-IaC stay closed, and hazards are proven by replay and the public benchmark only |
 
 ## 13. Records and where the detail lives
 
@@ -328,12 +350,15 @@ to decide, so every row has a default and the default is what the plan assumes u
 | NA-10 | ADR-102 | every harness measured |
 | NA-11 | ADR-103 | ruling classes |
 | NA-12 | ADR-104 | subtraction as a build program |
+| NA-13 | ADR-105 | the win ladder: targets with paths, weakest evidence class wins (I77), three evidence classes, the paid gate clause |
+| NA-14 | ADR-106 | the acceptance rule for drafted checks (I76) |
+| NA-15 | ADR-107 | whole-program resource evidence for Go, F90 amended for RL-3 and RL-4 only |
 
 Designs: hazards in `docs/design/change-hazards.md`, record heads in `docs/design/typed-records.md`, the fleet view in
 `docs/design/fleet-picture.md`, measurement in `docs/design/proof-program.md`, lanes and waves in
 `docs/design/parallel-lanes.md`. Rows, horizons and the critical path: `docs/plans/realignment.md`, with the hazard,
 record, fleet and proof programs in `docs/plans/change-hazards.md`, `docs/plans/typed-records.md`,
-`docs/plans/fleet-picture.md` and `docs/plans/proof-program.md`. The assessment with the evidence behind the findings
+`docs/plans/fleet-picture.md` and `docs/plans/proof-program.md`. The library side of the plan is `docs/design/library-roadmap.md`, and the win paths for the two lists of section 4 are in `docs/design/beyond-determinism.md`. The assessment with the evidence behind the findings
 is `docs/assessments/2026-11-12-realignment.md`.
 
 ## 14. The order: horizons and the critical path
@@ -347,7 +372,7 @@ The ask: add capabilities, prove them, then wire and tune. The order keeps that 
 
 Four programs are the core: PG-1 engine presence, PG-2 typed records, PG-3 proof at the moment of change, PG-4 the
 proof program. The other eight (PG-5 facts wider, PG-6 fleet picture, PG-7 understanding and organization, PG-8
-wiring, PG-9 library and catalogs, PG-10 subtraction, PG-11 in-band structure, PG-12 default-on and tuning) start when
+wiring, PG-9 library and catalogs (now the library roadmap, section 14a), PG-10 subtraction, PG-11 in-band structure, PG-12 default-on and tuning) start when
 their entry condition holds. Rows and entry conditions: `docs/plans/realignment.md`.
 
 | Horizon | Waves | Exit events |
@@ -366,12 +391,13 @@ Two gates for proof work, stated once:
 
 - Free steps (fact proofs, forward logging, readiness harnesses) start at the H0 exit.
 - Paid steps need all of: a wire stamp on every cell, the readiness harnesses passing, RT-M15 reading PASS, a signed
-  preregistration and an approved spend row.
+  preregistration and an approved spend row. A reading that never calls the daemon is excused from RT-M15 and the wire
+  stamp, and only from those (ADR-105).
 
 The critical path:
 
 ```
-records and rulings (ADR-093 to ADR-104, OQ7, OQ9, OQ11)
+records and rulings (ADR-093 to ADR-107, OQ7, OQ9, OQ11)
   -> lanes can start: REC-1 lane kind, allocation, path check, contracts and failing proofs
 
 ENG-1, ENG-2 (not frozen)
@@ -391,10 +417,98 @@ Three gates decide what follows them.
    nothing.
 2. **The freeze amendment.** It unblocks the re-warm and every table program. The reading that failed asked the owner
    this question on 2026-10-26.
-3. **RT-M15.** Until at least half of hook-path graph calls are answered, no paid proof is valid and no what-if verdict
-   can be trusted at the edit.
+3. **RT-M15.** Until at least half of hook-path graph calls are answered, no paid proof is valid and no reach-tier what-if
+   verdict can be trusted at the edit. The delta tier does not wait on it.
 
 If only one thing is done this month, it is ENG-1.
+
+## 14a. Two roadmaps, one product
+
+The main roadmap (`docs/plans/realignment.md`) and the library roadmap (`docs/design/library-roadmap.md`) are one module and
+one release train. The library roadmap owns computation in the library's packages and binary, and the checks that go hand
+in hand with it. The main roadmap owns delivery, joins and proof. The owner's instinct that checks belong with the base is
+right at the package level: same module, same implementation package, same binary, same release. It is early at the API
+level, because a public promise with no user is a cost with no reader. Rule corpora stay outside, because every rule change
+would become a library release and breadth would drift to the mean.
+
+**The main roadmap consumes the library.**
+
+| Main row | Needs from the library | Effect |
+|---|---|---|
+| PG-3 done-when: the hazard engine reads on Terraform and CloudFormation | LP-4 | A program on one roadmap closes on the other (joint 2) |
+| PG-3 IF-14: the Terraform replacement flag in `review_diff` | HZ-9 at 0.9 | No Terraform hazard finding before the reading |
+| PG-3 HZ-2: `iac` as a review dimension, with a stated absence when no catalog is placed | nothing new | Phase one |
+| The live CloudFormation flag (IF-C4) | HZ-1 at 0.85 | Under it the flag drops to advice wording |
+| PG-3 IF-16: cascade in `blast_radius` | IF-15 | |
+| PG-3 HZ-19: the pre-write infrastructure card | HZ-6, CHG-8 | Gated by ADR-091 decision 7 and the IF-M6 trigger |
+| PG-4 BEN-10: the public hazard benchmark | HZ-9, HZ-10, LIB-7 | Joint 3 |
+| PG-4 BEN-9 with FCT-8: liveness | catalog digest and version binding on a hazard fact | |
+| PG-7 UND-1: the census | HZ-4 for provider bindings | |
+| PG-7 UND-7: infrastructure question shapes | HZ-9 read | |
+| PG-5 FCT-11: `referenced` for configuration | a cross-file resolver for config dialects | Entry: the census |
+| PG-3 CHG-10: rules compiled once | RL-2 where a rule reads site facts | |
+
+**The library waits on the main roadmap.**
+
+| Library row | Waits on | Why |
+|---|---|---|
+| Every library lane | wave 0a (REC-1, the lane kind and id allocation) and wave 0c (contracts and failing proofs) | Typed records gate every lane |
+| LIB-1, then LL-M7 | LIB-12, LIB-11, one green wave on main, the release ritual | No tag contains the door, its closure reading is stale, and the archives owe a licence notice |
+| IF-6 | signed releases with provenance (WIR-6), and OQ4 | Attestations and licence |
+| IF-M2 | an amendment to its `needs` (ADR-099) | The plan binds it to IF-14 and IF-16, which open only after 0.9 |
+| The library half of BEN-10 | BEN-1, BEN-2, BEN-5 | The driver, the readiness harnesses, subject admission |
+| RL-3 | the engine presence bar (PG-1), ADR-107, a cost reading | It runs in the typed pass |
+| RL-4 | ADR-107, the store's cost gate (ENG-3), a cost reading at ingest | "No delete anywhere" is a whole-program fact |
+| RL-1, RL-6 | FCT-6 | Attested analyzer output and runtime profiles |
+| RL-5 | the operator turning on the runtime's leak profile in tests | Fathom runs nothing, and no leak detector is in use in the fleet today |
+| LIB-13 | CHG-1's replay cards | The delta is built inside the what-if work |
+| LIB-14 | BEN-5 | Its fixtures are built first. BEN-11 then waits on LIB-14 and the paid gate |
+| Any agent surface for hazards | PG-3's delivery rows and ADR-091 decision 7 | The library computes, the product delivers |
+| The model arm of BEN-10 | readiness harnesses, a signed preregistration, a spend row | Not RT-M15 and not the wire stamp: it never calls the daemon (ADR-105) |
+| Register rows | each entry's own trigger | OQ15 satisfies T-IaC. An entry that names a second condition still needs it |
+| The kernel | nothing on the main roadmap | Only OQ3 and its own fact rows |
+
+**Five joints.**
+
+1. **The tag.** Main's release unblocks the library's outside reading. Before it, LL-M1 is re-read.
+2. **PG-3 closes on LP-4.** The flagship's done-when names hazards on two tools, and that work sits on the library
+   roadmap, gated per tool: HZ-1 for CloudFormation and HZ-9 for Terraform.
+3. **The hazard benchmark (BEN-10).** It needs HZ-9 from the library and BEN-5 from main. It is the one infrastructure row
+   with a consumer, an outside oracle and no competitor.
+4. **The hook prerequisites (CHG-8).** Found from the library side and owned by main. Every what-if card needs them, and
+   the delta tier then does not wait on engine presence.
+5. **Attested evidence (FCT-6).** Analyzer output and runtime profiles (RL-1, RL-6) enter through it.
+
+## 14b. The critical path across both roadmaps
+
+1. **Main: ENG-1, then ENG-2.** Unchanged. The engine fix is still the first thing on the main thread.
+2. **Both, in wave 0b: the licence notice, a re-read of LL-M1, then one green wave and the tag (joint 1).** Then LL-M7.
+   Until then nothing outside can use the library, and ADR-092's revisit date is under six months away. No further archive
+   should ship without the notice.
+3. **Wave 1 readings: HZ-1 first, then HZ-0, TQ-M3, the census and the cold-latency reading.** HZ-1 comes first because its
+   finding is already served to agents. It needs a small harness. The others need no new code.
+4. **Library: HZ-3, HZ-4, HZ-6, then HZ-10 and LIB-7, with IF-13 built beside them.** Catalog-free hazards give the first
+   Terraform replay reading before the replacement scan lands.
+5. **Main, in the same waves: the hook half of CHG-8 and the build parts of the pairings.** They have a consumer today and
+   no dependency on the engine.
+6. **Library: HZ-9 at 0.9 (joint 2).** Then main delivers the Terraform flag, and the benchmark is published (joint 3).
+7. **Beyond hazards, as their entries open:** the fact delta inside the what-if work, site facts with the tenancy lint
+   ported onto them, then the two benchmarks.
+8. **On the owner's answers:** OQ15 satisfies T-IaC for the infrastructure register. OQ3 schedules the kernel.
+
+If only one thing is done this month on the library side, it is the notice and the tag. If two, add HZ-1. The main
+roadmap's one thing is still ENG-1. The library roadmap adds what runs beside it, and the honest size of that roadmap: its
+potential is eight primitives and 67 judged uses, its schedule is the part that has a reader today, and the first wave
+finds out who else will use it.
+
+## 14c. Beyond determinism
+
+The owner asked to win where determinism does not win today. `docs/design/beyond-determinism.md` answers it for the fifteen
+targets of section 4: ten have scheduled work, one is refused with a wins-if (V-N5, lossy output compression), and four
+wait on a trigger (V-N8, A-N1 which is the first half of V-N10, A-N4 and A-N6), three of them on T-IaC. Its laws are recorded in
+ADR-105 (the ladder, the weakest evidence class wins) and ADR-106 (the acceptance rule for drafts). Three moves matter
+most: compile one rule from one incident, test the thesis on ground fathom does not own (the hazard benchmark, then the
+reading benchmark), and let outside oracles grade fathom before they feed it, starting with HZ-1 and TQ-M3.
 
 ## 15. Decision models
 
@@ -409,7 +523,9 @@ No verdict in this vision calls a model at run time. The sites it names, with th
 The syntax trial (REC-T) is a paid agent trial that measures authoring, not a decision site. Drafting a record head from a prose
 ask is generation, outside the port's kinds, and its acceptance is the vet. Everything else (hazard verdicts, the answer
 contract, named queries, the fleet picture) is deterministic and asks no typed question, because a verdict that a stranger must
-re-check cannot rest on a model (V-T8). A model never resolves an unknown or judges a security property (ADR-099).
+re-check cannot rest on a model (V-T8). A model never resolves an unknown or judges a security property (ADR-099). ADR-105 to ADR-107 add no site and no kind to
+the port: drafting a check or a record from prose is generation, outside the port's kinds, and ends at the acceptance
+rule (ADR-106).
 
 ## 16. The vision in one paragraph
 

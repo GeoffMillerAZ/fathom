@@ -230,7 +230,7 @@ The decision record for this design is ADR-099. The plan flags where each record
 
 The plan is `docs/plans/change-hazards.md`. Rows inside a phase are independent lanes and each names its gate. The candidate rows are HZ-0 to HZ-22, and the readings M1 to M7 of this design are HZ-M1 to HZ-M7.
 
-Order: HZ-0 to HZ-2 need no new engine and measure what exists. HZ-3 to HZ-7 are additive facts. HZ-8 to HZ-12 are the product's bet. HZ-13 to HZ-18 start only on the owner's written ask (OQ3). HZ-19 to HZ-22 follow their own gates.
+Order: HZ-0 to HZ-2 need no new engine and measure what exists. HZ-3 to HZ-7 are additive facts. HZ-8 to HZ-12 are the product's bet. HZ-13 to HZ-16 and HZ-18 start only on the owner's written ask (OQ3). HZ-17, the decidability reading against Trivy, is scheduled as a reading lane. HZ-19 to HZ-22 follow their own gates.
 
 Stop rules:
 
@@ -242,11 +242,11 @@ Stop rules:
 
 The owner questions are numbered OQ3 and OQ4 in `docs/vision/46-proof-at-the-moment-of-change.md`. This design needs three answers. OQ3 carries the first two, and OQ4 carries the third.
 
-- OQ3, part 1. The kernel (D8): in the library on your written ask, or in your policy tool with fathom shipping only conformance fixtures? Recommendation: in the library. Until the ask exists, HZ-13 to HZ-18 do not start.
+- OQ3, part 1. The kernel (D8): in the library on your written ask, or in your policy tool with fathom shipping only conformance fixtures? Recommendation: in the library. Until the ask exists, HZ-13 to HZ-16 and HZ-18 do not start.
 - OQ3, part 2. Is "the product never reads a value" (D1, ADR-092 decision 7) the line you want? It keeps the records intact and costs the product every V check.
 - OQ4. The catalog as a published data artifact (S2): yes or no, and under what licence. Default if unanswered: the current licence stays and the catalog is not published.
 
-Defaults if unanswered: the kernel is not built (HZ-13 to HZ-18 stay closed), the line stays where ADR-092 decision 7 draws it, the product emits H checks only, and the catalog is not published.
+Defaults if unanswered: the kernel is not built (HZ-13 to HZ-16 and HZ-18 stay closed), the line stays where ADR-092 decision 7 draws it, the product emits H checks only, and the catalog is not published.
 
 ## Decision models
 

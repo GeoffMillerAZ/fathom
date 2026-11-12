@@ -352,15 +352,17 @@ The addition: a spin-off has five forms, and a new repository is the last and mo
 - SP-F7 `pkg/client` and `pkg/platform` are on the compatibility surface and are not doors.
 - SP-F8 The repository is source-available. A standalone library competes with permissively licensed tools. ADR-052's triggers have not fired.
 - SP-F9 The market gaps are specific: no spec tool derives status from evidence, no product pairs test selection with coding agents, nobody publishes provider contracts with replacement facts as data, and no static tool reports Terraform change hazards without a plan.
+- SP-F10 Every release archive since v0.13.0 embeds grammar blobs (55 since v0.23.0) and ships only the product licence and the readme. The licence notices for what the binaries embed are owed, and the product's own archive owes them too.
+- SP-F11 A CloudFormation replacement finding is already served by `review_diff`, and its floor against `cdk diff` (HZ-1) has never been read. Whether the fleet holds infrastructure code is unverified, and a census through the fleet index settles it (UND-M3, `docs/plans/realignment.md`).
 
 ### 3.3 Candidates
 
 | Id | Candidate | Form | Value alone | Boundary today | Verdict |
 |---|---|---|---|---|---|
-| SP-S1 | Language and tool understanding (`pkg/lang`, `iac`, `langtest`, `fathom-lang`) | door and binary | high: plan-free reads that report what they cannot know, graded against tool oracles | enforced by test | NOW: release it |
+| SP-S1 | Language and tool understanding (`pkg/lang`, `iac`, `langtest`, `fathom-lang`), now with the change hazards H1, H2, H4 and H5 in the binary (library rows LIB-7, HZ-10) | door and binary | high: plan-free reads that report what they cannot know, graded against tool oracles | enforced by test | NOW: release it, after the licence notice (LIB-12) |
 | SP-S2 | Provider contract catalogs with replacement facts and upgrade diffs | data | high and unique | builder exists, publishing does not | NEXT: rides IF-6 and IF-11. One upstream schema has no redistribution licence, so that catalog is built by the operator. |
 | SP-S3 | Evidence-gated done for spec tools | packaging | the strongest outside wedge: proves tasks in four foreign formats | the verb exists, a check form does not | NEXT: a pull-request check that runs `verify` on touched rows |
-| SP-S4 | The check kernel (`pkg/lang/check`) | door | a small evaluator with three-valued verdicts | unbuilt | ON THE OWNER'S ASK (OQ3) |
+| SP-S4 | The check kernel (`pkg/lang/check`) | door | a small evaluator with three-valued verdicts | unbuilt | ON A YES TO OQ3: the kernel is not built now, and the default on 2027-01-31 is no |
 | SP-S5 | The landing bundle and receipts | spec and verifier | a stranger checks a landing with git and a toolchain | the verifier's closure is 49 packages | LATER: publish the format when a second consumer appears |
 | SP-S6 | Typed records and lifecycle conditions | door, later a kit piece | intent as data with derived conditions, for any agent-built project | new, born as a leaf | DESIGN FOR IT: no store import from the first commit |
 | SP-S7 | Tests selected by what they read | kit piece | unsold for agents | leaf | AFTER its reading passes |
@@ -368,16 +370,22 @@ The addition: a spin-off has five forms, and a new repository is the last and mo
 | SP-S9 | Grading harness for parsers | method and tool | "the grading method is what sets fathom apart" | closure of 42 | LATER: `langtest` is the first step |
 | SP-S10 | Bench driver (cell keys, borrowing, void rules) | tool | medium | coupled | AFTER the bench merge |
 | SP-S11 | The verify gate apart from the index, readouts, findings storage, the review engine | none | fail the release-day test | coupled at both ends | NEVER |
+| SP-S12 | The hazard benchmark's labels and method (BEN-10): public infrastructure history labelled by a plan, with the bias of synthesized state stated | data and method | high: the one infrastructure row with a consumer, an outside oracle and no competitor | the labels are built from public history | NEXT: after the first hazard reading (HZ-M1), published with the scanner arms |
+| SP-S13 | A pre-commit hook and a pull-request check for infrastructure changes | packaging | medium | the library binary | REGISTER: an outside repository named in writing, with HZ-9 at 0.9. The pull-request check also needs signed catalogs (IF-6). |
+| SP-S14 | An evidence-class annotation for other scanners' findings | spec | medium | none | REGISTER: the review kit asks in writing, and a reading shows a precision gain against plan truth |
+| SP-S15 | A class conformance suite | spec | medium | none | REGISTER: the library is released and one outside reader asks |
+| SP-S16 | The three outside wedges the uses census ranks highest: the contract check outside the product, the module and chart interface diff, the catalog diff | packaging and data | each fails no clause but the consumer clause | the library binary and published catalogs | REGISTER: each waits on a named consumer |
 
 ### 3.4 Decisions
 
-- SP-D1 Tag a release that contains the library, re-read its closure budget and run the open reading. An unreleased door is not a spin-off.
-- SP-D2 The product reads through the door where it already needs those facts (the readout path, the infrastructure dimension of review). This is dogfood that finds API gaps early. It does not satisfy ADR-092's outside-consumer condition and is not claimed to.
+- SP-D1 Tag a release that contains the library, re-read its closure budget and run the open reading. An unreleased door is not a spin-off. The licence notice (LIB-12) comes first: no further archive ships without it.
+- SP-D2 Moved to the register. The product reads through the door only when an outside importer exists and the binary and the outside-module reading have missed an API gap. Hazards are called directly, and the door has other readers that exercise it: its binary, the calibration tools and the outside-module reading. It would not satisfy ADR-092's outside-consumer condition either way.
 - SP-D3 The catalog is the first data product. Publish it with an attestation when its two rows close.
 - SP-D4 The first outside wedge is packaging: evidence-gated done as a check for teams that already write tasks in a spec tool. It turns the one proven capability into a short trial, and it is the vehicle for the outside team (OQ2).
 - SP-D5 Build the records package as a leaf from the first commit.
 - SP-D6 Fix or demote the two false doors. `pkg/client` gets its own types and a snapshot, or leaves the compatibility surface. `pkg/platform` leaves it.
 - SP-D7 No new repository in this effort. Every trigger for one is recorded and none has fired.
+- SP-D8 Spin-off steps, in order: the licence notice, then the closure re-read, the tag and the outside build reading. Then the hazard entry in the binary and the public hazard benchmark (BEN-10), the reading benchmark under its three rules (BEN-11), the licence audit (IF-11) and published catalogs (IF-6). Register entries open on their triggers, which OQ15 helps and does not replace, and the kernel and its draft acceptance test open on a yes to OQ3.
 
 ### 3.5 Decision models
 
@@ -392,9 +400,10 @@ None applies to the spin-offs. Each candidate is computed. The check kernel, if 
 
 ### 3.7 Ranked
 
-1. **SP-S1, the language library.** The only real door. Release it.
+1. **SP-S1, the language library.** The only real door. Release it, after the licence notice.
 2. **SP-S3, evidence-gated done as a check under spec tools.** The proven capability, packaged where a large audience already works. The best first contact with outside users.
 3. **SP-S2, provider contract catalogs as data.** The earliest artifact with value to tools that never run fathom.
+   **SP-S12, the hazard benchmark's labels and method,** ranks beside it: it is the library's first public artifact with an audience.
 4. **SP-S6, typed records.** Not a spin-off yet. Build it so it can become one.
 5. Everything else waits for its named consumer.
 

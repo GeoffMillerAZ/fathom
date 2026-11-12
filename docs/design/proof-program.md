@@ -5,7 +5,7 @@ Status: Proposed 2026-11-12 (architect ruling, owner review pending). Decision: 
 Builds on ADR-031 to ADR-034, ADR-080, ADR-082, ADR-085. Sources it merges: `docs/bench/README.md`,
 `docs/bench/scenarios-ledger.jsonl`, `docs/design/bench-pyramid.md`, `docs/design/bench-prep.md`, `docs/design/feature-labs.md`.
 
-Codes: BN-F finding, BN-K kept practice, BN-D decision, BN-R risk. Owner questions are OQ rows in
+Codes: BN-F finding, BN-K kept practice, BN-D decision, BN-R risk. Public benchmarks (BN-D17, BN-D18) added 2026-11-12 with the library roadmap (`docs/plans/library-roadmap.md`). Owner questions are OQ rows in
 `docs/vision/46-proof-at-the-moment-of-change.md`. The sequence is the last section.
 
 ## 1. Findings
@@ -102,7 +102,9 @@ understanding claim.
 - In-band: wired plus anchors on the agent's own search and read results, against wired. This is the arm that tests case 2
   of the rule in `docs/vision/46-proof-at-the-moment-of-change.md` section 4.
 - Thesis: the named-query answers against a query-time model tool, on the ASK family. Accuracy by anchor match, cost per
-  question, and agreement between two runs.
+  question, and agreement between two runs. It adds conceptual questions with a hand key beside the enumerate-all questions.
+- Review family: the same model with and without the evidence pack, reported side by side.
+- Advice card: reports the share of prose firings that were compiled to checks (CHG-10).
 - Every harness that builds fathom is an arm (ADR-102).
 
 ### BN-D6 Statistics that survive small n
@@ -168,6 +170,34 @@ every wired cell), scripted grep. They are deterministic and would have saved th
 The 310 open measurement rows are staffed as lanes. A reading lane runs one preregistered measurement and files it with
 its verdict line.
 
+### BN-D17 Hazard replay as a public benchmark (BEN-10)
+
+The HAZ family becomes a public benchmark. It is the one infrastructure row with a consumer, an outside oracle and no competitor.
+
+| Part | Rule |
+|---|---|
+| Subjects | public infrastructure history, admitted by the existing rules (BEN-5) |
+| Labels | the plan of head over a state synthesized from base for Terraform, `cdk diff` for CloudFormation. Provider-bump commits label upgrade breaks. Published with the method |
+| Stated bias | synthesized state favours simple roots. The labels and every reading say so |
+| Arms | fathom through the library binary (it never calls the daemon), scanners, and a model reviewer |
+| Gates | ENTRY: HZ-9 at its reading, and BEN-5. The scanner arms and the fathom arm are free. The model arm needs the paid gate, minus RT-M15 and the wire stamp, which a daemon-free reading is excused from |
+| Preregistration | signed before any model arm. A zero or negative result is published (BN-K4) |
+
+Scanners are a pair, not a rival: the benchmark states what each decides, and fathom's claim is only on class, contract and change hazards.
+
+### BN-D18 A reading benchmark (BEN-11)
+
+A second test of the thesis on ground fathom does not own: a model's reading of a configuration or infrastructure file, graded
+against the tool's own evaluator. Three rules, without which it would test exhaustive listing, where an index wins by construction:
+
+1. The questions are preregistered, and are questions an agent needs.
+2. Only native-tier oracles grade (the tool's own evaluator).
+3. No oracle is written by fathom's authors.
+
+ENTRY: BEN-5, the paid gate, and the fixtures and oracles of library row LIB-14. Its fathom arm is the library's reading. It
+never calls the daemon, so it is excused from RT-M15 and the wire stamp and still needs the readiness harnesses, a signed
+preregistration and an approved spend row.
+
 ## 4. Card order
 
 | Order | Card | First proof to run | Cost |
@@ -178,19 +208,26 @@ its verdict line.
 | 4 | Graph answers on the hook path | RT-M15 | $0 |
 | 5 | Tests selected by reads | the 14-day boundary reading, once its open row lands | $0 |
 | 6 | Suspect set on a red test | delivery logging, then its preregistered arm | $0, then paid |
-| 7 | What-if verdicts | replay cards | $0, then paid |
+| 7a | What-if verdicts, delta tier | replay cards, after the hook prerequisites (CHG-8) | $0, then paid |
+| 7b | What-if verdicts, reach tier | replay cards, after CHG-8 and RT-M15 | $0, then paid |
 | 8 | Shared read map | its sub-agent arm (XM-M2) | paid |
 | 9 | Question shapes and `why` | the public understanding benchmarks, the thesis arm | paid |
 | 10 | In-band anchors | replay, then the LOC arm | $0, then paid |
 | 11 | Post-edit advice | AD-M1, then the holdout reading AD-M4 | $0 |
 
-Eight of the eleven first proofs cost nothing.
+Two cards are added: guardrail deletion (CHG-9, a replay over history and a hand audit) and the lifetime rows (RL-M0 to RL-M2 of
+the library roadmap, each compared with the incumbent). Both cost nothing for the first proof. Eight of the eleven first proofs
+cost nothing, and so do the first proofs of the added cards.
 
 ## 5. Decision models
 
 None on any primary metric (BN-K3). One existing candidate: a secondary grader on the understanding bench, off by default,
 valid only at an agreement of 0.6 or better with person labels. Opt-out: leave the provider at `none`. Kill measurement:
 the agreement against person labels falls under 0.6. With provider none the primary anchor match stands alone.
+
+The model arms of BEN-10 and BEN-11 are subjects of the benchmark, never graders: oracles stay a plan, `cdk diff` and the tools'
+own evaluators. Opt-out: run the scanner and fathom arms only. Kill measurement: a model arm whose spend row is not approved does
+not run, and with no answer to OQ10 the hazard benchmark runs scanner arms only and the reading benchmark does not run.
 
 ## 6. Decisions
 
@@ -199,6 +236,7 @@ the agreement against person labels falls under 0.6. With provider none the prim
   passing, a signed preregistration and an approved spend row.
 - BN-D15 Budgets are per card, approved by row, with the cap in the driver.
 - BN-D16 The admission test's fourth clause applies to fathom's own programs. Each names an oracle fathom does not own.
+- BN-D17 and BN-D18 as in section 3. A daemon-free reading is excused from RT-M15 and the wire stamp, and from nothing else.
 
 ## 7. Risks
 
@@ -210,12 +248,15 @@ the agreement against person labels falls under 0.6. With provider none the prim
 - BN-R5 Proof liveness floods the queue. Mitigation: reach sets are per card, and paid re-runs batch per release.
 - BN-R6 Delivery logging takes weeks to accumulate. Accepted. It starts in wave 1 so it is ready when the cards are.
 - BN-R7 The headline arm reads null. The ablation still says which cards help on which strata.
+- BN-R8 The hazard benchmark's synthesized state favours simple roots. Mitigation: the bias is stated on the labels and in every reading.
+- BN-R9 The reading benchmark turns into an exhaustive-listing test where an index wins by construction. Mitigation: the three rules of BN-D18.
 
 ## 8. The sequence
 
 1. Merge the programs and freeze the driver. Build the readiness harnesses. Start the delivery log. $0.
 2. Cards and fact proof for every shipped surface. Closure check on. $0.
 3. The $0 first proofs of section 4, as reading lanes. $0.
+3b. The public benchmarks (BN-D17, BN-D18): scanner and fathom arms at $0 once HZ-9 reads. The model arms wait on the paid gate and OQ10.
 4. Shakedown: noise floor and power table (OQ10: the architect recommends $120 for the shakedown, and with no answer there is no paid spend).
 5. Outcome proof for the first three cards, PLAN family first.
 6. The combined run, priced, when three cards have passed.
