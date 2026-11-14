@@ -123,6 +123,8 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-10-26 | [tools Jenkins native audit](2026-10-26-tools-jenkins-native.md) | Owner Declarative ModelAST accepts all 23 inputs; a complete unit comparator remains unmeasured and the absent-evaluator premise is withdrawn | LB-Q-jenkinsfile-rest, ADR-048/054/067, P-T1 |
 
 
+| 2026-11-14 | [benchmark-validity](2026-11-14-benchmark-validity.md) | Historical readings cannot establish present empirical wins or refusals without valid fresh evidence. Atomic reading owners and explicit missing-owner work preserve that boundary | Proposed ADR-108/109 and ENV plan |
+
 ## Companion pages
 
 The owner keeps private companion pages for several of these readings; they are not linked here

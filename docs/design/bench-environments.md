@@ -3,7 +3,7 @@
 Status: Proposed 2026-11-14 (architect ruling on owner direction).
 Records: ADR-108 and ADR-109 drafts. Plan: `docs/plans/bench-environments.md` (ENV).
 Decision codes: BV-D for validity, BE-D for environments. All thresholds below are proposals, not observations.
-The ENV plan and validity assessment remain held for fresh-reading premise ownership and are not included in this integration.
+Work orders: [bench-environments.md](../plans/bench-environments.md). The [validity assessment](../assessments/2026-11-14-benchmark-validity.md) assigns each reopened premise to a matching fresh reading or explicit owner-grounding work.
 
 ## 1. Findings
 
@@ -262,7 +262,7 @@ The generator has no checker dependency. ENV-C5 performs their joined negative-t
 ENV-G1 to ENV-G7 own the separate concept presets, keeping generator implementation within one lane-day.
 ENV-4 publishes the portfolio coverage matrix. ENV-6 applies the audit without editing historical readings.
 Each re-test has a fresh measurement owner. Existing open BEN, FTU, CHG, HZ and RL reading rows supply fresh
-results where explicitly named in needs. ENV-R3, ENV-R9, ENV-R10, ENV-R14, ENV-R17 and ENV-R18 own bounded free reruns.
+results where explicitly named in needs. ENV-R3, ENV-R9, ENV-R10 and ENV-R14 own bounded free reruns. ENV-R17 grades LL-M6 only, ENV-L1S and ENV-L2 to ENV-L5 own the other new library slices, and LIB-11 and LL-M7 retain matching existing owners. ENV-R18 grades layer-rule replay only, PU-M6/PU-M7 retain reviewer readings, and ENV-R19 owns F60 classification. ENV-O1 to ENV-O9 ground unmatched owners without settling empirical premises.
 ENV-R4/5/6 and other model reruns each need their own ENV-P preregistration and ENV-B capped spend receipt,
 BEN-M7 sizing and BE-D8 gates. Historic VOID receipts stay audit inputs, never re-test inputs.
 
