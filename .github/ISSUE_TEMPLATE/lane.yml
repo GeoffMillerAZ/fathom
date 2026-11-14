@@ -1,0 +1,77 @@
+name: Contracted lane
+description: Draft a file-owned lane for independent steward grounding
+title: "Lane: "
+labels: [lane]
+body:
+  - type: markdown
+    attributes:
+      value: "Draft only. A second steward must ground this issue before ready. Keep all text public-safe. See docs/guides/contributor-lanes.md."
+  - type: textarea
+    id: rows
+    attributes:
+      label: Goal and plan rows
+      description: Repo-relative plan paths and stable row ids. Describe the observable result.
+    validations:
+      required: true
+  - type: dropdown
+    id: lane_class
+    attributes:
+      label: Lane class
+      options: [L-R reading, L-F named files, L-P leaf package, L-D data, L-E engine, L-S main-thread surface]
+    validations:
+      required: true
+  - type: textarea
+    id: ownership
+    attributes:
+      label: Owned files and read-only files
+      description: Exact paths, allowed new-file patterns, generated-file handoff, reserved ids. Mark new paths as new. No shared-file overlap with claimed lanes.
+    validations:
+      required: true
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Handed contracts and base SHA
+      description: Contract files, fixtures, symbols, failing tests and source spans grounding the premise. The worker implements rather than designs.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof command and red result
+      description: Exact runnable command, acceptance bar, base SHA, expected red assertion, exit status and safe receipt. For readings include the preregistration and acceptance check.
+    validations:
+      required: true
+  - type: textarea
+    id: needs
+    attributes:
+      label: Needs and dispatch gates
+      description: Row and issue dependencies, wave or horizon, spend permission if needed. Write none explicitly when independent.
+    validations:
+      required: true
+  - type: dropdown
+    id: machine
+    attributes:
+      label: Machine requirement
+      description: Windows execution uses WSL2. windows-ok denotes a steward or reviewed portable task, never inferred native runtime support.
+      options: [any, macos, linux, windows-ok]
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options: [size-s up to half a lane-day, size-m up to one lane-day, size-l must split before ready]
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Advised model tier
+      options: [fast inventory or mechanical, standard implementation, deep critic or root cause]
+    validations:
+      required: true
+  - type: textarea
+    id: grounding
+    attributes:
+      label: Independent steward grounding
+      description: Leave pending at creation. A different steward records reviewer role, rows resolved, files and premise checked, red proof witnessed, no claimed overlap, timestamp and base SHA. Then applies ready and the existing priority and size labels. The form does not enforce independence.

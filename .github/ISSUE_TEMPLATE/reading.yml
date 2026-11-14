@@ -1,0 +1,41 @@
+name: Preregistered reading
+description: One measurement with a fixed bar and a verdict
+title: "Reading: "
+labels: [lane]
+body:
+  - type: markdown
+    attributes:
+      value: "L-R only. Draft until independently grounded. A paid run needs its explicit spend and readiness gates. No private inputs in public text."
+  - type: textarea
+    id: contract
+    attributes:
+      label: Row, preregistration and bar
+      description: Plan path and row id, registered metric, exact acceptance bar, inputs and pinned revisions. Never change the bar after reading data.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Owned reading file and handed inputs
+      description: One new reading path, read-only contract and fixture paths, base SHA and source spans. Harness changes require a separate owned lane.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Commands and red acceptance check
+      description: Measurement command, reading validation command, missing or below-bar witness at base, expected verdict format and result receipt.
+    validations:
+      required: true
+  - type: textarea
+    id: dispatch
+    attributes:
+      label: Needs, machine, size and advised tier
+      description: Issue and row dependencies, horizon, any or macos or linux or windows-ok, at most one lane-day, advised fast or standard or deep tier. Include spend approval or explicit zero-cost status.
+    validations:
+      required: true
+  - type: textarea
+    id: grounding
+    attributes:
+      label: Independent steward grounding
+      description: Pending until another steward resolves rows and files, verifies premise and red acceptance check, checks claimed overlaps and records the base and timestamp. No ready label from the author alone.

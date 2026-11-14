@@ -1,0 +1,35 @@
+name: Spec and queue review
+description: Steward review of an issue against current plans and code
+title: "Spec review: "
+body:
+  - type: markdown
+    attributes:
+      value: "This is a review request, not a lane claim or a ruling. Use role names and public source spans. See CT-D2 in docs/guides/contributor-lanes.md."
+  - type: textarea
+    id: target
+    attributes:
+      label: Issue, rows and proposed disposition
+      description: Issue number, plan paths and ids, KEEP or REPRIORITIZE with priority or PARK with trigger or CLOSE with reason or NEEDS-RULING.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and unknowns
+      description: Base SHA, source spans, actual files and tests, red proof result, conflicts with the issue premise, current horizon and unresolved authority. State unknown when unverified.
+    validations:
+      required: true
+  - type: textarea
+    id: ownership
+    attributes:
+      label: Ownership and independence
+      description: Claimed lane overlap check, reviewer role, whether reviewer authored the target issue, machine eligibility and unmet needs. No code edits authorized by this form.
+    validations:
+      required: true
+  - type: textarea
+    id: next
+    attributes:
+      label: Proposed next action
+      description: Concrete issue-body amendment or question for the architect. The steward cannot merge, issue a governing ruling or label their own ungrounded issue ready.
+    validations:
+      required: true
