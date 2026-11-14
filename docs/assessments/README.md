@@ -122,7 +122,6 @@ and `graphify-comparison.html`); they may move in later with link updates.
 
 | 2026-10-26 | [tools Jenkins native audit](2026-10-26-tools-jenkins-native.md) | Owner Declarative ModelAST accepts all 23 inputs; a complete unit comparator remains unmeasured and the absent-evaluator premise is withdrawn | LB-Q-jenkinsfile-rest, ADR-048/054/067, P-T1 |
 
-| 2026-11-14 | [benchmark-validity](2026-11-14-benchmark-validity.md) | Present scenario claims are VOID, which is neither failure nor success; environment and conformance proposals remain held | Proposed ADR-109; primary-analysis reconciliation remains open |
 
 ## Companion pages
 
