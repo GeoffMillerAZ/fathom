@@ -7056,6 +7056,77 @@ reads below its threshold with its oracle available for two releases; the consum
 - The cost reading for the typed pass or the ingest join is over the store's cost gate: the check does not enter.
 - 2027-06-30: control flow beyond Go and the best-practice corpus are re-read.
 
+## ADR-108: Benchmark validity applies equally to wins and refusals (2026-11-14)
+
+**Status.** Proposed 2026-11-14 (architect ruling on owner direction).
+**Type.** process / measurement. Design: `docs/design/bench-environments.md`, BV-D1 and BV-D2.
+Assessment: `docs/assessments/2026-11-14-benchmark-validity.md`.
+Plan: `docs/plans/bench-environments.md`, ENV-6 and ENV-R1 to ENV-R18.
+This proposes amendments to benchmark-dependent conclusions, without changing their independent constraints.
+
+**Context.** The proof program records instrument defects, small trial counts and model aliases in earlier experiments (`docs/design/proof-program.md`, BN-F2 to BN-F8).
+The scenario ledger preserves thirty run identities and explicit instrument-defect fields (`docs/bench/scenarios-ledger.jsonl`, run_id keys).
+ADR-085 already requires power, independent anchors and underpowered verdicts rather than program kills.
+The owner requires the same validity rule for positive and negative claims.
+
+**Decision.**
+1. *BV-D1, validity.* A VALID reading records the exact product commit, build digest, input fingerprint, harness version and resolved model identity.
+   Its product measurement is at most thirty calendar days old when cited, and every relevant reach-set and input pin remains unchanged.
+   Any relevant change makes the reading STALE immediately, regardless of its age.
+   Each arm passes a scripted W0 to W3 and W6 preflight before its agent acts.
+   Registration and a successful scripted surface call prove the environment, independently of treatment behavior.
+   A failed preflight makes the entire comparison pair VOID before outcome scoring.
+   Historical wiring evidence must establish registration and reachability rather than voluntary agent use.
+   Its admitted environment meets every required concept count within every claimed stratum.
+   Its preregistered effective trial counts and stopping rule are met, and no relevant instrument defect remains unresolved.
+2. *Failure classes preserve every failed prerequisite.* Missing instrument, model or wiring evidence produces VOID as the primary class.
+   Version failures produce STALE, environment failures produce UNFIT, and insufficient trials produce UNDERPOWERED.
+   The evaluator retains every failure flag, using that order only to select the primary class.
+   An unknown prerequisite never becomes an inferred passing prerequisite.
+   Model-free arms explicitly record `none` and provide native invocation receipts instead of invented model or daemon receipts.
+3. *Assigned-arm analysis preserves correction 1 and BX-40.* These rules remain binding from `docs/design/bench-prep.md:36` and its Scoring by assignment section.
+   W4 surface use and W5 acted-on are treatment outcomes and never determine cell exclusion.
+   Every non-use cell keeps its actual assigned-arm outcome in the primary estimate.
+   The assigned-arm estimate alone supports headlines and empirical rulings.
+   Low W4 or W5 remains a delivery finding against the wiring profile.
+   A use-conditioned secondary is labelled "biased toward fathom: selects on tool use" and supports neither headlines nor rulings.
+4. *BV-D2, evidence symmetry.* A claimed win and a benchmark-based refusal require the same VALID evidence.
+   A ruling supported only by invalid readings becomes UNTESTED and receives a linked re-test row.
+   Independent licence, cost, ownership or incumbent-tool reasons can sustain their explicitly bounded ruling.
+   The audit separates those reasons from unsupported empirical premises.
+   Reopening an empirical conclusion authorizes neither feature activation nor paid experiments.
+5. *Reuse existing instruments and retain historical evidence.* BEN-9 owns reading liveness and release-claim freshness checks.
+   ENV-6 imports legacy dependencies without overwriting historical ledger entries.
+   Every reopened empirical premise requires a fresh measurement, never re-imported VOID evidence.
+   ADR-110 and WPF own the wiring conformance checks consumed by these readings.
+   Native arms retain daemon-free exceptions while proving their declared native invocation profile.
+6. *Rulings change only through their record owner.* The architect applies Table 2 dispositions to ADR, scope and future records.
+   Existing independent boundaries remain effective while their empirical premises are re-tested.
+   Valid nulls and losses are published with the same visibility as wins.
+
+**Decision models.** No model decides validity, adequacy, a primary label or a ruling.
+The evaluator uses typed requirements and attested receipts with provider `none`.
+No model invocation exists here, so opt-out is complete without another switch.
+Experimental agents remain subjects rather than primary evidence graders.
+The optional calibrated secondary grader remains governed by ADR-085.
+
+**Alternatives rejected.**
+- *Treat every old null as a refusal.* This confuses a failed instrument with a failed capability and contradicts ADR-085's underpowered rule.
+- *Apply validity checks only to claimed wins.* This gives unsupported negative claims a privilege that unsupported positive claims lack.
+- *Recover missing pins from contemporary assumptions.* This invents provenance that the committed receipts cannot establish.
+
+**Consequences.** Previously quoted findings remain inspectable as historical observations with explicit validity limits.
+Unsupported performance conclusions reopen without implying that the opposite conclusion has been demonstrated.
+Thirty-day expiry can require fresh readings even when the implementation appears unchanged.
+A stale paid reading queues for explicit approval, and its public claim remains withheld until confirmation.
+Independent constraints remain binding until their own record owner changes them.
+Agent non-use can lower an assigned-arm effect without invalidating a healthy preflight environment.
+
+**Revisit when.**
+- A measured revalidation backlog shows that thirty-day expiry prevents otherwise useful claims from remaining current.
+- A re-test establishes a VALID result that changes an audited empirical ruling.
+- An instrument defect invalidates a previously VALID reading after its publication.
+
 ## ADR-109: Benchmark environments earn admission through typed concept coverage (2026-11-14)
 
 **Status.** Proposed 2026-11-14 (architect ruling on owner direction).
@@ -7086,7 +7157,8 @@ Neither asset alone establishes adequate independent environments for every capa
    Extend fauxtown through a deterministic generator that writes independent repositories, commit histories and seed-derived answer keys before ingest.
    Native tools and tests check those keys without using fathom's index as truth.
 5. *BE-D6, preserve baseline parity and held-out independence.* Headline comparisons use a grep-capable agent with the same resolved model, harness, permissions and budget.
-   Each arm proves its own declared wiring through ADR-110's receipts.
+   Each arm proves W0 to W3 and W6 through ADR-110's scripted preflight receipts.
+   W4 and W5 remain treatment outcomes under correction 1 and BX-40, never admission exclusions.
    Prefer commits after a documented model cutoff, and publish unknown cutoff status rather than guessing.
    Repository-level splits separate development from held-out confirmation, and any repeated held-out access demotes that repository.
 6. *BE-D7, keep wiring under one owner.* ADR-110 and WPF define conformance and wiring-profile experiments.
@@ -7101,6 +7173,8 @@ Neither asset alone establishes adequate independent environments for every capa
 8. *BE-D9, author inputs and derive admission.* Environments, concepts, witnesses and coverage are typed data under the typed-records design.
    Requirements and measured receipts are inputs, while adequacy, validity and freshness are derived using an injected clock.
    No scheduler, automatic download or deferred product feature is added by environment admission.
+   The checker, generator and each CLI mode have separate file owners and explicit consumer dependencies.
+   Fresh re-tests name executable free measurements or their own preregistration and approved spend rows.
 
 **Decision models.** Adequacy uses deterministic counts and independent receipts with provider `none`.
 No model chooses admission, assigns a primary label or changes a ruling.
@@ -7122,6 +7196,46 @@ This specification changes no existing record or running benchmark instrument by
 - Two independent environments cannot be admitted for a claimed capability class after the first bounded search.
 - Seeded-fleet results disagree materially with independently labelled public-repository results.
 - Measured resource caps exclude a proposed large class before its first valid reading.
+
+## ADR-110: No reading without proven wiring, and feature knobs change only on readings (2026-11-14)
+
+**Status.** Proposed 2026-11-14 (architect ruling on owner direction).
+**Type.** product / evidence / process.
+Designs: `docs/design/wiring-proof.md`, `docs/design/feature-tuning.md`.
+Plans: `docs/plans/wiring-proof.md`, `docs/plans/feature-tuning.md`.
+Proposes bounded amendments to ADR-029 decision 6, ADR-101 decision 6 and ADR-105 decision 9.
+
+**Request (2026-11-14).** Prove correct wiring before benchmarking, experiment with wiring at no provider cost, tune maps and semantic layers, and keep freshness and resource use measured.
+
+**Context.** Doctor already checks registration, binary freshness and observed hooks (`cmd/fathom/doctor.go:248`). Adoption already reads call usage and version eras (`cmd/fathom/instrument_adoption.go:113`, `:313`). Session stamps and deterministic firing joins remain authored work (`docs/plans/wiring-receipts.md#WR-4`, `WR-12`). The proof program already orders fact, delivery and outcome proof (`docs/design/proof-program.md#BN-D2`), requires scripted readiness before spend (BN-D12), and treats text knobs as data (BN-D8). Correction 1 preserves actual outcomes under assigned arms even when the agent never calls the surface (`docs/design/bench-prep.md:371`). BX-40 retains that primary analysis and the zero-call line (`docs/plans/bench-prep.md#BX-40`). Maps already use thread storage and anchor resolution (`cmd/fathom/mapstore.go:133`, `internal/explmap/expand.go:66`). Those mechanisms are reused rather than replaced.
+
+**Decision.**
+1. *WP-D1, conformance by harness.* Every declared harness profile carries separate environment and delivery results for the same conformance ladder. W0 proves installation and the product revision served. W1 proves registration and an answered scripted surface probe in that cell's environment. W2 proves startup primer delivery before agent actions. W3 proves every declared hook fired during preflight. W6 proves freshness and resource bounds under a fixed scripted preflight workload. Both arms complete W0-W3 and W6 before either agent acts. W4 measures agent use at independently eligible moments. W5 measures agent action on targets within preregistered k calls. W4 and W5 remain outcomes rather than admission requirements. Probe calls never contribute to agent-use outcome counts. Missing environment inputs remain unknown rather than manufactured passes. Later answer and resource diagnostics cannot retroactively void preflight-valid cells.
+2. *WP-D2, admission before outcomes.* Preserve correction 1 and BX-40 without narrowing their assigned-arm analysis. Every benchmark arm preregisters environment requirements over W0-W3 and W6 only. A failed or unknown required preflight check voids the whole pair before agent actions. The validity function accepts no agent-use or action fields. A healthy-preflight cell with no surface use retains its actual assigned-arm outcome. Low W4 or W5 is a finding against the profile and never an exclusion. The headline estimate always uses outcomes under assigned arms. Non-use appears in the delivery funnel and zero-call line. A use-conditioned estimate is secondary only and labelled biased toward the product. That secondary supports neither a headline nor a ruling. Baselines prove their permitted tools, startup content, absent treatment channels and environment evidence. Daemon-free arms retain ADR-105 decision 9's exemption from daemon stamps and RT-M15 only. They still prove applicable baseline environment checks and scripted readiness. "Surface registered and called" means the scripted preflight call answered in that cell's environment. For old readings, registered-and-reachable evidence substantiates the surface requirement without requiring agent use. Void counts and failed delivery funnels remain visible beside valid results.
+3. *WP-D3, effective profiles are data.* A profile references existing labs and knob records for surfaces, stanzas, descriptions, hooks, skills, prime content, map injection and in-band anchors. Its digest binds effective contents, pins, declared channels and budgets. WR stamps, WIR parity, BEN readiness and LAB event writers remain their existing owners. This record creates no competing ledger or daemon table.
+4. *WP-D4, delivery before paid outcomes.* Profile experiments first read eligible, fired, delivered and acted-on stages at zero provider cost. Every preflight-valid cell remains included under its assigned arm, including genuine non-use. Low W4 and W5 guide profile changes rather than cell exclusions. Historical replay cannot select live knobs without its existing validation reading. At most two development profiles with positive delivery evidence proceed toward separately authorized outcomes. No successful delivery reading changes a default by itself. Existing readiness, preregistration and spend conditions remain binding.
+5. *WP-D5, every harness needs scripted proof.* BEN-2 gains conformance adapters for Claude Code, Codex CLI, actual cloud harnesses and Codex inside WSL. LAB-7 remains the shared transcript decoding owner. The proposed ADR-029 amendment permits deterministic conformance and delivery accounting for these harnesses. It does not authorize the deferred paid fork or stanza experiments. Fixture traces prove adapter behavior and never substitute for observed installation or real hook firing. Missing cloud or WSL observations remain explicitly unknown.
+6. *FT-D1, feature purpose cards.* Maps, semantic layers, freshness, resource envelope and edit obligations each receive one purpose card referencing existing labs or quality instruments. Every card carries purpose metrics, knobs, a zero-cost reading, an acceptance bar and a kill condition. Existing surface membership remains owned by the original lab cards. Firing never becomes the objective for selecting any knob.
+7. *FT-D2, maps and orientation.* Map readings measure repeated derivation, tokens through the first oracle-correct edit, useful question coverage and answer-time anchor freshness. The optional orientation brief renders existing maps and facts through deterministic templates. Every asserted sentence names its anchor, revision and evidence class. Unknown ownership remains unknown instead of becoming inferred intent. The brief creates no map store or committed generated repository document. Live maps and pack-carried maps retain their existing future conditions.
+8. *FT-D3 and FT-D4, correctness and tenancy.* Semantic layer readings measure oracle precision, eligible use and pack authoring cost separately. Freshness readings measure answer-time index age, HEAD contradictions and refresh latency separately. Resource readings measure daemon footprint, correlated CPU seconds per ingest and hook tail latency. Existing tenant clauses retain their original observation windows and verdicts. Missing CPU attribution remains unknown rather than process-wide usage assigned to one ingest.
+9. *FT-D5, changes follow evidence.* Obligations readings preserve scoped correctness, clean-file silence and existing payload ceilings. They compare acted-on delivery with its held-out base rate. LAB-36 records knob decisions, while TUN-1 and TUN-3 retain typed records and confirmation. TUN-2 continues requiring outcome proof before changing defaults. A null reading rejects the proposed variant without hiding its measured result.
+
+**Decision models.** No new judged site applies to this record. Conformance, orientation rendering and primary feature metrics remain deterministic with provider `none`. There is no model calibration band for these verdicts. Operators opt out by leaving experimental profiles disabled. A model cannot fill an unknown event, infer an absent owner or grade primary correctness. Existing compiler generation and the deferred WR-17 residual remain governed by their current records.
+
+**Alternatives rejected.**
+- Installation alone cannot distinguish delivered advice from configured channels (`docs/design/proof-program.md#BN-D2`).
+- A whole-product baseline without its own channel evidence cannot prove the intended comparison (`docs/plans/wiring-receipts.md#H1`).
+- A second map store duplicates current thread-backed resolution (`cmd/fathom/mapstore.go:133`).
+- Enabling defaults after a firing increase violates the existing outcome gate (`docs/plans/realignment.md#TUN-2`).
+
+**Consequences.** Environment failures can void pairs only through scripted preflight before agent actions. Genuine agent non-use remains measured rather than excluded. Publishing every void reason and zero-call line exposes environment failures and weak delivery separately. Preserving assigned-arm outcomes prevents selection on successful tool use. Codex and WSL coverage remain unproven until their own observations exist. Five bounded cards add measurements without creating another experiment runner. Orientation can fail its reading and remain disabled without promoting any map future. Existing tenant windows may delay outcome readiness without blocking free adapter proofs.
+
+**Revisit when.**
+- A supported harness cannot expose the evidence needed for a declared rung.
+- A conformance adapter misses a construction-labelled wiring fault or falsely accepts its broken control.
+- A registered orientation reading reaches its kill condition or requires live-map functionality.
+- A profile improves delivery while worsening oracle correctness or exceeding its resource envelope.
+- An existing baseline or daemon-free exception cannot be represented without changing its meaning.
 
 ## ADR-111: Contributor lanes use independently grounded issues, explicit claims and integrator-owned waves (2026-11-14)
 

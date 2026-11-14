@@ -8,8 +8,8 @@ Builds on ADR-031 to ADR-034, ADR-080, ADR-082, ADR-085. Sources it merges: `doc
 Codes: BN-F finding, BN-K kept practice, BN-D decision, BN-R risk. Public benchmarks (BN-D17, BN-D18) added 2026-11-12 with the library roadmap (`docs/plans/library-roadmap.md`). Owner questions are OQ rows in
 `docs/vision/46-proof-at-the-moment-of-change.md`. The sequence is the last section.
 
-Environment admission is proposed in `docs/design/bench-environments.md`, held for prerequisite, fresh-evidence and primary-analysis reconciliation.
-Wiring conformance is proposed in `docs/design/wiring-proof.md`, held for primary-analysis reconciliation.
+Environment admission is proposed in [bench-environments.md](bench-environments.md). Its ENV plan and validity assessment remain held for fresh-reading premise coverage.
+Wiring conformance is proposed in [wiring-proof.md](wiring-proof.md), with [WPF work orders](../plans/wiring-proof.md). Scripted preflight and assigned-arm analysis preserve correction 1 and BX-40.
 
 ## 1. Findings
 
