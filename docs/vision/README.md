@@ -119,3 +119,5 @@ treat them as survey claims, not measurements. Where a claim is speculation, the
 caveat the critique pass surfaced: the call log has no origin field, so
 gate/hook plumbing and genuine agent tool-picking are not fully separable
 ([04 Gap 1](04-coding-agents.md), [05](05-surfaces.md)).
+
+The 2026-11-14 proposed extension adds [feature tuning](../design/feature-tuning.md), [contributor lanes](../guides/contributor-lanes.md) and [library builder support](../design/library-builder-kit.md), with [FTU](../plans/feature-tuning.md), [CTR](../plans/contributor-model.md) and [LBK](../plans/library-builder-kit.md) work orders. Environment admission and wiring conformance remain held pending review findings.

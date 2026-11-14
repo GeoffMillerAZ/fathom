@@ -27,6 +27,9 @@ fleet health).
 | [intent/](intent/) | **Project intent** — the router ([intent/README.md](intent/README.md)): principles, invariants, domain, [scope](intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index, autonomy, incidents, open questions |
 | [assessments/](assessments/) | Dated research summaries (market, neighbouring tools, peer stacks, the feature scorecard, the language atlas, the Jev levels, the semantic-layers evidence), each opening with a plain-language verdict and citing the decisions it drove; data beside it in `assessments/data/` ([assessments/README.md](assessments/README.md) has the conventions) |
 | [plans/](plans/) | Gated work orders (grammar v2: [plans/README.md](plans/README.md)); `fathom verify` proves them, `fathom plans status` computes progress |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md), [guides/contributor-lanes.md](guides/contributor-lanes.md), [guides/windows-setup.md](guides/windows-setup.md) | Proposed contributor lanes, independent grounding and WSL2 setup; [work orders](plans/contributor-model.md) |
+| [design/feature-tuning.md](design/feature-tuning.md), [plans/feature-tuning.md](plans/feature-tuning.md) | Proposed purpose metrics and readings for five existing features, blocked on held wiring contracts |
+| [design/library-builder-kit.md](design/library-builder-kit.md), [plans/library-builder-kit.md](plans/library-builder-kit.md) | Proposed scanner-builder support around the existing library door and kernel owners |
 | [guides/fleet-index.md](guides/fleet-index.md) | Fleet index, daemon ops, `task deploy`, dogfood discipline |
 
 The authoritative decision log is [ADR.md](../ADR.md), indexed at [intent/decisions/README.md](intent/decisions/README.md).

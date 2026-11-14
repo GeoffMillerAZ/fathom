@@ -124,6 +124,11 @@ Status: proposed · accepted · rejected · deferred · superseded by <id> · de
 | ADR-106 | proposed (architect ruling, owner review pending) | product / architecture | The acceptance rule for drafted checks (I76): fidelity to outside labels, strength against derived mutants and a person's acceptance, a draft with no outside label is advice, the decision port gains no kind | no incident with a clear causing commit by 2027-01-31, the CHG-10 reading hits its kill, the kernel is built |
 | ADR-107 | proposed (architect ruling, owner review pending) | product / scope | Whole-program resource evidence for Go (lifetime site facts, leak-detector coverage, growth and bound hazards, acquire-release pairing), amends F90 for RL-3 and RL-4 only, kills RL-M1 and RL-M2 | RL-M1 or RL-M2 reads at its kill, the cost reading is over the store's gate, 2027-06-30 |
 
+| ADR-109 | proposed (architect ruling on owner direction) | process / architecture | Benchmark environments earn admission through typed concept coverage, matched witness floors, scale classes and per-arm conformance | two environments cannot be admitted; seeded and public results disagree; resource caps exclude a class |
+| ADR-111 | proposed (architect ruling on owner direction) | process / policy | Contributor lanes use independently grounded issues, explicit claims and integrator-owned waves, with linear integration history | a second integrator; a claim race; WSL2 proof fails; push evidence is missing |
+| ADR-112 | proposed (architect ruling on owner direction) | product / architecture | The understanding library equips scanner builders, with attested unseen outside use and existing kernel work behind confirmation | requirements or OQ3 confirmation arrives; attestation withdrawn; builder trial or performance misses its bar; another door requested |
+| ADR-113 | proposed (architect ruling on owner direction) | product / architecture | One repository holds a tool family with enforced import boundaries and names chosen when splits are justified | version conflict; second consumer needs independent release cadence; records or driver lands; boundary exception requested |
+
 ## Decisions recorded elsewhere
 
 Pass the threshold, were not written as ADR sections; point, do not duplicate.

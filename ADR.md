@@ -7055,3 +7055,177 @@ reads below its threshold with its oracle available for two releases; the consum
 - RL-M1 or RL-M2 reads at its kill: that check is cut.
 - The cost reading for the typed pass or the ingest join is over the store's cost gate: the check does not enter.
 - 2027-06-30: control flow beyond Go and the best-practice corpus are re-read.
+
+## ADR-109: Benchmark environments earn admission through typed concept coverage (2026-11-14)
+
+**Status.** Proposed 2026-11-14 (architect ruling on owner direction).
+**Type.** process / architecture. Design: `docs/design/bench-environments.md`, BE-D1 to BE-D9.
+Plan: `docs/plans/bench-environments.md`, ENV-1 to ENV-6 and ENV-A1 to ENV-A18.
+This extends BEN-5 admission and proposes replacing its inherited upper size ceiling.
+
+**Context.** Existing public-subject preparation has pinned receipts but incomplete formal admission (`docs/bench/readings/bench-prep/apps-r2.md:3`).
+The proof program already owns capability cards, task families, readiness harnesses and delivery logging (`docs/plans/proof-program.md`, BEN-2 to BEN-5).
+Fauxtown already supplies a cross-service answer key, and the cost harness already generates replicated fixture fleets (`internal/connector/testdata/fauxtown/links.answer.json:3`, `internal/mcp/costtest/fleet.go`, BuildFleet).
+Neither asset alone establishes adequate independent environments for every capability.
+
+**Decision.**
+1. *BE-D1, separate three evidence tiers.* Public repositories supply external outcome evidence on pinned commits.
+   Constructed multi-repository fleets supply deterministic seeded truths and controlled scale experiments.
+   Fathom and the owner fleet supply smoke runs that never contribute to benchmark counts or power.
+2. *BE-D2 and BE-D3, require concepts before trials.* Every capability and task family declares required concepts and independent checkers.
+   Every claimed concept requires at least thirty independent positive and thirty matched negative witnesses per environment and stratum.
+   The design's concept table adds requirements without lowering that common floor.
+   The adequacy checker refuses missing concepts, insufficient counts, stale pins and unknown witnesses before admitting a cell.
+   Admission counts never replace the power analysis that determines effective trial counts.
+3. *BE-D4, declare scale as an explicit vector.* The design defines numerical line, file, repository and reachable-history classes.
+   Every card names the axes and classes it claims, and every claimed class needs two independent eligible environments.
+   Public outcome claims additionally require two eligible public repositories rather than generated replicas.
+   Replace C2's 150,000-line upper ceiling in `docs/design/bench-prep.md:169` with those classes and measured resource caps while preserving C1 and C3 through C7.
+4. *BE-D5, reuse existing subjects and fleet assets.* The portfolio starts with twelve receipt-backed public candidates and six explicitly unverified gap candidates.
+   Every environment gets its own bounded data-lane admission row with a witnessed pass or refusal.
+   Extend fauxtown through a deterministic generator that writes independent repositories, commit histories and seed-derived answer keys before ingest.
+   Native tools and tests check those keys without using fathom's index as truth.
+5. *BE-D6, preserve baseline parity and held-out independence.* Headline comparisons use a grep-capable agent with the same resolved model, harness, permissions and budget.
+   Each arm proves its own declared wiring through ADR-110's receipts.
+   Prefer commits after a documented model cutoff, and publish unknown cutoff status rather than guessing.
+   Repository-level splits separate development from held-out confirmation, and any repeated held-out access demotes that repository.
+6. *BE-D7, keep wiring under one owner.* ADR-110 and WPF define conformance and wiring-profile experiments.
+   Environment admission consumes their declared receipt interface without implementing another ladder.
+7. *BE-D8, begin free proofs without authorizing spend.* Free proofs start immediately on November 14.
+   Week one begins on November 16, with schema, admission and concept counts continuing alongside native readings.
+   Week three is the earliest paid shakedown window, conditional on every named readiness gate passing.
+   Paid cells require deployed ENG-1, the six BEN-2 harnesses, delivery logging and a passing card funnel, admitted coverage, per-arm conformance, signed preregistration and approved capped spend.
+   Requiring ENG-1 for native paid arms is intentionally stricter than ADR-105 decision 9.
+   Daemon arms additionally require their existing engine-presence proof, while native arms retain only their daemon-specific exceptions.
+   The schedule does not wait for ENG-2, all capabilities, every candidate, the full library roadmap or an outside adopter.
+8. *BE-D9, author inputs and derive admission.* Environments, concepts, witnesses and coverage are typed data under the typed-records design.
+   Requirements and measured receipts are inputs, while adequacy, validity and freshness are derived using an injected clock.
+   No scheduler, automatic download or deferred product feature is added by environment admission.
+
+**Decision models.** Adequacy uses deterministic counts and independent receipts with provider `none`.
+No model chooses admission, assigns a primary label or changes a ruling.
+No new judged site exists, so no additional opt-out mechanism is needed.
+Paid agents remain experimental subjects governed by existing preregistration and spend controls.
+
+**Alternatives rejected.**
+- *Choose repositories only by their source size.* Size cannot establish that an environment carries the concept being measured.
+- *Count generated replicas as independent public subjects.* Shared construction cannot support the same external-validity claim as independent public repositories.
+- *Wait until the whole portfolio is admitted.* Individual capability readings can proceed once their own declared coverage and readiness gates pass.
+
+**Consequences.** Current preparation candidates remain candidates until their individual admission receipts pass.
+Large and infrastructure claims can remain untested when two suitable public environments cannot be admitted.
+The new upper-size policy needs the architect's explicit amendment to existing subject-admission records.
+The paid schedule adds an ENG-1 prerequisite even for native arms, while preserving their daemon-specific wiring exceptions.
+This specification changes no existing record or running benchmark instrument by itself.
+
+**Revisit when.**
+- Two independent environments cannot be admitted for a claimed capability class after the first bounded search.
+- Seeded-fleet results disagree materially with independently labelled public-repository results.
+- Measured resource caps exclude a proposed large class before its first valid reading.
+
+## ADR-111: Contributor lanes use independently grounded issues, explicit claims and integrator-owned waves (2026-11-14)
+
+**Status.** Proposed 2026-11-14 (architect ruling on owner direction). **Type.** process / policy.
+Guide: `docs/guides/contributor-lanes.md`, CT-D1 to CT-D8. Plan: `docs/plans/contributor-model.md`, CTR-1 to CTR-13.
+Amends the operating boundary in `docs/intent/autonomy.md` and the proposed ADR-103 ruling classes.
+Reuses `docs/design/parallel-lanes.md`, PL-D1 to PL-D12 and section 5.
+
+**Request (2026-11-14).** The owner wants a second contributor to begin by writing and reviewing issues,
+while agent sessions on several machines take work prepared ahead and the architect checks in periodically.
+The contributor brief supplies the binding rulings CT-D1 to CT-D8.
+
+**Context.** The existing ladder omits stewarding and explicitly requests the contributor guide, owners file
+and queue helper (`docs/design/parallel-lanes.md:148-169`). Issue #139 sections 1 to 7 define priorities,
+manual claims and batch landing, while issue #11 rules 1 and 12 define branch and pull-request behavior.
+The autonomy record allows agents to push main freely and names a second maintainer as a revisit condition
+(`docs/intent/autonomy.md`, Branch model and final line). The current contributor direction activates review
+of that boundary, without establishing that a second contributor already has maintainer rights.
+
+**Decision.**
+1. *CT-D1 roles.* Architect, integrator, steward, lane worker and critic are distinct responsibilities that one person may combine. The steward writes and grounds issues without receiving merge rights. Independent grounding requires a steward other than the issue author. Independent criticism requires someone other than the implementing worker.
+2. *CT-D2 readiness.* An issue carries plan rows, class, owned files, handed contracts, proof command, needs, machine, size and advised tier. It becomes ready only after independent grounding resolves its rows, checks its files and premise, witnesses its intended red proof and excludes claimed ownership overlap. New output files are explicitly declared as new paths. Environment failures never substitute for the intended failing assertion.
+3. *CT-D3 claims.* A claim combines assignee, claimed label and comment naming machine role, session and branch. One session may hold only one claim at a time. The parallel-lanes caps remain unchanged for engine, language and machine load. A steward releases a claim after 48 hours without a branch push, preserving its last known head for continuation. Missing push evidence produces unknown age and manual inspection rather than automatic release.
+4. *CT-D4 integration.* Each issue uses one lane branch and one pull request referencing its issue. The body says Closes when the pull request completes the issue's rows, and Part of otherwise. Outside contributors work from their own forks into main. The integrator requires green current-head CI, independent criticism and the path check before batch landing. Each wave includes one integration batch, green CI, a tag and consolidation.
+5. *CT-D5 synchronization.* Workers rebase onto main at session start and before their pull request. Workers resolve their own conflicts within their frozen owned paths. On acceptance, only the integrator may move main for lane work under this model. This amends the free-main-push permission in docs/intent/autonomy.md for lane work. The integrator rebases each batch to preserve linear history. A published branch requiring history rewriting returns for authorized integrator recovery. No blanket force-push permission follows from the rebase requirement.
+6. *CT-D6 check-ins.* The architect checks in weekly and at each wave boundary using a fixed computed checklist. Its inputs are plan status, queue counts, CI, filed readings and claim age. The architect posts rulings on the decisions issue for incorporation into contracts. The collector reports missing evidence honestly and never posts or schedules work itself.
+7. *CT-D7 onboarding.* The existing ladder gains independent stewarding before its first reading lane. Stewarding needs git, gh and an agent with independently inspectable proof evidence. Windows lanes execute in WSL2 and still obey machine-specific requirements. Native Windows runtime support remains unknown until separately witnessed. CTR-8 supplies the missing WSL2 contributor-route reading.
+8. *CT-D8 public boundary.* Fork pull requests receive no repository or provider secrets. Public issues and artifacts contain only public-safe evidence and role-based machine descriptions. Operator-side scripts inspect snapshots and propose actions without changing forge state. Fathom itself never assigns, claims, schedules or merges this work.
+
+**Decision models.** No judged decision-model site applies to deterministic ownership and queue bookkeeping. Provider `none` supplies the entire proposed runtime behavior. Agents may draft issues while independent evidence establishes readiness. Manual stewardship remains the opt-out from the proposed helper. CTR fixture bars measure false readiness, false release and unsafe merge eligibility without provider calls.
+
+**Alternatives rejected.**
+- Self-grounding would remove the independent premise check required by CT-D2.
+- Session comments resetting expiry would violate CT-D3's explicit push-based progress condition.
+- A scheduler inside fathom would cross ADR-098's proposed read-only work-plane boundary.
+
+**Consequences.** The architect must amend autonomy before integrator-only main access becomes coherent. Issues #11 and #139 require coordinated amendments before this guide replaces their conflicting instructions. Existing labels can support the model without inventing new role labels. The path gate remains planned until CTR-3 and CTR-4 provide implementation evidence. A draft CODEOWNERS file provides review routing rather than exclusive lane ownership. Forge branch-protection settings remain unknown and require integrator inspection before enforcement claims.
+
+**Revisit when.**
+- A second integrator is appointed or required-check enforcement changes.
+- A claim race survives the required post-claim overlap recheck.
+- The WSL2 witness fails an otherwise valid Linux lane proof.
+- A weekly check-in lacks trustworthy push evidence for claim expiry.
+
+## ADR-112: The understanding library equips scanner builders, with attested outside use and existing kernel work behind confirmation (2026-11-14)
+
+**Status.** Proposed 2026-11-14 (architect ruling on owner direction). **Type.** product / architecture. Design: `docs/design/library-builder-kit.md`. Plan: `docs/plans/library-builder-kit.md` (LBK). Builds on ADR-092 and the library roadmap. Proposes the narrow library amendment to ADR-092 decision 10 and ADR-063 O11 already contemplated by the hazard design, leaving the product prohibition intact.
+
+**Request (2026-11-14).** Prepare the standalone understanding tool for scanner builders whose checks need highly deterministic facts. The owner reports an outside consumer, attested by the owner. That evidence is classified as attested, unseen.
+
+**Context.** ADR-092 made the existing public door conditional on an outside importer by 2027-05-04 (`ADR.md`, ADR-092, Revisit when). Older roadmap prose says the consumer is unbuilt (`docs/design/library-roadmap.md:22`). The door already has API snapshots and closure tests (`pkg/lang/api_test.go:19`, `pkg/lang/closure_test.go:101`). The present test kit grades dialect packs (`pkg/lang/langtest/langtest.go:52`). The hazard plan already specifies the optional kernel and its measurements (`docs/plans/change-hazards.md`, HZ-13 to HZ-16, HZ-18). LIB-10 owns draft acceptance (`docs/plans/library-roadmap.md`, LIB-10).
+
+**Decision.**
+1. The outside-import condition is met by owner attestation, classified as attested, unseen. This permits continued development of the existing public door against explicit consumer needs. It proves neither observed accuracy nor observed performance, and it identifies no additional consumer.
+2. The library supplies primitives, a check kernel, a consumer test kit and a cookbook. Consumers retain rule content, baselines, severity, waivers and their reporting decisions. Small reference checks remain examples and tests, never a default scanning corpus. The base never acquires a dependency on its consumer checks.
+3. The architect answers OQ3 yes on this evidence, subject to the owner's one-line confirmation. Confirmation remains pending until that line is actually recorded by the architect. After the existing fact rows HZ-3, HZ-4 and HZ-6, the existing kernel rows HZ-13 to HZ-16, HZ-18 and LIB-10 run without added requirements. The architect reconciles their scheduling prose and deferred disposition without changing their proof contracts.
+4. The requirements sheet records five fields without revealing private consumer details. Until answered, requirements come from hazard fixtures and three in-repository reference consumers. Those consumers demonstrate Terraform change hazards, Go lifetime site facts and infrastructure policy authored in CUE. The Go example never substitutes syntax for the typed pairing and growth checks of ADR-107. The CUE example authors canonical check data and never introduces another evaluator.
+5. Builder support extends the existing API snapshots, binary JSON contracts and dialect test kit. Consumer-case grading adapts existing mutation and acceptance artifacts instead of implementing them again. Performance ceilings are established by a baseline and frozen before an independent reread. The cookbook's one-day target is tested before being advertised as a demonstrated result.
+6. OQ4 remains open, and content lacking a redistribution licence stays unpublished. Catalog publication retains IF-6, IF-11 and the existing signed-release conditions. Attested import does not satisfy an outside gate trial, every register trigger or an independent release-cadence requirement.
+7. The gap survey ranks ten candidates from the judged census and existing win paths. Every market-absence statement remains a hypothesis until checked against pinned primary evidence. The survey adds no resolver, cache, lifecycle engine or scanner corpus by implication.
+
+**Decision models.** No new judged site applies because the kit computes facts and compares deterministic outputs. Provider `none` supports the complete specified builder path, and not invoking the kit is the opt-out. Draft generation remains outside the judgment port and follows ADR-106 before any acceptance. Existing kernel readings and LIB-10 grade correctness, while LBK-10 and LBK-12 can refute performance and usability claims. A model never resolves unknowns or judges security properties for serving.
+
+**Alternatives rejected.**
+- Competing through a built-in rule corpus duplicates the scanner breadth the existing design rejects (`docs/design/change-hazards.md:90`). Revisit only under the recorded best-practice corpus trigger, rather than treating the attestation as that trigger.
+- Rebuilding kernel work as builder-kit rows duplicates contracts the hazard plan already owns. Revisit only if the existing owner identifies a specific unsatisfied builder requirement.
+- Treating unseen use as a measured success would erase the evidence boundary. Revisit only when an independently inspectable reading can support the particular claim.
+
+**Consequences.** The no-import sunset no longer applies to the attested outside use, but its other independent triggers remain intact. The architect updates older absence claims when accepting this record, while preserving uncertainty about requirements and observed results. The kernel is an explicit library exception and never authorizes product resource-rule evaluation or product value reads. Existing library release, closure, licensing and typed-lifetime gates continue to control their own work. New LBK rows supply builder support around those programs and claim no implementation results.
+
+**Revisit when.**
+- The owner supplies the requirements sheet or confirms the OQ3 line, so the architect reconciles the recorded evidence and schedule.
+- The attestation is withdrawn or clarified to exclude importing the door, so ADR-092's import condition must be judged again.
+- The builder trial misses its one-day target or independent performance exceeds a frozen budget, so the advertised claim remains withheld.
+- A requested capability needs another public door, so F99 is applied to that specific consumer request.
+
+## ADR-113: One repository holds a family of tools, with enforced import boundaries and names chosen when splits are justified (2026-11-14)
+
+**Status.** Proposed 2026-11-14 (architect ruling on owner direction). **Type.** product / architecture. Design: `docs/design/library-builder-kit.md`, LK-D7. Plan: `docs/plans/library-builder-kit.md`, LBK-13 and LBK-14. Builds on ADR-092 and the existing records and bench programs. Retains the one-module decision and its recorded split triggers.
+
+**Request (2026-11-14).** Treat fathom as a family whose tools need not all carry one name, while keeping them in one repository now.
+
+**Context.** The product command and understanding command already have separate entry points (`cmd/fathom/main.go:22`, `cmd/fathom-lang/main.go:115`). The understanding door already enforces an import closure (`pkg/lang/closure_test.go:101`). Typed records are designed as a leaf without store imports (`docs/design/typed-records.md:133`). The bench plan owns merging the driver into a command outside the product (`docs/plans/proof-program.md`, BEN-1). ADR-092 records version conflict and independent release cadence as separate module and repository triggers.
+
+**Decision.**
+1. One repository and one module continue to hold the current tool family. The proof-layer product keeps its existing name, and the understanding binary keeps its existing name. Other member names are chosen when their actual splits are justified.
+2. The proof-layer product consumes understanding facts and joins them with its evidence planes. The understanding library and binary carry hazard facts and the caller-driven check kernel. Consumer rule corpora remain outside the shared engine and its default release behavior.
+3. The existing public door keeps its enforced dependency and side-effect boundaries. The base never imports checks, and the kernel retains its own closure contract. Whole-program lifetime pairing and growth stay in the product's typed pass under ADR-107, rather than being forced into the daemon-free door.
+4. Provider catalogs are versioned and digested data with licence provenance and publication gates. The family description grants no redistribution permission and introduces no automatic provider downloads.
+5. Typed records begin as a leaf behind their existing port without a store dependency. The bench driver becomes a separate tool only after its already-planned merge. These are boundary requirements on the existing programs, rather than authorization to build duplicate packages or drivers.
+6. Family import tests enforce the allowed directions and exercise seeded forbidden transitive edges. Current members are checked first, and records and the merged driver join after their owning rows land. Missing expected members fail an eligible check rather than being silently skipped. The tests distinguish production driver dependencies from benchmark subjects that legitimately import the library.
+7. No new repository appears until an existing recorded trigger is actually met. A reported version conflict reopens the nested-module option under ADR-092. A second outside consumer needing independent release cadence reopens the repository option under that record. The present attestation satisfies neither condition by itself.
+
+**Decision models.** No judged site applies because import direction and member presence are deterministic checks. Provider `none` supports every family boundary, and no model call is part of enforcement. There is no runtime opt-out from a boundary test that claims a member is ready. Seeded forbidden edges and missing-member cases provide the falsifying measurements for these claims.
+
+**Alternatives rejected.**
+- Separate repositories now would manufacture packaging work before a recorded split trigger fires. Revisit when the consumer and cadence evidence required by ADR-092 actually exists.
+- One brand for every future tool would decide names before their users and release boundaries are known. Revisit when a concrete member needs a separately named distribution.
+- Directory names alone cannot prove that a transitive import respects the declared family boundary. Revisit only if compiler-enforced package isolation replaces the equivalent test without weakening its negative cases.
+
+**Consequences.** Shared releases remain possible while boundary tests expose accidental coupling before a split becomes expensive. Typed records and the merged driver remain owned by their current plans, so this record adds only boundary coverage. New names and repositories remain decisions for actual split time rather than prerequisites for this program. The architect reconciles the family description with existing strategy records when accepting this draft.
+
+**Revisit when.**
+- An outside consumer reports a real version conflict, so the nested-module alternative receives a concrete compatibility case.
+- A second outside consumer needs independent release cadence, so repository strategy is reconsidered against that evidence.
+- The records port or merged bench driver lands, so LBK-14 checks the actual package paths and required members.
+- A family test needs a permanent exception, so the architect records the specific dependency and its justification before weakening enforcement.
