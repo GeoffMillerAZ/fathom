@@ -8,6 +8,10 @@ All rows are open. Every row fits one lane-day including its tests or one bounde
 New function names below are proposed. A code row is claimed only when the existing product/bench entry reaches it.
 L-S shared-contract changes belong to the architect. Raw data and temporary artifacts stay under `workspace/`.
 This work neither promotes F50/F64/F65 nor runs a paid cell. It leaves default decisions with TUN-2.
+Correction 1 (docs/design/bench-prep.md:371) and bench-prep.md#BX-40 remain binding.
+Only scripted W0-W3/W6 environment preflight can void a pair before agent actions. W4/W5 are outcomes.
+All readings retain non-use in the assigned-arm headline. Use-conditioned secondaries are labelled biased toward the product
+and support neither a headline nor a ruling. Missing metric telemetry is reported without excluding an admitted cell.
 
 Reuse: LAB-1/2/3 own cards and closure, LAB-11/12 own funnel and ledger, LAB-32 owns splits, LAB-36 owns knob decisions.
 XM-15/16 own computed map descriptions and shared freshness, XM-17/20 own later rationale/instruction swaps.
