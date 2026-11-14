@@ -29,7 +29,7 @@ Ids from other documents: CAP and RL are in part 2 below and in the library road
 - F2 **The library's edge is almost always the same three things**: offline with no credentials, one
   shape across many file kinds, and unknowns stated. It is almost never "smarter than the incumbent".
 - F3 **Where a use needs a rule, a ranking or prose, the library loses.** Those go to pairing or refusal.
-- F4 **Clause 5 fails for every outside use.** No outside consumer is named for any of them today.
+- F4 **Clause 5 fails for every outside use.** No outside consumer is named for any of them today. Note 2026-11-14: superseded 2026-11-14 by ADR-112: an outside consumer is attested, unseen.
 - F5 **Several "new" edges were not edges.** SBOM tools already catalog workflow actions and locked
   providers. Small interface-diff tools exist for modules and charts. The tool's own validate matches the
   contract check once providers are installed `[web, code]`.

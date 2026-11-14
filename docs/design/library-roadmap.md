@@ -10,6 +10,8 @@ Tags: `[web]` means checked against a primary source during the review. `[prior]
 
 Reading order: the library's critical path is the last section.
 
+Builder support is proposed in [library-builder-kit.md](library-builder-kit.md), with work orders in [the builder-kit plan](../plans/library-builder-kit.md).
+
 ## 1. Findings
 
 - LB-F1 No release tag contains the library. The last tag is 2026-10-28 and the first door commit is 2026-11-04. The one open library reading (LL-M7) waits on a tag.
@@ -19,7 +21,7 @@ Reading order: the library's critical path is the last section.
 - LB-F5 The honest-unknown base is measured: unknown rates of 10.0% for Terraform and 6.1% for CloudFormation against a 30% bar. Pulumi reads 16.7% on 18 pairs, reported with no verdict (LL-M6).
 - LB-F6 The distinctive facts (replacement, cascade, upgrade impact: IF-13 to IF-17) are unbuilt, and so is catalog publication. Every outside prerequisite of the Kubernetes rows (IF-18 to IF-20) is done.
 - LB-F7 A CloudFormation replacement finding is already served by `review_diff` (IF-C4). Its floor against `cdk diff` (HZ-1) has never been read.
-- LB-F8 Whether the fleet holds infrastructure code is unverified. This repository holds none outside test data and the policy tool is unbuilt. A census of the fleet through the fleet index settles it before anything else here acts on it (main UND-1).
+- LB-F8 Whether the fleet holds infrastructure code is unverified. This repository holds none outside test data and the policy tool is unbuilt. A census of the fleet through the fleet index settles it before anything else here acts on it (main UND-1). Note 2026-11-14: superseded 2026-11-14 by ADR-112: an outside consumer is attested, unseen. The fleet infrastructure census remains unverified.
 - LB-F9 The test that keeps values out of the product already flags a product call that opts in through the door, and has a seeded case for it.
 
 ## 2. The boundary: are scanners part of the package
