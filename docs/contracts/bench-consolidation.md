@@ -1,6 +1,6 @@
 # BEN-1 consolidation and card/schema boundary coverage
 
-Status: DRAFT Author A coverage/handoff contract for #266 and #299.
+Status: Approved 2026-11-15 under W5-3. Contract only; implementation proof pending.
 Base: d9eef4794afdbc200d1b8697ce121d9d688fedaf. No product code or new API shape. Owns this document only.
 Depends on reviewed CTR-13 source 7c67d10654566da08a77c52413b9e5b3227bf0ae and
 CTR-11 W4 source 7db03afbda7fb935b331b3b20b226b1a6b8e4ebf. These exact immutable
@@ -30,9 +30,9 @@ nonnil slices/no future fields stay in CTR-13. No generic API question reopened.
 
 ## Exact current writer inventory and serial grant
 
-The full concrete choice is CTR-13/U2, still awaiting its ruling at authoring.
-This contract does not ask for it again or grant it implicitly. Recommended same
-one integration owner and B1-B3 split, alternative separately stage those grants.
+W5-3 settles CTR-13/U2 and this exact serial refinement as recommended: one
+integration owner and B1-B3 in order. These are approved file/grant boundaries,
+not simultaneous ownership or proof a prerequisite implementation landed.
 
 - B1 #266 current two files cellkey.go/cellkey_test.go, plus explicit proposed
   internal/benchledger/ledger.go/ledger_test.go. CellKey reuses contextbench base
@@ -56,8 +56,8 @@ one integration owner and B1-B3 split, alternative separately stage those grants
   No receipt-presence-only BEN-1 claim. Other intent/flywheel ledgers excluded.
 
 No shared test file simultaneously owned by contract batch and implementing lane.
-Transfer at exact landed parent commit. Source branch base is frozen above; U2
-must be ruled and prerequisite rows actually land before dispatch.
+Transfer at exact landed parent implementation commit. Source branch base is
+frozen above; W5-3 grants are approved, prerequisite rows still precede dispatch.
 
 ## #299 namespace and row-claim boundary
 
@@ -112,10 +112,17 @@ pairs are the guard contract. Missing executable/dependency/package/test or empt
 -run is absence, never observed RED. Record commands/exits and actual assertion
 or compile failure independently. Implementing critic compares parent and table
 assertion by assertion, weaker test FIX. #262 steward guarded-proof proposal is
-read, source-consistent, not an active grant/prerequisite or new batch-RED mandate.
+read and source-consistent. W5-3 approves the exact serial manifest, not
+activation/prerequisite proof or a new batch-RED mandate.
 
 No test, readiness harness, paid cell, ledger append, schema generation or gate
 ran here. Draft diff check/secret scan and both git identities are the evidence.
-No row checkbox or forge state changed. Parent U2 remains the ONE outstanding
-concrete grant choice; no duplicate escalation or schema implementation.
+No row checkbox or forge state changed. W5-3 settles the parent and this
+consolidation grant choice; no contract choice remains. No schema implementation.
 Decision models: none; identity/provenance/closure are deterministic.
+
+W5-3 public status: approved contract only. Exact immutable parent semantics are
+CTR-13 at 7c67d10654566da08a77c52413b9e5b3227bf0ae with W5-3 grants finalized in
+its own append-only compliance commit. No new model, writer, API or assertion is
+introduced here. BEN-1 requires every B1-B3 proof; BEN-3 is capability closure,
+not all REC-10. Implementation/RED/readings remain pending.
