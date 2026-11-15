@@ -1,6 +1,6 @@
 # CTR-12: attribution, wire evidence, delivery and landing
 
-Status: DRAFT W1-5/#263. Contract only, no implementation or measured RED.
+Status: Approved 2026-11-15 under W2-3 and W4-2. Contract only; implementation proof pending.
 Base: `468dc705813382d584926887b451cbea145c76ac`. Owns this document only.
 Independent branch. No companion fixture drafts land here. Landing needs REC-1,
 CTR-4, ENG-2, LIB-1; every consumer still needs its authored prerequisites.
@@ -178,7 +178,10 @@ is PreflightAdmitted. Both arms follow that same disposition. VoidPairs only fro
 PreflightVoid; unknown/missing/late pairs add both sessions to UnknownSessions and
 are not admitted, never treated as scored or silently VOID from Valid=false.
 A valid zero-use pair remains assigned-arm scored/non-use; no W4/W5 admission.
-Archive raw rotated hook logs under statedir logs with digest/time range and\nmissing periods; no claim an old week proves a month. This retained BEN-4 archive\nrequirement is independent of the split FLT-3 lane-event archive.\nBenchledger owns this model; labs imports it, never the reverse. Preflight probes
+Archive raw rotated hook logs under statedir logs with digest/time range and
+missing periods; no claim an old week proves a month. This retained BEN-4 archive
+requirement is independent of the split FLT-3 lane-event archive.
+Benchledger owns this model; labs imports it, never the reverse. Preflight probes
 are phase preflight, excluded from agent-use outcomes. Helped remains not measured
 without independent oracle. Existing Stages result types/coverage remain.
 
@@ -591,12 +594,11 @@ counts RED. W3-2 supersedes only batch-RED placement: implementing lanes capture
 failures; this contract retains all assertions and serial ownership transfers.
 No forge changes or dispatch authorization. #320 still needs CHG-10/CTR-3/CTR-12.
 
-## W4-2 exact scope/grant/rate disposition
+## Approved W4-2 scope, grants and rates
 
-This ruling-authorized scope change removes ONLY the incomplete FLT-3 and FLT-10
-port consumers from CTR-12. No attempt to repair those ports in a third design
-round: Event/ParseEvents/ExportLanes/View declarations, their event/export test rows,
-and #315/#316 port implementation grants have been removed from this batch.
+W4-2 excludes FLT-3 and FLT-10 port consumers from CTR-12, including their
+Event/ParseEvents/ExportLanes/View declarations, event/export test rows and
+#315/#316 port implementation grants.
 Transferred to later exact delivery-integration contract:
 - #315 FLT-3: AppendLaneEvent with current harness/model/host-label/row-id fields,
   rotation/archive and real hook handoff, not the former ParseEvents helper.
@@ -632,10 +634,10 @@ No other ports, future fields or implementation added in this compliance revisio
 retain them for the later contract, not this batch's proof manifest. All retained
 consumer proof guards and receipt paths still apply. W3-2 implementing-lane RED
 and assertion-by-assertion critic remain. Missing prerequisites never become
-ready because the contract now has ruling-backed scope. Approval-by-rule follows
-exact critic LAND, and later integration queues for bundle3 after ACK2.
+ready because the contract has approved scope. Integration queues for bundle3
+after ACK2; contract approval does not activate reservations or prove implementation.
 
-## Retained BEN-4 hook archive, W4-only scope correction
+## Retained BEN-4 hook archive
 
 W4-2 removes FLT-3/10 ports ONLY. BEN-4/#267 keeps its own hook-log archive
 (proof-program BEN-4, BN-D2), separate from future lanefile rotation. Retained
@@ -681,5 +683,5 @@ No live/operator state; temporary logs resolve under fixture workspace.
 Commands, after matching declaration guards:
 go test -race ./internal/labs -run '^(TestLaneDeliveryLog|TestDeliveryLogArchiveCoverage)$' -count=1
 go test -race ./cmd/fathom -run '^TestHookDeliveryArchiveRoundTrip$' -count=1
-Proposed/unrun; W3-2 critic compares every assertion. No new architect decision
-or third incomplete FLT-port repair, only restoration of retained W4 scope.
+Proposed/unrun; W3-2 critic compares every assertion. Implementation proof remains
+pending for this approved contract.
