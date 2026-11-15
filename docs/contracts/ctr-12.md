@@ -178,7 +178,7 @@ is PreflightAdmitted. Both arms follow that same disposition. VoidPairs only fro
 PreflightVoid; unknown/missing/late pairs add both sessions to UnknownSessions and
 are not admitted, never treated as scored or silently VOID from Valid=false.
 A valid zero-use pair remains assigned-arm scored/non-use; no W4/W5 admission.
-Benchledger owns this model; labs imports it, never the reverse. Preflight probes
+Archive raw rotated hook logs under statedir logs with digest/time range and\nmissing periods; no claim an old week proves a month. This retained BEN-4 archive\nrequirement is independent of the split FLT-3 lane-event archive.\nBenchledger owns this model; labs imports it, never the reverse. Preflight probes
 are phase preflight, excluded from agent-use outcomes. Helped remains not measured
 without independent oracle. Existing Stages result types/coverage remain.
 
@@ -451,7 +451,7 @@ No active broken default build is committed by this draft.
 | cmd/fathom/hook_attribution_test.go::TestLaneHookAttribution | real hook and call-log rows carry explicit session/lane; missing remains unattributed, caller context wins model args; ./cmd/fathom |
 | internal/wiring/wire_stamp_test.go::TestLaneWireStamp | each four inputs changes digest, stable order, idx separate, once/session integration and absent doctor unknown; ./internal/wiring |
 | internal/testrun/suspects_test.go::TestLaneRedTestSuspects | existing Go/JUnit failure fixtures map to FindCandidates with unresolved tests retained, wrapped test hook integration observed; ./internal/testrun |
-| internal/labs/delivery_test.go::TestLaneDeliveryLog | holdout stable; exact target/next-call/deadline; missing coverage unknown; zero-use admitted/assigned arm retained, failed preflight voids whole pair before agent; ./internal/labs |
+| internal/labs/delivery_test.go::TestLaneDeliveryLog | holdout stable; raw hook rotation/archive bytes/digest/time coverage/missing periods preserved; exact target/next-call/deadline; missing coverage unknown; zero-use admitted/assigned arm retained, failed preflight voids whole pair before agent; ./internal/labs |
 | internal/verify/ledger_checkout_test.go::TestLaneVerifyLedger | gate clone ledger under verified checkout, parent cwd/symlink cannot move it to another checkout; ./internal/verify |
 | internal/metrics/hook_presence_test.go::TestLanePresenceMetrics | missing coverage unknown, eligible/nonfiring absent, fired vs delivered distinct, zero eligibility not healthy; ./internal/metrics |
 | cmd/fathom/fleet_health_test.go::TestLaneFleetGround | actual fleet health verb and existing fleet panel same typed presence/unknown values, launch witness retained; ./cmd/fathom |
@@ -634,3 +634,52 @@ consumer proof guards and receipt paths still apply. W3-2 implementing-lane RED
 and assertion-by-assertion critic remain. Missing prerequisites never become
 ready because the contract now has ruling-backed scope. Approval-by-rule follows
 exact critic LAND, and later integration queues for bundle3 after ACK2.
+
+## Retained BEN-4 hook archive, W4-only scope correction
+
+W4-2 removes FLT-3/10 ports ONLY. BEN-4/#267 keeps its own hook-log archive
+(proof-program BEN-4, BN-D2), separate from future lanefile rotation. Retained
+exact #267 grants: cmd/fathom/hook_delivery.go, cmd/fathom/beats.go,
+internal/labs/delivery.go, internal/labs/delivery_test.go and
+cmd/fathom/hook_lane_contract_test.go. One hook owner, after #272/#298/#296
+handbacks. No new global config or separate archive daemon.
+
+Reuse beatLogPath/statedir and existing beatLogRotateBytes/rotateBeatLogIfNeeded
+rotation boundary. Before a prior generation can be overwritten, archive its
+EXACT raw bytes to beatLogPath()+".archive"/<sha256>.jsonl, exclusive create with
+same-digest idempotence, no parse/re-serialization or recompression. This is an
+archive, not only hooks.jsonl.1's one prior generation. Record/read each archived
+file's actual sha256, first/last event timestamps and complete call-order coverage;
+current and prior generations plus archive form the forward reading population.
+The reader names missing/corrupt/unreadable generations and unobserved time ranges,
+including capture start/end outside the requested window. A one-week retained
+capture cannot prove a month. Malformed timestamps/partial final rows are unread
+coverage, never valid zero activity.
+
+Append/rotation/archive share the existing process-safe log-write lock or a
+single serialized owner; never hash one generation and overwrite it before copy.
+Archive failure must not overwrite an unarchived prior generation. Preserve bounded
+logging/fail-open delivery: do not block the mandatory hook line; a failed capture
+cannot produce complete archive evidence. Missing periods and archive errors make
+delivery reading unknown/incomplete, not a clean zero. No automatic purge or
+retention beyond the operator's explicitly supplied reading window is invented.
+
+Proposed internal/labs/delivery_test.go::TestDeliveryLogArchiveCoverage provides
+three generations with known raw bytes, exact event timestamps and an explicit
+missing interval. Assert all raw byte digests and earliest/latest coverage,
+generation rotation order, no duplicate counting of current/prior/archive content,
+and missing/corrupt/truncated periods remain named/incomplete. An old week plus
+an empty later week cannot become a complete month. Add these as explicit
+TestLaneDeliveryLog subcases too, not just a new uncalled helper test.
+
+Proposed cmd/fathom/hook_lane_contract_test.go::TestHookDeliveryArchiveRoundTrip
+uses the actual beat/log adapter under fixture rotation: write G1/G2/G3, rotate,
+read archive, compare exact preserved bytes/sha/time range, then force archive-write
+failure and assert prior raw bytes are retained and full mandatory hook output
+still emits. Reader reports unknown/missing coverage, not success or lost period.
+No live/operator state; temporary logs resolve under fixture workspace.
+Commands, after matching declaration guards:
+go test -race ./internal/labs -run '^(TestLaneDeliveryLog|TestDeliveryLogArchiveCoverage)$' -count=1
+go test -race ./cmd/fathom -run '^TestHookDeliveryArchiveRoundTrip$' -count=1
+Proposed/unrun; W3-2 critic compares every assertion. No new architect decision
+or third incomplete FLT-port repair, only restoration of retained W4 scope.
