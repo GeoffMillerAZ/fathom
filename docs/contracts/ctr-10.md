@@ -1,7 +1,7 @@
 # CTR-10: facts, bindings, deltas and hazard contract
 
-Status: Approved 2026-11-15 by W3-1/2/3/4; exact-commit compliance review pending.
-Contract only. Implementation and RED/GREEN proof pending.
+Status: Approved 2026-11-15 by W3-1/2/3/4. Contract only.
+Implementation and RED/GREEN proof remain pending.
 Base: `468dc705813382d584926887b451cbea145c76ac`. Independent review branch.
 Owns only this document. No companion fixtures land in this draft.
 Landing dependencies: approved REC-1, CTR-4 path gate, ENG-2 and LIB-1 as authored.
