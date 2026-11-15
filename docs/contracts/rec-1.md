@@ -1,9 +1,10 @@
 # REC-1: standalone lane and record allocation contract
 
-Status: W2-2 APPROVED choices applied for issue #252; exact-commit critic confirmation
-pending. Documentation only, no implementation or dispatch readiness.
+Status: Approved 2026-11-15 under W2-2. Contract only. Implementation,
+actual RED/GREEN proof, live reservations and integrated gate proof remain pending.
 Base: `468dc705813382d584926887b451cbea145c76ac` (refreshed origin/main).
-Dependencies: none for review. Landing and implementation require architect approval.
+Dependencies: none for this approved contract. Implementation follows the exact
+owned-path integration handoff and real test-first proof below.
 This branch owns only `docs/contracts/rec-1.md`. No companion fixtures land here.
 
 ## Intent before design
@@ -20,25 +21,25 @@ no package headroom. No language-door import is added.
 No evidence that the syntax-trial or decision-file split trigger fired. No syntax
 migration is proposed. Free option: keep records leaf-like; no export or kit move.
 
-## Decisions settled by W2-2
+## Approved choices (W2-2, 2026-11-15)
 
-- D1 recommended: exact repository-relative owned files, no patterns. Alternative:
+- D1 approved: exact repository-relative owned files, no patterns. Alternative:
   CODEOWNERS patterns plus parity fixtures. Exact paths satisfy PL-D5 now without
   copying its matcher or treating review routing as write permission.
-- D2 recommended: pure allocator over an explicit inventory, with CLI providing
+- D2 approved: pure allocator over an explicit inventory, with CLI providing
   serialized read/allocate/write. Alternative: allocator opens and writes files.
   An allocator call alone does not reserve an id and cannot promise cross-process
   uniqueness. Successful CLI writing, not a hidden counter, consumes the id.
-- D3 recommended: the existing `recordids` checker owns inventory and uniqueness.
+- D3 approved: the existing `recordids` checker owns inventory and uniqueness.
   Alternative: a new independent records registry (reject: CU-D6).
-- D4 recommended: numeric intervals are closed, per family and prefix, minted by
+- D4 approved: numeric intervals are closed, per family and prefix, minted by
   the integrator in trusted-base lane files. Alternative: global auto-reservation
   (reject: grants workers authority over shared ranges).
-- D5 recommended: draft first, then author tests and capture RED in the approved
+- D5 approved: draft first, then author tests and capture RED in the approved
   implementation branch before implementation. Alternative: build-tagged contract
   tests landed separately with an explicitly tagged RED command. Default-build
   failing tests cannot land while the mandatory full gate must remain green.
-- D6 recommended: approve the checker integration allowlist below before dispatch.
+- D6 approved: approve the checker integration allowlist below before dispatch.
   Alternative: split REC-1 into checker-integration then allocator/CLI lanes.
 
 ## Standalone CUE, proposed `schema/records/lane.cue`
@@ -311,35 +312,15 @@ here. No gate lease taken while the shared gate runs. This document needs only
 REC-1 stays unchecked. After approved implementation, scratch-ingest its HEAD and
 run `fathom verify --service fathom --plan docs/plans/typed-records.md` before claim.
 
-## W2-2 ruling application (supersedes FIX round 2 boundary)
+## Normative checker boundary (W2-2)
 
-W2-2 verbatim semantics: “the caller validates the inventory with the existing
-checker and its effective policy, and hands the allocator that validated result.
-The allocator has no duplicate rule of its own. It refuses only an id that is
-already defined, grandfathered ones included, or one outside the caller's granted
-range.” The declarations and assertions above implement this contract in prose.
-D1..D6 are settled by W2-2 explicitly, including the integration grant and real
-implementation-lane RED. Prior commits are preserved. Critic must confirm this
-exact revision before the approval marker is bound to its commit. No live ranges,
-product implementation or passing gate is implied.
-
-## FIX round 2 receipt (historical, boundary superseded by W2-2)
-
-F4 initially gave AllocateRecordID effective Config; W2-2 above replaces that boundary.
-The existing checker applies its exact grandfather policy to the full inventory.
-Allowed pairs do not block unrelated allocation; all their ids remain occupied.
-New third-path/local duplicates and stale policy fail. Named assertions above
-cover each distinction without collapsed input or hardcoded exceptions. This is
-the final FIX allowance. Any further unresolved revision must be held for ruling.
-
-## FIX round 1 receipt
-
-F1: pure lexical allocator and root-aware CLI containment now have separate inputs
-and tests. F2: CheckOwnership receives independently trusted per-lane grants plus
-legacy inventory, checking every definition and refusing moves or unreserved ids.
-F3: concrete trusted CUE discovery/container, immutable external trust source,
-exact CLI flags/payload bytes and six-family round-trip tests are specified.
-These are recommendations, not observed RED or architect approval.
+The caller validates the inventory with the existing checker and its effective
+policy, and hands the allocator that validated result. The allocator has no
+duplicate rule of its own. It refuses only an id that is already defined,
+grandfathered ones included, or one outside the caller's granted range. The
+ValidatedInventory declarations and grandfather/new-duplicate/reuse assertions
+above are the final approved contract. No live ranges, product implementation,
+actual RED/GREEN or passing integration gate follow from contract approval.
 
 ## Evidence and decision models
 
