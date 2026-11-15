@@ -1,6 +1,6 @@
 # Release binaries (DS-3): GoReleaser OSS builds every target on one macos-14
-# runner (.github/workflows/release.yml) and appends archives plus
-# checksums.txt to the GitHub release that `gh release create` already made.
+# runner (.github/workflows/release.yml). The workflow validates and attests
+# local archives before uploading to the release `gh release create` made.
 # The build mirrors `task build` and ADR-066: darwin keeps cgo (the two proc
 # readers in cmd/fathom) with MACOSX_DEPLOYMENT_TARGET=14.0; Linux is pure Go.
 # No -ldflags: `fathom version` prints buildinfo.Release (a const) and the
@@ -12,6 +12,12 @@ project_name: fathom
 # NOT the default dist/: that directory holds the tracked dist/agents skills
 # package, and --clean would delete it. workspace/ is gitignored.
 dist: workspace/goreleaser
+
+# W1-3: sources are an offline prerequisite, never downloaded by the release.
+# Each workspace/grammar-sources/<tarball_sha256>.tar.gz must match the lock.
+before:
+  hooks:
+    - bash scripts/grammar-notice.sh generate internal/extractor/tsengine/grammars/grammars.lock.json workspace/grammar-sources workspace/grammar-notice/THIRD-PARTY-NOTICES.txt
 
 builds:
   - id: fathom-darwin-arm64
@@ -62,6 +68,9 @@ archives:
     files:
       - LICENSE.md
       - README.md
+      - src: workspace/grammar-notice/THIRD-PARTY-NOTICES.txt
+        dst: .
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt

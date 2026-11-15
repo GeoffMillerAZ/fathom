@@ -1,8 +1,8 @@
 # Release binaries (DS-3). When a GitHub release is published, one macos-14
 # runner builds darwin/arm64, darwin/amd64 (cgo, ADR-066) and linux/amd64,
-# linux/arm64 (CGO_ENABLED=0) with GoReleaser (.goreleaser.yaml) and APPENDS
-# the archives and checksums.txt to that release; the notes `gh release
-# create` wrote are kept (release.mode: keep-existing). workflow_dispatch
+# linux/arm64 (CGO_ENABLED=0) with GoReleaser (.goreleaser.yaml), validates
+# their grammar notices, attests them, then appends archives and checksums.txt
+# to that release. Existing release notes are kept. workflow_dispatch
 # re-runs a tag whose first attempt failed. The only credential is the
 # workflow's GITHUB_TOKEN. Nothing is signed or notarized, but the archives and
 # checksums.txt carry a build-provenance attestation (SLSA, via GitHub's
@@ -53,9 +53,8 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.18.2
-          args: release --clean
+          args: release --clean --skip=publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ env.TAG }}
 
       # GoReleaser's output directory comes from .goreleaser.yaml so the
@@ -64,8 +63,22 @@ jobs:
         id: dist
         run: echo "path=$(sed -n 's/^dist:[[:space:]]*//p' .goreleaser.yaml)" >> "$GITHUB_OUTPUT"
 
+      # The same offline check used by the local release proof. With no pinned
+      # source cache this fails closed; release must never synthesize licence text.
+      - name: Validate grammar notices before publication
+        env:
+          DIST: ${{ steps.dist.outputs.path }}
+        run: bash scripts/grammar-notice.sh check internal/extractor/tsengine/grammars/grammars.lock.json workspace/grammar-sources "$DIST"/fathom_*.tar.gz
+
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             ${{ steps.dist.outputs.path }}/checksums.txt
             ${{ steps.dist.outputs.path }}/fathom_*.tar.gz
+
+      # Upload only after all local validation and attestation have succeeded.
+      - name: Upload validated archives
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIST: ${{ steps.dist.outputs.path }}
+        run: gh release upload "$TAG" "$DIST/checksums.txt" "$DIST"/fathom_*.tar.gz --clobber
