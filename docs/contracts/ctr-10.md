@@ -1,10 +1,11 @@
 # CTR-10: facts, bindings, deltas and hazard contract
 
-Status: DRAFT W1-5/#264. No implementation or RED claim.
+Status: Approved 2026-11-15 by W3-1/2/3/4; exact-commit compliance review pending.
+Contract only. Implementation and RED/GREEN proof pending.
 Base: `468dc705813382d584926887b451cbea145c76ac`. Independent review branch.
 Owns only this document. No companion fixtures land in this draft.
 Landing dependencies: approved REC-1, CTR-4 path gate, ENG-2 and LIB-1 as authored.
-Implementation/test fixtures described here require the U3 RED-mechanism ruling.
+Implementation/test fixtures follow W3-2 implementing-lane real RED.
 No implementation or fixture presence is a measured RED result.
 
 ## Intent and decisions before design
@@ -31,21 +32,15 @@ Settled decisions (citations are governing text, not evidence of implementation)
   only. HZ-9 uses the person-accepted stateful list as declared context, never a
   provider fact. Alternative promoting the list to contract truth violates HZ-9.
 - D4 no package growth: W2-1, alternative remove an existing package before adding.
-- D5 is unresolved U3 below. W2-2 D5 applies to REC-1 only, not CTR-10.
-  PL-D1 and contributor-model CTR-10 currently require batch-owned runnable RED.
+- D5 settled by W3-2: implementing-lane real RED and assertion-by-assertion
+  independent critic comparison. W2-2 alone did not settle this batch.
 
-Unsettled U1 (recommendation): approve the concrete additive shapes/signatures
-below. Alternative stage only internal fixtures until public API review. HZ rows
-settle behavior, not these exact field spellings. No self-approval for U1.
-Unsettled U2: approve the exact serial reservation manifest below, one integration
-owner per turn. Alternative split all shared-file changes into one architect lane.
-No issue gains a file from package placement or this unapproved proposal.
-Unsettled U3: permit real RED in each implementing lane and amend CTR-10's batch-RED
-row. Alternative tagged batch-RED tests plus an explicit tag-only failing command.
-W2-2 settled REC-1 only. No dispatch until this conflict is ruled.
-Unsettled U4: classify inferred H2 rename findings as advice. Alternative emit only
-explicit moved-block facts and no inferred rename finding. HZ-10 names H2 but does
-not settle its evidence class. Deleted/added pairs do not prove a rename.
+U1 approved with W3-1 C1-C5 changes below. U2 approved exact serial grant table,
+HZ-2 before HZ-3, one owner per turn. U3 settled by W3-2: implementing lanes write
+and run each real failing test, and the lane critic compares every listed assertion.
+A weaker test is FIX. Shared CTR-10..13 plan clauses are amended separately. U4
+approved by W3-1: inferred H2 is advice; deleted/added does not prove rename, and
+ADR-106 replay separately decides serving. No product or RED claim follows.
 
 ## Proposed shapes, no implementation
 
@@ -57,9 +52,9 @@ JSON names below are frozen lower snake case, never Go default field names.
 ```go
 // pkg/lang/iac; additions alongside current ResourceSet/Attr.
 type UnknownReason struct {
-    Code string `json:"code"`
+    Code UnknownCode `json:"code"`
     Span Span `json:"span"`
-    DecidableBy []string `json:"decidable_by"`
+    DecidableBy []DecidableBy `json:"decidable_by"`
 }
 type ReadEvidence struct {
     Read []string `json:"read"`
@@ -67,7 +62,7 @@ type ReadEvidence struct {
     Unknowns []UnknownReason `json:"unknowns"`
 }
 type Block struct {
-    Kind string `json:"kind"`
+    Kind BlockKind `json:"kind"`
     Name string `json:"name"`
     Attrs []Attr `json:"attrs"`
     Span Span `json:"span"`
@@ -75,7 +70,7 @@ type Block struct {
 // ResourceSet gains Evidence ReadEvidence and Blocks []Block only.
 // Unknown Attrs are associated by exact Span, never by raw value.
 type Binding struct {
-    Status string `json:"status"`
+    Status BindingStatus `json:"status"`
     Source string `json:"source"`
     Version string `json:"version"`
     Catalog string `json:"catalog"`
@@ -84,10 +79,10 @@ type Binding struct {
 }
 func ResolveBinding(ctx context.Context, repo fs.FS, dir string,
     resource Resource, catalogs []*Catalog) (Binding, error)
-type Snapshot struct { Set ResourceSet; Sources map[string][]byte }
+type Snapshot struct { Set ResourceSet `json:"set"`; Sources map[string][]byte `json:"-"` }
 type ResourceChange struct {
-    Address string `json:"address"`
-    Kind string `json:"kind"`
+    Address Address `json:"address"`
+    Kind ChangeKind `json:"kind"`
     Before *Resource `json:"before,omitempty"`
     After *Resource `json:"after,omitempty"`
     Attributes []AttrChange `json:"attributes"`
@@ -96,7 +91,7 @@ type AttrChange struct {
     Path string `json:"path"`
     Before Class `json:"before"`
     After Class `json:"after"`
-    Kind string `json:"kind"`
+    Kind ChangeKind `json:"kind"`
 }
 type ChangeSet struct {
     Changes []ResourceChange `json:"changes"`
@@ -123,8 +118,8 @@ refusal/disclosures as Notes. Status is locked/constraint-matched/ambiguous/unbo
 No catalog facts attach to the latter two. Context/deadline/busy rules remain.
 
 Snapshot.Sources is transient caller input to compare source expressions, never
-marshaled. Address is `(tool, module directory, mode, type, name)` joined with NUL
-internally, escaped as JSON string externally; no cross-tool correspondence.
+marshaled. Address is a comparable struct ordered Tool/Module/Mode/Type/Name; JSON is an
+object, never a sentinel string. No cross-tool correspondence.
 No rename inference. Kind: added/removed/changed. ResourceChange copies must clear
 all Attr.Value fields, regardless of input WithValues. Class transitions include
 empty class only to denote absence. Same-class expression spelling changes are
@@ -142,19 +137,22 @@ type ReadObservation struct {
 }
 func BuildReadEvidence(observations []ReadObservation) ReadEvidence
 type Hazard struct {
-    ID, Kind, Address, EvidenceClass string
-    Span Span
-    Reasons []UnknownReason
-    Citations []IaCFactRef
+    ID HazardID `json:"id"`
+    Kind HazardKind `json:"kind"`
+    Address Address `json:"address"`
+    EvidenceClass EvidenceClass `json:"evidence_class"`
+    Span Span `json:"span"`
+    Reasons []UnknownReason `json:"reasons"`
+    Citations []IaCFactRef `json:"citations"`
 }
 func CheckRenameWithoutMoved(changes ChangeSet, blocks []Block) []Hazard
 func CheckMultiplicityWithoutMoved(changes ChangeSet, blocks []Block) []Hazard
 func CheckProvabilityLost(changes ChangeSet) []Hazard
 func isStatefulType(tool, typ string, accepted []StatefulType) bool
-type StatefulType struct { Tool, Type, Source, AcceptedBy string }
+type StatefulType struct { Tool AddressTool `json:"tool"`; Type string `json:"type"`; Source string `json:"source"`; AcceptedBy string `json:"accepted_by"` }
 ```
 
-Pending U4, H2 is recommended advice for compatible deleted/added declarations, never a proven rename.
+Under W3-1 U4, H2 is advice for compatible deleted/added declarations, never a proven rename.
 Covering moved blocks suppress H2/H4 only for their explicit from/to pair. H4
 requires changed count/for_each kind or key expression; H5 literal -> expression/
 unknown is advice. All hazards sort by span/id/address. Stateful list entries
@@ -191,20 +189,20 @@ This preserves the existing dependency direction. JSON tags on these draft
 additions match the public copies for deterministic conversion tests.
 
 ```go
-type UnknownReason struct { Code string `json:"code"`; Span Span `json:"span"`; DecidableBy []string `json:"decidable_by"` }
+type UnknownReason struct { Code UnknownCode `json:"code"`; Span Span `json:"span"`; DecidableBy []DecidableBy `json:"decidable_by"` }
 type ReadEvidence struct { Read []string `json:"read"`; Unread []string `json:"unread"`; Unknowns []UnknownReason `json:"unknowns"` }
-type Block struct { Kind string `json:"kind"`; Name string `json:"name"`; Attrs []Attr `json:"attrs"`; Span Span `json:"span"` }
-type AttrChange struct { Path string `json:"path"`; Before Class `json:"before"`; After Class `json:"after"`; Kind string `json:"kind"` }
-type ResourceChange struct { Address string `json:"address"`; Kind string `json:"kind"`; Before *Resource `json:"before,omitempty"`; After *Resource `json:"after,omitempty"`; Attributes []AttrChange `json:"attributes"` }
+type Block struct { Kind BlockKind `json:"kind"`; Name string `json:"name"`; Attrs []Attr `json:"attrs"`; Span Span `json:"span"` }
+type AttrChange struct { Path string `json:"path"`; Before Class `json:"before"`; After Class `json:"after"`; Kind ChangeKind `json:"kind"` }
+type ResourceChange struct { Address Address `json:"address"`; Kind ChangeKind `json:"kind"`; Before *Resource `json:"before,omitempty"`; After *Resource `json:"after,omitempty"`; Attributes []AttrChange `json:"attributes"` }
 type ChangeSet struct { Changes []ResourceChange `json:"changes"`; Evidence ReadEvidence `json:"evidence"` }
 // Existing internal ResourceSet gains Evidence and Blocks, same as public copy.
-type ReplacementFact struct { Address, Attr, Class string; Ref IaCFactRef }
-type Cascade struct { Hazards []Hazard; Unresolved []string; Truncated bool }
+type ReplacementFact struct { Address Address `json:"address"`; Attr string `json:"attr"`; Class ReplacementClass `json:"class"`; Ref IaCFactRef `json:"ref"` }
+type Cascade struct { Hazards []Hazard `json:"hazards"`; Unresolved []Address `json:"unresolved"`; Truncated bool `json:"truncated"` }
 func CheckStatefulReplacement(changes ChangeSet, replacement []ReplacementFact,
     accepted []StatefulType) []Hazard
 func ReplacementCascade(seeds []Hazard, resources []Resource,
     replacement []ReplacementFact, maxResources int) Cascade
-type VersionFacts struct { Source, Version string; Facts []ReplacementFact }
+type VersionFacts struct { Source string `json:"source"`; Version string `json:"version"`; Facts []ReplacementFact `json:"facts"` }
 func UpgradeHazards(resources []Resource, before, after VersionFacts) []Hazard
 // pkg/lang/iac/convert.go, new adapters in the same existing package:
 func convertEvidence(in iacfacts.ReadEvidence) ReadEvidence
@@ -428,8 +426,8 @@ Batch proposed tests: `pkg/lang/iac/hazard_contract_test.go::TestLaneContractsFa
 Primary command: `go test -race ./pkg/lang/iac -run '^TestLaneContractsFacts$' -count=1`.
 They validate fixtures/shapes, not observed scanner precision. Each consumer must
 own its runnable failing test and capture base/head/command/exit before implementation.
-No tests ran RED here. Runnable batch-RED versus implementing-lane RED is U3,
-not silently transferred. Default build must remain green under either choice.
+No tests ran RED here. W3-2 assigns actual RED to implementing lanes and the
+independent critic compares each named assertion. Default build remains green.
 
 Reading consumers #270/#271/#302/#309/#310 and hazard-validity/replacement/upgrade
 readings are not dispatched by fixture presence. They need independently pinned
@@ -450,3 +448,139 @@ History source base is pinned above; `git log -1 -- <path>` is a review aid only
 CUE/full gate run is claimed. CTR-10 and consumer rows remain unchecked.
 Decision models: none. Deterministic fact transforms have provider none and no
 judgment substitute. Manual review may opt out without claiming automation.
+
+## Normative W3-1 C1-C5 and W3-3/4 API rules
+
+Add these declarations to existing pkg/lang/iac/types.go and identical local
+declarations to internal/iacfacts/resource.go. Explicit conversions follow the
+serial table. Existing Resource fields remain unchanged.
+
+~~~go
+type UnknownCode string
+const (
+    UnknownExpression UnknownCode = "expression"
+    UnknownSyntax UnknownCode = "syntax-error"
+    UnknownUnreadInput UnknownCode = "unread-input"
+    UnknownUnboundCatalog UnknownCode = "unbound-catalog"
+    UnknownUnsupportedForm UnknownCode = "unsupported-form"
+    UnknownReadLimit UnknownCode = "read-limit"
+)
+type DecidableBy string
+const (
+    DecidePlan DecidableBy = "plan"
+    DecideRender DecidableBy = "render"
+    DecideVendoredModule DecidableBy = "vendored-module"
+    DecideCatalogVersion DecidableBy = "catalog-version"
+    DecideContextFile DecidableBy = "context-file"
+)
+type BlockKind string
+const (
+    BlockVariable BlockKind = "variable"
+    BlockOutput BlockKind = "output"
+    BlockLocals BlockKind = "locals"
+    BlockRequiredProviders BlockKind = "required_providers"
+    BlockMoved BlockKind = "moved"
+    BlockRemoved BlockKind = "removed"
+    BlockImport BlockKind = "import"
+)
+type BindingStatus string
+const (
+    BindingLocked BindingStatus = "locked"
+    BindingConstraintMatched BindingStatus = "constraint-matched"
+    BindingAmbiguous BindingStatus = "ambiguous"
+    BindingUnbound BindingStatus = "unbound"
+)
+type ChangeKind string
+const (
+    ChangeAdded ChangeKind = "added"
+    ChangeRemoved ChangeKind = "removed"
+    ChangeChanged ChangeKind = "changed"
+)
+type EvidenceClass string
+const (
+    EvidenceAdvice EvidenceClass = "advice"
+    EvidenceDeclaredContext EvidenceClass = "declared context"
+    EvidenceContractFact EvidenceClass = "contract fact"
+)
+type AddressTool string
+const (
+    AddressTerraform AddressTool = "terraform"
+    AddressCloudFormation AddressTool = "cloudformation"
+    AddressPulumi AddressTool = "pulumi"
+)
+type AddressMode string
+const (
+    AddressManaged AddressMode = "managed"
+    AddressData AddressMode = "data"
+    AddressModule AddressMode = "module"
+    AddressEphemeral AddressMode = "ephemeral"
+)
+type Address struct {
+    Tool AddressTool `json:"tool"`
+    Module string `json:"module"`
+    Mode AddressMode `json:"mode"`
+    Type string `json:"type"`
+    Name string `json:"name"`
+}
+func (a Address) String() string
+// Display only: JSON-quoted values separated by one space in field order.
+// Never parsed as identity or used as the JSON address representation.
+type HazardID string
+const (
+    HazardH1 HazardID = "H1"
+    HazardH2 HazardID = "H2"
+    HazardH4 HazardID = "H4"
+    HazardH5 HazardID = "H5"
+    HazardH6 HazardID = "H6"
+)
+type HazardKind string
+const (
+    HazardStatefulReplacement HazardKind = "stateful-replacement"
+    HazardRenameWithoutMoved HazardKind = "rename-without-moved"
+    HazardMultiplicityWithoutMoved HazardKind = "multiplicity-without-moved"
+    HazardProvabilityLost HazardKind = "provability-lost"
+    HazardUpgradeImpact HazardKind = "upgrade-impact"
+    HazardReplacementCascade HazardKind = "replacement-cascade"
+)
+type ReplacementClass string
+const (
+    ReplacementReplace ReplacementClass = "replace"
+    ReplacementConditional ReplacementClass = "conditional"
+    ReplacementUnknown ReplacementClass = "unknown"
+)
+type RefusalError struct {
+    Code UnknownCode `json:"code"`
+    Message string `json:"message"`
+}
+func (e *RefusalError) Error() string
+type LimitError struct {
+    Limit int64 `json:"limit"`
+    Observed int64 `json:"observed"`
+}
+func (e *LimitError) Error() string
+~~~
+
+Invalid enum input returns RefusalError; limit breaches return LimitError.
+errors.As survives wrapping/conversion. No context on pure DiffResources or
+computations; ResolveBinding keeps context because it reads fs/catalogs. Every
+new exported field has explicit lower snake_case JSON tags. Address is comparable,
+marshals an object with the five keys above, and sorts Tool/Module/Mode/Type/Name.
+No sentinel encoding appears in public values or hazard JSON. Sources is json:-.
+
+Every exported result slice recursively initializes nonnil, including resources,
+attrs, refs, blocks, unknowns, decidable_by, candidates, notes, changes, reasons,
+citations, hazards and unresolved. Empty marshals [] and never null. Changes are
+additive, no legacy public field removed/retyped. ReadEvidence retains exactly
+read/unread/unknowns, no read-set digest or future field. Values remain withheld by
+default, changes/hazards strip values. No new package on the door.
+
+Proposed TestContractsFactsAPIHouseRules in pkg/lang/iac/hazard_contract_test.go:
+named types/constants assign correctly; errors.As finds refusal/limit; Address is
+a map key; JSON address has exactly tool/module/mode/type/name object keys in field
+order; ordering distinguishes modules; Snapshot omits Sources even with canary;
+every recursive empty-result slice marshals []; no null. Reorder input and compare
+exact JSON. Command: go test -race ./pkg/lang/iac -run
+'^TestContractsFactsAPIHouseRules$' -count=1 as one line, proposed and unrun.
+W3-2 critic checks every listed assertion against implementing lane tests.
+W3-3: door API implementation is architect class; its hold carries the go doc API
+snapshot diff, at most 80 lines. Contract approval never bypasses that check.
