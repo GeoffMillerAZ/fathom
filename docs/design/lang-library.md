@@ -314,7 +314,7 @@ if** an outside consumer reports a real version conflict. The closure test keeps
 
 Each is a plan row, in the gate.
 
-1. A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP, `net/http`, or more than the budgeted package count (80). The closure read 78 and the read guarantee added two leaf packages, `internal/readlimit` and `internal/hclbound`, so a consumer now links 81 with its own, one over LL-M1's bar of 80: LL-M1 is to be re-read and the bar decided.
+1. A closure test fails if `pkg/lang` reaches store, fusion, connector, MCP, `net/http`, or more than 80 non-standard packages, and LL-M1 allows 81 for a consumer including its own main package (architect ruling 2026-11-15, ADR-092), raising the original consumer bar of 80 by one for the read guarantee's two leaves, `internal/readlimit` and `internal/hclbound`, with no door headroom: a change that adds a package to the door removes one or returns for a ruling.
 2. A no-dial and no-write test: the library opens no socket and writes no file unless a cache directory was given.
    `net` stays in the closure through wazero, so the test watches behavior, and the closure test forbids `net/http`. A second test
    reads the source of every fathom package the door links: a file-system write may appear only in a file that writes a path its
