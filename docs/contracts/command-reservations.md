@@ -1,9 +1,10 @@
 # Retained delivery command/hook reservations and reconstruction handoff
 
-Status: DRAFT Author A for #267/#272/#273/#276/#296/#298/#304/#314/#322.
+Status: Approved 2026-11-15 under W6-4 COMMAND/TURNS. Contract only; implementation proof pending.
 Base: d9eef4794afdbc200d1b8697ce121d9d688fedaf. Owns this document only. No product or hook implementation.
 Normative parent CTR-12 d7dba4e681e910aa26a58adbb13dd7d50e491b28 is critic LAND
-under W4. Reuse its complete typed ports/JSON/assertions; do not copy a second model.
+under W4 and integrated/frozen. Reuse its complete typed ports/JSON/assertions;
+do not copy or amend a second model.
 FLT-3/10 are absent here and have their own later delivery-integration contract.
 
 ## Intent, decisions and prerequisites before design
@@ -34,8 +35,9 @@ gate; #272 ENG-8; #298 ENG-9; #296 WIR-1/ENG-9; #276 ENG-9; #304 ENG-7/9/10+REC-
 
 ## Exact command/MCP ownership and cross-author request
 
-Frozen candidate serial grants below incorporate parent W4 choices. New extra
-sites are explicitly identified for the one U1 grant choice, not inferred active.
+W6-4 approves the exact recommended additional COMMAND/TURNS manifest below,
+one owner per turn, together with retained parent W4 choices. Approved scope is
+not simultaneous activation or proof predecessor implementations landed.
 REQUEST-A-command-reservations.md asks Author B for exact tools.go/IaC handback and
 Author C for read-only CHG-M2 fixture/run provenance; never edit their clones.
 
@@ -48,7 +50,7 @@ Author C for read-only CHG-M2 fixture/run provenance; never edit their clones.
 | cmd/fathom/sessionhook_events.go, edithook.go | #272 -> #296 -> #267 -> #314 -> #322 code-card call, one owner each |
 | cmd/fathom/beats.go, discoveries.go, internal/mcp/calllog.go | #272 -> #298 -> #267 archive/attribution |
 | cmd/fathom/doctor.go, doctor_harness_firing.go, doctor_wire_stamp.go | #298 WR-4/WR-12 reuse, no second ladder/ledger |
-| cmd/fathom/testrunhook.go, testrunhook_delta.go, edithook_teststorun.go; cmd/fathom/testrunhook_test.go, testrunhook_delta_test.go, testrunhook_deadline_test.go, testrunhook_declared_test.go, testrunhook_rowkeys_test.go, testrunhook_prune_test.go, testrunhook_delta_decided_test.go, edithook_teststorun_test.go | #296 after #272/#298, actual cmdTestRunHook/testRunEntryHook -> testrun.FindCandidates; testrunhook*.go grants are U1 additions |
+| cmd/fathom/testrunhook.go, testrunhook_delta.go, edithook_teststorun.go; cmd/fathom/testrunhook_test.go, testrunhook_delta_test.go, testrunhook_deadline_test.go, testrunhook_declared_test.go, testrunhook_rowkeys_test.go, testrunhook_prune_test.go, testrunhook_delta_decided_test.go, edithook_teststorun_test.go | #296 after #272/#298, actual cmdTestRunHook/testRunEntryHook -> testrun.FindCandidates; exact additional testrunhook grants approved W6-4 |
 | cmd/fathom/fleetreport.go, fleetreport_test.go, console_fleet.go, console_test.go; internal/console/fleet.go | #276 typed presence adapter -> #304 actual cmdFleetReport/buildFleetReport and buildFleetPage /fleet parity |
 | cmd/fathom/fleet_health.go/fleet_health_test.go, observatory_fleet_health.go/observatory_fleet_health_test.go | #304 new adapters, not a nonexistent observatory_fleet.go |
 | cmd/fathom/hook_proposed_file.go, internal/hookpath/proposed_file.go/proposed_file_test.go | #314 actual pre-edit reconstruction; original owned paths |
@@ -62,10 +64,9 @@ does not override this file manifest. All listed predecessor handbacks must name
 commit/base before next owner writes. No touch to B's iac_facts/iaccatalog/binding/
 public conversion/review_tool.go files. No broad schema/tool-registry grant.
 
-U1 (<300 chars): approve the additional exact testrunhook/codec-reconstruction
-sites below as one serial integration turn. Recommend actual source sites and
-existing codecs; alternative keep leaf-only issues unready until a separate
-architect adapter lane lands. Parent W4 grants are not re-escalated.
+W6-4 settles U1: the additional exact testrunhook/test, codec-reconstruction
+helper, facade and fixture paths below are approved as recommended, one owner
+per turn. Parent W4 grants remain settled. No remaining contract choice.
 
 ## Source-grounded reconstruction adapter (#314)
 
@@ -103,7 +104,7 @@ answer. Current helper caps match cmdEditHook's 1 MiB raw-input bound; cap+1 typ
 limit before partial parsing. Path must be the exact normalized repo-relative
 target selected by decoded envelope, not an arbitrary caller override.
 
-Additional proposed U1 exact path grant:
+Additional W6-4 approved exact path grant:
 internal/harness/proposal.go/proposal_test.go (shared private-envelope access helper),
 internal/hookpath/proposed_file.go/proposed_file_test.go (adapter/application),
 cmd/fathom/hook_proposed_file.go/hook_proposed_file_test.go (I/O facade and test),
@@ -160,7 +161,7 @@ codex-multifile.json, codex-add-delete-move.json, gemini-no-body.json,
 copilot-no-body.json, claude-write-missing.json, claude-write-null.json,
 claude-write-wrong-type.json, claude-edit-missing.json, claude-edit-null.json,
 claude-edit-wrong-type.json, claude-multiedit-invalid-pair.json,
-claude-edit-empty-replacement.json, base.go. Exact added grant U1; no copied real transcript.
+claude-edit-empty-replacement.json, base.go. Exact added grant W6-4; no copied real transcript.
 Use source fields above, fixed fixture cwd resolved in test root, no private path.
 
 TestLaneHookEditRebuild in internal/hookpath/proposed_file_test.go must assert all
@@ -222,6 +223,21 @@ Neither source presence nor this contract claims those readings or prerequisites
 
 Executed source/history review and git diff --check/secret scan, both identities.
 No new code/dependency/schema, RED/race/CLI/hook/browser/latency/gate execution,
-live grant, source-state change or row/dispatch claim. U1 names only actual extra
-sites; parent settled choices and missing raw evidence are not generic escalations.
+live handoff, source-state change or row/dispatch claim. W6-4 settles U1 exact
+extra sites; missing raw evidence and predecessor proof remain prerequisites.
 Decision models: none; reconstruction and factual route joins are deterministic.
+
+## W6-4 approved turn boundary
+
+COMMAND/TURNS is approved as recommended, ONE owner per turn. Exact named
+testrunhook/test/codec/helper/reconstruction facade/fixture additions in this
+document are the granted scope. No package-wide expansion, new tool-registry
+grant, hidden backend load or ownership in another author's clone follows.
+B's #167/#168 tools.go handback precedes A #273; all hook and fleet command owners
+transfer exact committed bases before the next turn. Existing W4 serial order,
+W3-2 actual failing assertions, W3-4 typed API law and unsupported harness gaps
+are unchanged. No grant proves an actual hook/readings/plan prerequisite.
+
+Public contract status is approved; product implementation/actual RED/independent
+reading/integration gate proof remain pending. Exact compliance commit is READY
+for critic confirmation before foreman records that commit's approval.
