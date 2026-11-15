@@ -48,7 +48,7 @@ Author C for read-only CHG-M2 fixture/run provenance; never edit their clones.
 | cmd/fathom/sessionhook_events.go, edithook.go | #272 -> #296 -> #267 -> #314 -> #322 code-card call, one owner each |
 | cmd/fathom/beats.go, discoveries.go, internal/mcp/calllog.go | #272 -> #298 -> #267 archive/attribution |
 | cmd/fathom/doctor.go, doctor_harness_firing.go, doctor_wire_stamp.go | #298 WR-4/WR-12 reuse, no second ladder/ledger |
-| cmd/fathom/testrunhook.go, testrunhook_delta.go, edithook_teststorun.go and their existing *_test.go files | #296 after #272/#298, actual cmdTestRunHook/testRunEntryHook -> testrun.FindCandidates; testrunhook*.go grants are U1 additions |
+| cmd/fathom/testrunhook.go, testrunhook_delta.go, edithook_teststorun.go; cmd/fathom/testrunhook_test.go, testrunhook_delta_test.go, testrunhook_deadline_test.go, testrunhook_declared_test.go, testrunhook_rowkeys_test.go, testrunhook_prune_test.go, testrunhook_delta_decided_test.go, edithook_teststorun_test.go | #296 after #272/#298, actual cmdTestRunHook/testRunEntryHook -> testrun.FindCandidates; testrunhook*.go grants are U1 additions |
 | cmd/fathom/fleetreport.go, fleetreport_test.go, console_fleet.go, console_test.go; internal/console/fleet.go | #276 typed presence adapter -> #304 actual cmdFleetReport/buildFleetReport and buildFleetPage /fleet parity |
 | cmd/fathom/fleet_health.go/fleet_health_test.go, observatory_fleet_health.go/observatory_fleet_health_test.go | #304 new adapters, not a nonexistent observatory_fleet.go |
 | cmd/fathom/hook_proposed_file.go, internal/hookpath/proposed_file.go/proposed_file_test.go | #314 actual pre-edit reconstruction; original owned paths |
@@ -113,12 +113,22 @@ Codec-specific decoding reuses the current package's private envelope helpers;
 no copying a second identity/session/path parser into cmd.
 
 Frozen supported form/assertion matrix:
-- Claude Write: current claudeToolInput.content is the WHOLE proposed body,
-  including valid empty write. Never append it to old body.
-- Claude Edit: exact old_string -> new_string on a unique match in current base;
-  zero/multiple match returns typed refusal, not approximate matching.
-- Claude MultiEdit: current edits[] old_string/new_string pairs apply in supplied
-  sequence to intermediate body. Concatenated HookInput.NewContent is never used
+- Claude Write: validate raw tool_input object has a content key whose JSON type
+  is string BEFORE using claudeToolInput.Content. Absent, null, numeric, boolean,
+  array or object content returns ProposalMalformed and never calls a card reader.
+  Present content:"" is a valid WHOLE empty proposed body, not missing input and
+  not a delete operation. Never append it to old body. Existing string decoder
+  alone is insufficient because absent/null collapse to the same zero value.
+- Claude Edit: require raw old_string AND new_string keys, both JSON strings.
+  Absent/null/non-string either refuses ProposalMalformed, no card reader. A
+  present empty new_string is a valid replacement. Apply exact old_string ->
+  new_string on a unique match in current base; zero/multiple match returns typed
+  refusal, not approximate matching. Empty old_string is ambiguous and refuses.
+- Claude MultiEdit: require raw edits array and validate EVERY pair is an object
+  with present string old_string/new_string before applying any pair. Missing,
+  null or non-string members refuse the entire proposal, never partial success;
+  empty new_string remains valid, empty old_string ambiguous/refused. Valid pairs
+  apply in supplied sequence to intermediate body. Concatenated HookInput.NewContent is never used
   as a full-file body or paired with unrelated old text.
 - Codex apply_patch: use codexToolCommand's actual patch bytes, parse ALL file
   sections, exact context hunks, add/delete/move headers. Affected paths includes
@@ -147,7 +157,10 @@ harness forms until real fixture/wiring proofs exist; no approval can invent dat
 Proposed fixture files under cmd/fathom/testdata/proposed/:
 claude-write.json, claude-empty-write.json, claude-edit.json, claude-multiedit.json,
 codex-multifile.json, codex-add-delete-move.json, gemini-no-body.json,
-copilot-no-body.json, base.go. Exact added grant U1; no copied real transcript.
+copilot-no-body.json, claude-write-missing.json, claude-write-null.json,
+claude-write-wrong-type.json, claude-edit-missing.json, claude-edit-null.json,
+claude-edit-wrong-type.json, claude-multiedit-invalid-pair.json,
+claude-edit-empty-replacement.json, base.go. Exact added grant U1; no copied real transcript.
 Use source fields above, fixed fixture cwd resolved in test root, no private path.
 
 TestLaneHookEditRebuild in internal/hookpath/proposed_file_test.go must assert all
@@ -161,6 +174,15 @@ whole body received, no host file written, missing/unsupported never evaluates a
 partial proposed file. Mandatory error/guard payload remains fail-open/full.
 TestProposalCodecPaths in internal/harness/proposal_test.go asserts identity/path
 parity with existing DecodeInput for known forms and all Codex files retained.
+All three tests also assert the raw-key/type boundary above: valid content:""
+reaches the real reader as zero bytes; missing/null/all non-string content
+refuses before reader invocation. Missing/null/non-string old_string/new_string
+on Edit and ANY MultiEdit pair refuses before any reader or partial evaluation.
+Present empty replacement applies exactly, while empty old_string refuses as
+ambiguous. Spy assertions require reader call count0 for every invalid case and
+call count1/whole expected bytes for each valid empty-body/replacement case.
+Existing Codec remains unchanged; helper checks raw presence/type before decoder
+zero values can be interpreted. No malformed payload predicts deletion.
 
 Guard exact declarations then commands (each one line):
 go test -race ./internal/hookpath -run '^TestLaneHookEditRebuild$' -count=1
