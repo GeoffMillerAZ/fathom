@@ -142,9 +142,13 @@ Precision is undefined for TP+FP=0; it can never PASS. Compare exact integers
 be accounted for. Missing native/catalog/pair or truncated output is
 INCOMPLETE, with no observed precision claim. With complete coverage, below
 0.85 is FAIL, at or above is PASS. HZ-M2 verdict opens the reading. A FAIL
-stops further CloudFormation hazard work and requires advice wording on the
-live flag; that product edit remains an architect-owned separate lane.
-No reading can lift Terraform's separate 0.9 gate.
+stops all further hazard computation: fix HZ-1 before any other hazard row,
+including Terraform computation rows (issue #271 Stop conditions, design
+change-hazards §14 and ADR-099 Revisit). The live IF-C4 flag requires advice
+wording until fixed; that edit remains an architect-owned separate lane.
+This ordering stop is distinct from per-tool serving gates: HZ-1 is the
+CloudFormation 0.85 acceptance gate, never Terraform's independent 0.9 gate.
+Neither passing HZ-1 nor restoring its floor lifts Terraform's own gate.
 
 ## Prospective proof tests, exact assertions
 
@@ -153,6 +157,7 @@ No reading can lift Terraform's separate 0.9 gate.
 | test_manifest.py::test_pins_and_population | Correct fixed manifest accepted; missing catalog/runtime/source digest, changed template byte, duplicate id, cross-root path, unfrozen roster and empty population each refuse; roster changes invalidate a run. |
 | adapter/main_test.go::TestCFNBenchAdapter | Exact reader/comparator route above; one changed replacement pointer produces definite with matching address/span/digest; conditional remains conditional; opacity/unbound/syntax/drop is unknown/refusal; additions/deletions/type changes excluded; result arrays nonnil; canary absent; order permutations give identical JSON. |
 | test_native.py::test_pinned_cli_pair | Exact pinned CLI argv and one-stack assembly; will-replace, may-replace, update and unchanged parsed separately; credentials/network attempted, unknown output, signal, timeout or wrong pin refuse; CLI output and machine-readable crosscheck agree by resource. |
+| test_score.py::test_below_floor_handoff | A complete below-0.85 result requires all other hazard computation rows stopped until HZ-1 fixed and live IF-C4 advice wording; neither an HZ-1 PASS nor repaired floor authorizes Terraform surfaces below their own 0.9. This assertion verifies the handoff decision, not an unowned product flag edit. |
 | test_score.py::test_confusion_and_floor | TP=17 FP=3 gives 0.85 PASS with complete inputs; TP=16 FP=3 FAIL; TP=1 FP=1 FN=1 TN=1 gives precision=recall=0.5; injected FP and FN increment their own cells; TP=FP=0 undefined/INCOMPLETE; missing row/failed arm remains INCOMPLETE; conditional is never TN; reordered rows identical. |
 
 Implementer first runs `python3 -I -m unittest discover -s docs/bench/harnesses/hazard-cfn -p 'test_*.py'`
@@ -181,3 +186,10 @@ passed: its catalog-info anchor named catalog.go instead of catalog_dir.go.
 The shell continued after that assertion. This append corrects the anchor and
 records a successful rerun with fail-fast shell execution. No implementation
 or measured result changed.
+
+## Independent critic correction, round 1
+
+Restored the stronger authored ordering stop from #271, design §14 and ADR-099:
+a below-floor HZ-1 stops all further hazard computation until repaired. The
+per-tool serving floors remain separate. Added the exact prospective
+test_below_floor_handoff assertion. No native execution or product edit.
