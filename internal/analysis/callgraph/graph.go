@@ -139,6 +139,7 @@ func (g *Graph) EdgeCount() int {
 func Build(nodes []core.SymbolNode) *Graph {
 	g := buildIndexes(nodes)
 	g.buildSuffixIndex()
+	ctorScopes := buildCtorScopeIndex(g.nodes)
 
 	// Second pass: resolve call edges. Iterate the deduplicated node set so
 	// duplicate observations of a caller cannot duplicate its edges; the
@@ -146,7 +147,12 @@ func Build(nodes []core.SymbolNode) *Graph {
 	for callerKey, n := range g.nodes {
 		seen := make(map[string]struct{}) // deduplicate edges from this caller
 		for _, raw := range n.Calls {
-			calleeKey := g.resolve(n, raw)
+			var calleeKey string
+			if i := strings.Index(raw, "#."); i > 0 {
+				calleeKey = ctorScopes.resolve(raw[:i], raw[i+1:])
+			} else {
+				calleeKey = g.resolve(n, raw)
+			}
 			if calleeKey == "" {
 				continue // unknown external symbol
 			}
