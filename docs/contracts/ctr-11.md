@@ -34,9 +34,9 @@ existing typed intent fields and stage condition extensions separately. The rows
 name behaviors, not the precise unions/field spellings below.
 Unsettled U2: approve exact serial schema/parser/CLI integration reservations
 below. Alternative one architect integration lane owns all shared changes.
-Unsettled U3: implementing-lane RED with CTR-11 row amendment, recommended.
-Alternative tagged batch-RED command retaining a green default build. PL-D1 and
-CTR-11 currently require actual batch RED; W2-2 D5 applies to REC-1 only.
+U3 settled by W3-2: implementing lane writes/runs real failing tests, independent
+critic compares every named assertion, weaker tests are FIX. CTR-11 governing
+clause amendment is a separate shared docs commit. No RED claim on this branch.
 
 ## Eight concrete head schemas (U1)
 
@@ -116,26 +116,29 @@ plan model. Source positions use recordids.Location, no new coordinate model.
 type Identity struct { ID, Title string }
 type ConditionSpec struct {
     Source intent.Condition // ID/Record/Label/Text/File/Line from existing parser
-    Kind, ReviewBy, Target, Want string
+    Kind ConditionKind `json:"kind"`
+    ReviewBy string `json:"review_by"`
+    Target string `json:"target,omitempty"`
+    Want string `json:"want,omitempty"`
 }
-type DecisionHead struct { Identity; Ruling string; Supersedes []string; Conditions []ConditionSpec }
+type DecisionHead struct { Identity; Ruling Ruling; Supersedes []string; Conditions []ConditionSpec }
 type InvariantHead struct { ID, Statement string; EnforcedBy []string; Conditions []ConditionSpec }
 type GoalHead struct { Identity; Bet, Instrument, Threshold, Review string; Conditions []ConditionSpec }
 type FutureHead struct { Future intent.Future; Conditions []ConditionSpec }
 type QuestionHead struct { Identity; Conditions []ConditionSpec }
 type IncidentHead struct { Identity; Outcome []string; Conditions []ConditionSpec }
-type ObservationHead struct { Identity; Verdict string; Outcome []string; Conditions []ConditionSpec }
+type ObservationHead struct { Identity; Verdict FrictionVerdict; Outcome []string; Conditions []ConditionSpec }
 type AskHead struct { Identity; Conditions []ConditionSpec }
 // Closed tagged union: exactly one matching head pointer is nonnil.
 type Head struct {
-    Kind string
+    Kind RecordKind `json:"kind"`
     Decision *DecisionHead; Invariant *InvariantHead; Goal *GoalHead
     Future *FutureHead; Question *QuestionHead; Incident *IncidentHead
     Observation *ObservationHead; Ask *AskHead
 }
 type Record struct { Head Head; At recordids.Location }
 type ParseResult struct { Records []Record; Unparsed []intent.Unparsed }
-func ParseHead(kind, path string, source []byte) (ParseResult, error)
+func ParseHead(kind RecordKind, path string, source []byte) (ParseResult, error)
 type LoadResult struct {
     Records []Record
     Plans []verify.Plan
@@ -165,7 +168,7 @@ an empty healthy corpus. Record sort is kind/id/path/line, diagnostic sort path/
 ## Named condition evaluator (U1)
 
 ```go
-type DatedReview struct { RecordID, Date, Verdict string; At recordids.Location }
+type DatedReview struct { RecordID, Date, Verdict FrictionVerdict; At recordids.Location }
 type ConditionFacts struct {
     Records []Record
     Coverage readmanifest.Manifest
@@ -175,20 +178,40 @@ type ConditionFacts struct {
     Bets []intent.GoalBet
     Reviews []DatedReview
 }
-type ConditionResult struct { ID, Name, Record, State, Reason string }
-func EvaluateCondition(name, conditionID string, facts ConditionFacts,
+type TargetConditionResult struct { Target string `json:"target"`; State ConditionState `json:"state"`; Reason string `json:"reason"` }
+type ConditionResult struct { ID string `json:"id"`; Name ConditionName `json:"name"`; Record string `json:"record"`; State ConditionState `json:"state"`; Reason string `json:"reason"`; Targets []TargetConditionResult `json:"targets"` }
+type ConditionTarget struct { RecordID string `json:"record_id,omitempty"`; ExpiryID string `json:"expiry_id,omitempty"` }
+func EvaluateCondition(name ConditionName, target ConditionTarget, facts ConditionFacts,
     now time.Time) (ConditionResult, error)
-func ObservationVerdict(head ObservationHead, facts ConditionFacts) (string, error)
+func ObservationVerdict(head ObservationHead, facts ConditionFacts) (FrictionVerdict, error)
 ```
 
 State closes over holds/violated/unknown. Map absence means unknown, not false.
-Selection uses the exact existing intent.Condition.ID (record#ordinal), not only
-record id. Resolve exactly one ConditionSpec.Source.ID, then the requested named
-check. Missing id is an error; duplicate condition ids are a corpus error. No
-“first condition on record” fallback. Results preserve ID/Record/Name. To show a
-record, evaluate every applicable (condition id, named-check) pair in stable ID/name
-order, retaining each result. Aggregate is violated if any definitely violated,
-else unknown if any unknown, else holds. Unknowns are never filtered from totals.
+Selection has two disjoint addresses. Expiry checks use target.ExpiryID,
+the existing intent.Condition.ID (record#ordinal). Head checks use target.RecordID
+and the named check; exactly one selector field is set. Missing/duplicate record
+or expiry id returns a typed RefusalError, never a first-match fallback.
+
+Head-addressed SupersederResolves reads DecisionHead.Supersedes; OutcomeResolves
+reads IncidentHead/ObservationHead.Outcome; EnforcementHolds reads
+InvariantHead.EnforcedBy. They never require an expiry condition. LinkResolves at
+head aggregates these explicitly typed links; ReviewRecorded is head-addressed
+for GoalHead/GoalBet. ReviewDue accepts either a goal head (bet date) or exact expiry
+(review_by). ConditionFired is expiry-only. Invalid name/address combination
+refuses. No synthetic Revisit/Done condition is fabricated for a head field.
+
+A head check reads every target in its named field and returns target-level
+results as well as aggregate. Head result ID is a derived display label
+record#head:CheckName, never an authored expiry ID or a record-registry key.
+Expiry result ID remains Source.ID. Extend ConditionResult with
+Targets []TargetConditionResult, where TargetConditionResult has Target string,
+State ConditionState, Reason string (explicit target/state/reason JSON tags).
+Exactly duplicated field targets fail vet; sorting targets is deterministic.
+Empty field is not applicable (holds with explicit reason), except a closed
+incident claiming resolution without an outcome is violated under complete coverage.
+Per record, evaluate all applicable head checks plus every (expiry ID, check)
+pair, retaining all results. Aggregate is violated if any definite violation,
+else unknown if any unknown, else holds. Unknowns are never dropped from totals.
 
 Coverage is the existing manifest carried by LoadRecords, not a boolean authored
 by a record. Any absent target is violated only when its owning routed member was
@@ -197,9 +220,8 @@ or unmapped ownership is unknown with coverage reason. Unrelated unreadable memb
 do not invalidate a fully read, specifically resolved target. This applies to
 supersedes/outcomes/links/reviews/readings and enforcement facts alike.
 
-SupersederResolves: this condition's explicit supersedes target resolves to one
-record under complete coverage. OutcomeResolves: this condition's explicit outcome
-target resolves similarly. Prose with no typed target stays unknown. ReviewRecorded
+SupersederResolves: every head supersedes target resolves to one record under
+complete coverage. OutcomeResolves: every head outcome target resolves similarly. Prose with no typed target stays unknown. ReviewRecorded
 uses its enclosing goal's accepted GoalBet, not the existence of any note. If the
 bet is refused/missing or its review date invalid, return unknown with reason
 (project-understanding §7 explicitly refuses the bet). If injected now is before
@@ -213,7 +235,7 @@ ReviewBy does not rewrite the original GoalBet review boundary used by this chec
 
 LinkResolves checks exact typed target as above. EnforcementHolds checks authored
 enforcement references with a checked gate/proven rung and complete coverage;
-absent evidence is unknown. ConditionFired evaluates this selected condition only:
+absent evidence is unknown. ConditionFired evaluates the exact selected expiry only:
 date against injected now; record against explicit ruling; reading against exact
 verdict; manual unknown until due then ReviewDue, never guessed true. No LLM/prose
 predicate, internal time.Now, filesystem, git, store, provider or process. Unknown
@@ -388,7 +410,7 @@ Keep authored bars <2 s cold / <200 ms changed. Test presence is not timing proo
 Batch primary: internal/records/lane_contract_test.go::TestLaneContractsRecords;
 `go test -race ./internal/records -run '^TestLaneContractsRecords$' -count=1`.
 CLI aggregate `cmd/fathom/rec_contract_test.go` asserts envelope/exit/zero-write parity.
-Actual RED mechanism remains U3. Missing test/package alone is absence, not observed
+W3-2 assigns actual failing execution to each implementing lane. Missing test/package alone is absence, not observed
 RED. Fixtures above and names are proposals, not present/executed on this branch.
 
 ## Evidence limits and decision models
