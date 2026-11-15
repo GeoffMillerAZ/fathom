@@ -1,11 +1,13 @@
 # LIB-12: offline grammar notices
 
-LIB-12 verdict: PASS for offline local Linux/amd64 archive proof; GoReleaser runtime unrun.
+LIB-12 verdict: PASS for offline local Linux/amd64 archive proof and pinned GoReleaser config validation; release runtime unrun.
 
-Latest rerun: all 55 pinned source archives are now available locally. The complete
-real-binary archive passes; missing and stale notices fail. This is local archive
-proof, not a hosted release, the four-target GoReleaser runtime, or scratch plan
-verification. The plan box remains untouched. See the latest-rerun section below.
+Latest verification: all 55 source archives are available locally; the complete
+real-binary archive passes and missing/stale variants fail. Authenticated
+GoReleaser v2.18.2 also validates the owned config with exit 0. Neither result is
+a hosted release, four-target GoReleaser release execution, or scratch plan
+verification. The plan box remains untouched. Earlier readings are preserved
+below, followed by the source-population and pinned-tool verification updates.
 
 ## Initial reading before source population (preserved)
 
@@ -291,3 +293,61 @@ real binaries, not produced by GoReleaser. A fresh hosted runner still needs its
 pinned source population supplied before release; this local cache does not add
 such provisioning to the workflow. No plan checkbox or changelog was edited,
 and OQ4/project licence terms are unchanged.
+
+## Pinned GoReleaser config validation (latest)
+
+On 2026-11-15, only the repository-pinned GoReleaser **v2.18.2** verification
+binary was provisioned under gitignored `workspace/tools/goreleaser-v2.18.2`.
+No global installation, tool pin or dependency changed. The official
+[release](https://github.com/goreleaser/goreleaser/releases/tag/v2.18.2),
+[Darwin/arm64 archive](https://github.com/goreleaser/goreleaser/releases/download/v2.18.2/goreleaser_Darwin_arm64.tar.gz)
+and [checksums.txt](https://github.com/goreleaser/goreleaser/releases/download/v2.18.2/checksums.txt)
+were obtained over HTTPS. Before extracting/executing the binary, the archive's
+SHA-256 was compared with its unique entry in the official checksum file and the
+GitHub release API's asset digest. The checksum file's own SHA-256 also matched
+its GitHub API asset digest. This authenticates the downloaded bytes against the
+official HTTPS release/checksum metadata; no Sigstore signature verification is
+claimed.
+
+| Checked artifact | SHA-256 |
+|---|---|
+| Official checksum file | `0818c962a5a5e49abb7f721f4fef851d92aca7253821c1eb5496338e812c0a47` |
+| Official Darwin/arm64 archive | `a811ff154fe136a0cfb55d00126c151fc39ec370a663d805a9ca5547445aa70c` |
+| Extracted verification binary | `af64e25fe2ebf23360189b92f5a09e01ee8ded6d964855ca056f35bc6951167f` |
+| Owned `.goreleaser.yaml` | `5f03b321ef4eccc1117a8868af4ef73af567692678b6705395e8b25b0c224671` |
+
+The authenticated binary reports `GitVersion: 2.18.2`,
+`GitCommit: 25a52e520f9c993711b93ea1111ed90c024e0528`, and `Platform: darwin/arm64`.
+Its own `check --help` documents positional configuration-file arguments.
+Provisioning and the following config check ran under the shared gate lease,
+with the gate marker clear:
+
+```sh
+GOPROXY=off GOTOOLCHAIN=local NO_COLOR=1 \
+  workspace/tools/goreleaser-v2.18.2/goreleaser check .goreleaser.yaml
+```
+
+Observed exit: **0**. Output:
+
+```text
+  • checking                                  path=.goreleaser.yaml
+  • 1 configuration file(s) validated
+  • thanks for using GoReleaser!
+```
+
+Retained authentication evidence:
+`workspace/tools/goreleaser-v2.18.2/{release,authentication}.json` and
+`workspace/tools/goreleaser-v2.18.2/checksums.txt`.
+Command evidence: `workspace/logs/goreleaser-v2.18.2-provision.log`,
+`workspace/logs/goreleaser-v2.18.2-check.log` and
+`workspace/logs/goreleaser-v2.18.2-check.exit`.
+
+The earlier lack of pinned-tool config validation is now resolved. This check
+validates configuration, not execution of the before hook, four-platform builds,
+archive generation by GoReleaser, release publication, attestation or upload.
+Only `--version`, `check --help` and `check .goreleaser.yaml` were invoked on the
+tool. No tag, deployment, remote release or publishing operation was performed.
+The prior local real-archive PASS remains separate evidence. Full integration
+gate and scratch index/plan verification remain unrun by this lane, and fresh
+hosted runners still require their sources provisioned before release.
+Only this owned reading changed; the plan box, changelog and OQ4 are unchanged.
