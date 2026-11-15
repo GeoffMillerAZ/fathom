@@ -58,7 +58,8 @@ This document supplies the requested reuse map, not a competing API draft.
 | #312 HZ-8/HZ-9/LIB-9 | StatefulType/isStatefulType/CheckStatefulReplacement; ReplacementFact and typed class; stateful fixture; TestLaneHazardStateful | Actual IF-13 fact/source-scan handoff from #168, HZ-6, LIB-7 as issue requires; person-accepted baseline with provenance and independent agreement reading; HZ-M1 separately gates surfaces at 0.9. |
 | #313 HZ-11 | VersionFacts/UpgradeHazards; same-source explicit versions; TestLaneHazardUpgrades; #168 owns IF-17 preparation | IF-8/IF-17 handback, two real local pinned catalogs and actual attributes-in-use input; retain fixture reading owner; no dependency on publication IF-6. |
 
-No row is checked and no reservation is inferred installed. All five gaps are
+No row is checked. W6-4 settles the four exact shared-test grants below; no
+actual writer activation or other reservation is inferred installed. All five gaps are
 contract-covered by the cited source. Their missing implementation/input/grant
 work is not silently closed. IF-13 and IaCUpgradeImpact are absent in this base;
 new source signatures for those upstream implementations cannot be fabricated.
@@ -122,12 +123,26 @@ translate CTR-10 HazardDimension to existing Dimension; no internal/analysis/
 review source grant is inferred. Existing fact findings remain in the iac
 payload while the dimension states whether that computation ran.
 
-Request A's exclusive integration/test turn for existing
+W6-4 grants the former U1 exact test-file reservation for existing
 `internal/mcp/review_tool_test.go`, `iac_facts_test.go`, `iac_cfn_test.go` and
-`review_compat_test.go` if their assertions need updating. No test is renamed
-or dropped to force seven. Schema/change-note/API snapshot edits remain with
-the architect; absence of a named schema file is not a grant to invent one.
-The exact requests are `out/REQUEST-iac-reservations.md`.
+`review_compat_test.go`, one owner per turn. #311 is the exclusive writer for
+its registered-dimension integration/proof turn after the #167/#168 committed
+baseline handback. #303 reads these four; its evidence tests remain in its own
+approved files, not an inferred second shared-test write grant. #311 may maintain
+these tests on its documented maintenance return after #303, with no concurrent
+owner and no new prerequisite cycle. This is the approved requested responsibility,
+not a guessed grant from house rules or a source handback that already happened.
+
+The receiving #311 turn records exact incoming commit/base, outgoing owner,
+all four paths and scope (dimension/absence/as_of/citation/byte-cap/compatibility
+assertions); first writer waits for that exclusive handback. The outgoing turn
+records committed proof and the next exact owner before any transfer. W6-4
+settles permission, not current activation, implementation or actual proof.
+No test is dropped to force seven. No engine/schema/tool-registry/command/hook
+write grant follows; change-note/API snapshot ownership remains architect's.
+Actual IF-17 prep and other manifests/handbacks stay missing until supplied.
+The existing out/REQUEST-iac-reservations.md U1 request is settled for these four
+paths by W6-4; remaining requests are not implicitly granted.
 
 ## Exact acceptance assertions by consumer
 
@@ -168,3 +183,18 @@ No raw facts, accepted entries or replay precision have been invented.
 
 None. Fact projection and declared provenance are deterministic; provider none.
 Opt out by withholding the input and reporting why no answer was earned.
+
+
+## W6-4 compliance record and exact assertion
+
+W6-4 approves former iac-ctr10-map U1 as recommended, one owner per turn. This
+settles the named test-file permission only. The existing prospective
+TestContractFactsHandoffDAG must additionally assert that the four granted test
+paths have exactly one active writer (#311) during integration/proof, #303 has
+read-only access, maintenance return is a transfer not a dependency, missing
+incoming handback blocks activation, and a simultaneous-writer reservation is
+rejected. Assert no extra engine/schema/tool/hook/command path enters the grant.
+No new source test, grant data, incoming commit or current-owner receipt is
+fabricated here. Same critic confirms this immutable compliance commit; the
+prior LAND remains historical. FIX round count stays zero, as this is a later
+binding-ruling update rather than a critic FIX response.
