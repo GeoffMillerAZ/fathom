@@ -72,7 +72,7 @@ Go request/result types have explicit JSON tags; local error kinds include
 input/pin/catalog/parse/native/limit. Errors never echo template contents.
 
 Read anchors: `internal/iacfacts/cfn_replace.go` CFNChange/CFNChangeFinding,
-`read_cloudformation.go`, `catalog.go` IaCCatalogInfo/ListIaCCatalogs;
+`read_cloudformation.go`, `catalog_dir.go` IaCCatalogInfo/ListIaCCatalogs;
 existing synthetic `TestCheckCloudFormationChange` is a reuse fixture, not
 an independent reading of real resource schemas.
 
@@ -173,3 +173,11 @@ and catalog/runtime digests still require input delivery, not a fabricated rulin
 
 None. Both arms and scorer are deterministic; provider none is the entire
 protocol. Opt out by not running a reading. A model supplies no truth label.
+
+## Draft verification correction
+
+The first draft commit's Verified line incorrectly claimed the scratch checker
+passed: its catalog-info anchor named catalog.go instead of catalog_dir.go.
+The shell continued after that assertion. This append corrects the anchor and
+records a successful rerun with fail-fast shell execution. No implementation
+or measured result changed.
