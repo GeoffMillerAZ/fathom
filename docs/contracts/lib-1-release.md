@@ -1,6 +1,6 @@
 # LIB-1 / #255: first tagged door release contract
 
-Status: DRAFT W2-4 backlog. Contract only, no release/tag/upload authorization.
+Status: Approved 2026-11-15 under W5-5/W5-6. Contract only; implementation and release proof pending. No tag/upload authorization.
 Base: 468dc705813382d584926887b451cbea145c76ac. Owns this document only.
 Current pinned buildinfo.Release and nearest local reachable tag are v0.26.0.
 This observation is not a claim about all remote releases. No tag created.
@@ -16,7 +16,8 @@ LL-M1 revisit fired and W2-1 answers it: door 80, outside consumer 81; raw count
 published, no door headroom. No claims that notice/green-main/CI triggers passed.
 
 D1 settled by LIB-1/LP-1/#255: CUT-1, closure, notice and one green main wave plus
-release ritual precede tag. Only architect chooses version/roll/tag.
+release ritual precede tag. W5-5 makes version computed from unreleased fragments;
+controller and owner retain tag authority.
 Alternative tag now and fix assets later contradicts these rows.
 D2 settled by W1-3: build locally -> validate notice/archive -> attest -> upload;
 failed validation uploads nothing. Current release workflow invokes GoReleaser
@@ -29,17 +30,19 @@ candidate, any exported door change uses architect API hold diff <=80 lines.
 D5 settled by root release/change rules: version record/buildinfo and exact-tree
 gate/CI before tag, never force-push or claim a receipt presence command is proof.
 
-## Concrete recommendations requiring ruling
+## Approved version rule and release authority
 
-U1 recommend v0.27.0, a minor release from pinned v0.26.0, for first public door.
-Alternative v0.26.1 if architect establishes no compatibility change in the release
-delta. Version is a concrete proposal, not a tag or implied architect approval.
-U2 recommend release integrator owns exact version/roll/workflow/archive validation
-paths below, #255 stays a reading-only lane. Alternative split archive validator
-from integrator release. No broad release-directory grant.
-U3 recommend tag only final rolled, clean main SHA whose mandatory local gate and
-Linux CI both passed after #254 fixes. Alternative defer release entirely. “Green
-some earlier tree” never authorizes this tag. Capture exact SHA in approval record.
+W5-5 settles U1: the release version is the version computed from the actual
+unreleased fragments by the release tool/ritual, v0.27.0 as the fragments stand.
+It is not a permanently selected literal or a fallback to v0.26.1. Recompute at
+the exact roll candidate; source/fragments changing invalidates an earlier result.
+W5-6 settles U2: the exact release-integrator/checker/controller paths below and
+separately frozen roll-fragment manifest are approved as recommended, serial
+after #254. The proposed grammar-notice.md fragment is approved by NOTE254.
+Neither version computation nor these grants permits a tag. Final rolled clean
+main SHA needs its mandatory local gate, Linux CI and CUT-1/LIB-11/LIB-12 proof;
+controller and owner authorize the exact version/SHA tag. No earlier-tree PASS
+or contract approval can supply that authorization.
 
 ## Release candidate and exact owned-path handoffs
 
@@ -48,7 +51,7 @@ docs/bench/readings/realignment/lib-1-tag.md and
 docs/bench/readings/library-roadmap/lp-1-release.md.
 It reads release evidence and writes honest verdicts, never versions/tag/workflow.
 
-Proposed exclusive release-integrator grant, serial after #254 notice handback:
+W5-6 approved exclusive release-integrator grant, serial after #254 notice handback:
 - .goreleaser.yaml
 - .github/workflows/release.yml
 - internal/buildinfo/buildinfo.go
@@ -142,7 +145,8 @@ Command: python3 -m unittest discover -s scripts -p check-release-archives_test.
 No test has executed here and this file does not yet exist.
 
 Release proof is separate:
-1. Capture approved version/final SHA and exact CUT-1/LIB-11/LIB-12 evidence.
+1. Compute version from exact unreleased fragments, capture result/final SHA and
+   exact CUT-1/LIB-11/LIB-12 evidence. No fixed version override.
 2. Roll changelog/version with exact fragment manifest, then mandatory local gate
    and Linux CI on final clean main tree, with no later source mutation.
 3. Explicit architect authorization names that version and SHA. Tag only then.
@@ -158,7 +162,7 @@ version-to-changelog consistency. Draft proof only git diff --check and source
 inspection. No tag/upload/gate/CI/proxy/notice/runtime or library-row claim.
 Decision models: none. Archive identity/license completeness is deterministic.
 
-## Corrected #254 handoff and generated provenance (F1)
+## #254 handoff and generated provenance
 
 Read #254's source-only correction 5e779cd54 after f9b744758 in its isolated lane:
 noticeName is THIRD-PARTY-NOTICES.txt. Reuse its GenerateNotice(lockBytes, cache)
@@ -208,7 +212,7 @@ notice AND supply its matching digest. Full controller must still fail through
 licence policy or expected literal. The cache/lock/generator identity must all bind
 candidate commit, not a reading's claimed text.
 
-## Canonical tar namespace and extracted-byte witness (F2)
+## Canonical tar namespace and extracted-byte witness
 
 Mandatory #254 CheckReleaseArchiveNotice runs first with its repaired semantics.
 For every member: only regular file or directory; for a directory remove exactly
@@ -264,5 +268,45 @@ go test -race ./cmd/grammarnotice -run
 '^(TestReleaseArchiveRequiresGrammarNotice|TestReleaseArchiveRejectsMemberAliases|TestReleaseArchiveNoticeExtractionWitness)$'
 -count=1 (last command one shell line).
 Capture actual RED before implementation per W3-2 and compare assertions independently.
-Only U1 version and U2 exact integrator/fragment grants plus U3 final tag authority
-remain decisions. Notice basename/canonical semantics are source facts, not choices.
+W5-5/W5-6 settle the version rule and exact integrator/fragment grants. Final tag
+authorization remains controller/owner action after proof, not an unresolved
+contract design choice. Notice basename/canonical semantics stay source facts.
+
+## W5 computed-version and fragment proof
+
+Existing third_party/agentic-kit/cmd/release-notes is the pinned release tool.
+Its actual -check and Unreleased modes validate/fold current fragment bytes and
+emit computed Release impact. It has -roll VERSION -date DATE; it has NO invented
+-next-version flag. The numeric version follows that tool's classification and
+the existing release ritual's semantic bump rule against the last release
+baseline. Under pre-1.0 rules Breaking bumps minor, Added/Deprecated minor,
+otherwise patch. The resulting candidate is v0.27.0 as it stands; a synthetic
+archive fixture's version field is illustrative, never a pinned release decision.
+
+Controller records exact tool source identity, baseline tag, ordered fragment
+path/SHA manifest, -check and Unreleased output/exit, computed impact and resulting
+version BEFORE roll. Fail closed on invalid/incomplete fragments or baseline.
+Recompute for a changed manifest; do not reuse a stale v0.27.0 result, force a
+version, infer compatibility from notice generation, or mutate fragments to
+obtain a preferred bump. Existing internal/buildinfo/buildinfo.go and rolled
+CHANGELOG version must match that result at the exact final tree.
+
+Extend scripts/validate-release-archives_test.sh with named cases
+computed_version_uses_fragments, computed_version_rejects_stale_manifest,
+computed_version_invalid_fragments_stop_before_roll and
+computed_version_is_not_tag_authority: fixture fragment impacts exercise patch/
+minor/pre-1.0-breaking classification and the corresponding numeric result;
+changed fragment bytes invalidate cached result; invalid tool output/failed check
+cannot proceed to roll/build/attest/upload; valid result invokes no tag and
+does not replace final SHA/controller-owner approval. Keep all existing archive/
+notice/source-byte/provenance negatives. Exact command:
+bash scripts/validate-release-archives_test.sh. Proposed/unrun, implementing-lane
+real RED and assertion-by-assertion critic under W3-2.
+
+NOTE254 W5-6 approved exact additional source fragment:
+docs/changelog/unreleased/grammar-notice.md, whose Changed entry states generated
+pinned-source grammar licence notices and refusal before attestation/upload.
+Its final bytes/hash belong in the separately frozen roll manifest. This contract
+does not create that fragment, roll CHANGELOG, alter buildinfo or authorize tag.
+All original source cache/notice generation/archive identity/green-main/CI/closure
+prerequisites and controller-only publication order remain mandatory.
