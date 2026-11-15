@@ -126,22 +126,26 @@ No valid real catalog, pair manifest, native runtime digest or assembly bytes
 are supplied in this clone. They are REQUIRED INPUTS, not empty accepted pins.
 Preregistration is append-only and complete before either arm runs. Changing
 an input after scores starts a newly labelled reading; failures cannot be
-replaced by easier pairs. Pair minimum/selection is U1 below.
+replaced by easier pairs. Pair minimum/selection is settled by W6-3 below, not an open U1.
 
 ## Exact scorer and acceptance
 
+Internal bench scoring, before the W6 publication projection below:
 For the same eligible resource keys: oracle WILL_REPLACE is positive;
 WILL_UPDATE or verified unchanged is negative. MAY_REPLACE/unsupported are
 oracle-unknown. A definite product replacement is a positive prediction;
 conditional/unknown is abstention, never TN. Record TP, FP, FN, TN, product
 abstentions and oracle unknowns. FN includes definite oracle replacements for
-which the product did not issue a definite flag. Publish precision TP/(TP+FP),
-recall TP/(TP+FN), eligible/scored/failed/excluded counts and each reason.
-Precision is undefined for TP+FP=0; it can never PASS. Compare exact integers
-100*TP >= 85*(TP+FP), not rounded displays. All preregistered executions must
-be accounted for. Missing native/catalog/pair or truncated output is
-INCOMPLETE, with no observed precision claim. With complete coverage, below
-0.85 is FAIL, at or above is PASS. HZ-M2 verdict opens the reading. A FAIL
+which the product did not issue a definite flag. Record privately precision TP/(TP+FP),
+recall TP/(TP+FN), eligible/scored/failed/excluded counts and each reason;
+public export is restricted by the W6-3 licence projection below.
+Precision is undefined for TP+FP=0; it cannot PASS. Exact point comparison
+100*TP >= 85*(TP+FP) remains descriptive, never the sole acceptance rule.
+All preregistered executions must be accounted for. Missing native/catalog/pair
+or truncated output is INCOMPLETE, an operationally invalid reading with no
+statistical claim. A valid reading uses W6-3 / BN-D6's interval-based
+CONFIRMED/REFUTED/INCONCLUSIVE outcomes below; threshold remains 0.85.
+HZ-M2 verdict opens the reading. REFUTED (the valid below-floor FAIL outcome)
 stops all further hazard computation: fix HZ-1 before any other hazard row,
 including Terraform computation rows (issue #271 Stop conditions, design
 change-hazards §14 and ADR-099 Revisit). The live IF-C4 flag requires advice
@@ -157,8 +161,8 @@ Neither passing HZ-1 nor restoring its floor lifts Terraform's own gate.
 | test_manifest.py::test_pins_and_population | Correct fixed manifest accepted; missing catalog/runtime/source digest, changed template byte, duplicate id, cross-root path, unfrozen roster and empty population each refuse; roster changes invalidate a run. |
 | adapter/main_test.go::TestCFNBenchAdapter | Exact reader/comparator route above; one changed replacement pointer produces definite with matching address/span/digest; conditional remains conditional; opacity/unbound/syntax/drop is unknown/refusal; additions/deletions/type changes excluded; result arrays nonnil; canary absent; order permutations give identical JSON. |
 | test_native.py::test_pinned_cli_pair | Exact pinned CLI argv and one-stack assembly; will-replace, may-replace, update and unchanged parsed separately; credentials/network attempted, unknown output, signal, timeout or wrong pin refuse; CLI output and machine-readable crosscheck agree by resource. |
-| test_score.py::test_below_floor_handoff | A complete below-0.85 result requires all other hazard computation rows stopped until HZ-1 fixed and live IF-C4 advice wording; neither an HZ-1 PASS nor repaired floor authorizes Terraform surfaces below their own 0.9. This assertion verifies the handoff decision, not an unowned product flag edit. |
-| test_score.py::test_confusion_and_floor | TP=17 FP=3 gives 0.85 PASS with complete inputs; TP=16 FP=3 FAIL; TP=1 FP=1 FN=1 TN=1 gives precision=recall=0.5; injected FP and FN increment their own cells; TP=FP=0 undefined/INCOMPLETE; missing row/failed arm remains INCOMPLETE; conditional is never TN; reordered rows identical. |
+| test_score.py::test_below_floor_handoff | REFUTED below-0.85 interval stops all other hazard computation and requires live IF-C4 advice wording until fixed; INCONCLUSIVE grants no continuation/serving permission and triggers only the preregistered extension; CONFIRMED cannot lift Terraform own 0.9. This tests the handoff decision, never an unowned flag edit. |
+| test_score.py::test_confusion_and_floor | TP=17 FP=3 gives point0.85 but not automatic CONFIRMED; TP=16 FP=3 point below floor also not automatic REFUTED if interval crosses0.85; TP=1 FP=1 FN=1 TN=1 gives precision=recall0.5; seeded FP/FN alter their cells; zero positives undefined/INCOMPLETE; failed/missing arm INCOMPLETE; conditional never TN; interval/outcome/stopping/publication assertions below all mandatory; reorder identical. |
 
 Implementer first runs `python3 -I -m unittest discover -s docs/bench/harnesses/hazard-cfn -p 'test_*.py'`
 and `go test -race ./docs/bench/harnesses/hazard-cfn/adapter -run '^TestCFNBenchAdapter$' -count=1`
@@ -167,12 +171,143 @@ Run `run.py --pairs .../pairs.json --output workspace/tmp/hz-1-results.json`
 only with the pinned input handoff, and independent critic checks all rows above.
 Scratch verify of change-hazards is separate, never presence-based acceptance.
 
-## Unsettled point for foreman batch
+## W6-3 settled cohort, exact selection and preregistered extension
 
-U1 (#271): Recommend 60 preregistered template pairs, balanced replacement,
-nonreplacement and conditional/opaque, independent source roster frozen before
-scores. Alternative 100. HZ-1 fixes 0.85 but not cohort/minimum. Raw pair identities
-and catalog/runtime digests still require input delivery, not a fabricated ruling.
+W6-3 replaces former U1. Accepted n is 60 pairs from PUBLIC HISTORY, never
+hand-picked, balanced across hazard-case classes, with the roster hash frozen
+before ANY run. A valid INCONCLUSIVE reading triggers the already preregistered
+extension to 100 total pairs; 0.85 is unchanged. The alternative 100-only first
+look is no longer an open choice. No raw roster or interval is supplied here.
+
+Freeze a complete nominated public-repository frame, time window, exact heads,
+first-parent commit walk and source-file predicate before evaluating either arm.
+Enumerate every adjacent first-parent base/head pair in that frame which changes
+a CloudFormation template (.json/.yaml/.yml with Resources). Do not sample on
+product flags, oracle output, success of native execution or a favorable score.
+Record every excluded merge/non-template/invalid-source candidate by opaque
+case id and a fixed exclusion code; do not replace failed selected cases.
+
+Freeze independent pre-run case labels from that public history into the three
+existing #271 candidate strata: replacement-candidate, nonreplacement-candidate,
+conditional-or-opaque-candidate. They are intended hazard-case coverage labels,
+NOT observed truth or guesses at measured outcomes; the oracle still labels
+replacement independently. Label provenance and the closed labeling rules must
+be registered before scores; a disputed/unclassifiable history remains named
+and cannot be assigned after observing either arm. This is HZ-1's CFN case
+coverage, not a new Terraform H2/H4/H5 cohort or extra confirmatory primary.
+
+Within each stratum rank candidates by SHA-256 of the domain
+"iac-cfn-w6-v1", fixed seed "20261115", and length-prefixed canonical public
+repository id/base commit/head commit/template path/stratum. Ties use that
+same tuple. Selection is deterministic round-robin in the fixed stratum order
+above: first 60 means 20 per stratum; reserve next 40 before runs so the full
+100 has counts 34/33/33. Publish the history-roster hash and opaque pair ids;
+freeze all 100 entries and their two look memberships before any native/product
+execution, shakedown on confirmatory pairs, or score. A distinct development
+shakedown uses disjoint history ids and cannot tune this roster. Insufficient
+frame, missing independent labels or unable to meet balance is an input HOLD,
+never permission to hand-pick or post-result rebalance. Multiple pairs from a
+repository remain identified as one statistical cluster.
+
+The existing pairs manifest binds public source identities/bytes, class labels,
+roster hash and look membership. Catalog/schema identities, catalog-derived
+citations and full run pins belong only in confined workspace input receipts;
+they are not emitted in public pairs.json/pins.json without redistribution
+rights. No source bytes, catalog fields or fixture values are added by this
+contract. Freezing hash/selection is still REQUIRED INPUT, not a claim it exists.
+
+## W6-3 / BN-D6 exact statistical method and outcome assertions
+
+Source: docs/design/proof-program.md BN-D6 (paired by task, clustered by
+repository, three outcomes, Holm primaries, preregistered sequential stopping,
+pins and validity). Task here is the template pair; both arms always travel
+together. Sole confirmatory primary is precision TP/(TP+FP) at 0.85; recall and
+stratum counts are descriptive. Holm across this one primary is the identity.
+Register two possible looks, 60 and cumulative100, with total alpha0.05 split
+0.025 each (Bonferroni across looks, not unregistered optional peeking). No
+extra primary or look can be added after observing data.
+
+Freeze a paired repository-cluster percentile bootstrap for the precision ratio:
+G unique repository clusters, each storing all selected pair/resource TP/FP
+counts. In each of B=20000 replicates draw G repositories with replacement,
+copying each selected cluster's entire paired observations, then recompute
+sum(TP)/sum(TP+FP). Use a counter-based SHA-256 draw stream with domain
+"iac-cfn-ci-w6-v1", seed "20261115", look size and replicate/draw counters;
+unbiased rejection sampling maps hashes to sorted repository indices. Fixed
+quantiles are empirical nearest-rank at 0.0125 and 0.9875 (the97.5% interval),
+clipped to [0,1]. Never bootstrap individual resource flags as independent.
+Retain all strata and per-repository counts; do not change the point estimand
+to an unweighted mean of repository precisions. This is a preregistered
+approximate cluster interval, not a claim of exact finite-sample coverage.
+
+G<2, no positive predictions, any undefined bootstrap denominator, or degenerate
+bootstrap dispersion cannot manufacture certainty: use conservative interval
+[0,1] with an explicit statistical-validity code and outcome INCONCLUSIVE.
+Point itself is undefined if TP+FP=0. Invalid/missing native cells remain
+operational INCOMPLETE and do not become valid INCONCLUSIVE by this rule.
+A disjoint no-claim shakedown must publish the method's noise/validity and power
+limitations; W6 fixes n60/100, so that evidence cannot silently change n, the
+floor, roster or stopping rule. If it shows the preregistered method invalid,
+HOLD instead of inventing a more favorable interval after results.
+
+At each valid look compare UNROUNDED bounds: lower>0.85 -> CONFIRMED (acceptance
+PASS); upper<0.85 -> REFUTED (acceptance FAIL); otherwise INCONCLUSIVE. A bound
+touching0.85 is INCONCLUSIVE, never a point-only PASS. Publish point and both
+bounds beside outcome. Use six fractional digits/half-even for display only;
+retain exact integer point counts and full-precision computed bounds for the
+comparison. The exact 0.85 floor is not raised to a new target. The interval
+expresses uncertainty about meeting that unchanged target.
+
+Stopping is fixed: at60 CONFIRMED/REFUTED stop; at60 valid INCONCLUSIVE run ONLY
+the frozen remaining40 and report cumulative100 plus retained60 result; at100
+INCONCLUSIVE remains INCONCLUSIVE/HOLD with no third look or extra pairs.
+Operational INCOMPLETE requires a repaired same-input execution receipt or
+new preregistration, never an automatic easier replacement cohort. No missing
+inputs are supplied by this ruling. No surface claim on INCONCLUSIVE.
+
+Additional exact test_score.py::test_confusion_and_floor assertions:
+point0.90 with interval[0.86,0.97] CONFIRMED; point0.80 with[0.70,0.84] REFUTED;
+point0.85 with[0.75,0.93] INCONCLUSIVE. [0.85,0.95] and[0.75,0.85] both
+INCONCLUSIVE. Identical point counts with different intervals can differ in
+outcome; display rounding must not decide classification. These supplied-bound
+vectors test classification only, not measured or manufactured bootstrap output.
+Test identical cluster inputs/seed -> identical full interval, both arms retained,
+no per-resource independent resampling; G1/undefined/zero-dispersion yields
+[0,1]/INCONCLUSIVE, never spurious confirmation. The implementing lane must
+independently check the interval implementation against a pinned reference on
+disjoint synthetic fixtures; no such check or bootstrap ran in this draft.
+
+Additional test_manifest.py::test_pins_and_population assertions: public-history
+frame enumeration reproducible under input reorder; fixed labels before output;
+exact20/20/20 first60 and34/33/33 cumulative100; seed/ranking/first-parent and
+look ids fixed; full100 hash frozen before first run; hand-picked substitution,
+insufficient strata, changed hash and post-result relabel/rebalance each refuse.
+Additional test_score.py::test_below_floor_handoff assertions: valid60
+INCONCLUSIVE activates exactly preregistered40, cumulative100 includes original60;
+60 CONFIRMED/REFUTED never activates extension; 100 INCONCLUSIVE no third look.
+
+## W6-3 publication and licence boundary
+
+A public reading exports only aggregate performance counts, opaque PUBLIC
+HISTORY pair/repository ids, look ids, validity/outcome verdicts and the required
+point estimate with interval. Roster hash is an identity of public-history input,
+not a schema fingerprint. It publishes NO material derived from a schema with
+no redistribution licence: no schema bytes, property/type names, pointers,
+fragments, replacement annotations, catalog/blob digests, schema-derived ids,
+per-resource citations, manifests, per-attribute decisions or raw native output.
+Unclear licence is treated as no redistribution permission. Internal adapter
+provenance/schema receipts and detailed joins stay confined to workspace;
+existing citation assertions are PRIVATE correctness checks, not a public export.
+Even if permission exists, this reading keeps the narrow counts/ids/verdicts
+projection plus mandatory statistics; licensing does not silently widen it.
+
+Add test_score.py::test_publication_boundary: seed private results with canary
+schema type/property/pointer/digest/replacement text and raw native output;
+public renderer emits only the exact allowlist above and no canary/schema-derived
+field. Public ids must derive from registered public history, never schema names.
+Missing licence permission never enables copying; private correctness citations
+survive internally while public schema-derived fields are absent. No schema or
+real operator data was read, run, published or fabricated in this update.
 
 ## Decision models
 
@@ -193,3 +328,10 @@ Restored the stronger authored ordering stop from #271, design §14 and ADR-099:
 a below-floor HZ-1 stops all further hazard computation until repaired. The
 per-tool serving floors remain separate. Added the exact prospective
 test_below_floor_handoff assertion. No native execution or product edit.
+
+## W6 compliance record
+
+W6-3 settles former U1 and supersedes point-only acceptance/publication wording
+throughout this draft. This is a later-ruling compliance update, not a new
+critic FIX cycle; the prior resolved FIX round1 remains recorded. Independent
+critic must confirm this exact immutable commit before approval.
