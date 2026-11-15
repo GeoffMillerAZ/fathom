@@ -127,7 +127,7 @@ type Lane struct {
     IDRanges []IDRange
 }
 func AllocateRecordID(lane Lane, family, target string,
-    inventory []recordids.Definition) (string, error)
+    inventory []recordids.Definition, policy recordids.Config) (string, error)
 // cmd/fathom, existing args/writer convention
 func cmdRecNew(args []string, stdout, stderr io.Writer) int
 ```
@@ -138,10 +138,21 @@ repeated definitions. Extend Defaults with observation headings in the legacy
 log and per-entry files. Match a definition heading only, not references. Also
 read CUE lane declarations, validate all ranges and detect duplicate lane slugs.
 Preserve existing grandfathered plan pairs, but never allow a new reservation
-to reuse one of their ids. No grandfather bypass for new records.
+to reuse one of their ids. No grandfather bypass for new records. `policy` is the effective Config loaded
+from the trusted base using existing Defaults/Load behavior, including exact
+Grandfather path sets and CrossPlan. The allocator passes the complete inventory
+to CheckDefinitions with that policy. It never reconstructs policy, hardcodes
+DF ids, deduplicates the inventory or mistakes an excepted collision for an unused
+id. A new third path, a duplicate within one plan, or a stale exception is an error
+under the same checker law. Occupancy uses every definition, including both
+members of an allowed grandfather pair. Existing grandfather ids cannot be
+allocated again, even if the requested lane range includes their numeric suffix.
+CLI reads the effective policy at the independent trusted revision and passes it
+unchanged. A candidate cannot weaken cross-plan checking or add an exception.
 
 Allocator rejects malformed lane/range, absent family, ambiguous family ranges,
-any duplicate in inventory (including observations), noncanonical target,
+any duplicate returned by recordids.CheckDefinitions(inventory, policy)
+(including observations), any checker policy error, noncanonical target,
 absolute path, traversal, or target not in exact OwnedPaths. This pure function
 checks lexical containment only. Filesystem containment is a CLI boundary below.
 Read-only paths never grant write permission. Duplicate diagnostics name both
@@ -250,7 +261,15 @@ O10000; `exhausted-range` seeds both ids and expects empty id plus exhaustion er
 `outside-path` expects empty id and unchanged inventory; `repeat` allocates 10000,
 adds its definition, then expects 10001; `families` allocates equal numbers under
 six prefixes without collision; `reordered` permutes inventory and compares exact
-id/error text. No filesystem assertions in the pure allocator test.
+id/error text; `grandfather-pair` supplies an exact two-plan grandfather pair in
+policy and expects allocation of another free id to succeed with both original
+definitions preserved; `grandfather-third-path` adds the same id in a third path
+and expects empty id plus duplicate error; `grandfather-local-duplicate` repeats
+it inside an excepted plan and expects rejection; `grandfather-reuse` reserves a
+range including the grandfathered suffix and expects the next free id, never
+that occupied id; `stale-grandfather` removes one required pair member and expects
+empty id plus stale-policy error. No fixture hardcodes the repository's DF list:
+use configurable DEMO pairs and separately exercise effective repository Config. No filesystem assertions in the pure allocator test.
 `internal/recordids/recordids_test.go::TestLaneRecordIDInventory` preserves current
 archive/grandfather cases and rejects duplicate CUE slugs and overlapping ranges.
 `cmd/fathom/rec_new_test.go::TestRecNewRejectsUnownedPathWithoutAllocating` invokes
@@ -280,6 +299,15 @@ here. No gate lease taken while the shared gate runs. This document needs only
 `git diff --check`; code/CUE snippets are draft contracts, not verified builds.
 REC-1 stays unchecked. After approved implementation, scratch-ingest its HEAD and
 run `fathom verify --service fathom --plan docs/plans/typed-records.md` before claim.
+
+## FIX round 2 receipt
+
+F4: AllocateRecordID now explicitly receives effective trusted recordids.Config.
+The existing checker applies its exact grandfather policy to the full inventory.
+Allowed pairs do not block unrelated allocation; all their ids remain occupied.
+New third-path/local duplicates and stale policy fail. Named assertions above
+cover each distinction without collapsed input or hardcoded exceptions. This is
+the final FIX allowance. Any further unresolved revision must be held for ruling.
 
 ## FIX round 1 receipt
 
