@@ -28,9 +28,8 @@ W4-2 REC-M3 median does not apply.
   may be distinct calls. cmd/fathom/metrics_traffic.go cmdMetricsTraffic accepts
   --from/--to/--call-log/--by tool and displays p50/p95 only. trafficReportFrom
   calls callDataFrom then metrics.AggregateTraffic; it is a contextual cross-check.
-* internal/mcp/admission.go runAdmitted path wraps dispatch under pprof.Do labels
-  tool/origin. Resolve the actual function name and binary symbol table in each
-  pinned profile; label text without handler stack identity is insufficient.
+* internal/mcp/admission.go runAdmitted calls runHandler, which wraps dispatch under pprof.Do labels
+  tool/origin. Pin runHandler and the binary symbol table in each profile; label text without handler stack identity is insufficient.
 * cmd/fathom/pprof_guard.go mountPprof exposes heap/allocs via pprof.Index,
   profile and trace behind guardPprof; seconds capped at 30 and one profile at a
   time. Do not issue one purported 60-minute profile request that is capped.
@@ -43,7 +42,7 @@ W4-2 REC-M3 median does not apply.
 * internal/fusion/pipeline.go (*Pipeline).TypedPassTotal() int64 is a process
   lifetime counter, not a call-log count. internal/fusion/ingest.go gates typed
   work based on changed inputs and emits typed status. Reference regressions:
-  internal/fusion/dg4_logger_test.go TestTypedEdges... tests/logging are not a
+  internal/fusion/dg4_logger_test.go TestPipeline_SetLogger_RoutesTypedEdgeSummaryThroughLogger is not a
   real doc-only commit reading. Use the pinned pipeline identity and its actual
   counter deltas or a complete equivalent attestation, not absence of log text.
 
