@@ -4,7 +4,8 @@ Status: DRAFT W1-5/#264. No implementation or RED claim.
 Base: `468dc705813382d584926887b451cbea145c76ac`. Independent review branch.
 Owns only this document. No companion fixtures land in this draft.
 Landing dependencies: approved REC-1, CTR-4 path gate, ENG-2 and LIB-1 as authored.
-Implementation/test fixtures described here are future approved handoffs only.
+Implementation/test fixtures described here require the U3 RED-mechanism ruling.
+No implementation or fixture presence is a measured RED result.
 
 ## Intent and decisions before design
 
@@ -30,15 +31,21 @@ Settled decisions (citations are governing text, not evidence of implementation)
   only. HZ-9 uses the person-accepted stateful list as declared context, never a
   provider fact. Alternative promoting the list to contract truth violates HZ-9.
 - D4 no package growth: W2-1, alternative remove an existing package before adding.
-- D5 real RED in implementation lane: W2-2 D5 precedent and PL-D1; alternative
-  tagged contract tests. Landable default-build failures conflict with the gate.
+- D5 is unresolved U3 below. W2-2 D5 applies to REC-1 only, not CTR-10.
+  PL-D1 and contributor-model CTR-10 currently require batch-owned runnable RED.
 
 Unsettled U1 (recommendation): approve the concrete additive shapes/signatures
 below. Alternative stage only internal fixtures until public API review. HZ rows
 settle behavior, not these exact field spellings. No self-approval for U1.
-Unsettled U2: reserve the listed existing-file integrations serially after #164,
-#166/#167/#168; alternative split integration into one architect lane. Directory
-ownership alone cannot prove disjoint writes. No dispatch until exact grants land.
+Unsettled U2: approve the exact serial reservation manifest below, one integration
+owner per turn. Alternative split all shared-file changes into one architect lane.
+No issue gains a file from package placement or this unapproved proposal.
+Unsettled U3: permit real RED in each implementing lane and amend CTR-10's batch-RED
+row. Alternative tagged batch-RED tests plus an explicit tag-only failing command.
+W2-2 settled REC-1 only. No dispatch until this conflict is ruled.
+Unsettled U4: classify inferred H2 rename findings as advice. Alternative emit only
+explicit moved-block facts and no inferred rename finding. HZ-10 names H2 but does
+not settle its evidence class. Deleted/added pairs do not prove a rename.
 
 ## Proposed shapes, no implementation
 
@@ -128,7 +135,12 @@ opaque spans or ambiguous duplicate addresses yield unknown evidence, never
 
 ```go
 // internal/iacfacts: structural copies of ChangeSet and ReadEvidence above.
-func BuildReadEvidence(set ResourceSet, read, unread []string) ReadEvidence
+type ReadObservation struct {
+    Path string
+    Read, Complete bool
+    Unknowns []UnknownReason
+}
+func BuildReadEvidence(observations []ReadObservation) ReadEvidence
 type Hazard struct {
     ID, Kind, Address, EvidenceClass string
     Span Span
@@ -142,7 +154,7 @@ func isStatefulType(tool, typ string, accepted []StatefulType) bool
 type StatefulType struct { Tool, Type, Source, AcceptedBy string }
 ```
 
-H2 is advice for compatible deleted/added declarations, never a proven rename.
+Pending U4, H2 is recommended advice for compatible deleted/added declarations, never a proven rename.
 Covering moved blocks suppress H2/H4 only for their explicit from/to pair. H4
 requires changed count/for_each kind or key expression; H5 literal -> expression/
 unknown is advice. All hazards sort by span/id/address. Stateful list entries
@@ -169,6 +181,135 @@ requires nonempty Reason; absent catalog/source or timeout cannot become a clean
 empty answer. AsOf is the input revision supplied by caller, never wall clock.
 #311 must exercise the registered review_diff handler, not a facade-only test.
 Exact schema/projection wiring grants must be frozen with #167/#168 first.
+
+
+## Concrete internal copies, conversions and downstream ports (U1)
+
+In internal/iacfacts, define these exact local types, not aliases/imports of the
+public door. Class, Span, Attr, Resource and IaCFactRef already exist internally.
+This preserves the existing dependency direction. JSON tags on these draft
+additions match the public copies for deterministic conversion tests.
+
+```go
+type UnknownReason struct { Code string `json:"code"`; Span Span `json:"span"`; DecidableBy []string `json:"decidable_by"` }
+type ReadEvidence struct { Read []string `json:"read"`; Unread []string `json:"unread"`; Unknowns []UnknownReason `json:"unknowns"` }
+type Block struct { Kind string `json:"kind"`; Name string `json:"name"`; Attrs []Attr `json:"attrs"`; Span Span `json:"span"` }
+type AttrChange struct { Path string `json:"path"`; Before Class `json:"before"`; After Class `json:"after"`; Kind string `json:"kind"` }
+type ResourceChange struct { Address string `json:"address"`; Kind string `json:"kind"`; Before *Resource `json:"before,omitempty"`; After *Resource `json:"after,omitempty"`; Attributes []AttrChange `json:"attributes"` }
+type ChangeSet struct { Changes []ResourceChange `json:"changes"`; Evidence ReadEvidence `json:"evidence"` }
+// Existing internal ResourceSet gains Evidence and Blocks, same as public copy.
+type ReplacementFact struct { Address, Attr, Class string; Ref IaCFactRef }
+type Cascade struct { Hazards []Hazard; Unresolved []string; Truncated bool }
+func CheckStatefulReplacement(changes ChangeSet, replacement []ReplacementFact,
+    accepted []StatefulType) []Hazard
+func ReplacementCascade(seeds []Hazard, resources []Resource,
+    replacement []ReplacementFact, maxResources int) Cascade
+type VersionFacts struct { Source, Version string; Facts []ReplacementFact }
+func UpgradeHazards(resources []Resource, before, after VersionFacts) []Hazard
+// pkg/lang/iac/convert.go, new adapters in the same existing package:
+func convertEvidence(in iacfacts.ReadEvidence) ReadEvidence
+func convertBlocks(in []iacfacts.Block) []Block
+func toInternalChanges(in ChangeSet) iacfacts.ChangeSet
+func fromInternalChanges(in iacfacts.ChangeSet) ChangeSet
+// pkg/lang/iac/diff.go owns transient source-aware comparison, no source retained.
+// Existing convert(*iacfacts.ResourceSet) calls convertEvidence/convertBlocks.
+```
+
+Converting copies every nested span/class/ref/reason, sorts only by declared
+output order, deep-copies slices and drops all values for change/hazard inputs.
+No wrapper invents an absent reason or drops an unknown. Public Snapshot.Sources
+remains transient and is not part of internal ChangeSet. HZ-4 Binding maps internal
+IaCBinding Status/Source/Version/Catalog/Candidates and Refusal+Disclosures into
+public Binding, with errors retaining deadline/busy semantics. Catalog pointer
+metadata is converted into existing IaCCatalogInfo; the resolver is not copied.
+
+ReplacementFact.Class is replace/conditional/unknown. HZ-9 requires a replacement
+fact AND an accepted stateful type, cites Ref and declares list provenance as
+context. Conditional/unknown never becomes a proven replacement. Cascade follows
+only exact resource references on replacement attributes; cap must be positive,
+cap reached sets Truncated and unresolved refs are named. No instance expansion.
+HZ-11 compares two explicit same-source versions; different source or absent
+version/fact yields unknown rather than nearest-version inference. #313 owns
+UpgradeHazards and its fixtures, #168 retains IF-17 catalog-version preparation.
+
+Internal conversion ownership: #303 owns internal UnknownReason/ReadEvidence/
+ReadObservation in resource.go/read_evidence.go and public evidence adapters in
+convert.go. #268 next owns Block and Binding in types.go/binding.go and
+convertBlocks. #269 next owns internal delta declarations in new
+internal/iacfacts/change_types.go (explicit added grant), public delta declarations
+in diff.go and conversion adapters in convert.go. #308 consumes immutable types;
+#312 owns StatefulType/CheckStatefulReplacement; #168 owns ReplacementFact/Cascade/
+ReplacementCascade in new internal/iacfacts/cascade.go (explicit added grant).
+#313 owns VersionFacts/UpgradeHazards. Batch test files remain with CTR-10 until
+its chosen RED mechanism is recorded, then transfer once at an exact commit.
+
+## Proposed exact shared-file reservation manifest (U2)
+
+This is a concrete proposed reservation, not a claim it is already installed.
+Each row is exclusive. At each arrow the receiving lane's base must include the
+previous owner's committed handback. No simultaneous owners or blanket grants.
+#164/#166/#167/#168 have legacy package-wide briefs, not exact manifests; replace
+those grants for the following intersecting paths with this manifest on approval.
+Unlisted legacy work receives no inferred grant.
+
+| Exact paths | Exclusive order / reserved responsibility |
+|---|---|
+| cmd/fathom/iac.go, cmd/fathom/iac_test.go | #164 only catalog CLI; no hook/records ownership inferred |
+| internal/iacfacts/resource.go | #164 baseline -> #303 evidence -> #268 blocks -> #269 change input |
+| internal/iacfacts/read_terraform.go, internal/iacfacts/read_route.go, internal/iacfacts/read_cloudformation.go, internal/iacfacts/read_pulumi.go | #164 baseline -> #303 every non-error evidence return -> #268 structured blocks |
+| internal/iacfacts/check_module.go | #167 existing checks -> #303 evidence projection |
+| internal/iacfacts/binding.go, internal/iacfacts/binding_hcl.go, internal/iacfacts/binding_json.go | #166 resolver baseline; #268 reads only, no rewrite grant |
+| pkg/lang/iac/types.go, pkg/lang/iac/read.go, pkg/lang/iac/convert.go | #303 evidence -> #268 blocks/binding -> #269 delta adapters; no new import package |
+| pkg/lang/iac/read_test.go | CTR-10 TestLaneFactUnknowns -> #303 proof upkeep, then read-only to #268/#269 |
+| internal/mcp/iac_facts.go, internal/mcp/iac_cfn.go | #167 facts -> #168 replacement/cascade baseline -> #303 evidence -> #311 dimension integration |
+| internal/mcp/review_tool.go | #167 facts call -> #168 replacement call -> #311 registered dimension call; #303 tests output but does not own handler |
+| internal/iacfacts/catalog_build.go, cmd/iaccatalog/build.go, cmd/iaccatalog/export.go | #168 IF-13 builder replacement integration only; #312 reads published facts |
+| internal/iacfacts/cascade.go, internal/iacfacts/cascade_test.go | #168 IF-15 only; explicit new-file reservation |
+| internal/iacfacts/change_types.go, pkg/lang/iac/diff.go, pkg/lang/iac/diff_test.go | #269 only; explicit change_types.go grant |
+| cmd/fathom-lang/main.go | #307 hazard switch/help only after current resources owner handback |
+| cmd/fathom-lang/resources.go, cmd/fathom-lang/resources_evidence_test.go | #303 evidence route proof; #307 read-only |
+| internal/mcp/review_iac_dimension.go, internal/mcp/review_iac_dimension_test.go | #311 only, plus review_tool.go turn above |
+
+Fixture reservations: #303 owns the four HZ-3 fixture source files
+`internal/iacfacts/testdata/contracts/evidence/{defaults.tf,incomplete.tf,template.yaml,pulumi.yaml}`;
+#268 owns `pkg/lang/iac/testdata/contracts/{bindings.tf,moved.tf}`;
+#269 owns `pkg/lang/iac/testdata/contracts/{base.tf,head.tf}`;
+#307 owns `pkg/lang/iac/testdata/contracts/hazards-v1.json`;
+#312 owns `internal/iacfacts/testdata/contracts/stateful.json`.
+Each is an explicit added grant, not “testdata/” permission. #308/#313 consume
+these read-only and own only their issue-local tests/readings. No change note,
+plan, schema or API snapshot ownership follows; architect reserves those separately.
+
+## Four mandatory HZ-3 route proofs (#303 R2-4)
+
+These supplement, never replace, TestLaneFactUnknowns. BuildReadEvidence consumes
+ReadObservation for every actual file, including defaults-only module inputs.
+A read observation with Complete=false contributes Path to Unread and a reason;
+it cannot advertise closed completeness even when no resource was extracted.
+No hidden field for later uncertainty machinery.
+
+| Exact proposed test path/name | Required assertion |
+|---|---|
+| internal/iacfacts/read_evidence_test.go::TestBuildReadEvidence | classified observations yield exact reason/action sets; defaults-only file in Read; reordering byte-identical; incomplete syntax in Unread with reason |
+| pkg/lang/iac/read_evidence_test.go::TestResourceReadEvidence | file/module Terraform, CloudFormation and Pulumi unresolved fixtures preserve internal paths/reasons/actions through public conversion; default values absent |
+| cmd/fathom-lang/resources_evidence_test.go::TestResourcesCarryReadEvidence | pinned module in-process and supervised payloads have equal evidence; all relative inputs including defaults-only; unresolved reasons/actions exact; no default values |
+| internal/mcp/iac_read_evidence_test.go::TestReviewDiffCarriesReadEvidence | registered review_diff handler through HZ-2 dimension retains module/template evidence; unchanged defaults-only input stays in read set; no product values |
+
+```sh
+go test -race ./internal/iacfacts -run '^TestBuildReadEvidence$' -count=1
+go test -race ./pkg/lang/iac -run '^TestResourceReadEvidence$' -count=1
+go test -race ./cmd/fathom-lang -run '^TestResourcesCarryReadEvidence$' -count=1
+go test -race ./internal/mcp -run '^TestReviewDiffCarriesReadEvidence$' -count=1
+```
+
+Production handoff: ReadTerraformFile/ReadTerraformModule/ReadTerraformJSONFile/
+ReadCloudFormationFile/ReadPulumiYAMLFile call BuildReadEvidence before every
+non-error return, including syntax/unsupported/empty branches; hard errors remain
+errors. convert preserves evidence. cmdResources -> readResources -> ReadModule
+(or single-file route) carries it unchanged under supervision. CheckIaCModule
+adds Evidence to IaCModuleCheck; reviewIaCFindings/reviewCFNFindings retain it.
+review_tool.go's registered handler consumes #311's dimension. Tests must fail
+when any of these four route projections is deliberately dropped.
 
 ## Exact issue ownership snapshot and serial transfer
 
@@ -265,7 +406,8 @@ Batch proposed tests: `pkg/lang/iac/hazard_contract_test.go::TestLaneContractsFa
 Primary command: `go test -race ./pkg/lang/iac -run '^TestLaneContractsFacts$' -count=1`.
 They validate fixtures/shapes, not observed scanner precision. Each consumer must
 own its runnable failing test and capture base/head/command/exit before implementation.
-No tests exist or ran RED because this draft describes them. Keep normal build green.
+No tests ran RED here. Runnable batch-RED versus implementing-lane RED is U3,
+not silently transferred. Default build must remain green under either choice.
 
 Reading consumers #270/#271/#302/#309/#310 and hazard-validity/replacement/upgrade
 readings are not dispatched by fixture presence. They need independently pinned
