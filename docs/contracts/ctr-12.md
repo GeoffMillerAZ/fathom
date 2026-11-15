@@ -35,9 +35,7 @@ Unsettled U1: approve exact structs/signatures/JSON below. Alternative land only
 current receipt/stamp adapters and split added delivery joins into a second contract.
 Unsettled U2: approve exact serial reservation manifest below. Alternative one
 architect integration lane owns every existing hook/CLI/MCP file in that manifest.
-Unsettled U3: implementing-lane RED with CTR-12 row amendment, recommended.
-Alternative tagged batch RED plus a green-default command. REC-1 W2-2 D5 does not
-settle this batch's conflicting requirement to land runnable failing proofs.
+U3 settled by W3-2: implementing lanes write and run real failing tests. Independent critics compare every named assertion; weaker tests are FIX. The four governing clauses are amended separately.
 Unsettled U4: deterministic CI sample from bundle tree, first hex byte <16 (1/16),
 recommended. Alternative every bundle receives a full CI run. ADR-100 requires
 sampling but does not settle the rate. No sampled disagreement is ignored.
@@ -52,7 +50,7 @@ holdouts but does not settle their rate; freeze before forward data.
 func hookLookup(ctx context.Context, backend QueryInterface,
     service, name string, limit int) ([]core.SymbolNode, error)
 // cmd/fathom/hook_attribution.go
-type RowAttribution struct { SessionID, LaneID, Caller string }
+type RowAttribution struct { SessionID string `json:"session_id"`; LaneID string `json:"lane_id"`; Caller CallerKind `json:"caller"` }
 func stampRowAttribution(row map[string]any, attribution RowAttribution) map[string]any
 ```
 
@@ -84,13 +82,13 @@ type WireInputs struct {
 type WireStamp struct {
     SessionID string `json:"session_id"`
     Wire string `json:"wire"`
-    Index string `json:"idx"`
+    Index IndexState `json:"idx"`
 }
 func ComputeWireStamp(in WireInputs) (string, error)
 func WriteWireStamp(dst io.Writer, sessionID string,
-    in WireInputs, index string) (WireStamp, error)
+    in WireInputs, index IndexState) (WireStamp, error)
 // cmd/fathom/doctor_wire_stamp.go
-type WiringFiring struct { State, Reason, SessionID, Wire string }
+type WiringFiring struct { State WiringState `json:"state"`; Reason string `json:"reason"`; SessionID string `json:"session_id"`; Wire string `json:"wire"` }
 func wiringFiring(stamp wiring.WireStamp, observedWire string) WiringFiring
 ```
 
@@ -117,15 +115,17 @@ type DeliveryRow struct {
     CallID string `json:"call_id"`
     Target string `json:"target"`
     At string `json:"at"`
-    Phase string `json:"phase"`
-    Arm string `json:"arm"`
+    Phase CallPhase `json:"phase"`
+    Arm DeliveryArm `json:"arm"`
     Eligible bool `json:"eligible"`
     Fired bool `json:"fired"`
     Delivered bool `json:"delivered"`
     LatencyMS float64 `json:"latency_ms"`
 }
 type SessionCall struct {
-    SessionID, CallID, Phase string
+    SessionID string `json:"session_id"`
+    CallID string `json:"call_id"`
+    Phase CallPhase `json:"phase"`
     Ordinal int
     Targets []string
 }
@@ -149,10 +149,11 @@ type DeliveryResult struct {
     UnknownSessions []string
 }
 func DeliveryFunnel(in FunnelInput) (DeliveryResult, error)
-func DeliveryHoldout(sessionID, capability string) bool
+func DeliveryHoldout(sessionID, capability string, channel DeliveryChannel) (bool, error)
 ```
 
-DeliveryHoldout uses sha256 of length-prefixed session/capability, first byte <26
+After mandatory eligibility checks below, advisory-only DeliveryHoldout uses
+sha256 of length-prefixed session/capability, first byte <26
 (approximately 10.16%), stable within session. This exact fraction is proposed U5,
 not a measured policy win. Arm is assigned holdout/deliver before eligible outcome;
 held-out rows keep eligible=true, fired/delivered=false. Phase preflight/agent
@@ -287,16 +288,16 @@ func Suspects(run Run, changed []ChangedSymbol, idx Index) Candidates
 func recordUnderCheckout(checkoutRoot, ledgerPath string) (string, error)
 // internal/metrics/hook_presence.go
 type HookPresenceInput struct { Eligible, Fired, Delivered, Unknown int }
-type HookPresence struct { State, Reason string; Eligible, Fired, Delivered, Unknown int }
+type HookPresence struct { State PresenceState `json:"state"`; Reason string `json:"reason"`; Eligible, Fired, Delivered, Unknown int }
 func HookPathPresence(in HookPresenceInput) HookPresence
 // internal/hookpath/proposed_file.go
 type Edit struct { Start, End int; Replacement []byte }
 func ReconstructProposedFile(base []byte, edits []Edit) ([]byte, error)
 // internal/lanefile/events.go
-type Event struct { LaneID, SessionID, Kind, At, Target string }
+type Event struct { LaneID string `json:"lane_id"`; SessionID string `json:"session_id"`; Kind LaneEventKind `json:"kind"`; At string `json:"at"`; Target string `json:"target"` }
 func ParseEvents(source []byte) ([]Event, error)
 // internal/lanefile/export.go
-type View struct { LaneID, State string; Events []Event }
+type View struct { LaneID string `json:"lane_id"`; State LaneState `json:"state"`; Events []Event `json:"events"` }
 func ExportLanes(lanes []records.Lane, events []Event) ([]View, error)
 // internal/lint/tenancy/rules.go: existing Findings and CheckFile semantics.
 func CheckRules(rel string, src []byte, rules []string) ([]Finding, error)
@@ -507,3 +508,116 @@ current attributed delivery/landing inputs. Draft verified by diff check and com
 hook only. No RED/race/gate/conformance/coverage/latency claim. Rows stay unchecked.
 Decision models: none. Deterministic joins and exact-tree integrity need no model;
 provider none is complete. Manual review opts out of automation, not evidence bars.
+
+## Mandatory holdout exclusions (ADR-080 d6, final F4)
+
+DeliveryHoldout accepts a trusted DeliveryChannel from the actual emission path,
+not a model argument or a capability name guessed from prose. BEFORE hashing:
+only ChannelAdvisory is eligible. ChannelBlockingGuard/ChannelGate/ChannelVerify/
+ChannelReadiness/ChannelFailureTriggered always return false,nil. Failure-triggered
+advice is ChannelFailureTriggered even if that capability otherwise serves advice.
+Unknown/invalid channel returns false, typed RefusalError; caller emits the FULL
+line and reports unknown eligibility. Missing advisory session/capability also
+returns false/error and full delivery. Logging failure never authorizes suppression.
+Mandatory lines record ArmMandatory, not a heldout arm or false-firing row.
+Only explicitly eligible advisory lines enter holdout. No automatic feature switch.
+
+Proposed TestDeliveryHoldoutMandatoryChannels in internal/labs/delivery_test.go:
+each mandatory class, sessions s0..s1023 and two capability ids, including hashes
+below/above proposed threshold, is never held out. Unknown/invalid -> false plus
+errors.As RefusalError. Advisory same input repeats its assignment; one known
+below-threshold case holds out, above-threshold does not. Proposed
+cmd/fathom/hook_lane_contract_test.go::TestMandatoryHookLinesNeverHeldOut invokes
+actual hook output for blocking guard/gate/verify/readiness/failure fixtures and
+asserts complete payload for both hash cases and log-write failure. Caller model
+arguments cannot change channel class. Commands, each one line:
+go test -race ./internal/labs -run '^TestDeliveryHoldoutMandatoryChannels$' -count=1
+go test -race ./cmd/fathom -run '^TestMandatoryHookLinesNeverHeldOut$' -count=1
+Proposed/unrun. W3-2 critic compares every assertion. U5 fraction still unsettled;
+ADR-080 d6 settles exclusions/determinism, not the rate.
+
+## W3-4 exported vocabularies and exact wire map
+
+Local declarations in their existing owning packages, not a new shared package:
+~~~go
+// labs/delivery.go
+type DeliveryChannel string
+const (
+    ChannelAdvisory DeliveryChannel = "advisory"
+    ChannelBlockingGuard DeliveryChannel = "blocking-guard"
+    ChannelGate DeliveryChannel = "gate"
+    ChannelVerify DeliveryChannel = "verify"
+    ChannelReadiness DeliveryChannel = "readiness"
+    ChannelFailureTriggered DeliveryChannel = "failure-triggered"
+    ChannelUnknown DeliveryChannel = "unknown"
+)
+type CallPhase string
+const ( PhasePreflight CallPhase = "preflight"; PhaseAgent CallPhase = "agent" )
+type DeliveryArm string
+const ( ArmDeliver DeliveryArm = "deliver"; ArmHoldout DeliveryArm = "holdout"; ArmMandatory DeliveryArm = "mandatory" )
+// cmd/fathom/hook_attribution.go
+type CallerKind string
+const (
+    CallerAgent CallerKind = "agent"
+    CallerEditHook CallerKind = "edit-hook"
+    CallerGate CallerKind = "gate"
+    CallerRefresh CallerKind = "refresh"
+    CallerPlumbing CallerKind = "plumbing"
+    CallerUnattributed CallerKind = "unattributed"
+)
+// wiring/wire_stamp.go
+type IndexState string
+const ( IndexFresh IndexState = "fresh"; IndexBehind IndexState = "behind"; IndexUnknown IndexState = "unknown" )
+// cmd/fathom/doctor_wire_stamp.go
+type WiringState string
+const ( WiringUnknown WiringState = "unknown"; WiringConfigured WiringState = "configured"; WiringObserved WiringState = "observed" )
+// metrics/hook_presence.go
+type PresenceState string
+const ( PresenceUnknown PresenceState = "unknown"; PresenceAbsent PresenceState = "absent"; PresenceObserved PresenceState = "observed" )
+// lanefile/events.go and export.go
+type LaneEventKind string
+const ( EventEdit LaneEventKind = "edit"; EventTest LaneEventKind = "test"; EventClaim LaneEventKind = "claim"; EventStop LaneEventKind = "stop" )
+type LaneState string
+const ( LaneActive LaneState = "active"; LaneIdle LaneState = "idle"; LaneLanded LaneState = "landed" )
+// Each owning package, typed errors for its refusal/limit results:
+type RefusalError struct { Reason string `json:"reason"` }
+func (e *RefusalError) Error() string
+type LimitError struct { Limit int64 `json:"limit"`; Observed int64 `json:"observed"` }
+func (e *LimitError) Error() string
+~~~
+
+Every compact new field has explicit snake_case JSON tags, exact mapping:
+WireInputs fathom_version/extractor_epoch/owned_hooks_digest/surface_digest;
+SessionCall session_id/call_id/phase/ordinal/targets; CallCoverage session_id/
+first_ordinal/last_ordinal/complete/reason; FunnelInput rows/calls/coverage/pairs/
+deadline_ms/next_calls; DeliveryResult rows/void_pairs/unknown_sessions;
+ReportEvidence plan/tree/store_commit/report_sha256/report; SetEvidence tree/
+entries/coverage/source_sha256; EvidenceManifest tree/commit/verify/affected/overlap;
+Acceptance accepted/reason/sample_full_ci; HookPresenceInput and HookPresence
+eligible/fired/delivered/unknown; Edit start/end/replacement; View lane_id/state/events.
+WireStamp already uses session_id/wire/idx. Reason is free explanatory prose,
+not a refusal-code substitute. New closed fields use their named type/constants,
+not string; existing imported models stay unchanged.
+
+Exported result slices are nonnil recursively: no-match lookup, delivery rows/
+void_pairs/unknown_sessions, targets, verify/affected/overlap sets, suspects/events/
+views/findings and coverage lists. Marshal [] not null. Pure APIs have no context;
+I/O builder/acceptor/lookup/writer may use it. RefusalError/LimitError support
+errors.As. Additive only, no door package/import, values withheld, no future fields.
+Proposed TestDeliveryContractsAPIHouseRules in internal/landing/lane_contract_test.go
+plus owning-package fixture adapters asserts explicit wire names, all empty result
+arrays [], typed enums/errors.As, and no context on pure APIs. Exact command:
+go test -race ./internal/landing -run '^TestDeliveryContractsAPIHouseRules$' -count=1.
+This is proposed/unrun, not a gate claim.
+
+## Steward #263 proposal reconciliation
+
+Read issuecomment-6900960506. Its batch/consumer paths plus
+docs/bench/readings/contributor-model/contracts-delivery.md are proposed ownership,
+not active grants or proven prerequisites. Full list is this consumer table plus
+three aggregate files. Independently run each matching rg declaration guard before
+its exact anchored go test, recording base/head/command/exit and actual assertion
+or compile witness. Missing executable/dependency/package/test or empty -run never
+counts RED. W3-2 supersedes only batch-RED placement: implementing lanes capture
+failures; this contract retains all assertions and serial ownership transfers.
+No forge changes or dispatch authorization. #320 still needs CHG-10/CTR-3/CTR-12.
