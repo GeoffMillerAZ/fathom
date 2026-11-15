@@ -157,3 +157,54 @@ This is app-owned release policy with plain pipe-safe diagnostics and exit codes
 0 (pass), 1 (archive invalid), 2 (usage/inputs unavailable). No kit runtime or
 shared terminal component is needed. Contribution-loop disposition: no candidate.
 The architect owns the observable-behavior changelog fragment, outside lane paths.
+
+## Critic F1 correction: extraction aliases
+
+The review of `f9b744758` found a real validation bypass. A canonical notice
+followed by `././THIRD-PARTY-NOTICES.txt` passed the single-prefix comparison,
+while native tar extraction overwrote the canonical notice with replacement
+bytes. The accepted archive did not preserve the validated notice on extraction.
+The original fixture PASS did not cover this case; it is not evidence that this
+alias was safe.
+
+Root cause: validation compared a partially stripped member name while extraction
+resolved its destination. The correction validates every member before notice
+matching: canonical relative names only, regular files or canonical directories,
+no symlinks/hardlinks or other special entries. It rejects dot/repeated-slash
+aliases, traversal, absolute paths, backslash/drive/UNC spellings, trailing-dot or
+space spellings, and case variants of the root notice. A conventional trailing
+slash is allowed only for directory headers. Existing duplicate/type/size,
+source digest, complete-text, stale provenance and gzip integrity checks remain.
+
+Actual test-first RED under the shared lease:
+
+```sh
+go test -race ./cmd/grammarnotice \
+  -run '^TestReleaseArchive(RejectsMemberAliases|NoticeExtractionWitness)$' \
+  -count=1 -v
+```
+
+The native extraction witness failed for USTAR, PAX and GNU: extraction replaced
+the notice and the pre-fix validator accepted each archive. The test matrix also
+exercises link member names, link targets and indirect symlink/hardlink aliases.
+A regular filename ending in slash proved unencodable by Go's tar writer; that
+fixture was corrected to a directory header before final GREEN.
+
+After the minimal validator correction, the same race command passed (1.719s),
+the full package race suite passed (1.702s), and the shell publication-order proof
+passed. Canonical nested files/directory headers remain accepted in all three tar
+formats. On the native Darwin runner, extraction of accepted canonical fixtures
+preserves the notice bytes. Extraction of each rejected repeated-dot fixture
+still demonstrates the overwrite, so the regression asserts the external result
+rather than merely recognizing a suspicious string. Traversal/absolute/link
+fixtures are checked without extracting them.
+
+Only the existing tar.gz release format is in scope. USTAR, PAX and GNU tar
+encodings and portable path spellings are exercised; no Windows extractor or
+second operating-system execution is claimed. Retained logs are
+`workspace/logs/grammar-notice-alias-{red,green}.log` and
+`workspace/logs/grammar-notice-correction-green.log`.
+
+This correction does not populate the 55 missing real source archives. LIB-12
+remains INCONCLUSIVE and unchecked; real complete-notice/archive evidence and
+the integration gate remain outstanding.

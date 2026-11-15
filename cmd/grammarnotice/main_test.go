@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -237,5 +238,179 @@ func TestReleaseArchiveRejectsDuplicateOrLinkedNotice(t *testing.T) {
 				t.Fatal("accepted ambiguous or linked notice")
 			}
 		})
+	}
+}
+
+type archiveMember struct {
+	name string
+	kind byte
+	link string
+	body string
+}
+
+func writeMemberArchive(t *testing.T, format tar.Format, members []archiveMember) string {
+	t.Helper()
+	file := filepath.Join(t.TempDir(), "members.tar.gz")
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	tw := tar.NewWriter(gz)
+	for _, m := range members {
+		h := &tar.Header{Name: m.name, Typeflag: m.kind, Linkname: m.link, Mode: 0600, Format: format}
+		if m.kind == tar.TypeReg {
+			h.Size = int64(len(m.body))
+		}
+		if m.kind == tar.TypeDir {
+			h.Mode = 0700
+		}
+		if format == tar.FormatPAX {
+			h.PAXRecords = map[string]string{"comment": "synthetic member-path fixture"}
+		}
+		if err := tw.WriteHeader(h); err != nil {
+			t.Fatal(err)
+		}
+		if m.kind == tar.TypeReg {
+			if _, err := tw.Write([]byte(m.body)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, b.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return file
+}
+
+func TestReleaseArchiveRejectsMemberAliases(t *testing.T) {
+	lock, cache := pinnedFixture(t)
+	notice, err := GenerateNotice(lock, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := []string{
+		"./" + noticeName, "././" + noticeName, ".//" + noticeName, "././/" + noticeName,
+		"folder/../" + noticeName, "folder//../" + noticeName, "../" + noticeName,
+		"/" + noticeName, "//" + noticeName, ".\\" + noticeName,
+		"folder\\..\\" + noticeName, "C:/" + noticeName, "C:\\" + noticeName,
+		"//server/share/" + noticeName, "\\\\server\\share\\" + noticeName,
+		strings.ToLower(noticeName), noticeName + ".", noticeName + " ",
+		"folder//file", "folder/./file",
+	}
+	for _, format := range []tar.Format{tar.FormatUSTAR, tar.FormatPAX, tar.FormatGNU} {
+		t.Run(format.String(), func(t *testing.T) {
+			for _, alias := range aliases {
+				for _, kind := range []byte{tar.TypeReg, tar.TypeSymlink, tar.TypeLink} {
+					t.Run(alias+"/"+string(kind), func(t *testing.T) {
+						members := []archiveMember{{noticeName, tar.TypeReg, "", string(notice)}, {"replacement.txt", tar.TypeReg, "", "replacement without licence\n"}, {alias, kind, "", "replacement without licence\n"}}
+						if kind != tar.TypeReg {
+							members[2].link = "replacement.txt"
+							members[2].body = ""
+						}
+						archive := writeMemberArchive(t, format, members)
+						if err := CheckReleaseArchiveNotice(archive, notice); err == nil {
+							t.Fatal("accepted unsafe/noncanonical member alias")
+						} else if !strings.Contains(err.Error(), "members.tar.gz") {
+							t.Fatalf("missing archive diagnostic: %v", err)
+						}
+					})
+				}
+			}
+			// Links can also redirect later ordinary paths through an alias inode or
+			// directory even when the link itself has an unrelated canonical name.
+			for _, kind := range []byte{tar.TypeSymlink, tar.TypeLink} {
+				t.Run("indirect-link/"+string(kind), func(t *testing.T) {
+					target := noticeName
+					later := "alias"
+					if kind == tar.TypeSymlink {
+						target = "."
+						later = "alias/" + noticeName
+					}
+					archive := writeMemberArchive(t, format, []archiveMember{{noticeName, tar.TypeReg, "", string(notice)}, {"alias", kind, target, ""}, {later, tar.TypeReg, "", "replacement without licence\n"}})
+					if err := CheckReleaseArchiveNotice(archive, notice); err == nil {
+						t.Fatal("accepted indirect link alias")
+					}
+				})
+			}
+			for _, target := range aliases {
+				for _, kind := range []byte{tar.TypeSymlink, tar.TypeLink} {
+					t.Run("link-target/"+target+"/"+string(kind), func(t *testing.T) {
+						archive := writeMemberArchive(t, format, []archiveMember{{noticeName, tar.TypeReg, "", string(notice)}, {"alias-link", kind, target, ""}, {"alias-link", tar.TypeReg, "", "replacement without licence\n"}})
+						if err := CheckReleaseArchiveNotice(archive, notice); err == nil {
+							t.Fatal("accepted link target alias")
+						}
+					})
+				}
+			}
+			// A directory at the notice destination is not a regular notice.
+			archiveDir := writeMemberArchive(t, format, []archiveMember{{noticeName, tar.TypeReg, "", string(notice)}, {noticeName + "/", tar.TypeDir, "", ""}})
+			if err := CheckReleaseArchiveNotice(archiveDir, notice); err == nil {
+				t.Fatal("accepted directory alias at notice destination")
+			}
+			// Canonical nested files and conventional directory headers remain valid.
+			archive := writeMemberArchive(t, format, []archiveMember{{"assets/", tar.TypeDir, "", ""}, {"assets/data", tar.TypeReg, "", "fixture"}, {noticeName, tar.TypeReg, "", string(notice)}})
+			if err := CheckReleaseArchiveNotice(archive, notice); err != nil {
+				t.Fatalf("canonical archive rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestReleaseArchiveNoticeExtractionWitness(t *testing.T) {
+	tarBin, err := exec.LookPath("tar")
+	if err != nil {
+		t.Skip("native tar unavailable for extraction witness")
+	}
+	lock, cache := pinnedFixture(t)
+	notice, err := GenerateNotice(lock, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, format := range []tar.Format{tar.FormatUSTAR, tar.FormatPAX, tar.FormatGNU} {
+		for _, alias := range []bool{false, true} {
+			name := "canonical"
+			if alias {
+				name = "repeated-dot-alias"
+			}
+			t.Run(format.String()+"/"+name, func(t *testing.T) {
+				members := []archiveMember{{noticeName, tar.TypeReg, "", string(notice)}}
+				replacement := "REPLACED WITHOUT LICENCE\n"
+				if alias {
+					members = append(members, archiveMember{"././" + noticeName, tar.TypeReg, "", replacement})
+				}
+				archive := writeMemberArchive(t, format, members)
+				checkErr := CheckReleaseArchiveNotice(archive, notice)
+				dest := t.TempDir()
+				// Only an in-directory dot-prefix alias is extracted. Traversal, absolute
+				// and link fixtures above are never passed to a filesystem extractor.
+				if out, err := exec.Command(tarBin, "-xzf", archive, "-C", dest).CombinedOutput(); err != nil {
+					t.Fatalf("native tar extraction: %v: %s", err, out)
+				}
+				got, err := os.ReadFile(filepath.Join(dest, noticeName))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if alias {
+					if string(got) != replacement {
+						t.Fatalf("alias did not reproduce overwrite: %q", got)
+					}
+					t.Log("native tar overwrote canonical notice through ././ alias")
+					if checkErr == nil {
+						t.Fatal("validator accepted archive whose extracted notice was overwritten")
+					}
+				} else {
+					if checkErr != nil {
+						t.Fatal(checkErr)
+					}
+					if !bytes.Equal(got, notice) {
+						t.Fatal("accepted archive extracted a different notice")
+					}
+				}
+			})
+		}
 	}
 }

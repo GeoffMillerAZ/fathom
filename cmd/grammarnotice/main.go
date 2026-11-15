@@ -200,7 +200,31 @@ func CheckReleaseArchiveNotice(archive string, expected []byte) error {
 			if err != nil {
 				return err
 			}
-			if strings.TrimPrefix(h.Name, "./") != noticeName {
+			// Extraction resolves path aliases and links. Do not validate one
+			// spelling while allowing another member to overwrite its destination.
+			// GoReleaser needs only regular files and canonical directories.
+			name := h.Name
+			switch h.Typeflag {
+			case tar.TypeReg, tar.TypeRegA:
+			case tar.TypeDir:
+				name = strings.TrimSuffix(name, "/")
+			default:
+				return fmt.Errorf("unsupported archive member type for %q", h.Name)
+			}
+			if name == "." || name == ".." || path.IsAbs(name) || path.Clean(name) != name || strings.HasPrefix(name, "../") || strings.ContainsAny(name, "\\:") {
+				return fmt.Errorf("unsafe or noncanonical archive member %q", h.Name)
+			}
+			for _, part := range strings.Split(name, "/") {
+				if strings.TrimRight(part, ". ") != part {
+					return fmt.Errorf("unsafe or noncanonical archive member %q", h.Name)
+				}
+			}
+			// Release targets include case-insensitive filesystems. Accept only
+			// the notice's exact spelling, not a second name for the same file.
+			if strings.EqualFold(name, noticeName) && name != noticeName {
+				return fmt.Errorf("noncanonical archive member %q aliases notice", h.Name)
+			}
+			if name != noticeName {
 				continue
 			}
 			if found {
