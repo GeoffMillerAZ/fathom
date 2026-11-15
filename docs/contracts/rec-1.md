@@ -1,6 +1,7 @@
 # REC-1: standalone lane and record allocation contract
 
-Status: DRAFT for W1-5 / issue #252. Not approved, implemented or dispatch-ready.
+Status: W2-2 APPROVED choices applied for issue #252; exact-commit critic confirmation
+pending. Documentation only, no implementation or dispatch readiness.
 Base: `468dc705813382d584926887b451cbea145c76ac` (refreshed origin/main).
 Dependencies: none for review. Landing and implementation require architect approval.
 This branch owns only `docs/contracts/rec-1.md`. No companion fixtures land here.
@@ -14,11 +15,12 @@ ADR-092 and ADR-094, `docs/design/typed-records.md` CU-D2/D5/D6/D7 and
 I70/I72/I75 are proposals, used as this draft's constraints, not shipping laws.
 No authored phase, transition history, dispatch, store or new MCP tool. Existing
 markdown and verify 0/1/2 semantics survive. Record vet is a separate gate.
-ADR-092's LL-M1 FAIL trigger fired (W1-2). No language-door import is added.
+ADR-092's LL-M1 FAIL trigger fired. W2-1 answers it: door 80, consumer 81,
+no package headroom. No language-door import is added.
 No evidence that the syntax-trial or decision-file split trigger fired. No syntax
 migration is proposed. Free option: keep records leaf-like; no export or kit move.
 
-## Decisions to approve
+## Decisions settled by W2-2
 
 - D1 recommended: exact repository-relative owned files, no patterns. Alternative:
   CODEOWNERS patterns plus parity fixtures. Exact paths satisfy PL-D5 now without
@@ -117,6 +119,11 @@ type TrustedInventory struct {
 func Inventory(root string, cfg Config) ([]Definition, error)
 func CheckDefinitions(defs []Definition, cfg Config) ([]Duplicate, error)
 func CheckOwnership(defs []Definition, trusted TrustedInventory) ([]OwnershipViolation, error)
+// Opaque result, constructed only by the shared checker. Zero value is invalid.
+type ValidatedInventory struct { /* unexported state */ }
+func ValidateInventory(defs []Definition, policy Config,
+    trusted TrustedInventory) (ValidatedInventory, error)
+func (v ValidatedInventory) Definitions() []Definition // defensive full copy
 
 // internal/records; no store, daemon or language door import.
 type IDRange = recordids.IDRange
@@ -127,7 +134,7 @@ type Lane struct {
     IDRanges []IDRange
 }
 func AllocateRecordID(lane Lane, family, target string,
-    inventory []recordids.Definition, policy recordids.Config) (string, error)
+    inventory recordids.ValidatedInventory) (string, error)
 // cmd/fathom, existing args/writer convention
 func cmdRecNew(args []string, stdout, stderr io.Writer) int
 ```
@@ -138,29 +145,33 @@ repeated definitions. Extend Defaults with observation headings in the legacy
 log and per-entry files. Match a definition heading only, not references. Also
 read CUE lane declarations, validate all ranges and detect duplicate lane slugs.
 Preserve existing grandfathered plan pairs, but never allow a new reservation
-to reuse one of their ids. No grandfather bypass for new records. `policy` is the effective Config loaded
-from the trusted base using existing Defaults/Load behavior, including exact
-Grandfather path sets and CrossPlan. The allocator passes the complete inventory
-to CheckDefinitions with that policy. It never reconstructs policy, hardcodes
-DF ids, deduplicates the inventory or mistakes an excepted collision for an unused
-id. A new third path, a duplicate within one plan, or a stale exception is an error
-under the same checker law. Occupancy uses every definition, including both
-members of an allowed grandfather pair. Existing grandfather ids cannot be
-allocated again, even if the requested lane range includes their numeric suffix.
-CLI reads the effective policy at the independent trusted revision and passes it
-unchanged. A candidate cannot weaken cross-plan checking or add an exception.
+to reuse one of their ids. No grandfather bypass for new records. The caller loads the effective Config
+from the trusted base using Defaults/Load, including exact Grandfather path sets
+and CrossPlan, then calls ValidateInventory. That shared checker calls
+CheckDefinitions with the effective policy and CheckOwnership with trusted grants.
+Any checker/policy/ownership error returns an invalid result plus error. The caller
+must stop before allocation. Successful validation preserves every definition,
+including both members of permitted grandfather pairs. The opaque result carries
+validity, and Definitions returns a copy without collapsing entries. No candidate
+can weaken policy or add an exception.
 
-Allocator rejects malformed lane/range, absent family, ambiguous family ranges,
-any duplicate returned by recordids.CheckDefinitions(inventory, policy)
-(including observations), any checker policy error, noncanonical target,
+The pure allocator accepts only that validated result, not raw definitions or
+Config. It has no duplicate rule of its own. It refuses an id already defined,
+grandfathered ones included, or outside the granted interval. The lowest free
+in-range id wins. New duplicate detection belongs entirely to caller validation.
+No hardcoded repository exceptions. This is W2-2's exact checker boundary.
+
+Lane/range and target validation before allocation rejects malformed lane/range,
+absent family, ambiguous family ranges, noncanonical target,
 absolute path, traversal, or target not in exact OwnedPaths. This pure function
 checks lexical containment only. Filesystem containment is a CLI boundary below.
-Read-only paths never grant write permission. Duplicate diagnostics name both
+Read-only paths never grant write permission. Shared checker duplicate diagnostics name both
 locations, sorted by family/id/path/line. Lowest unused integer in the matching
 range wins, independent of inventory order. Exhaustion/error returns `"", err`.
-No mutation of inputs and no internal clock. Repeated calls with unchanged
-inventory intentionally return the same candidate. A successful caller must add
-the created definition before the next call. This is explicit in the repeat test.
+No mutation of inputs and no internal clock. Reject an invalid zero-value
+ValidatedInventory before selecting a candidate. Repeated calls with unchanged
+validated inventory intentionally return the same candidate. A successful caller adds the created definition and revalidates the complete
+inventory before the next call. This is explicit in the repeat test.
 
 `rec new --root DIR --lane SLUG --family NAME --path REL --title TEXT` is frozen.
 No trusted-ref flag and no trust inferred from Lane.BaseCommit. The integrator
@@ -194,7 +205,7 @@ CLI uses `validateRecordTarget(root, rel string) error` in rec_new.go before
 allocation and again before writing: resolve root and existing ancestors, reject
 symlinks in target or parents, absolute/traversal/noncanonical names and escapes.
 The symlink test belongs to rec_new_test.go, never the pure allocator. A clone-local
-lock in `workspace/` covers fresh inventory, ownership check, allocation and write.
+lock in `workspace/` covers fresh inventory, shared ValidateInventory, allocation and write.
 Append to an existing owned aggregate or create a new exact owned file, using a
 same-directory temp and atomic rename with existing mode preserved. This is not
 a split of ADR.md. Outside-path and trust rejection happen before any write or id
@@ -256,19 +267,19 @@ Positive CUE fixtures are live, negative ones never fail `cue vet ./...` by desi
 
 `internal/records/allocate_test.go::TestLaneLaneRecords` subtests:
 `shape` rejects unknown field `phase`; `duplicate-key` seeds ADR-10000 twice in
-separate files and expects both locations; `duplicate-observation` similarly seeds
-O10000; `exhausted-range` seeds both ids and expects empty id plus exhaustion error;
+separate files and expects caller validation to fail with both locations, without
+calling the allocator; `duplicate-observation` similarly seeds O10000; `exhausted-range` seeds both ids and expects empty id plus exhaustion error;
 `outside-path` expects empty id and unchanged inventory; `repeat` allocates 10000,
-adds its definition, then expects 10001; `families` allocates equal numbers under
+adds its definition, revalidates, then expects 10001; `families` allocates equal numbers under
 six prefixes without collision; `reordered` permutes inventory and compares exact
-id/error text; `grandfather-pair` supplies an exact two-plan grandfather pair in
-policy and expects allocation of another free id to succeed with both original
-definitions preserved; `grandfather-third-path` adds the same id in a third path
-and expects empty id plus duplicate error; `grandfather-local-duplicate` repeats
-it inside an excepted plan and expects rejection; `grandfather-reuse` reserves a
+id/error text; `grandfather-pair` supplies an exact two-plan grandfather pair to the shared
+validator with effective policy, then expects the unrelated reserved id to allocate
+from the validated result while preserving both original definitions; `grandfather-third-path` adds the same id in a third path
+and expects caller validation error with no allocator call; `grandfather-local-duplicate` repeats
+it inside an excepted plan and expects caller validation rejection; `grandfather-reuse` reserves a
 range including the grandfathered suffix and expects the next free id, never
 that occupied id; `stale-grandfather` removes one required pair member and expects
-empty id plus stale-policy error. No fixture hardcodes the repository's DF list:
+caller validation to fail with stale-policy error and no allocator call. No fixture hardcodes the repository's DF list:
 use configurable DEMO pairs and separately exercise effective repository Config. No filesystem assertions in the pure allocator test.
 `internal/recordids/recordids_test.go::TestLaneRecordIDInventory` preserves current
 archive/grandfather cases and rejects duplicate CUE slugs and overlapping ranges.
@@ -300,9 +311,21 @@ here. No gate lease taken while the shared gate runs. This document needs only
 REC-1 stays unchecked. After approved implementation, scratch-ingest its HEAD and
 run `fathom verify --service fathom --plan docs/plans/typed-records.md` before claim.
 
-## FIX round 2 receipt
+## W2-2 ruling application (supersedes FIX round 2 boundary)
 
-F4: AllocateRecordID now explicitly receives effective trusted recordids.Config.
+W2-2 verbatim semantics: “the caller validates the inventory with the existing
+checker and its effective policy, and hands the allocator that validated result.
+The allocator has no duplicate rule of its own. It refuses only an id that is
+already defined, grandfathered ones included, or one outside the caller's granted
+range.” The declarations and assertions above implement this contract in prose.
+D1..D6 are settled by W2-2 explicitly, including the integration grant and real
+implementation-lane RED. Prior commits are preserved. Critic must confirm this
+exact revision before the approval marker is bound to its commit. No live ranges,
+product implementation or passing gate is implied.
+
+## FIX round 2 receipt (historical, boundary superseded by W2-2)
+
+F4 initially gave AllocateRecordID effective Config; W2-2 above replaces that boundary.
 The existing checker applies its exact grandfather policy to the full inventory.
 Allowed pairs do not block unrelated allocation; all their ids remain occupied.
 New third-path/local duplicates and stale policy fail. Named assertions above
