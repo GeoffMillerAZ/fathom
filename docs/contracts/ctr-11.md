@@ -168,7 +168,7 @@ an empty healthy corpus. Record sort is kind/id/path/line, diagnostic sort path/
 ## Named condition evaluator (U1)
 
 ```go
-type DatedReview struct { RecordID, Date, Verdict FrictionVerdict; At recordids.Location }
+type DatedReview struct { RecordID string `json:"record_id"`; Date string `json:"date"`; Verdict ReviewVerdict `json:"verdict"`; At recordids.Location `json:"at"` }
 type ConditionFacts struct {
     Records []Record
     Coverage readmanifest.Manifest
