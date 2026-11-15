@@ -204,7 +204,13 @@ person acceptance before a drafted check may serve, with H2/H5 advice retained.
 
 ## Decidability and soundness scorer (#302)
 
-Entry is proven HZ-3 and the actual #310 reader handback, not a kernel/OQ3 yes.
+Entry requires BOTH HZ-3 and the complete HZ-M1 reading handed back PROVEN,
+plus the actual #310 reader handback. Source: #302 Contract handed explicitly
+requires HZ-M1 proven; its Dispatch state also lists HZ-M1. HZ-17's narrower
+plan needs do not amend that handed contract. A parser/fixture/executable digest
+is necessary but cannot stand in for the replay reading, full acceptance
+assertions, independent review and actual row-proof receipt. No kernel/OQ3 yes
+is required. W1..W5 contain no amendment removing #302's HZ-M1 prerequisite.
 Freeze independent public module frame with exact revisions and file rosters;
 strata are no module calls / local-only modules / any vendored remote module.
 Mixed local+remote goes in the last stratum only. Rank each eligible frame key
@@ -251,7 +257,7 @@ return that trigger interpretation to architect, never invent a new floor.
 | test_manifest.py::test_registered_replay | Unique ids/pins/revisions/state recipe required; mutated byte/native/provider/catalog digest refuses; all selected cases accounted; invalid/empty synthetic state and nonclean base control cannot become a head score; no failed-case substitution; credentials/source canary absent from public output; exact binary schema required. |
 | test_score.py::test_replay_floor | TP=9 FP=1 at 0.9; TP=8 FP=1 below; injected FP and FN alter their own cells; zero positives undefined; missing H5 label/unjoined H2 pair/failed native control yield INCOMPLETE; H5 is not graded as replacement; accepted-stateful absence cannot label H1; input reorder byte-identical. |
 | test_decidability.py::test_sample_and_scores | Same seed/frame yields identical unique per-stratum samples independent of order; mixed modules assigned once; changed frame invalidates freeze; union N unchanged across arms; N=10 D=6 G=5 C=4 yields 0.6 decidability, 0.8 soundness, 1 ungraded definite; G=0 undefined; sensitive/missing/dynamic/default-only rows retained; exact typed mismatch counts; missing-variable Trivy fallback cannot become sound without native equality; E2/E4/E5 overlaps never double-count exclusive ranking; no future engine work. |
-| test_decidability.py::test_shared_reader_handoff | #302 requires exact #310 reader source/executable/fixture digest and proven HZ-3 route result; dropping native join or substituting scanner finding count fails; plan-reader module reused without source copy; product output contains no values. |
+| test_decidability.py::test_shared_reader_handoff | #302 requires proven HZ-3 AND the complete HZ-M1 reading/proof handback, plus exact #310 reader source/executable/fixture digests; parser-only handback, missing/failed/inconclusive/unproven HZ-M1, dropped native join or scanner finding-count substitution each blocks entry; a complete matching HZ-M1 proof plus other inputs admits it; plan reader reused without copy; no product values. |
 
 Prospective command: `python3 -I -m unittest discover -s docs/bench/harnesses/hazard-plan -p 'test_*.py'`.
 Actual RED belongs to #310 implementing lane, then independent assertion check
@@ -273,7 +279,8 @@ not n. Insufficient frame blocks, never backfills after outcomes.
 
 Required missing inputs: real frames/pairs/modules, labels, provider binaries,
 synthetic recipes, catalogs, native executable/runtime/adapter handback digests,
-proven HZ-3/HZ-9/HZ-10/LIB-7 entries as applicable, exact added file grants and
+proven HZ-3 AND complete HZ-M1 proof for #302, proven HZ-9/HZ-10/LIB-7
+entries for #310, exact added file grants and
 independent critic/rulings. A complete contract protocol is not these inputs.
 
 ## Decision models
@@ -317,7 +324,9 @@ of id,tp,fp,fn,tn,abstained,unlabelled,unjoined,precision,recall), pooled (same
 counts/ratios without id), failures (sorted array of case_id,kind,locator), and
 exclusions (sorted array of case_id,reason). Each ratio is an object with
 numerator,denominator,status and display; status is defined/undefined, display
-is an exact decimal string when defined and empty otherwise. No null numeric
+is a fixed six-fractional-digit decimal rounded half-even when defined and
+empty otherwise. Exact numerator/denominator are always retained; acceptance
+uses their integer comparison, never display. No null numeric
 ratio can masquerade as zero. Reasons/case identifiers contain no raw values.
 Decidability score rows are stratum,arm,n,definite,graded,correct,
 ungraded_definite,decidability,soundness,unknown_by_reason; the same ratio object
@@ -332,3 +341,34 @@ absent, boolean differs from integer, list order preserved, object key order
 irrelevant. test_score.py::test_replay_floor must assert every undefined ratio
 has status undefined and denominator zero, every empty list is [], and every
 score JSON key matches this closed envelope without raw value fields.
+
+
+## Critic FIX round 1: prerequisite and ratio corrections
+
+F1: Restored #302's actual handed HZ-M1 PROVEN requirement at entry, the shared
+reader assertion and final readiness list. The source is #302 Contract handed /
+Dispatch state, not a guessed operator receipt; no receipt is supplied here.
+The HZ-M1 source/head, registered manifest, complete reading verdict and its
+independent/proof receipts must identify the same completed replay. A real
+provenance mismatch blocks #302. Neither artifact presence nor a parser digest
+establishes that reading. No issue or plan is edited by this draft.
+
+F2: Ratio serialization uses exactly six fractional digits, nearest rounding
+with ties to even. For nonnegative integer numerator n and denominator d>0,
+round n/d to that display precision without binary-float conversion. It is a
+presentation value only. Status undefined requires d=0 and empty display;
+negative counts/denominators are typed input refusals. The exact rational n/d
+and integer floor comparisons remain authoritative (HZ-M1 10*TP >= 9*(TP+FP)).
+This is serialization compliance under I38/P22, not a floor amendment. Alternative
+an exact fraction display is representable but not selected for this decimal
+wire field. Exact Decimal semantics for private source-value comparisons remain
+unchanged; a rounded score display never rounds a source value.
+
+Additional exact test_score.py::test_replay_floor assertions:
+1/3 displays "0.333333" and retains n=1,d=3; 2/3 displays "0.666667";
+9/10 displays "0.900000" and meets the integer 0.9 floor. With
+TP=2699999, FP=300001, precision=2699999/3000000 displays "0.900000" but
+FAILS: 10*2699999=26999990 < 9*3000000=27000000. Zero denominator remains
+undefined/empty, not "0.000000". Half-even tie witnesses 1/2000000 ->
+"0.000000" and 3/2000000 -> "0.000002". All are prospective scorer assertions,
+not executed implementation tests or measured replay data.
