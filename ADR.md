@@ -6634,10 +6634,10 @@ reads below its threshold with its oracle available for two releases; the consum
 
 **Decision.**
 1. *Gate on what fathom controls.* The freeze lifts on the tenant clauses alone, with host-starved minutes reported next to them.
-2. *Three conditions.* (a) A fresh seven-day read of the tenant clauses, taken after RT-195 and RT-197 deploy. (b) Each change that adds a table, cache or job carries a cost row: a cost class, an allocation ceiling, its footprint delta under shed, and the ten-times scale test that invariant I48 already asks of tools. A lint fails a change without one (ENG-3). (c) A revert trigger: a later read with a self-caused refuse minute above the bar reverts the change.
-3. *A second week is the revert check.* The fresh read cannot see what the re-warm will spend, since RT-195 and RT-197 keep nothing resident. So a second tenant-clause week after RT-196 deploys is the check, with the footprint clause named.
+2. *Three conditions.* (a) A fresh seven-day read of the tenant clauses that starts on the deployed binary without RT-197 and runs beside the wave. RT-197 does not precede this week. (b) Each change that adds a table, cache or job carries a cost row: a cost class, an allocation ceiling, its footprint delta under shed, and the ten-times scale test that invariant I48 already asks of tools. A lint fails a change without one (ENG-3). (c) A revert trigger: a later read with a self-caused refuse minute above the bar reverts the change.
+3. *A second week is the revert check.* The fresh read measures the deployed binary without RT-197; it cannot see what a later resident reload or the re-warm will spend. So a second tenant-clause week after RT-196 deploys is the check, with the footprint clause named.
 4. *What it unblocks.* The graph re-warm (RT-196) and the row-level patch (RT-198), the system graph tables, the dependency plane and gate-receipt columns. It does not unblock the largest latency fix (ADR-096), which was never frozen. Stall signals need no table, because they are computed at render.
-5. *Conditional record.* The amendment lands as a conditional record, and fan-out does not wait for the fresh week.
+5. *Conditional record.* The amendment lands as a conditional record, and fan-out does not wait for the fresh week. The resident-only refresh-worker reload proposal remains under RT-M1, this proposed amendment and OQ5; this sequencing neither lifts the freeze nor authorizes that proposal.
 
 **Decision models.** None applies. The clauses are measured and the cost row is a lint.
 
