@@ -115,7 +115,8 @@ plan model. Source positions use recordids.Location, no new coordinate model.
 ```go
 type Identity struct { ID, Title string }
 type ConditionSpec struct {
-    Label, Kind, Text, ReviewBy, Target, Want string
+    Source intent.Condition // ID/Record/Label/Text/File/Line from existing parser
+    Kind, ReviewBy, Target, Want string
 }
 type DecisionHead struct { Identity; Ruling string; Supersedes []string; Conditions []ConditionSpec }
 type InvariantHead struct { ID, Statement string; EnforcedBy []string; Conditions []ConditionSpec }
@@ -164,33 +165,72 @@ an empty healthy corpus. Record sort is kind/id/path/line, diagnostic sort path/
 ## Named condition evaluator (U1)
 
 ```go
+type DatedReview struct { RecordID, Date, Verdict string; At recordids.Location }
 type ConditionFacts struct {
     Records []Record
+    Coverage readmanifest.Manifest
     Links map[string]bool
     Enforcement map[string]intent.Rung
     Readings map[string]string
-    Reviews map[string]string
+    Bets []intent.GoalBet
+    Reviews []DatedReview
 }
-type ConditionResult struct { Name, Record, State, Reason string }
-func EvaluateCondition(name, recordID string, facts ConditionFacts,
+type ConditionResult struct { ID, Name, Record, State, Reason string }
+func EvaluateCondition(name, conditionID string, facts ConditionFacts,
     now time.Time) (ConditionResult, error)
 func ObservationVerdict(head ObservationHead, facts ConditionFacts) (string, error)
 ```
 
 State closes over holds/violated/unknown. Map absence means unknown, not false.
-SupersederResolves: an authored supersedes target resolves in Records, and the
-superseding record identifies this record; absent references violate, unread corpus
-is unknown. OutcomeResolves: each authored outcome target resolves; a prose outcome
-with no typed target is unknown. ReviewRecorded: Reviews has an explicit reading
-for that record. ReviewDue: now.UTC date >= review_by and no recorded review; never
-is not due. LinkResolves: each typed link present and true in Links. EnforcementHolds:
-all authored enforcement references have a checked gate/proven rung, absent is unknown.
-ConditionFired: date against injected now; record against explicit ruling; reading
-against exact verdict; manual is unknown until review date, then ReviewDue only.
-No LLM evaluates a prose predicate. Unknown condition name is an error. Record-link
-cycles fail vet, including self-cycle. No evaluator calls time.Now, filesystem,
-git, store, provider or process. Caller gathers current HEAD facts. Result states
-are derived, never accepted as fields of any head.
+Selection uses the exact existing intent.Condition.ID (record#ordinal), not only
+record id. Resolve exactly one ConditionSpec.Source.ID, then the requested named
+check. Missing id is an error; duplicate condition ids are a corpus error. No
+“first condition on record” fallback. Results preserve ID/Record/Name. To show a
+record, evaluate every applicable (condition id, named-check) pair in stable ID/name
+order, retaining each result. Aggregate is violated if any definitely violated,
+else unknown if any unknown, else holds. Unknowns are never filtered from totals.
+
+Coverage is the existing manifest carried by LoadRecords, not a boolean authored
+by a record. Any absent target is violated only when its owning routed member was
+successfully read and is complete at HEAD. Unreadable/skipped/unknown target member
+or unmapped ownership is unknown with coverage reason. Unrelated unreadable members
+do not invalidate a fully read, specifically resolved target. This applies to
+supersedes/outcomes/links/reviews/readings and enforcement facts alike.
+
+SupersederResolves: this condition's explicit supersedes target resolves to one
+record under complete coverage. OutcomeResolves: this condition's explicit outcome
+target resolves similarly. Prose with no typed target stays unknown. ReviewRecorded
+uses its enclosing goal's accepted GoalBet, not the existence of any note. If the
+bet is refused/missing or its review date invalid, return unknown with reason
+(project-understanding §7 explicitly refuses the bet). If injected now is before
+that date, the implication holds with “review not due”. At/after date, require an
+explicit keep/kill line for that goal whose parsed Date >= bet.Review and <= now's
+UTC date. Arbitrary notes, undated notes, old verdicts and future-dated verdicts do
+not satisfy it. Missing timely verdict is violated only with complete goal coverage.
+No other verdict counts. A timely keep/kill means recorded, not proof the goal won.
+ReviewDue is date reached with no such timely review, never is not due. Changing
+ReviewBy does not rewrite the original GoalBet review boundary used by this check.
+
+LinkResolves checks exact typed target as above. EnforcementHolds checks authored
+enforcement references with a checked gate/proven rung and complete coverage;
+absent evidence is unknown. ConditionFired evaluates this selected condition only:
+date against injected now; record against explicit ruling; reading against exact
+verdict; manual unknown until due then ReviewDue, never guessed true. No LLM/prose
+predicate, internal time.Now, filesystem, git, store, provider or process. Unknown
+condition name errors. Record-link cycles, including self-cycle, fail vet. All
+result states are derived, never accepted as authored head fields.
+
+Proposed TestReviewRecordedDatedGoal cases in conditions_test.go: old keep before
+bet date fails; arbitrary timely note fails; timely keep and timely kill each
+hold; future due date holds with not-due reason; refused bet is unknown; missing
+review with unreadable goal is unknown. TestConditionIdentityAndCoverage creates
+two different authored conditions on one record, selects each unique Source.ID,
+asserts independent results, rejects duplicate ids, and makes a target member
+unreadable to require unknown instead of violated or healthy. Aggregate retains
+both conditions and named unknown reasons. Commands:
+`go test -race ./internal/records -run '^TestReviewRecordedDatedGoal$' -count=1`
+and `go test -race ./internal/records -run '^TestConditionIdentityAndCoverage$' -count=1`.
+These are proposed acceptance tests, not executed evidence.
 
 ## CLI JSON contract and schema handoffs
 
@@ -202,7 +242,7 @@ Do not add lane/wave fields to every prose head. Invalid combination returns 2.
 `rec show ID --json` errors on ambiguity, never picks first duplicate.
 Envelope: `{"schema":"fathom.records/v1","records":[],"unparsed":[]}`;
 each record is `{"head":{...},"path":"...","line":1,"conditions":[]}`.
-Condition entries keys name/record/state/reason. Exact empty result stays arrays.
+Condition entries keys id/name/record/state/reason. Exact empty result stays arrays.
 Vet JSON uses `{"schema":"fathom.rec-vet/v1","violations":[],"unparsed":[]}`.
 Exit 0 clean, 1 schema/link/id/cycle violation, 2 unreadable/unavailable evidence.
 `why` consumes existing typed plan/ADR links and verify receipts (ADR-086), not
@@ -302,14 +342,30 @@ hand back a committed base before the next turn. Unlisted files stay unowned.
 | cmd/fathom/rec_vet.go, cmd/fathom/rec_vet_test.go, Taskfile.yml, lefthook.yml | #319 one architect integration turn, after REC-1 and #164 command baseline |
 | cmd/fathom/rec_query.go, cmd/fathom/rec_query_test.go, cmd/fathom/rec_show.go | record-verbs lane, explicit added rec_show.go grant |
 | internal/verify/annotation_keys.go, internal/verify/annotation_keys_test.go, schema/plan/schema.cue, internal/verify/markdown.go, internal/verify/verify.go | #317 architect schema/parser turn only |
-| cmd/fathom/plans_lines.go, internal/console/project.go | #317 console turn only, contingent on confirming exact existing title consumers; no broad console grant |
+| cmd/fathom/plans_facts.go, cmd/fathom/plans_facts_test.go, internal/console/plans.go, internal/console/plans_test.go | #317 actual planTaskFact/PlanRowFact consumer turn; replace IsOpTitle use with typed Gate field |
 | schema/records/data.cue, schema/records/testdata/cards/valid.cue, schema/records/testdata/cards/invalid.cue | #299 after head-schema handoff; CTR-13 supplies card shape |
 
 REC-8 backfill is a separate architect-owned batch after parser/schema parity.
 Generate its exact plan-path manifest from matching titles and freeze it before
-any edit; this draft cannot grant “about 400 rows” as an exact allowlist. If proposed
-console path does not contain the title consumer at implementation base, stop and
-repair U2 before dispatch. No facade test can establish console integration.
+any edit; this draft cannot grant “about 400 rows” as an exact allowlist. Actual current reader is internal/console/plans.go::IsOpTitle, called by
+cmd/fathom/plans_facts.go::planTaskFact. #317 explicitly owns these four files,
+not speculative project.go/plans_lines.go edits. Add Task/PlanRowFact fields
+Lane, Wave, Feature, Capability strings and Gate bool (JSON lane/wave/feature/
+capability/gate, omitempty for compatibility); parser accepts gate true/false only.
+`planTaskFact` assigns Op from Task.Gate, never title prefix, and copies the other
+four fields. Existing Op JSON presentation stays as legacy output alias for Gate,
+not a second authored source. Remove IsOpTitle after its callers are gone. Titles
+may retain literal “(op)” before backfill but cannot affect computed Op.
+Proposed cmd/fathom/plans_facts_test.go::TestPlanTaskFactUsesGateKey parses one
+plain title with gate:true and one “(op)” title with gate:false, calls the real
+planTaskFact and asserts Op=true/false plus the other key fields survive. Feed
+those facts into existing console RollupPlan/ProofBarOf projections and assert measurement
+counts follow Gate, not title spelling. internal/console/plans_test.go adds
+TestPlanProjectionUsesTypedGate with the same crossed fixture. Commands:
+`go test -race ./cmd/fathom -run '^TestPlanTaskFactUsesGateKey$' -count=1` and
+`go test -race ./internal/console -run '^TestPlanProjectionUsesTypedGate$' -count=1`.
+The exact backfill path list remains separately frozen, not required to make this
+consumer proof concrete. No facade-only proof substitutes for planTaskFact.
 REC-M3 timing uses the full trusted LoadRecords corpus, cold process and one changed
 fixture; five trials, median, same fixed fixture clock, elapsed monotonic duration.
 Keep authored bars <2 s cold / <200 ms changed. Test presence is not timing proof.
