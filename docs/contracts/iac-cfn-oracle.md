@@ -162,7 +162,7 @@ Neither passing HZ-1 nor restoring its floor lifts Terraform's own gate.
 | adapter/main_test.go::TestCFNBenchAdapter | Exact reader/comparator route above; one changed replacement pointer produces definite with matching address/span/digest; conditional remains conditional; opacity/unbound/syntax/drop is unknown/refusal; additions/deletions/type changes excluded; result arrays nonnil; canary absent; order permutations give identical JSON. |
 | test_native.py::test_pinned_cli_pair | Exact pinned CLI argv and one-stack assembly; will-replace, may-replace, update and unchanged parsed separately; credentials/network attempted, unknown output, signal, timeout or wrong pin refuse; CLI output and machine-readable crosscheck agree by resource. |
 | test_score.py::test_below_floor_handoff | REFUTED below-0.85 interval stops all other hazard computation and requires live IF-C4 advice wording until fixed; INCONCLUSIVE grants no continuation/serving permission and triggers only the preregistered extension; CONFIRMED cannot lift Terraform own 0.9. This tests the handoff decision, never an unowned flag edit. |
-| test_score.py::test_confusion_and_floor | TP=17 FP=3 gives point0.85 but not automatic CONFIRMED; TP=16 FP=3 point below floor also not automatic REFUTED if interval crosses0.85; TP=1 FP=1 FN=1 TN=1 gives precision=recall0.5; seeded FP/FN alter their cells; zero positives undefined/INCOMPLETE; failed/missing arm INCOMPLETE; conditional never TN; interval/outcome/stopping/publication assertions below all mandatory; reorder identical. |
+| test_score.py::test_confusion_and_floor | TP=17 FP=3 gives point0.85 but not automatic CONFIRMED; TP=16 FP=3 point below floor also not automatic REFUTED if interval crosses0.85; TP=1 FP=1 FN=1 TN=1 gives precision=recall0.5; seeded FP/FN alter their cells; zero positives undefined/INCONCLUSIVE on valid input; failed/missing arm INCOMPLETE; conditional never TN; interval/outcome/stopping/publication assertions below all mandatory; reorder identical. |
 
 Implementer first runs `python3 -I -m unittest discover -s docs/bench/harnesses/hazard-cfn -p 'test_*.py'`
 and `go test -race ./docs/bench/harnesses/hazard-cfn/adapter -run '^TestCFNBenchAdapter$' -count=1`
@@ -218,37 +218,48 @@ contract. Freezing hash/selection is still REQUIRED INPUT, not a claim it exists
 
 ## W6-3 / BN-D6 exact statistical method and outcome assertions
 
-Source: docs/design/proof-program.md BN-D6 (paired by task, clustered by
-repository, three outcomes, Holm primaries, preregistered sequential stopping,
-pins and validity). Task here is the template pair; both arms always travel
-together. Sole confirmatory primary is precision TP/(TP+FP) at 0.85; recall and
-stratum counts are descriptive. Holm across this one primary is the identity.
-Register two possible looks, 60 and cumulative100, with total alpha0.05 split
-0.025 each (Bonferroni across looks, not unregistered optional peeking). No
-extra primary or look can be added after observing data.
+W7-4 settles former U2. Direct source read:
+docs/design/proof-program.md BN-D6, lines113-121, names NO interval method.
+Therefore preregistration MUST state "Wilson score interval, two-sided 95%"
+per W7-4. Method/confidence are settled; no further statistical approval question.
+This replaces the prior proposed resampling estimator, replicate count,
+97.5% bounds and alpha split. Neither a different interval nor a confidence
+adjustment is inferred from BN-D6's general clustered/sequential language.
 
-Freeze a paired repository-cluster percentile bootstrap for the precision ratio:
-G unique repository clusters, each storing all selected pair/resource TP/FP
-counts. In each of B=20000 replicates draw G repositories with replacement,
-copying each selected cluster's entire paired observations, then recompute
-sum(TP)/sum(TP+FP). Use a counter-based SHA-256 draw stream with domain
-"iac-cfn-ci-w6-v1", seed "20261115", look size and replicate/draw counters;
-unbiased rejection sampling maps hashes to sorted repository indices. Fixed
-quantiles are empirical nearest-rank at 0.0125 and 0.9875 (the97.5% interval),
-clipped to [0,1]. Never bootstrap individual resource flags as independent.
-Retain all strata and per-repository counts; do not change the point estimand
-to an unweighted mean of repository precisions. This is a preregistered
-approximate cluster interval, not a claim of exact finite-sample coverage.
+Task here remains the public-history template pair, with both arms paired.
+Repository identity/cluster membership and per-repository counts are retained
+for the BN-D6 population/accounting assertions; they do not alter W7-4's Wilson
+estimator or invent an effective sample size. Sole confirmatory primary remains
+precision TP/(TP+FP) at0.85; recall/stratum counts descriptive, Holm across this
+one primary the identity. The only registered looks remain60 and cumulative100.
+Apply two-sided95% Wilson at each permitted look, no alpha split or re-peeking;
+95% is the stated per-look level, not a simultaneous two-look coverage claim.
+No additional primary, sample, look or post-result method choice is permitted.
 
-G<2, no positive predictions, any undefined bootstrap denominator, or degenerate
-bootstrap dispersion cannot manufacture certainty: use conservative interval
-[0,1] with an explicit statistical-validity code and outcome INCONCLUSIVE.
-Point itself is undefined if TP+FP=0. Invalid/missing native cells remain
-operational INCOMPLETE and do not become valid INCONCLUSIVE by this rule.
-A disjoint no-claim shakedown must publish the method's noise/validity and power
-limitations; W6 fixes n60/100, so that evidence cannot silently change n, the
-floor, roster or stopping rule. If it shows the preregistered method invalid,
-HOLD instead of inventing a more favorable interval after results.
+Deterministic Wilson inputs: integer k=TP, n=TP+FP, z=1.959963984540054,
+z2=z*z. n is the number of definite positive predictions, NOT the60/100 cohort
+size, resource total, repository count or number of native positives. For n>0,
+0<=k<=n, define
+h = z * sqrt(z2 + 4*k*(n-k)/n), d = 2*(n+z2),
+lower = max(0,(2*k+z2-h)/d), upper = min(1,(2*k+z2+h)/d).
+At k=0 set lower exactly0; at k=n set upper exactly1. These match the existing
+private wilson95 formula and wilsonZ95 constant in
+third_party/agentic-kit/foundations/decision/reading.go; that private helper
+is source evidence, not a public callable port or permission to add a dependency.
+Use a deterministic calculation with the fixed constant, compare full-precision
+bounds to0.85, then six-place half-even display. No randomness, seed or cell
+order influences Wilson bounds. Negative/noninteger counts or k>n are typed
+input refusals. Do not clamp invalid counts into a valid result.
+
+For otherwise valid complete input with n=0, precision and Wilson bounds are
+undefined and statistical outcome INCONCLUSIVE, never a fabricated[0,1] bound
+or a zero/perfect precision. Valid60 INCONCLUSIVE still triggers its frozen
+extension; invalid/missing native cells remain operational INCOMPLETE. No
+cluster-count/dispersion fallback overrides the Wilson result when n>0: even
+all-correct/all-wrong predictions have the nondegenerate Wilson edge interval.
+The disjoint shakedown still records noise/power/validity limitations; W6/W7
+fix n60/100, confidence, floor, roster and stopping rule. Invalid execution
+cannot be repaired by selecting a more favorable interval after results.
 
 At each valid look compare UNROUNDED bounds: lower>0.85 -> CONFIRMED (acceptance
 PASS); upper<0.85 -> REFUTED (acceptance FAIL); otherwise INCONCLUSIVE. A bound
@@ -266,16 +277,34 @@ new preregistration, never an automatic easier replacement cohort. No missing
 inputs are supplied by this ruling. No surface claim on INCONCLUSIVE.
 
 Additional exact test_score.py::test_confusion_and_floor assertions:
-point0.90 with interval[0.86,0.97] CONFIRMED; point0.80 with[0.70,0.84] REFUTED;
-point0.85 with[0.75,0.93] INCONCLUSIVE. [0.85,0.95] and[0.75,0.85] both
-INCONCLUSIVE. Identical point counts with different intervals can differ in
-outcome; display rounding must not decide classification. These supplied-bound
-vectors test classification only, not measured or manufactured bootstrap output.
-Test identical cluster inputs/seed -> identical full interval, both arms retained,
-no per-resource independent resampling; G1/undefined/zero-dispersion yields
-[0,1]/INCONCLUSIVE, never spurious confirmation. The implementing lane must
-independently check the interval implementation against a pinned reference on
-disjoint synthetic fixtures; no such check or bootstrap ran in this draft.
+point0.90 with supplied interval[0.86,0.97] CONFIRMED; point0.80 with[0.70,0.84]
+REFUTED; point0.85 with[0.75,0.93] INCONCLUSIVE. Supplied[0.85,0.95] and
+[0.75,0.85] both INCONCLUSIVE. These are classifier boundary fixtures, not
+invented observed Wilson outputs. Display rounding never decides the outcome.
+
+Add exact test_score.py::test_wilson95_deterministic, all assertions mandatory:
+with the fixed z constant, bounds agree with these arithmetic-only reference
+vectors to absolute tolerance1e-12 before display (k,n -> lower,upper,outcome):
+- (0,60) -> (0,0.060171852142), REFUTED; lower exactly0.
+- (60,60) -> (0.939828147858,1), CONFIRMED; upper exactly1.
+- (17,20) -> (0.639581135259,0.947631254104), INCONCLUSIVE.
+- (16,20) -> (0.583982567748,0.919342337420), INCONCLUSIVE.
+- (56,60) -> (0.840746426868,0.973771301275), INCONCLUSIVE.
+- (57,60) -> (0.862994835237,0.982850497836), CONFIRMED.
+- (93,100) -> (0.862504852609,0.965680738933), CONFIRMED.
+- (75,100) -> (0.656955364519,0.824547886377), REFUTED.
+All are hypothetical count fixtures, not native inputs, measurements or a
+claimed precision reading. At17/20 in a60-pair cohort the denominator stays20,
+not60. Reverse/permuted pair/resource/repository order with identical k,n gives
+identical unrounded bounds and output. Changing cluster labels without changing
+k,n does not substitute another estimator. k=0/n>0 and k=n/n>0 keep the exact
+edge bound and the other nontrivial bound. n=0 produces undefined point/bounds
+and INCONCLUSIVE on valid input; negative/noninteger/k>n refuses. No all-correct
+case is demoted merely because a discarded resampling method was degenerate.
+No precision rounding, confidence adjustment or seed affects classification.
+The implementing critic checks every assertion and independently compares a
+pinned reference on disjoint synthetic fixtures; no implementation test runs
+in this contract update. The arithmetic reference check is not a native reading.
 
 Additional test_manifest.py::test_pins_and_population assertions: public-history
 frame enumeration reproducible under input reorder; fixed labels before output;
@@ -335,3 +364,13 @@ W6-3 settles former U1 and supersedes point-only acceptance/publication wording
 throughout this draft. This is a later-ruling compliance update, not a new
 critic FIX cycle; the prior resolved FIX round1 remains recorded. Independent
 critic must confirm this exact immutable commit before approval.
+
+## W7-4 compliance record
+
+BN-D6 root lines113-121 read directly: no interval method is named. W7-4
+therefore settles Wilson score, two-sided95%, stated in preregistration. Former
+U2 method/confidence is closed, not re-escalated. W6-3 public-history60,
+frozen100 roster/hash, balancing, three outcomes, inconclusive extension,
+unchanged0.85, licence boundary and stop/serving rules remain binding.
+Later-ruling compliance does not consume a critic FIX round. Same independent
+critic confirms this exact READY commit; all other seven IaC choices stay held.
