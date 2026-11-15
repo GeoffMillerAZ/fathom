@@ -21,7 +21,7 @@ not future harness fields. No backfilled historical stamps.
 Settled decisions, with governing text:
 - D1 one sequential hook owner: parallel-lanes §4 hooks row explicitly orders
   ENG-8 -> ENG-9 -> WIR-1 -> CHG-3 -> BEN-4 -> CHG-8 -> FLT-3. Alternative parallel
-  hook edits contradict that row. Proposed reservation details still need U2.
+  hook edits contradict that row. The exact serial reservation is settled by W4-2.
 - D2 reuse exact-tree receipts: ADR-100 d2 and PL-D7. Alternative rerun different
   tree and call it equivalent is excluded. Existing gatereceipt.Check is the law.
 - D3 delivery is forward/holdout evidence, not helping: BEN-4, BN-D2/BN-K8/K9 and
@@ -31,19 +31,14 @@ Settled decisions, with governing text:
 - D5 retain verify codes and fail-open hooks: CU-K7, I9/I12. Alternative deriving
   runtime conformance from static verify is excluded.
 
-Unsettled U1: approve exact structs/signatures/JSON below. Alternative land only
-current receipt/stamp adapters and split added delivery joins into a second contract.
-Unsettled U2: approve exact serial reservation manifest below. Alternative one
-architect integration lane owns every existing hook/CLI/MCP file in that manifest.
-U3 settled by W3-2: implementing lanes write and run real failing tests. Independent critics compare every named assertion; weaker tests are FIX. The four governing clauses are amended separately.
-Unsettled U4: deterministic CI sample from bundle tree, first hex byte <16 (1/16),
-recommended. Alternative every bundle receives a full CI run. ADR-100 requires
-sampling but does not settle the rate. No sampled disagreement is ignored.
-Unsettled U5: proposed 26/256 deterministic delivery holdout, recommended.
-Alternative 1/10 with rejection sampling. ADR-080 d6 requires deterministic
-holdouts but does not settle their rate; freeze before forward data.
+API mechanics are settled by W3-4 and semantic ports cite D1-D5. W4-2 settles
+the remaining approved-scope serial grants: one hook owner, active gate owner
+hands back before capture integration. Full CI runs on EVERY bundle, no sample.
+Advisory holdout is deterministic 26/256; enforcement/failure channels always
+deliver. FLT-3/FLT-10 port consumers are split to a later exact contract below.
+No generic shape/rate/grant question remains in this retained scope.
 
-## Proposed attribution and lookup ports (U1)
+## Proposed attribution and lookup ports (W3-4)
 
 ```go
 // internal/mcp/hook_lookup.go; uses existing backend/symbol types.
@@ -72,7 +67,7 @@ metadata, not model-supplied tool arguments. Serialize keys `session_id`, `lane_
 coverage is numerator rows with both applicable ids / all applicable rows, >=95%
 as authored; report missing denominators and exemptions separately, never drop them.
 
-## Wire stamp and doctor (U1)
+## Wire stamp and doctor (W3-4)
 
 ```go
 // internal/wiring/wire_stamp.go
@@ -104,7 +99,7 @@ unknown if missing; configured when stamp exists but no matching firing; observe
 only when observed wire equals stamp. Never promote installed -> firing. Existing
 WR-12 firing check and per-harness applicability remain, not a new ladder.
 
-## Forward delivery schema and funnel (U1)
+## Forward delivery schema and funnel (W3-4)
 
 ```go
 // internal/labs/delivery.go
@@ -154,8 +149,7 @@ func DeliveryHoldout(sessionID, capability string, channel DeliveryChannel) (boo
 
 After mandatory eligibility checks below, advisory-only DeliveryHoldout uses
 sha256 of length-prefixed session/capability, first byte <26
-(approximately 10.16%), stable within session. This exact fraction is proposed U5,
-not a measured policy win. Arm is assigned holdout/deliver before eligible outcome;
+(approximately 10.16%), stable within session. W4-2 approves this exact 26/256 fraction; it is not a measured policy win. Arm is assigned holdout/deliver before eligible outcome;
 held-out rows keep eligible=true, fired/delivered=false. Phase preflight/agent
 separates scripted probes from agent outcomes. Target is an exact existing
 file/symbol/test anchor, never raw transcript. At RFC3339 UTC, supplied by caller.
@@ -173,18 +167,20 @@ whole window through delivery+k or a witnessed session end. Complete is an adapt
 attestation verified against captured event counts/raw digest; merely authoring true
 cannot establish it. Calls are immutable during aggregation.
 
-Pair validity is not recomputed from use: FunnelInput.Pairs consumes the single
-benchledger.PairPreflight contract from CTR-13, with PairID, TreatmentSession,
-ControlSession, BeforeAgent, Valid, Reason. It is produced by benchledger.AdmitPair
-from scripted W0-W3/W6 receipts. BeforeAgent=false or Valid=false makes BOTH sessions
-VOID in VoidPairs before any action scoring; missing preflight is unknown and not
-an admitted pair. Benchledger owns this result, labs imports it; benchledger never
-imports labs. No fallback from W4/W5. A valid zero-use pair remains assigned-arm
-scored, counted eligible/non-use, never voided by the funnel. Preflight calls are
-phase preflight and excluded from agent use, not admission. Output rows use existing
-FiringReadingRow/Stages. Helped remains not measured without independent outcomes.
-Archive raw rotated logs under statedir logs with digest/time range and missing
-periods; no claim an old week proves a month.
+Pair validity is not recomputed from use. FunnelInput.Pairs imports the exact
+benchledger.PairPreflight contract from CTR-13: PairID, TreatmentSession,
+ControlSession, BeforeAgent, Valid, Disposition, Reason. Required named
+PreflightDisposition is admitted/void/unknown, not parsed from Reason. Valid is
+derived Disposition==PreflightAdmitted; inconsistent boolean/enum inputs return
+typed RefusalError. Missing/late receipt is PreflightUnknown, definite failed
+scripted pre-agent W0-W3/W6 is PreflightVoid, all applicable pass before startup
+is PreflightAdmitted. Both arms follow that same disposition. VoidPairs only from
+PreflightVoid; unknown/missing/late pairs add both sessions to UnknownSessions and
+are not admitted, never treated as scored or silently VOID from Valid=false.
+A valid zero-use pair remains assigned-arm scored/non-use; no W4/W5 admission.
+Benchledger owns this model; labs imports it, never the reverse. Preflight probes
+are phase preflight, excluded from agent-use outcomes. Helped remains not measured
+without independent oracle. Existing Stages result types/coverage remain.
 
 Proposed TestDeliveryCallOrderCoverage cases: k=3 delivery at ordinal 2, non-delivery
 calls 3/4/5 and target action 6 -> not acted; action 5 -> acted; equal timestamp
@@ -192,8 +188,8 @@ with distinct ordinals stable; missing call 4 -> unknown; duplicate ordinal ->
 error; session ended at 4 with witnessed end closes short window. Proposed
 TestDeliveryPairPreflight cases: valid reachable treatment with zero agent calls
 remains scored/non-use, assigned arms unchanged; scripted failure before startup
-voids both sessions; missing receipt unknown; late receipt cannot retrospectively
-admit. Commands `go test -race ./internal/labs -run
+voids both sessions; missing/late receipt maps both sessions unknown, not void; late receipt cannot
+retrospectively admit; inconsistent disposition/bool typed refusal. Commands `go test -race ./internal/labs -run
 '^TestDelivery(CallOrderCoverage|PairPreflight)$' -count=1` (one line), unrun.
 
 `cmd/fathom/hook_delivery.go` converts current hook emissions and call-log attribution
@@ -201,7 +197,7 @@ into DeliveryRow once per decision point. It never modifies holdout arm after se
 use. Hooks emit/log under existing limits and fail open on logging errors. Errors
 appear in reading coverage; they do not silently remove rows from denominators.
 
-## Landing bundle (U1)
+## Landing bundle (W3-4)
 
 ```go
 // internal/landing/bundle.go; current verify.Report and readmanifest reused.
@@ -266,11 +262,11 @@ are local and available through artifacts fs.FS, not arbitrary caller maps.
 
 Accept reruns receipt integrity on receiving clean checkout, requires exact tree,
 recomputes bundle/manifest/report/source digests and complete coverage from artifact
-bytes, then applies U4 CI sampling. Altered Report/list/coverage/source bytes,
+bytes, then requires full CI for this bundle under W4-2, with SampleFullCI=true always. Altered Report/list/coverage/source bytes,
 missing artifact, foreign store identity or receiving-tree mismatch rejects even
 when bundle.Tree text is unchanged. The gate log binds these captured artifacts
 as unsigned local evidence; this proves integrity under the existing local trust
-model, not author identity. No lighter gate. A sampled full-run disagreement opens
+model, not author identity. No lighter gate. A full-run disagreement opens
 an incident and blocks acceptance. It is never overwritten by old receipt presence.
 
 Proposed TestLandingEvidenceProvenance in bundle_test.go and accept_test.go seeds
@@ -279,7 +275,7 @@ overlap list, coverage, source hash and receiving checkout. Every mutation rejec
 a fresh valid unchanged bundle passes. Command: `go test -race ./internal/landing
 -run '^TestLandingEvidenceProvenance$' -count=1` (one line), proposed/unrun.
 
-## Other consumer ports, scoped to their current rows (U1)
+## Other consumer ports, scoped to their current rows (W3-4)
 
 ```go
 // internal/testrun/suspects.go: reuse FindCandidates, Run and Index.
@@ -293,12 +289,6 @@ func HookPathPresence(in HookPresenceInput) HookPresence
 // internal/hookpath/proposed_file.go
 type Edit struct { Start, End int; Replacement []byte }
 func ReconstructProposedFile(base []byte, edits []Edit) ([]byte, error)
-// internal/lanefile/events.go
-type Event struct { LaneID string `json:"lane_id"`; SessionID string `json:"session_id"`; Kind LaneEventKind `json:"kind"`; At string `json:"at"`; Target string `json:"target"` }
-func ParseEvents(source []byte) ([]Event, error)
-// internal/lanefile/export.go
-type View struct { LaneID string `json:"lane_id"`; State LaneState `json:"state"`; Events []Event `json:"events"` }
-func ExportLanes(lanes []records.Lane, events []Event) ([]View, error)
 // internal/lint/tenancy/rules.go: existing Findings and CheckFile semantics.
 func CheckRules(rel string, src []byte, rules []string) ([]Finding, error)
 ```
@@ -313,9 +303,7 @@ health and panel consume same typed value. No eligible observations -> unknown.
 Reconstruct edits use byte offsets, sorted non-overlapping on original base;
 reject out-of-range/overlapping edits. Each harness adapter must decode its real
 edit form into this type, no guessed common transcript. Missing whole-file input
-is unknown, not a partial hypothetical file. Event kinds edit/test/claim/stop only,
-no assignment/phase write. Export derives state from operator-authored lanes and
-observations; no scheduler/status mutation. Rules closes over current Rules() keys,
+is unknown, not a partial hypothetical file. Rules closes over current Rules() keys,
 unknown key fails, no new expression language or execution. CHG-1 replay uses
 internal factdelta only; no public delta API or admitted infrastructure card.
 
@@ -400,18 +388,7 @@ consumer. No concurrent shared-file owner.
 - `internal/hookpath/proposed_file_test.go` (new).
 - `cmd/fathom/hook_proposed_file.go` (new).
 
-### #315 Lane events (FLT-3)
 
-- `internal/lanefile/events.go` (new).
-- `internal/lanefile/events_test.go` (new).
-- `cmd/fathom/hook_lane_events.go` (new).
-
-### #316 Lane views (FLT-4, FLT-10)
-
-- `internal/lanefile/export.go` (new).
-- `internal/lanefile/export_test.go` (new).
-- `cmd/fathom/fleet_lanes.go` (new).
-- `cmd/fathom/fleet_lanes_test.go` (new).
 
 ### #320 Rule port (RL-9)
 
@@ -419,7 +396,7 @@ consumer. No concurrent shared-file owner.
 - `internal/lint/tenancy/rules_test.go` (new).
 - `calibration/rules/tenancy/` (new).
 
-## Exact proposed shared-file reservations (U2)
+## Exact proposed shared-file reservations (W4-2)
 
 Approve this exclusive manifest before dispatch; it does not claim #164 owns hooks.
 #164's observed command surface is cmd/fathom/iac.go/iac_test.go only. Its legacy
@@ -430,8 +407,8 @@ MCP #167/#168 receive only their named IaC turns, then #273 hook lookup handback
 |---|---|
 | internal/mcp/hook_lookup.go, internal/mcp/hook_lookup_test.go | #273 only; existing QueryInterface consumed without adding method |
 | internal/mcp/tools.go | #167/#168 IaC context turns -> #273 existing find_symbol registration/handler adapter at tools.go:403+, same QueryInterface |
-| cmd/fathom/sessionhook.go | #273 lookup transport -> #272 attribution -> #298 stamp -> #296 suspects -> #267 delivery -> #314 reconstruction -> #315 events |
-| cmd/fathom/edithook.go, cmd/fathom/sessionhook_events.go | #272 -> #296 -> #267 -> #314 -> #315, same hooks owner each turn |
+| cmd/fathom/sessionhook.go | #273 lookup transport -> #272 attribution -> #298 stamp -> #296 suspects -> #267 delivery -> #314 reconstruction |
+| cmd/fathom/edithook.go, cmd/fathom/sessionhook_events.go | #272 -> #296 -> #267 -> #314 each turn |
 | cmd/fathom/beats.go, cmd/fathom/discoveries.go, internal/mcp/calllog.go | #272 attribution -> #298 stamp/session record -> #267 delivery log |
 | cmd/fathom/doctor.go, cmd/fathom/doctor_harness_firing.go, cmd/fathom/doctor_wire_stamp.go | #298 only, retains WR-12 applicability |
 | cmd/fathom/verify.go, cmd/fathom/verifyledger.go, cmd/fathom/verifyledger_rows.go | #297 ledger checkout attribution after current gate owner; appendVerifyLedger remains existing writer |
@@ -469,7 +446,7 @@ No active broken default build is committed by this draft.
 | Consumer test path/name | Required assertion / package for exact command |
 |---|---|
 | internal/landing/bundle_test.go::TestLaneLandingBundle | clean same-tree gate/log/verify attestation builds; wrong/missing report binding refuses; affected/overlap order stable; ./internal/landing |
-| internal/landing/accept_test.go::TestLaneLandingAccept | changed tree/command/log/bundle bytes refuse; deterministic CI sample and mismatch incident; ./internal/landing |
+| internal/landing/accept_test.go::TestLaneLandingAccept | changed tree/command/log/bundle bytes refuse; full CI on every bundle and mismatch incident; ./internal/landing |
 | internal/mcp/hook_lookup_test.go::TestLaneHookLookup | stored exact name/limit/deadline, no hook query_symbols/off-surface calls, liveness does not query graph; ./internal/mcp |
 | cmd/fathom/hook_attribution_test.go::TestLaneHookAttribution | real hook and call-log rows carry explicit session/lane; missing remains unattributed, caller context wins model args; ./cmd/fathom |
 | internal/wiring/wire_stamp_test.go::TestLaneWireStamp | each four inputs changes digest, stable order, idx separate, once/session integration and absent doctor unknown; ./internal/wiring |
@@ -480,8 +457,6 @@ No active broken default build is committed by this draft.
 | cmd/fathom/fleet_health_test.go::TestLaneFleetGround | actual fleet health verb and existing fleet panel same typed presence/unknown values, launch witness retained; ./cmd/fathom |
 | cmd/fathom/whatif_replay_test.go::TestLaneWhatifDelta | real hook replay for admitted code card, no public delta/new infra card, missing source unknown; ./cmd/fathom |
 | internal/hookpath/proposed_file_test.go::TestLaneHookEditRebuild | whole-file and fragment edit forms per actual harness, invalid offsets/overlaps/unknown adapter refuse; ./internal/hookpath |
-| internal/lanefile/events_test.go::TestLaneLaneEvents | each event type, malformed/missing session/duplicate stable, hook writer integration in serial turn; ./internal/lanefile |
-| internal/lanefile/export_test.go::TestLaneLaneViews | deterministic lane/event joins, operator state only, unknown attribution named, CLI export no mutation; ./internal/lanefile |
 | internal/lint/tenancy/rules_test.go::TestLaneRulePort | every current rule matches CheckFile fixtures and unknown rule refuses, no provider/spawn; ./internal/lint/tenancy |
 
 For each table entry run exactly `go test -race PACKAGE -run '^TESTNAME$' -count=1`
@@ -533,8 +508,8 @@ asserts complete payload for both hash cases and log-write failure. Caller model
 arguments cannot change channel class. Commands, each one line:
 go test -race ./internal/labs -run '^TestDeliveryHoldoutMandatoryChannels$' -count=1
 go test -race ./cmd/fathom -run '^TestMandatoryHookLinesNeverHeldOut$' -count=1
-Proposed/unrun. W3-2 critic compares every assertion. U5 fraction still unsettled;
-ADR-080 d6 settles exclusions/determinism, not the rate.
+Proposed/unrun. W3-2 critic compares every assertion. W4-2 settles the 26/256 advisory rate;
+ADR-080 d6 still governs exclusions and determinism.
 
 ## W3-4 exported vocabularies and exact wire map
 
@@ -574,11 +549,6 @@ const ( WiringUnknown WiringState = "unknown"; WiringConfigured WiringState = "c
 // metrics/hook_presence.go
 type PresenceState string
 const ( PresenceUnknown PresenceState = "unknown"; PresenceAbsent PresenceState = "absent"; PresenceObserved PresenceState = "observed" )
-// lanefile/events.go and export.go
-type LaneEventKind string
-const ( EventEdit LaneEventKind = "edit"; EventTest LaneEventKind = "test"; EventClaim LaneEventKind = "claim"; EventStop LaneEventKind = "stop" )
-type LaneState string
-const ( LaneActive LaneState = "active"; LaneIdle LaneState = "idle"; LaneLanded LaneState = "landed" )
 // Each owning package, typed errors for its refusal/limit results:
 type RefusalError struct { Reason string `json:"reason"` }
 func (e *RefusalError) Error() string
@@ -594,14 +564,13 @@ deadline_ms/next_calls; DeliveryResult rows/void_pairs/unknown_sessions;
 ReportEvidence plan/tree/store_commit/report_sha256/report; SetEvidence tree/
 entries/coverage/source_sha256; EvidenceManifest tree/commit/verify/affected/overlap;
 Acceptance accepted/reason/sample_full_ci; HookPresenceInput and HookPresence
-eligible/fired/delivered/unknown; Edit start/end/replacement; View lane_id/state/events.
+eligible/fired/delivered/unknown; Edit start/end/replacement.
 WireStamp already uses session_id/wire/idx. Reason is free explanatory prose,
 not a refusal-code substitute. New closed fields use their named type/constants,
 not string; existing imported models stay unchanged.
 
 Exported result slices are nonnil recursively: no-match lookup, delivery rows/
-void_pairs/unknown_sessions, targets, verify/affected/overlap sets, suspects/events/
-views/findings and coverage lists. Marshal [] not null. Pure APIs have no context;
+void_pairs/unknown_sessions, targets, verify/affected/overlap sets, suspects/findings and coverage lists. Marshal [] not null. Pure APIs have no context;
 I/O builder/acceptor/lookup/writer may use it. RefusalError/LimitError support
 errors.As. Additive only, no door package/import, values withheld, no future fields.
 Proposed TestDeliveryContractsAPIHouseRules in internal/landing/lane_contract_test.go
@@ -621,3 +590,47 @@ or compile witness. Missing executable/dependency/package/test or empty -run nev
 counts RED. W3-2 supersedes only batch-RED placement: implementing lanes capture
 failures; this contract retains all assertions and serial ownership transfers.
 No forge changes or dispatch authorization. #320 still needs CHG-10/CTR-3/CTR-12.
+
+## W4-2 exact scope/grant/rate disposition
+
+This ruling-authorized scope change removes ONLY the incomplete FLT-3 and FLT-10
+port consumers from CTR-12. No attempt to repair those ports in a third design
+round: Event/ParseEvents/ExportLanes/View declarations, their event/export test rows,
+and #315/#316 port implementation grants have been removed from this batch.
+Transferred to later exact delivery-integration contract:
+- #315 FLT-3: AppendLaneEvent with current harness/model/host-label/row-id fields,
+  rotation/archive and real hook handoff, not the former ParseEvents helper.
+- #316 FLT-10: ExportLaneState/ReadLaneExports local paths, per-machine newest age
+  and named not-heard-from state, not the former pure ExportLanes helper.
+- Transferred proof names remain TestLaneLaneEvents in
+  internal/lanefile/events_test.go and TestLaneLaneViews in
+  internal/lanefile/export_test.go. No assertion/RED for them is claimed here.
+FLT-4's existing dependency on FLT-3 remains unchanged; mixed issue #316 is not
+made dispatch-ready by this scope split. No FLT-4 or other consumer plan row is
+removed or marked complete. The later contract must preserve that dependency and
+own its command/projection handoff explicitly. Other CTR-12 consumers/tests/grants
+are retained. Existing parallel-lanes hook order remains governing context, not
+a premature event/export write grant.
+
+W4-2 U2 approves the retained exact serial/capture grants: one hook owner and active
+gate owner handback before landing-capture changes. No broad cmd/fathom grant.
+W4-2 CI requires a full CI run on EVERY bundle, with SampleFullCI=true always,
+not a 1/16 hash sample or optional skip. A failed/missing full CI cannot authorize
+landing; controller retains that release/integration decision. Amend the existing
+TestLaneLandingAccept assertions to require SampleFullCI=true for every candidate
+fixture and verify a missing/failed CI witness prevents controller acceptance.
+The API flag reports required work, never a user-tunable probability.
+
+W4-2 H approves exactly 26 of 256 advisory hash assignments, after the mandatory
+ADR-080 d6 channel exclusions. Existing holdout helper/real-hook output tests
+preserve every forbidden channel's full delivery, including log failure and
+unknown channel. No enforcement or failure-line suppression is allowed.
+No generic API, scope, rate or grant question remains for this retained batch.
+No other ports, future fields or implementation added in this compliance revision.
+
+#263 steward proposal originally named the now-transferred two lanefile tests;
+retain them for the later contract, not this batch's proof manifest. All retained
+consumer proof guards and receipt paths still apply. W3-2 implementing-lane RED
+and assertion-by-assertion critic remain. Missing prerequisites never become
+ready because the contract now has ruling-backed scope. Approval-by-rule follows
+exact critic LAND, and later integration queues for bundle3 after ACK2.
