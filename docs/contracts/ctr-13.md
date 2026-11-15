@@ -1,6 +1,6 @@
 # CTR-13: cell ledger, readiness, cards, subjects and attested strength
 
-Status: DRAFT W1-5/#262. Contract only, no product or bench implementation.
+Status: Approved 2026-11-15 under W5-3. Contract only; implementation proof pending.
 Base: `468dc705813382d584926887b451cbea145c76ac`. Independent draft branch.
 Owns docs/contracts/ctr-13.md only. All fixtures below are proposed, not landed.
 Landing prerequisites REC-1, CTR-4, ENG-2, LIB-1 remain unclaimed. BEN-1 precedes
@@ -39,10 +39,9 @@ inputs match, not speculative cross-version migration or new statistics library.
 API mechanics are settled by W3-4. Safe scored adapters implement BEN-1/BN-D6;
 preflight disposition implements WP-D1/2 and R2-1; strength identity implements
 CHG-4/ADR-100 d4 and existing CertificateStateAt. No generic API approval requested.
-Only exact integration/command/schema/CAS grant choices remain U2 below.
-Unsettled U2: approve exact BEN-1 consolidation slices/command ownership and serial
-schema/certification grants below. Alternative narrow #266 to cell-key subtask and
-keep BEN-1 unclaimed until separate consolidation lanes complete it.
+W5-3 settles U2: the exact serial integration/command/schema/local-CAS manifest
+below and the bench-consolidation refinement are approved as recommended. One
+integration owner, B1-B3 in order; no slice alone claims BEN-1.
 U3 settled by W3-2: implementing lanes write/run real failing tests before
 implementation; independent lane critics compare every listed assertion and
 weaker tests are FIX. Four governing row amendments are a separate docs commit.
@@ -99,16 +98,16 @@ Conversion adapters are explicit read-only imports with original run ids retaine
 
 ## Complete BEN-1 consolidation handoff (U2)
 
-Recommended one bench command: keep existing cmd/scenariobench as the external
+W5-3 approves one bench command: keep existing cmd/scenariobench as the external
 command owner, extending its current subcommand registration to `cells/readiness`.
 No cmd/fathom verb/runner. Three one-day slices with separate issues/commits:
 B1 key+ledger leaf; B2 command/legacy adapter/freeze; B3 consolidation parity receipt.
-No slice alone claims BEN-1. #266 can implement B1 only under its current two files;
-architect must grant the exact additional files below or split before dispatch.
+No slice alone claims BEN-1. W5-3 grants the exact additional files below and
+the reviewed bench-consolidation manifest; prerequisite handbacks still precede dispatch.
 No second new runner or statistics library. Reuse existing contextbench.CellKey,
 scenariobench execution/scoring/oracles and ledger serializers through adapters.
 
-| Slice owner | Exact proposed paths |
+| Slice owner | Exact W5-3 approved paths |
 |---|---|
 | B1 #266 | internal/benchledger/cellkey.go, cellkey_test.go, ledger.go, ledger_test.go |
 | B2 command integration owner | cmd/scenariobench/main.go, cmd/scenariobench/cells.go, cmd/scenariobench/cells_test.go, cmd/scenariobench/readiness.go, cmd/scenariobench/readiness_test.go |
@@ -344,7 +343,7 @@ subjects_test.go plus exact calibration/bench/subjects/demo.json and
 calibration/bench/tasks/{plan,haz,fix,loc,rev,lane,ask}-development.json fixtures.
 No held-out tasks can be edited after outcomes. #299 owns card_closure.go/test,
 data.cue and exact cards namespace above after head schema release.
-#321 owns strength_floor.go/test and attested/junit.go/test, plus exact proposed
+#321 owns strength_floor.go/test and attested/junit.go/test, plus exact W5-3 approved
 integration grants cmd/fathom/tests_ingest.go, cmd/fathom/tests_ingest_test.go,
 cmd/fathom/certify_compile.go and internal/certify/compile.go. These are one serial
 engine/command integration turn after current owners. Remove the speculative
@@ -388,7 +387,7 @@ paid cell/CUE/full gate run, subject admission or plan claim. BEN-1..5/CHG-4 sta
 Decision models: none. Primary oracles and admission/strength joins deterministic;
 provider none supplies full behavior. A manual review cannot become a cell oracle.
 
-## Exact safe scored-cell projection (F1, U1)
+## Safe scored-cell projection
 
 Reuse scenariobench.CellResult as the transient scorer input, not SessionResult
 telemetry as the persisted outcome. This whitelist is the whole outcome wire shape:
@@ -430,7 +429,7 @@ oracle not overwritten, valid zero-use failure scored and stored, invalid prefli
 VOID both arms. Command go test -race ./internal/benchledger -run
 '^TestScoredCellSafeProjection$' -count=1, one line, proposed/unrun.
 
-## Certification identity and actual ingest route (F2, U1/U2)
+## Certification identity and actual ingest route
 ~~~go
 // certify/strength_floor.go; Record stays existing and additive.
 type CertificateSource struct {
@@ -457,7 +456,7 @@ Missing mutation kill cannot upgrade mutation-killed even if last ordinary test 
 
 Proposed command adapter retains existing tests ingest --results DIR envelope
 loading. New optional --attested-artifacts DIR is an explicit operator local CAS
-root (architect U2, no download). Existing testevidence.Run.Artifacts contains
+root (W5-3 approved local CAS boundary, no download). Existing testevidence.Run.Artifacts contains
 Name/Digest, never paths: Name junit resolves <digest-hex>.xml, Name mutations
 resolves <digest-hex>.json beneath that root. Verify actual bytes/digest before
 ReadJUnit using run.Commit/run.Digest. Unknown artifact names do not grant reads
@@ -490,7 +489,7 @@ Commands go test -race ./cmd/fathom -run '^TestTestsIngestAttestedStrengthRoute$
 -count=1 and go test -race ./internal/certify -run '^TestStrengthFloorSourceIdentity$'
 -count=1, each one line, proposed/unrun.
 
-## W3-4 concrete exported API rules and stewardship (F4)
+## W3-4 concrete exported API rules and stewardship
 
 Named closed types/constants for new fields (local to owning packages):
 ~~~go
@@ -543,7 +542,7 @@ critic compares every assertion in this document, including all earlier named te
 
 Read steward #262 issuecomment-6900959649. Proposed batch ownership includes all
 four aggregate test files, cellkey/readiness/subjects/strength_floor tests and
-docs/bench/readings/contributor-model/contracts-bench.md receipt. Not active grants
+docs/bench/readings/contributor-model/contracts-bench.md receipt. W5-3 approves the exact manifest, not activation
 or proof REC-1/CTR-4/ENG-2/LIB-1 landed. Execute each named proof with its exact
 rg declaration guard before anchored go test, record independently base/head/
 command/exit and actual assertion/compile failure. Missing executable/dependency/
@@ -559,7 +558,7 @@ cmd/benchledgerrender/freeze_test.go::TestLegacyLedgerRenderParity preserves rea
 rendering. Each command is go test -race its exact package -run '^NAME$' -count=1,
 preceded by matching rg guard at the exact test file. Proposed/unrun, no B3 claim.
 
-## Final F5: constructible acyclic mutation provenance
+## Constructible acyclic mutation provenance
 
 Separate raw artifact bytes from normalized evidence. The raw CAS payload contains
 NO parent envelope digest. It is an array of exactly:
@@ -576,8 +575,8 @@ func NormalizeMutations(raw []MutationArtifact, parent testevidence.Run) ([]Muta
 ~~~
 
 Ownership: MutationArtifact and its JSON parser live in new
-internal/attested/mutations.go and mutations_test.go, added to #321's exact proposed
-grant. NormalizeMutations is in internal/certify/strength_floor.go; its argument is
+internal/attested/mutations.go and mutations_test.go, included in #321's exact W5-3
+approved grant. NormalizeMutations is in internal/certify/strength_floor.go; its argument is
 []attested.MutationArtifact (qualified type), no certify->main dependency. New raw
 type is only for the current attested mutation join, not a future format registry.
 
@@ -608,7 +607,7 @@ and all unknown fields fail. Commands go test -race ./cmd/fathom -run
 -run '^TestMutationArtifactRejectsParentDigest$' -count=1, each one shell line.
 No tests ran here. Implementing critic checks every named assertion under W3-2.
 
-## Final F6: one typed pair disposition shared with delivery
+## Typed pair disposition shared with delivery
 
 ~~~go
 // internal/benchledger, alongside PairPreflight.
@@ -653,5 +652,16 @@ This preserves acyclic benchledger -> scenario types, labs -> benchledger direct
 Settling citations: WP-D1/2, #262 R2-1 and BX-40 require pre-agent environment
 admission and pair-wide VOID, preserving all admitted assigned-arm outcomes.
 W3-4 settles typed enum/explicit JSON/[]/typed errors. No new policy, rate, future
-field, store column or package on the language door. U2 exact CAS/command/ingest/
-schema serial grants remains a recommendation with one alternative, not approved.
+field, store column or package on the language door. W5-3 settles the exact
+CAS/command/ingest/schema serial grants. No remaining contract choice is pending.
+
+## Approved W5-3 scope and evidence limits
+
+W5-3 approves the exact serial manifest for this contract and
+bench-consolidation at 77d0a34a37017c1d9579215cbf27c63474488acf: kept scenariobench
+command, all B1-B3 writer redirects/refusals, schema/ingest/test turns and optional
+--attested-artifacts LOCAL CAS boundary. No product-run provider or download.
+W3-2 real implementing-lane RED and every listed assertion remain mandatory.
+The approval settles contract/grant choices only. Current owner hands back exact
+implementation commit before the next turn; prerequisites, full integration
+proof, BEN-1/REC claims and any paid execution are not established by approval.
