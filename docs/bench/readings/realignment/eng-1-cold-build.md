@@ -1,4 +1,4 @@
-ENG-1 verdict: INCONCLUSIVE
+ENG-1 verdict: 17-fold gain and a miss of the one-second bar on the helper. The deployed half of ENG-1 stays open.
 
 RT-195 implementation and equality proof, 2026-11-15. Base snapshot:
 `a6c67b22038f6f056d267305b830ed5becc74403`. The lane's implementation commit
@@ -376,3 +376,293 @@ It does not measure a real hook deadline, first answer after a one-file refresh,
 abandonment under traffic, deployment identity, or a deployed build. Those
 acceptances remain open. W5-2 therefore requires escalation with these numbers
 and no #251 dispatch.
+
+## W6-1c indexed full-load CPU profile, 2026-11-15
+
+**W6-1a verdict: a 17-fold gain and a miss of the one-second bar on the helper.**
+The deployed half of ENG-1 stays open. The W5 medians remain exactly
+1,529,603,250 ns indexed and 26,485,509,250 ns scanned (17.3153-fold).
+W6-1b does not dispatch #251 as invalidation followed by reload on the next
+query. The following CPU captures diagnose that existing result; they are not
+new acceptance trials and do not replace, rerun or average into any W5 trial.
+
+### Boundary, admission and identities
+
+Five profile captures were declared before execution. Each ran in a fresh
+process against the **same original W5 scratch store**, with no re-ingest and
+no changed input. Source code remains pinned to
+`d9eef4794afdbc200d1b8697ce121d9d688fedaf`; the reading branch resumed from
+`e70154fbe8e2018259a39c8dc2224794a89979c6`. The original store SHA-256 remained
+`e22f40d4dd467b0201badae263901741db23a81864c4f545c111b5c469ecd704` before
+and after profiling. The watermark, snapshot and typed-edge populations are
+exactly those published in W5. Verification recomputed and passed all **137**
+entries in the retained W5 manifest, preserving its source, binaries, raw
+trials and output artifacts.
+
+A new ignored `workspace/tmp/w6-profile/source/` copies the frozen W5 index
+source. It differs from that copy in only two files: the already measurement-
+only `internal/mcp/w5_reading.go` and `internal/mcp/resolved_nav.go`. The diff
+adds profiling control, labels, a snapshot-start label and a boundary counter
+capture. It changes no resolver, store query, graph algorithm or production
+behavior. All tracked production files remain untouched.
+
+`runtime/pprof.StartCPUProfile` starts immediately before the monotonic timer
+and enforced admission. The real `loadNavGraphsErr` then takes the scope, loads
+and indexes the snapshot, builds syntax, reads typed edges, and builds BOTH.
+The existing `both` phase mark records the required endpoint and immediately
+calls `StopCPUProfile`. Only after it stops does the serving entry continue
+with the resolved graph. Serialization, output hashing, comparisons, client
+construction, compilation and ingest are outside CPU profiling. No resolved-
+graph build or output-exporter frame occurs in any captured profile.
+
+Phase labels (`snapshot`, `syntax`, `both`) and nested read labels (`symbols`,
+`typed`) are inherited by memo build goroutines. These labels attribute
+allocation samples even when `runtime.systemstack` cuts off the original
+calling frame. Background GC/scheduler samples without a label remain
+unassigned; they are not silently allocated to a preferred phase.
+
+Builds use the same optimized non-race flags and runtime settings as W5:
+Go 1.27.4 on darwin/arm64, cgo enabled, deployment target 14.0,
+`go build -trimpath -buildvcs=false`, empty `GOFLAGS`, `GOMAXPROCS=6`,
+8 GiB Go memory limit, `GOGC=100`, default managed 4 GiB budget and 1 GiB memo
+cache. Actual admission remains enforced tree/CLI with the declared ten-minute
+deadline. No live host governor sampler was added. All profiles ran at normal
+priority under one continuous acquisition of the wave shared heavy-work lease,
+covering source preparation, build, all five captures and pprof report
+generation. The gate-running marker was absent before heavy work. OS/SQLite
+cache warmth remains uncontrolled; there was no cache purge or warmup.
+
+At the required BOTH endpoint, **every capture** had one snapshot miss/build
+and entry, two graph misses/builds and entries (syntax and BOTH), and one typed
+miss/build and entry with one internal typed hit. Snapshot/graph hits were
+zero. Initial resident bytes were zero. All declines, abandonments, uncached
+builds, evictions and refuse cancellations were zero. Each backend actually
+loaded symbols once and typed edges once. Every capture was admitted, complete,
+`valid=true`, exited zero and had no stopped ticket, context error or typed
+read error. No profile attempt was discarded, invalidated or repeated.
+
+After the profile stops, resolved adds the third graph miss/entry as in W5.
+Exact byte comparisons passed for every complete snapshot, typed-edge slice,
+syntax graph, BOTH graph and resolved graph against the original W5 outputs.
+All five output SHA-256 values are the identical values already published
+above. This is not a refused load, a cached response, a constructor-only
+profile or a graph-builder-only profile.
+
+### Raw capture boundaries
+
+All phase values are integer nanoseconds. They are profiling-instrumented
+diagnostics, not substitute acceptance readings. Resolved duration excludes
+CPU-profile stop/flush overhead and is outside the CPU capture. The serving
+wall time includes that overhead, so it must not be compared directly with
+unprofiled W5 serving latency.
+
+| Capture | Snapshot ns | Syntax ns | BOTH incl. typed read ns | Required total ns | Stop/flush ns | Resolved outside profile ns | Serving wall ns |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 01-index-profile | 357021958 | 315821542 | 837266000 | 1510109500 | 118053500 | 309597750 | 1937761417 |
+| 02-index-profile | 354359708 | 342059584 | 850534916 | 1546954208 | 185914000 | 321398459 | 2054267375 |
+| 03-index-profile | 335405667 | 305657917 | 838794125 | 1479857709 | 153104750 | 296545666 | 1929508667 |
+| 04-index-profile | 360904584 | 338100333 | 844527125 | 1543532042 | 184095459 | 317001999 | 2044630375 |
+| 05-index-profile | 348585334 | 304243875 | 818466666 | 1471295875 | 160881167 | 305772250 | 1937950084 |
+
+| Capture | UTC start (2026-11-15) | Symbol store wall ns | Typed store wall ns | CPU samples | CPU sample ns |
+|---|---|---:|---:|---:|---:|
+| 01-index-profile | 23:04:30.215981Z | 240740084 | 345886375 | 160 | 1600000000 |
+| 02-index-profile | 23:04:33.944416Z | 246778292 | 351294875 | 164 | 1640000000 |
+| 03-index-profile | 23:04:37.794522Z | 233898333 | 348164791 | 156 | 1560000000 |
+| 04-index-profile | 23:04:41.548086Z | 234889166 | 347424750 | 160 | 1600000000 |
+| 05-index-profile | 23:04:45.332367Z | 244807292 | 338824125 | 153 | 1530000000 |
+
+The merged CPU profile contains **793 samples at a 10,000,000 ns period**,
+7.93 CPU-sample seconds. Its displayed 8.35-second duration includes profile
+stop/flush accounting; it is not the sum of required-load wall work. Individual
+capture granularity is 10 ms, and one merged sample is about 0.126% of the
+denominator. These are sampled observations, not exact per-function clocks.
+Percentages are rounded separately; the integer sample partition sums exactly.
+
+### CPU shares without double counting
+
+The following phase/read partition is disjoint and sums to 100%. The
+BOTH graph row excludes its separately attributed typed store read. The
+snapshot indexing row excludes its symbol store read. The unlabelled row
+retains background work; the tiny admission/scope phase had no observed samples
+and is still inside the measured boundary.
+
+| Cost | CPU sample ns | Share of all 793 samples | Interpretation |
+|---|---:|---:|---|
+| C1 Symbol store read, including row scan/decode | 1110000000 | 14.00% | Full `ListAllSymbols` loader, including allocations |
+| C2 Snapshot indexing after store read | 550000000 | 6.94% | `newSnapshot` and labelled allocation/runtime work |
+| C3 Typed store read, including row scan | 1680000000 | 21.19% | Full `TypedEdges` loader, including allocations |
+| C4 Syntax graph | 1390000000 | 17.53% | One `GraphFor(GraphSyntax)` build, including allocations |
+| C5 BOTH graph after typed read | 2150000000 | 27.11% | `BuildBoth`, its repeated `Build`, typed augmentation and allocations |
+| C6 Unlabelled background/runtime | 1050000000 | 13.24% | GC and runtime work left unattributed |
+
+C1 + C3 is **35.18%** of CPU samples in the store loaders. C2 + C4 +
+C5 accounts for 51.58%; C6 is the remaining 13.24%. These ownership shares
+include runtime work and are not sums of function cumulative percentages.
+
+The following **overlapping** stack-based views identify operations within
+those buckets. They must not be added to the preceding partition or to each
+other. A caller's cumulative share includes its callees. `systemstack` allocation
+samples can retain a phase label while losing that caller in the stack.
+
+| Stack view | CPU sample ns | Share of full profile | Overlap / limit |
+|---|---:|---:|---|
+| runtime.madvise | 2400000000 | 30.26% | Heap/page commitment beneath allocations, not an independent added phase |
+| SQLite `Pread` path | 2000000000 | 25.22% | Within C1/C3; not measured disk-wait time |
+| database/sql Rows.Next | 2110000000 | 26.61% | Includes SQLite stepping and the Pread path |
+| database/sql Rows.Scan | 10000000 | 0.13% | Row assignment subset within store reads |
+| encoding/json decode, any sampled frame | 0 | 0.00% | Zero observed samples; not zero elapsed decoding cost |
+| callgraph.Build, both invocations combined | 1660000000 | 20.93% | Includes the Build inside BuildBoth |
+| callgraph.BuildBoth | 1120000000 | 14.12% | Includes its nested Build and AddTypedEdges |
+| callgraph.AddTypedEdges | 250000000 | 3.15% | Subset of BuildBoth |
+| graphmemo.newSnapshot | 170000000 | 2.14% | Subset of C2; systemstack allocations can be outside this ancestry |
+| callgraph.buildIndexes | 520000000 | 6.56% | Subset of Build |
+| Graph.buildSuffixIndex | 340000000 | 4.29% | Subset of Build |
+| buildCtorScopeIndex | 80000000 | 1.01% | Subset of Build; constructor indexing is no longer dominant |
+| Graph.dropTypedFileGuesses | 20000000 | 0.25% | Subset of typed augmentation |
+| runtime.growslice | 290000000 | 3.66% | Overlaps allocations in graph/read work |
+| Graph.EstimatedBytes | 30000000 | 0.38% | Byte accounting within graph phases |
+| runtime.gcBgMarkWorker | 560000000 | 7.06% | Subset of C6; not all GC costs |
+
+`runtime.madvise` alone has 240 samples (30.26%). Its ownership split is
+220 ms in C1, 380 ms in C2, 270 ms in C3, 550 ms in C4 and 980 ms in C5.
+These are already included in the phase/read totals. The syntax-phase
+`Build` ancestry is 790 ms (9.96%); the second `Build` inside BOTH is 870 ms
+(10.97%). `BuildBoth` ancestry is 1,120 ms (14.12%), including 250 ms of
+`AddTypedEdges` (3.15%). This is direct evidence of duplicated construction,
+not a claim that all of C5 can be eliminated.
+
+**Decode limitation.** There are zero observed `encoding/json` frames and only
+one observed `Rows.Scan` sample (0.13%). The source still decodes `callsJSON`
+for every symbol in `scanSymbolNodesWithHint`; that work did execute. Driver
+value conversion can also occur under `Rows.Next`, so these samples do not
+provide a separately identifiable percentage for all decoding combined. A
+decoder rewrite is not supported by this profile.
+
+**CPU versus wait.** Store wall intervals above include SQLite reads, scans,
+JSON decoding, allocations, scheduling and waits. CPU samples in `Pread` or
+`madvise` identify sampled stacks, not a disk-I/O timer or an off-CPU wait
+profile. No disk-wait percentage was measured. Subtracting sampled CPU from
+wall time would mix different instruments and unassigned background work.
+No claim of disk saturation or guaranteed removable wall time is made.
+
+### Smallest source-grounded removal proposals, unapproved
+
+Intent consulted before these proposals: I21/I51 require watermark-scoped,
+byte-accounted derived state; I38 preserves complete reads and named failures;
+I49 requires admission. ADR-049 decision 2 retains the table/cache/job freeze.
+ADR-095 remains proposed and conditional on OQ5 and a fresh tenancy reading.
+RT-195 keeps its constructor index local to a build. W6-1b rejects the
+next-query reload option at these numbers. No intent rule or future was
+promoted or amended here, and no new revisit trigger is established by a CPU
+profile. F27's ingest-cache future is unrelated to avoiding this full-load work.
+
+Every proposal below removes only the identified redundant component, not
+necessarily its entire cost bucket. Required cold reads, initial syntax
+construction and snapshot indexes cannot simply be deleted while preserving
+this full-load contract. No proposal is implemented or independently approved.
+
+| Proposal | Source evidence at the pinned commit | Smallest removal and what remains |
+|---|---|---|
+| P1 Remove avoidable typed-pruning copies (C5 allocation pressure) | `internal/analysis/callgraph/graph.go:790`, especially `kept := cs[:0:0]` at line 805; callers in `graph.go:772` and `replace_package.go:267` | Compact adjacency in place on the exclusively owned new graph, or allocate only after the first actual removal. Currently every nonempty retained list allocates afresh because its initial capacity is zero, even when no edge is removed and the replacement slice is discarded. Prove ownership/aliasing first. This targets needless copies, not all 30.26% madvise or all C5. The observed pruning ancestry itself is only 0.25%. |
+| P2 Remove the second syntax-resolution pass (C4/C5) | `internal/mcp/resolved_nav.go:204-210` requests syntax then BOTH; `internal/analysis/callgraph/cache.go:204` implements BOTH as `Build(nodes)` then `AddTypedEdges`; full clone helpers already exist in `replace_package.go:272-346` | Seed BOTH from an isolated clone of the complete resident syntax graph rather than invoking Build again. Reuse existing clone helpers and deep-copy every mutable map/slice before typed augmentation. This removes repeated resolver/index construction and sorting, while retaining the mandatory first syntax build, cloning, typed augmentation and both complete immutable outputs. No additional retained cache is needed. Benefit and memory cost remain unmeasured. |
+| P3 Remove non-covering typed-row lookup/sort work (C3) | `internal/store/sqlite_typededges.go:63-87` reads five fields ordered by from/to/kind; the current from-symbol index in `sqlite_schema.go:34` is only `(service_id, from_symbol)`; sampled stacks include SQLite table-moveto/B-tree traversal | A replacement covering ordered index `(service_id, from_symbol, to_symbol, kind, from_service, from_file)` is the smallest source-grounded storage proposal for eliminating that table-lookup/order component if selected by the planner. It does not eliminate reading 256,033 rows or all C1/C3/Pread cost. It adds index bytes and ingest work and needs a separate cost/read-law review and actual query-plan/latency proof. This lane obtained no EXPLAIN result and claims no tested saving. Do not enlarge the bounded SQLite page cache implicitly. |
+| P4 Remove only the empty-array JSON decoding branch (C1 decode) | `internal/store/sqlite_symbolnodes.go:91` calls `json.Unmarshal` for calls; line 83 explicitly preserves every original row/JSON failure | An exact-byte `callsJSON == "[]"` fast path could return the same non-nil empty slice; all other values, including null and malformed data, must keep existing decoding/errors. That would remove only decoding of that canonical empty value. With zero observed JSON samples there is no measured reason to prioritize it, and no new decoder or dependency is justified. |
+
+C1's complete observation read and C2's shared snapshot indexing remain required
+on a genuine cold miss. Removing them entirely requires a different
+representation or still-valid resident state, not an honest local shortcut.
+P1/P2 reduce allocation inputs to the runtime and may also reduce C6 GC work;
+profiling alone does not quantify that reduction. P1 is the narrowest local
+removal, P2 targets a visibly repeated pass, and P3 is a storage tradeoff rather
+than a free speedup. None proves the one-second bar. The separate W6-1d
+contract author owns the refresh-worker alternative and its freeze question.
+
+### Reproduction and raw artifacts
+
+All new raw artifacts remain in ignored `workspace/tmp/w6-profile/`; every W5
+artifact remains where it was. The retained `prepare.py` produces the exact
+profile-only diff; `run.sh` builds and runs the five predetermined captures.
+The invoking shell sourced the lane environment and ran
+`scripts/gate-lease.sh bash workspace/tmp/w6-profile/run.sh` with the shared
+wave `FATHOM_GATE_LOCK` and `FATHOM_GATE_NICE=off`. The script retained the
+active lease-holder receipt. Heavy verification reacquired that same lease.
+
+```sh
+# Within ignored source/, with the same compiler/runtime environment as W5:
+go build -trimpath -buildvcs=false -o ../bin/index-profile ./cmd/w5read
+# In a new process per capture, original-store is the unchanged W5 SQLite file:
+/usr/bin/time -lp bin/index-profile original-store results/<capture> index-profile
+go tool pprof -proto bin/index-profile results/*/cpu.pprof > merged.pprof
+go tool pprof -raw bin/index-profile merged.pprof > reports/raw.txt
+go tool pprof -tags bin/index-profile merged.pprof > reports/tags.txt
+go tool pprof -top -cum -nodecount=60 bin/index-profile merged.pprof
+go tool pprof -top -cum -nodecount=40 -tagfocus=phase=syntax bin/index-profile merged.pprof
+go tool pprof -top -cum -nodecount=40 -tagfocus=read=typed bin/index-profile merged.pprof
+python3 parse-profile.py
+python3 verify.py
+```
+
+`parse-profile.py` parses every raw sample, stack and label, derives the
+disjoint partition and separately derives cumulative function unions without
+double counting recursive/inlined frames. `verify.py` independently compares
+all complete output files, validates admission/miss counters, checks source
+differences and verifies the original W5 manifest and store. Its output:
+
+```text
+W5 preserved: PASS (137 manifest entries)
+profile-only source difference: PASS ['internal/mcp/resolved_nav.go', 'internal/mcp/w5_reading.go']
+profiles: PASS (5 admitted complete cache misses, no invalid/retried/discarded captures)
+required boundary: PASS (snapshot 1 miss, syntax+BOTH 2 misses, typed 1 miss; all complete)
+output equality: PASS (5 captures x 5 complete populations; exact bytes equal W5)
+store identity: PASS (original W5 store unchanged)
+CPU samples: PASS (793 samples x 10000000ns; resolved and serialization excluded)
+```
+
+| Capture | Original CPU profile SHA-256 | Raw result JSON SHA-256 |
+|---|---|---|
+| 01-index-profile | `48e0629b5c6e2e5db7b4397e272016cd82cf95d7c1a0a26bfdaaeaa5f279ba54` | `fd9ba5cd9ef2e7bed1940146a67f58910a81191c284c384d553e897e90ca4637` |
+| 02-index-profile | `855b04bc964e74f689f74708e65623a75bf1355a50ef6553c2f6f64d6032ebb7` | `1aaf198541dffd6001991faba84e70c80a2b47c4d0a84fa1b33ebc5736e2ca30` |
+| 03-index-profile | `9b078ee7209a7268a676a0f0f9f7ae9ebfdc95a836d1e8bd53e9ae25a49e6059` | `935ebe3b96bba4c1afb6008585f3a6a03ea4751f59e8a070b376405dd034b8f0` |
+| 04-index-profile | `d49c2d984e70f9a85f593de0fb5a7c9d6d2b79228bf3c256eec5bae0555e1d74` | `f3128ae8ea9c20a47943d9dbff8e5549ffbe07706df5aab359aeaf6b8d48d5c6` |
+| 05-index-profile | `7f260f9745f8a81355a2bf01194e457cb50702d23f8baf6e117070e5da7fe31d` | `200d681c005a7ff081c8d77fbee94a3806ffbf56c69f51f89227153df1b07e27` |
+
+| Artifact | SHA-256 |
+|---|---|
+| `identity.json` | `f91eba861eb56aa64359867a6da7e45f085d4e6e9627a5820033510fc1152619` |
+| `bin/index-profile` | `e13dd26a5b354e0709fbbfd1e536c8db52dda6148eb5f523cc52d5ad446b085a` |
+| `merged.pprof` | `8a4e036a7c08be043a2b0293b93e848076bc4f9b6e5187b607e61c989085d7ad` |
+| `profile-only.diff` | `efaac630b52db308704dd7587ea506c4d2b3b645104598ff14e33ad5f2afbaf8` |
+| `source/internal/mcp/w5_reading.go` | `3687d88c03fba5b2d615c18aa873b67c5d6e6b8ae0d4af296266bf06835e2c75` |
+| `source/internal/mcp/resolved_nav.go` | `382bd6b2ba37f6baec4296ead9087ef8b59188ecee0640c01e4c3ee74c5927d6` |
+| `prepare.py` | `35efd4fe3e396db27ae1bccb046492d8ffa2cf3ae88957fd8045b3b95f8b1d47` |
+| `run.sh` | `248f33c4a52a47d8bc6794af3c7486285fa3b5afc17f7183fb8224dd92c5bcae` |
+| `parse-profile.py` | `edbbc4744f1762a7eba76ad9956624ff511efca2729bfb62ae2b43b062be8e79` |
+| `verify.py` | `6410ab0bb1a6627ff8f0479b3972039e10271e8776c6dc740244a8f53c4f417c` |
+| `verify.log` | `021e5f6a8f4000e8f19e1afd883b92c900ecc56ee27023b8abbd765128b8aa50` |
+| `captures.json` | `c1ae3bbd966a75ae6a90a1692a8138cb9d3d144b7347e20a4b45b8c2a1e4630f` |
+| `sample-analysis.json` | `9a846f155c16190287bf4fb3e0fa61f0a7a109077958810428dbce7d33307832` |
+| `reports/raw.txt` | `6995e82c5c2bfd7a8486f89568c7a50a79039ff9bc129fe88c3a6237eb7f9120` |
+| `reports/tags.txt` | `6def1171d29df1df943c6290ec7b89b047bd698435139e67398f018542ed48c8` |
+| `reports/top-flat.txt` | `873befe6e7b352d5f570053e895bf85d8b10089735c08a555ef03bd81c766aa5` |
+| `reports/top-cum.txt` | `858bb412b9e04c2fb444c8b41edc6adc3dc00955c0356f4b905effdf633bad88` |
+| `build-info.txt` | `002d41d948cef33dafb32eab915b78b15cd0733e7328b06bbb94f09ee136b2c7` |
+| `lease-holder.txt` | `781c931b44805597e26b980447d7745a54e3e84b611d2804041857da216740fa` |
+| `inspection-attempts.txt` | `3cd57d5ff196fc186d20fd0a24bfeb0556be5bee17fb8e5f441fad16838dea07` |
+| `environment-before.txt` | `aff823978ebd58c1f7ac1179ad025e12841f07e312b28c7ff4b0d70a36a44237` |
+| `environment-after.txt` | `127c1b87edb6e9c5e9fa386bec5dcb9f58a83738b6b11c864441a2ab4e8affe5` |
+| `SHA256SUMS` | `6924f425ad488b9aa43fe5370c6f92065fd0aa56cdb6f139d3506e8d325d26cd` |
+
+Ambient snapshots reported no recorded thermal/performance warning and
+unchanged host swap-in/out counters. One-minute host load average was 10.45
+before preparation and 14.05 after the captures; background activity was not
+stopped. One optional read-only Python SQLite EXPLAIN attempt failed with
+`unable to open database file` before producing a plan. It did not change the
+input or trigger a repeated profile and supplies no evidence for P3. The scope
+tag-focus report matched zero samples, disclosed above. There were no failed
+builds or failed profile captures.
+
+**Escalate these measured costs.** No #251 implementation or dispatch, deploy,
+restart, push, tag, model spend, new table/cache/job, plan claim or full gate
+was performed. Deployed ENG-1 remains open. Separate critic review and any
+implementation decision remain with the controller.
