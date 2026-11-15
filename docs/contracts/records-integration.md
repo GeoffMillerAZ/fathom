@@ -1,7 +1,7 @@
 # Records integration: schema fixtures, REC-8 backfill and vet gate
 
 Status: DRAFT Author A shared-file contract for #294/#317/#319 and #299 boundary.
-Base: 468dc705813382d584926887b451cbea145c76ac, freshly fetched origin/main.
+Base: d9eef4794afdbc200d1b8697ce121d9d688fedaf, freshly fetched origin/main.
 Owns only this document and records-integration-backfill.md. No product/schema/
 gate/plan-title edits. Companion is a frozen candidate manifest, not an executed tool.
 

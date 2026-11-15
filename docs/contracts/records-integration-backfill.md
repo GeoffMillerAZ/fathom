@@ -9,7 +9,7 @@ README/archive excluded. Source hashes bind every candidate to the stated base.
 ~~~json
 {
   "schema": "fathom.record-title-backfill/v1",
-  "base": "468dc705813382d584926887b451cbea145c76ac",
+  "base": "d9eef4794afdbc200d1b8697ce121d9d688fedaf",
   "files": {
     "docs/plans/activation.md": "92344eb3aeaca7931f8c730509e5d4a537c2cf632ad81991f7aaf05a0b419079",
     "docs/plans/advice-delivery.md": "3c145036beb90a3d375b9a294fa394c3cad14f58bf015a2ef7cf7b054639a31f",
