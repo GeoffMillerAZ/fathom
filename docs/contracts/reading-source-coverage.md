@@ -138,3 +138,152 @@ W3-2: none observed RED/GREEN here.
 ## Decision models
 
 None. Native labels and deterministic checker, provider none, no paid calls.
+
+## Executable scratch handoff (critic correction)
+
+Frozen PROPOSED interface, not implemented tooling or run evidence. W3-2 leaves
+real failing tests to the implementing reader. All earlier assertions remain
+binding. No product/telemetry/API grant. Synthetic test success cannot close
+missing raw inputs, policies or dispatch prerequisites. READY is for document
+review only. Resource-windows is final FIX round2; another unresolved finding is
+HOLD. The other seven reading drafts are FIX round1 and have one round remaining.
+
+Exact layout: workspace/tmp/reading-source-coverage/checker.py (normalize/grade),
+contracts.py (schema validation/declaration guard), test_checker.py (unittest
+ContractTests), manifest.json, normalized.json, result.json and the three schemas
+below. Fixture directory is fixtures/<exact-test-name>/ with input.json and
+expected.json for EVERY assertion case in the earlier table. Implementing reader
+creates these workspace-only files. Copy each JSON code block to its named file.
+
+contracts.py implements only the closed JSON-Schema subset below (objects/
+required/additionalProperties, arrays/items, enum/const, anyOf/null, minimum,
+string pattern, date-time). Standard library only, no network schema fetch or
+dependency. Check RFC3339 timestamps, unique artifact IDs, SHA256 and foreign
+references, non-nil arrays, nonfinite numbers rejected. Quantity decimals use
+canonical base10 strings; null upper bound is unbounded, never zero.
+contracts.py guard parses the three Python files with ast without importing them,
+requires checker normalize/grade entrypoints and ContractTests(unittest.TestCase)
+with EACH exact method selected below declared once; checks the three schema
+hashes pinned by the contract commit and fixtures for every case. Declaration
+presence is never a substitute for running each assertion.
+
+checker.py normalize --manifest PATH --output PATH validates manifest, reads ONLY
+listed artifacts under this scratch root (reject absolute paths, traversal and
+symlink escape), verifies raw hashes/lengths and uses only the named adapters.
+SourceRef positions are half-open original byte offsets, record_index zero-based.
+Every normalized row retains native lineage. Preserve identical distinct rows,
+stack/frame/parent order and copy-overlap identity. Never synthesize missing facts.
+Unreadable/absent native data appears as coverage gaps/nulls. No polling, capture,
+network, provider, ingest, Compile/Sweep or live configuration mutation.
+
+checker.py grade --manifest PATH --normalized PATH --output PATH revalidates
+schemas, hashes, lineages, then recomputes all earlier criterion assertions from
+native evidence, independent labels and bound policies. Declared PASS or approval
+fields cannot supply evidence. Emit canonical UTF-8 JSON, sorted object keys;
+criteria sorted by row_id,criterion_id,group_key and quantities by name. Every
+authored clause and group appears, including missing required groups as INCOMPLETE.
+Coverage includes all expected/read/malformed/torn/skipped rows and gaps.
+complete=true needs independent accounting, not artifact presence. Pending policies
+remain pending_policy_ids. Null/absent facts never become zero or empty success.
+Unused group_key dimensions are empty strings. All result arrays are non-nil.
+
+dispatch_state is BLOCKED for this draft interface; foreman approval plus real
+input/prerequisite handoff is separate. Grade exit0 means valid computation,
+including a FAIL/KILL/INCOMPLETE result, not measurement PASS. guard/validate/
+normalize/grade exit1 means assertion/schema/identity/limit/refusal error; exit2
+operational inability to read/write requested paths. Where output is writable,
+errors have typed grader_errors kind and SourceRefs. TestCase exits nonzero on
+any missing/weakened assertion. No new numerical bar or policy from this interface.
+
+D-HANDOFF (W3-2, I38, L-R/parallel-lanes §3): recommend this exact standard-library
+scratch layout, closed schemas and all tests; alternative ad-hoc reader protocol
+is rejected because it leaves the handed contract unspecified. Proposed commands
+below run from the clone root AFTER the implementing lane creates these files.
+None ran in the author lane.
+
+```sh
+set -eu
+cd "workspace/tmp/reading-source-coverage"
+test -f checker.py
+test -f contracts.py
+test -f test_checker.py
+test -f manifest.schema.json
+test -f normalized.schema.json
+test -f result.schema.json
+python3 contracts.py guard
+python3 -m unittest test_checker.ContractTests.TestCoveragePopulationIndependence
+python3 -m unittest test_checker.ContractTests.TestCoverageParserAccounting
+python3 -m unittest test_checker.ContractTests.TestCoverageFullJoinLedger
+python3 -m unittest test_checker.ContractTests.TestCoverageLiveConsumerProjection
+python3 -m unittest test_checker.ContractTests.TestCoverageFiveLanguageGrader
+python3 contracts.py validate --kind manifest --input manifest.json
+python3 checker.py normalize --manifest manifest.json --output normalized.json
+python3 contracts.py validate --kind normalized --input normalized.json
+python3 checker.py grade --manifest manifest.json --normalized normalized.json --output result.json
+python3 contracts.py validate --kind result --input result.json
+```
+
+### Native adapters
+
+| Adapter ID | Frozen normalization contract |
+|---|---|
+| native_foreign_reports | Current ParseLcov/ParseCoberturaJaCoCo/ParseCoveragePyIstanbul/ParseLLVMCov plus native report lineage/source/run attestation. |
+| native_symbols | Pinned core.SymbolNode fields used by JoinForeignBlocks; no inferred EndLine. |
+| block_ledger | Each native record/parsed block, candidate paths/actual multiplicity and independent expected mappings; known-file outside-range residue retained. |
+| native_cli | Actual coverage ingest and tests coverage --foreign JSON/flags; no foreign --commit. |
+
+All input roles must appear in manifest.inputs. Missing roles use a named absent
+Artifact with null hash/size and named coverage, never a placeholder evidence file.
+Adapter IDs are dispatch keys of checker.py, not product commands. Independent
+labels/derived classifications are checked against native source refs, not trusted
+booleans. Prerequisite and policy authority must resolve to immutable receipts;
+pending fields cannot be promoted by the reader. Unsupported native conversion
+or missing capture contract keeps the corresponding consumer BLOCKED.
+
+### manifest.schema.json
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {"schema":{"const":"fathom.reading.scratch/manifest-v1"},"protocol":{"const":"reading-source-coverage"},"source_base":{"type":"string"},"preregistered_at":{"$ref":"#/$defs/Timestamp"},"window":{"type":"object","properties":{"from":{"anyOf":[{"$ref":"#/$defs/Timestamp"},{"type":"null"}]},"to":{"anyOf":[{"$ref":"#/$defs/Timestamp"},{"type":"null"}]}},"required":["from","to"],"additionalProperties":false},"artifacts":{"type":"array","items":{"$ref":"#/$defs/Artifact"}},"inputs":{"type":"array","items":{"$ref":"#/$defs/Input"}},"policies":{"type":"array","items":{"$ref":"#/$defs/Policy"}},"prerequisites":{"type":"array","items":{"$ref":"#/$defs/Prerequisite"}}},
+  "required": ["schema","protocol","source_base","preregistered_at","window","artifacts","inputs","policies","prerequisites"],
+  "additionalProperties": false,
+  "$defs": {"Artifact":{"type":"object","properties":{"artifact_id":{"type":"string"},"relative_path":{"type":"string"},"sha256":{"anyOf":[{"$ref":"#/$defs/Hash"},{"type":"null"}]},"size_bytes":{"anyOf":[{"type":"integer","minimum":0},{"type":"null"}]},"state":{"$ref":"#/$defs/ArtifactState"},"error":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["artifact_id","relative_path","sha256","size_bytes","state","error"],"additionalProperties":false},"ArtifactState":{"type":"string","enum":["available","absent","unreadable"]},"Hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},"Input":{"type":"object","properties":{"role":{"type":"string","enum":["source_snapshot","native_report","producer_attestation","native_line_labels","symbol_range_labels","index_snapshot","parser_identity","parse_output","join_output","path_mapping"]},"artifact_ids":{"type":"array","items":{"type":"string"}},"adapter":{"type":"string","enum":["native_foreign_reports","native_symbols","block_ledger","native_cli"]}},"required":["role","artifact_ids","adapter"],"additionalProperties":false},"Policy":{"type":"object","properties":{"policy_id":{"type":"string"},"status":{"type":"string","enum":["approved","pending","not_applicable"]},"authority_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"parameters_artifact_id":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["policy_id","status","authority_refs","parameters_artifact_id"],"additionalProperties":false},"Prerequisite":{"type":"object","properties":{"id":{"type":"string","enum":["five_real_populations","independent_labels","commit_bound_index"]},"state":{"type":"string","enum":["proven","missing","unproven"]},"evidence_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}}},"required":["id","state","evidence_refs"],"additionalProperties":false},"SourceRef":{"type":"object","properties":{"artifact_id":{"type":"string"},"record_index":{"type":"integer","minimum":0},"byte_start":{"type":"integer","minimum":0},"byte_end":{"type":"integer","minimum":0}},"required":["artifact_id","record_index","byte_start","byte_end"],"additionalProperties":false},"Timestamp":{"type":"string","format":"date-time"}}
+}
+```
+
+### normalized.schema.json
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {"schema":{"const":"fathom.reading.scratch/normalized-v1"},"protocol":{"const":"reading-source-coverage"},"manifest_sha256":{"$ref":"#/$defs/Hash"},"coverage":{"type":"array","items":{"$ref":"#/$defs/Coverage"}},"records":{"type":"object","properties":{"populations":{"type":"array","items":{"type":"object","properties":{"source":{"$ref":"#/$defs/SourceRef"},"population_id":{"type":"string"},"language":{"type":"string","enum":["python","java","javascript","ruby","cpp"]},"format":{"type":"string","enum":["lcov","cobertura","jacoco","coverage-py","istanbul","llvm-cov"]},"source_commit":{"type":"string"},"producer_commit":{"type":"string"},"index_commit":{"type":"string"},"parser_sha256":{"$ref":"#/$defs/Hash"},"producer_receipt_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"label_ids":{"type":"array","items":{"type":"string"}}},"required":["source","population_id","language","format","source_commit","producer_commit","index_commit","parser_sha256","producer_receipt_refs","label_ids"],"additionalProperties":false}},"symbols":{"type":"array","items":{"type":"object","properties":{"source":{"$ref":"#/$defs/SourceRef"},"population_id":{"type":"string"},"service":{"type":"string"},"package":{"type":"string"},"name":{"type":"string"},"kind":{"type":"string"},"file_path":{"type":"string"},"line":{"type":"integer","minimum":0},"end_line":{"anyOf":[{"type":"integer","minimum":0},{"type":"null"}]},"symbol_key":{"type":"string"}},"required":["source","population_id","service","package","name","kind","file_path","line","end_line","symbol_key"],"additionalProperties":false}},"blocks":{"type":"array","items":{"type":"object","properties":{"source":{"$ref":"#/$defs/SourceRef"},"population_id":{"type":"string"},"block_id":{"type":"string"},"file":{"type":"string"},"start_line":{"type":"integer","minimum":0},"end_line":{"type":"integer","minimum":0},"statements":{"type":"integer","minimum":0},"covered":{"type":"integer","minimum":0},"tests":{"type":"array","items":{"type":"string"}},"candidate_paths":{"type":"array","items":{"type":"string"}},"resolved_path":{"anyOf":[{"type":"string"},{"type":"null"}]},"expected_symbols":{"type":"array","items":{"type":"string"}},"actual_symbols":{"type":"array","items":{"type":"string"}},"actual_file_rollup":{"anyOf":[{"type":"string"},{"type":"null"}]},"label_ids":{"type":"array","items":{"type":"string"}},"disposition":{"type":"string","enum":["symbol_match","file_rollup","unknown_file","outside_range","ambiguous_path","parser_loss","invalid_block","unknown_input"]}},"required":["source","population_id","block_id","file","start_line","end_line","statements","covered","tests","candidate_paths","resolved_path","expected_symbols","actual_symbols","actual_file_rollup","label_ids","disposition"],"additionalProperties":false}},"projections":{"type":"array","items":{"type":"object","properties":{"source":{"$ref":"#/$defs/SourceRef"},"population_id":{"type":"string"},"kind":{"type":"string","enum":["parse","join"]},"exit_code":{"type":"integer","minimum":0},"manifest_source_commit":{"type":"string"},"by_symbol_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"by_file_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"unmatched_file_paths":{"type":"array","items":{"type":"string"}}},"required":["source","population_id","kind","exit_code","manifest_source_commit","by_symbol_refs","by_file_refs","unmatched_file_paths"],"additionalProperties":false}},"labels":{"type":"array","items":{"$ref":"#/$defs/Label"}}},"required":["populations","symbols","blocks","projections","labels"],"additionalProperties":false}},
+  "required": ["schema","protocol","manifest_sha256","coverage","records"],
+  "additionalProperties": false,
+  "$defs": {"Coverage":{"type":"object","properties":{"input_role":{"type":"string","enum":["source_snapshot","native_report","producer_attestation","native_line_labels","symbol_range_labels","index_snapshot","parser_identity","parse_output","join_output","path_mapping"]},"artifact_ids":{"type":"array","items":{"type":"string"}},"expected_records":{"anyOf":[{"type":"integer","minimum":0},{"type":"null"}]},"read_records":{"type":"integer","minimum":0},"malformed_records":{"type":"integer","minimum":0},"torn_records":{"type":"integer","minimum":0},"skipped_records":{"type":"integer","minimum":0},"missing_intervals":{"type":"array","items":{"type":"object","properties":{"from":{"$ref":"#/$defs/Timestamp"},"to":{"$ref":"#/$defs/Timestamp"},"reason":{"type":"string"}},"required":["from","to","reason"],"additionalProperties":false}},"complete":{"type":"boolean"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["input_role","artifact_ids","expected_records","read_records","malformed_records","torn_records","skipped_records","missing_intervals","complete","reason"],"additionalProperties":false},"Hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},"Label":{"type":"object","properties":{"label_id":{"type":"string"},"sources":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"labeler_role":{"type":"string","enum":["native_oracle","independent_person","architect"]},"labelled_at":{"$ref":"#/$defs/Timestamp"},"outcome_blind":{"type":"boolean"},"value":{"type":"string"}},"required":["label_id","sources","labeler_role","labelled_at","outcome_blind","value"],"additionalProperties":false},"SourceRef":{"type":"object","properties":{"artifact_id":{"type":"string"},"record_index":{"type":"integer","minimum":0},"byte_start":{"type":"integer","minimum":0},"byte_end":{"type":"integer","minimum":0}},"required":["artifact_id","record_index","byte_start","byte_end"],"additionalProperties":false},"Timestamp":{"type":"string","format":"date-time"}}
+}
+```
+
+### result.schema.json
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {"schema":{"const":"fathom.reading.scratch/result-v1"},"protocol":{"const":"reading-source-coverage"},"manifest_sha256":{"$ref":"#/$defs/Hash"},"normalized_sha256":{"$ref":"#/$defs/Hash"},"state":{"$ref":"#/$defs/EvidenceState"},"dispatch_state":{"const":"BLOCKED"},"criteria":{"type":"array","items":{"$ref":"#/$defs/Criterion"}},"coverage":{"type":"array","items":{"$ref":"#/$defs/Coverage"}},"unknown_inputs":{"type":"array","items":{"$ref":"#/$defs/Unknown"}},"pending_policy_ids":{"type":"array","items":{"type":"string"}},"grader_errors":{"type":"array","items":{"type":"object","properties":{"kind":{"type":"string","enum":["schema","identity","limit","refusal","decode","coverage"]},"source_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"message":{"type":"string"}},"required":["kind","source_refs","message"],"additionalProperties":false}}},
+  "required": ["schema","protocol","manifest_sha256","normalized_sha256","state","dispatch_state","criteria","coverage","unknown_inputs","pending_policy_ids","grader_errors"],
+  "additionalProperties": false,
+  "$defs": {"Coverage":{"type":"object","properties":{"input_role":{"type":"string","enum":["source_snapshot","native_report","producer_attestation","native_line_labels","symbol_range_labels","index_snapshot","parser_identity","parse_output","join_output","path_mapping"]},"artifact_ids":{"type":"array","items":{"type":"string"}},"expected_records":{"anyOf":[{"type":"integer","minimum":0},{"type":"null"}]},"read_records":{"type":"integer","minimum":0},"malformed_records":{"type":"integer","minimum":0},"torn_records":{"type":"integer","minimum":0},"skipped_records":{"type":"integer","minimum":0},"missing_intervals":{"type":"array","items":{"type":"object","properties":{"from":{"$ref":"#/$defs/Timestamp"},"to":{"$ref":"#/$defs/Timestamp"},"reason":{"type":"string"}},"required":["from","to","reason"],"additionalProperties":false}},"complete":{"type":"boolean"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["input_role","artifact_ids","expected_records","read_records","malformed_records","torn_records","skipped_records","missing_intervals","complete","reason"],"additionalProperties":false},"Criterion":{"type":"object","properties":{"row_id":{"type":"string","enum":["FCT-10"]},"criterion_id":{"type":"string","enum":["five_language_population","native_report_binding","parser_accounting","independent_range_join","positive_symbol_joins","complete_projection"]},"group_key":{"type":"object","properties":{"service_alias":{"type":"string"},"population_id":{"type":"string"},"dialect_id":{"type":"string"},"utc_day":{"type":"string"},"channel":{"type":"string"}},"required":["service_alias","population_id","dialect_id","utc_day","channel"],"additionalProperties":false},"state":{"$ref":"#/$defs/EvidenceState"},"quantities":{"type":"array","items":{"$ref":"#/$defs/Quantity"}},"evidence_refs":{"type":"array","items":{"$ref":"#/$defs/SourceRef"}},"unknowns":{"type":"array","items":{"$ref":"#/$defs/Unknown"}}},"required":["row_id","criterion_id","group_key","state","quantities","evidence_refs","unknowns"],"additionalProperties":false},"EvidenceState":{"type":"string","enum":["PASS","FAIL","KILL","INCOMPLETE","INCONCLUSIVE","HOLD"]},"Hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},"Quantity":{"type":"object","properties":{"name":{"type":"string"},"unit":{"type":"string"},"value":{"anyOf":[{"type":"string"},{"type":"null"}]},"lower_bound":{"anyOf":[{"type":"string"},{"type":"null"}]},"upper_bound":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["name","unit","value","lower_bound","upper_bound"],"additionalProperties":false},"SourceRef":{"type":"object","properties":{"artifact_id":{"type":"string"},"record_index":{"type":"integer","minimum":0},"byte_start":{"type":"integer","minimum":0},"byte_end":{"type":"integer","minimum":0}},"required":["artifact_id","record_index","byte_start","byte_end"],"additionalProperties":false},"Timestamp":{"type":"string","format":"date-time"},"Unknown":{"type":"object","properties":{"input_role":{"type":"string","enum":["source_snapshot","native_report","producer_attestation","native_line_labels","symbol_range_labels","index_snapshot","parser_identity","parse_output","join_output","path_mapping"]},"artifact_ids":{"type":"array","items":{"type":"string"}},"reason":{"type":"string"}},"required":["input_role","artifact_ids","reason"],"additionalProperties":false}}
+}
+```
+
+### Pinned scratch schema digests
+
+SHA256 of each JSON code block plus one terminal newline. contracts.py guard
+compares exact file bytes to these constants, not a newly generated policy.
+
+- manifest.schema.json: 323e066d2eaae587b9b59a5ce261682a69bdb2481f272eb9e0c662023341b22c
+- normalized.schema.json: 12102f00d37081d44a736cf9a12442fbacc15c01d60a582716f2a1adf39cd7b2
+- result.schema.json: b173c0557ccba56ca058be0c9a4b8a5a9a24c0784be0fc85949352d38a26d3b3
