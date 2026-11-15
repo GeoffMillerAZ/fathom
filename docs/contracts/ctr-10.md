@@ -261,8 +261,8 @@ Unlisted legacy work receives no inferred grant.
 | internal/iacfacts/binding.go, internal/iacfacts/binding_hcl.go, internal/iacfacts/binding_json.go | #166 resolver baseline; #268 reads only, no rewrite grant |
 | pkg/lang/iac/types.go, pkg/lang/iac/read.go, pkg/lang/iac/convert.go | #303 evidence -> #268 blocks/binding -> #269 delta adapters; no new import package |
 | pkg/lang/iac/read_test.go | CTR-10 TestLaneFactUnknowns -> #303 proof upkeep, then read-only to #268/#269 |
-| internal/mcp/iac_facts.go, internal/mcp/iac_cfn.go | #167 facts -> #168 replacement/cascade baseline -> #303 evidence -> #311 dimension integration |
-| internal/mcp/review_tool.go | #167 facts call -> #168 replacement call -> #311 registered dimension call; #303 tests output but does not own handler |
+| internal/mcp/iac_facts.go, internal/mcp/iac_cfn.go | #167 facts -> #168 replacement/cascade baseline -> #311 HZ-2 integrated/proven -> #303 evidence -> #311 maintenance return (nonblocking) |
+| internal/mcp/review_tool.go | #167 facts call -> #168 replacement call -> #311 registered dimension integrated/proven; #303 receives read-only handler and owns evidence projection turn only |
 | internal/iacfacts/catalog_build.go, cmd/iaccatalog/build.go, cmd/iaccatalog/export.go | #168 IF-13 builder replacement integration only; #312 reads published facts |
 | internal/iacfacts/cascade.go, internal/iacfacts/cascade_test.go | #168 IF-15 only; explicit new-file reservation |
 | internal/iacfacts/change_types.go, pkg/lang/iac/diff.go, pkg/lang/iac/diff_test.go | #269 only; explicit change_types.go grant |
@@ -279,6 +279,28 @@ Fixture reservations: #303 owns the four HZ-3 fixture source files
 Each is an explicit added grant, not “testdata/” permission. #308/#313 consume
 these read-only and own only their issue-local tests/readings. No change note,
 plan, schema or API snapshot ownership follows; architect reserves those separately.
+
+## Topological handoff assertion (U2)
+
+Frozen order: prior #167/#168 baselines -> #311 HZ-2 integration AND its existing
+registered-handler dimension proof -> #303 HZ-3 evidence integration and all four
+R2-4 route proofs -> #311 receives maintenance ownership back. The last return
+is an ownership transfer, not a prerequisite of #303 and not a claim a partial
+HZ-2 was proven. HZ-2 first proves its authored Checked/Reason/absence/as_of
+contract using current readers. It does not claim the later HZ-3 evidence fields.
+#303 then extends existing dimension projection in iac_facts.go/iac_cfn.go with
+ReadEvidence, exercising the already registered handler; review_tool.go needs no
+second integration turn. #311 cannot wait for #303 to call HZ-2 complete.
+
+Proposed batch-owned TestContractFactsHandoffDAG in
+internal/iacfacts/hazard_contract_test.go models nodes iac-baseline, hz2-green,
+hz3-green, dimension-maintenance-return and edges exactly in the order above.
+Assert topological sorting visits all nodes; hz2-green precedes hz3-green; every
+#303 production/route proof consumes hz2-green; no path hz3-green -> hz2-green.
+Seed the former reversed edge and require a cycle error. The manifest checker
+must reject serial file-turn edges that reverse a plan prerequisite, not drop
+that prerequisite. Command: go test -race ./internal/iacfacts -run
+'^TestContractFactsHandoffDAG$' -count=1 (one shell line). Proposed, unrun.
 
 ## Four mandatory HZ-3 route proofs (#303 R2-4)
 
