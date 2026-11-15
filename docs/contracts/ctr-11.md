@@ -404,3 +404,106 @@ backfill, CLI registration or gate edit is implemented.
 Decision models: none in these ports. Prose condition-kind suggestions from CU's
 separate candidate site are unbuilt and cannot set facts/rulings. Provider none is
 fully deterministic. Manual records remain counted unparsed rather than guessed.
+
+## Final F4 acceptance and W3-4 exported contract rules
+
+Proposed TestRecordHeadChecksWithoutExpiry in internal/records/conditions_test.go
+creates: a superseding decision with Supersedes and Conditions empty; a closed
+incident with Outcome and Conditions empty; an invariant with EnforcedBy and
+Conditions empty. Invoke each named head check with RecordID and no ExpiryID.
+Resolvable complete targets hold; missing target in a completely read member
+violates; unreadable/sibling/unmapped target ownership is unknown with reason.
+Every target is retained in Targets. Two targets with one unknown cannot become
+healthy. A missing head does not manufacture a Revisit condition. Preserve
+TestConditionIdentityAndCoverage with two distinct expiries on one record, and
+reject using a head-only name with an expiry-only address or vice versa.
+Command: go test -race ./internal/records -run '^TestRecordHeadChecksWithoutExpiry$'
+-count=1 (one shell line). These are future real RED assertions under W3-2.
+
+Closed vocabularies for the new exported declarations, W3-4:
+~~~go
+type RecordKind string
+const (
+    KindDecision RecordKind = "decision"
+    KindInvariant RecordKind = "invariant"
+    KindGoal RecordKind = "goal"
+    KindFuture RecordKind = "future"
+    KindQuestion RecordKind = "question"
+    KindIncident RecordKind = "incident"
+    KindObservation RecordKind = "observation"
+    KindAsk RecordKind = "ask"
+)
+type ConditionKind string
+const (
+    ConditionDate ConditionKind = "date"
+    ConditionRecord ConditionKind = "record"
+    ConditionReading ConditionKind = "reading"
+    ConditionManual ConditionKind = "manual"
+)
+type ConditionName string
+const (
+    CheckSupersederResolves ConditionName = "SupersederResolves"
+    CheckOutcomeResolves ConditionName = "OutcomeResolves"
+    CheckReviewRecorded ConditionName = "ReviewRecorded"
+    CheckReviewDue ConditionName = "ReviewDue"
+    CheckLinkResolves ConditionName = "LinkResolves"
+    CheckEnforcementHolds ConditionName = "EnforcementHolds"
+    CheckConditionFired ConditionName = "ConditionFired"
+)
+type ConditionState string
+const (
+    ConditionHolds ConditionState = "holds"
+    ConditionViolated ConditionState = "violated"
+    ConditionUnknown ConditionState = "unknown"
+)
+type Ruling string
+const (
+    RulingProposed Ruling = "proposed"
+    RulingAccepted Ruling = "accepted"
+    RulingRejected Ruling = "rejected"
+    RulingDeferred Ruling = "deferred"
+    RulingWithdrawn Ruling = "withdrawn"
+)
+type FrictionVerdict string
+const (
+    VerdictFix FrictionVerdict = "fix"
+    VerdictWontFix FrictionVerdict = "wontfix"
+    VerdictDuplicate FrictionVerdict = "duplicate"
+    VerdictCeiling FrictionVerdict = "ceiling"
+)
+type ReviewVerdict string
+const (
+    ReviewKeep ReviewVerdict = "keep"
+    ReviewKill ReviewVerdict = "kill"
+)
+type RefusalError struct { Path string `json:"path"`; Line int `json:"line"`; Reason string `json:"reason"` }
+func (e *RefusalError) Error() string
+type LimitError struct { Limit int64 `json:"limit"`; Observed int64 `json:"observed"` }
+func (e *LimitError) Error() string
+~~~
+
+All compact declaration fields above acquire explicit lower_snake_case JSON tags:
+Identity id/title, Source source, Head's eight pointers decision/invariant/goal/
+future/question/incident/observation/ask (omitempty), Record head/at, LoadResult
+records/plans/unparsed/coverage, ConditionFacts records/coverage/links/enforcement/
+readings/bets/reviews. Per-head field tags exactly match the eight CUE schemas;
+source-only positions are json:- when serializing parsed authored head data.
+This is an explicit field-to-wire map, not Go's default capitalized encoding.
+No bare string for a new closed vocabulary. Existing intent types remain additive
+reuse inputs and are flattened through the declared adapter, never retyped.
+
+Pure ParseHead/EvaluateCondition/ObservationVerdict have no context. LoadRecords
+reads I/O and may accept context.Context as first argument; freeze that signature
+as LoadRecords(ctx context.Context, root string) (LoadResult, error). Shape/
+selection refusals are RefusalError, bounded-input failures LimitError, errors.As
+works. Every exported result slice is nonnil recursively, including empty targets/
+records/plans/unparsed/conditions/outcome/enforced_by; JSON [] never null.
+No future fields, package on the language door, public type removal or default
+value exposure. This is the W3-4 rule applied to these concrete current ports.
+
+Proposed TestRecordContractsAPIHouseRules in internal/records/lane_contract_test.go
+asserts constants/types, exact head/condition/envelope JSON names, empty slices [],
+refusal/limit errors.As, context only loader I/O, and unchanged legacy parser
+inputs/verify codes. Run go test -race ./internal/records -run
+'^TestRecordContractsAPIHouseRules$' -count=1 as one line. Independent lane critic
+compares every listed assertion under W3-2. No executed RED or green claim here.
