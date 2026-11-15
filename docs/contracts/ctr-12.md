@@ -41,6 +41,9 @@ settle this batch's conflicting requirement to land runnable failing proofs.
 Unsettled U4: deterministic CI sample from bundle tree, first hex byte <16 (1/16),
 recommended. Alternative every bundle receives a full CI run. ADR-100 requires
 sampling but does not settle the rate. No sampled disagreement is ignored.
+Unsettled U5: proposed 26/256 deterministic delivery holdout, recommended.
+Alternative 1/10 with rejection sampling. ADR-080 d6 requires deterministic
+holdouts but does not settle their rate; freeze before forward data.
 
 ## Proposed attribution and lookup ports (U1)
 
@@ -121,32 +124,76 @@ type DeliveryRow struct {
     Delivered bool `json:"delivered"`
     LatencyMS float64 `json:"latency_ms"`
 }
-type TargetAction struct { SessionID, Target string; CallOrdinal int }
+type SessionCall struct {
+    SessionID, CallID, Phase string
+    Ordinal int
+    Targets []string
+}
+type CallCoverage struct {
+    SessionID string
+    FirstOrdinal, LastOrdinal int
+    Complete bool
+    Reason string
+}
 type FunnelInput struct {
     Rows []DeliveryRow
-    Actions []TargetAction
+    Calls []SessionCall
+    Coverage []CallCoverage
+    Pairs []benchledger.PairPreflight
     DeadlineMS float64
     NextCalls int
 }
-func DeliveryFunnel(in FunnelInput) ([]FiringReadingRow, error)
+type DeliveryResult struct {
+    Rows []FiringReadingRow
+    VoidPairs []string
+    UnknownSessions []string
+}
+func DeliveryFunnel(in FunnelInput) (DeliveryResult, error)
 func DeliveryHoldout(sessionID, capability string) bool
 ```
 
 DeliveryHoldout uses sha256 of length-prefixed session/capability, first byte <26
-(approximately 10.16%), stable within session. This exact fraction is proposed U1,
+(approximately 10.16%), stable within session. This exact fraction is proposed U5,
 not a measured policy win. Arm is assigned holdout/deliver before eligible outcome;
 held-out rows keep eligible=true, fired/delivered=false. Phase preflight/agent
 separates scripted probes from agent outcomes. Target is an exact existing
 file/symbol/test anchor, never raw transcript. At RFC3339 UTC, supplied by caller.
 Missing target/id/timestamp, duplicate CallID or negative latency fails parse and
 is counted unread evidence, never a success. FiringReadingRow/Stages/Stage are
-existing result types; no second funnel renderer. Acted requires exact anchored
-action within NextCalls, not substring or same-file accidental match; each row's
-ordinal is its position in session ordered by At then CallID, ambiguous same-time
-ordering is unknown. Report eligible/fired/delivered-in-deadline/acted by assigned
-arm; Helped stays not measured without independent outcome oracle. Missing action
-coverage is not zero action. Archive raw rotated logs under statedir logs, retaining
-digest/time range and explicit missing periods; no claim old week proves a month.
+existing result types; no second funnel renderer. Acted requires an exact anchored action in the next k calls from ONE complete
+session call population, including calls with no delivery decision. DeliveryRow.CallID
+joins SessionCall.CallID; the action is the Targets of a later SessionCall with
+ordinal in (delivery.Ordinal, delivery.Ordinal+k]. No separate action-only counter.
+Session ordinals are exporter-recorded event order, positive and unique, not sorted
+by timestamp or lexicographic id. Equal timestamps are safe only with distinct
+recorded ordinals. Duplicate/missing ordinal, unknown event loss or noncontiguous
+claimed coverage -> UnknownSessions, not zero action. Coverage must include the
+whole window through delivery+k or a witnessed session end. Complete is an adapter
+attestation verified against captured event counts/raw digest; merely authoring true
+cannot establish it. Calls are immutable during aggregation.
+
+Pair validity is not recomputed from use: FunnelInput.Pairs consumes the single
+benchledger.PairPreflight contract from CTR-13, with PairID, TreatmentSession,
+ControlSession, BeforeAgent, Valid, Reason. It is produced by benchledger.AdmitPair
+from scripted W0-W3/W6 receipts. BeforeAgent=false or Valid=false makes BOTH sessions
+VOID in VoidPairs before any action scoring; missing preflight is unknown and not
+an admitted pair. Benchledger owns this result, labs imports it; benchledger never
+imports labs. No fallback from W4/W5. A valid zero-use pair remains assigned-arm
+scored, counted eligible/non-use, never voided by the funnel. Preflight calls are
+phase preflight and excluded from agent use, not admission. Output rows use existing
+FiringReadingRow/Stages. Helped remains not measured without independent outcomes.
+Archive raw rotated logs under statedir logs with digest/time range and missing
+periods; no claim an old week proves a month.
+
+Proposed TestDeliveryCallOrderCoverage cases: k=3 delivery at ordinal 2, non-delivery
+calls 3/4/5 and target action 6 -> not acted; action 5 -> acted; equal timestamp
+with distinct ordinals stable; missing call 4 -> unknown; duplicate ordinal ->
+error; session ended at 4 with witnessed end closes short window. Proposed
+TestDeliveryPairPreflight cases: valid reachable treatment with zero agent calls
+remains scored/non-use, assigned arms unchanged; scripted failure before startup
+voids both sessions; missing receipt unknown; late receipt cannot retrospectively
+admit. Commands `go test -race ./internal/labs -run
+'^TestDelivery(CallOrderCoverage|PairPreflight)$' -count=1` (one line), unrun.
 
 `cmd/fathom/hook_delivery.go` converts current hook emissions and call-log attribution
 into DeliveryRow once per decision point. It never modifies holdout arm after seeing
@@ -156,40 +203,80 @@ appear in reading coverage; they do not silently remove rows from denominators.
 ## Landing bundle (U1)
 
 ```go
-// internal/landing/bundle.go
+// internal/landing/bundle.go; current verify.Report and readmanifest reused.
+type ReportEvidence struct {
+    Plan, Tree, StoreCommit, ReportSHA256 string
+    Report verify.Report
+}
+type SetEvidence struct {
+    Tree string
+    Entries []string
+    Coverage readmanifest.Manifest
+    SourceSHA256 string
+}
+type EvidenceManifest struct {
+    Tree, Commit string
+    Verify []ReportEvidence
+    Affected, Overlap SetEvidence
+}
 type Bundle struct {
     Schema string `json:"schema"`
     Tree string `json:"tree"`
     GateReceiptID string `json:"gate_receipt_id"`
-    Verify []verify.Report `json:"verify"`
-    AffectedTests []string `json:"affected_tests"`
-    Overlap []string `json:"overlap"`
+    Evidence EvidenceManifest `json:"evidence"`
+    Digest string `json:"digest"`
 }
 func BuildLandingBundle(ctx context.Context, options gatereceipt.Options,
-    ref string, reports []verify.Report, affected, overlap []string) (Bundle, error)
+    ref string, artifacts fs.FS) (Bundle, error)
 // internal/landing/accept.go
 type Acceptance struct { Accepted bool; Reason string; SampleFullCI bool }
 func AcceptLandingBundle(ctx context.Context, options gatereceipt.Options,
-    ref string, bundle Bundle) (Acceptance, error)
+    ref string, bundle Bundle, artifacts fs.FS) (Acceptance, error)
 ```
 
-Schema exactly fathom.landing/v1. Builder invokes existing gatereceipt.Check to
-obtain id and bind exact clean tree/command/log. It does not execute a gate/test.
-Every verify report must come from that same checkout/tree, have no unproven claim
-or operational-unknown accepted as pass. Report-to-tree binding is an explicit
-caller-provided attestation artifact alongside reports, not inferred from Report
-contents: proposed Build input additionally takes `reportTrees map[string]string`,
-keyed by report.Plan.Path, every key must equal bundle.Tree; missing key fails.
-This input must be captured by the verify runner, never authored by a lane.
-AffectedTests/Overlap sorted unique, empty allowed only with complete selector
-coverage; unknown coverage rejects bundle acceptance. No reach overlap means no
-forecast evidence, not independence. Preserve original receipt and log bytes.
-Accept reruns receipt integrity/exact-tree checks on receiving clean checkout,
-compares bundle.Tree and all report attestations, and rejects altered lists/digests.
-Bundle serialization digest binds all fields. CI sample mismatch opens an incident,
-never overrides its failure because receipt exists. A full mandatory gate remains
-foreman-owned, no lighter lane gate. Unsigned local evidence proves integrity,
-not the author's identity (gatereceipt's current limitation retained).
+Schema exactly fathom.landing/v1. JSON tags on nested proposed types are the
+lower_snake_case of their fields, declaration order above. EvidenceManifest is
+persisted in Bundle, not a prose-only argument. Digest is SHA256 canonical JSON of
+all bundle fields except Digest itself, with LF; acceptance recomputes it.
+
+Gate-owned capture protocol, not a lane-authored reportTrees map: before the
+mandatory full gate, controller captures clean HEAD/tree and exact selector/reach
+inputs. After tests/verify in that same gate, capture raw per-plan --json reports,
+store watermark/commit, read-manifest coverage and selector/overlap source artifacts.
+Recheck clean HEAD/tree unchanged. Write artifacts at exact paths manifest.json,
+verify/<plan-basename>.json, affected.json, overlap.json under the receipt artifact
+root. Hash source/report bytes and include those hashes in manifest. Capture emits
+one `landing-artifacts-sha256=<manifest digest>` line INSIDE the successful gate log
+before its completion. Existing gatereceipt then hashes that unchanged log. No
+manifest includes receipt id, so there is no digest cycle. Controller owns capture;
+product builder/acceptor execute no gate/test or arbitrary command.
+
+Build calls existing gatereceipt.Check and reads its accepted receipt/log bytes.
+Require exactly one manifest-digest line in the checked successful log. Validate
+artifacts against that digest, their stored file digests, tree/commit against
+checked receipt, and verify StoreCommit against the tested source identity.
+verify.Report alone has no tree; ReportEvidence.Tree is captured by the gate
+runner, never trusted without this log binding. Missing provenance rejects.
+Require no unproven claimed row and no operational unknown promoted to pass.
+SetEvidence.Coverage must show every selector/reach input read; absent/unreadable/
+skipped/unknown input rejects even when Entries is empty. Canonicalize entries as
+sorted unique, retain full coverage manifest and SourceSHA256. Full source artifacts
+are local and available through artifacts fs.FS, not arbitrary caller maps.
+
+Accept reruns receipt integrity on receiving clean checkout, requires exact tree,
+recomputes bundle/manifest/report/source digests and complete coverage from artifact
+bytes, then applies U4 CI sampling. Altered Report/list/coverage/source bytes,
+missing artifact, foreign store identity or receiving-tree mismatch rejects even
+when bundle.Tree text is unchanged. The gate log binds these captured artifacts
+as unsigned local evidence; this proves integrity under the existing local trust
+model, not author identity. No lighter gate. A sampled full-run disagreement opens
+an incident and blocks acceptance. It is never overwritten by old receipt presence.
+
+Proposed TestLandingEvidenceProvenance in bundle_test.go and accept_test.go seeds
+one valid captured log/manifest, then separately mutates report, affected list,
+overlap list, coverage, source hash and receiving checkout. Every mutation rejects;
+a fresh valid unchanged bundle passes. Command: `go test -race ./internal/landing
+-run '^TestLandingEvidenceProvenance$' -count=1` (one line), proposed/unrun.
 
 ## Other consumer ports, scoped to their current rows (U1)
 
@@ -341,19 +428,31 @@ MCP #167/#168 receive only their named IaC turns, then #273 hook lookup handback
 | Exact path(s) | Exclusive order/responsibility |
 |---|---|
 | internal/mcp/hook_lookup.go, internal/mcp/hook_lookup_test.go | #273 only; existing QueryInterface consumed without adding method |
-| internal/mcp/symbol_tools.go | #167/#168 read-only IaC context; #273 find_symbol adapter after their handbacks (confirm symbol handler site at frozen base before dispatch) |
+| internal/mcp/tools.go | #167/#168 IaC context turns -> #273 existing find_symbol registration/handler adapter at tools.go:403+, same QueryInterface |
 | cmd/fathom/sessionhook.go | #273 lookup transport -> #272 attribution -> #298 stamp -> #296 suspects -> #267 delivery -> #314 reconstruction -> #315 events |
 | cmd/fathom/edithook.go, cmd/fathom/sessionhook_events.go | #272 -> #296 -> #267 -> #314 -> #315, same hooks owner each turn |
 | cmd/fathom/beats.go, cmd/fathom/discoveries.go, internal/mcp/calllog.go | #272 attribution -> #298 stamp/session record -> #267 delivery log |
 | cmd/fathom/doctor.go, cmd/fathom/doctor_harness_firing.go, cmd/fathom/doctor_wire_stamp.go | #298 only, retains WR-12 applicability |
-| cmd/fathom/verify.go | #297 ledger attribution only after current gate owner; no gate semantics change |
-| cmd/fathom/fleet_health.go, internal/console/fleet.go, cmd/fathom/observatory_fleet.go | #276 metrics wiring -> #304 CLI/panel parity; explicit integration grants |
-| cmd/fathom/whatif.go, cmd/fathom/whatif_replay_test.go | #322 after #314/BEN-4, existing hooks owned solely by hooks lane |
+| cmd/fathom/verify.go, cmd/fathom/verifyledger.go, cmd/fathom/verifyledger_rows.go | #297 ledger checkout attribution after current gate owner; appendVerifyLedger remains existing writer |
+| scripts/landing-capture.sh, Taskfile.yml | landing integration owner for proposed gate artifact capture only, after active gate owner handback; no gate removed |
+| cmd/fathom/fleetreport.go, cmd/fathom/fleetreport_test.go, internal/console/fleet.go, cmd/fathom/console_fleet.go, cmd/fathom/console_test.go | #276 metrics wiring -> #304 CLI/panel parity; explicit integration grants |
+| cmd/fathom/edithook.go, cmd/fathom/edithook_test.go, cmd/fathom/whatif_replay_test.go | #322 replay test after #314/BEN-4; hooks owner integrates code-card adapter in cmdEditHook/renderPostEdit, sole shared-file writer |
 | internal/lint/tenancy/tenancy.go, internal/lint/tenancy/rules.go | #320 only, semantic parity to existing Rules/CheckFile |
 
-Any proposed existing filename not containing the actual integration site must be
-corrected and reviewed before dispatch, not silently expanded at implementation.
-Contract review should resolve sites on this pinned base. Batch test files remain
+Grounded sites: internal/mcp/tools.go find_symbol handler; cmd/fathom/fleetreport.go
+cmdFleetReport/buildFleetReport -> cmd/fathom/console_fleet.go buildFleetPage at /fleet;
+cmd/fathom/edithook.go cmdEditHook/renderPostEdit. No whatif.go or
+observatory_fleet.go exists or is granted. New fleet_health.go remains #304's adapter
+file only, called from existing buildFleetReport, never a substitute product entry.
+Additional route tests: cmd/fathom/fleet_health_test.go::TestFleetReportPanelPresence
+calls real fleet report CLI and registered /fleet page and compares the same
+HookPathPresence values/unknown reasons; cmd/fathom/whatif_replay_test.go::TestEditHookCodeCardReplay
+calls cmdEditHook with actual harness edit fixture, consumes reconstructed full file
+and asserts only an admitted code card is rendered/logged. Missing factdelta/card
+or reconstruction evidence stays unknown. No nonexistent what-if verb is assumed.
+Reserve cmd/fathom/edithook_teststorun.go and edithook_teststorun_test.go to #296's
+serial suspects turn after #272 and before #267. All new tests/fixtures transfer
+at the same frozen owner handoff, not concurrent adapter edits. Batch test files remain
 CTR-12-owned until its U3 RED mechanism lands, then transfer at exact commit.
 No hook turn can overlap another turn merely because new adapter filenames differ.
 
