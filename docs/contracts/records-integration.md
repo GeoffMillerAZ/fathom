@@ -193,3 +193,26 @@ has run in this author lane.
 The REC-1/#252 cross-family corpus conflict is an external blocked prerequisite.
 This contract grants no migration or checker-policy exception, never weakens
 global uniqueness and never treats a stopped #252 implementation as completed.
+
+## Current REC-1 corpus hold and non-additive manifest boundary
+
+At the frozen base, ADR.md:4085 defines ADR-062 and
+docs/plans/telemetry-links.md:15 also defines plan annotation id ADR-062.
+The plan title and oracle pattern cite the ADR separately; the annotation is an
+actual second definition. REC-1 global full-ID uniqueness remains unchanged.
+This contract supplies NO exception, qualified-family shortcut or migration.
+
+The independently recommended narrow migration changes only that plan annotation
+to unused TL-0-adr, preserving title/checkbox/ADR references/path/pattern and
+leaving ADR.md unchanged. It still needs the architect's exact grant/ruling.
+Do not apply it from this contract author branch or infer approval from a critic
+recommendation. #252 remains stopped; implementation resumes only at an authorized
+trusted base with the required actual proof.
+
+If that migration lands, this companion's original plan id/source-line/file hash
+is stale. That refresh CHANGES an existing row; it is NON-ADDITIVE under W5-4 and
+requires architect approval, even if no other row changes and this wave caused it.
+The critic-only “adds wave-landed rows” refresh permission cannot cover it.
+TestRecordBackfillExactManifest must seed this exact old-id->new-id drift and
+refuse against the unchanged manifest with zero writes; no id normalization or
+automatic manifest rewrite. The author leaves all72files/661entries unchanged.
