@@ -1,0 +1,410 @@
+# CTR-12: attribution, wire evidence, delivery and landing
+
+Status: DRAFT W1-5/#263. Contract only, no implementation or measured RED.
+Base: `468dc705813382d584926887b451cbea145c76ac`. Owns this document only.
+Independent branch. No companion fixture drafts land here. Landing needs REC-1,
+CTR-4, ENG-2, LIB-1; every consumer still needs its authored prerequisites.
+
+## Intent before design
+
+Read intent router, P2/P3/P12/P15/P18/P22, scope compatibility/non-goals, ADR-080,
+ADR-081, ADR-098/100/101/102/110, parallel-lanes PL-D1..7 and §4 hooks row,
+wiring-proof WP-D1..6, proof-program BN-D2, realignment ENG-8/9/10/WIR-1/CHG-5/6.
+Newer ADRs are proposed design context, not proof their code exists. Keep I9/I12
+hook fail-open behavior, I38 coverage, I62 judgment/proof separation. No scheduling,
+provider/test execution in product, new table or inference that firing means help.
+W2-1 answers LL-M1; no language-door package is added. No evidence a bundle/CI
+mismatch, powered holdout or hook-latency trigger has fired. Stamp/receipt presence
+is not a conformance reading. Preserve future adapters with explicit typed inputs,
+not future harness fields. No backfilled historical stamps.
+
+Settled decisions, with governing text:
+- D1 one sequential hook owner: parallel-lanes §4 hooks row explicitly orders
+  ENG-8 -> ENG-9 -> WIR-1 -> CHG-3 -> BEN-4 -> CHG-8 -> FLT-3. Alternative parallel
+  hook edits contradict that row. Proposed reservation details still need U2.
+- D2 reuse exact-tree receipts: ADR-100 d2 and PL-D7. Alternative rerun different
+  tree and call it equivalent is excluded. Existing gatereceipt.Check is the law.
+- D3 delivery is forward/holdout evidence, not helping: BEN-4, BN-D2/BN-K8/K9 and
+  ADR-080. Alternative treating eligible/fired counts as outcome proof is excluded.
+- D4 preflight before agent; W4/W5 outcomes never exclusions: ADR-110 WP-D1/2,
+  R2-1/BX-40 in #263. Alternative excluding zero-call cells is forbidden.
+- D5 retain verify codes and fail-open hooks: CU-K7, I9/I12. Alternative deriving
+  runtime conformance from static verify is excluded.
+
+Unsettled U1: approve exact structs/signatures/JSON below. Alternative land only
+current receipt/stamp adapters and split added delivery joins into a second contract.
+Unsettled U2: approve exact serial reservation manifest below. Alternative one
+architect integration lane owns every existing hook/CLI/MCP file in that manifest.
+Unsettled U3: implementing-lane RED with CTR-12 row amendment, recommended.
+Alternative tagged batch RED plus a green-default command. REC-1 W2-2 D5 does not
+settle this batch's conflicting requirement to land runnable failing proofs.
+Unsettled U4: deterministic CI sample from bundle tree, first hex byte <16 (1/16),
+recommended. Alternative every bundle receives a full CI run. ADR-100 requires
+sampling but does not settle the rate. No sampled disagreement is ignored.
+
+## Proposed attribution and lookup ports (U1)
+
+```go
+// internal/mcp/hook_lookup.go; uses existing backend/symbol types.
+func hookLookup(ctx context.Context, backend QueryInterface,
+    service, name string, limit int) ([]core.SymbolNode, error)
+// cmd/fathom/hook_attribution.go
+type RowAttribution struct { SessionID, LaneID, Caller string }
+func stampRowAttribution(row map[string]any, attribution RowAttribution) map[string]any
+```
+
+hookLookup invokes stored QuerySymbols using a name filter and top limit, the
+same semantics as find_symbol, with limit 1..10 and caller deadline. Empty name,
+invalid limit or missing service returns error, never a repository scan. MCP
+find_symbol handler and hook caller share this function; query_symbols remains
+an extended public verb where already registered but disappears from hook-path
+requests. No new MCP registration or backend method. Hook liveness uses current
+identity/status call, not a sacrificial full symbol query. Missing index/deadline
+means named unknown and fail-open hook, never fabricated no-match.
+
+stampRowAttribution returns a copied row, preserving all existing keys except
+`session_id`, `lane_id`, `caller` set from explicit trusted caller context. Empty
+session/lane remains empty and counted unattributed; no guessed id from cwd or
+last session. Server transport receives these via existing request attribution
+metadata, not model-supplied tool arguments. Serialize keys `session_id`, `lane_id`,
+`caller`; caller is agent/edit-hook/gate/refresh/plumbing/unattributed. ENG-9
+coverage is numerator rows with both applicable ids / all applicable rows, >=95%
+as authored; report missing denominators and exemptions separately, never drop them.
+
+## Wire stamp and doctor (U1)
+
+```go
+// internal/wiring/wire_stamp.go
+type WireInputs struct {
+    FathomVersion, ExtractorEpoch, OwnedHooksDigest, SurfaceDigest string
+}
+type WireStamp struct {
+    SessionID string `json:"session_id"`
+    Wire string `json:"wire"`
+    Index string `json:"idx"`
+}
+func ComputeWireStamp(in WireInputs) (string, error)
+func WriteWireStamp(dst io.Writer, sessionID string,
+    in WireInputs, index string) (WireStamp, error)
+// cmd/fathom/doctor_wire_stamp.go
+type WiringFiring struct { State, Reason, SessionID, Wire string }
+func wiringFiring(stamp wiring.WireStamp, observedWire string) WiringFiring
+```
+
+Compute sha256 of canonical JSON WireInputs in field declaration order. No local
+paths/clock. All four inputs required. Effective owned hooks/surface canonicalized
+before hashing, sorted keys/entries, include content not settings path. Index is
+fresh/behind/unknown, independent from wire hash. WriteWireStamp writes one LF JSON
+row to supplied writer, no hidden path/clock. SessionStart computes once and appends
+wire/idx to existing sessionWindowRow via recordSessionWindow under its current
+lock and statedir policy (WR-4); do not create a second sessions ledger. WIR-1
+adapts this function, WR-4 remains the shared implementation owner. Doctor returns
+unknown if missing; configured when stamp exists but no matching firing; observed
+only when observed wire equals stamp. Never promote installed -> firing. Existing
+WR-12 firing check and per-harness applicability remain, not a new ladder.
+
+## Forward delivery schema and funnel (U1)
+
+```go
+// internal/labs/delivery.go
+type DeliveryRow struct {
+    SessionID string `json:"session_id"`
+    LaneID string `json:"lane_id"`
+    Capability string `json:"capability"`
+    CallID string `json:"call_id"`
+    Target string `json:"target"`
+    At string `json:"at"`
+    Phase string `json:"phase"`
+    Arm string `json:"arm"`
+    Eligible bool `json:"eligible"`
+    Fired bool `json:"fired"`
+    Delivered bool `json:"delivered"`
+    LatencyMS float64 `json:"latency_ms"`
+}
+type TargetAction struct { SessionID, Target string; CallOrdinal int }
+type FunnelInput struct {
+    Rows []DeliveryRow
+    Actions []TargetAction
+    DeadlineMS float64
+    NextCalls int
+}
+func DeliveryFunnel(in FunnelInput) ([]FiringReadingRow, error)
+func DeliveryHoldout(sessionID, capability string) bool
+```
+
+DeliveryHoldout uses sha256 of length-prefixed session/capability, first byte <26
+(approximately 10.16%), stable within session. This exact fraction is proposed U1,
+not a measured policy win. Arm is assigned holdout/deliver before eligible outcome;
+held-out rows keep eligible=true, fired/delivered=false. Phase preflight/agent
+separates scripted probes from agent outcomes. Target is an exact existing
+file/symbol/test anchor, never raw transcript. At RFC3339 UTC, supplied by caller.
+Missing target/id/timestamp, duplicate CallID or negative latency fails parse and
+is counted unread evidence, never a success. FiringReadingRow/Stages/Stage are
+existing result types; no second funnel renderer. Acted requires exact anchored
+action within NextCalls, not substring or same-file accidental match; each row's
+ordinal is its position in session ordered by At then CallID, ambiguous same-time
+ordering is unknown. Report eligible/fired/delivered-in-deadline/acted by assigned
+arm; Helped stays not measured without independent outcome oracle. Missing action
+coverage is not zero action. Archive raw rotated logs under statedir logs, retaining
+digest/time range and explicit missing periods; no claim old week proves a month.
+
+`cmd/fathom/hook_delivery.go` converts current hook emissions and call-log attribution
+into DeliveryRow once per decision point. It never modifies holdout arm after seeing
+use. Hooks emit/log under existing limits and fail open on logging errors. Errors
+appear in reading coverage; they do not silently remove rows from denominators.
+
+## Landing bundle (U1)
+
+```go
+// internal/landing/bundle.go
+type Bundle struct {
+    Schema string `json:"schema"`
+    Tree string `json:"tree"`
+    GateReceiptID string `json:"gate_receipt_id"`
+    Verify []verify.Report `json:"verify"`
+    AffectedTests []string `json:"affected_tests"`
+    Overlap []string `json:"overlap"`
+}
+func BuildLandingBundle(ctx context.Context, options gatereceipt.Options,
+    ref string, reports []verify.Report, affected, overlap []string) (Bundle, error)
+// internal/landing/accept.go
+type Acceptance struct { Accepted bool; Reason string; SampleFullCI bool }
+func AcceptLandingBundle(ctx context.Context, options gatereceipt.Options,
+    ref string, bundle Bundle) (Acceptance, error)
+```
+
+Schema exactly fathom.landing/v1. Builder invokes existing gatereceipt.Check to
+obtain id and bind exact clean tree/command/log. It does not execute a gate/test.
+Every verify report must come from that same checkout/tree, have no unproven claim
+or operational-unknown accepted as pass. Report-to-tree binding is an explicit
+caller-provided attestation artifact alongside reports, not inferred from Report
+contents: proposed Build input additionally takes `reportTrees map[string]string`,
+keyed by report.Plan.Path, every key must equal bundle.Tree; missing key fails.
+This input must be captured by the verify runner, never authored by a lane.
+AffectedTests/Overlap sorted unique, empty allowed only with complete selector
+coverage; unknown coverage rejects bundle acceptance. No reach overlap means no
+forecast evidence, not independence. Preserve original receipt and log bytes.
+Accept reruns receipt integrity/exact-tree checks on receiving clean checkout,
+compares bundle.Tree and all report attestations, and rejects altered lists/digests.
+Bundle serialization digest binds all fields. CI sample mismatch opens an incident,
+never overrides its failure because receipt exists. A full mandatory gate remains
+foreman-owned, no lighter lane gate. Unsigned local evidence proves integrity,
+not the author's identity (gatereceipt's current limitation retained).
+
+## Other consumer ports, scoped to their current rows (U1)
+
+```go
+// internal/testrun/suspects.go: reuse FindCandidates, Run and Index.
+func Suspects(run Run, changed []ChangedSymbol, idx Index) Candidates
+// internal/verify/ledger_checkout.go
+func recordUnderCheckout(checkoutRoot, ledgerPath string) (string, error)
+// internal/metrics/hook_presence.go
+type HookPresenceInput struct { Eligible, Fired, Delivered, Unknown int }
+type HookPresence struct { State, Reason string; Eligible, Fired, Delivered, Unknown int }
+func HookPathPresence(in HookPresenceInput) HookPresence
+// internal/hookpath/proposed_file.go
+type Edit struct { Start, End int; Replacement []byte }
+func ReconstructProposedFile(base []byte, edits []Edit) ([]byte, error)
+// internal/lanefile/events.go
+type Event struct { LaneID, SessionID, Kind, At, Target string }
+func ParseEvents(source []byte) ([]Event, error)
+// internal/lanefile/export.go
+type View struct { LaneID, State string; Events []Event }
+func ExportLanes(lanes []records.Lane, events []Event) ([]View, error)
+// internal/lint/tenancy/rules.go: existing Findings and CheckFile semantics.
+func CheckRules(rel string, src []byte, rules []string) ([]Finding, error)
+```
+
+recordUnderCheckout resolves enclosing git checkout root passed by verifier,
+never ambient cwd/global service root. Writes use existing verify-ledger writer,
+not internal/verify's unrelated bench-ledger oracle parser. Resolve symlinks,
+reject foreign checkout, return canonical local path; public rows redact host paths.
+HookPathPresence state unknown for missing coverage, absent for eligible>0/fired=0,
+observed when fired>0; delivered is separate, no healthy with Unknown>0. CLI fleet
+health and panel consume same typed value. No eligible observations -> unknown.
+Reconstruct edits use byte offsets, sorted non-overlapping on original base;
+reject out-of-range/overlapping edits. Each harness adapter must decode its real
+edit form into this type, no guessed common transcript. Missing whole-file input
+is unknown, not a partial hypothetical file. Event kinds edit/test/claim/stop only,
+no assignment/phase write. Export derives state from operator-authored lanes and
+observations; no scheduler/status mutation. Rules closes over current Rules() keys,
+unknown key fails, no new expression language or execution. CHG-1 replay uses
+internal factdelta only; no public delta API or admitted infrastructure card.
+
+## Exact issue ownership snapshot and serial transfer
+
+These are the current issue allowlists, not grants to this draft author. Existing
+files remain with the architect until a named serial handoff. Directory grants
+are reproduced as authored and must be narrowed to the fixture files below before
+dispatch. Tests in a contract batch transfer once, at its landed commit, to the
+consumer. No concurrent shared-file owner.
+
+### #275 Landing bundle (CHG-5)
+
+- `internal/landing/bundle.go` (new).
+- `internal/landing/bundle_test.go` (new).
+
+### #274 Landing accept (CHG-6)
+
+- `internal/landing/accept.go` (new).
+- `internal/landing/accept_test.go` (new).
+
+### #273 Add bounded hook lookup over stored facts (ENG-8)
+
+- `internal/mcp/hook_lookup.go` (new).
+- `internal/mcp/hook_lookup_test.go` (new).
+
+### #272 Attribute hook delivery to its caller and session (ENG-9)
+
+- `cmd/fathom/hook_attribution.go` (new).
+- `cmd/fathom/hook_attribution_test.go` (new).
+
+### #298 Wire stamp (WIR-1)
+
+- `internal/wiring/wire_stamp.go` (new).
+- `internal/wiring/wire_stamp_test.go` (new).
+- `cmd/fathom/doctor_wire_stamp.go` (new).
+
+### #296 Red test suspects (CHG-3)
+
+- `internal/testrun/suspects.go` (new).
+- `internal/testrun/suspects_test.go` (new).
+- `cmd/fathom/testrunhook.go` (exists).
+
+### #267 Record forward delivery and acted-on evidence (BEN-4)
+
+- `internal/labs/delivery.go` (new).
+- `internal/labs/delivery_test.go` (new).
+- `cmd/fathom/hook_delivery.go` (new).
+
+### #297 Verify ledger (ENG-10)
+
+- `internal/verify/ledger_checkout.go` (new).
+- `internal/verify/ledger_checkout_test.go` (new).
+
+### #276 Presence metrics (ENG-7)
+
+- `internal/metrics/hook_presence.go` (new).
+- `internal/metrics/hook_presence_test.go` (new).
+
+### #304 Fleet ground (FLT-0, FLT-1)
+
+- `cmd/fathom/fleet_health.go` (new).
+- `cmd/fathom/fleet_health_test.go` (new).
+- `cmd/fathom/observatory_fleet_health.go` (new).
+- `cmd/fathom/observatory_fleet_health_test.go` (new).
+- `docs/bench/readings/fleet-picture/browser-launch.md` (new).
+
+### #322 Whatif delta (CHG-1, LIB-13)
+
+- `internal/factdelta/` (new).
+- `cmd/fathom/whatif_replay_test.go` (new).
+- `docs/bench/readings/realignment/chg-1-replay-cards.md` (new).
+- `docs/bench/readings/library-roadmap/lib-13-fact-delta.md` (new).
+
+### #306 Guardrail deletion (CHG-9)
+
+- `docs/bench/readings/realignment/chg-9-guardrail-deletion.md` (new).
+
+### #314 Hook edit rebuild (CHG-8)
+
+- `internal/hookpath/proposed_file.go` (new).
+- `internal/hookpath/proposed_file_test.go` (new).
+- `cmd/fathom/hook_proposed_file.go` (new).
+
+### #315 Lane events (FLT-3)
+
+- `internal/lanefile/events.go` (new).
+- `internal/lanefile/events_test.go` (new).
+- `cmd/fathom/hook_lane_events.go` (new).
+
+### #316 Lane views (FLT-4, FLT-10)
+
+- `internal/lanefile/export.go` (new).
+- `internal/lanefile/export_test.go` (new).
+- `cmd/fathom/fleet_lanes.go` (new).
+- `cmd/fathom/fleet_lanes_test.go` (new).
+
+### #320 Rule port (RL-9)
+
+- `internal/lint/tenancy/**` (exists, including allowed new rule-data files).
+- `internal/lint/tenancy/rules_test.go` (new).
+- `calibration/rules/tenancy/` (new).
+
+## Exact proposed shared-file reservations (U2)
+
+Approve this exclusive manifest before dispatch; it does not claim #164 owns hooks.
+#164's observed command surface is cmd/fathom/iac.go/iac_test.go only. Its legacy
+package-wide wording is replaced for these paths, never interpreted as all cmd/.
+MCP #167/#168 receive only their named IaC turns, then #273 hook lookup handback.
+
+| Exact path(s) | Exclusive order/responsibility |
+|---|---|
+| internal/mcp/hook_lookup.go, internal/mcp/hook_lookup_test.go | #273 only; existing QueryInterface consumed without adding method |
+| internal/mcp/symbol_tools.go | #167/#168 read-only IaC context; #273 find_symbol adapter after their handbacks (confirm symbol handler site at frozen base before dispatch) |
+| cmd/fathom/sessionhook.go | #273 lookup transport -> #272 attribution -> #298 stamp -> #296 suspects -> #267 delivery -> #314 reconstruction -> #315 events |
+| cmd/fathom/edithook.go, cmd/fathom/sessionhook_events.go | #272 -> #296 -> #267 -> #314 -> #315, same hooks owner each turn |
+| cmd/fathom/beats.go, cmd/fathom/discoveries.go, internal/mcp/calllog.go | #272 attribution -> #298 stamp/session record -> #267 delivery log |
+| cmd/fathom/doctor.go, cmd/fathom/doctor_harness_firing.go, cmd/fathom/doctor_wire_stamp.go | #298 only, retains WR-12 applicability |
+| cmd/fathom/verify.go | #297 ledger attribution only after current gate owner; no gate semantics change |
+| cmd/fathom/fleet_health.go, internal/console/fleet.go, cmd/fathom/observatory_fleet.go | #276 metrics wiring -> #304 CLI/panel parity; explicit integration grants |
+| cmd/fathom/whatif.go, cmd/fathom/whatif_replay_test.go | #322 after #314/BEN-4, existing hooks owned solely by hooks lane |
+| internal/lint/tenancy/tenancy.go, internal/lint/tenancy/rules.go | #320 only, semantic parity to existing Rules/CheckFile |
+
+Any proposed existing filename not containing the actual integration site must be
+corrected and reviewed before dispatch, not silently expanded at implementation.
+Contract review should resolve sites on this pinned base. Batch test files remain
+CTR-12-owned until its U3 RED mechanism lands, then transfer at exact commit.
+No hook turn can overlap another turn merely because new adapter filenames differ.
+
+## Exact proposed fixtures and failing proofs
+
+Fixtures reserved to CTR-12 until transfer: internal/landing/testdata/contracts/
+`valid-bundle.json`, `wrong-tree.json`, `missing-log.json`; internal/wiring/testdata/
+contracts/`wire-valid.json`, `wire-missing.json`; internal/labs/testdata/contracts/
+`delivery.jsonl`, `actions.jsonl`, `preflight-failed.jsonl`, `zero-use.jsonl`.
+All synthetic. Negative CUE stays commented if later included in schema packages.
+No active broken default build is committed by this draft.
+
+| Consumer test path/name | Required assertion / package for exact command |
+|---|---|
+| internal/landing/bundle_test.go::TestLaneLandingBundle | clean same-tree gate/log/verify attestation builds; wrong/missing report binding refuses; affected/overlap order stable; ./internal/landing |
+| internal/landing/accept_test.go::TestLaneLandingAccept | changed tree/command/log/bundle bytes refuse; deterministic CI sample and mismatch incident; ./internal/landing |
+| internal/mcp/hook_lookup_test.go::TestLaneHookLookup | stored exact name/limit/deadline, no hook query_symbols/off-surface calls, liveness does not query graph; ./internal/mcp |
+| cmd/fathom/hook_attribution_test.go::TestLaneHookAttribution | real hook and call-log rows carry explicit session/lane; missing remains unattributed, caller context wins model args; ./cmd/fathom |
+| internal/wiring/wire_stamp_test.go::TestLaneWireStamp | each four inputs changes digest, stable order, idx separate, once/session integration and absent doctor unknown; ./internal/wiring |
+| internal/testrun/suspects_test.go::TestLaneRedTestSuspects | existing Go/JUnit failure fixtures map to FindCandidates with unresolved tests retained, wrapped test hook integration observed; ./internal/testrun |
+| internal/labs/delivery_test.go::TestLaneDeliveryLog | holdout stable; exact target/next-call/deadline; missing coverage unknown; zero-use admitted/assigned arm retained, failed preflight voids whole pair before agent; ./internal/labs |
+| internal/verify/ledger_checkout_test.go::TestLaneVerifyLedger | gate clone ledger under verified checkout, parent cwd/symlink cannot move it to another checkout; ./internal/verify |
+| internal/metrics/hook_presence_test.go::TestLanePresenceMetrics | missing coverage unknown, eligible/nonfiring absent, fired vs delivered distinct, zero eligibility not healthy; ./internal/metrics |
+| cmd/fathom/fleet_health_test.go::TestLaneFleetGround | actual fleet health verb and existing fleet panel same typed presence/unknown values, launch witness retained; ./cmd/fathom |
+| cmd/fathom/whatif_replay_test.go::TestLaneWhatifDelta | real hook replay for admitted code card, no public delta/new infra card, missing source unknown; ./cmd/fathom |
+| internal/hookpath/proposed_file_test.go::TestLaneHookEditRebuild | whole-file and fragment edit forms per actual harness, invalid offsets/overlaps/unknown adapter refuse; ./internal/hookpath |
+| internal/lanefile/events_test.go::TestLaneLaneEvents | each event type, malformed/missing session/duplicate stable, hook writer integration in serial turn; ./internal/lanefile |
+| internal/lanefile/export_test.go::TestLaneLaneViews | deterministic lane/event joins, operator state only, unknown attribution named, CLI export no mutation; ./internal/lanefile |
+| internal/lint/tenancy/rules_test.go::TestLaneRulePort | every current rule matches CheckFile fixtures and unknown rule refuses, no provider/spawn; ./internal/lint/tenancy |
+
+For each table entry run exactly `go test -race PACKAGE -run '^TESTNAME$' -count=1`
+with that row's literal PACKAGE/TESTNAME, first assert its declaration exists via
+`rg -n '^func TESTNAME\(' PATH`. Missing declaration is absence, never observed RED.
+Batch entry: internal/landing/lane_contract_test.go::TestLaneContractsDelivery;
+`go test -race ./internal/landing -run '^TestLaneContractsDelivery$' -count=1`.
+Also proposed internal/wiring/lane_contract_test.go and
+cmd/fathom/hook_lane_contract_test.go exercise cross-package fixture serialization.
+All are proposed future runnable commands, none ran on this draft.
+
+CHG-9 deletion reading #306 remains a separate preregistered history cohort,
+independent labels and prior/self-declared I45 classifier; “rare/mostly declared”
+needs an explicit pre-data decision, not fixture presence or a new invented bar.
+No paid session, deploy, full gate or product execution is authorized here.
+
+## Evidence and limits
+
+Existing gatereceipt.Receipt/Options/Check, verify.Report, testrun.Run/FindCandidates,
+labs.FiringReadingRow/Stages/Stage, wiring receipts/ledger, cmd sessionWindowRow/
+recordSessionWindow/stampBeatMeta, metrics.CallEntry and tenancy.Rules/CheckFile
+are reuse anchors. None implies the new row exists. Proposed fields are only for
+current attributed delivery/landing inputs. Draft verified by diff check and commit
+hook only. No RED/race/gate/conformance/coverage/latency claim. Rows stay unchecked.
+Decision models: none. Deterministic joins and exact-tree integrity need no model;
+provider none is complete. Manual review opts out of automation, not evidence bars.
