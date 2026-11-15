@@ -12,7 +12,7 @@ only (ADR-058 decision 3).
 
 ## Records (TL-0)
 
-- [x] ADR-062 appended: Stage A is dialect work, identity joins only; F59 not fired; the Stage B gate; payloads parsed and discarded; owner decision D4 recorded and fired; tier T7 accepted {id: ADR-062, oracle: lexical, path: ADR.md, pattern: "^## ADR-062: Telemetry links"}
+- [x] ADR-062 appended: Stage A is dialect work, identity joins only; F59 not fired; the Stage B gate; payloads parsed and discarded; owner decision D4 recorded and fired; tier T7 accepted {id: TL-0-adr, oracle: lexical, path: ADR.md, pattern: "^## ADR-062: Telemetry links"}
 - [x] The design: Stage A and Stage B, the payload-shape registry, the TL-5 identity contract and the delivery reality {id: TL-0, oracle: lexical, path: docs/design/telemetry-links.md, pattern: "^## 4\. The telemetry identity contract"}
 - [x] The decisions index row for ADR-062 {id: TL-0-index, oracle: lexical, path: docs/intent/decisions/README.md, pattern: "^\| ADR-062 \|"}
 - [x] Scope: one G15 line, observability-as-code formats measured as dialects at tier T7 {id: TL-0-scope, oracle: lexical, path: docs/intent/scope/goals-1.md, pattern: "are G15 dialects at tier T7"}
