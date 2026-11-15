@@ -1,6 +1,15 @@
 # LIB-12: offline grammar notices
 
-LIB-12 verdict: INCONCLUSIVE -- fixture proof passes; real source inputs are absent.
+LIB-12 verdict: PASS for offline local Linux/amd64 archive proof; GoReleaser runtime unrun.
+
+Latest rerun: all 55 pinned source archives are now available locally. The complete
+real-binary archive passes; missing and stale notices fail. This is local archive
+proof, not a hosted release, the four-target GoReleaser runtime, or scratch plan
+verification. The plan box remains untouched. See the latest-rerun section below.
+
+## Initial reading before source population (preserved)
+
+Historical verdict: INCONCLUSIVE -- fixture proof passed; real source inputs were absent.
 
 Read on 2026-11-15 against base `468dc705813382d584926887b451cbea145c76ac`.
 Acceptance: release archives carry a grammar-lock-generated licence notice, and
@@ -208,3 +217,77 @@ second operating-system execution is claimed. Retained logs are
 This correction does not populate the 55 missing real source archives. LIB-12
 remains INCONCLUSIVE and unchecked; real complete-notice/archive evidence and
 the integration gate remain outstanding.
+
+## Latest rerun: populated offline sources and real-binary archives
+
+On 2026-11-15 the foreman supplied all 55 source archives outside the release
+path, using the existing grammar build's URL/ref semantics. The handoff reports
+both tarball SHA-256 and `git get-tar-commit-id` authentication for every source.
+The supplied `../workspace/tmp/grammar-source-cache-manifest.json` has 55 source
+records and zero failures. A local comparison confirmed that every manifest
+blob/repository/commit/digest tuple matches the grammar lock. Generation itself
+rechecks each source archive's locked SHA-256. No download path was added to the
+generator or release. The previous missing-input findings above are historical;
+that blocker is resolved in this local checkout.
+
+All heavy commands ran under the shared gate lease after confirming the gate
+marker was clear. The checked implementation is `5e779cd54` (the F1 correction),
+with `f9b744758` and the earlier incomplete evidence preserved. With
+`GOPROXY=off`, `GOTOOLCHAIN=local`, `GOMAXPROCS=2`, and `go build -p=2`, the checker
+and both Linux/amd64 product binaries were rebuilt. The product builds used
+`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`. No Linux binary execution is claimed on
+the native Darwin host.
+
+The offline wrapper generated
+`workspace/artifacts/lib12/proof-5e779cd54/THIRD-PARTY-NOTICES.txt` from the real
+lock and `workspace/grammar-sources`. The notice contains exactly 55 grammar
+sections. An independent source-archive comparison checked each section's URL,
+commit, SPDX id and source digest and byte-compared all 56 emitted licence/NOTICE
+files against their pinned source entries. Reversing all 55 lock rows and running
+the generator again produced byte-identical output.
+
+Generated notice: 88637 bytes; SHA-256
+`8de7c2ba10a2b2c4b94e04fd755ae87991a292d6b83ccee70aa75795d4a1de6f`.
+
+Three local PAX tar.gz archives were assembled from the freshly built `fathom`
+and `fathom-lang` binaries, `LICENSE.md`, `README.md`, and the notice variant.
+Each was checked using the built corrected checker through the actual wrapper:
+
+```sh
+GRAMMAR_NOTICE_BIN="$PWD/workspace/artifacts/lib12/proof-5e779cd54/grammarnotice" \
+  bash scripts/grammar-notice.sh check \
+  internal/extractor/tsengine/grammars/grammars.lock.json \
+  workspace/grammar-sources \
+  workspace/artifacts/lib12/proof-5e779cd54/fathom_local_linux_amd64_complete.tar.gz
+```
+
+The same command was run for the `missing` and `stale` variants.
+
+| Real archive variant | Exit | Observed result | Archive SHA-256 |
+|---|---|---|---|
+| complete | 0 | grammar notice verified | `ea693c738a6474ae0b0281cbdaa99d30ef6628c5b0ee5c745de206c9ba53b0e0` |
+| missing | 1 | missing notice THIRD-PARTY-NOTICES.txt | `504a7f05a12cd284a677b333a0d73514cb38d49a8d5c6af7de27ea9591f305b8` |
+| stale | 1 | notice differs from current lock and pinned source text (stale provenance) | `e5258db3f04057ed716963edf246f9ab59818a6076362c1b3f545fc5a3d1e0da` |
+
+The missing variant contains no notice. The stale variant alters only the lock
+provenance marker in the notice; both still carry the real built binaries. Each
+negative check named its archive. Native tar extraction of the accepted complete
+archive yielded a notice byte-identical to the generated source-bound notice.
+
+Retained evidence: `workspace/logs/grammar-notice-populated-build.log`,
+`workspace/logs/grammar-notice-populated-proof.log`, and
+`workspace/artifacts/lib12/proof-5e779cd54/proof-summary.json`.
+The small proof driver is `workspace/tmp/lib12-populated-proof.py`.
+
+The measured outcome is now PASS for offline generation and local real-binary
+archive validation, including missing/stale negatives. The full package/race,
+F1 extraction-alias and publication-order fixture proofs above remain the prior
+observations; no implementation or test source changed for this rerun.
+
+Limits remain: no GoReleaser runtime/schema execution, complete four-target
+GoReleaser archive set, hosted attestation/upload, full integration gate, or scratch
+index/plan verification is claimed. These archives were assembled locally from
+real binaries, not produced by GoReleaser. A fresh hosted runner still needs its
+pinned source population supplied before release; this local cache does not add
+such provisioning to the workflow. No plan checkbox or changelog was edited,
+and OQ4/project licence terms are unchanged.
