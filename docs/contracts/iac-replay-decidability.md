@@ -280,3 +280,55 @@ independent critic/rulings. A complete contract protocol is not these inputs.
 
 None. Deterministic native truth and independent labels; provider none.
 Opt out by leaving an unearned reading INCOMPLETE, never by relabelling unknown.
+
+## Normative private plan-reader records and wire schema
+
+This closes the local port's record shape, not a new exported Go API. All fields
+below are mandatory unless explicitly optional. Lists initialize empty, never
+null. No raw native object escapes through a result/error rendered to the reading.
+
+| Private record | Exact fields and types |
+|---|---|
+| Address | tool: AddressTool (terraform here), module: str, mode: AddressMode, type: str, name: str; frozen/comparable tuple with the CTR-10 field-order equality, never joined sentinel text. |
+| ResourceTruth | address: Address; instance_key: str or int or None; actions: tuple[NativeAction,...]; replace_paths: tuple[tuple[str or int,...],...]; action_reason: str or None (native optional open hint). |
+| AttributeInstance | instance_key: str or int or None; status: TruthStatus; value: private exact JSON value or None. status=known with value=None means known null, distinguished from absent; sensitive/unknown/unjoined carry no value. |
+| AttributeTruth | address: Address; path: tuple[str or int,...]; status: TruthStatus; instances: tuple[AttributeInstance,...]. Aggregate known only if the complete nonempty instance set is known and equal; otherwise retain individual statuses and aggregate unknown/unjoined as specified above. |
+| PlanTruth | format_version: str; terraform_version: str; changes: tuple[ResourceTruth,...]; attributes: tuple[AttributeTruth,...]. Parsing stores only the required changes and complete normalized attribute rows, not a provider/raw-plan handle. |
+| PlanReadError | kind: PlanErrorKind; locator: str (JSON field path only, no input value/source); raised, not returned as a successful empty PlanTruth. |
+
+Named local closed enums/constants:
+NativeAction NO_OP=no-op, CREATE=create, READ=read, UPDATE=update, DELETE=delete.
+TruthStatus KNOWN=known, UNKNOWN=unknown, ABSENT=absent, SENSITIVE=sensitive,
+UNJOINED=unjoined. PlanErrorKind INPUT=input, PIN=pin, FORMAT=format, PARSE=parse,
+LIMIT=limit, DUPLICATE=duplicate, JOIN=join, NATIVE=native. New optional native
+reason hints remain open text and do not become an enum error. Resource action
+arrays still accept only the exact known sequences stated above.
+
+Numbers parse with exact integer/decimal semantics using Python's standard
+library Decimal for fractions/exponents, never binary-float coercion. The
+reader refuses nonfinite numbers and duplicate JSON object keys. Typed native
+null/boolean/string/list/object remain distinct. A source value that cannot be
+represented and joined exactly is ungraded, never coerced to fit the oracle.
+The private value exists only to compare bench truth, not as a public field.
+
+Replay score JSON has exactly schema_version=1, verdict (PASS/FAIL/INCOMPLETE),
+cases_total, cases_completed, cases_failed, cases_excluded, kinds (sorted array
+of id,tp,fp,fn,tn,abstained,unlabelled,unjoined,precision,recall), pooled (same
+counts/ratios without id), failures (sorted array of case_id,kind,locator), and
+exclusions (sorted array of case_id,reason). Each ratio is an object with
+numerator,denominator,status and display; status is defined/undefined, display
+is an exact decimal string when defined and empty otherwise. No null numeric
+ratio can masquerade as zero. Reasons/case identifiers contain no raw values.
+Decidability score rows are stratum,arm,n,definite,graded,correct,
+ungraded_definite,decidability,soundness,unknown_by_reason; the same ratio object
+and mandatory arrays apply. Separate class/population/feature tables use these
+counts, never source literal payloads. These private wire schemas require no
+new public fields and no live benchmark value output.
+
+Additional exact assertions in test_plan_reader.py::test_native_change_truth:
+duplicate JSON keys and nonfinite numbers raise PlanReadError; decimals/exponents
+and integers compare exactly without string coercion; known null differs from
+absent, boolean differs from integer, list order preserved, object key order
+irrelevant. test_score.py::test_replay_floor must assert every undefined ratio
+has status undefined and denominator zero, every empty list is [], and every
+score JSON key matches this closed envelope without raw value fields.
