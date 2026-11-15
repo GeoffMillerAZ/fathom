@@ -1,6 +1,6 @@
 # Records integration: schema fixtures, REC-8 backfill and vet gate
 
-Status: DRAFT Author A shared-file contract for #294/#317/#319 and #299 boundary.
+Status: Approved 2026-11-15 under W5-4. Contract only; implementation proof pending.
 Base: d9eef4794afdbc200d1b8697ce121d9d688fedaf, freshly fetched origin/main.
 Owns only this document and records-integration-backfill.md. No product/schema/
 gate/plan-title edits. Companion is a frozen candidate manifest, not an executed tool.
@@ -18,8 +18,8 @@ fields, change current author syntax, conflate vet with verify or add a store.
 This reuses, never duplicates the initial contract:
 - rec-1 approved W2-2, final exact source 5ef375e4bb44364bbc1c703aff234f76c9383cce.
 - ctr-11 W4-2 compliant/critic LAND source 7db03afbda7fb935b331b3b20b226b1a6b8e4ebf.
-- ctr-13 shape-LAND source 7c67d10654566da08a77c52413b9e5b3227bf0ae, whose U2
-  exact integration grant still awaits ruling. No card-schema grant inferred.
+- ctr-13 reviewed source 7c67d10654566da08a77c52413b9e5b3227bf0ae, with exact
+  serial integration grants approved W5-3. No simultaneous schema writer inferred.
 They are dependencies for integration; independent branch includes no copied schema.
 
 D1 settled CU-D2/REC-2/schema rules: eight current heads, labelled Markdown source,
@@ -47,7 +47,7 @@ No generic API-spelling question. Exact initial typed heads/conditions/loader st
    not a speculative project.go edit. Current IsOpTitle is retired after callers
    transfer to Task.Gate. Five fields/JSON map exactly CTR-11; no new model here.
 4. Backfill is a distinct exclusive tool turn after parser/schema/consumer proof:
-   proposed new cmd/recordbackfill/main.go and main_test.go plus ONLY the exact
+   W5-4 approved cmd/recordbackfill/main.go and main_test.go plus ONLY the exact
    plan files/rows in companion manifest. No permission from a directory wildcard.
 5. #319 owns cmd/fathom/{rec_vet.go,rec_vet_test.go}, Taskfile.yml and lefthook.yml
    in one gate-owner turn, after current owner committed handback. Existing
@@ -60,11 +60,20 @@ No generic API-spelling question. Exact initial typed heads/conditions/loader st
    if absent. #299 may complete BEN-3 plus its capability subtask only. No
    speculative standard/query/knob fields or blanket testdata co-ownership.
 
-The backfill tool path grant is the one concrete remaining U1 recommendation:
-approve cmd/recordbackfill/main.go/main_test.go and companion's exact plan-row
-allowlist as separate architect turn. Alternative hand off the same manifest to
-an integrator-only ephemeral tool using existing verify helpers. W4 settles
-separate backfill, not this executable's ownership. No product rec-backfill verb.
+W5-4 settles U1: cmd/recordbackfill/main.go and main_test.go are committed with
+their real tests in a separate exclusive tool turn. Run the tool once in ONE
+integration batch against the frozen companion manifest. The backfill commit
+names the exact tool commit id. Only AFTER the backfill has been verified, remove
+the tool and its tests in the immediately following commit. No product
+rec-backfill verb, permanent migration runner or broad plan-file grant.
+
+A refresh that ONLY ADDS rows landed by this wave may be re-approved by the
+contract critic. Publish original/refreshed manifest identities and exact wave
+commit for each added row; retain all original entries/transformations unchanged.
+Updated file hashes must be explained solely by those additions. A changed,
+removed, retargeted or otherwise modified existing row, non-wave addition or
+other manifest change returns to the architect. No self-approved moving allowlist.
+This contract does not refresh the existing 72-file/661-row candidate manifest.
 
 ## Eight explicit fixture recipes and real CUE checker
 
@@ -118,8 +127,12 @@ independent brace/quote writer. Only strip the exact frozen title marker and add
 gate:true/lane:"slug"; preserve checkbox, id, all proof keys/needs/dispositions/
 waivers, body prose and line endings. Existing conflicting metadata refuses, not
 overwrites. Idempotent second run yields no diff. Default --check writes nothing;
-explicit --write requires current tree equals manifest base/approved refreshed
-manifest and all targets match. Atomic per-file writes; failure before all
+explicit --write requires the exact reviewed target inventory from the manifest
+base (or its W5-4 critic-reapproved additive refresh) and all target hashes match.
+The separate tool commit may add ONLY its approved tool/test paths on top of that
+source state; it does not authorize unrelated tree drift. Bind tool commit and
+manifest identity before writing, rather than require the pre-tool whole tree to
+equal a post-tool tree. Atomic per-file writes; failure before all
 validation writes nothing. No third-party tool/dependency or global config.
 
 Proposed cmd/recordbackfill/main_test.go::TestRecordBackfillExactManifest:
@@ -154,6 +167,29 @@ Evidence source sites: intent/corpus+family+futures+GoalBet, verify parser/upser
 modspec concrete schema tests, actual plans_facts/console reader, current command
 registration and shared gate config. Source hashes in companion computed read-only;
 native-parser/backfill/CUE/RED/race/gate execution remains pending.
-No plan edits or claims in this branch. U1 tool ownership goes to foreman only
-after critic completeness. All other decisions cite settled texts/rulings.
+No plan edits or claims in this branch. W5-4 settles tool ownership/lifecycle;
+all contract decisions cite settled texts/rulings. No executed backfill implied.
 Decision models: none; deterministic parsing, identity and timing reports.
+
+## W5-4 lifecycle acceptance
+
+Extend TestRecordBackfillExactManifest in cmd/recordbackfill/main_test.go with:
+a fixture tool-only commit above the frozen source state is admitted; unrelated
+source/target drift refuses before writes; exact tool commit id and manifest
+identity appear in the generated integration receipt. A critic-approved refresh
+adds only wave-landed rows and preserves every old entry; missing wave identity,
+old-row edit/removal or non-wave addition cannot use the critic-only path.
+Existing parser parity, zero-write refusals, byte-preservation and idempotence
+assertions remain. Proposed/unrun; same exact guarded race command above.
+
+Controller verifies the commit sequence: T contains only tool plus real tests;
+B is the one integration backfill batch and names T; its actual parser/consumer/
+gate/verify proof is bound to B; the immediately following cleanup commit removes
+the tool/tests only AFTER that verification. Missing/failed verification prevents
+cleanup and completion. Keep T/B/proof/cleanup identities in the handback, not a
+fiction that tool deletion itself proves migration. No native parser or backfill
+has run in this author lane.
+
+The REC-1/#252 cross-family corpus conflict is an external blocked prerequisite.
+This contract grants no migration or checker-policy exception, never weakens
+global uniqueness and never treats a stopped #252 implementation as completed.
