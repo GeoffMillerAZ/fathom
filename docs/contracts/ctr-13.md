@@ -36,8 +36,10 @@ inputs match, not speculative cross-version migration or new statistics library.
 - D6 strength uses attested results, no execution: CHG-4/ADR-100 d4 and current
   certifies marker ladder. Alternative authored strength string alone is not proof.
 
-Unsettled U1: approve exact cell/ledger/readiness/card/admission/strength types and
-fixtures below. Alternative split each named boundary into its own approval item.
+API mechanics are settled by W3-4. Safe scored adapters implement BEN-1/BN-D6;
+preflight disposition implements WP-D1/2 and R2-1; strength identity implements
+CHG-4/ADR-100 d4 and existing CertificateStateAt. No generic API approval requested.
+Only exact integration/command/schema/CAS grant choices remain U2 below.
 Unsettled U2: approve exact BEN-1 consolidation slices/command ownership and serial
 schema/certification grants below. Alternative narrow #266 to cell-key subtask and
 keep BEN-1 unclaimed until separate consolidation lanes complete it.
@@ -161,8 +163,10 @@ type PreflightReceipt struct {
 }
 type PairPreflight struct {
     PairID, TreatmentSession, ControlSession string
-    BeforeAgent, Valid bool
-    Reason string
+    BeforeAgent bool `json:"before_agent"`
+    Valid bool `json:"valid"`
+    Disposition PreflightDisposition `json:"disposition"`
+    Reason string `json:"reason"`
 }
 func AdmitPair(pairID string, treatment, control PreflightReceipt) (PairPreflight, error)
 ```
@@ -174,8 +178,10 @@ before startup, not a caller's boolean assertion: adapter validates those bytes
 and expected pins before AdmitPair. Add exactly `EvidenceSHA256 string` to
 PreflightReceipt for the captured artifact digest, required, compared by adapter.
 All applicable W0-W3/W6 pass, identities match expected cell and BeforeAgent true
-for both -> Valid. Any fail -> whole pair VOID, not just failing arm. Unknown or
-missing receipts -> not admitted with reason, never counted as a product success.
+for both -> Valid. Any definite pre-agent fail -> PreflightVoid for the whole pair, not one arm.
+Unknown/missing/late receipts -> PreflightUnknown, never a product success. Valid
+pre-agent evidence -> PreflightAdmitted. Disposition, not Reason or two booleans,
+is the source of scoring classification.
 The writer records decision before agent actions and verifies unchanged environment.
 No agent call/use/action field enters this decision. CTR-12's labs.DeliveryFunnel
 imports PairPreflight, not the other direction. Valid zero-use treatment remains
@@ -409,7 +415,8 @@ Map TaskID/Trial from cell; AssignedArm from frozen randomized assignment, requi
 in.Arm matches it, never infer arm from successful use. OraclePassed/FailToPassOK/
 PassToPassOK from in.Oracle booleans, Success from in.Success. SurfaceCalls from
 the existing scored Readings surface-call count, tokens from sum of session totals.
-Preflight invalid -> CellVoid, missing/late/unknown -> CellUnknown; valid -> scored
+PreflightVoid -> CellVoid, PreflightUnknown or missing -> CellUnknown;
+PreflightAdmitted -> CellScored
 even if Success=false and SurfaceCalls=0. Fields are outcome observations, not
 admission predicates. Preserve failed oracle and assigned arm in headline population.
 No RawPath/WorktreePath/SubjectClone/PlanPath/AgentDiffPath, SessionStartContext,
@@ -456,8 +463,9 @@ resolves <digest-hex>.json beneath that root. Verify actual bytes/digest before
 ReadJUnit using run.Commit/run.Digest. Unknown artifact names do not grant reads
 or strength. Missing/mismatch artifacts stay unproven, never synthesized pass.
 ReadJUnit reuses testrun.ParseTestRun, normalizes statuses to TestStatus constants
-below, carries qualified identity, commit and envelope digest. Mutations JSON is
-exact MutationResult array with typed fields/tags, no arbitrary commands.
+below, carries qualified identity, commit and envelope digest. Mutations JSON is exactly the acyclic raw MutationArtifact array below, with
+no parent RunDigest. Normalized MutationResult is in-memory evidence only; no
+arbitrary commands.
 
 Before IngestTestEvidence, adapter normalizes tests into existing envelope cases.
 CompileCertifications remains callable unchanged. Add an additive
@@ -515,7 +523,7 @@ Explicit lower_snake_case JSON map for compact structs:
 CellInputs base/subject_commit/tool_schema_sha256/profile_sha256/family/criterion_id/
 trial; PreflightReceipt session_id/product_commit/subject_commit/profile_sha256/
 before_agent/w0/w1/w2/w3/w6/reason/evidence_sha256; PairPreflight pair_id/
-treatment_session/control_session/before_agent/valid/reason; Control name/task;
+treatment_session/control_session/before_agent/valid/disposition/reason; Control name/task;
 ControlResult name/passed/reason; ProofRef path/input_sha256; Card id/claim/surfaces/
 effect_stratum/null_stratum/fact/delivery/outcome; SubjectInput subject/receipt/split/
 family/oracle_source/oracle_commit/environment_receipt_path; Admission subject/state/
@@ -550,3 +558,100 @@ preserves corpus selection output and rejects it as canonical cell input;
 cmd/benchledgerrender/freeze_test.go::TestLegacyLedgerRenderParity preserves read-only
 rendering. Each command is go test -race its exact package -run '^NAME$' -count=1,
 preceded by matching rg guard at the exact test file. Proposed/unrun, no B3 claim.
+
+## Final F5: constructible acyclic mutation provenance
+
+Separate raw artifact bytes from normalized evidence. The raw CAS payload contains
+NO parent envelope digest. It is an array of exactly:
+~~~go
+// attested source artifact, before its parent envelope exists.
+type MutationArtifact struct {
+    Test string `json:"test"`
+    Mutant string `json:"mutant"`
+    Commit string `json:"commit"`
+    Killed bool `json:"killed"`
+}
+// certify normalizer, pure, after artifact and envelope bytes verified.
+func NormalizeMutations(raw []MutationArtifact, parent testevidence.Run) ([]MutationResult, error)
+~~~
+
+Ownership: MutationArtifact and its JSON parser live in new
+internal/attested/mutations.go and mutations_test.go, added to #321's exact proposed
+grant. NormalizeMutations is in internal/certify/strength_floor.go; its argument is
+[]attested.MutationArtifact (qualified type), no certify->main dependency. New raw
+type is only for the current attested mutation join, not a future format registry.
+
+Construct in this strict DAG:
+1. Serialize raw artifact with test/mutant/commit/killed, compute artifact SHA256.
+2. Put that SHA in existing parent envelope Artifacts{Name:"mutations",Digest:...}.
+3. Serialize envelope and compute existing testevidence.Run.Digest from payload/
+   raw bytes exactly as LoadEnvelopes currently does.
+4. During ingestion verify artifact bytes match parent's ArtifactRef; then normalize
+   each MutationResult with RunDigest copied from the already validated parent.
+   Require artifact.Commit==parent.Commit, test key resolved and no dirty source.
+Raw bytes never contain RunDigest. No hashing of normalized evidence back into its
+parent. Reject an authored run_digest field in raw mutation JSON as unknown field.
+JUnit follows the same law: its raw XML has no parent hash, normalization stamps it.
+No fake/placeholder digest is needed to construct valid evidence.
+
+Proposed TestAttestedMutationEnvelopeDAG in cmd/fathom/tests_ingest_test.go builds
+real raw artifact bytes, computes actual sha256, constructs actual envelope bytes,
+lets LoadEnvelopes compute Run.Digest, then runs cmdTestsIngest against the fixture
+CAS. Assert normalized mutation RunDigest equals actual parent, compiled strength
+consumes it and source commit/test/mutant agree. Tamper artifact bytes after parent
+digest capture -> typed refusal/no upgrade; replace artifact ref with another
+digest -> refusal; add raw run_digest -> refusal; normalized evidence is not written
+back into artifact. Proposed internal/attested/mutations_test.go::
+TestMutationArtifactRejectsParentDigest asserts the exact four-key raw whitelist
+and all unknown fields fail. Commands go test -race ./cmd/fathom -run
+'^TestAttestedMutationEnvelopeDAG$' -count=1 and go test -race ./internal/attested
+-run '^TestMutationArtifactRejectsParentDigest$' -count=1, each one shell line.
+No tests ran here. Implementing critic checks every named assertion under W3-2.
+
+## Final F6: one typed pair disposition shared with delivery
+
+~~~go
+// internal/benchledger, alongside PairPreflight.
+type PreflightDisposition string
+const (
+    PreflightAdmitted PreflightDisposition = "admitted"
+    PreflightVoid PreflightDisposition = "void"
+    PreflightUnknown PreflightDisposition = "unknown"
+)
+~~~
+
+PairPreflight.Disposition is required in JSON, one of these constants. Valid is
+derived compatibility shorthand Disposition==PreflightAdmitted, not independently
+authorable. BeforeAgent records actual sequencing: admitted/void require true;
+missing/late evidence produces unknown. Invalid enum or inconsistent Valid/
+Disposition/BeforeAgent returns typed RefusalError. Never parse free Reason for
+classification. Order: reject missing/late as unknown first, then classify a
+definite scripted pre-agent applicable rung fail as void, then unknown rung as
+unknown, then every applicable pass as admitted. Apply pair-wide: both cells void
+for definite fail; both unknown/unadmitted for missing/late/unknown; both scored
+for admitted, including zero-use failure in treatment.
+
+ProjectCell selects State solely from typed disposition, with missing pair -> unknown.
+CTR-12's imported PairPreflight must use the same law: VoidPairs only from
+PreflightVoid; unknown pairs counted separately/unadmitted, never void solely
+because Valid=false. No W4/W5 field enters classification. CTR-12 remains HOLD for
+its separate incomplete FLT-3/10 consumers under HOLD-5; this shared input contract
+does not reopen or edit that held draft. Its next architect-authorized integration
+must adopt this exact named disposition, not infer it from old boolean prose.
+
+Extend TestPairPreflightAssignedArms with definite fail -> both void; unknown rung/
+missing receipt -> both unknown; late receipt even if reporting failure -> both
+unknown; admitted zero-use/failed oracle -> both scored with treatment failure
+retained; inconsistent bool/disposition -> typed refusal. Add proposed
+TestProjectCellPreflightDisposition in cellkey_test.go asserting these exact states
+and no Reason-string parsing (vary Reason without changing output). Command:
+go test -race ./internal/benchledger -run '^TestProjectCellPreflightDisposition$'
+-count=1, one line. A delivery adapter fixture in the same test asserts imported
+typed disposition yields the identical pair mapping without needing labs import.
+This preserves acyclic benchledger -> scenario types, labs -> benchledger direction.
+
+Settling citations: WP-D1/2, #262 R2-1 and BX-40 require pre-agent environment
+admission and pair-wide VOID, preserving all admitted assigned-arm outcomes.
+W3-4 settles typed enum/explicit JSON/[]/typed errors. No new policy, rate, future
+field, store column or package on the language door. U2 exact CAS/command/ingest/
+schema serial grants remains a recommendation with one alternative, not approved.
