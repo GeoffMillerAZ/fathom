@@ -1,6 +1,6 @@
 # CTR-11: typed heads, conditions and record read port
 
-Status: DRAFT W1-5/#265. Contract only; approval and implementation proof pending.
+Status: Approved 2026-11-15 under W2-3 and W4-2. Contract only; implementation proof pending.
 Base: `468dc705813382d584926887b451cbea145c76ac`. Independent of other draft branches.
 Owns only docs/contracts/ctr-11.md. No fixture or product file lands here.
 Landing needs approved REC-1, CTR-4, ENG-2, LIB-1; implementations remain gated by
@@ -32,8 +32,7 @@ implementing it or paying for a new generalized document engine.
 API mechanics are settled by W3-4, and semantic field/evaluator choices cite
 D1-D5 and reused current intent models. No generic API approval requested.
 U2 settled by W4-2: exact serial schema/parser/CLI grants below, one owner per
-turn and separate backfill. The row-local alternatives are historical context,
-not an outstanding choice. No backfill wildcard grant follows.
+turn and separate backfill. No backfill wildcard grant follows.
 
 U3 settled by W3-2: implementing lane writes/runs real failing tests, independent
 critic compares every named assertion, weaker tests are FIX. CTR-11 governing
@@ -391,7 +390,11 @@ The exact backfill path list remains separately frozen, not required to make thi
 consumer proof concrete. No facade-only proof substitutes for planTaskFact.
 REC-M3 timing uses the full trusted LoadRecords corpus, cold process and one changed
 fixture; five trials, median, same fixed fixture clock, elapsed monotonic duration.
-Keep authored bars <2 s cold / <200 ms changed. W4-2 requires publishing EVERY\ntrial with fixture/binary/source identity and units, plus the five-trial median.\nFlag any single cold trial >4 s or changed-file trial >400 ms beside the verdict\n(the unchanged corresponding bar times two), even when median passes. Missing\ntrial makes timing incomplete; never drop an outlier. Test presence is not timing proof.
+Keep authored bars <2 s cold / <200 ms changed. W4-2 requires publishing EVERY
+trial with fixture/binary/source identity and units, plus the five-trial median.
+Flag any single cold trial >4 s or changed-file trial >400 ms beside the verdict
+(the unchanged corresponding bar times two), even when median passes. Missing
+trial makes timing incomplete; never drop an outlier. Test presence is not timing proof.
 
 ## Proposed test names, assertions and commands
 
@@ -428,7 +431,7 @@ Decision models: none in these ports. Prose condition-kind suggestions from CU's
 separate candidate site are unbuilt and cannot set facts/rulings. Provider none is
 fully deterministic. Manual records remain counted unparsed rather than guessed.
 
-## Final F4 acceptance and W3-4 exported contract rules
+## Head-check assertions and W3-4 exported contract rules
 
 Proposed TestRecordHeadChecksWithoutExpiry in internal/records/conditions_test.go
 creates: a superseding decision with Supersedes and Conditions empty; a closed
@@ -531,7 +534,7 @@ inputs/verify codes. Run go test -race ./internal/records -run
 '^TestRecordContractsAPIHouseRules$' -count=1 as one line. Independent lane critic
 compares every listed assertion under W3-2. No executed RED or green claim here.
 
-## W4-2 timing and grant compliance
+## Approved W4-2 timing and grants
 
 CTR-11/U2 one-owner-per-turn grants and separate backfill are settled by W4-2.
 REC-M3 uses the trusted complete corpus and five trials per cold/changed-file
@@ -548,5 +551,5 @@ beside otherwise passing median; exact 4 s/400 ms do not emit over-twice flag;
 missing trial is incomplete, cannot drop outlier or report five-trial PASS.
 Retain original bar and record every raw value. Command go test -race ./cmd/fathom
 -run '^TestRecordVetTimingReport$' -count=1 (one line), proposed/unrun. Implementing
-critic compares each assertion under W3-2. This is exact W4 compliance, no new
-shape/design round or implementation. Approval-by-rule follows exact critic LAND.
+critic compares each assertion under W3-2. No implementation or timing proof is
+claimed. Contract approval does not activate reservations or satisfy prerequisites.
