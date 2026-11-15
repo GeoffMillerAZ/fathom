@@ -24,9 +24,9 @@ migration is proposed. Free option: keep records leaf-like; no export or kit mov
   CODEOWNERS patterns plus parity fixtures. Exact paths satisfy PL-D5 now without
   copying its matcher or treating review routing as write permission.
 - D2 recommended: pure allocator over an explicit inventory, with CLI providing
-  serialized read/allocate/create. Alternative: allocator opens and writes files.
+  serialized read/allocate/write. Alternative: allocator opens and writes files.
   An allocator call alone does not reserve an id and cannot promise cross-process
-  uniqueness. Successful CLI creation, not a hidden counter, consumes the id.
+  uniqueness. Successful CLI writing, not a hidden counter, consumes the id.
 - D3 recommended: the existing `recordids` checker owns inventory and uniqueness.
   Alternative: a new independent records registry (reject: CU-D6).
 - D4 recommended: numeric intervals are closed, per family and prefix, minted by
@@ -101,16 +101,25 @@ All names below are proposed except `recordids.Location`, `Family`, `Config`,
 
 ```go
 // internal/recordids: single identity discovery/checking implementation.
-type Definition struct {
-    Family string
+type Definition struct { Family, ID string; At Location }
+type IDRange struct { Family, Prefix string; First, Last int }
+type LaneGrant struct {
     ID string
-    At Location
+    OwnedPaths []string
+    IDRanges []IDRange
+}
+type OwnershipViolation struct { Definition Definition; LaneID, Reason string }
+type TrustedInventory struct {
+    Revision string
+    Lanes []LaneGrant
+    Legacy []Definition
 }
 func Inventory(root string, cfg Config) ([]Definition, error)
 func CheckDefinitions(defs []Definition, cfg Config) ([]Duplicate, error)
+func CheckOwnership(defs []Definition, trusted TrustedInventory) ([]OwnershipViolation, error)
 
 // internal/records; no store, daemon or language door import.
-type IDRange struct { Family, Prefix string; First, Last int }
+type IDRange = recordids.IDRange
 type Lane struct {
     Kind, ID, Goal, Class, BaseCommit string
     Rows, OwnedPaths, ReadOnlyPaths, ContractFiles []string
@@ -133,7 +142,8 @@ to reuse one of their ids. No grandfather bypass for new records.
 
 Allocator rejects malformed lane/range, absent family, ambiguous family ranges,
 any duplicate in inventory (including observations), noncanonical target,
-absolute path, traversal, symlink escape, or target not in exact OwnedPaths.
+absolute path, traversal, or target not in exact OwnedPaths. This pure function
+checks lexical containment only. Filesystem containment is a CLI boundary below.
 Read-only paths never grant write permission. Duplicate diagnostics name both
 locations, sorted by family/id/path/line. Lowest unused integer in the matching
 range wins, independent of inventory order. Exhaustion/error returns `"", err`.
@@ -141,15 +151,74 @@ No mutation of inputs and no internal clock. Repeated calls with unchanged
 inventory intentionally return the same candidate. A successful caller must add
 the created definition before the next call. This is explicit in the repeat test.
 
-`rec new --root DIR --lane FILE --family NAME --path REL` reads a lane declaration
-from the trusted base, not a broadened worktree version. Creation writes a minimal
-new definition file using exclusive create. Outside path rejection precedes writes
-and consumes nothing. CLI serializes competing calls under a clone-local lock in
-`workspace/`, rereads inventory under lock, creates once, and releases the lock.
-Cross-clone collisions are prevented by disjoint trusted reservations. Error exit
-1, misuse 2, success 0. Print the allocated id and path only after successful
-creation. No subprocess/provider/forge invocation. `rec` verb registration remains
-an architect-owned integration edit, using the existing declareVerb convention.
+`rec new --root DIR --lane SLUG --family NAME --path REL --title TEXT` is frozen.
+No trusted-ref flag and no trust inferred from Lane.BaseCommit. The integrator
+injects `FATHOM_LANE_TRUSTED_BASE` (full commit id) and `FATHOM_LANE_ID`; both are
+required and the slug must match. In CI the controller supplies the immutable
+trusted event base and lane id, never a candidate-branch field. Locally the
+operator supplies these values as authority; this is not a sandbox against an
+operator who deliberately changes its own environment. Missing/unreadable trust
+fails closed. Read `docs/lanes/<slug>.cue` from that commit via git object reads.
+Container is exactly `lane: #Lane & { ... }`, importing the standalone records
+schema through the repository's CUE module. Discover only direct `.cue` entries
+under trusted `docs/lanes/`, each filename equals lane.id. No recursive glob,
+worktree import, lane-supplied base or additional declaration grants authority.
+Decode against the schema bytes at that same trusted revision. Compare the
+worktree manifest bytes to trusted bytes and reject any difference, including
+self-broadening. ContractFiles/ReadOnlyPaths are never write grants.
+
+`TrustedInventory.Legacy` is Inventory at the trusted revision, minus ids covered
+by any reserved interval. Legacy definitions remain permitted at the same
+family/full-id/path only (line numbers may shift). Moving a legacy definition is
+an explicit integrator migration and otherwise fails. Every nonlegacy definition
+must map to exactly one trusted lane by family/prefix/closed interval. Zero or
+multiple lane matches fail. Its path must be an exact member of that lane's
+OwnedPaths. No definition-authored lane field is trusted. Thus even a unique id
+moved to another lane's file fails. CheckOwnership sorts violations by
+family/id/path/line/lane/reason. Both `gate record-ids` and `rec new` consume the
+same trusted inventory and CheckOwnership result. Existing Check signature stays
+usable for legacy duplicate-only consumers; the gate gains ownership explicitly.
+
+CLI uses `validateRecordTarget(root, rel string) error` in rec_new.go before
+allocation and again before writing: resolve root and existing ancestors, reject
+symlinks in target or parents, absolute/traversal/noncanonical names and escapes.
+The symlink test belongs to rec_new_test.go, never the pure allocator. A clone-local
+lock in `workspace/` covers fresh inventory, ownership check, allocation and write.
+Append to an existing owned aggregate or create a new exact owned file, using a
+same-directory temp and atomic rename with existing mode preserved. This is not
+a split of ADR.md. Outside-path and trust rejection happen before any write or id
+consumption. Concurrency guarantee covers callers of this CLI in one clone only;
+external writers must obey the lane's single writer contract. Across clones,
+disjoint trusted ranges prevent collisions. No counter or allocation journal.
+
+TEXT must be nonempty single-line text without controls, `{`, `}`, `|`, backticks
+or CUE interpolation. These refusals keep the minimal emitter unambiguous. Emit
+exact UTF-8 bytes (LF) below, substituting ID/TEXT. Append separator is two LF if
+the existing file is nonempty, first trimming only trailing LF. A new file has no
+separator. No derived fields or new lifecycle syntax. Per-family payload:
+
+```text
+adr:         ## ID: TEXT\n\n**Status.** Proposed\n
+invariant:   | ID | TEXT | stated | |\n
+future:      ## ID. TEXT\n
+incident:    ## ID: TEXT\n
+observation: ### ID: TEXT\n
+plan:        - [ ] TEXT {id: ID}\n
+```
+
+These are literal escaped representations of emitted payload bytes, not six
+prefixes to write. The checker adds exact trusted owned target paths to the
+corresponding existing Family.Files and keeps its heading/plan parser. Observation
+headings use `^#{2,6}\s+(O[0-9]+)\b`. A plan's prefix and target must agree with
+its trusted range. No arbitrary regexp or file glob is taken from a candidate.
+REC-2 subsequently vets these legacy-compatible authored headings; this draft
+adds no speculative head fields. The trusted fixture repository includes one
+initial file per family and docs/lanes/demo.cue, reserving the six ranges above.
+Creation/appending followed by Inventory must recover exactly one new definition
+with the same family/id/path and pass CheckOwnership. CLI error exit 1, misuse 2,
+success 0. Print `ID REL\n` only after successful atomic write. Git object reads
+are allowed; no provider, test execution or forge invocation. Architect owns
+existing CLI registration/help integration with declareVerb.
 
 ## Exact ownership and serial handoff
 
@@ -181,18 +250,27 @@ O10000; `exhausted-range` seeds both ids and expects empty id plus exhaustion er
 `outside-path` expects empty id and unchanged inventory; `repeat` allocates 10000,
 adds its definition, then expects 10001; `families` allocates equal numbers under
 six prefixes without collision; `reordered` permutes inventory and compares exact
-id/error text; `symlink-escape` rejects a path whose parent resolves outside root.
+id/error text. No filesystem assertions in the pure allocator test.
 `internal/recordids/recordids_test.go::TestLaneRecordIDInventory` preserves current
 archive/grandfather cases and rejects duplicate CUE slugs and overlapping ranges.
 `cmd/fathom/rec_new_test.go::TestRecNewRejectsUnownedPathWithoutAllocating` invokes
 `run`, asserts nonzero, no created file, unchanged inventory and same next candidate.
-Also test two simultaneous valid creates produce distinct ids and no partial file.
+`TestRecNewTrustedRoundTrip` tests all six exact emitted payloads, discovery at
+trusted revision, Inventory round trip, append preservation, no duplicate on
+re-inventory, self-broadened manifest rejection and no writes with missing trust.
+`TestRecNewRejectsSymlinkEscape` rejects target and parent symlinks before mutation.
+`TestRecordDefiningLaneOwnership` in recordids_test.go seeds an in-range definition
+in another lane's owned file, a moved legacy definition, a unique unreserved id,
+and overlapping grants. Each fails with its path and lane/reason, irrespective
+of candidate manifest edits. A valid owned in-range definition passes. Test two
+simultaneous CLI calls produce distinct ids and no partial target.
 
 ```sh
 rg -n '^func TestLaneLaneRecords\(' internal/records/allocate_test.go
 go test -race ./internal/records -run '^TestLaneLaneRecords$' -count=1
 go test -race ./internal/recordids -run 'TestLaneRecordIDInventory|TestRepositoryRecordIDs' -count=1
-go test -race ./cmd/fathom -run '^TestRecNewRejectsUnownedPathWithoutAllocating$' -count=1
+go test -race ./cmd/fathom -run '^TestRecNew(RejectsUnownedPathWithoutAllocating|TrustedRoundTrip|RejectsSymlinkEscape)$' -count=1
+go test -race ./internal/recordids -run '^TestRecordDefiningLaneOwnership$' -count=1
 task cue-vet
 ```
 
@@ -202,6 +280,15 @@ here. No gate lease taken while the shared gate runs. This document needs only
 `git diff --check`; code/CUE snippets are draft contracts, not verified builds.
 REC-1 stays unchecked. After approved implementation, scratch-ingest its HEAD and
 run `fathom verify --service fathom --plan docs/plans/typed-records.md` before claim.
+
+## FIX round 1 receipt
+
+F1: pure lexical allocator and root-aware CLI containment now have separate inputs
+and tests. F2: CheckOwnership receives independently trusted per-lane grants plus
+legacy inventory, checking every definition and refusing moves or unreserved ids.
+F3: concrete trusted CUE discovery/container, immutable external trust source,
+exact CLI flags/payload bytes and six-family round-trip tests are specified.
+These are recommendations, not observed RED or architect approval.
 
 ## Evidence and decision models
 
