@@ -41,9 +41,10 @@ fixtures below. Alternative split each named boundary into its own approval item
 Unsettled U2: approve exact BEN-1 consolidation slices/command ownership and serial
 schema/certification grants below. Alternative narrow #266 to cell-key subtask and
 keep BEN-1 unclaimed until separate consolidation lanes complete it.
-Unsettled U3: implementing-lane RED with CTR-13 row amendment, recommended.
-Alternative tagged batch RED with an explicit green-default command. REC-1 W2-2
-D5 does not override CTR-13's current batch-owned runnable failing-proof bar.
+U3 settled by W3-2: implementing lanes write/run real failing tests before
+implementation; independent lane critics compare every listed assertion and
+weaker tests are FIX. Four governing row amendments are a separate docs commit.
+No missing test or package is a measured RED result.
 
 ## Stable cell key and unified ledger (U1)
 
@@ -65,7 +66,7 @@ type CellRow struct {
     Schema string `json:"schema"`
     Key string `json:"key"`
     Inputs CellInputs `json:"inputs"`
-    Outcome scenariobench.SessionResult `json:"outcome"`
+    Outcome ScoredCell `json:"outcome"`
     Preflight PairPreflight `json:"preflight"`
 }
 func AppendCell(dst io.Writer, existing []CellRow, row CellRow) error
@@ -88,8 +89,8 @@ ReadCells rejects malformed/unknown schema, duplicate key or stored key not matc
 recomputed inputs, and reports line numbers. AppendCell validates against complete
 existing rows and writes one canonical LF JSON row, never overwrites an old key.
 It owns no hidden path/clock/lock. Command owner serializes append/create under the
-existing ledger lock pattern. Raw transcripts stay workspace artifacts; SessionResult
-is serialized through its existing outcome fields without transcript payloads.
+existing ledger lock pattern. Raw transcripts stay workspace artifacts. ScoredCell is the explicit allowlisted
+wire projection below; neither SessionResult nor CellResult is serialized wholesale.
 New v1 ledger lives docs/bench/proof-cells.jsonl. Old ledgers remain immutable legacy
 inputs; neither history rewritten nor incomparable trials silently borrowed.
 Conversion adapters are explicit read-only imports with original run ids retained.
@@ -112,16 +113,41 @@ scenariobench execution/scoring/oracles and ledger serializers through adapters.
 | B2 legacy freeze owner (same serial turn) | cmd/contextbenchscore/main.go, cmd/contextbenchscore/freeze_test.go, cmd/benchledgerrender/main.go, cmd/benchledgerrender/freeze_test.go |
 | B3 receipt/data owner | docs/bench/readings/proof-program/ben-1-consolidation.md, docs/bench/proof-cells.jsonl |
 
-Freeze means old score/render commands still read/render existing artifacts but
-refuse writing NEW outcome/ledger rows, with explicit diagnostic directing to
-scenariobench cells; no old history deletion and no public API change inferred.
-Existing cmd/reviewbench/indexbench remain specialized free oracle/cost tools,
-read-only adapters to unified ledger, not new paid drivers. If they can append
-outcomes at frozen base, B2 must inventory their exact write site and get an added
-named grant before B3; do not claim consolidation by ignoring another writer.
-B3's TestBenchDriverConsolidation must enumerate all current ledger-writing entrypoints,
-prove each old write path refuses while read/render parity remains, and one canonical
-new row is accepted from kept command. No ad-hoc script writes the canonical ledger.
+Exact command writer inventory at the base:
+- cmd/contextbenchscore/main.go::cmdLedger calls contextbench.AppendLedger at 544:
+  freeze new write mode with explicit refusal and direction to kept cells command.
+- same file ::cmdBackfill calls AppendLedger at 681: refuse new outcome/ledger
+  writes; old files remain readable. No generic backfill silently mutates history.
+- cmd/contextbenchscore/import.go::cmdImport writes corpus selection/derived tasks
+  at 147/177, NOT a ledger. Keep read/derive output parity; prohibit treating that
+  corpus output as a scored outcome or canonical ledger entry. No needless ban on
+  independent historical corpus import.
+- cmd/scenariobench/main.go::cmdLedger calls UpsertScenarioLedgerRows at 1882:
+  redirect its kept CLI entry through the same ProjectCell/AppendCell adapter as
+  cells; missing cell-level evidence refuses rather than aggregate invented trials.
+- internal/scenariobench/external_corpus.go::RunExternalCorpus appends legacy
+  ScenarioLedgerRow at 208 when LedgerPath nonempty. Kept command integration
+  supplies LedgerPath empty and routes returned complete CellResults to ProjectCell/
+  AppendCell. No live CLI path may pass a new-run legacy ledger destination.
+  Internal historical serializers remain available as legacy format adapters, not
+  a second command-surface writer.
+- cmd/benchledgerrender/main.go is already read-only rendering; preserve unchanged
+  except its read-compatibility test. cmd/reviewbench and cmd/indexbench have no
+  canonical benchmark-ledger append call at this base. They remain independent
+  free oracle/cost readers, not paid drivers.
+
+B2 additional exact grants: cmd/contextbenchscore/import.go and import_test.go,
+cmd/scenariobench/main_test.go, internal/scenariobench/external_corpus_test.go.
+No internal/scenariobench -> benchledger import: benchledger already consumes
+CellResult; canonical write adapter stays in cmd/scenariobench to avoid a cycle.
+B2 tests call real cmdLedger/cmdBackfill/cmdImport, kept cmdLedger and external-run
+CLI routing with fake runner. Old ledger bytes cannot change; corpus importer
+still produces its unchanged selection artifact and cannot be ingested as a cell.
+benchledgerrender output parity remains. B3 inventories all non-test cmd calls to
+AppendLedger/AppendScenarioLedger/UpsertScenarioLedgerRows/WriteScenarioLedger;
+the three context/scenario write sites above must be refused/redirected, not just
+a newly added cells path working beside them. Other intent/flywheel ledgers are
+different domains and explicitly excluded. No BEN-1 claim until B1+B2+B3 pass.
 
 ## One preflight admission contract shared with CTR-12 (U1)
 
@@ -230,12 +256,13 @@ type SubjectInput struct {
 type Admission struct { Subject, State string; Reasons []string }
 func AdmitSubject(in SubjectInput) (Admission, error)
 // internal/attested/junit.go, normalization only, no runner.
-type TestResult struct { Test, Status, Commit, RunDigest string }
+type TestResult struct { Test string `json:"test"`; Status TestStatus `json:"status"`; Commit string `json:"commit"`; RunDigest string `json:"run_digest"` }
 func ReadJUnit(src io.Reader, commit, runDigest string) ([]TestResult, error)
 // internal/certify/strength_floor.go
 type MutationResult struct { Test, Mutant, Commit, RunDigest string; Killed bool }
-func EnforceStrengthFloor(certificate Record, floor extractor.CertifyStrength,
-    tests []attested.TestResult, mutations []MutationResult) (State, error)
+func EnforceStrengthFloor(certificate Record, source CertificateSource,
+    floor extractor.CertifyStrength, tests []attested.TestResult,
+    mutations []MutationResult) (FloorResult, error)
 ```
 
 SubjectInput reuses actual C1..7 receipt and its refused/pending/kept verdict.
@@ -259,7 +286,7 @@ running tests; no partial invalid XML treated as pass. Existing testrun.ParseTes
 already supports JUnit; reuse its parser and preserve identity/diagnostics, then
 join explicit external commit/digest. Ingest adapter supplies those attestations;
 certify computes floor, never executes a mutator/test/provider. Floor breach returns
-existing StateUnproven, flaky returns StateFlaky, stale returns StateStale; unknown
+existing StateUnproven, flaky returns StateFlaky, stale returns StateUnproven plus Stale=true; unknown
 floor is error. Current exported marker grammar and default asserts unchanged.
 
 ## Exact issue ownership snapshot and serial transfer
@@ -311,11 +338,15 @@ subjects_test.go plus exact calibration/bench/subjects/demo.json and
 calibration/bench/tasks/{plan,haz,fix,loc,rev,lane,ask}-development.json fixtures.
 No held-out tasks can be edited after outcomes. #299 owns card_closure.go/test,
 data.cue and exact cards namespace above after head schema release.
-#321 owns strength_floor.go/test and new attested/junit.go/test; proposed extra
-existing-file integration grants internal/certify/compile.go and
-internal/fusion/ingest.go require one engine owner turn after other active engine
-handbacks. Exact ingestion site must be grounded before dispatch; no claim a leaf
-function alone establishes the current CHG-4 ingest join. No new store schema.
+#321 owns strength_floor.go/test and attested/junit.go/test, plus exact proposed
+integration grants cmd/fathom/tests_ingest.go, cmd/fathom/tests_ingest_test.go,
+cmd/fathom/certify_compile.go and internal/certify/compile.go. These are one serial
+engine/command integration turn after current owners. Remove the speculative
+fusion/ingest.go grant. Actual route is cmdTestsIngest -> IngestTestEvidence ->
+CompileCertifications at tests_ingest.go:115; plain ingest uses
+runCertifyCompileGated in certify_compile.go. Freeze strength evidence before the
+compile step, using current source/index identity, never a claim's nonexistent
+commit field or ambient process time as source identity.
 
 | Consumer exact test | Assertions and command |
 |---|---|
@@ -337,7 +368,7 @@ preflight-zero-use,preflight-failed}.json; internal/benchready/testdata/contract
 controls.json; internal/attested/testdata/contracts/{passed,failed,skipped,malformed}.xml.
 CTR-13 owns them only for approved contract landing; transfer per consumer serially.
 Each test's declaration existence is checked before command; missing file/package
-is absence, not observed RED. U3 decides where actual failing execution is captured.
+is absence, not observed RED. W3-2 assigns real failing execution to implementing lanes.
 No default-build compile break lands merely to say test-first.
 
 ## Evidence and proof limits
@@ -350,3 +381,172 @@ Executed draft check: git diff --check; commit secret scan. No RED/race/readines
 paid cell/CUE/full gate run, subject admission or plan claim. BEN-1..5/CHG-4 stay open.
 Decision models: none. Primary oracles and admission/strength joins deterministic;
 provider none supplies full behavior. A manual review cannot become a cell oracle.
+
+## Exact safe scored-cell projection (F1, U1)
+
+Reuse scenariobench.CellResult as the transient scorer input, not SessionResult
+telemetry as the persisted outcome. This whitelist is the whole outcome wire shape:
+~~~go
+type CellState string
+const ( CellScored CellState = "scored"; CellVoid CellState = "void"; CellUnknown CellState = "unknown" )
+type ScoredCell struct {
+    TaskID string `json:"task_id"`
+    AssignedArm string `json:"assigned_arm"`
+    Trial int `json:"trial"`
+    OraclePassed bool `json:"oracle_passed"`
+    FailToPassOK bool `json:"fail_to_pass_ok"`
+    PassToPassOK bool `json:"pass_to_pass_ok"`
+    Success bool `json:"success"`
+    SurfaceCalls int `json:"surface_calls"`
+    TotalTokens int64 `json:"total_tokens"`
+    State CellState `json:"state"`
+}
+func ProjectCell(in scenariobench.CellResult, assignedArm string,
+    preflight PairPreflight) (ScoredCell, error)
+~~~
+
+Map TaskID/Trial from cell; AssignedArm from frozen randomized assignment, require
+in.Arm matches it, never infer arm from successful use. OraclePassed/FailToPassOK/
+PassToPassOK from in.Oracle booleans, Success from in.Success. SurfaceCalls from
+the existing scored Readings surface-call count, tokens from sum of session totals.
+Preflight invalid -> CellVoid, missing/late/unknown -> CellUnknown; valid -> scored
+even if Success=false and SurfaceCalls=0. Fields are outcome observations, not
+admission predicates. Preserve failed oracle and assigned arm in headline population.
+No RawPath/WorktreePath/SubjectClone/PlanPath/AgentDiffPath, SessionStartContext,
+raw errors, transcript, Gold contents, Oracle.TestOutputRef/CoverProfile or arbitrary
+telemetry map is serialized. No “omitempty means safe” or full nested model.
+Local artifact digests stay keyed independently; no new public archive transport.
+Proposed TestScoredCellSafeProjection in cellkey_test.go seeds canaries in every
+excluded raw/context/path/error field and successful/failed/zero-use cells. Assert
+exact allowed keys only, canaries absent, assigned arm retained, failed independent
+oracle not overwritten, valid zero-use failure scored and stored, invalid preflight
+VOID both arms. Command go test -race ./internal/benchledger -run
+'^TestScoredCellSafeProjection$' -count=1, one line, proposed/unrun.
+
+## Certification identity and actual ingest route (F2, U1/U2)
+~~~go
+// certify/strength_floor.go; Record stays existing and additive.
+type CertificateSource struct {
+    Commit string `json:"commit"`
+    TestSymbolKey string `json:"test_symbol_key"`
+    Dirty bool `json:"dirty"`
+}
+type FloorResult struct {
+    State State `json:"state"`
+    Stale bool `json:"stale"`
+    Reason string `json:"reason"`
+}
+~~~
+
+CertificateSource is read from current indexed checkout and resolved test symbol
+by the compiler, never certificate.Record (which has no source commit). Match
+Record.Test to qualified TestSymbolKey, Record.RunDigest to attested TestResult/
+MutationResult.RunDigest, and every attested Commit to CertificateSource.Commit.
+Reject absent commit/digest/ambiguous test or dirty provenance as unproven. Reuse
+existing CertificateStateAt: only live satisfies, flaky stays StateFlaky, failed
+run StateBroken, absent evidence StateUnproven, unreachable test StateUnreachable,
+changed reach/stale evidence StateUnproven with Stale=true and reason. No StateStale.
+Missing mutation kill cannot upgrade mutation-killed even if last ordinary test passed.
+
+Proposed command adapter retains existing tests ingest --results DIR envelope
+loading. New optional --attested-artifacts DIR is an explicit operator local CAS
+root (architect U2, no download). Existing testevidence.Run.Artifacts contains
+Name/Digest, never paths: Name junit resolves <digest-hex>.xml, Name mutations
+resolves <digest-hex>.json beneath that root. Verify actual bytes/digest before
+ReadJUnit using run.Commit/run.Digest. Unknown artifact names do not grant reads
+or strength. Missing/mismatch artifacts stay unproven, never synthesized pass.
+ReadJUnit reuses testrun.ParseTestRun, normalizes statuses to TestStatus constants
+below, carries qualified identity, commit and envelope digest. Mutations JSON is
+exact MutationResult array with typed fields/tags, no arbitrary commands.
+
+Before IngestTestEvidence, adapter normalizes tests into existing envelope cases.
+CompileCertifications remains callable unchanged. Add an additive
+CompileCertificationsWithStrength wrapper with the same existing arguments plus
+explicit []StrengthEvidence, where each item is CertificateSource, floor
+extractor.CertifyStrength, []attested.TestResult and []MutationResult with explicit
+source/floor/tests/mutations tags. Compiler matches by TestSymbolKey and applies
+EnforceStrengthFloor before writing the certification claim. Existing compile
+entry delegates without extra strength evidence, never fabricates it; a requested
+floor without evidence remains unproven. Plain ingest's runCertifyCompileGated
+uses the same adapter/identity law. No store column or table added.
+
+Proposed cmd/fathom/tests_ingest_test.go::TestTestsIngestAttestedStrengthRoute calls
+actual cmdTestsIngest with fixture envelope/CAS, then queries compiled certificate:
+matching qualified test+commit+digest and killed mutant -> live at requested floor;
+wrong commit/digest/target/test/mutant, skipped/failed/malformed/missing artifact
+cannot upgrade. Assert actual CompileCertificationsWithStrength path consumes the
+normalized evidence, not a direct helper-only test. New
+internal/certify/strength_floor_test.go::TestStrengthFloorSourceIdentity covers
+every existing state mapping and stale=true/unproven, no nonexistent state.
+Commands go test -race ./cmd/fathom -run '^TestTestsIngestAttestedStrengthRoute$'
+-count=1 and go test -race ./internal/certify -run '^TestStrengthFloorSourceIdentity$'
+-count=1, each one line, proposed/unrun.
+
+## W3-4 concrete exported API rules and stewardship (F4)
+
+Named closed types/constants for new fields (local to owning packages):
+~~~go
+type TaskFamily string
+const ( FamilyPLAN TaskFamily = "PLAN"; FamilyHAZ TaskFamily = "HAZ"; FamilyFIX TaskFamily = "FIX"; FamilyLOC TaskFamily = "LOC"; FamilyREV TaskFamily = "REV"; FamilyLANE TaskFamily = "LANE"; FamilyASK TaskFamily = "ASK" )
+type Split string
+const ( SplitDevelopment Split = "development"; SplitHeldOut Split = "held-out" )
+type AdmissionState string
+const ( AdmissionKept AdmissionState = "kept"; AdmissionRefused AdmissionState = "refused"; AdmissionPending AdmissionState = "pending" )
+type RungVerdict string
+const ( RungPass RungVerdict = "pass"; RungFail RungVerdict = "fail"; RungUnknown RungVerdict = "unknown"; RungNotApplicable RungVerdict = "not-applicable" )
+type ControlName string
+const ( ControlNull ControlName = "null"; ControlOracle ControlName = "oracle"; ControlWrongPatch ControlName = "wrong-patch"; ControlFlake ControlName = "flake"; ControlWired ControlName = "scripted-wired"; ControlGrep ControlName = "scripted-grep" )
+// attested/junit.go
+type TestStatus string
+const ( TestPassed TestStatus = "passed"; TestFailed TestStatus = "failed"; TestSkipped TestStatus = "skipped"; TestErrored TestStatus = "error" )
+// Each owning package, errors.As-compatible, no string sentinel errors:
+type RefusalError struct { Reason string `json:"reason"` }
+func (e *RefusalError) Error() string
+type LimitError struct { Limit int64 `json:"limit"`; Observed int64 `json:"observed"` }
+func (e *LimitError) Error() string
+~~~
+
+Apply TaskFamily to CellInputs.Family and SubjectInput.Family, Split to Split,
+AdmissionState to Admission.State, RungVerdict to PreflightReceipt.W0/W1/W2/W3/W6,
+ControlName to Control.Name/ControlResult.Name. AssignedArm remains an open
+preregistered arm identifier, not a hardcoded closed vocabulary. TestStatus is
+TestResult.Status, existing certify.State/extractor.CertifyStrength reused.
+Explicit lower_snake_case JSON map for compact structs:
+CellInputs base/subject_commit/tool_schema_sha256/profile_sha256/family/criterion_id/
+trial; PreflightReceipt session_id/product_commit/subject_commit/profile_sha256/
+before_agent/w0/w1/w2/w3/w6/reason/evidence_sha256; PairPreflight pair_id/
+treatment_session/control_session/before_agent/valid/reason; Control name/task;
+ControlResult name/passed/reason; ProofRef path/input_sha256; Card id/claim/surfaces/
+effect_stratum/null_stratum/fact/delivery/outcome; SubjectInput subject/receipt/split/
+family/oracle_source/oracle_commit/environment_receipt_path; Admission subject/state/
+reasons; MutationResult test/mutant/commit/run_digest/killed. Existing base structs
+are explicitly projected, not capitalized default JSON. Every returned slice
+including controls/reasons/cases/cards/ledger inputs is nonnil and marshals [].
+Pure key/admission/strength/projection funcs have no context. Runner/readers/writers
+perform I/O; context only there. Additive, no door import/package, values withheld,
+no future fields.
+
+Proposed TestBenchContractsAPIHouseRules in internal/benchledger/lane_contract_test.go
+and owning-package adapters asserts enums, exact wire names, safe outcome whitelist,
+all empty result arrays [], typed refusal/limit errors.As and no context for pure
+computation. Command go test -race ./internal/benchledger -run
+'^TestBenchContractsAPIHouseRules$' -count=1, one line. W3-2 independent implementing
+critic compares every assertion in this document, including all earlier named tests.
+
+Read steward #262 issuecomment-6900959649. Proposed batch ownership includes all
+four aggregate test files, cellkey/readiness/subjects/strength_floor tests and
+docs/bench/readings/contributor-model/contracts-bench.md receipt. Not active grants
+or proof REC-1/CTR-4/ENG-2/LIB-1 landed. Execute each named proof with its exact
+rg declaration guard before anchored go test, record independently base/head/
+command/exit and actual assertion/compile failure. Missing executable/dependency/
+test or empty -run never counts RED. W3-2 supersedes batch-RED placement only;
+implementing lanes capture failure, no consumer implementation in contract batch.
+
+Additional exact B2 tests: cmd/scenariobench/cells_test.go::TestBenchDriverConsolidation
+covers kept cmdLedger and external-run routing; cmd/contextbenchscore/freeze_test.go::
+TestLegacyLedgerAndBackfillFrozen asserts real two writers refuse without changing
+bytes; cmd/contextbenchscore/import_test.go::TestCorpusImportIsNotOutcomeWriter
+preserves corpus selection output and rejects it as canonical cell input;
+cmd/benchledgerrender/freeze_test.go::TestLegacyLedgerRenderParity preserves read-only
+rendering. Each command is go test -race its exact package -run '^NAME$' -count=1,
+preceded by matching rg guard at the exact test file. Proposed/unrun, no B3 claim.
