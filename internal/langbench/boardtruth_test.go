@@ -33,6 +33,17 @@ func TestBoardNamesOnlyDispatchedFiles(t *testing.T) {
 			bad                bool
 		}{
 			{"python", "Python (.py)", "", false},
+			{"dockerfile", "Dockerfile / Containerfile (Dockerfile)", "Containerfile", true},
+			{"python", "Python (.py) .pyi", ".pyi", true},
+			{"python", "Python .pyi (.py)", ".pyi", true},
+			{"python", "Python requirements*.txt (.py)", "requirements*.txt", true},
+			{"ruby", "Ruby Gemfile (.rb)", "Gemfile", true},
+			{"python", "Python (.py) unknown (.py)", "outside parentheses", true},
+			{"dockerfile", "Dockerfile (Dockerfile)", "", false},
+			{"package-json", "npm/pnpm/yarn package manifests (package.json)", "", false},
+			{"vbnet", "Visual Basic .NET (.vb)", "", false},
+			{"vue", "Vue single-file components (.vue)", "", false},
+			{"avro", "Avro schemas (.avsc) and IDL (.avdl)", "", false},
 			{"python", "Python (.py .pyi)", ".pyi", true},
 			{"python-packaging", "Python packaging (pyproject.toml)", "", false},
 			{"python-packaging", "Python packaging (pyproject.toml, requirements*.txt)", "requirements*.txt", true},
@@ -110,18 +121,30 @@ type boardNameChecker struct {
 // These are descriptive clauses, not file selectors. The grammar is deliberately
 // closed: a new clause must be reviewed, never silently discarded by a regex.
 // There are no queue IDs here, and a changed filename cannot match a prose clause.
-var boardProse = strings.Split("schema and migrations|workspaces|shebangs|incl. CRDs|included files|indented syntax|routes|receivers|inhibit rules|time intervals|dashboard JSON|v2 resources|providers|datasources|alerting|templates|Nomad jobspecs|Starlark|bootstrap|xDS resource files|processors|exporters|connectors|extensions|pipelines|decK|DB-less|Liquibase changelogs|by content|programs ride their language|Kustomization|HelmRelease|GitRepository|OCIRepository|ClusterPolicy|Policy|PolicyException|policies ride Rego|JSON by content|inline in CloudFormation and Terraform|policyRule JSON|policies YAML|YAML graph checks|Python checks|Alembic|Rails db/migrate|Django migrations|EF Core migrations", "|")
+var boardProse = strings.Split("schema and migrations|workspaces|shebangs|incl. CRDs|included files|indented syntax|routes|receivers|inhibit rules|time intervals|dashboard JSON|v2 resources|providers|datasources|alerting|templates|Nomad jobspecs|Starlark|bootstrap|xDS resource files|processors|exporters|connectors|extensions|pipelines|decK|DB-less|Liquibase changelogs|by content|programs ride their language|Kustomization|HelmRelease|GitRepository|OCIRepository|ClusterPolicy|Policy|PolicyException|policies ride Rego|JSON by content|inline in CloudFormation and Terraform|policyRule JSON|policies YAML|YAML graph checks|Python checks|Alembic|Rails db/migrate|Django migrations|EF Core migrations|and IDL", "|")
+
+// These title words describe platforms or component styles, not selectors.
+// Keep this title-only: the same spelling inside a selector clause is checked.
+var boardTitleProse = []string{"npm/pnpm/yarn", ".NET", "single-file"}
 var boardToken = regexp.MustCompile(`^[\pL\pN\pS_.*+/<>{}-]+$`)
 
 func boardSelectors(name string) ([]boardSelector, []string) {
 	var out []boardSelector
 	var errs []string
-	depth, start := 0, 0
+	depth, start, outside := 0, 0, 0
+	title := name
+	sawGroup := false
 	var groups []string
 	for i, r := range name {
 		switch r {
 		case '(':
 			if depth == 0 {
+				if !sawGroup {
+					title = name[:i]
+					sawGroup = true
+				} else if text := strings.TrimSpace(name[outside:i]); text != "" && !slices.Contains(boardProse, text) {
+					errs = append(errs, "unknown syntax outside parentheses: "+text)
+				}
 				start = i + 1
 			}
 			depth++
@@ -132,11 +155,17 @@ func boardSelectors(name string) ([]boardSelector, []string) {
 			}
 			if depth == 0 {
 				groups = append(groups, name[start:i])
+				outside = i + 1
 			}
 		}
 	}
 	if depth != 0 {
 		return nil, []string{"unbalanced name parentheses"}
+	}
+	if sawGroup {
+		if text := strings.TrimSpace(name[outside:]); text != "" && !slices.Contains(boardProse, text) {
+			errs = append(errs, "unknown syntax outside parentheses: "+text)
+		}
 	}
 	for _, g := range groups {
 		for _, clause := range strings.FieldsFunc(g, func(r rune) bool { return r == ',' || r == ';' }) {
@@ -182,14 +211,22 @@ func boardSelectors(name string) ([]boardSelector, []string) {
 			}
 		}
 	}
-	// Extensionless filenames can be the entire title (Dockerfile / Containerfile).
-	// Other titles describe a language/tool; parentheses above carry their selectors.
-	title, _, _ := strings.Cut(name, " (")
-	if len(out) == 0 {
-		for _, titlePart := range strings.Split(title, " / ") {
-			if !strings.Contains(titlePart, " ") && strings.HasSuffix(strings.ToLower(titlePart), "file") {
-				out = append(out, boardSelector{titlePart, "plain"})
+	// Titles may name extensionless files even when parentheses also contain
+	// selectors. Other filename-like title syntax is rejected explicitly rather
+	// than guessed or silently treated as descriptive prose.
+	for _, token := range strings.Fields(title) {
+		token = strings.Trim(token, ",")
+		if token == "/" || slices.Contains(boardTitleProse, token) {
+			continue
+		} // title alternative separator, not a path
+		if strings.ContainsAny(token, ".*/\\?[]{}<>") {
+			errs = append(errs, "unknown title selector syntax: "+token)
+		} else if strings.HasSuffix(strings.ToLower(token), "file") {
+			if !boardToken.MatchString(token) {
+				errs = append(errs, "unknown title selector syntax: "+token)
+				continue
 			}
+			out = append(out, boardSelector{token, "plain"})
 		}
 	}
 	return out, errs
