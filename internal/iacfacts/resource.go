@@ -140,6 +140,7 @@ type Resource struct {
 // ResourceSet is what one read returned. Resources are sorted by span, attributes by
 // path and then span.
 type ResourceSet struct {
+	Evidence  ReadEvidence `json:"evidence"`
 	Tool      string
 	Resources []Resource
 	// SyntaxErrors counts the syntax errors the parser reported, keys a mapping repeats, YAML documents after
@@ -433,4 +434,75 @@ func partSize(p readRes) int {
 		return len(strconv.AppendFloat(buf[:0], x, 'f', -1, 64)) + 1
 	}
 	return 8
+}
+
+// UnknownCode names a closed reason why a static read cannot decide a fact.
+type UnknownCode string
+
+const (
+	UnknownExpression      UnknownCode = "expression"
+	UnknownSyntax          UnknownCode = "syntax-error"
+	UnknownUnreadInput     UnknownCode = "unread-input"
+	UnknownUnboundCatalog  UnknownCode = "unbound-catalog"
+	UnknownUnsupportedForm UnknownCode = "unsupported-form"
+	UnknownReadLimit       UnknownCode = "read-limit"
+)
+
+// DecidableBy names an external input that can decide an unknown; it requests no execution.
+type DecidableBy string
+
+const (
+	DecidePlan           DecidableBy = "plan"
+	DecideRender         DecidableBy = "render"
+	DecideVendoredModule DecidableBy = "vendored-module"
+	DecideCatalogVersion DecidableBy = "catalog-version"
+	DecideContextFile    DecidableBy = "context-file"
+)
+
+// UnknownReason associates a value-free reason with an exact source span.
+// An empty DecidableBy means none of the named inputs can decide it, never safe.
+type UnknownReason struct {
+	Code        UnknownCode   `json:"code"`
+	Span        Span          `json:"span"`
+	DecidableBy []DecidableBy `json:"decidable_by"`
+}
+
+// ReadEvidence names complete and incomplete logical inputs and their unknowns.
+// Empty Read is not proof that a read was complete. Read and Unread are disjoint.
+type ReadEvidence struct {
+	Read     []string        `json:"read"`
+	Unread   []string        `json:"unread"`
+	Unknowns []UnknownReason `json:"unknowns"`
+}
+
+// evidenceSpan is the new evidence wire shape; legacy Span encodings stay unchanged.
+type evidenceSpan struct {
+	File      string `json:"file"`
+	StartLine int    `json:"start_line"`
+	StartCol  int    `json:"start_col"`
+	EndLine   int    `json:"end_line"`
+	EndCol    int    `json:"end_col"`
+}
+
+type unknownReasonJSON struct {
+	Code        UnknownCode   `json:"code"`
+	Span        evidenceSpan  `json:"span"`
+	DecidableBy []DecidableBy `json:"decidable_by"`
+}
+
+// MarshalJSON preserves the lower snake case evidence contract independently of legacy spans.
+func (u UnknownReason) MarshalJSON() ([]byte, error) {
+	s := u.Span
+	return json.Marshal(unknownReasonJSON{u.Code, evidenceSpan{s.File, s.StartLine, s.StartCol, s.EndLine, s.EndCol}, u.DecidableBy})
+}
+
+// UnmarshalJSON restores the evidence span without changing the legacy Span type.
+func (u *UnknownReason) UnmarshalJSON(data []byte) error {
+	var wire unknownReasonJSON
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	s := wire.Span
+	*u = UnknownReason{Code: wire.Code, Span: Span{s.File, s.StartLine, s.StartCol, s.EndLine, s.EndCol}, DecidableBy: wire.DecidableBy}
+	return nil
 }

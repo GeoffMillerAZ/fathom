@@ -5,6 +5,7 @@ import "github.com/geoffmilleraz/fathom/internal/iacfacts"
 // convert maps the reader's set onto the public types. Every slice is non-nil, so equal inputs give byte-equal JSON.
 func convert(in *iacfacts.ResourceSet) *ResourceSet {
 	out := &ResourceSet{
+		Evidence:     convertEvidence(in.Evidence),
 		Resources:    make([]Resource, 0, len(in.Resources)),
 		SyntaxErrors: in.SyntaxErrors,
 		Dropped:      make([]Dropped, 0, len(in.Dropped)),
@@ -36,4 +37,17 @@ func span(s iacfacts.Span) Span {
 
 func refs(in []string) []string {
 	return append([]string{}, in...)
+}
+
+// convertEvidence copies every reason, action and span without sharing backing slices.
+func convertEvidence(in iacfacts.ReadEvidence) ReadEvidence {
+	out := ReadEvidence{Read: refs(in.Read), Unread: refs(in.Unread), Unknowns: make([]UnknownReason, 0, len(in.Unknowns))}
+	for _, u := range in.Unknowns {
+		reason := UnknownReason{Code: UnknownCode(u.Code), Span: span(u.Span), DecidableBy: make([]DecidableBy, 0, len(u.DecidableBy))}
+		for _, a := range u.DecidableBy {
+			reason.DecidableBy = append(reason.DecidableBy, DecidableBy(a))
+		}
+		out.Unknowns = append(out.Unknowns, reason)
+	}
+	return out
 }

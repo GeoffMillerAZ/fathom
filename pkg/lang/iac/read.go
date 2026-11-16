@@ -139,6 +139,8 @@ func guarded(ctx context.Context, c config, fn func() (*iacfacts.ResourceSet, er
 // WithDeadline) with ErrDeadline, and with ErrBusy while GOMAXPROCS abandoned reads are running. A context that ends
 // first returns its error and abandons the read the same way.
 //
+// Evidence names the actual input and any unresolved attributes or unread sections.
+// WithValues changes values only, never the read inventory or its completeness.
 // An error never carries a value from the file.
 func ReadFile(ctx context.Context, filePath string, src []byte, opts ...Option) (*ResourceSet, error) {
 	c, err := newConfig(opts)
@@ -188,6 +190,9 @@ func route(p string, src []byte) (reader, bool) {
 // of the same name, an override file adds no resource and marks what it names unknown, dot files and editor
 // backups are skipped. A module call reads as a relation and is never expanded, and no other directory is listed.
 // Spans name the files as dir joined with the file name.
+//
+// Evidence includes every module input, including files declaring only defaults.
+// Inputs whose syntax or structure is incomplete are in Unread, even when partly parsed.
 //
 // dir is an fs.ValidPath ("." for the root of fsys). The directory is refused with ErrLimit past 4,096 files, 2 MiB
 // a file or 64 MiB in all. The deadline, busy and context rules are ReadFile's.

@@ -45,7 +45,8 @@ type IaCBlockCheck struct {
 
 // IaCModuleCheck is the answer for a module.
 type IaCModuleCheck struct {
-	Blocks []IaCBlockCheck
+	Evidence ReadEvidence `json:"evidence"`
+	Blocks   []IaCBlockCheck
 	// Outputs is the check of the module's outputs, empty unless asked for.
 	Outputs IaCCheck
 	// BlobsRead is how many catalog blobs the answer read.
@@ -62,6 +63,7 @@ func CheckIaCModule(q IaCModuleQuery) (IaCModuleCheck, error) {
 	if err != nil {
 		return out, err
 	}
+	out.Evidence = set.Evidence
 	if set.SyntaxErrors > 0 {
 		out.Disclosures = append(out.Disclosures, fmt.Sprintf("%s has %d syntax errors, so a block there may be misread", cleanRepoDir(q.Dir), set.SyntaxErrors))
 	}

@@ -348,3 +348,63 @@ func TestConversionKeepsTheRead(t *testing.T) {
 		}
 	}
 }
+
+// HZ-3: reasons describe uncertainty independently of value opt-in.
+func TestLaneFactUnknowns(t *testing.T) {
+	cases := []struct{ path, src string }{
+		{"main.tf", "resource \"widget_thing\" \"a\" {\n name = upper(var.name)\n}\n"},
+		{"main.tf", "resource \"widget_thing\" \"a\" {\n name =\n"},
+		{"stack.yaml", "AWSTemplateFormatVersion: \"2010-09-09\"\nResources:\n  W:\n    Type: Example::Widget::Thing\n    Properties:\n      Name: !Join [\"-\", [a, b]]\n"},
+		{"Pulumi.yaml", "name: test\nruntime: yaml\nresources:\n  w:\n    type: example:widget:Thing\n    properties:\n      name:\n        fn::join: [\"-\", [a, b]]\n"},
+	}
+	for _, tc := range cases {
+		plain, err := iac.ReadFile(context.Background(), tc.path, []byte(tc.src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		with, err := iac.ReadFile(context.Background(), tc.path, []byte(tc.src), iac.WithValues())
+		if err != nil {
+			t.Fatal(err)
+		}
+		a, _ := json.Marshal(plain.Evidence)
+		b, _ := json.Marshal(with.Evidence)
+		if !bytes.Equal(a, b) {
+			t.Fatalf("WithValues changes evidence: %s / %s", a, b)
+		}
+		if len(plain.Evidence.Unknowns) == 0 {
+			t.Fatalf("missing reasons: %s", a)
+		}
+		for _, r := range plain.Evidence.Read {
+			for _, u := range plain.Evidence.Unread {
+				if r == u {
+					t.Fatalf("overlapping sets: %s", a)
+				}
+			}
+		}
+		for _, r := range plain.Resources {
+			for _, attr := range r.Attrs {
+				if attr.Class != iac.ClassUnknown && attr.Class != iac.ClassExpression {
+					continue
+				}
+				found := false
+				for _, u := range plain.Evidence.Unknowns {
+					if u.Span == attr.Span {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatalf("unexplained attribute: %+v (%s)", attr, a)
+				}
+			}
+		}
+		for _, u := range plain.Evidence.Unknowns {
+			for _, action := range u.DecidableBy {
+				switch action {
+				case iac.DecidePlan, iac.DecideRender, iac.DecideVendoredModule, iac.DecideCatalogVersion, iac.DecideContextFile:
+				default:
+					t.Fatalf("open action: %q", action)
+				}
+			}
+		}
+	}
+}

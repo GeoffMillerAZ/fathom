@@ -1,0 +1,3 @@
+### Added
+
+- IaC resource reads carry sorted read and unread input paths and value-free unknown reasons with closed deciding actions. The public library, resources command, and module/template review results preserve that evidence, including defaults-only files and incomplete inputs.

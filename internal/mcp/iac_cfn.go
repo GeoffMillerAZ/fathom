@@ -273,6 +273,7 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 	}
 	var findings []iacfacts.IaCFinding
 	read, bound, unbound := 0, 0, 0
+	var evidence []iacfacts.ReadEvidence
 	catalogs := map[string]bool{}
 	for _, f := range files {
 		if ctx.Err() != nil {
@@ -296,6 +297,7 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 			notes[f+" was not read: "+err.Error()] = true
 			continue
 		}
+		evidence = append(evidence, head.Evidence)
 		if head.SyntaxErrors > 0 || len(head.Dropped) > 0 {
 			status.unknown("CloudFormation template syntax incomplete")
 		}
@@ -384,6 +386,7 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 		findings = []iacfacts.IaCFinding{}
 	}
 	out := map[string]any{
+		"evidence":       combineIaCReadEvidence(evidence...),
 		"findings":       findings,
 		"findings_total": total,
 		"resources":      map[string]int{"bound": bound, "unbound": unbound},

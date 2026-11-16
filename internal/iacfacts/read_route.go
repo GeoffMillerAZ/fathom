@@ -11,7 +11,9 @@ func ReadTerraformJSONFile(filePath string, src []byte, opts ...Option) (*Resour
 	if err := checkSize(filePath, len(src)); err != nil {
 		return nil, err
 	}
-	return &ResourceSet{Tool: ToolTerraform, SyntaxErrors: 1}, nil
+	set := &ResourceSet{Tool: ToolTerraform, SyntaxErrors: 1}
+	set.Evidence = BuildReadEvidence([]ReadObservation{{Path: filePath, Read: true, Complete: false, Unknowns: []UnknownReason{{Code: UnknownUnsupportedForm, Span: Span{File: filePath}, DecidableBy: []DecidableBy{DecidePlan}}}}})
+	return set, nil
 }
 
 var (

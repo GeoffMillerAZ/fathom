@@ -218,6 +218,7 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 	addLines := map[string]bool{}
 	notes := map[string]bool{}
 	blobs := 0
+	var evidence []iacfacts.ReadEvidence
 	if len(dirs) > iacReviewDirCap {
 		status.unknown("Terraform module directory limit reached")
 		notes["only the first "+strconv.Itoa(iacReviewDirCap)+" of "+strconv.Itoa(len(dirs))+" changed module directories were read"] = true
@@ -248,6 +249,7 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 			notes[d+" was not read: "+err.Error()] = true
 			continue
 		}
+		evidence = append(evidence, got.Evidence)
 		if len(got.Disclosures) > 0 || len(got.Outputs.Disclosures) > 0 {
 			status.unknown("Terraform read or catalog coverage incomplete")
 		}
@@ -275,17 +277,14 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 		for _, n := range got.Disclosures {
 			notes[n] = true
 		}
-		// CheckIaCModule does not expose dropped declarations. Reuse the
-		// bounded resource reader to earn completeness only when the checks
-		// above have not already established that coverage is incomplete.
-		if len(status.reasons) == 0 {
-			set, err := iacfacts.ReadTerraformModule(corpusFS{root: root}, d)
-			if err != nil || set.SyntaxErrors > 0 || len(set.Dropped) > 0 {
-				status.unknown("Terraform resource read incomplete or declarations dropped")
-			}
+		// The module check carries its original read evidence. Reuse it rather
+		// than reading the module again merely to establish completeness.
+		if len(got.Evidence.Unread) > 0 {
+			status.unknown("Terraform resource read incomplete or declarations dropped")
 		}
 	}
 	out := map[string]any{
+		"evidence":   combineIaCReadEvidence(evidence...),
 		"findings":   findings,
 		"blocks":     counts,
 		"blobs_read": blobs,
@@ -314,4 +313,22 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 		out["disclosures"] = ns
 	}
 	return out
+}
+
+// combineIaCReadEvidence projects the existing observations, without reading source.
+func combineIaCReadEvidence(sets ...iacfacts.ReadEvidence) iacfacts.ReadEvidence {
+	observations := []iacfacts.ReadObservation{}
+	for _, set := range sets {
+		byFile := map[string][]iacfacts.UnknownReason{}
+		for _, u := range set.Unknowns {
+			byFile[u.Span.File] = append(byFile[u.Span.File], u)
+		}
+		for _, p := range set.Read {
+			observations = append(observations, iacfacts.ReadObservation{Path: p, Read: true, Complete: true, Unknowns: byFile[p]})
+		}
+		for _, p := range set.Unread {
+			observations = append(observations, iacfacts.ReadObservation{Path: p, Read: true, Complete: false, Unknowns: byFile[p]})
+		}
+	}
+	return iacfacts.BuildReadEvidence(observations)
 }

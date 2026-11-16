@@ -109,11 +109,51 @@ type Dropped struct {
 
 // ResourceSet is what one read returned. Resources are sorted by span and attributes by path, then span.
 type ResourceSet struct {
-	Resources []Resource `json:"resources"`
+	Evidence  ReadEvidence `json:"evidence"`
+	Resources []Resource   `json:"resources"`
 	// SyntaxErrors counts the syntax errors the parser reported, keys a mapping repeats, YAML documents after the
 	// first (which are not read), values the reader could not walk, a resource section that is not a mapping and a
 	// resource whose merge key may carry its properties. A read still returns the resources it could parse, and an
 	// attribute it could not read is unknown, never what a parser's recovery guessed.
 	SyntaxErrors int       `json:"syntax_errors"`
 	Dropped      []Dropped `json:"dropped"`
+}
+
+// UnknownCode names a closed reason why a static read cannot decide a fact.
+type UnknownCode string
+
+const (
+	UnknownExpression      UnknownCode = "expression"
+	UnknownSyntax          UnknownCode = "syntax-error"
+	UnknownUnreadInput     UnknownCode = "unread-input"
+	UnknownUnboundCatalog  UnknownCode = "unbound-catalog"
+	UnknownUnsupportedForm UnknownCode = "unsupported-form"
+	UnknownReadLimit       UnknownCode = "read-limit"
+)
+
+// DecidableBy names an external input that can decide an unknown; it requests no execution.
+type DecidableBy string
+
+const (
+	DecidePlan           DecidableBy = "plan"
+	DecideRender         DecidableBy = "render"
+	DecideVendoredModule DecidableBy = "vendored-module"
+	DecideCatalogVersion DecidableBy = "catalog-version"
+	DecideContextFile    DecidableBy = "context-file"
+)
+
+// UnknownReason associates a value-free reason with an exact source span.
+// An empty DecidableBy means none of the named inputs can decide it, never safe.
+type UnknownReason struct {
+	Code        UnknownCode   `json:"code"`
+	Span        Span          `json:"span"`
+	DecidableBy []DecidableBy `json:"decidable_by"`
+}
+
+// ReadEvidence names complete and incomplete logical inputs and their unknowns.
+// Empty Read is not proof that a read was complete. Read and Unread are disjoint.
+type ReadEvidence struct {
+	Read     []string        `json:"read"`
+	Unread   []string        `json:"unread"`
+	Unknowns []UnknownReason `json:"unknowns"`
 }

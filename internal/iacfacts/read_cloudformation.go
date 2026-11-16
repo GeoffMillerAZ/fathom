@@ -16,8 +16,15 @@ import (
 //
 // Lists take [*] in a path. A template that does not parse reads as empty with
 // SyntaxErrors set. A template past the product's limits is refused whole with ErrLimit.
-func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*ResourceSet, error) {
+func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (result *ResourceSet, err error) {
 	set := &ResourceSet{Tool: ToolCloudFormation}
+	o := ReadObservation{Path: filePath, Read: true, Complete: true}
+	defer func() {
+		if err == nil {
+			recordReadGaps(&o, set.SyntaxErrors, len(set.Dropped))
+			set.Evidence = resourceReadEvidence(set, []ReadObservation{o})
+		}
+	}()
 	root, info, err := parseTemplate(filePath, src)
 	if errors.Is(err, errSyntax) {
 		set.SyntaxErrors = 1
@@ -28,6 +35,9 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 	}
 	set.SyntaxErrors = info.syntaxErrors()
 	if root == nil || root.kind != nodeMap {
+		if root != nil {
+			o.Complete = false
+		}
 		return set, nil
 	}
 	if root.hasMerge() {
@@ -40,6 +50,9 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		return set, nil
 	}
 	if res == nil || res.kind != nodeMap {
+		if res != nil {
+			o.Complete = false
+		}
 		return set, nil
 	}
 	cr := &cfnReader{params: map[string]cfnParam{}, conds: root.get("Conditions"),
@@ -68,6 +81,7 @@ func ReadCloudFormationFile(filePath string, src []byte, opts ...Option) (*Resou
 		if typ == nil || typ.kind != nodeScalar {
 			// Fn::ForEach, an alias, a merge-only entry, a scalar: not a resource the reader can name.
 			set.Dropped = append(set.Dropped, p.key.value)
+			o.Unknowns = append(o.Unknowns, UnknownReason{Code: UnknownUnsupportedForm, Span: p.span, DecidableBy: []DecidableBy{DecideRender}})
 			continue
 		}
 		r := Resource{

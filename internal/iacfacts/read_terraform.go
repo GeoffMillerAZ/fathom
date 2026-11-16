@@ -33,10 +33,13 @@ func ReadTerraformFile(filePath string, src []byte, opts ...Option) (*ResourceSe
 	r := newTFReader(newConfig(opts), nil)
 	set := &ResourceSet{Tool: ToolTerraform, SyntaxErrors: pf.nerr}
 	r.pf, r.file = pf, filePath
-	if err := r.readBody(set, pf.body); err != nil {
+	o := ReadObservation{Path: filePath, Read: true, Complete: true}
+	if err := r.readBody(set, pf.body, &o); err != nil {
 		return nil, err
 	}
 	sortSet(set)
+	recordReadGaps(&o, set.SyntaxErrors, len(set.Dropped))
+	set.Evidence = resourceReadEvidence(set, []ReadObservation{o})
 	return set, nil
 }
 
@@ -72,6 +75,8 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 	if len(names) > MaxModuleFiles {
 		return nil, limitErr(dir, fmt.Sprintf("%d files, over %d", len(names), MaxModuleFiles))
 	}
+	observations := make([]ReadObservation, len(names))
+	observationIndex := make(map[string]int, len(names))
 	var files []*tfParsed
 	set := &ResourceSet{Tool: ToolTerraform}
 	total := 0
@@ -81,8 +86,11 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 			link[e.Name()] = true
 		}
 	}
-	for _, n := range names {
+	for i, n := range names {
 		p := path.Join(dir, n)
+		observationIndex[p] = i
+		observations[i] = ReadObservation{Path: p}
+		o := &observations[i]
 		if link[n] {
 			// Look at the target before opening it: opening a FIFO blocks until a writer comes.
 			if st, err := fs.Stat(fsys, p); err != nil || !st.Mode().IsRegular() {
@@ -110,10 +118,13 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if err != nil {
 			return nil, fmt.Errorf("iacfacts: read module file: %w", err)
 		}
+		o.Read, o.Complete = true, true
 		if total += len(src); total > MaxModuleBytes {
 			return nil, limitErr(dir, fmt.Sprintf("module is over %d bytes", MaxModuleBytes))
 		}
 		if isTFJSON(n) {
+			o.Complete = false
+			o.Unknowns = append(o.Unknowns, UnknownReason{Code: UnknownUnsupportedForm, Span: Span{File: p}, DecidableBy: []DecidableBy{DecidePlan}})
 			if err := checkSize(p, len(src)); err != nil {
 				return nil, err
 			}
@@ -132,6 +143,7 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 		if err != nil {
 			return nil, err
 		}
+		recordReadGaps(o, pf.nerr, 0)
 		set.SyntaxErrors += pf.nerr
 		pf.override = isOverrideFile(n)
 		files = append(files, pf)
@@ -159,9 +171,11 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 			continue
 		}
 		r.pf, r.file = f, f.file
-		if err := r.readBody(set, f.body); err != nil {
+		beforeSyntax, beforeDropped := set.SyntaxErrors, len(set.Dropped)
+		if err := r.readBody(set, f.body, &observations[observationIndex[f.file]]); err != nil {
 			return nil, err
 		}
+		recordReadGaps(&observations[observationIndex[f.file]], set.SyntaxErrors-beforeSyntax, len(set.Dropped)-beforeDropped)
 	}
 	ix := newOverrideIndex(set)
 	for _, f := range files {
@@ -175,11 +189,14 @@ func ReadTerraformModule(fsys fs.FS, dir string, opts ...Option) (*ResourceSet, 
 			}
 			continue
 		}
-		if err := r.applyOverrides(set, ix, f.body); err != nil {
+		beforeSyntax, beforeDropped := set.SyntaxErrors, len(set.Dropped)
+		if err := r.applyOverrides(set, ix, f.body, &observations[observationIndex[f.file]]); err != nil {
 			return nil, err
 		}
+		recordReadGaps(&observations[observationIndex[f.file]], set.SyntaxErrors-beforeSyntax, len(set.Dropped)-beforeDropped)
 	}
 	sortSet(set)
+	set.Evidence = resourceReadEvidence(set, observations)
 	return set, nil
 }
 
@@ -510,7 +527,7 @@ func spanOf(rng hcl.Range) Span {
 }
 
 // readBody reads the top-level resource, data and module blocks of one file.
-func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
+func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body, observation *ReadObservation) error {
 	for _, b := range body.Blocks {
 		var res Resource
 		switch {
@@ -523,7 +540,7 @@ func (r *tfReader) readBody(set *ResourceSet, body *hclsyntax.Body) error {
 		case b.Type == "module" && len(b.Labels) == 1:
 			res = Resource{Tool: ToolTerraform, Mode: ModeModule, Type: "module", Name: b.Labels[0]}
 		default:
-			r.unreadBlock(set, b)
+			r.unreadBlock(set, b, observation)
 			continue
 		}
 		res.Span = spanOf(b.Range())
@@ -573,7 +590,7 @@ func providerRef(e hclsyntax.Expression) string {
 // unreadBlock accounts for a top-level block readBody did not read as a resource, so that absence is never silent:
 // a resource, data, ephemeral or module block with the wrong number of labels, which OpenTofu refuses, counts as a
 // syntax error, and a data source inside a check block, which exists but is scoped to the check, is Dropped.
-func (r *tfReader) unreadBlock(set *ResourceSet, b *hclsyntax.Block) {
+func (r *tfReader) unreadBlock(set *ResourceSet, b *hclsyntax.Block, observation *ReadObservation) {
 	switch b.Type {
 	case "resource", "data", "ephemeral", "module":
 		set.SyntaxErrors++
@@ -586,6 +603,7 @@ func (r *tfReader) unreadBlock(set *ResourceSet, b *hclsyntax.Block) {
 			switch {
 			case nb.Type == "data" && len(nb.Labels) == 2:
 				set.Dropped = append(set.Dropped, "check."+name+".data."+nb.Labels[0]+"."+nb.Labels[1])
+				observation.Unknowns = append(observation.Unknowns, UnknownReason{Code: UnknownUnsupportedForm, Span: spanOf(nb.Range()), DecidableBy: []DecidableBy{DecidePlan}})
 			case nb.Type == "data":
 				set.SyntaxErrors++
 			}
@@ -731,10 +749,10 @@ func (ix *overrideIndex) segments(set *ResourceSet, i int) map[string][]int {
 
 // applyOverrides reads an override file's blocks and marks, in the resource each one overrides, every
 // attribute or nested block it names as unknown. A block with no base is ignored, as OpenTofu refuses it.
-func (r *tfReader) applyOverrides(set *ResourceSet, ix *overrideIndex, body *hclsyntax.Body) error {
+func (r *tfReader) applyOverrides(set *ResourceSet, ix *overrideIndex, body *hclsyntax.Body, observation *ReadObservation) error {
 	var over ResourceSet
 	r.override = true
-	err := r.readBody(&over, body)
+	err := r.readBody(&over, body, observation)
 	r.override = false
 	if err != nil {
 		return err

@@ -5,6 +5,13 @@
       "path": "main.tf",
       "error": "",
       "result": {
+        "evidence": {
+          "read": [
+            "main.tf"
+          ],
+          "unread": [],
+          "unknowns": []
+        },
         "resources": [
           {
             "tool": "terraform",
@@ -57,6 +64,13 @@
       "path": "cfn.yaml",
       "error": "",
       "result": {
+        "evidence": {
+          "read": [
+            "cfn.yaml"
+          ],
+          "unread": [],
+          "unknowns": []
+        },
         "resources": [
           {
             "tool": "cloudformation",
@@ -161,6 +175,13 @@
       "path": "Pulumi.yaml",
       "error": "",
       "result": {
+        "evidence": {
+          "read": [
+            "Pulumi.yaml"
+          ],
+          "unread": [],
+          "unknowns": []
+        },
         "resources": [
           {
             "tool": "pulumi",

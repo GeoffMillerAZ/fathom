@@ -1,0 +1,8 @@
+name: evidence
+runtime: yaml
+resources:
+  widget:
+    type: example:widget:Thing
+    properties:
+      name:
+        fn::join: ["-", [a, b]]

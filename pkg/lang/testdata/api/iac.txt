@@ -241,6 +241,17 @@ type ContractAttr struct {
 }
     ContractAttr is one attribute or nested block of a type's contract.
 
+type DecidableBy string
+    DecidableBy names an external input that can decide an unknown; it requests
+    no execution.
+
+const (
+	DecidePlan           DecidableBy = "plan"
+	DecideRender         DecidableBy = "render"
+	DecideVendoredModule DecidableBy = "vendored-module"
+	DecideCatalogVersion DecidableBy = "catalog-version"
+	DecideContextFile    DecidableBy = "context-file"
+)
 type Dropped struct {
 	Name string `json:"name"`
 }
@@ -384,6 +395,15 @@ func WithValues() Option
     value is returned. The reader still withholds what its source marks secret,
     and refuses an input whose values pass its bounds.
 
+type ReadEvidence struct {
+	Read     []string        `json:"read"`
+	Unread   []string        `json:"unread"`
+	Unknowns []UnknownReason `json:"unknowns"`
+}
+    ReadEvidence names complete and incomplete logical inputs and their
+    unknowns. Empty Read is not proof that a read was complete. Read and Unread
+    are disjoint.
+
 type Replacement struct {
 	// Class is "replace", "conditional" or "unknown".
 	Class string `json:"class"`
@@ -412,7 +432,8 @@ type Resource struct {
     Resource is one resource, data source or module call.
 
 type ResourceSet struct {
-	Resources []Resource `json:"resources"`
+	Evidence  ReadEvidence `json:"evidence"`
+	Resources []Resource   `json:"resources"`
 	// SyntaxErrors counts the syntax errors the parser reported, keys a mapping repeats, YAML documents after the
 	// first (which are not read), values the reader could not walk, a resource section that is not a mapping and a
 	// resource whose merge key may carry its properties. A read still returns the resources it could parse, and an
@@ -439,7 +460,9 @@ func ReadFile(ctx context.Context, filePath string, src []byte, opts ...Option) 
     reads are running. A context that ends first returns its error and abandons
     the read the same way.
 
-    An error never carries a value from the file.
+    Evidence names the actual input and any unresolved attributes or unread
+    sections. WithValues changes values only, never the read inventory or its
+    completeness. An error never carries a value from the file.
 
 func ReadModule(ctx context.Context, fsys fs.FS, dir string, opts ...Option) (*ResourceSet, error)
     ReadModule reads one Terraform or OpenTofu directory of fsys as a module:
@@ -451,6 +474,10 @@ func ReadModule(ctx context.Context, fsys fs.FS, dir string, opts ...Option) (*R
     and editor backups are skipped. A module call reads as a relation and is
     never expanded, and no other directory is listed. Spans name the files as
     dir joined with the file name.
+
+    Evidence includes every module input, including files declaring only
+    defaults. Inputs whose syntax or structure is incomplete are in Unread,
+    even when partly parsed.
 
     dir is an fs.ValidPath ("." for the root of fsys). The directory is refused
     with ErrLimit past 4,096 files, 2 MiB a file or 64 MiB in all. The deadline,
@@ -466,4 +493,23 @@ type Span struct {
     Span is a region of a source file. Lines and columns are 1-based, columns
     count characters and not bytes, and the end is exclusive. File is the path
     the caller gave.
+
+type UnknownCode string
+    UnknownCode names a closed reason why a static read cannot decide a fact.
+
+const (
+	UnknownExpression      UnknownCode = "expression"
+	UnknownSyntax          UnknownCode = "syntax-error"
+	UnknownUnreadInput     UnknownCode = "unread-input"
+	UnknownUnboundCatalog  UnknownCode = "unbound-catalog"
+	UnknownUnsupportedForm UnknownCode = "unsupported-form"
+	UnknownReadLimit       UnknownCode = "read-limit"
+)
+type UnknownReason struct {
+	Code        UnknownCode   `json:"code"`
+	Span        Span          `json:"span"`
+	DecidableBy []DecidableBy `json:"decidable_by"`
+}
+    UnknownReason associates a value-free reason with an exact source span. An
+    empty DecidableBy means none of the named inputs can decide it, never safe.
 
