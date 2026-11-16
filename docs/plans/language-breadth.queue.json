@@ -148,7 +148,7 @@
   },
   {
     "id": "dockerfile",
-    "name": "Dockerfile / Containerfile",
+    "name": "Dockerfile",
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L3",
@@ -185,7 +185,7 @@
     "plan_row": "LB-Q-dockerfile",
     "worker_model": "sonnet",
     "port_of": "dockerextract.go (pure Go)",
-    "notes": "stages, ARG/ENV keys (env: inventory), FROM image refs, COPY --from stage edges, cross-file FROM <local image> edges",
+    "notes": "stages, ARG/ENV keys (env: inventory), FROM image refs, COPY --from stage edges, cross-file FROM <local image> edges; Containerfile has no dispatch route and is not supported.",
     "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T2 added"
   },
   {
@@ -605,7 +605,7 @@
   },
   {
     "id": "terraform",
-    "name": "Terraform / OpenTofu (.tf .tfvars .tf.json)",
+    "name": "Terraform / OpenTofu (.tf .tfvars)",
     "kind": "tooling",
     "tier": "T3",
     "target_level": "L3",
@@ -628,7 +628,7 @@
     "engine": "native",
     "plan_row": "LB-Q-terraform",
     "worker_model": "sonnet",
-    "notes": "upgrade hclextract.go: variables, outputs, locals, module sources (local path L3, registry refs recorded), .tfvars keys; resource reference edges",
+    "notes": "upgrade hclextract.go: variables, outputs, locals, module sources (local path L3, registry refs recorded), .tfvars keys; resource reference edges; .tf.json follows generic JSON routing, not Terraform/OpenTofu extraction.",
     "retargeted": "2026-10-26 (gap sweep GAP1, added at the owner's 2026-10-26 roadmap ask): tier T3 added, matching the #Tier taxonomy and design section 18.3 where every IaC entry is T3; ruling I-R1 is amended from T2 to T3; Terraform/OpenTofu joins the excellence target set at T3 with target L3; its L3 cap is the two-hop module.m.o resolution in ResolveDocXrefs (LB-Q-terraform-rest), plan row GAP1-32"
   },
   {
@@ -1419,7 +1419,7 @@
   },
   {
     "id": "msbuild",
-    "name": "MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln)",
+    "name": "MSBuild projects (.csproj .fsproj .vbproj .props .targets)",
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L3",
@@ -1444,7 +1444,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-msbuild",
     "worker_model": "sonnet",
-    "notes": "new; projects, targets, ProjectReference edges, PackageReference ids"
+    "notes": "new; projects, targets, ProjectReference edges, PackageReference ids; .sln has no dispatch route and is not supported."
   },
   {
     "id": "kustomize",
@@ -2385,7 +2385,7 @@
   },
   {
     "id": "taskfile",
-    "name": "Taskfile (go-task: Taskfile.yml)",
+    "name": "go-task (Taskfile.yml)",
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L3",
@@ -2410,7 +2410,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-taskfile",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand; tasks, deps/cmds task: edges, includes (file edges)"
+    "notes": "new; fleet demand; tasks, deps/cmds task: edges, includes (file edges); Extensionless Taskfile has no dispatch route; the advertised selector is Taskfile.yml."
   },
   {
     "id": "rego",
@@ -2520,7 +2520,7 @@
   },
   {
     "id": "gradle",
-    "name": "Gradle builds (build.gradle, build.gradle.kts, settings.gradle*)",
+    "name": "Gradle builds (build.gradle)",
     "kind": "tooling",
     "target_level": "L3",
     "grammar_source": "murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin",
@@ -2556,7 +2556,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-gradle",
     "worker_model": "sonnet",
-    "notes": "new; tasks, plugins, include() project edges, project(':x') dependency edges; the Groovy DSL dialect is measured on spring-boot and kafka (square/okhttp is Kotlin DSL throughout, which no dialect reads: LB-Q-gradle-rest)"
+    "notes": "new; tasks, plugins, include() project edges, project(':x') dependency edges; the Groovy DSL dialect is measured on spring-boot and kafka (square/okhttp is Kotlin DSL throughout, which no dialect reads: LB-Q-gradle-rest); build.gradle.kts follows Kotlin routing, not Gradle DSL extraction; settings.gradle* is not a supported dispatch glob."
   },
   {
     "id": "vue",
@@ -4135,7 +4135,7 @@
   },
   {
     "id": "systemd",
-    "name": "systemd units (*.service *.timer *.socket …)",
+    "name": "systemd units (*.service *.timer *.socket)",
     "kind": "tooling",
     "target_level": "L2",
     "grammar_source": "pure-go:INI parser",
@@ -4160,7 +4160,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-systemd",
     "worker_model": "sonnet",
-    "notes": "new; units, Requires/After/Wants edges, ExecStart commands"
+    "notes": "new; units, Requires/After/Wants edges, ExecStart commands; These finite unit patterns remain unsupported; no additional patterns are claimed."
   },
   {
     "id": "hlsl",
