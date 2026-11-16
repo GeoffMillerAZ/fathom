@@ -239,3 +239,16 @@ native/harness populations, with every failed unit retained. This holdout
 stays unspent until a native call adapter passes the anonymous-CV and
 compiler-elided-call controls. It is outside canonical corpus shards and
 must not be substituted for the spent Dancer2 diagnostic.
+
+## Issue 215 native-control checkpoint
+
+Perl 5.34.1 / B::Concise 1.004 pad traversal exposes one anonymous CV in
+`compiler_population_control.pl`; the original named constant target is absent
+both normally and with `PERL5DB='BEGIN { $^P = 0x14; }'`. This is diagnostic,
+not a complete compiled-population adapter. The new holdout remains unread.
+A separately discovered parser-based SCIP candidate is
+https://github.com/jelmer/scip-perl/tree/8bfa1fdb98743286f227cb95f0d5e550911c8096
+(inspected README and repository metadata only; repository license metadata
+null and license endpoint HTTP 404 on 2026-11-16). It is unavailable for
+installation under the license rule until a qualifying license is established;
+no complete native population or tier is inferred from its output format.
