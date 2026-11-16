@@ -1,6 +1,6 @@
-# Free measurement contract: FCT-10 foreign coverage joins
+# Free measurement contract: FCT-10 coverage feasibility
 
-Status: draft for separate lane review; contract only, no reading results.
+Status: T4-2 feasibility-only amendment for separate lane review; contract only, no reading results.
 Base: `83226aece9b0f421381373f8dafc4a912d3888e5` (all production sources and fixtures pinned to this commit).
 
 ## Intent and scope
@@ -8,8 +8,12 @@ Base: `83226aece9b0f421381373f8dafc4a912d3888e5` (all production sources and fix
 Governing text: `docs/plans/realignment.md` FCT-10 asks for foreign coverage for
 five languages with blocks joined to symbols, references TQ-M3, and explicitly
 needs no build of new functionality. `docs/plans/test-intelligence.md` TQ-M3
-requires at least five languages; TQ-9..14w name the existing ingestion and join
-path. `docs/design/test-intelligence.md` T3 permits the six formats and requires
+requires at least five languages; its governing design at
+`docs/design/test-intelligence.md:168` specifies **Go plus four T3 formats**.
+T4-2 preserves that original population: the five synthetic structural controls
+may run only as labelled feasibility and close neither FCT-10 nor TQ-M3.
+TQ-9..14w name the existing ingestion and join path.
+`docs/design/test-intelligence.md` T3 permits the six formats and requires
 real symbol ranges or an explicitly named file fallback. ADR-051 decisions 1–2
 require joining existing assets, without another engine/store design. I38,
 ADR-027, P7/P22 and principles T5 require complete inputs and unchanged criteria.
@@ -17,8 +21,8 @@ No applicable intent trigger is established by this contract. No compatibility
 surface, API, policy, dependency or product implementation changes.
 
 D1: Measure **synthetic format-control ingestion and symbol-join structure** on
-five actual public source fixtures through current production APIs. The owner's
-lane clarification permits these controls only at that evidence scope. Source
+five actual public source fixtures through current production APIs. T4-2 permits
+these controls only as a labelled feasibility check at that evidence scope. Source
 bytes are unchanged; report paths/line locations are adapted explicitly below.
 This does not measure actual runtime coverage, native producer interoperability,
 independent-oracle accuracy, whole-language accuracy, deployment or fleet health.
@@ -34,8 +38,10 @@ new tracked tests/fixtures, a daemon, a shared fleet store or any paid call.
 Scratch runner, reports, DB, logs and binaries stay under
 `workspace/tmp/free-measurements/`. Grounding: issue ownership and workspace rule.
 
-D3: Five languages remain the denominator; formats are not languages, and a
-file-level fallback is never counted as a symbol join. Each source has at least
+D3: The five Python/JavaScript/Java/Ruby/C controls remain the feasibility
+denominator, unchanged. They do not replace the original Go plus four T3
+formats cohort, add Go to these trials, or select the original four formats.
+Formats are not languages, and a file-level fallback is never counted as a symbol join. Each source has at least
 one preregistered callable with real golden ranges. Goldens are local fixture
 expectations, not outside oracles. The five were chosen before trials to pair
 five native-format examples with five existing language fixtures, not after
@@ -206,29 +212,92 @@ and a five-row table of targets/ranges/counts/fallback/unmatched/assertion
 outcomes. Raw trial failures and missing inputs stay visible. Existing summary
 fields in a format seed are fixture metadata, never observed test-run evidence.
 
-The threshold remains at least five languages with blocks joined to symbols.
-`FCT-10 verdict: PASS` is allowed only if every named assertion and both trials
-complete successfully for all five; the same line must qualify **synthetic
-fixture ingestion/join structure only**. `FAIL` means a completed valid trial
-refutes an assertion or fewer than five languages achieve symbol joins;
-`INCONCLUSIVE` means input drift, unavailable/unreadable inputs, failed setup or
-incomplete trials prevent the decision. Preserve both failures and missingness
-if they coexist. No runtime coverage percentage, accuracy rate or deployed
-success may be inferred from any of these verdicts. No prior TQ-M3 result is
-claimed. Plan checkoff and operational verification belong to the integrating
-machine; this lane edits no boxes and claims no daemon verification.
+The original threshold remains at least five languages (Go plus four T3 formats)
+with blocks joined to symbols. The five controls cannot satisfy that population.
+Report their assertion outcomes separately as **feasibility structural controls**:
+all assertions passing in both trials establishes feasibility only; a refuted
+assertion is a feasibility failure; drift, missing inputs or incomplete trials
+leave feasibility inconclusive. Preserve failures and missingness together.
+Neither a successful probe nor a successful formal feasibility reading is an
+original-cohort result. Existing critic scratch SQLite/race probes are only
+runnability evidence; this contract records no completed reading. A later
+approved report lane must run this fixed method fresh with two new stores and
+publish both trials. Probe receipts do not substitute for those trials.
+
+The eventual report must explicitly label itself **feasibility**, report the
+structural controls separately, name the original input gaps below, and state
+**FCT-10 and TQ-M3 remain open**. It must end with this exact line:
+
+FCT-10 verdict: INCONCLUSIVE (original cohort unread)
+
+This partial report does not discharge the original measurement, default-on or
+support claims, native accuracy, runtime coverage, outside-oracle accuracy,
+deployment or fleet health. No plan checkoff is authorized, even if a lexical
+verdict pattern matches. This lane edits no boxes and claims no daemon proof.
+No post-data threshold, cohort or method change is authorized.
+
+## Original cohort input inventory
+
+Inventory basis: the pinned base above, `docs/design/test-intelligence.md` T3 and
+section 5 line 168, `docs/plans/test-intelligence.md` TQ-9..14w/TQ-M3, and
+`docs/plans/realignment.md` FCT-10. The design supplies the population but does
+not choose the four formats or their language/source/report pairs. Searches of
+`docs/bench/` and `docs/contracts/` for TQ-M3, FCT-10 and coverage-languages
+found no original-cohort preregistration beyond these governing requirements;
+the present contract registers the separate feasibility controls only.
+`docs/bench/readings/tests/coverage-languages.md` is absent at base, so there is
+no original reading there to reuse. This is not evidence that parser or Go
+examples are absent.
+
+| Required original input | Available record or fixture | Exact remaining gap |
+|---|---|---|
+| Frozen original cohort registration | Design line 168: Go plus four T3 formats, at least five languages; TQ-M3 and FCT-10 remain unchecked | No frozen original roster selecting the four formats, their distinct languages, source/report paths, target symbols/ranges, byte hashes and report-to-source/commit provenance. The five controls above register a different feasibility population. No new four-format selection is made here. |
+| Go source/profile pair | **available-as-example**: `cmd/fathom/review_test.go` `reviewFixtureSrc` defines `pkg/a.go`, function `A` at lines 3–5. `cmd/fathom/tests_coverage_test.go` `testsCoverageFixture` ingests it; `writeCoverProfile` constructs `cover.out` with a `mode: set` block using the extracted range; `TestTestsCoverage_JSONReportsJoinedSymbol_BarePathDefaultsUnit` joins it. `internal/analysis/coverage/profile_test.go` `TestParseProfile_Set` is a parser example. | No Go pair selected and frozen for the original reading, with exact source/profile bytes, hashes and binding/provenance. The CLI example generates the profile from extracted ranges; it is not a registered, frozen original measurement pair. |
+| Four T3 format/language/source-report pairs | All six parser seeds exist (listed next); the five source fixtures and goldens in the immutable manifest exist | No governing selection of which four formats and languages, nor frozen corresponding source/report pairs and their source locations, hashes, provenance and expected joins. Existing seeds alone do not identify the original four; synthetic path/line adaptation does not supply that registration. |
+| Commit association and reading receipts | T3 and TQ-9 require a report commit or command-line binding; an unbound report never gates. `cmd/fathom/coverage_ingest_test.go` `TestCmdCoverageIngestBindsCommit` supplies regression evidence | No original-cohort report binding/provenance or original trials/results is registered in the examined records. A source commit alone does not prove a report was produced from that source. |
+
+The available T3 seeds are in `internal/analysis/coverage/` at the base and
+hashes in the immutable manifest:
+
+| Format | Exact seed symbol/local and original source location |
+|---|---|
+| lcov | `lcov_test.go`, `TestParseLcov` local `in`: `src/widget.py` |
+| Cobertura | `cobertura_jacoco_test.go`, `coberturaSample`: `src/widget.py` |
+| JaCoCo | `cobertura_jacoco_test.go`, `jacocoSample`: package `com/widget`, sourcefile `Widget.java` |
+| coverage.py | `coveragepy_istanbul_test.go`, `coveragePySample`: `src/widget.py` |
+| Istanbul | `coveragepy_istanbul_test.go`, `istanbulSample`: `/repo/src/widget.js` (fixture report path) |
+| llvm-cov | `llvmcov_test.go`, `llvmCovSample`: `src/widget.c` |
+
+`cmd/fathom/tests_coverage_foreign_test.go` `foreignCoverageFixture` and
+`TestTestsCoverageJoinsForeignBlocks` are also available-as-example: lcov
+`cov.info` joins `pkg/a.go` function `A`; coverage.py `cov.json` names
+`pkg/consts.go` and demonstrates file fallback; the unmatched report entry is
+preserved. These are reports over Go fixtures, not four other languages. The
+additional Go/example files are pinned to the same base for this inventory:
+
+| Path | SHA-256 |
+|---|---|
+| `cmd/fathom/review_test.go` | `59d1b4f8e4fe97ad81ca9c623fd81d272707039604cafc58b379f7fb520b1252` |
+| `cmd/fathom/tests_coverage_test.go` | `61cec388d37bbb9558566d4c26a83a0c6a3911cb5a48814fa80a09bbcc7bd689` |
+| `cmd/fathom/tests_coverage_foreign_test.go` | `e183b416022d0ccc9ae96d98095103bfc55e2448e1477983a60bd3ace86fd05c` |
+| `cmd/fathom/coverage_ingest_test.go` | `aae2c71b10a0f1614c3b415a6d83e61b7dba9b99d32d6e403f34beaea6eae781` |
+| `internal/analysis/coverage/profile_test.go` | `a8af73df666626ebf7630dc611e09377722e6309d690c69a29c93985efc823a2` |
+
+These are literal missing registration/input/receipt items, not a new demand
+for native producers or independent oracles. T3/TQ-M3 do not prescribe a new
+native-producer/oracle accuracy bar. Native producer interoperability and runtime
+accuracy remain **unmeasured**, separate from the missing original inputs.
+Nothing here promotes synthetic hits to execution truth or changes the original
+cohort or its bar after probes exist.
 
 ## Remaining inventory: CHG-M2
 
-Do not dispatch `docs/bench/readings/realignment/chg-8-cold-latency.md`.
-Realignment CHG-M2 and vision 46 section 14b request per-dialect cold latency,
-but do not register a workload/corpus denominator, the cold boundary, clock
-interval, trial count or decision statistic. The adjacent CHG-2's 500 ms cap
-remains unchanged. `internal/hookpath` is absent at base. Smallest remedy:
-identify/register the existing all-dialect workload and clock/trial definitions
-before sampling. Alternative: cite an existing registration covering them.
-No extractor-only timing, convenient dialect subset or new cap substitutes.
-This remains blocked inventory, with no placeholder reading or results.
+**DEFERRED under T4-3**, pending the integrating helper's frozen method on
+`origin/main`. Run only after that method lands. Do not dispatch
+`docs/bench/readings/realignment/chg-8-cold-latency.md` under this contract.
+The adjacent CHG-2's 500 ms cap remains unchanged. No replacement workload,
+clock, trial count or statistic is registered here; no actionable ruling request,
+placeholder reading or result is created.
 
 ## Decision models
 
