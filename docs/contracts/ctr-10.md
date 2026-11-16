@@ -173,10 +173,17 @@ H5 kind provability-lost. Empty arrays remain arrays, no literal values. Exact
 positive fixture spans come from `main.tf` fixture bytes, not fabricated location.
 API snapshot update and existing command switch integration are architect-owned.
 
-Review dimension receives `Checked bool`, `Reason string`, `AsOf string` and
-`Findings []Hazard` in a new internal `HazardDimension` projection. `Checked=false`
+The shipped HZ-2 review dimension carries `Checked bool`, `Reason string`,
+`AsOf string` and `Findings []iacfacts.IaCFinding` in its internal
+`HazardDimension` projection. The `findings` field carries the existing catalog
+facts and remains compatible with the legacy `iac` section. `Checked=false`
 requires nonempty Reason; absent catalog/source or timeout cannot become a clean
 empty answer. AsOf is the input revision supplied by caller, never wall clock.
+
+Architect decision 2026-11-16: the future hazard list arrives as a new additive
+field beside this findings list. The shape shipped by HZ-2 is never replaced,
+renamed or repurposed when the hazard engine arrives. No future hazard field or
+engine is implemented by this contract clarification.
 #311 must exercise the registered review_diff handler, not a facade-only test.
 Exact schema/projection wiring grants must be frozen with #167/#168 first.
 
