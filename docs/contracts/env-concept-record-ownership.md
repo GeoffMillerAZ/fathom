@@ -1,11 +1,40 @@
-# ENV concept ownership through the shared record checker
+# ENV concept ownership: deferred checker extension
 
-Status: UNAPPROVED PROPOSAL ONLY. WR-CORE-REC/U1 requires an architect ruling
-and the sole wave critic's review. No policy, schema, API, file grant, inventory,
-implementation or dispatch is authorized by this document.
-Base: 17d930d2f1b96b707b03ec84d5f87a3a5333c24d.
-This change owns only this new contract. The implementation paths below are a
-requested future allowlist, not present ownership or permission to write them.
+Status: DEFERRED by architect W18-1 (2026-11-16). The checker-extension proposal
+is not approved and is not an implementation or dispatch contract.
+Retained proposal source: 27f825061050307c03a4ce3d14e11f5d2652e7fc,
+following 01c9711ec9debaac6abc7593a2d1efc89d04b47d.
+
+## Current decision
+
+W18-1 chooses the existing DATA approach: concept IDs are field names of one CUE
+struct in the single inventory file, `calibration/environments/concepts.cue`.
+Each key denotes one concept; conflicting content for the same key is a CUE
+conflict reported by `cue vet`; W18-1 requires the schema's valid/invalid
+testdata pair to pin that behavior. No executed schema/vet proof is claimed here.
+Ownership uses the lane's single-file path grant, enforced by the existing path
+check. This status record creates no inventory, schema, fixture or grant.
+W18-2 retains T12's typed expectation on each record; it requires nothing from
+the record-id checker for these concept keys.
+
+Existing-mechanism check (W18-3): the keyed data shape, schema/vet conflict checks
+and single-file path grant/check solve the current identity and ownership need.
+Use that approach. No classifier, literal-CUE discovery, opaque-key grant or
+second ID system is authorized now; no such machinery is implemented or
+re-proposed by this status record.
+
+Revisit when: REC-6 makes concepts typed records, and not before.
+Revisit is a review trigger, not an implementation or dispatch grant.
+
+## Retained proposal: historical and nonnormative
+
+Everything below is the unchanged proposal body at the retained source above.
+Its old gap/prerequisite claims, UNSETTLED alternatives, classifier/discovery/grant
+shapes, future paths and prospective tests are historical, superseded by W18-1.
+They are not current requirements, pending work orders, approvals or reasons to
+hold the chosen DATA approach for a checker extension. Do not implement or
+re-propose them before the sole REC-6 revisit condition. The existing shared
+checker and allocator are unchanged.
 
 ## Governing sources and the existing gap
 
