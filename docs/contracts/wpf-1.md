@@ -1,6 +1,7 @@
 # WPF-1 — phase-separated wiring conformance schema
 
-Status: draft for independent contract criticism; not an implementation or approval receipt.
+Status: F1: HOLD — unapproved applicability policy; governed F5/F6 corrections only.
+Not an implementation, approval receipt or implementation dispatch.
 Scope: `docs/plans/wiring-proof.md`, WPF-1. Governing design:
 `docs/design/wiring-proof.md` WP-D1, WP-D3, WP-D6 (WP-D2 clarifies admission).
 ADR-110 remains proposed; this contract specifies the assigned work, not its acceptance.
@@ -19,7 +20,9 @@ change, paid experiment or future map feature is authorized. No matching future
 promotion or revisit trigger is evidenced by this document-only work. A harness
 unable to expose a required observation would fire ADR-110's first revisit trigger;
 no live harness is evaluated here. Compatibility: new file-only shapes, no change
-to an existing schema or published API. Free option: separate records preserve
+to an existing schema or published API; F1 conflicts with frozen BEN admission
+policy below and remains unapproved. This contract changes no frozen interface.
+Free option: separate records preserve
 later adapters without building them. No intent record needs changing.
 
 | Decision | Settled choice and governing text |
@@ -29,7 +32,7 @@ later adapters without building them. No intent record needs changing.
 | D3 Closed wire shapes | Definitions and nested structs are closed, explicit lower_snake_case keys, finite vocabularies, no extension map. W3-4; LAB-1's definitions and required-field conventions in `schema/labs/schema.cue`. No Go exported types are needed. |
 | D4 Evidence and identity | Explicit phase, source kind, range, clock, pins, revisions, digests and expected service; registration, negotiation and answered call evidence are independently required for W1, startup service for W2. WP-D1 W1/W2 table rows, WP-D3/D6. |
 | D5 Validation mechanism | Existing CUE Go API, independent mutations of validated positives, field-specific diagnostics; `schema/labs/schema_test.go` and WPF-1. No shell CUE process in Go tests, no new dependency. |
-| D6 Defaults and absence | Explicit product absence and per-rung applicability; surface-off alone exempts no other channel. Preserve hook-only profiles. No implicit PASS, missing samples stay UNKNOWN, N/A needs preregistered absence evidence, daemon-free arms have no invented stamp. WP-D1 table and baseline paragraph, WP-D2 registration mask, WP-D3 channels; ADR-105 decision 9 exempts stamps/RT-M15 only. |
+| D6 Defaults and absence — F1 HOLD | Proposed explicit product absence and per-rung applicability; surface-off alone exempts no other channel. Product-present hook-only applicability is unapproved pending the ruling below. No implicit PASS, missing samples stay UNKNOWN, N/A needs preregistered absence evidence, daemon-free arms have no invented stamp. WP-D1 table and baseline paragraph, WP-D2 registration mask, WP-D3 channels; ADR-105 decision 9 exempts stamps/RT-M15 only. |
 | D7 Windows and cloud | Actual harness plus environment, explicit WSL witness fields; fixtures never certify installation. WP-D5/D6, WPF-7/8. |
 | D8 Routine encodings | Exact definitions below use LAB-1 SHA/text/arm vocabulary, W3-4 closed JSON, and WP-D3's canonical effective data. Encoding choices impose no extra eligibility policy. |
 | D9 Honest outcomes | Preserve known counts independently of unavailable capture or unvalidated classifiers; no invented numerator or provenance. P3, WP-D1 rate paragraph, LAB-M1a counts-only rule; `internal/labs/firing.go` `FiringReadingRow` and `stages` preserve margins while stages may be not measured. |
@@ -38,8 +41,35 @@ later adapters without building them. No intent record needs changing.
 W2-3 approval still requires an independent LAND verdict and citations for every
 decision; W3-2 requires implementing tests to match every assertion below. Exact
 field names and conservative mechanics are settled here under D3/D5/D8, not
-escalated for lack of literal schema prose. No unresolved policy decision was
-identified. F1-F4 correct conflicts with the cited governing text and its evidence/encoding requirements; they do not restrict supported profiles or change policy. Approval remains pending independent criticism. A missing downstream interface is a dependency, not permission to invent it.
+escalated for lack of literal schema prose. F2 count preservation, F3 integer ratios
+and F4 registration/service bindings remain unchanged. F5/F6 below correct governed
+evidence constraints; they do not settle F1. A missing downstream interface is a
+dependency, not permission to invent it.
+
+### F1: HOLD — product-present disabled-channel applicability
+
+Frozen [CTR-13](ctr-13.md), section “One preflight admission contract shared with
+CTR-12 (U1)” (the paragraph beginning “Each applicable rung”), permits NOT-APPLICABLE only where a baseline's
+frozen applicability profile explicitly declares no product/daemon. T2-1 makes
+CTR-13 and [bench consolidation](bench-consolidation.md) at `83226aece` binding.
+The proposed per-channel mask below instead permits W1 N/A on a product-present
+hook-only profile, and W2/W3 N/A for disabled prime/hooks while product is present.
+WP-D1's ladder/baseline paragraph, WP-D2's frozen mask, WP-D3's separate channels
+and WP-R3 motivate that proposal but do not amend frozen CTR-13. ADR-105 decision 9
+exempts daemon stamps/RT-M15 only. No ruling in T2 or W1-W9 resolves this conflict.
+
+Unapproved question: may a product-present profile use N/A for a disabled channel
+with frozen absence evidence? Recommendation: a narrow BEN amendment permitting
+exactly that case, requiring preregistered applicability and frozen absence evidence,
+with unchanged scoring, whole-pair preflight, assigned-arm accounting and outcome
+separation. Alternative: leave such profiles unadmitted pending an architect ruling.
+Neither option is adopted here. Never translate N/A to PASS. The applicability
+paragraphs, hook_only_preflight positive and related surface-off assertions remain
+explicitly held proposals, not approved acceptance policy; preserve them for the
+ruling rather than weakening their assertions. W2-3 approval is impossible while
+this point lacks an architect answer and the independent verdict is HOLD.
+No implementation dispatch follows this contract. Frozen BEN, plan and design are
+unchanged; the controller carries F1 in the next hourly escalation.
 
 ## Files and implementation boundary
 
@@ -82,7 +112,7 @@ Scalar definitions:
   `"macos" | "linux" | "windows"`; `#SourceKind`:
   `"registration" | "negotiation" | "call_result" | "startup_delivery" |
   "hook_trigger" | "hook_event" | "beat" | "revision" | "resource_sample" |
-  "channel_inventory" | "eligibility" | "action"`.
+  "channel_inventory" | "eligibility" | "action" | "action_capture"`.
 - `#BenchHarness`: LAB-1's exact enum `"replay" | "fork" | "scenario" |
   "hook-path" | "decide" | "indexbench" | "reviewbench" | "contextbench" |
   "langbench"`. `#Channel`: `"surface" | "stanza" | "descriptions" | "hooks" |
@@ -94,19 +124,27 @@ Scalar definitions:
 | `#Environment` | `kind: #EnvironmentKind`, `host_class: #HostClass`, `harness_pin: #Text`, `permitted_tools: [...#Text]` sorted by value, `startup_instructions_digest: #SHA`, `action_capture_digest: #SHA`; WSL only: required `guest_revision: #Text`, `path_translation: [...#Translation]` nonempty and sorted by `guest_path`; otherwise these two keys forbidden. WSL requires `host_class: "windows"`, `harness: codex-cli` via parent pins. |
 | `#Translation` | `guest_path: #Text`, `fixture_path: #Text`; both relative slash paths with no leading slash, drive prefix, backslash, empty segment, `.` or `..` segment. No machine path in public data. |
 | `#ChannelSpec` | `channel: #Channel`, `enabled: bool`, `content_digest: #SHA`; empty/off contents still hash canonical empty data. |
-| `#HookSpec` | `id: #Text`, `enabled: bool`, `trigger_digest: #SHA`, `event: #Text`, `timeout_ns: int & >0`. Inventory includes disabled and unsupported declared hooks, not only observed successes. |
+| `#HookSpec` | `id: #Text`, `enabled: bool`, `trigger_digest: #SHA`, `event: #Text`, `timeout_ns: int & >0`. Inventory includes disabled and unsupported declared hooks, not only observed successes; retain their trigger/event/timeout descriptors and channel_inventory evidence of disabled status. |
 | `#Requirement` | `rung: #EnvRung`, `applicable: bool`, `reason: #Text`. Exactly five entries, ordered W0,W1,W2,W3,W6. All applicable rungs are required; no separate skip flag. |
 | `#Bound` | `metric: #Metric`, `maximum: number & >=0`. Sorted unique by metric; registration chooses bounds before data. |
 | `#Metric` | `"index_age_ns" | "payload_age_ns" | "hook_p95_ns" | "phys_footprint_bytes" | "resident_bytes" | "cpu_seconds_per_ingest"`. Units are in names, never interchangeable heap measurements. |
 | `#Budget` | `tenant_policy_digest: #SHA`, `bounds: [...#Bound]` nonempty. Must contain index/payload ages and hook p95 when their channels are enabled; daemon-free profiles require the host resident/footprint bound but do not acquire daemon CPU/age requirements. Apple hosts use footprint, Linux/WSL use resident; exact limits are preregistered inputs, not invented global bars. FT-D4 and WP-D1 W6. |
 | `#Profile` | `id: #Text`, `expected_service: #Text`, `product_present: bool`, `lab: #LabID`, `bench_harness: #BenchHarness`, `pins: #Pins`, `environment: #Environment`, `channels: [...#ChannelSpec]` exactly all eight in lexical channel order, `hooks: [...#HookSpec]` sorted by id, `surface_tools: [...#Text]` sorted unique, `requirements: [...#Requirement]`, `workload_digest: #SHA`, `budget: #Budget`, `budget_digest: #SHA`, `source_digests: [...#SourceDigest]` nonempty sorted by id (must include `delivery_parameters`), `profile_digest: #SHA`, `environment_digest: #SHA`, `frozen_at: #Time`. No delivery bars or k. |
 | `#SourceDigest` | `id: #Text`, `digest: #SHA`; references existing labs/knob, skill, primer, map and readout source contents; no path-derived substitute digest. |
-| `#Evidence` | `id: #Text`, `service?: #Text`, `source_kind: #SourceKind`, `phase: #Phase`, `session_id: #Text`, `call_id: #Text`, `range: {artifact_digest: #SHA, start: int & >=0, end: int & >start}`, `observed_at: #Time`, `product_commit: #Commit`, `subject_commit: #Commit`, `profile_digest: #SHA`, `harness_pin: #Text`, `reason: #Text`. Range is half-open byte offsets into a local source artifact identified by hash. `call_id` is the correlated scripted/agent operation id even for non-tool events; it does not imply an agent call. |
+| `#Evidence` | `id: #Text`, `service?: #Text`, `source_kind: #SourceKind`, `phase: #Phase`, `session_id: #Text`, `call_id: #Text`, `range: {artifact_digest: #SHA, start: int & >=0, end: int & >start}`, `observed_at: #Time`, `product_commit: #Commit`, `subject_commit: #Commit`, `profile_digest: #SHA`, `harness_pin: #Text`, `reason: #Text`, `capture?: #CaptureSummary`. capture is required exactly when source_kind is action_capture and forbidden otherwise; action_capture evidence is agent-phase only. Range is half-open byte offsets into a local source artifact identified by hash. `call_id` is the correlated scripted/agent operation id even for non-tool events; it does not imply an agent call. |
 | `#RungResult` | `verdict: #Verdict`, `reason: #Text`, `evidence_ids: [...#Text]` sorted unique; nonempty except UNKNOWN, which may have no observation. |
 | `#Absence` | `channel: #Channel`, `evidence_ids: [...#Text]` nonempty sorted unique. No bare boolean constitutes absence evidence. |
 | `#Registration` | `service: #Text`, `surface_tools: [...#Text]` sorted unique, `evidence_ids: [...#Text]` nonempty sorted unique; every reference has source_kind registration. |
 | `#HookObservation` | `hook_id: #Text`, `trigger_evidence_id: #Text`, `event_evidence_id: #Text`, `beat_evidence_id: #Text`. |
 | `#Sample` | `metric: #Metric`, `value: number & >=0`, `evidence_ids: [...#Text]` nonempty sorted unique. One entry per observed bound metric, sorted by metric; no sample means unknown, not zero. |
+
+Hook inventory consistency (F6, WP-D1 W3, WP-D3, WP-R3): the
+hooks channel.enabled equals whether any #HookSpec has enabled: true, in both
+directions, regardless of verdict or product presence. A disabled hooks channel
+retains all disabled and unsupported declared HookSpecs, never silently drops them.
+No hooks absence proof can coexist with an enabled treatment hook. Unsupported
+hooks remain disabled with channel_inventory evidence; missing evidence is not
+absence. This consistency rule does not decide F1's applicability policy.
 
 Digest algorithm (D8, WP-D3/D6): SHA-256 over UTF-8 compact canonical JSON;
 object keys lexical, no insignificant whitespace, integers decimal, other numbers in non-exponent decimal with no redundant
@@ -153,7 +191,10 @@ revision evidence, W1 registration, negotiation and answered probe evidence (inc
 W3 all hook triple evidence, W6 its sample evidence. FAIL and UNKNOWN are valid
 records, never admission success. Schema validity alone is not an admission verdict.
 
-Applicability is frozen per rung and channel, never inferred from surface-off.
+**Proposed applicability — F1 HOLD.** The following two paragraphs and their
+policy-dependent fixtures/assertions await the architect answer above; they cannot
+authorize schema implementation or BEN admission. Other evidence constraints apply
+independently. Applicability is frozen per rung and channel, never inferred from surface-off.
 W0 is applicable iff product_present; W1 iff the surface channel is enabled;
 W2 iff prime is enabled; W3 iff at least one declared hook is enabled; W6 is
 always applicable. Disabled surface has empty surface_tools, negotiated_tools and
@@ -171,8 +212,8 @@ harness pin, permitted tools, startup instructions and action capture, also boun
 by environment_digest. Other declared channels retain their own enabled/absence
 evidence; this flag does not fabricate their contents. Every off channel needs
 inventory absence evidence. Missing inventory never proves absence. Unsupported
-hooks are declared disabled with evidence, never silently skipped. A hook-only
-positive has product_present: true, surface off, prime/hooks enabled, W1 N/A and
+hooks are declared disabled with evidence, never silently skipped. The held hook-only
+positive proposes product_present: true, surface off, prime/hooks enabled, W1 N/A and
 W0/W2/W3/W6 PASS. No surface-off shortcut is permitted. Authority: WP-D1 table
 W0-W3 and its exact paragraph beginning “A baseline without fathom”, WP-D2's
 applicability mask, WP-D3's separate channels, WP-R3; ADR-105 decision 9 removes
@@ -212,8 +253,30 @@ retain any actual available provenance without manufacturing a digest. For
 observations, validated means usable captured events, not classifier validation.
 Every provenance evidence_id resolves exactly once in the outcome evidence list;
 eligibility references eligibility events, delivery references call_result events,
-action_capture references action events. CUE binds declared status/provenance only;
-downstream owners prove validation.
+action_capture references capture-completeness evidence, never requires an action event.
+For action_capture only, validated requires exactly one evidence_id of source_kind
+`action_capture`, whose capture.capability equals the enclosing capability and
+whose summary has complete: true. Its set_digest binds the captured artifact/set,
+including an empty action set. Unavailable capture does not manufacture
+evidence_ids or set_digest; retain any real incomplete capture evidence and digests
+without promoting validation. Unvalidated capture may retain real evidence/digests but
+cannot produce measured W5. CUE binds declared status/provenance only; downstream
+owners prove validation and completeness against captured bytes.
+
+`#CaptureSummary` is a closed object with exactly `capability: #Text`,
+`complete: bool`, `action_evidence_ids: [...#Text]` sorted unique, present even when
+empty. It summarizes coverage of this capability's delivery/action windows for the
+outcome's frozen k, not a tool action; its evidence range points to the capture
+manifest, even when no action occurred. Every action_evidence_id resolves exactly
+once to agent-phase source_kind action in the same outcome, with the existing
+session/pin/profile bindings. The summary lists the observed action events, not
+only successful target matches; acted remains the matched-target count, never the
+length of this list. A complete empty capture has action_evidence_ids: [] and can
+support known acted zero without inventing an action. It cannot support positive
+acted: when the validated summary's action list is empty, acted must be known zero.
+A nonempty list does not by itself prove any match. WPF-3 owns actual window
+coverage, decoding and target joins. This single summary shape serves the present
+zero-action case; it adds no generic capture registry or alternate decoder.
 
 `#Denominator` fields: `eligible_opportunities: #Count`, `delivered_targets: #Count`,
 `eligibility: #Provenance`, `delivery: #Provenance`.
@@ -277,7 +340,10 @@ zero-use or zero-action outcome never changes its preflight representation.
 
 All functions live in `internal/wiring/conformance_schema_test.go`; names are exact.
 The implementing lane writes tests first, witnesses intended assertion RED, then
-adds schema/fixtures. No RED is claimed by this authoring lane. Proof command:
+adds schema/fixtures. No runtime RED is claimed by this authoring lane; local
+structural RED for F5/F6
+is separate evidence about this document only. Implementation remains on F1 HOLD.
+Future implementation proof command:
 `go test -race ./internal/wiring -run '^TestConformanceSchema'`.
 
 1. `TestConformanceSchemaValid`: compile schema with valid.cue using cuecontext;
@@ -285,11 +351,13 @@ adds schema/fixtures. No RED is claimed by this authoring lane. Proof command:
    then marshal JSON successfully. Fixtures: `wired_preflight`, `baseline_preflight`,
    `hook_only_preflight`, `unknown_preflight`, `failed_preflight`, `wsl_preflight` against #Preflight;
    `zero_opportunities`, `zero_calls`, `zero_actions`, `acted_at_k`,
-   `two_deliveries_no_capture`, `classifier_counts_only`,
+   `two_deliveries_no_capture`, `two_deliveries_complete_no_actions`, `classifier_counts_only`,
    `classifier_failed_validation`, `unknown_denominator`,
    `one_third`, `two_thirds` against #Outcome;
    `preflight_only`, `with_zero_calls`, `with_zero_actions` against #Conformance.
-   Wired has all rungs PASS; baseline has explicit product absence, four N/A plus W6 PASS and proved absence; hook-only has W1 N/A and W0/W2/W3/W6 PASS with actual product, primer and hook bindings;
+   hook_only_preflight is a held policy proposal under F1, not an approved valid
+   fixture or admitted profile until the architect answers; retain its exact proposed
+   assertions and dependent negatives. Wired has all rungs PASS; baseline has explicit product absence, four N/A plus W6 PASS and proved absence; hook-only has W1 N/A and W0/W2/W3/W6 PASS with actual product, primer and hook bindings;
    unknown/failed have applicable UNKNOWN/FAIL respectively, not masquerading as PASS.
    Assert empty lists encode `[]`, never null; no fixture asserts real installation.
 2. `TestConformanceSchemaNegatives`: invalid.cue is entirely commented, LAB-1 style
@@ -306,16 +374,25 @@ adds schema/fixtures. No RED is claimed by this authoring lane. Proof command:
    `acted` at preflight root and under profile, and w4/w5 under rungs: each rejected
    as unknown field. Agent evidence in preflight and preflight evidence in outcome
    each rejected. Valid zero-call/zero-action envelopes retain byte-identical
-   canonical preflight JSON. This proves structural separation, not WPF-4 scoring.
+   canonical preflight JSON, including with two_deliveries_complete_no_actions.
+   Capture summaries are rejected at preflight root and under profile; action_capture
+   source evidence is rejected in preflight. This proves structural separation, not WPF-4 scoring.
 4. `TestConformanceSchemaOutcomeBoundaries`: W4 0/0 and W5 0/0 are not_measured
    with zero_denominator; validated W4 0/2 and W5 0/2 are measured integer ratios.
    1/2 and 2/2 derive displays 0.5 and 1. For one_third and two_thirds independently,
    validate, marshal JSON, decode and revalidate: integer numerator 1 or 2 and
    denominator 3 survive exactly, no value key appears, and derived displays equal
    the strings above. Reject a redundant value key even if numerically plausible.
+   two_deliveries_complete_no_actions retains delivered_targets known 2, validated
+   delivery and capture, one action_capture evidence item with complete true, no
+   source_kind action evidence items, action_evidence_ids is [], acted known 0,
+   and W5 measured numerator 0 and denominator 2. Validate, marshal, decode and
+   revalidate; assert every listed field and empty action list, not just success.
    two_deliveries_no_capture retains delivered_targets known 2, W5 not_measured
    unavailable with known denominator 2, acted unavailable, empty capture evidence
-   and no invented digests/numerator. classifier_counts_only retains known eligible
+   and no invented digests/numerator. Assert UNKNOWN capture remains unavailable,
+   not known zero or a measured rate; neither complete-zero nor missing capture
+   changes preflight or admission. classifier_counts_only retains known eligible
    2 and successful_calls 1 with unvalidated eligibility, W4 not_measured unvalidated,
    no numerator or validation digest. classifier_failed_validation retains the same
    counts and actual classifier/failed-reading digests with eligibility unvalidated
@@ -337,6 +414,7 @@ Negative case inventory (each semicolon-separated name is a separate subtest of
 | `missing_pin`; `short_product_commit`; `branch_subject_commit`; `bad_digest`; `profile_name_as_digest` | Remove model_pin; use 12-hex product; subject `"main"`; uppercase SHA; profile digest `"profile-a"`; each fails, independently. |
 | `w4_requirement`; `w5_requirement`; `missing_requirement`; `duplicate_requirement` | Replace one requirement rung with W4/W5; remove W6; duplicate W3 in W6 slot; reject closed five-rung mask. |
 | `applicable_na`; `inapplicable_pass`; `na_without_reason`; `absence_without_inventory`; `missing_off_channel`; `enabled_absence`; `baseline_product_present_mismatch`; `baseline_enabled_hook`; `surface_off_w0_na`; `surface_off_w2_na`; `surface_off_w3_na`; `missing_baseline_checks`; `wrong_baseline_capture` | Contradict applicability/verdict; remove reason; replace absence reference with existing non-inventory evidence id; drop an off-channel absence; cite enabled channel; make baseline W0 applicable while product_present remains false; enable one declared baseline hook while product_present remains false; in validated hook-only fixture change W0, W2 or W3 requirement applicable to false separately (reject the inconsistent requirement/rung); remove baseline_checks; point action_capture_evidence_id to an existing non-action item; each rejected. |
+| `hooks_channel_contradiction`; `hooks_channel_enabled_without_hook` | From wired_preflight with enabled hooks and W3 PASS, change only hooks channel.enabled to false, retaining HookSpecs, observations, verdicts and evidence; reject at channels/hooks cross-field rule. Independently start with baseline_preflight's disabled hooks inventory and complete absence proof, change only hooks channel.enabled to true; reject, without adding hooks or deleting absence evidence. No multi-field repair substitutes for either test. |
 | `ancestor_served`; `wrong_installed`; `missing_served`; `recent_wrong_index`; `wrong_primer`; `unnegotiated_tool`; `no_answered_probe`; `missing_hook`; `unknown_hook`; `wrong_beat_kind`; `unjoined_beat` | Change served/installed to another full commit; remove served on PASS; change index while retaining fresh age; change primer digest; change negotiated tool; empty probe ids; remove hook triple; replace hook_id; change beat evidence kind; change its call_id. Reject each claimed PASS independently. |
 | `missing_registration`; `missing_registration_evidence`; `wrong_registration_kind`; `wrong_registration_service`; `wrong_registration_tools`; `missing_registration_rung_citation`; `missing_startup_service`; `wrong_startup_service` | On wired PASS remove registration; empty only registration.evidence_ids; point its evidence_ids to existing negotiation evidence; change registration.service; change one registration.surface_tools entry; remove only its registration evidence id from W1 evidence_ids; remove startup evidence service; change only startup evidence service to another service while subject/profile/primer remain correct. Each independently rejects W1 or W2 at its changed field or constrained parent. |
 | `missing_sample`; `over_budget`; `wrong_footprint_metric` | Drop a required sample; exceed one maximum; replace required host footprint metric with resident metric; reject W6 PASS. UNKNOWN fixture with missing samples remains valid. |
@@ -346,6 +424,7 @@ Negative case inventory (each semicolon-separated name is a separate subtest of
 | `zero_measured_denominator`; `negative_count`; `numerator_exceeds_denominator`; `redundant_rate_value`; `wrong_denominator`; `missing_denominator_provenance`; `zero_k`; `late_k` | Set measured denominator to 0; known count -1; numerator > denominator; add value to measured rate; change only rate denominator against known provenance count; remove validation_reading_digest from validated measured W4 eligibility; k=0; k_frozen_at=start; reject each. |
 | `missing_expected_service`; `missing_registration_evidence_service`; `wrong_registration_evidence_service`; `missing_negotiation_service`; `wrong_negotiation_service`; `missing_probe_service`; `wrong_probe_service` | Remove profile.expected_service; remove or change only service on registration, negotiation or answered-probe evidence respectively; reject each W1 PASS independently. |
 | `missing_measured_numerator`; `unavailable_numerator`; `unvalidated_numerator`; `unavailable_measured`; `unvalidated_measured`; `fabricated_acted_zero`; `unknown_as_zero`; `positive_zero_denominator_cause`; `wrong_w5_numerator`; `unsupported_w4_numerator` | Remove measured numerator; add numerator to unavailable or unvalidated rate separately; replace action_capture.state on a measured positive W5 with unavailable; replace eligibility.state on measured positive W4 with unvalidated (keep real digests); replace unavailable acted with known zero under unavailable capture; add count:0 to unavailable denominator; change cause to zero_denominator on a positive unavailable denominator; change measured W5 numerator within bounds but unequal acted.count; raise W4 numerator within denominator but above known successful_calls.count. Each single mutation rejects at rate/count/provenance comparison. |
+| `missing_capture_summary`; `wrong_capture_kind`; `incomplete_capture_measured`; `dangling_captured_action`; `empty_capture_positive_acted`; `capture_in_preflight`; `capture_under_profile`; `capture_evidence_in_preflight` | From two_deliveries_complete_no_actions, remove only capture on its action_capture evidence; change only that evidence source_kind to action; change only capture.complete to false; replace only capture.action_evidence_ids with one nonexistent id; change only acted.count to 1 while keeping the empty action list and W5 numerator zero. Each independently rejects its field or constrained parent. From wired_preflight, add that valid summary at root, then separately under profile, then separately replace one existing evidence item with the valid agent-phase action_capture item; each independently rejects. |
 
 No multi-fault fixture may stand in for any named case. Additional independent
 mutations may strengthen coverage; weaker assertions are FIX under W3-2. The
@@ -362,10 +441,22 @@ actual checks and whole-pair admission; they must validate both preflights befor
 either arm starts. WPF-1's agent_start_at is the registered boundary; downstream
 must compare it to the actual first action, not trust a forged timestamp.
 
-No frozen BEN-1 registration seam, BEN-2 RunReadiness signature, WR-1/2 admission
-API, or WR-4/5/12 stamp/firing output contract was supplied here. Their exact
-interfaces remain downstream blockers for WPF-2/4/5/6/9/10 and their dependent rows;
-this document invents none and does not claim those rows proven. WPF-9 owns hash
+BEN interfaces are approved and frozen: T2-1 identifies origin/main `83226aece`,
+[CTR-13](ctr-13.md) and [bench consolidation](bench-consolidation.md). CTR-13's
+shared ledger boundary supplies PreflightReceipt/PairPreflight/AdmitPair; its
+six-readiness-harness section supplies Control, ControlResult, Runner and
+RunReadiness. Registration/consolidation follow those exact contracts and their
+serial grants, not an invented runner or a claim that BEN lacks an interface.
+Approval of those contracts is not proof of BEN implementation. F1's mismatch
+with their N/A restriction remains HOLD and cannot be hidden in an adapter.
+
+LAB/WR frozen contracts remain pending under T2-2: LAB-7 and WR-1/2/4/5/12 exact
+adapter/admission/stamp/firing interfaces still block their dependent WPF rows.
+The shared transcript decoder already exists: `internal/transcript/decode.go`
+DecodeLine, with event projection in `internal/transcript/events.go`; WPF extends
+LAB-7 rather than introducing a second decoder (WP-D5). Existing decoding is not
+proof of complete action capture or of the pending frozen interfaces. This contract
+invents none and does not claim dependent rows proven. WPF-9 owns hash
 recomputation; WPF-3 owns actual action windows; WPF-M1 owns witnessed environments.
 Independent criticism and any approval receipt remain the controller's work.
 
