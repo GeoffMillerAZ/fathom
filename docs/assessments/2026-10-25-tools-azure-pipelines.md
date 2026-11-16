@@ -166,3 +166,44 @@ malformed JSON, each rejecting the whole receipt with no summary file. The
 actual public-dispatch race test and strict top-level Reading round-trip passed;
 no nested Reading was touched. Current canonical syntax metrics are historical
 and explicitly not claimed remeasured by this runtime feasibility probe.
+
+
+### Correction 1: receipt refusal and containment, 2026-11-16
+
+The receipt boundary previously let JSON's last duplicate key win, assumed
+object/string shapes before validating them, and left an old summary on a failed
+retry. Both entrypoints now use one recursive duplicate-key decoder and typed
+whole-unit `ReceiptRefusal`. Invalid JSON or field types produce exit 1 and a
+stable diagnostic, without a traceback or success summary. An explicitly owned
+summary is invalidated before parsing/capture, after refusing any input/output
+alias; successful serialization replaces it atomically. Tests cover path,
+symlink and hard-link input preservation and valid-to-invalid retries.
+
+The runtime environment now overrides inherited `DOTNET_NOLOGO=0` with `1`
+alongside the other T14 guards before each invocation. CLI home and NuGet caches
+are confined under the requested output's `runtime/`, with `HOME` unchanged.
+The README's current build preflight includes `DOTNET_NOLOGO=1`. The retained
+historical build helper omits this guard and is deliberately immutable. Its old
+process environment was not captured; new guards cannot prove that environment
+or disprove prior side effects. The certificate remains LEAVE UNCHANGED; only
+previously recorded metadata was consulted, with no new certificate, key or store
+query, trust change or cleanup.
+
+The correction's final 18-test Python suite fails against exact predecessor
+464c0a3f2 at 154 assertions (zero test errors), then passes with the correction.
+Five separate duplicate-key, stale-success, shape, SDK-guard and alias mutants
+fail at respectively 4, 8, 13, 1 and 6 assertions; restored tests pass. Every SDK
+launch in these checks is mocked. The earlier six-test mutation/proof account
+above describes the retained original run, not these correction controls.
+
+Scoped race verification selects the already-landed
+`TestCommittedReadingsAreCanonical`, `TestRequiredKindsThroughCanonical` and
+`TestCommittedReadingsRoundTrip` under recipe 13.5.1, plus
+`TestAzurePipeline211PublicDispatch`; all four passed with `-race -count=1`.
+Release-note and merge-debris checks also passed. Receipts remain in the correction's ignored
+workspace. These tests check committed serialization/kinds and public dispatch;
+they do not rerun or promote an oracle population. No original native proof,
+collector, capture, raw JSON, canonical fixture or plan row is changed. The four
+AUTHORED controls remain FEASIBILITY ONLY (two evaluated, two refused), with
+zero canonical files measured; the historical 91-file L2 C reading and absent
+L3 remain exactly as recorded. Independent fresh critic review is parent-owned.

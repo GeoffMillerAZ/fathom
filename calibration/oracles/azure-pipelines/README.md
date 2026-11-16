@@ -97,7 +97,9 @@ probe of runner.server's existing template evaluator. It grants no support tier
 or canonical reading. The driver is authored; it does not execute jobs, start a
 server or implement a resolver. Use the recipe's common heavy wrapper outside
 these commands; do not nest a lease. Retain existing outputs and choose fresh
-output directories for reruns.
+output directories for reruns. A retry in an explicitly owned output location
+invalidates its prior success receipt before validation; aliased input/output
+paths (including symlinks and hard links) are refused before any mutation.
 
 Acquire the exact MIT source at release v3.14.0, commit
 069646146c90d649c74dfd7a34569c9420195838 from
@@ -118,7 +120,7 @@ export DOTNET_CLI_HOME="$PWD/workspace/tools/azure-211/cli-home"
 export NUGET_PACKAGES="$PWD/workspace/tools/azure-211/nuget/packages"
 export NUGET_HTTP_CACHE_PATH="$PWD/workspace/tools/azure-211/nuget/http"
 export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_ADD_GLOBAL_TOOLS_TO_PATH=false
-export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 export DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0
 export MSBUILDDISABLENODEREUSE=1
 ```
@@ -140,7 +142,7 @@ workspace/tools/azure-211/dotnet/dotnet build workspace/tools/azure-211/probe/Pr
 python3 -B calibration/oracles/azure-pipelines/run_offline_211.py --dotnet workspace/tools/azure-211/dotnet/dotnet --assembly workspace/tools/azure-211/probe/bin/Release/net8.0/Probe.dll --out workspace/artifacts/lang-211/azure-runtime-replay
 python3 -B -m unittest discover -s calibration/oracles/azure-pipelines -p test_offline_probe_211.py
 bash scripts/fathom-go.sh test -race -count=1 ./pkg/lang -run '^TestAzurePipeline211PublicDispatch$'
-bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^TestCommittedReadingsRoundTrip$'
+bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestCommittedReadingsAreCanonical|TestRequiredKindsThroughCanonical)$'
 ```
 
 The runtime launcher uses `/usr/bin/sandbox-exec` with `(deny network*)`; failure
@@ -162,5 +164,33 @@ and failed attempts are retained under workspace/artifacts/lang-211.
 
 The first build unexpectedly emitted a development-certificate installation
 notice; actual global state remains uninspected and controller-owned. The
-explicit environment above prevents repeating that SDK first-run behavior.
+current environment above is required before each invocation; it cannot prove
+the historical build environment or absence of earlier side effects.
 No server/trust command was run and no cleanup is performed before review.
+
+
+### Correction 1: receipt boundary and current launch guards
+
+Both Python entrypoints share one recursive duplicate-key decoder and the same
+`ReceiptRefusal` validation. JSON scalar/array roots, malformed receipt/case field
+types and conflicting duplicate keys refuse the whole unit with exit 1 and a
+`receipt_refused:` diagnostic. No summary is published on refusal. Successful
+summaries replace their destination atomically; retries invalidate the explicitly
+owned prior summary. Input/output aliases are refused before invalidation or
+capture writes. Preserve historical artifacts and use a fresh path for new work.
+
+The current launcher overrides inherited T14 guards, including `DOTNET_NOLOGO=1`,
+before its process invocation. CLI home and NuGet caches live under the requested
+output directory's `runtime/`; `HOME` remains inherited. Build commands require
+the explicit preflight above. The retained historical build helper lacks
+`DOTNET_NOLOGO`; it remains unchanged evidence, not a current recommended helper.
+Current guards cannot establish the old process environment.
+
+Correction tests use Python-mocked producer launches only. They cover duplicate
+keys at the root and nested objects, malformed type families, valid-to-invalid
+retries, path/symlink/hard-link alias refusal, typed errors and inherited guard
+overrides. Independent duplicate, stale-success, shape, guard and alias mutants
+must fail at assertions. No SDK, native producer, population, consumer, holdout
+or timing rerun is needed for these checks. The four authored controls remain
+FEASIBILITY ONLY: two evaluated, two refused, zero canonical files measured;
+the historical 91-file L2 C reading and absent L3 remain unchanged.
