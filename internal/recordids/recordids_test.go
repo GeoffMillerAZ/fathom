@@ -1,12 +1,14 @@
 package recordids
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -447,7 +449,7 @@ func TestCritic252TrustedInventoryUsesGitBlobBytes(t *testing.T) {
 	git := func(args ...string) string {
 		t.Helper()
 		c := exec.Command("git", append([]string{"-C", root}, args...)...)
-		c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Geoff Miller", "GIT_AUTHOR_EMAIL=geoff.e.miller@gmail.com", "GIT_COMMITTER_NAME=Geoff Miller", "GIT_COMMITTER_EMAIL=geoff.e.miller@gmail.com")
+		c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Fixture", "GIT_AUTHOR_EMAIL=fixture@example.invalid", "GIT_COMMITTER_NAME=Fixture", "GIT_COMMITTER_EMAIL=fixture@example.invalid")
 		b, err := c.CombinedOutput()
 		if err != nil {
 			t.Fatalf("git %v: %s %v", args, b, err)
@@ -456,7 +458,7 @@ func TestCritic252TrustedInventoryUsesGitBlobBytes(t *testing.T) {
 	}
 	git("init", "-q")
 	git("add", ".")
-	git("-c", "user.name=Geoff Miller", "-c", "user.email=geoff.e.miller@gmail.com", "commit", "-qm", "test: immutable input")
+	git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "test: immutable input")
 	revision := git("rev-parse", "HEAD")
 	if !strings.Contains(git("show", revision+":ADR.md"), "ADR-001") {
 		t.Fatal("invalid fixture")
@@ -476,7 +478,7 @@ func TestCritic252TrustedInventoryUsesGitBlobBytes(t *testing.T) {
 func rawTrustGit(t *testing.T, root string, args ...string) string {
 	t.Helper()
 	c := exec.Command("git", append([]string{"-C", root}, args...)...)
-	c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Geoff Miller", "GIT_AUTHOR_EMAIL=geoff.e.miller@gmail.com", "GIT_COMMITTER_NAME=Geoff Miller", "GIT_COMMITTER_EMAIL=geoff.e.miller@gmail.com")
+	c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Fixture", "GIT_AUTHOR_EMAIL=fixture@example.invalid", "GIT_COMMITTER_NAME=Fixture", "GIT_COMMITTER_EMAIL=fixture@example.invalid")
 	b, e := c.CombinedOutput()
 	if e != nil {
 		t.Fatalf("git %v: %s %v", args, b, e)
@@ -635,5 +637,80 @@ started:
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("git subprocess not cancelled")
+	}
+}
+
+func TestRecordIDDefaultObservationPathsRemainExact(t *testing.T) {
+	for _, family := range Defaults().Families {
+		if family.Name == "observation" {
+			if len(family.Files) != 2 || family.Files[0] != ".fathom/observations.md" || family.Files[1] != ".fathom/observations/*.md" {
+				t.Fatalf("observation paths changed: %v", family.Files)
+			}
+			return
+		}
+	}
+	t.Fatal("observation family absent")
+}
+
+func TestTrustedGitInventoryExactArguments(t *testing.T) {
+	root, lane := laneFixture(t)
+	laneManifest(t, root, "demo", lane)
+	write(t, root, "ADR.md", "## ADR-001: existing\n")
+	revision := rawTrustCommit(t, root)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := []string{"--no-replace-objects", "-C", root}
+	want := [][]string{
+		append(append([]string{}, prefix...), "cat-file", "-e", revision+"^{commit}"),
+		append(append([]string{}, prefix...), "ls-tree", "-r", "-z", revision),
+	}
+	for _, path := range []string{"ADR.md", "docs/lanes/demo.cue", "schema/records/lane.cue"} {
+		oid := rawTrustGit(t, root, "rev-parse", revision+":"+path)
+		want = append(want, append(append([]string{}, prefix...), "cat-file", "blob", oid))
+	}
+	spy := t.TempDir()
+	logPath := filepath.Join(spy, "argv")
+	script := `#!/bin/sh
+printf '%s\000' "$@" >> "$REC1_ARGV_LOG"
+printf '\000' >> "$REC1_ARGV_LOG"
+case "$#:$4:$5" in
+  6:cat-file:-e|6:cat-file:blob) ;;
+  7:ls-tree:-r) [ "$6" = -z ] || exit 41 ;;
+  *) exit 41 ;;
+esac
+exec "$REC1_REAL_GIT" "$@"
+`
+	if err := os.WriteFile(filepath.Join(spy, "git"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("REC1_ARGV_LOG", logPath)
+	t.Setenv("REC1_REAL_GIT", realGit)
+	t.Setenv("PATH", spy+string(os.PathListSeparator)+os.Getenv("PATH"))
+	state, err := LoadTrusted(context.Background(), root, revision)
+	raw, readErr := os.ReadFile(logPath)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if err != nil {
+		t.Fatalf("trusted read: %v; actual argv bytes %q", err, raw)
+	}
+	got := [][]string{}
+	for _, frame := range bytes.Split(raw, []byte{0, 0}) {
+		if len(frame) == 0 {
+			continue
+		}
+		args := []string{}
+		for _, arg := range bytes.Split(frame, []byte{0}) {
+			args = append(args, string(arg))
+		}
+		got = append(got, args)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Git argv = %#v, want exactly %#v", got, want)
+	}
+	if len(state.Inventory.Legacy) != 1 || state.Inventory.Legacy[0].ID != "ADR-001" {
+		t.Fatalf("fixture inventory %+v", state.Inventory.Legacy)
 	}
 }

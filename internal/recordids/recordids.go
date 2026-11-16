@@ -23,6 +23,7 @@ import (
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -64,7 +65,7 @@ func Defaults() Config {
 		{Name: "invariant", Files: []string{"docs/intent/invariants.md"}, Pattern: `^\|\s*(I[0-9]+)\s*\|`},
 		{Name: "future", Files: []string{"docs/intent/futures.md", "docs/intent/futures/*.md"}, Pattern: `^#{2,6}\s+(F[0-9]+)\b`},
 		{Name: "incident", Files: []string{"docs/intent/incidents.md"}, Pattern: `^(?:#{2,6}\s+|-\s+|\*\*)(INC-[0-9]+)\b`},
-		{Name: "observation", Files: []string{".fathom/observations.md", ".fathom/observations/*.md"}, Pattern: `^#{2,6}\s+(O[0-9]+)\b`},
+		{Name: "observation", Files: []string{projectdir.ObservationLog.Rel(), projectdir.Observations.Rel("*.md")}, Pattern: `^#{2,6}\s+(O[0-9]+)\b`},
 		{Name: "plan", Files: []string{"docs/plans/*.md"}, Plans: true, PerFile: true},
 	}}
 }
@@ -714,8 +715,9 @@ func LoadTrusted(ctx context.Context, root, revision string) (TrustedState, erro
 		return b, nil
 	}
 	policy := Defaults()
-	if _, exists := tree[".fathom/record-ids.json"]; exists {
-		config, err := readBlob(".fathom/record-ids.json")
+	policyPath := projectdir.File("record-ids.json").Rel()
+	if _, exists := tree[policyPath]; exists {
+		config, err := readBlob(policyPath)
 		if err != nil {
 			return empty, err
 		}
@@ -730,7 +732,7 @@ func LoadTrusted(ctx context.Context, root, revision string) (TrustedState, erro
 		if err := ctx.Err(); err != nil {
 			return empty, err
 		}
-		include := p == "cue.mod/module.cue" || strings.HasPrefix(p, "schema/records/") || strings.HasPrefix(p, "docs/lanes/") && strings.Count(p, "/") == 2 && strings.HasSuffix(p, ".cue") || p == ".fathom/record-ids.json"
+		include := p == "cue.mod/module.cue" || strings.HasPrefix(p, "schema/records/") || strings.HasPrefix(p, "docs/lanes/") && strings.Count(p, "/") == 2 && strings.HasSuffix(p, ".cue") || p == policyPath
 		for _, f := range policy.Families {
 			for _, pattern := range f.Files {
 				if !CanonicalPattern(pattern) {

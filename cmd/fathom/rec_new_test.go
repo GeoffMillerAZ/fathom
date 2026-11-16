@@ -21,7 +21,7 @@ func recGit(t *testing.T, root string, args ...string) string {
 	t.Helper()
 	c := exec.Command("git", args...)
 	c.Dir = root
-	c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Geoff Miller", "GIT_AUTHOR_EMAIL=geoff.e.miller@gmail.com", "GIT_COMMITTER_NAME=Geoff Miller", "GIT_COMMITTER_EMAIL=geoff.e.miller@gmail.com")
+	c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Fixture", "GIT_AUTHOR_EMAIL=fixture@example.invalid", "GIT_COMMITTER_NAME=Fixture", "GIT_COMMITTER_EMAIL=fixture@example.invalid")
 	b, e := c.CombinedOutput()
 	if e != nil {
 		t.Fatalf("git %v: %s %v", args, b, e)
@@ -418,5 +418,17 @@ func TestRecNewTrustedRootMustBeRepositoryRoot(t *testing.T) {
 	after, _ := os.ReadFile(filepath.Join(nested, "ADR.md"))
 	if code != 1 || out != "" || diag == "" || !bytes.Equal(before, after) {
 		t.Fatalf("parent grants authorized a different root: %d %q %q", code, out, diag)
+	}
+}
+
+func TestRecGateFix2ParseFirstAndDispatch(t *testing.T) {
+	ix := loadHelpIndex(t)
+	proof := ix.proveHelp("rec", "new")
+	if proof.Kind != helpDelegated {
+		t.Fatalf("rec new must parse first: %v %v", proof.Kind, proof.Problems)
+	}
+	got := ix.subverbLiterals("rec")
+	if len(got) != 1 || got[0] != "new" {
+		t.Fatalf("rec dispatch literals %v, want only new", got)
 	}
 }

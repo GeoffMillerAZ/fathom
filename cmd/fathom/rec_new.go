@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -19,21 +18,13 @@ import (
 
 func cmdRecNew(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("rec new", stderr)
-	fs.Usage = func() {
-		fmt.Fprintln(stdout, "rec new --root DIR --lane SLUG --family NAME --path REL --title TEXT")
-		fs.SetOutput(stdout)
-		fs.PrintDefaults()
-		fs.SetOutput(stderr)
-	}
+
 	root := fs.String("root", ".", "repository root")
 	slug := fs.String("lane", "", "trusted lane slug")
 	family := fs.String("family", "", "record family")
 	target := fs.String("path", "", "exact owned path")
 	title := fs.String("title", "", "single-line record title")
 	if e := fs.Parse(args); e != nil {
-		if e == flag.ErrHelp {
-			return 0
-		}
 		return 2
 	}
 	if fs.NArg() != 0 || *slug == "" || *family == "" || *target == "" || !recTitleValid(*title) {
@@ -266,15 +257,13 @@ func (recRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) 
 		fmt.Fprintln(stderr, "usage: rec new --root DIR --lane SLUG --family NAME --path REL --title TEXT")
 		return 2
 	}
-	if args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
-		fmt.Fprintln(stdout, "rec new --root DIR --lane SLUG --family NAME --path REL --title TEXT")
-		return 0
-	}
-	if args[0] != "new" {
+	switch args[0] {
+	case "new":
+		return cmdRecNew(args[1:], stdout, stderr)
+	default:
 		fmt.Fprintln(stderr, "error: rec requires new")
 		return 2
 	}
-	return cmdRecNew(args[1:], stdout, stderr)
 }
 func init() {
 	declareVerb(verb{Name: "rec", Group: "govern", Order: 170, Run: recRunner{}, Summary: "Create a record inside an integrator-granted lane range"})
