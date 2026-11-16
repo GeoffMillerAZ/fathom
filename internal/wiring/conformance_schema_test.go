@@ -326,6 +326,10 @@ func TestConformanceSchemaNegatives(t *testing.T) {
 	if len(required) != 110 {
 		t.Fatalf("required inventory: %d", len(required))
 	}
+	// W5 provenance regressions supplement the unchanged 110-case contract.
+	for _, name := range []string{"unavailable_delivery_measured", "unvalidated_delivery_measured", "unvalidated_capture_measured"} {
+		required[name] = false
+	}
 	if len(inventory.Cases) == 0 {
 		t.Fatal("empty inventory")
 	}
@@ -396,7 +400,7 @@ func TestConformanceSchemaPhaseSeparation(t *testing.T) {
 	}
 	preflight := conformancePositive(t, v, "wired_preflight")
 	want, _ := json.Marshal(preflight)
-	for _, name := range []string{"zero_calls", "zero_actions", "two_deliveries_complete_no_actions"} {
+	for _, name := range []string{"zero_calls", "zero_actions", "two_deliveries_complete_no_actions", "two_deliveries_no_capture"} {
 		envelope := map[string]any{"preflight": conformanceCopy(t, preflight), "outcome": conformancePositive(t, v, name)}
 		value := conformanceCheck(t, v, "#Conformance", envelope)
 		if err := value.Validate(cue.Concrete(true)); err != nil {

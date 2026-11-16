@@ -1433,5 +1433,29 @@
 //     "path": "registration/evidence_ids/0",
 //     "value": "missing",
 //     "diagnostic": "registration"
+//   },
+//   {
+//     "name": "unavailable_delivery_measured",
+//     "fixture": "acted_at_k",
+//     "definition": "#Outcome",
+//     "path": "capabilities/0/denominator/delivery/state",
+//     "diagnostic": "capabilities",
+//     "value": "unavailable"
+//   },
+//   {
+//     "name": "unvalidated_delivery_measured",
+//     "fixture": "acted_at_k",
+//     "definition": "#Outcome",
+//     "path": "capabilities/0/denominator/delivery/state",
+//     "diagnostic": "capabilities",
+//     "value": "unvalidated"
+//   },
+//   {
+//     "name": "unvalidated_capture_measured",
+//     "fixture": "acted_at_k",
+//     "definition": "#Outcome",
+//     "path": "capabilities/0/action_capture/state",
+//     "diagnostic": "capabilities",
+//     "value": "unvalidated"
 //   }
 // ]
