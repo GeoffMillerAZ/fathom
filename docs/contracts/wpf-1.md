@@ -27,17 +27,19 @@ later adapters without building them. No intent record needs changing.
 | D1 Ownership | Four new implementation files below, exactly as WPF-1 names; no second package or validator API. |
 | D2 Admission boundary | `#Preflight` contains only W0/W1/W2/W3/W6; `#Outcome` owns W4/W5 and delivery bars. `#Conformance` is a reporting envelope, never a gate argument. WP-D1/D2, WPF-1. |
 | D3 Closed wire shapes | Definitions and nested structs are closed, explicit lower_snake_case keys, finite vocabularies, no extension map. W3-4; LAB-1's definitions and required-field conventions in `schema/labs/schema.cue`. No Go exported types are needed. |
-| D4 Evidence and identity | Explicit phase, source kind, range, clock, pins, revisions and digests; sorted evidence; no transcript text. WP-D3/D6. |
+| D4 Evidence and identity | Explicit phase, source kind, range, clock, pins, revisions, digests and expected service; registration, negotiation and answered call evidence are independently required for W1, startup service for W2. WP-D1 W1/W2 table rows, WP-D3/D6. |
 | D5 Validation mechanism | Existing CUE Go API, independent mutations of validated positives, field-specific diagnostics; `schema/labs/schema_test.go` and WPF-1. No shell CUE process in Go tests, no new dependency. |
-| D6 Defaults and absence | No implicit PASS, missing samples stay UNKNOWN, N/A needs a preregistered absence proof, daemon-free arms have no invented stamp. WP-D1/D2, ADR-105 decision 9. |
+| D6 Defaults and absence | Explicit product absence and per-rung applicability; surface-off alone exempts no other channel. Preserve hook-only profiles. No implicit PASS, missing samples stay UNKNOWN, N/A needs preregistered absence evidence, daemon-free arms have no invented stamp. WP-D1 table and baseline paragraph, WP-D2 registration mask, WP-D3 channels; ADR-105 decision 9 exempts stamps/RT-M15 only. |
 | D7 Windows and cloud | Actual harness plus environment, explicit WSL witness fields; fixtures never certify installation. WP-D5/D6, WPF-7/8. |
 | D8 Routine encodings | Exact definitions below use LAB-1 SHA/text/arm vocabulary, W3-4 closed JSON, and WP-D3's canonical effective data. Encoding choices impose no extra eligibility policy. |
+| D9 Honest outcomes | Preserve known counts independently of unavailable capture or unvalidated classifiers; no invented numerator or provenance. P3, WP-D1 rate paragraph, LAB-M1a counts-only rule; `internal/labs/firing.go` `FiringReadingRow` and `stages` preserve margins while stages may be not measured. |
+| D10 Ratio encoding | Measured rates serialize integer numerator/denominator only; display is derived. WP-D1 requires per-capability rates and denominators, not exact decimal equality; D3/D8 settle encoding. |
 
 W2-3 approval still requires an independent LAND verdict and citations for every
 decision; W3-2 requires implementing tests to match every assertion below. Exact
 field names and conservative mechanics are settled here under D3/D5/D8, not
 escalated for lack of literal schema prose. No unresolved policy decision was
-identified. A missing downstream interface is a dependency, not permission to invent it.
+identified. F1-F4 correct conflicts with the cited governing text and its evidence/encoding requirements; they do not restrict supported profiles or change policy. Approval remains pending independent criticism. A missing downstream interface is a dependency, not permission to invent it.
 
 ## Files and implementation boundary
 
@@ -97,11 +99,12 @@ Scalar definitions:
 | `#Bound` | `metric: #Metric`, `maximum: number & >=0`. Sorted unique by metric; registration chooses bounds before data. |
 | `#Metric` | `"index_age_ns" | "payload_age_ns" | "hook_p95_ns" | "phys_footprint_bytes" | "resident_bytes" | "cpu_seconds_per_ingest"`. Units are in names, never interchangeable heap measurements. |
 | `#Budget` | `tenant_policy_digest: #SHA`, `bounds: [...#Bound]` nonempty. Must contain index/payload ages and hook p95 when their channels are enabled; daemon-free profiles require the host resident/footprint bound but do not acquire daemon CPU/age requirements. Apple hosts use footprint, Linux/WSL use resident; exact limits are preregistered inputs, not invented global bars. FT-D4 and WP-D1 W6. |
-| `#Profile` | `id: #Text`, `lab: #LabID`, `bench_harness: #BenchHarness`, `pins: #Pins`, `environment: #Environment`, `channels: [...#ChannelSpec]` exactly all eight in lexical channel order, `hooks: [...#HookSpec]` sorted by id, `surface_tools: [...#Text]` sorted unique, `requirements: [...#Requirement]`, `workload_digest: #SHA`, `budget: #Budget`, `budget_digest: #SHA`, `source_digests: [...#SourceDigest]` nonempty sorted by id (must include `delivery_parameters`), `profile_digest: #SHA`, `environment_digest: #SHA`, `frozen_at: #Time`. No delivery bars or k. |
+| `#Profile` | `id: #Text`, `expected_service: #Text`, `product_present: bool`, `lab: #LabID`, `bench_harness: #BenchHarness`, `pins: #Pins`, `environment: #Environment`, `channels: [...#ChannelSpec]` exactly all eight in lexical channel order, `hooks: [...#HookSpec]` sorted by id, `surface_tools: [...#Text]` sorted unique, `requirements: [...#Requirement]`, `workload_digest: #SHA`, `budget: #Budget`, `budget_digest: #SHA`, `source_digests: [...#SourceDigest]` nonempty sorted by id (must include `delivery_parameters`), `profile_digest: #SHA`, `environment_digest: #SHA`, `frozen_at: #Time`. No delivery bars or k. |
 | `#SourceDigest` | `id: #Text`, `digest: #SHA`; references existing labs/knob, skill, primer, map and readout source contents; no path-derived substitute digest. |
-| `#Evidence` | `id: #Text`, `source_kind: #SourceKind`, `phase: #Phase`, `session_id: #Text`, `call_id: #Text`, `range: {artifact_digest: #SHA, start: int & >=0, end: int & >start}`, `observed_at: #Time`, `product_commit: #Commit`, `subject_commit: #Commit`, `profile_digest: #SHA`, `harness_pin: #Text`, `reason: #Text`. Range is half-open byte offsets into a local source artifact identified by hash. `call_id` is the correlated scripted/agent operation id even for non-tool events; it does not imply an agent call. |
+| `#Evidence` | `id: #Text`, `service?: #Text`, `source_kind: #SourceKind`, `phase: #Phase`, `session_id: #Text`, `call_id: #Text`, `range: {artifact_digest: #SHA, start: int & >=0, end: int & >start}`, `observed_at: #Time`, `product_commit: #Commit`, `subject_commit: #Commit`, `profile_digest: #SHA`, `harness_pin: #Text`, `reason: #Text`. Range is half-open byte offsets into a local source artifact identified by hash. `call_id` is the correlated scripted/agent operation id even for non-tool events; it does not imply an agent call. |
 | `#RungResult` | `verdict: #Verdict`, `reason: #Text`, `evidence_ids: [...#Text]` sorted unique; nonempty except UNKNOWN, which may have no observation. |
 | `#Absence` | `channel: #Channel`, `evidence_ids: [...#Text]` nonempty sorted unique. No bare boolean constitutes absence evidence. |
+| `#Registration` | `service: #Text`, `surface_tools: [...#Text]` sorted unique, `evidence_ids: [...#Text]` nonempty sorted unique; every reference has source_kind registration. |
 | `#HookObservation` | `hook_id: #Text`, `trigger_evidence_id: #Text`, `event_evidence_id: #Text`, `beat_evidence_id: #Text`. |
 | `#Sample` | `metric: #Metric`, `value: number & >=0`, `evidence_ids: [...#Text]` nonempty sorted unique. One entry per observed bound metric, sorted by metric; no sample means unknown, not zero. |
 
@@ -129,36 +132,51 @@ must not claim to prove a supplied hash matches unseen source content.
 | `started_at`, `finished_at`, `decision_at`, `agent_start_at` | `#Time`; `profile.frozen_at <= started_at <= finished_at <= decision_at < agent_start_at` |
 | `startup_environment_digest`, `startup_profile_digest`, `workload_digest`, `budget_digest` | `#SHA`; equal profile environment/profile/workload/budget digest respectively |
 | `rungs` | closed `{w0: #RungResult, w1: #RungResult, w2: #RungResult, w3: #RungResult, w6: #RungResult}`; no w4/w5 key |
-| `served_product_commit?`, `installed_product_commit?`, `index_commit?` | `#Commit`; for W0 PASS both product fields required and equal `profile.pins.product_commit`; for W6 PASS with treatment surface enabled, index commit required and equal subject commit; baseline omits index_commit |
+| `served_product_commit?`, `installed_product_commit?`, `index_commit?` | `#Commit`; for W0 PASS both product fields required and equal `profile.pins.product_commit`; for W6 PASS with product present, index commit required and equal subject commit; product-absent baseline omits index_commit |
+| `registration?` | `#Registration`; required for W1 PASS, its service equals profile.expected_service and its surface_tools equal profile.surface_tools; forbidden when surface disabled |
 | `primer_digest?` | `#SHA`; W2 PASS requires equality to prime channel content digest |
 | `negotiated_tools`, `answered_probe_ids` | sorted unique text lists; W1 PASS requires negotiated tools equal profile surface tools and >=1 answered probe reference |
 | `hook_observations` | sorted unique `#HookObservation` list by hook_id; W3 PASS covers exactly all enabled declared hooks, no extra ids |
-| `baseline_checks?` | Closed `{harness_evidence_id: #Text, tools_evidence_id: #Text, startup_evidence_id: #Text, action_capture_evidence_id: #Text}`; required only when surface is off, forbidden otherwise. References resolve to revision, channel_inventory, startup_delivery and scripted action evidence respectively. |
+| `baseline_checks?` | Closed `{harness_evidence_id: #Text, tools_evidence_id: #Text, startup_evidence_id: #Text, action_capture_evidence_id: #Text}`; required only when profile.product_present is false, forbidden otherwise. References resolve to revision, channel_inventory, startup_delivery and scripted action evidence respectively. |
 | `absences` | `#Absence` list sorted unique by channel; every disabled channel has exactly one absence entry, no enabled channel may appear |
 | `samples` | `#Sample` list; W6 PASS requires all applicable bound metrics present and <= registered maximum |
 | `evidence` | `#Evidence` list sorted unique by id; all phases preflight (including seeded scripted actions, never agent actions), all session/pin/revision/digest bindings match parent, all observed times within started_at..finished_at |
 
 The environment harness_pin equals profile.pins.harness_pin. Every evidence reference resolves exactly once in that receipt. W1 answered probes
-reference `call_result`, W2 references `startup_delivery`, hook triples reference
+reference `call_result`. For W1 PASS, registration evidence, negotiation evidence and each answered probe have service == profile.expected_service; registration inventory equals both negotiated_tools and profile.surface_tools. W2 PASS references `startup_delivery` with service == profile.expected_service and requires the matching primer_digest. All other supplied evidence service fields also equal profile.expected_service. Hook triples reference
 `hook_trigger`, `hook_event`, `beat` respectively with a shared call id and
 nondecreasing times. Samples reference `resource_sample` (age samples may reference
 `revision`); absence entries reference `channel_inventory`. Applicable rungs cannot
 be NOT-APPLICABLE. Inapplicable rungs must be NOT-APPLICABLE with reason and cited
 inventory evidence; this does not excuse absent baseline checks. For PASS, W0 cites
-revision evidence, W1 negotiation and answered probe evidence, W2 startup evidence,
+revision evidence, W1 registration, negotiation and answered probe evidence (including every registration.evidence_ids and answered_probe_ids reference), W2 startup evidence,
 W3 all hook triple evidence, W6 its sample evidence. FAIL and UNKNOWN are valid
 records, never admission success. Schema validity alone is not an admission verdict.
 
-Baseline: treatment surface off implies W0/W1/W2/W3 inapplicable; product identity
-fields and primer digest are absent, negotiated_tools/answered_probe_ids and hook
-observations are empty. W6 remains applicable with its baseline budget. The actual
-harness pin, permitted tools, startup instructions and action capture require
-baseline_checks evidence as well as remaining bound
-by environment digest. All off channels, including treatment hooks/prime, require
-cited inventory absence; enabled treatment hooks are forbidden in this baseline.
-Missing inventory cannot be represented as proved absence. Unsupported hook sets
-are declared disabled with evidence, never silently skipped. No daemon wire stamp
-or RT-M15 field is required by this shape. WP-D1/D2, WP-R3, ADR-105 decision 9.
+Applicability is frozen per rung and channel, never inferred from surface-off.
+W0 is applicable iff product_present; W1 iff the surface channel is enabled;
+W2 iff prime is enabled; W3 iff at least one declared hook is enabled; W6 is
+always applicable. Disabled surface has empty surface_tools, negotiated_tools and
+answered_probe_ids and no registration; it changes neither product_present nor
+the prime/hooks channels. Disabled prime omits primer_digest. With no enabled
+hooks, hook_observations is empty. Enabled surface, prime or hooks require
+product_present. W0 PASS needs installed/served identities even for hook-only
+profiles. W2/W3 PASS still require delivery/hook evidence when surface is off.
+
+Baseline without fathom is explicitly product_present: false, not merely surface
+off. Only this case has W0/W1/W2/W3 N/A, absent product identity fields and primer,
+no enabled treatment surface/prime/hooks and empty probe/hook observations. W6
+remains applicable with the baseline budget. baseline_checks proves the actual
+harness pin, permitted tools, startup instructions and action capture, also bound
+by environment_digest. Other declared channels retain their own enabled/absence
+evidence; this flag does not fabricate their contents. Every off channel needs
+inventory absence evidence. Missing inventory never proves absence. Unsupported
+hooks are declared disabled with evidence, never silently skipped. A hook-only
+positive has product_present: true, surface off, prime/hooks enabled, W1 N/A and
+W0/W2/W3/W6 PASS. No surface-off shortcut is permitted. Authority: WP-D1 table
+W0-W3 and its exact paragraph beginning “A baseline without fathom”, WP-D2's
+applicability mask, WP-D3's separate channels, WP-R3; ADR-105 decision 9 removes
+only daemon stamps/RT-M15 for daemon-free readings, not other applicable checks.
 
 ### Delivery outcome: never an admission input
 
@@ -179,26 +197,76 @@ effective profile digest commits to delivery parameters without exposing W4/W5
 to admission. k counts distinct subsequent agent calls,
 excluding the delivery call and all scripted probes.
 
-`#CapabilityOutcome` fields: `capability: #Text`, `eligible: int & >=0`,
-`successful_calls: int & >=0`, `acted: int & >=0`, `should_not_calls: int & >=0`,
-`unknown: int & >=0`, `denominator: #Denominator`, `w4: #Rate`, `w5: #Rate`,
-`bars: {use_minimum: number & >=0 & <=1, acted_minimum: number & >=0 & <=1}`.
-Rates count opportunities with successful use and deliveries acted on, respectively;
-raw call counts are not pooled rates. `#Denominator` fields: `classifier_digest`,
-`validation_reading_digest`, `opportunity_set_digest`, `delivery_set_digest: #SHA`,
-`eligible_opportunities`, `delivered_targets: int & >=0`, `evidence_ids` nonempty
-sorted unique text list. `eligible` equals eligible_opportunities; these denominators
-come from LAB-9/LAB-M1a and LAB-11/BEN-4, never inference from calls alone.
+`#Count` is the closed union `{state: "known", count: int & >=0}` or
+`{state: "unavailable", reason: #Text}`. Unavailable has no count key; known zero
+and unknown are distinct. Existing LAB raw integer margins map to known counts,
+never inferred rate numerators. No existing LAB API is changed by this wire shape.
 
-`#Rate` is the closed union `{state: "measured", numerator: int & >=0,
-denominator: int & >0, value: number & >=0 & <=1}` (numerator <= denominator and
-value * denominator == numerator), or `{state: "not_measured", denominator: 0,
-reason: #Text}`. W4 denominator equals eligible_opportunities; W5 denominator equals
-delivered_targets. `acted` equals W5 numerator or zero when unmeasured. Zero eligible
-opportunities gives not_measured; positive opportunities with zero successful use
-gives measured zero. Unknown count is separate from either denominator. Later
-resource diagnostics are outside WPF-1, not an open attributes field. No task score,
-void decision, cost rewrite or invented BEN ledger type belongs here. WP-D1/D6.
+`#Provenance` fields: `state: "validated" | "unvalidated" | "unavailable"`,
+`reason: #Text`, `set_digest?: #SHA`, `classifier_digest?: #SHA`,
+`validation_reading_digest?: #SHA`, `evidence_ids: [...#Text]` sorted unique.
+Validated requires set_digest and nonempty evidence_ids. Eligibility provenance
+additionally requires classifier_digest and validation_reading_digest when
+validated. Unavailable/unvalidated permits absent digests and empty evidence_ids;
+retain any actual available provenance without manufacturing a digest. For
+observations, validated means usable captured events, not classifier validation.
+Every provenance evidence_id resolves exactly once in the outcome evidence list;
+eligibility references eligibility events, delivery references call_result events,
+action_capture references action events. CUE binds declared status/provenance only;
+downstream owners prove validation.
+
+`#Denominator` fields: `eligible_opportunities: #Count`, `delivered_targets: #Count`,
+`eligibility: #Provenance`, `delivery: #Provenance`.
+`#CapabilityOutcome` fields: `capability: #Text`, `eligible: #Count`,
+`successful_calls: #Count`, `acted: #Count`, `should_not_calls: #Count`,
+`unknown: #Count`, `denominator: #Denominator`, `action_capture: #Provenance`,
+`w4: #Rate`, `w5: #Rate`,
+`bars: {use_minimum: number & >=0 & <=1, acted_minimum: number & >=0 & <=1}`.
+Eligible equals eligible_opportunities, including state/count or unavailable reason.
+Keep every independently known margin even when a rate is unavailable or
+unvalidated. Unknown residue is separate; it cannot replace known denominators.
+
+`#Rate` is the closed union:
+
+- `{state: "measured", numerator: int & >=0, denominator: int & >0}` with
+  numerator <= denominator. Integers alone encode the exact ratio; no value key.
+- `{state: "not_measured", denominator: #Count,
+  cause: "zero_denominator" | "unavailable" | "unvalidated", reason: #Text}`.
+  No numerator or value key, including when denominator.count is positive.
+
+W4 denominator binds eligible_opportunities, W5 binds delivered_targets (the
+measured integer equals the known count; the not_measured #Count equals the
+corresponding count object). Measured W4 requires validated eligibility and known
+successful_calls; its numerator counts eligible opportunities with successful
+use, not raw successful_calls, and cannot exceed that known call count. Measured
+W5 requires validated delivery and action_capture and known acted; its numerator
+equals acted.count. A zero known denominator always uses zero_denominator and
+not_measured; unknown denominator uses unavailable. A positive denominator with
+missing required capture, count or provenance uses unavailable; with present but unvalidated
+required evidence uses unvalidated. If both apply, unavailable takes precedence.
+Only positive denominators with all required evidence validated and required counts known use measured;
+zero successful use/action in this case is measured zero. If action capture is
+unavailable, acted is unavailable, never fabricated zero. Independently known
+acted counts can remain known when delivery provenance is unvalidated.
+
+Eligibility is validated only after LAB-M1a passes for that surface.
+A failed/missing LAB-M1a classifier validation leaves W4 counts only, even with
+positive eligible counts. It does not erase independently observed delivery/action
+counts or by itself invalidate W5. `FiringReadingRow` exposes raw margins while
+`stages` in `internal/labs/firing.go:151` can return named not-measured strings;
+its unimplemented acted channel is not a zero or synthetic action proof. Adapters
+preserve those distinctions; this contract neither invents a validation API nor
+claims existing replay implements action capture. Authority: P3, LAB-M1a,
+WP-D1 rate paragraph and WP-D6's configured/observed/eligible/acted/unknown split.
+
+Display is derived on reading a measured integer ratio; it is not serialized as a
+redundant exact floating value. For fixture display assertions use Go's
+strconv.FormatFloat(float64(numerator)/float64(denominator), 'g', -1, 64): 1/3
+renders 0.3333333333333333, 2/3 renders 0.6666666666666666. Never validate a
+rounded display by multiplying it back. The critic's decimal-equality failure is
+addressed by removing that equality, with no new dependency or reproduction run.
+Later resource diagnostics are outside WPF-1, not an open attributes field. No
+task score, void decision, cost rewrite or invented BEN ledger type belongs here.
 
 `#Conformance` fields: `preflight: #Preflight`, `outcome?: #Outcome`. When outcome
 exists session/cell/arm, pins, agent_start_at and profile/environment digests must
@@ -215,10 +283,13 @@ adds schema/fixtures. No RED is claimed by this authoring lane. Proof command:
 1. `TestConformanceSchemaValid`: compile schema with valid.cue using cuecontext;
    check each named value against its definition with `Validate(cue.Concrete(true))`,
    then marshal JSON successfully. Fixtures: `wired_preflight`, `baseline_preflight`,
-   `unknown_preflight`, `failed_preflight`, `wsl_preflight` against #Preflight;
-   `zero_opportunities`, `zero_calls`, `zero_actions`, `acted_at_k` against #Outcome;
+   `hook_only_preflight`, `unknown_preflight`, `failed_preflight`, `wsl_preflight` against #Preflight;
+   `zero_opportunities`, `zero_calls`, `zero_actions`, `acted_at_k`,
+   `two_deliveries_no_capture`, `classifier_counts_only`,
+   `classifier_failed_validation`, `unknown_denominator`,
+   `one_third`, `two_thirds` against #Outcome;
    `preflight_only`, `with_zero_calls`, `with_zero_actions` against #Conformance.
-   Wired has all rungs PASS, baseline four N/A plus W6 PASS and proved absence;
+   Wired has all rungs PASS; baseline has explicit product absence, four N/A plus W6 PASS and proved absence; hook-only has W1 N/A and W0/W2/W3/W6 PASS with actual product, primer and hook bindings;
    unknown/failed have applicable UNKNOWN/FAIL respectively, not masquerading as PASS.
    Assert empty lists encode `[]`, never null; no fixture asserts real installation.
 2. `TestConformanceSchemaNegatives`: invalid.cue is entirely commented, LAB-1 style
@@ -236,11 +307,26 @@ adds schema/fixtures. No RED is claimed by this authoring lane. Proof command:
    as unknown field. Agent evidence in preflight and preflight evidence in outcome
    each rejected. Valid zero-call/zero-action envelopes retain byte-identical
    canonical preflight JSON. This proves structural separation, not WPF-4 scoring.
-4. `TestConformanceSchemaOutcomeBoundaries`: W4 0/0 and W5 0/0 are not_measured;
-   W4 0/2 and W5 0/2 are measured zero; 1/2 is 0.5; 2/2 is 1. Test inconsistent
-   rates independently rejected. k=1 and k=3 accepted, k=0/-1 rejected. No schema
-   claim to match targets or count calls: exact k-1/k/k+1 action joins, wrong targets
-   and duplicate calls are WPF-3 tests, awaiting LAB/BEN events.
+4. `TestConformanceSchemaOutcomeBoundaries`: W4 0/0 and W5 0/0 are not_measured
+   with zero_denominator; validated W4 0/2 and W5 0/2 are measured integer ratios.
+   1/2 and 2/2 derive displays 0.5 and 1. For one_third and two_thirds independently,
+   validate, marshal JSON, decode and revalidate: integer numerator 1 or 2 and
+   denominator 3 survive exactly, no value key appears, and derived displays equal
+   the strings above. Reject a redundant value key even if numerically plausible.
+   two_deliveries_no_capture retains delivered_targets known 2, W5 not_measured
+   unavailable with known denominator 2, acted unavailable, empty capture evidence
+   and no invented digests/numerator. classifier_counts_only retains known eligible
+   2 and successful_calls 1 with unvalidated eligibility, W4 not_measured unvalidated,
+   no numerator or validation digest. classifier_failed_validation retains the same
+   counts and actual classifier/failed-reading digests with eligibility unvalidated
+   and W4 not_measured unvalidated; no numerator or rate value is fabricated.
+   Independently validated W5 may stay measured in both fixtures.
+   Unknown denominator remains unavailable without a fabricated zero. Assert these
+   fields after JSON round trip, not just validation success. Reject promotions
+   to measured without each required provenance/status, and invented acted zero
+   under unavailable capture. k=1 and k=3 accepted, k=0 and k=-1 rejected. No schema claim to
+   match targets or count calls: k-1/k/k+1 joins, wrong targets and duplicate calls
+   remain WPF-3 tests awaiting LAB/BEN events.
 
 Negative case inventory (each semicolon-separated name is a separate subtest of
 `TestConformanceSchemaNegatives`, not a collection of faults in one fixture):
@@ -250,13 +336,16 @@ Negative case inventory (each semicolon-separated name is a separate subtest of
 | `unknown_field`; `unknown_verdict`; `unknown_harness`; `unknown_environment`; `unknown_source`; `unknown_channel`; `unknown_metric` | Add `extra: true` to receipt; replace corresponding enum with `"other"`; each fails at that field. |
 | `missing_pin`; `short_product_commit`; `branch_subject_commit`; `bad_digest`; `profile_name_as_digest` | Remove model_pin; use 12-hex product; subject `"main"`; uppercase SHA; profile digest `"profile-a"`; each fails, independently. |
 | `w4_requirement`; `w5_requirement`; `missing_requirement`; `duplicate_requirement` | Replace one requirement rung with W4/W5; remove W6; duplicate W3 in W6 slot; reject closed five-rung mask. |
-| `applicable_na`; `inapplicable_pass`; `na_without_reason`; `absence_without_inventory`; `missing_off_channel`; `enabled_absence`; `baseline_enabled_hook`; `missing_baseline_checks`; `wrong_baseline_capture` | Contradict applicability/verdict; remove reason; replace absence reference with existing non-inventory evidence id; drop an off-channel absence; cite enabled channel; enable treatment hook in baseline; remove baseline_checks; point action_capture_evidence_id to an existing non-action item; each rejected. |
+| `applicable_na`; `inapplicable_pass`; `na_without_reason`; `absence_without_inventory`; `missing_off_channel`; `enabled_absence`; `baseline_product_present_mismatch`; `baseline_enabled_hook`; `surface_off_w0_na`; `surface_off_w2_na`; `surface_off_w3_na`; `missing_baseline_checks`; `wrong_baseline_capture` | Contradict applicability/verdict; remove reason; replace absence reference with existing non-inventory evidence id; drop an off-channel absence; cite enabled channel; make baseline W0 applicable while product_present remains false; enable one declared baseline hook while product_present remains false; in validated hook-only fixture change W0, W2 or W3 requirement applicable to false separately (reject the inconsistent requirement/rung); remove baseline_checks; point action_capture_evidence_id to an existing non-action item; each rejected. |
 | `ancestor_served`; `wrong_installed`; `missing_served`; `recent_wrong_index`; `wrong_primer`; `unnegotiated_tool`; `no_answered_probe`; `missing_hook`; `unknown_hook`; `wrong_beat_kind`; `unjoined_beat` | Change served/installed to another full commit; remove served on PASS; change index while retaining fresh age; change primer digest; change negotiated tool; empty probe ids; remove hook triple; replace hook_id; change beat evidence kind; change its call_id. Reject each claimed PASS independently. |
+| `missing_registration`; `missing_registration_evidence`; `wrong_registration_kind`; `wrong_registration_service`; `wrong_registration_tools`; `missing_registration_rung_citation`; `missing_startup_service`; `wrong_startup_service` | On wired PASS remove registration; empty only registration.evidence_ids; point its evidence_ids to existing negotiation evidence; change registration.service; change one registration.surface_tools entry; remove only its registration evidence id from W1 evidence_ids; remove startup evidence service; change only startup evidence service to another service while subject/profile/primer remain correct. Each independently rejects W1 or W2 at its changed field or constrained parent. |
 | `missing_sample`; `over_budget`; `wrong_footprint_metric` | Drop a required sample; exceed one maximum; replace required host footprint metric with resident metric; reject W6 PASS. UNKNOWN fixture with missing samples remains valid. |
 | `post_agent_decision`; `decision_at_start`; `reverse_window`; `late_freeze`; `changed_environment`; `changed_profile`; `changed_workload`; `changed_budget` | Set decision after/equal startup; finish before start; freeze after start; change each binding digest separately; reject at ordered/binding field. |
 | `late_evidence`; `wrong_session`; `wrong_evidence_product`; `wrong_evidence_subject`; `wrong_evidence_profile`; `wrong_evidence_harness`; `empty_range`; `dangling_reference`; `duplicate_evidence`; `unsorted_evidence` | Change one observation outside window, binding, range end==start or reference; duplicate/reverse evidence entries; reject independently. |
 | `agent_in_preflight`; `probe_in_outcome`; `null_list`; `outcome_binding`; `delivery_parameters_binding`; `environment_pin_binding` | Replace phase of one evidence item; reverse phase in outcome; replace empty list with null; change envelope outcome cell_id; change outcome delivery_parameters_digest; change environment harness_pin; reject each. |
-| `zero_measured_denominator`; `negative_count`; `numerator_exceeds_denominator`; `wrong_rate`; `wrong_denominator`; `missing_denominator_provenance`; `zero_k`; `late_k` | Set measured denominator to 0; count -1; numerator > denominator; change only rate value; change denominator provenance count; remove validation_reading_digest; k=0; k_frozen_at=start; reject each. |
+| `zero_measured_denominator`; `negative_count`; `numerator_exceeds_denominator`; `redundant_rate_value`; `wrong_denominator`; `missing_denominator_provenance`; `zero_k`; `late_k` | Set measured denominator to 0; known count -1; numerator > denominator; add value to measured rate; change only rate denominator against known provenance count; remove validation_reading_digest from validated measured W4 eligibility; k=0; k_frozen_at=start; reject each. |
+| `missing_expected_service`; `missing_registration_evidence_service`; `wrong_registration_evidence_service`; `missing_negotiation_service`; `wrong_negotiation_service`; `missing_probe_service`; `wrong_probe_service` | Remove profile.expected_service; remove or change only service on registration, negotiation or answered-probe evidence respectively; reject each W1 PASS independently. |
+| `missing_measured_numerator`; `unavailable_numerator`; `unvalidated_numerator`; `unavailable_measured`; `unvalidated_measured`; `fabricated_acted_zero`; `unknown_as_zero`; `positive_zero_denominator_cause`; `wrong_w5_numerator`; `unsupported_w4_numerator` | Remove measured numerator; add numerator to unavailable or unvalidated rate separately; replace action_capture.state on a measured positive W5 with unavailable; replace eligibility.state on measured positive W4 with unvalidated (keep real digests); replace unavailable acted with known zero under unavailable capture; add count:0 to unavailable denominator; change cause to zero_denominator on a positive unavailable denominator; change measured W5 numerator within bounds but unequal acted.count; raise W4 numerator within denominator but above known successful_calls.count. Each single mutation rejects at rate/count/provenance comparison. |
 
 No multi-fault fixture may stand in for any named case. Additional independent
 mutations may strengthen coverage; weaker assertions are FIX under W3-2. The
