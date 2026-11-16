@@ -9,7 +9,7 @@ README/archive excluded. Source hashes bind every candidate to the stated base.
 ~~~json
 {
   "schema": "fathom.record-title-backfill/v1",
-  "base": "d9eef4794afdbc200d1b8697ce121d9d688fedaf",
+  "base": "17d930d2f1b96b707b03ec84d5f87a3a5333c24d",
   "files": {
     "docs/plans/activation.md": "92344eb3aeaca7931f8c730509e5d4a537c2cf632ad81991f7aaf05a0b419079",
     "docs/plans/advice-delivery.md": "3c145036beb90a3d375b9a294fa394c3cad14f58bf015a2ef7cf7b054639a31f",
@@ -74,7 +74,7 @@ README/archive excluded. Source hashes bind every candidate to the stated base.
     "docs/plans/support-matrix.md": "b31e22047c7d43ad8cbb0661e21d2b3e371bcd556e76e2fd72588bb0afab6941",
     "docs/plans/surface-reckoning.md": "2a84f56e76648ce24da0cad397906410b65707011802c3c9da1c32e32279ab14",
     "docs/plans/system-graph.md": "d450aa0a5c91b24c1c2e3bbaa284bfe7d9db6af2f6b8810b83025b9269d220a2",
-    "docs/plans/telemetry-links.md": "f7b6fc1215d39dfe839a1a1a5f885ff1ec1f1987df4c94150d9e437110749d06",
+    "docs/plans/telemetry-links.md": "aa7a413e777a802a3e2ad696a58799517af383f5e0f61ce4a893f224ddcc27ee",
     "docs/plans/test-certifications.md": "5f8372a72137719746e86974d33fec07f1db4741c57cf9318297a59c00cda487",
     "docs/plans/test-intelligence.md": "dc841711976406fe12a40077bf573e79814eeda68b3bd4a0693a8abba16791c8",
     "docs/plans/test-run-hook.md": "bac7d82ccb3ec2777e5259bbd9cb7a603dee832cc927314fc52bd63be2be3ad5",
@@ -2872,7 +2872,7 @@ README/archive excluded. Source hashes bind every candidate to the stated base.
     {
       "path": "docs/plans/platform-engineering.md",
       "line": 48,
-      "row_id": "lab-platform-skills",
+      "row_id": "PLT-16",
       "before_sha256": "6cfeb36ef10b42dda13631cba5833e3b8470245a91b62853bacea22566e44f79",
       "gate": false,
       "lane": "controller"
@@ -3480,7 +3480,7 @@ README/archive excluded. Source hashes bind every candidate to the stated base.
     {
       "path": "docs/plans/project-understanding.md",
       "line": 103,
-      "row_id": "lab-why-card",
+      "row_id": "PU-W8",
       "before_sha256": "ac5993199412bf8527daeeb7e31d20790505ce8dd45658492f9a47307fd5af55",
       "gate": false,
       "lane": "controller"
@@ -3512,7 +3512,7 @@ README/archive excluded. Source hashes bind every candidate to the stated base.
     {
       "path": "docs/plans/project-understanding.md",
       "line": 113,
-      "row_id": "lab-reviewer",
+      "row_id": "PU-V2",
       "before_sha256": "1d7add3e160273b90afdbb52566b32638dc4dab00f9493003a5b45609deecea7",
       "gate": false,
       "lane": "controller"
