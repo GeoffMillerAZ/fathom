@@ -1,10 +1,10 @@
 # WPF-1 — phase-separated wiring conformance schema
 
-Status: Draft awaiting independent critic; T4-1 applicability amendment applied.
-Not an implementation, approval receipt or implementation dispatch.
+Status: approved by rule W2-3 after independent LAND; T4-1 applicability amendment applied.
+Implementation and runtime conformance proof remain pending.
 Scope: `docs/plans/wiring-proof.md`, WPF-1. Governing design:
 `docs/design/wiring-proof.md` WP-D1, WP-D3, WP-D6 (WP-D2 clarifies admission).
-ADR-110 remains proposed; this contract specifies the assigned work, not its acceptance.
+ADR-110 remains proposed; this approval covers the assigned WPF-1 contract only.
 
 ## Intent and decision points
 
