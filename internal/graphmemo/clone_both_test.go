@@ -32,22 +32,28 @@ func cloneBothSnapshot(t *testing.T, sc Scope) *Snapshot {
 func TestCloneBothProductionReusesCompletedSyntax(t *testing.T) {
 	isolateGraphStore(t)
 	sc := Scope{Store: "clone-route", Service: "svc", Watermark: "w1"}
-	snap := cloneBothSnapshot(t, sc)
-	// Seed the existing syntax key with a completed graph carrying a marker
-	// edge absent from the snapshot. This is a route probe: re-resolving Nodes
-	// loses that edge. No production build hook or additional cache is needed.
-	marked := fixtureNodes()
-	marked[2].Calls = []string{"d.log"}
-	syntax := callgraph.Build(marked)
-	before := callgraph.Build(marked)
-	_, err := graphGroup.Get(context.Background(), graphKey{sc, GraphSyntax}, func(context.Context) (*callgraph.Graph, int64, error) { return syntax, syntax.EstimatedBytes(), nil })
+	// A three-edge adjacency has spare capacity in a fresh Build. Cloning
+	// trims it, giving a route fingerprint without mismatching snapshot data.
+	nodes := fixtureNodes()
+	nodes[0].Calls = []string{"b.Store", "c.Log", "d.log"}
+	snap, err := SnapshotFor(context.Background(), sc, func(context.Context) ([]core.SymbolNode, error) { return nodes, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	syntax := callgraph.Build(nodes)
+	before := callgraph.Build(nodes)
+	_, err = graphGroup.Get(context.Background(), graphKey{sc, GraphSyntax}, func(context.Context) (*callgraph.Graph, int64, error) { return syntax, syntax.EstimatedBytes(), nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	edges := []core.Edge{{FromSymbol: "svc::a.Handler", ToSymbol: "svc::d.log", FromFile: "a/h.go", Kind: core.EdgeIfaceDispatch}}
 	var loads atomic.Int32
 	typed := func(context.Context) ([]core.Edge, error) { loads.Add(1); return edges, nil }
-	want := callgraph.BuildBoth(marked, edges)
+	want := callgraph.BuildBoth(nodes, edges)
+	cloneBytes := syntax.WithTypedEdges(edges).EstimatedBytes()
+	if cloneBytes == want.EstimatedBytes() {
+		t.Fatal("fixture lacks clone capacity fingerprint")
+	}
 	var wg sync.WaitGroup
 	answers := make(chan *callgraph.Graph, 16)
 	for range 16 {
@@ -67,7 +73,10 @@ func TestCloneBothProductionReusesCompletedSyntax(t *testing.T) {
 	var first *callgraph.Graph
 	for g := range answers {
 		if !reflect.DeepEqual(g, want) {
-			t.Error("production GraphBoth re-resolved snapshot instead of cloning completed syntax")
+			t.Error("production GraphBoth differs from fresh full-field oracle")
+		}
+		if g.EstimatedBytes() != cloneBytes {
+			t.Error("production GraphBoth re-resolved matching syntax instead of cloning it")
 		}
 		if first == nil {
 			first = g
@@ -267,7 +276,7 @@ func TestCloneBothFirstLoadAfterProductionRefresh(t *testing.T) {
 					t.Fatal(err)
 				}
 				patchOracle := before.WithPackagePatch(br.Package, []core.SymbolNode{br}, nil)
-				if patched.CanReuseSyntax() {
+				if patched.CanReuseSyntax(refreshed.Nodes) {
 					t.Fatal("production refresh left syntax eligible for fresh BOTH reuse")
 				}
 				if !reflect.DeepEqual(patched, patchOracle) || !callgraph.Reachable(patched, caller.Key(), ar.Key()) {
@@ -286,6 +295,127 @@ func TestCloneBothFirstLoadAfterProductionRefresh(t *testing.T) {
 				}
 				if !reflect.DeepEqual(callgraph.CalleesDetail(got, caller.Key()), callgraph.CalleesDetail(want, caller.Key())) {
 					t.Error("served receiver-call answer differs from fresh oracle")
+				}
+				if !reflect.DeepEqual(syntax, before) || !reflect.DeepEqual(patched, patchOracle) || !reflect.DeepEqual(refreshed.Nodes, savedNodes) {
+					t.Fatal("first BOTH mutated a held graph or refreshed snapshot")
+				}
+			})
+		}
+	}
+}
+
+// F2 pins the controlled publication state without adding a production test hook.
+func TestCloneBothRejectsMixedSnapshotPublication(t *testing.T) {
+	isolateGraphStore(t)
+	extract := func(file, src string) []core.SymbolNode {
+		ns, err := extractor.NewGoExtractor().Extract("svc", file, []byte(src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ns
+	}
+	an := extract("a/handler.go", "package a\ntype A struct{}\nfunc (A) Run() {}\n")
+	bn := extract("b/handler.go", "package b\ntype B struct{}\n")
+	changed := extract("b/handler.go", "package b\ntype B struct{}\nfunc (B) Run() {}\n")
+	cn := extract("c/call.go", "package c\nimport \"example/a\"\nfunc Call(h a.A) { h.Run() }\n")
+	named := func(ns []core.SymbolNode, name string) core.SymbolNode {
+		for _, n := range ns {
+			if n.Name == name {
+				return n
+			}
+		}
+		t.Fatalf("missing extracted %s", name)
+		return core.SymbolNode{}
+	}
+	ar, br, caller := named(an, "A.Run"), named(changed, "B.Run"), named(cn, "Call")
+	if !reflect.DeepEqual(caller.Calls, []string{"h.Run"}) {
+		t.Fatalf("not the receiver-call witness: %v", caller.Calls)
+	}
+	nodes := append(append(append([]core.SymbolNode{}, an...), bn...), cn...)
+	orders := [][]core.SymbolNode{slices.Clone(nodes), slices.Clone(nodes), slices.Clone(nodes), slices.Clone(nodes)}
+	slices.Reverse(orders[1])
+	slices.SortStableFunc(orders[2], func(a, b core.SymbolNode) int { return strings.Compare(a.Key(), b.Key()) })
+	rand.New(rand.NewSource(218)).Shuffle(len(orders[3]), func(i, j int) { orders[3][i], orders[3][j] = orders[3][j], orders[3][i] })
+	for oi, order := range orders {
+		for ti, edges := range [][]core.Edge{nil, {}, {{FromSymbol: caller.Key(), ToSymbol: br.Key(), Kind: core.EdgeDirect}}} {
+			t.Run(fmt.Sprintf("order%d/typed%d", oi, ti), func(t *testing.T) {
+				ctx := context.Background()
+				sc := Scope{Store: fmt.Sprintf("publication-clone-%d-%d", oi, ti), Service: "svc", Watermark: "same"}
+				snap, err := SnapshotFor(ctx, sc, func(context.Context) ([]core.SymbolNode, error) { return order, nil })
+				if err != nil {
+					t.Fatal(err)
+				}
+				syntax, err := GraphFor(ctx, snap, GraphSyntax, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !callgraph.Reachable(syntax, caller.Key(), ar.Key()) {
+					t.Fatal("fixture lacks initially unique A.Run edge")
+				}
+				before := callgraph.Build(order)
+				if _, ok := graphGroup.Peek(graphKey{sc, GraphBoth}); ok {
+					t.Fatal("BOTH was not cold before refresh")
+				}
+				// Construct the exact snapshot-published/syntax-not-yet-updated
+				// boundary pinned by the actual PatchPackage barrier replay.
+				snapshotGroup.Update(snapKey{sc}, func(old *Snapshot) (*Snapshot, int64) {
+					kept := make([]core.SymbolNode, 0, len(old.Nodes)+1)
+					for _, n := range old.Nodes {
+						if n.Package != br.Package {
+							kept = append(kept, n)
+						}
+					}
+					kept = append(kept, br)
+					next := newSnapshot(sc, kept)
+					next.Extra = old.Extra
+					return next, snapshotBytes(next)
+				})
+				refreshed, ok := PeekSnapshot(sc)
+				if !ok {
+					t.Fatal("refresh dropped snapshot")
+				}
+				seen := map[string]bool{}
+				for _, n := range refreshed.Nodes {
+					if seen[n.Key()] {
+						t.Fatalf("duplicate key %q", n.Key())
+					}
+					seen[n.Key()] = true
+				}
+				if !seen[br.Key()] {
+					t.Fatal("refresh did not add B.Run")
+				}
+				savedNodes := slices.Clone(refreshed.Nodes)
+				patched, err := GraphFor(ctx, refreshed, GraphSyntax, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				patchOracle := before
+				if !patched.CanReuseSyntax(order) {
+					t.Fatal("window must contain the previous unmarked syntax graph")
+				}
+				if !reflect.DeepEqual(patched, patchOracle) || !callgraph.Reachable(patched, caller.Key(), ar.Key()) {
+					t.Fatal("previous-generation graph changed")
+				}
+				want := callgraph.BuildBoth(refreshed.Nodes, edges)
+				if callgraph.Reachable(want, caller.Key(), ar.Key()) {
+					t.Fatal("fresh oracle should refuse ambiguous Run")
+				}
+				beforeBytes := groupBytes(t, "graphstore")
+				got, err := GraphFor(ctx, refreshed, GraphBoth, func(context.Context) ([]core.Edge, error) { return edges, nil })
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Errorf("first BOTH in publication window differs from fresh BuildBoth (all Graph fields); inherited A.Run=%v", callgraph.Reachable(got, caller.Key(), ar.Key()))
+				}
+				if !reflect.DeepEqual(callgraph.CalleesDetail(got, caller.Key()), callgraph.CalleesDetail(want, caller.Key())) {
+					t.Error("served receiver-call answer differs from fresh oracle")
+				}
+				if bytes := groupBytes(t, "graphstore"); bytes != beforeBytes+got.EstimatedBytes() {
+					t.Fatalf("publication graph bytes=%d", bytes)
+				}
+				if hit, err := GraphFor(ctx, refreshed, GraphBoth, nil); err != nil || hit != got {
+					t.Fatal("publication BOTH memo identity changed")
 				}
 				if !reflect.DeepEqual(syntax, before) || !reflect.DeepEqual(patched, patchOracle) || !reflect.DeepEqual(refreshed.Nodes, savedNodes) {
 					t.Fatal("first BOTH mutated a held graph or refreshed snapshot")

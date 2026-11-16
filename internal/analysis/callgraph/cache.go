@@ -1,6 +1,7 @@
 package callgraph
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -240,10 +241,36 @@ func (g *Graph) WithTypedEdges(typed []core.Edge) *Graph {
 	return ng
 }
 
-// CanReuseSyntax reports whether this graph is eligible to seed a fresh
-// combined memo load. The memo marks its package-patched graphs ineligible:
-// ReplacePackage deliberately does not re-resolve other packages' calls.
-func (g *Graph) CanReuseSyntax() bool { return g != nil && !g.packagePatched }
+// CanReuseSyntax requires an unpatched syntax graph with exactly the supplied
+// snapshot's node values. A watermark alone cannot identify a generation while
+// a package refresh publishes its snapshot and graphs separately. Reverse input
+// order preserves Build's last-observation-wins rule for duplicate keys.
+func (g *Graph) CanReuseSyntax(nodes []core.SymbolNode) bool {
+	if g == nil || g.packagePatched || len(nodes) < len(g.nodes) {
+		return false
+	}
+	seen := make(map[string]struct{}, len(g.nodes))
+	for i := len(nodes) - 1; i >= 0; i-- {
+		n := nodes[i]
+		key := n.Key()
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		old, ok := g.nodes[key]
+		if !ok || !sameSymbolNode(old, n) {
+			return false
+		}
+		seen[key] = struct{}{}
+	}
+	return len(seen) == len(g.nodes)
+}
+
+func sameSymbolNode(a, b core.SymbolNode) bool {
+	return a.Service == b.Service && a.Package == b.Package && a.Name == b.Name &&
+		a.Kind == b.Kind && a.FilePath == b.FilePath && a.Line == b.Line && a.EndLine == b.EndLine &&
+		a.Signature == b.Signature && a.Tier == b.Tier && a.Complexity == b.Complexity &&
+		a.ToolKind == b.ToolKind && (a.Calls == nil) == (b.Calls == nil) && slices.Equal(a.Calls, b.Calls)
+}
 
 // WithPackagePatch is the memo's copy-on-write package patch, with provenance
 // that prevents its approximation from seeding a formerly fresh combined load.

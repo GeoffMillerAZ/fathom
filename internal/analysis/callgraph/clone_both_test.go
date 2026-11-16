@@ -145,6 +145,9 @@ func TestCloneBothTwiceResolvedEquality(t *testing.T) {
 			for ti, typed := range [][]core.Edge{nil, {}, cloneBothEdges(order)} {
 				t.Run(fmt.Sprintf("set%d/order%d/typed%d", si, oi, ti), func(t *testing.T) {
 					syntax := Build(order)
+					if !syntax.CanReuseSyntax(order) {
+						t.Fatal("fresh syntax rejected its exact input order")
+					}
 					before := Build(order)
 					got := syntax.WithTypedEdges(typed)
 					want := twiceResolvedBoth(order, typed)
@@ -297,21 +300,75 @@ func TestCloneBothPruneMatchesDiscardedCopyOracle(t *testing.T) {
 func TestCloneBothPreservesPatchIneligibility(t *testing.T) {
 	nodes := indexAllocationFixture(8)
 	fresh := Build(nodes)
-	if !fresh.CanReuseSyntax() {
+	if !fresh.CanReuseSyntax(nodes) {
 		t.Fatal("fresh syntax is ineligible")
 	}
 	patched := fresh.WithPackagePatch("not-present", nil, nil)
-	if patched.CanReuseSyntax() {
+	if patched.CanReuseSyntax(nodes) {
 		t.Fatal("package-patched syntax is eligible")
 	}
 	cloned := patched.WithTypedEdges(cloneBothEdges(nodes))
-	if cloned.CanReuseSyntax() {
+	if cloned.CanReuseSyntax(nodes) {
 		t.Fatal("cloning promoted an approximate graph")
 	}
-	if !fresh.CanReuseSyntax() {
+	if !fresh.CanReuseSyntax(nodes) {
 		t.Fatal("patch mutated held fresh graph provenance")
 	}
-	if !fresh.WithTypedEdges(nil).CanReuseSyntax() {
+	if !fresh.WithTypedEdges(nil).CanReuseSyntax(nodes) {
 		t.Fatal("clone lost fresh graph provenance")
+	}
+}
+
+func TestCloneBothEligibilityComparesEveryNodeField(t *testing.T) {
+	n := core.SymbolNode{Service: "svc", Package: "p", Name: "Caller", Kind: core.KindGoFunc, FilePath: "p/p.go", Calls: []string{"Target"}}
+	g := Build([]core.SymbolNode{n})
+	typ := reflect.TypeOf(n)
+	for i := 0; i < typ.NumField(); i++ {
+		t.Run(typ.Field(i).Name, func(t *testing.T) {
+			changed := n
+			v := reflect.ValueOf(&changed).Elem().Field(i)
+			switch v.Kind() {
+			case reflect.String:
+				v.SetString(v.String() + "#changed")
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				v.SetInt(v.Int() + 1)
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				v.SetUint(v.Uint() + 1)
+			case reflect.Slice:
+				if typ.Field(i).Name != "Calls" {
+					t.Fatal("new slice field needs eligibility coverage")
+				}
+				changed.Calls = []string{"Different"}
+			default:
+				t.Fatalf("new field kind %s needs eligibility coverage", v.Kind())
+			}
+			if g.CanReuseSyntax([]core.SymbolNode{changed}) {
+				t.Fatal("accepted a different snapshot node value")
+			}
+			if !g.CanReuseSyntax([]core.SymbolNode{n}) {
+				t.Fatal("eligibility mutated original")
+			}
+		})
+	}
+	earlier := n
+	earlier.Signature = "overwritten"
+	if !g.CanReuseSyntax([]core.SymbolNode{earlier, n}) {
+		t.Fatal("last observation did not win")
+	}
+	if g.CanReuseSyntax([]core.SymbolNode{n, earlier}) {
+		t.Fatal("accepted a different final observation")
+	}
+	empty := n
+	empty.Calls = nil
+	if Build([]core.SymbolNode{empty}).CanReuseSyntax([]core.SymbolNode{{Service: n.Service, Package: n.Package, Name: n.Name, Kind: n.Kind, FilePath: n.FilePath, Calls: []string{}}}) {
+		t.Fatal("nil and empty Calls were conflated")
+	}
+	if g.CanReuseSyntax(nil) {
+		t.Fatal("accepted missing snapshot node")
+	}
+	extra := n
+	extra.Name = "Extra"
+	if g.CanReuseSyntax([]core.SymbolNode{n, extra}) {
+		t.Fatal("accepted an additional snapshot node")
 	}
 }

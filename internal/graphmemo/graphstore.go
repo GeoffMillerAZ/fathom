@@ -339,7 +339,7 @@ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLo
 			// Reuse only a completed syntax graph at this exact scope. A cold
 			// combined-only load keeps its existing build and retention behavior.
 			// Package-patched syntax is approximate and must not seed this load.
-			if syntax, ok := graphGroup.Peek(graphKey{snap.Scope, GraphSyntax}); ok && syntax.CanReuseSyntax() {
+			if syntax, ok := graphGroup.Peek(graphKey{snap.Scope, GraphSyntax}); ok && syntax.CanReuseSyntax(snap.Nodes) {
 				g = syntax.WithTypedEdges(edges)
 			} else {
 				g = callgraph.BuildBoth(snap.Nodes, edges)

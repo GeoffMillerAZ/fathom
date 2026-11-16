@@ -1,4 +1,227 @@
-# W7-1 P1/P2: FIX1 eligibility correction and load cost
+# W7-1 P1/P2: final FIX2 coherence correction
+
+Final code-fix round: local proofs pass, but **architect-class HOLD** remains for
+independent re-review and the architect's diff read before any integration. If the
+final review rejects this source, hold it rather than starting FIX3. No issue 251
+dispatch, full integration gate, deployed ENG-1 proof or plan-row completion is
+claimed. W12's chosen RT-197 option three remains undispatched behind its freeze;
+its known defects and their separately owned witnesses are untouched.
+
+Latest admitted snapshot+syntax+BOTH median: **1.496902958 s → 1.250227709 s**,
+**16.5% lower (1.197x)** than the unchanged indexed baseline. Every changed trial
+still exceeds one second. Both older source cohorts below are preserved as
+historical measurements, not acceptance evidence for this final source.
+
+## F2 and the coherence check
+
+FIX1 closed sequential F1 but missed publication interleaving. `PatchPackage`
+publishes the updated Snapshot before replacing its syntax graph. At that point a
+first BOTH load can see current nodes containing new `B.Run` and old unmarked
+syntax which still reaches `A.Run` from `h.Run`. Same watermark is not snapshot
+identity. Copying that old graph changed a formerly fresh BOTH answer.
+
+FIX2 leaves the existing non-atomic package publication and approximation entirely
+unchanged. It refines the existing internal `CanReuseSyntax` predicate to take the
+intended snapshot nodes. Reuse now requires both an unpatched memo syntax graph
+and exact equality with the snapshot's deduplicated node values. A reverse scan
+implements Build's last-observation-wins rule. Every SymbolNode field, including
+Calls order and nil/empty distinction, is compared. An added, removed or changed
+node declines reuse and takes the existing fresh `BuildBoth(snapshot.Nodes, typed)`
+path. Equivalent immutable node content can safely be reused even when produced
+by different publications; no epoch guess is needed.
+
+The predicate uses a transient seen-key set, not new resident state. No new
+exported symbol, graph/snapshot field, cache/group, lock, store/config structure,
+handler read or dependency is added. P1, FIX1's package-patched marker,
+`WithPackagePatch`, `ReplacePackage`, the clone helpers and typed augmentation are
+unchanged. This repairs only P2's additional reuse boundary; it does not make
+package patches sound or propose a fifth RT-197 scheme.
+
+## Actual controlled-publication RED before production edit
+
+The independent review witness was replayed against actual `PatchPackage` before
+any FIX2 production edit. A test-only Go overlay inserts only a callback variable
+and a scheduling barrier after the existing snapshot publication. Removing those
+two insertions yields byte-identical production source, asserted by retained
+`red-overlay-proof.json`. Actual first `GraphFor(BOTH)` runs while refresh is
+paused, then refresh resumes. No fake graph is injected.
+
+```text
+go test -race -overlay=workspace/tmp/w7-fix2/red-overlay.json ./internal/graphmemo -run '^TestCriticFix1ConcurrentPublication$' -count=1
+current B.Run=true old syntax reusable=true candidate A.Run=true fresh A.Run=false
+first BOTH reused previous-generation unmarked syntax after current snapshot was published
+FAIL github.com/geoffmilleraz/fathom/internal/graphmemo 0.293s
+```
+
+This is deterministic scheduled preemption, not an uninstrumented stress-run
+claim. The historical `2c495d35` source and proof remain intact. The durable owned
+test `TestCloneBothRejectsMixedSnapshotPublication` separately constructs exactly
+that snapshot-published/old-syntax-resident memo boundary without a production
+hook. It was also RED before the correction in four input orders with nil, empty
+and populated typed edges. Its oracle is still fresh `BuildBoth` over the actual
+published nodes, with all Graph fields, served output, typed/provenance metadata,
+registry bytes, memo identity, held graphs and snapshot immutability asserted.
+An initial accounting assertion forgot that earlier subtest scopes remain resident;
+it was corrected to use the pre-load registry-byte delta before production edits.
+The corrected test remained RED on the same stale-edge/full-field mismatch.
+
+## GREEN and coverage
+
+The same actual-production barrier replay passes with FIX2 and the same fresh
+full-field oracle:
+
+```text
+go test -race -overlay=workspace/tmp/w7-fix2/green-overlay.json ./internal/graphmemo -run '^TestCriticFix1ConcurrentPublication$' -count=1
+ok github.com/geoffmilleraz/fathom/internal/graphmemo 1.381s
+
+go test -race ./internal/analysis/callgraph ./internal/graphmemo -count=1
+ok github.com/geoffmilleraz/fathom/internal/analysis/callgraph 12.055s
+ok github.com/geoffmilleraz/fathom/internal/graphmemo 3.162s
+```
+
+Direct Go tests used the verified SH package pool; no EX wrapper was nested inside
+SH. The owned publication-state test covers all four orders and three typed-edge
+inputs. Existing sequential F1, generated/real-fixture/four-order equality,
+pruning, clone isolation, cold-only retention, failure, admission, singleflight,
+cancellation, watermark and byte-accounting tests remain enabled.
+
+New field-completeness tests mutate every SymbolNode field through reflection and
+require reuse refusal, so adding a field without updating the comparison fails.
+They cover duplicate last-wins order, extra/missing nodes and nil/empty Calls.
+Every generated/fixture syntax graph must also accept its own original input,
+including duplicate observations in all four orders.
+
+The original route probe intentionally seeded syntax from different snapshot node
+values. That no longer meets the corrected eligibility contract. The probe now
+uses identical snapshot data and a three-edge adjacency's spare-capacity
+fingerprint: fresh resolution and cloning have identical full Graph values but
+predictably different retained capacity/EstimatedBytes. It asserts the fresh
+full-field answer and cloned capacity, proving the production route still reuses
+matching syntax without admitting a mismatched graph. The fixture asserts that
+this fingerprint actually differs, rather than silently passing if it disappears.
+No output oracle is relaxed.
+
+Overlay receipts record HEAD at capture and the exact worktree source SHA256.
+The GREEN overlay source hash and all measured candidate production hashes are
+checked against final owned source; `proof-source.json` binds the final commit,
+tree, test and reading identities. Overlay callback/barrier files are ignored
+evidence only and never enter product code.
+
+## Latest five baseline and five final-source trials, all EX
+
+Baseline remains unchanged indexed source
+`d9eef4794afdbc200d1b8697ce121d9d688fedaf`. The candidate is that exact archive with
+only the three owned production files overlaid from FIX2. Each trial is a fresh
+process with a separate byte-identical copy of the stable original W5 input,
+SHA256 `e22f40d4dd467b0201badae263901741db23a81864c4f545c111b5c469ecd704`.
+Every copy and pinned input hash matches before/after. The original W5 corpus
+archive is byte-identical. Archived evidence is read-only; no ingest ran.
+
+The common W5 serving-load harness, phase marks, boundary memory/memo sampling and
+full-field serializer are identical in both source arms and unchanged from FIX1.
+All original Graph fields plus package-patched provenance are serialized; the
+old baseline has normalized false provenance and candidate fresh graphs emit
+actual false. All ten latest canonical outputs match. No refusal, omission,
+retry, selected timing, warm result or fast-decline substitute is included.
+
+Actual successful admission, one symbol read and one typed read occur per trial.
+At primary completion, snapshot and typed each have 1 miss/flight/entry and
+graphstore 2; after resolved graphstore has 3. Every group has zero declined,
+abandoned, refuse-cancelled or uncached builds. The enforced gate and managed
+budget remain unchanged except the harness's ten-minute tree deadline for a
+complete timed load. Environment: Go 1.27.4 darwin/arm64, cgo, 32 GiB/12-core Apple
+M2 Pro, GOMAXPROCS 6, 4 GiB managed budget, 1 GiB memo budget, 8 GiB GC hint, normal
+level. Admission/scope/snapshot/syntax/BOTH including typed loading are primary;
+resolved and common memory sampling are outside primary and inside full-load time.
+No OS page-cache flush is claimed.
+
+| Trial | Primary ns | Full-load ns | Snapshot s | Syntax s | BOTH s | Resolved extra s | Boundary allocated MiB | Boundary resident MiB | Process peak RSS MiB |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 01-baseline | 1442907459 | 1730747292 | 0.342789 | 0.299193 | 0.800926 | 0.287839 | 806.058 | 419.480 | 1482.000 |
+| 02-p1p2 | 1250227709 | 1542809667 | 0.343016 | 0.307660 | 0.599552 | 0.292581 | 727.229 | 418.980 | 1657.328 |
+| 03-p1p2 | 1240608500 | 1555657042 | 0.342547 | 0.298618 | 0.599443 | 0.315048 | 727.382 | 418.980 | 1563.438 |
+| 04-baseline | 1440765750 | 1722939750 | 0.340736 | 0.300675 | 0.799354 | 0.282173 | 805.972 | 419.480 | 1509.656 |
+| 05-baseline | 1509837375 | 1795541458 | 0.354254 | 0.321306 | 0.834277 | 0.285703 | 806.034 | 419.479 | 1694.406 |
+| 06-p1p2 | 1287802792 | 1601237584 | 0.336404 | 0.321458 | 0.629941 | 0.313434 | 727.555 | 418.978 | 1660.219 |
+| 07-p1p2 | 1276316583 | 1567742792 | 0.348992 | 0.331041 | 0.596284 | 0.291426 | 726.691 | 418.981 | 1660.500 |
+| 08-baseline | 1496902958 | 1775724458 | 0.360444 | 0.324817 | 0.811642 | 0.278821 | 805.567 | 419.481 | 1673.484 |
+| 09-baseline | 1534256791 | 1818163708 | 0.337482 | 0.338877 | 0.857898 | 0.283906 | 805.718 | 419.480 | 1671.109 |
+| 10-p1p2 | 1237251292 | 1524217125 | 0.336950 | 0.299731 | 0.600570 | 0.286965 | 727.753 | 418.980 | 1542.641 |
+
+| Latest median | Baseline | FIX2 P1/P2 | Reduction |
+|---|---:|---:|---:|
+| Primary seconds | 1.496903 | 1.250228 | 16.48% |
+| Full-load seconds | 1.775724 | 1.555657 | 12.39% |
+| Boundary allocated MiB | 805.972198 | 727.381592 | 9.75% |
+| Boundary live heap MiB | 495.443993 | 401.578583 | 18.95% |
+| Boundary memo estimate MiB | 419.479829 | 418.980210 | 0.12% |
+| Process peak RSS MiB | 1671.109375 | 1657.328125 | 0.82% |
+
+Primary and full-load timer columns are exact nanoseconds; phase/memory displays
+are rounded. Every raw value and counter is retained. The transient eligibility
+set and generated keys cost allocations, fully included here: the latest net
+allocation reduction is smaller than the historical FIX1 cohort's. This is not
+a paired incremental measurement of the validator alone. No new resident memo
+structure is hidden from accounting. Peak RSS includes resolved and output
+serialization, not just the primary boundary. Five-per-arm medians are descriptive,
+not confidence intervals or separate P1/P2 effect estimates. The one-second bar
+still fails. Timings concern fresh loads; actual publication correctness is the
+separate controlled replay and owned regression proof above.
+
+## Final-source identities and raw evidence
+
+Original corpus archive SHA256: `0d2836139e55958e8d7f4ab3ef9198034cbe70bc1e98df7c9b43f723be57d082`.
+`identity.json` records every overlaid product/harness hash; `fix-source.diff`
+records the correction against reviewed parent `2c495d35`.
+
+| Latest binary | SHA256 |
+|---|---|
+| baseline | `15539c6ab3d1cb9522c15c44728700934d498e472a24df24387b0095c9dbb662` |
+| p1p2 | `ee507db81ceb43a86a4451c255c1ae24a162d9b34c1729476d48180b63af1c85` |
+
+| Latest output, equal in all ten trials | SHA256 |
+|---|---|
+| both | `e7a4a4a7764051b2c2462dcb938be9ad4928a765caf6a6ce08d604ef1f3088ac` |
+| resolved | `cafaba53c5b445595ace544567269223e0734b475998057dab8e4072676b21d7` |
+| snapshot | `106d44446d04dc54781a110e5e24f42a15bc9055e56346426e0121dbc3fab202` |
+| syntax | `cf89006dad2a148dc3b384167850a2966f2938aa317ce97eb13a27474678afca` |
+| typed | `1c07d1627ad3ac3f96ba8ecad7db5b2e2b97223f40de0c785a0a9719bf6510bf` |
+
+Final raw evidence is isolated under `workspace/tmp/w7-fix2`: RED/GREEN overlays
+and restoration/source receipts, actual-publication and durable-test RED logs,
+full-package GREEN, source archive/arm copies/diffs, identity manifests, binaries
+and Go build metadata, every result/exit/time/RSS/ambient/full-output receipt,
+input hashes, `all-trials.json`, `summary.json`, `SHA256SUMS` and final
+`proof-source.json`. Measured source and GREEN overlay source match the final
+owned production files. Historical `workspace/tmp/w7` and `w7-fix1` evidence is
+untouched. Original W5/W6 evidence remains read-only at
+`../out/evidence-bundle4/measurement-251/workspace` with suffixes intact.
+
+Reproduce with retained FIX2 scripts and a fresh output area after preserving
+existing proofs, sourced lane environment, shared `FATHOM_GATE_LOCK` and clear
+`GATE-RUNNING`:
+
+```sh
+bash scripts/gate-lease.sh bash workspace/tmp/w7-fix2/run.sh
+bash scripts/gate-lease.sh python3 workspace/tmp/w7-fix2/analyze.py
+```
+
+Binaries use `-trimpath -buildvcs=false`. Package tests go directly through the SH
+pool; build/timing/analysis/hash work is EX. Scripts retain every trial and reject
+changed input, unequal full outputs, incomplete misses or refusals/abandonments.
+No full gate, native plan verification, push, deployment or restart ran here.
+The integration owner retains any performance changelog fragment outside this
+lane's allowlist. Corrected critic LAND, if obtained, still leaves architect HOLD
+before integration. This is the second and final fix round; no FIX3 is authorized.
+
+---
+
+The entire older FIX1 record follows unchanged apart from its heading, including
+its earlier W7 historical section. F1's sequential fix remains, but F2 invalidated
+its publication-coherence acceptance. Those old trials and hashes describe exactly
+their old sources and are not proof of this final correction.
+
+## Historical FIX1 source 2c495d35 (superseded by FIX2)
 
 FIX1 is implemented with local production-refresh and package proofs. **Architect
 class HOLD** remains pending independent re-review and the architect's diff read.
