@@ -33,6 +33,9 @@ func TestBoardNamesOnlyDispatchedFiles(t *testing.T) {
 			bad                bool
 		}{
 			{"python", "Python (.py)", "", false},
+			{"python", "Python BUILD (.py)", "another dialect", true},
+			{"python", "Python WORKSPACE (.py)", "another dialect", true},
+			{"python", "Python Cargo.toml (.py)", "Cargo.toml", true},
 			{"dockerfile", "Dockerfile / Containerfile (Dockerfile)", "Containerfile", true},
 			{"python", "Python (.py) .pyi", ".pyi", true},
 			{"python", "Python .pyi (.py)", ".pyi", true},
@@ -128,7 +131,7 @@ var boardProse = strings.Split("schema and migrations|workspaces|shebangs|incl. 
 var boardTitleProse = []string{"npm/pnpm/yarn", ".NET", "single-file"}
 var boardToken = regexp.MustCompile(`^[\pL\pN\pS_.*+/<>{}-]+$`)
 
-func boardSelectors(name string) ([]boardSelector, []string) {
+func boardSelectors(name string, table map[string]string, rules []langclass.DialectRule) ([]boardSelector, []string) {
 	var out []boardSelector
 	var errs []string
 	depth, start, outside := 0, 0, 0
@@ -221,7 +224,7 @@ func boardSelectors(name string) ([]boardSelector, []string) {
 		} // title alternative separator, not a path
 		if strings.ContainsAny(token, ".*/\\?[]{}<>") {
 			errs = append(errs, "unknown title selector syntax: "+token)
-		} else if strings.HasSuffix(strings.ToLower(token), "file") {
+		} else if strings.HasSuffix(strings.ToLower(token), "file") || boardDeclaredBasename(token, table, rules) {
 			if !boardToken.MatchString(token) {
 				errs = append(errs, "unknown title selector syntax: "+token)
 				continue
@@ -232,8 +235,23 @@ func boardSelectors(name string) ([]boardSelector, []string) {
 	return out, errs
 }
 
+// A title's bare filename is a selector regardless of its spelling. Consult
+// the existing dispatch registry and manifests, including refused declarations;
+// this only recognizes the claim, which selectorError still checks by routing.
+func boardDeclaredBasename(token string, table map[string]string, rules []langclass.DialectRule) bool {
+	if _, ok := table[token]; ok && !strings.HasPrefix(token, ".") {
+		return true
+	}
+	for _, rule := range rules {
+		if slices.Contains(rule.Basenames, token) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c boardNameChecker) errors(e QueueEntry) ([]string, int, string) {
-	selectors, errs := boardSelectors(e.Name)
+	selectors, errs := boardSelectors(e.Name, c.table, c.rules)
 	qualification := "registered"
 	if _, ok := c.in.Dispatched()[e.ID]; !ok {
 		qualification = "unsupported"
