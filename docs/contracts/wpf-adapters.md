@@ -9,8 +9,8 @@ readiness is claimed. This document owns itself only. Source inspected:
 Consulted: the intent router, principles, invariants, scope and non-goals,
 futures and decisions indexes, ADR-029 decision 6, ADR-082, proposed ADR-110,
 `docs/design/wiring-proof.md` WP-D1–WP-D6, the exact WPF-2/3/4/5/6/9 rows,
-`docs/contracts/labs-decoder.md`, `wire-admission.md`, approved `ctr-13.md`
-and `bench-consolidation.md`, and the separately approved WPF-1 contract.
+`docs/contracts/labs-decoder.md`, `wire-admission.md`, approved `ctr-12.md`,
+`ctr-13.md` and `bench-consolidation.md`, and the separately approved WPF-1 contract.
 Standing track rulings T2-1/2/3, T4-1 and W2-3/W3-2/W3-4 apply.
 
 P2/P3/P7/P17/P18 require deterministic checks, visible missing evidence and
@@ -89,6 +89,44 @@ unknown disposition and its distinction between missing/late and definite
 pre-agent failure stay intact; this draft does not resolve them with Reason text
 or implement another classifier. BEN-1 still requires all B1–B3 proofs.
 
+BEN-4's delivery inputs are also already frozen in approved
+`ctr-12.md:103-169` (`internal/labs/delivery.go`):
+
+- `DeliveryRow`: SessionID/LaneID/Capability/CallID/Target/At string,
+  Phase CallPhase, Arm DeliveryArm, Eligible/Fired/Delivered bool, LatencyMS float64.
+- `SessionCall`: SessionID/CallID string, Phase CallPhase, Ordinal int,
+  Targets []string; `CallCoverage`: SessionID string,
+  FirstOrdinal/LastOrdinal int, Complete bool, Reason string.
+- `FunnelInput`: Rows []DeliveryRow, Calls []SessionCall,
+  Coverage []CallCoverage, Pairs []benchledger.PairPreflight,
+  DeadlineMS float64, NextCalls int.
+- `DeliveryResult`: Rows []FiringReadingRow, VoidPairs/UnknownSessions []string;
+  `func DeliveryFunnel(in FunnelInput) (DeliveryResult, error)` reuses the
+  existing result/renderer, not a replacement funnel.
+
+Apply CTR-12's final named-enum/JSON amendment (`:532-535`, `:562-577`):
+CallPhase is preflight/agent; DeliveryArm is deliver/holdout/mandatory;
+compact fields have the specified lower_snake_case JSON tags and result slices
+are nonnil. DeliveryRow.CallID joins SessionCall.CallID. Target is an exact
+existing file/symbol/test anchor; action is a later call's Targets within
+(delivery.Ordinal, delivery.Ordinal+k], from the complete session call population,
+including calls with no delivery decision. Ordinals are positive, unique recorded
+event order. Duplicate CallID is unread evidence; duplicate/missing ordinals,
+unknown event loss or noncontiguous claimed coverage yield UnknownSessions,
+not zero action. Coverage must span delivery+k or a witnessed session end;
+Complete requires captured-count/raw-digest verification, not an authored boolean.
+
+CTR-12 `:599-615` removes only FLT-3/10; `:640-687` retains BEN-4 capture/archive
+obligations, including exact raw bytes/digests, time ranges, complete call order
+and named missing/corrupt/unreadable periods. CTR-13's older HOLD wording at
+`:636-638` concerns FLT-3/10 and does not erase that retained approved scope.
+No replacement contract for these frozen inputs is requested. Still needed are
+the actual producer handbacks into these shapes, their WPF-1 evidence/provenance
+bindings under WP-D6, and LAB-M1a's per-surface classifier-validation inputs
+(`feature-labs.md:120`). Frozen types and capture obligations alone do not supply
+those observations or establish a complete executable WPF-3 group; unknown
+evidence cannot be faked under T2-1.
+
 ## WPF-1 dependency inspected separately
 
 **D4 — schema contract versus implementation proof.** Approved WPF-1 contract
@@ -132,16 +170,17 @@ narrow CTR-13 applicability amendment; this lane cannot edit it.
 | Row and governing source | Current input and exact blocker |
 |---|---|
 | WPF-2; `wiring-proof.md:24`, WP-D1/D6 | WPF-1 specifies receipt data; doctor exposes `runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck` at `cmd/fathom/doctor.go:248`. WR-12 has no `checkWiringFiring` declaration or session-join result contract; WR-4 has no `computeWireStamp`; WR-5 does not propagate a computed wire/idx join. Need their owning callable signatures and result/evidence bindings before `checkSessionConformance` can reuse them. Existing hooks_firing/rule_outcome_writer rows are not those ports. |
-| WPF-3; `wiring-proof.md:25`, WP-D1/D6 | `FiringReading(points []Point, labs []Lab) []FiringReadingRow` exists at `internal/labs/firing.go:80`. It explicitly marks acted-on unmeasured (`:36`); Point/decoder events are not phase-labelled delivery/action capture. Need LAB-11/BEN-4's exact phase-labelled event, cited target, ordered-call, capture-completeness and classifier-validation inputs for `EvaluateDeliveryConformance`. No replacement funnel or report model. LAB-M1a rates require its per-surface validation, not invented provenance. |
+| WPF-3; `wiring-proof.md:25`, WP-D1/D6 | `FiringReading(points []Point, labs []Lab) []FiringReadingRow` exists at `internal/labs/firing.go:80`. It explicitly marks acted-on unmeasured (`:36`); Point/decoder events are not phase-labelled delivery/action capture. CTR-12:103-169 already freezes BEN-4's DeliveryRow, SessionCall, CallCoverage, FunnelInput and DeliveryFunnel, with retained capture/archive obligations at :640-687 (D3). Need actual LAB-11/BEN-4 producer handbacks into those frozen shapes, WPF-1 evidence/provenance bindings under WP-D6 and LAB-M1a classifier-validation inputs before fixing `EvaluateDeliveryConformance`. No replacement input contract, funnel or report model; the frozen shapes do not prove those observations or complete WPF-3 readiness. |
 | WPF-4; `wiring-proof.md:26`, WP-D2 | BEN's AdmitPair contract is frozen. WR-1's `ReceiptDefect` and WR-2's `VoidWithoutPositiveControl` have no callable declarations/signatures. `internal/contextbench/report.go:192-239` decodes final JSON and scores without a receipt argument. Need those admission ports and WPF-2's production receipt handback before `DeclaredConformanceGate` can extend them. Do not create a parallel gate or scorer. |
-| WPF-5; `wiring-proof.md:35`, WP-D5 | Claude decoding and frozen BEN Runner are available contract inputs. Missing: an owner-produced mapping from scripted registration/negotiation/primer/hook/beat/resource observations to WPF-1 evidence, with actual pre-agent boundary and startup bindings. Aggregate SessionResult is insufficient. Need that exact callable producer/consumer handback before fixing `RunClaudeConformanceScript` and its fixture files. Fake BEN wiring does not prove the missing mapping. |
-| WPF-6; `wiring-proof.md:36`, WP-D5 | LAB-7 freezes Claude only. Need actual Codex harness pin, transcript contract bytes/digest, event mapping, malformed/unreadable coverage and phase/boundary source, plus WPF-5's observation handback. No Codex format is inferred from DecodeLine accepting unknown fields. `RunCodexConformanceScript` cannot be fixed from a fictional format. BEN may be faked as above. |
+| WPF-5; `wiring-proof.md:36`, WP-D5 | Claude decoding and frozen BEN Runner are available contract inputs. Missing: an owner-produced mapping from scripted registration/negotiation/primer/hook/beat/resource observations to WPF-1 evidence, with actual pre-agent boundary and startup bindings. Aggregate SessionResult is insufficient. Need that exact callable producer/consumer handback before fixing `RunClaudeConformanceScript` and its fixture files. Fake BEN wiring does not prove the missing mapping. |
+| WPF-6; `wiring-proof.md:37`, WP-D5 | LAB-7 freezes Claude only. Need actual Codex harness pin, transcript contract bytes/digest, event mapping, malformed/unreadable coverage and phase/boundary source, plus WPF-5's observation handback. No Codex format is inferred from DecodeLine accepting unknown fields. `RunCodexConformanceScript` cannot be fixed from a fictional format. BEN may be faked as above. |
 | WPF-9; `wiring-proof.md:43`, WP-D3 | WPF-1 fixes canonical hashes, but LAB-28's `loadLabToolDescriptions` and LAB-29's `replaceStanzaBlock` have no declarations. Their plan rows (`feature-labs.md:132-133`) name behavior, not complete effective-output interfaces. Need exact effective-content/override handbacks and BEN-1's call-site mapping before fixing `ValidateWiringProfile` and its registration adapter. Existing CheckArmParity at `internal/scenariobench/parity.go:164` does not expose a complete effective profile; it explicitly marks unrendered wired inputs incomplete. A hash of caller-asserted digests alone would not prove undeclared differences absent. |
 
 Declaration inventory at the inspected source found none of the absent functions
 above, nor new WPF functions, AdmitPair or RunReadiness implementations. This is
-static absence, never a test RED or proof of runtime failure. Missing signatures
-are requested from their owners; parameter lists are deliberately not guessed.
+static absence, never a test RED or proof of runtime failure. Only genuinely
+missing signatures and producer/evidence handbacks are requested from their owners; frozen BEN-4 input shapes are reused, not re-contracted.
+Missing parameter lists are deliberately not guessed.
 
 ## Prospective files and precise wiring requests
 
