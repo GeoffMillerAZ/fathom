@@ -170,8 +170,14 @@ type PairPreflight struct {
 func AdmitPair(pairID string, treatment, control PreflightReceipt) (PairPreflight, error)
 ```
 
-Each applicable rung is pass/fail/unknown; not-applicable permitted only where a
-baseline's frozen applicability profile explicitly declares no product/daemon.
+Each applicable rung is pass/fail/unknown. Under W11-2 and
+`FINAL-REVIEW-mini-4.md` F4 (packet `2ba284bcfdffa8f440fdf2b7b76ea93ae1e231a0`),
+not-applicable is permitted where a baseline's frozen applicability profile
+explicitly declares no product/daemon, or for a channel the frozen wiring profile
+declares off, only with frozen scripted-preflight evidence that the channel is
+absent. Channel-off N/A exempts only that channel, never active channels or an
+entire rung with active checks remaining. W0/W6 and baseline identity checks are
+unchanged. N/A never becomes PASS; missing absence evidence remains unknown.
 Receipt digests bind the scripted observed artifacts and environment identity
 before startup, not a caller's boolean assertion: adapter validates those bytes
 and expected pins before AdmitPair. Add exactly `EvidenceSHA256 string` to
@@ -356,7 +362,7 @@ commit field or ambient process time as source identity.
 | Consumer exact test | Assertions and command |
 |---|---|
 | internal/benchledger/cellkey_test.go::TestLaneBenchCells | every input changes key; fixed treatment-only product change leaves daemon-free control key; trial differs; CR/LF rejected; wrong stored key/duplicates refuse; same input deterministic. `go test -race ./internal/benchledger -run '^TestLaneBenchCells$' -count=1` |
-| internal/benchledger/cellkey_test.go::TestPairPreflightAssignedArms | healthy probe then zero agent calls stays Valid; W4/W5 irrelevant; scripted W0-W3/W6 fail voids whole pair before startup; missing/late receipt unknown/unadmitted; baseline applicability not fabricated. `go test -race ./internal/benchledger -run '^TestPairPreflightAssignedArms$' -count=1` |
+| internal/benchledger/cellkey_test.go::TestPairPreflightAssignedArms | healthy probe then zero agent calls stays Valid; W4/W5 irrelevant; scripted W0-W3/W6 fail voids whole pair before startup; missing/late receipt unknown/unadmitted; baseline applicability not fabricated; profile-off channel N/A requires frozen scripted absence evidence, never PASS; active channels/W0/W6/baseline identity remain checked. `go test -race ./internal/benchledger -run '^TestPairPreflightAssignedArms$' -count=1` |
 | cmd/scenariobench/cells_test.go::TestBenchDriverConsolidation | kept command writes one canonical row; old write paths refuse; all legacy artifacts still render; no whole BEN-1 claim from key-only slice. `go test -race ./cmd/scenariobench -run '^TestBenchDriverConsolidation$' -count=1` |
 | internal/benchready/readiness_test.go::TestLaneBenchReadiness | six unique controls required; null/oracle/wrong/flake discrimination; scripted wired/grep preflight/adapters, zero-use pair retained; missing any one fails paid readiness. `go test -race ./internal/benchready -run '^TestLaneBenchReadiness$' -count=1` |
 | internal/capability/card_closure_test.go::TestLaneBenchCards | shipped surface without a card errors; orphan and duplicate surfaces conflict; schema valid/invalid; pending proof never promoted from presence. `go test -race ./internal/capability -run '^TestLaneBenchCards$' -count=1` |
@@ -641,7 +647,10 @@ must adopt this exact named disposition, not infer it from old boolean prose.
 Extend TestPairPreflightAssignedArms with definite fail -> both void; unknown rung/
 missing receipt -> both unknown; late receipt even if reporting failure -> both
 unknown; admitted zero-use/failed oracle -> both scored with treatment failure
-retained; inconsistent bool/disposition -> typed refusal. Add proposed
+retained; inconsistent bool/disposition -> typed refusal; W11-2 profile-off channel
+with frozen scripted absence evidence -> N/A, never PASS; absent evidence ->
+unknown/unadmitted; active channel failure still voids the pair; an off channel
+does not exempt other active checks in its rung, W0/W6 or baseline identity. Add proposed
 TestProjectCellPreflightDisposition in cellkey_test.go asserting these exact states
 and no Reason-string parsing (vary Reason without changing output). Command:
 go test -race ./internal/benchledger -run '^TestProjectCellPreflightDisposition$'
