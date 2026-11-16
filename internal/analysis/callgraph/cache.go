@@ -208,3 +208,33 @@ func BuildBoth(nodes []core.SymbolNode, typed []core.Edge) *Graph {
 	}
 	return g
 }
+
+// WithTypedEdges clones the completed graph and adds typed edges to the clone.
+// The receiver remains immutable for readers holding the published syntax graph.
+// Node payloads are immutable; adjacency slices and every mutable map are copied.
+func (g *Graph) WithTypedEdges(typed []core.Edge) *Graph {
+	ng := &Graph{
+		nodes:       cloneNodes(g.nodes),
+		callees:     cloneAdjacency(g.callees),
+		callers:     cloneAdjacency(g.callers),
+		byName:      cloneStrMap(g.byName),
+		byPkgName:   cloneStrMap(g.byPkgName),
+		byDirName:   cloneStrMap(g.byDirName),
+		byNameAll:   cloneAdjacency(g.byNameAll),
+		bySuffix:    cloneSuffixMap(g.bySuffix),
+		byDotSuffix: cloneSuffixMap(g.byDotSuffix),
+		edgeKind:    cloneEdgeKindMap(g.edgeKind),
+		typedFiles:  cloneBoolMap(g.typedFiles),
+		typedDirs:   cloneBoolMap(g.typedDirs),
+	}
+	// These helpers predate this path and turn nil into an empty map. Keep
+	// optional maps nil until the typed pass populates them, just as Build does.
+	if g.dispatchOut != nil {
+		ng.dispatchOut = cloneIntMap(g.dispatchOut)
+	}
+	if g.instantiates != nil {
+		ng.instantiates = cloneAdjacency(g.instantiates)
+	}
+	AddTypedEdges(ng, typed)
+	return ng
+}

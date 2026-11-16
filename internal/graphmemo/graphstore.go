@@ -336,7 +336,13 @@ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLo
 		var g *callgraph.Graph
 		switch kind {
 		case GraphBoth:
-			g = callgraph.BuildBoth(snap.Nodes, edges)
+			// Reuse only a completed syntax graph at this exact scope. A cold
+			// combined-only load keeps its existing build and retention behavior.
+			if syntax, ok := graphGroup.Peek(graphKey{snap.Scope, GraphSyntax}); ok {
+				g = syntax.WithTypedEdges(edges)
+			} else {
+				g = callgraph.BuildBoth(snap.Nodes, edges)
+			}
 		case GraphResolved:
 			g = callgraph.BuildResolved(snap.Nodes, edges)
 		default:

@@ -802,7 +802,10 @@ func (g *Graph) dropTypedFileGuesses(callers []string) {
 			continue
 		}
 		cs := g.callees[c]
-		kept := cs[:0:0]
+		// The graph owns this adjacency slice (published syntax graphs are
+		// cloned before typed augmentation), so compact in place. A capacity-zero
+		// buffer copied every surviving edge even when nothing was removed.
+		kept := cs[:0]
 		for _, m := range cs {
 			if _, typed := g.edgeKind[c+"\x00"+m]; !typed && g.nodes[m].Kind == core.KindGoMethod {
 				g.callers[m] = removeOne(g.callers[m], c)
