@@ -88,3 +88,79 @@ in scratch. These checks establish regression equivalence, not new oracle
 authority or a program L3 grade. The own reading is reproduced with
 `regrade_azure.py -indexbench workspace/tools/indexbench-candidate -subjects
 workspace/calibration/azure-pipelines -out workspace/tmp/azure-reading-fresh`.
+
+## Issue 211 offline SDK probe
+
+The [assessment](../../../docs/assessments/2026-10-25-tools-azure-pipelines.md#issue-211-offline-evaluation-exists-native-l3-remains-unmeasured-2026-11-15)
+and offline-probe-211.json retain a real, network-denied runtime feasibility
+probe of runner.server's existing template evaluator. It grants no support tier
+or canonical reading. The driver is authored; it does not execute jobs, start a
+server or implement a resolver. Use the recipe's common heavy wrapper outside
+these commands; do not nest a lease. Retain existing outputs and choose fresh
+output directories for reruns.
+
+Acquire the exact MIT source at release v3.14.0, commit
+069646146c90d649c74dfd7a34569c9420195838 from
+`https://codeload.github.com/ChristopherHX/runner.server/tar.gz/069646146c90d649c74dfd7a34569c9420195838`.
+Acquire the SDK URL/version and SHA512 in offline-probe-211.json's acquisition
+object from Microsoft's release metadata. Verify both archives against the
+receipt before extraction, entirely under workspace/tools/azure-211. The source
+archive SHA256 and public metadata URL are retained; no global install is needed.
+This measured process used SDK 8.0.428 osx-arm64. Another platform requires its
+own explicit SDK identity and a new diagnostic receipt, never bypassing a pin.
+
+Before **any** dotnet command (including build), set the local environment and
+disable certificate generation and persistent build/compiler servers:
+
+```sh
+export DOTNET_ROOT="$PWD/workspace/tools/azure-211/dotnet"
+export DOTNET_CLI_HOME="$PWD/workspace/tools/azure-211/cli-home"
+export NUGET_PACKAGES="$PWD/workspace/tools/azure-211/nuget/packages"
+export NUGET_HTTP_CACHE_PATH="$PWD/workspace/tools/azure-211/nuget/http"
+export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_ADD_GLOBAL_TOOLS_TO_PATH=false
+export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0
+export MSBUILDDISABLENODEREUSE=1
+```
+
+Create workspace/tools/azure-211/probe/Probe.csproj with this exact project
+reference (relative to that directory), and copy OfflineProbe211.cs alongside it
+as Program.cs. All dependencies are the upstream SDK's own pinned references;
+root go.mod and the production library are untouched.
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../runner.server-069646146c90d649c74dfd7a34569c9420195838/src/Sdk/Sdk.csproj" /></ItemGroup>
+</Project>
+```
+
+```sh
+workspace/tools/azure-211/dotnet/dotnet build workspace/tools/azure-211/probe/Probe.csproj -c Release -m:2 -nodeReuse:false -p:UseSharedCompilation=false -p:RuntimeIdentifiers= -p:Version=3.14.0
+python3 -B calibration/oracles/azure-pipelines/run_offline_211.py --dotnet workspace/tools/azure-211/dotnet/dotnet --assembly workspace/tools/azure-211/probe/bin/Release/net8.0/Probe.dll --out workspace/artifacts/lang-211/azure-runtime-replay
+python3 -B -m unittest discover -s calibration/oracles/azure-pipelines -p test_offline_probe_211.py
+bash scripts/fathom-go.sh test -race -count=1 ./pkg/lang -run '^TestAzurePipeline211PublicDispatch$'
+bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^TestCommittedReadingsRoundTrip$'
+```
+
+The runtime launcher uses `/usr/bin/sandbox-exec` with `(deny network*)`; failure
+to apply the sandbox fails the process. A receipt is written only after the
+entire authored population passes exact entity/dependency/refusal validation.
+The 1 MiB stdout check is post-capture parsing, not an output-write cap; only
+fixed authored inputs are accepted by this driver. No arbitrary subject-input
+or adversarial producer-output bound is claimed.
+
+Mutation: copy offline_probe_211.py and test_offline_probe_211.py into an ignored
+scratch directory. Independently replace `len(rows)!=4` with `False`, the full
+classification/support/attestation `if` condition with `if False:`, or
+`if actual!=expected[name]:` with `if False:`; run
+`python3 -B -m unittest discover -s <scratch> -p test_offline_probe_211.py` for
+each mutant, restoring between them. The population, classification and pairing
+controls must fail before the restored suite passes. The CLI cap+1 and malformed
+JSON controls reject the whole receipt without creating an output. Test logs
+and failed attempts are retained under workspace/artifacts/lang-211.
+
+The first build unexpectedly emitted a development-certificate installation
+notice; actual global state remains uninspected and controller-owned. The
+explicit environment above prevents repeating that SDK first-run behavior.
+No server/trust command was run and no cleanup is performed before review.

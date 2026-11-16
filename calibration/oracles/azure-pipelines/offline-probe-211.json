@@ -1,0 +1,243 @@
+{
+  "id": "azure-offline-probe-211",
+  "producer": "runner.server SDK evaluator",
+  "version": "3.14.0",
+  "commit": "069646146c90d649c74dfd7a34569c9420195838",
+  "licence": "MIT",
+  "public_release": "https://github.com/ChristopherHX/runner.server/releases/tag/v3.14.0",
+  "acquisition": {
+    "sdk": {
+      "name": "dotnet-sdk-osx-arm64.tar.gz",
+      "rid": "osx-arm64",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.428/dotnet-sdk-8.0.428-osx-arm64.tar.gz",
+      "hash": "c2930ce6363417165142e5610992df1430b1cf93f4b5ac31027da611a6bc089a73e7062eed0200be3e4a32db893a92c86fc27816a53521e5b041aafba0aa1215",
+      "version": "8.0.428"
+    },
+    "source_url": "https://codeload.github.com/ChristopherHX/runner.server/tar.gz/069646146c90d649c74dfd7a34569c9420195838",
+    "source_sha256": "532aec436379e57f1ddc00233ecdecb9c7f6f99b929f061e8d5864f16fceaa41",
+    "source_directory": "runner.server-069646146c90d649c74dfd7a34569c9420195838"
+  },
+  "runtime": {
+    "inputs": 4,
+    "evaluated": 2,
+    "refused": 2,
+    "unexpected_failures": 0,
+    "classification": "feasibility-only",
+    "support_claim": false,
+    "native_owner_attested": false,
+    "canonical_files_measured": 0,
+    "reading_changed": false,
+    "raw_sha256": "77998f026a1f2bdea7c4e0a58e816a83945d461b362d31b95cc07cf6618b8dcb",
+    "assembly_sha256": "5a470966d16cad9c3d4ba473591fd87b356af197b5d58f3a06edf8f36c324276",
+    "dotnet_sha256": "6b4a42db7d3d2d9f1a5f87ec883ea9215233582515bb42e951b7240b58d7d882",
+    "network": "sandbox-exec deny network*",
+    "process_timeout_seconds": 30,
+    "heap_limit_bytes": 805306368,
+    "services_started": false,
+    "jobs_executed": false
+  },
+  "authored_cases": {
+    "classification": "feasibility-only",
+    "support_claim": false,
+    "native_owner_attested": false,
+    "cases": [
+      {
+        "case": "template",
+        "status": "evaluated",
+        "stages": [
+          "Build",
+          "Publish"
+        ],
+        "jobs": [
+          "Compile",
+          "Release"
+        ],
+        "dependencies": [
+          "Publish:Build"
+        ]
+      },
+      {
+        "case": "changed",
+        "status": "evaluated",
+        "stages": [
+          "Changed",
+          "Publish"
+        ],
+        "jobs": [
+          "Compile",
+          "Release"
+        ],
+        "dependencies": [
+          "Publish:Changed"
+        ]
+      },
+      {
+        "case": "malformed",
+        "status": "refused",
+        "stages": [],
+        "jobs": [],
+        "dependencies": []
+      },
+      {
+        "case": "missing",
+        "status": "refused",
+        "stages": [],
+        "jobs": [],
+        "dependencies": []
+      }
+    ]
+  },
+  "source_search": [
+    {
+      "source": "scip-catalog",
+      "url": "https://raw.githubusercontent.com/sourcegraph/scip/main/README.md",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "fce767acbc4242c6f589fedf6f81a3089d6da766789e4d5a0a5673d2f6a927c0"
+    },
+    {
+      "source": "lsif-catalog",
+      "url": "https://raw.githubusercontent.com/sourcegraph/lsif-indexer-action/master/README.md",
+      "http_status": "404",
+      "exit": 0,
+      "sha256": "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+    },
+    {
+      "source": "lsif-dev",
+      "url": "https://lsif.dev/",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "095c143c6a3bb6df0d93387b5b3f1a9150bfda3afd673a697c5ba6a7e6706de6"
+    },
+    {
+      "source": "azure-ls-npm",
+      "url": "https://registry.npmjs.org/azure-pipelines-language-server/latest",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "36d4fd8562b4dd08c7d67ea8707bc4bc31bcb16a74dc6653f3c7c147785319cc"
+    },
+    {
+      "source": "azure-service-npm",
+      "url": "https://registry.npmjs.org/azure-pipelines-language-service/latest",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "59c14db3853e47859b7bb3f1ca5481885b91fc6435206ac9a1c40f961c096139"
+    },
+    {
+      "source": "preview-doc",
+      "url": "https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/preview/preview?view=azure-devops-rest-7.1",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "628200013b9fc7ded97f53fcb2432f76b320b74a5a9ae2fd484086a4cb58b9b6"
+    },
+    {
+      "source": "agent-repo",
+      "url": "https://api.github.com/repos/microsoft/azure-pipelines-agent/git/ref/tags/v4.264.2",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "ad6f7b7ac4f7a0e8c3e032dbf99175328f4ec157339795bb87042d096e9c04b1"
+    },
+    {
+      "source": "runner-package",
+      "url": "https://api.nuget.org/v3-flatcontainer/runner.client/index.json",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "d4eb0315215ae1b4fb544b5a07e92c34f6e2898d15e4bd0014b81d7e6d2f2424"
+    },
+    {
+      "source": "agent-trace-doc",
+      "url": "https://learn.microsoft.com/en-us/azure/devops/pipelines/troubleshooting/review-logs?view=azure-devops",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "e2b9961367ea730aa754c5ffeca3ff96b654991905f172ab9c3ca3727ab21851"
+    }
+  ],
+  "secondary_candidates": [
+    {
+      "repository": "amalabey/azp-local-runner",
+      "commit": "a8411989eb3810e46f700d8721cd8cdb2c9a8d2d",
+      "readme_access": "ok"
+    },
+    {
+      "repository": "fredrikn/AzurePipelineRunner",
+      "commit": "4e0b1ac133ad75e830600e5aba1cbd3fdf433be6",
+      "readme_access": "ok"
+    },
+    {
+      "repository": "rodmtl/ado-pipelines-local-runner",
+      "commit": "d3b76d0f3b955a20090a194f660bcb663d5cc7b8",
+      "readme_access": "ok"
+    },
+    {
+      "repository": "qSharpy/azure-templates-navigator",
+      "commit": "2e4ec367588e25663f67d8def570646532d4d462",
+      "readme_access": "ok"
+    },
+    {
+      "repository": "coolhome/azure-pipelines-language-server",
+      "commit": "d426b9b3e872823f80e3ced215f5fccaa6359c88",
+      "readme_access": "ok"
+    }
+  ],
+  "source_refresh": [
+    {
+      "source": "azure-ls-forks",
+      "url": "https://api.github.com/repos/microsoft/azure-pipelines-language-server/forks?sort=newest&per_page=5",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "a873664d30266a7b9622231a6c2eb11897938f01902e1baafda8b675ddf67e76"
+    },
+    {
+      "source": "azure-ls-definition",
+      "url": "https://raw.githubusercontent.com/microsoft/azure-pipelines-language-server/b36c23dba227da8077d125d33eda32d3fa64e7f2/language-service/src/services/yamlDefinition.ts",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "f29b6d04940b39874b3474032321023c480419a2775370d1655d0afdc366cdd0"
+    },
+    {
+      "source": "agent-process",
+      "url": "https://raw.githubusercontent.com/microsoft/azure-pipelines-agent/cf615ecf440fb7250650f2742e382bdad1651a8b/src/Agent.Listener/DistributedTask.Pipelines/Yaml/TypeConverters/ProcessConverter.cs",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "a042896798e104ea47a05dccbb0805a7599a0323741443fcc72f76a4d818fff9"
+    }
+  ],
+  "identities": {
+    "OfflineProbe211.cs": "396d3aa19aa7a4d25b1bf76330db3127f55f249fd67844dd6b652fa4788c0fae",
+    "offline_probe_211.py": "bedabaa1309e83cd336c9c6c0a446aed2cdaa7c7a58a1a27407f7a061281d065",
+    "run_offline_211.py": "68115eedc28f601209e4cd592877cbaeb5e2e0917e33159b01ed558663757ce2",
+    "audit-DefaultFileProvider.cs": "bfb24898a00cef1a8ff1d34c9aea07d9b8e8b2075d2f422d9f0c56f8bbc6750c",
+    "audit-Directory.Build.props": "04c910eaeb74066e2bdb68e7971d50efc84a29444108d4c3c77534168c9e71fb",
+    "audit-InMemoryFileProvider.cs": "88ec6a188db84cfe24181fee0d744e76d5af47ded9928fe18ab96c9da2ee7223",
+    "audit-Interop.cs": "62351c767419b863c4ae90a698801125b84f2193fee007ba228aac22a86c90af",
+    "audit-Sdk.csproj": "1acf4524b940e5647f4eb5b1dac4ebe87c6ad795926abbe35192febfed3ed624",
+    "audit-TestContext.cs": "9cca2c988bfbaf58c6a6155c5bddd5f0c3b233a30af8a315830752ae0eadf79b"
+  },
+  "limitations": [
+    "authored feasibility population only; zero canonical files measured",
+    "third-party evaluator; no owner-equivalence or complete entity/dependency attestation",
+    "no new support metric, tier, grade, reading, checkbox, corpus or required-kind changes",
+    "build first-run emitted development-certificate installation notice; global state uninspected, controller review required",
+    "HTTP/HTTPS server and runner entrypoints never invoked; network denied at runtime"
+  ],
+  "proof": {
+    "unit_tests": 6,
+    "skips": 0,
+    "mutants": {
+      "population_failures": 1,
+      "classification_failures": 1,
+      "pairing_failures": 3
+    },
+    "restored_tests": 6,
+    "caps": {
+      "receipt_parse_bytes": 1048576,
+      "tested_bytes": 1048577,
+      "whole_receipt_refusal": true,
+      "post_capture": true
+    },
+    "actual_public_dispatch_test": "TestAzurePipeline211PublicDispatch",
+    "canonical_readings_untouched": true,
+    "nested_readings_touched": [],
+    "full_gate_run": false
+  }
+}
