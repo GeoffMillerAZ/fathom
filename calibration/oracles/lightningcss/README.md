@@ -63,6 +63,10 @@ children, custom properties and references. The native location starts at the
 at-keyword; the adapter consumes that token (including CSS escapes) before using
 the existing selector-position logic. Each reference belongs to the first nested
 selector or to its custom property, rather than to the enclosing style rule.
+Native source lookup uses UTF-16 columns and a separate line-start map: CRLF
+counts once; bare CR, form feed and LF each advance the native line. Selector
+and custom-property output lines keep the existing LF-only source convention.
+This separation prevents valid CR/FF nesting from being silently dropped.
 Full end ranges remain unmeasured. Historical W2 labels are unchanged; C2-F1's
 primary-tier question still requires owner disposition before canonical adoption.
 
@@ -74,7 +78,9 @@ NODE_PATH="$PWD/workspace/tools/npm/node_modules" node --test calibration/oracle
 
 They cover native population, selector/custom-property positions, grouped and
 recursive nesting, reference ownership, imports, ordinary nesting, escaped
-at-keywords, comments, CRLF, malformed recovery and independent raw truth.
+at-keywords, comments, LF/CRLF/CR/form feed, Unicode and mixed-newline owner
+boundaries, malformed recovery and independent raw truth. The ten tests assert
+native locations separately from emitted LF-only positions; all ends remain zero.
 The newly traversed withdrawn nesting is capped at depth 64. Depth 65 fails the
 whole invocation before any JSON is emitted, including files processed earlier.
 This is a bench-adapter bound, not a new production parser limit.

@@ -120,3 +120,63 @@ test('withdrawn nesting accepts depth 64 and refuses the whole output at 65', ()
   assert.deepEqual(truth.calls, [call('.child &', '--tone')]);
   run({ 'case.css': nested(65), 'a.css': '.before { --x: 1; }' }, {}, true);
 });
+
+for (const [label, newline] of [['CR', '\r'], ['FF', '\f'], ['LF', '\n'], ['CRLF', '\r\n']]) {
+  test(`native retained withdrawn rule survives ${label} source locations`, () => {
+    const source = ['.outer {', ' @nest .child & {', ' --x:var(--y);',
+      ' color:var(--z);', ' }', '}'].join(newline);
+    let sheet;
+    lightningcss.transform({ code: Buffer.from(source), errorRecovery: true,
+      visitor: { StyleSheet(value) { sheet = value; } } });
+    const native = sheet.rules[0].value.rules[0];
+    assert.equal(native.type, 'nesting');
+    assert.deepEqual(native.value.style.loc, { source_index: 0, line: 1, column: 2 });
+    const { truth, stats } = run({ 'case.css': source });
+    assert.ok(truth.definitions.some(d => d.name === '.child &'), 'native .child & missing from definitions');
+    // Public positions count LF only, independently of the native lookup above.
+    const childLine = newline.includes('\n') ? 2 : 1;
+    const propertyLine = newline.includes('\n') ? 3 : 1;
+    const expected = [def('.outer', 1), def('.child &', childLine), def('--x', propertyLine, 'custom_property')];
+    expected.sort((a, b) => a.line - b.line || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    assert.deepEqual(truth.definitions, expected);
+    assert.deepEqual(truth.calls, [call('--x', '--y'), call('.child &', '--z')]);
+    assert.equal(stats.selector_cut_mismatch, 0);
+    assert.equal(stats.custom_located, 1);
+    assert.equal(stats.custom_unlocated, 0);
+    assert.deepEqual(stats.parse_failures, []);
+  });
+}
+
+test('native mixed newlines and UTF-16 columns preserve LF positions and nested owner boundaries', () => {
+  const source = '/*é😀*/ .outer {\r\n' +
+    ' /*é😀*/ @nest .child &,\f' +
+    ' .sibling & {\r' +
+    ' --local:var(--base);\n' +
+    ' color:var(--tone);\r\n' +
+    ' @media (width > 1px) {\f' +
+    ' --group:var(--g);\r' +
+    ' @nest .grand & { color:var(--deep); }\n' +
+    ' }\f' +
+    ' & .modern { color:var(--modern); }\r' +
+    ' }\r\n' +
+    ' color:var(--outer);\n' +
+    '}';
+  let sheet;
+  lightningcss.transform({ code: Buffer.from(source), errorRecovery: true,
+    visitor: { StyleSheet(value) { sheet = value; } } });
+  assert.deepEqual(sheet.rules[0].value.loc, { source_index: 0, line: 0, column: 9 });
+  const child = sheet.rules[0].value.rules.find(r => r.type === 'nesting').value.style;
+  assert.deepEqual(child.loc, { source_index: 0, line: 1, column: 10 });
+  assert.equal(child.selectors.length, 2);
+  const { truth, stats } = run({ 'case.css': source });
+  assert.deepEqual(truth.definitions, [def('.outer', 1), def('--local', 2, 'custom_property'),
+    def('.child &', 2), def('.sibling &', 2), def('--group', 4, 'custom_property'),
+    def('.grand &', 4), def('& .modern', 5)]);
+  assert.deepEqual(truth.calls, [call('& .modern', '--modern'), call('--group', '--g'),
+    call('--local', '--base'), call('.child &', '--tone'), call('.grand &', '--deep'),
+    call('.outer', '--outer')]);
+  assert.equal(stats.custom_located, 2);
+  assert.equal(stats.custom_unlocated, 0);
+  assert.equal(stats.selector_cut_mismatch, 0);
+  assert.deepEqual(stats.parse_failures, []);
+});

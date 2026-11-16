@@ -52,12 +52,23 @@ function listCSS(root, dirs) {
   return out.sort();
 }
 
-// lineStarts are the UTF-16 offsets at which each line of src begins (lightningcss counts columns in UTF-16
-// code units, which is what a JS string index is).
+// Public source lines count LF only; offsets and native columns use UTF-16 code units.
 function lineStarts(src) {
   const s = [0];
   for (let i = 0; i < src.length; i++) if (src.charCodeAt(i) === 10) s.push(i + 1);
   return s;
+}
+// Lightning CSS 1.33.0 counts CRLF as one newline, and bare CR, FF and LF
+// individually. Keep this lookup separate from the public LF-only line map.
+function nativeLineStarts(src) {
+  const starts = [0];
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === '\r') {
+      if (src[i + 1] === '\n') i++;
+      starts.push(i + 1);
+    } else if (src[i] === '\n' || src[i] === '\f') starts.push(i + 1);
+  }
+  return starts;
 }
 function lineOf(starts, off) {
   let lo = 0, hi = starts.length - 1;
@@ -230,6 +241,7 @@ function oracleFile(root, rel, out, stats) {
   const abs = path.join(root, rel);
   const src = fs.readFileSync(abs, 'utf8');
   const starts = lineStarts(src);
+  const nativeStarts = nativeLineStarts(src);
   let sheet = null;
   let res;
   try {
@@ -239,7 +251,7 @@ function oracleFile(root, rel, out, stats) {
     return [];
   }
   stats.warnings += (res.warnings || []).length;
-  const offsetOf = (loc) => starts[loc.line] + loc.column - 1;
+  const offsetOf = (loc) => nativeStarts[loc.line] + loc.column - 1;
   const def = (name, line, kind) => out.definitions.push({ path: rel, name, line, end: 0, kind });
   const call = (from, to) => out.calls.push({ path: rel, from, to });
   const imports = [];

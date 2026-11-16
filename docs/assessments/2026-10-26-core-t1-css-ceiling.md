@@ -143,6 +143,61 @@ same test file. It asserts exit 1 and empty stdout even with an earlier valid
 file. Depth 64 enumerates all 65 selectors. This bounds the added traversal;
 pre-existing generic scanner/file-walk limits are not redesigned by this lane.
 
+### Correction1: native newline lookup (CSS207-F1)
+
+Independent review found that the original O849 walk dropped valid nesting on
+bare CR and form feed. Lightning CSS reports the retained authored `.child &`
+rule at native line 1, column 2, while the LF-only source map has no second line;
+the resulting `NaN` offset produces `selector_cut_mismatch` and loses every
+nested fact. This invalidated the original synthetic prerequisite claim for
+those newline forms; it supplied no new language measurement.
+
+Before implementation, separate CR and form-feed tests reproduced the critic's
+`native .child & missing from definitions` assertion on the unchanged adapter.
+Both now assert the complete selector/property definitions (including `end: 0`),
+property-owned `--x` to `--y`, and selector-owned `.child &` to `--z` references.
+LF and CRLF controls pass before and after. A mixed-newline test adds accented
+and astral comment text, grouped selectors, a nested group declaration, a deeper
+withdrawn style and an ordinary nested style, asserting exact LF output lines
+and every owner boundary. Original assertions remain unchanged.
+
+Authored native AST probes establish UTF-16 columns rather than UTF-8 byte
+columns: after `/*é😀*/ ` the outer style starts at column 9, and after a leading
+space plus that comment the nesting keyword starts at column 10. LF, CR, form
+feed and CRLF each advance one native line; CR followed by form feed followed
+by LF advances three. The adapter now builds a separate native line-start map,
+coalescing CRLF, and uses it only for native-coordinate-to-offset lookup.
+Selector/custom-property output still uses the original LF-only map. No source
+search fallback, parser/dependency change or end-range inference is introduced.
+
+Run with the README's pinned Lightning CSS 1.33.0 `NODE_PATH`:
+`node --test calibration/oracles/lightningcss/lightningcss_oracle.test.cjs`.
+RED: 7 pass, 3 assertion failures (CR, form feed, mixed newlines); GREEN and
+restored GREEN: 10 pass, 0 fail. All native runs use the shared measurement
+wrapper before the machine gate lease. Test-owned temporary inputs are retained
+for review rather than removed; no corpus/browser/holdout is executed.
+
+Mutation: each scratch copy of `calibration/oracles/lightningcss/lightningcss_oracle.cjs`
+is run with `node --test --test-name-pattern=native calibration/oracles/lightningcss/lightningcss_oracle.test.cjs`
+from the copied tree and the same pinned package. These are assertion failures,
+not loader or syntax errors:
+
+| Mutant | Observed failure |
+|---|---|
+| Use LF-only `starts[loc.line]` for native lookup | CR, form feed and mixed positions fail (3) |
+| Do not coalesce CRLF in the native map | CRLF and mixed positions fail (3, including the older keyword test) |
+| Omit form feed from native newline handling | Form feed and mixed positions fail (2) |
+| Use native starts for emitted selector/property lines | Exact CR, form feed and mixed public lines fail (3) |
+
+Correction receipts are retained in `workspace/tmp/fix1/`: `red-full.log`,
+`coordinates.log`, `green.log`, `mutation.log`, `mutants/*/result.log` and
+`restored-green.log`. Existing depth64/65 whole-output refusal and raw-truth
+independence controls pass in the full ten-test suite. Scoped CSS golden,
+canonical reading/tracker/range-tier and privacy race checks use the same commands
+listed below. No plan, pin, Reading-schema file or generated board changes;
+120/212, tier C caps and stale SPENT K29 truth remain unchanged. The initial
+unleased clone remains a disclosed process deviation, not retroactively proven.
+
 ### Search-before-ceiling receipt
 
 Search date 2026-11-16; these are source/metadata lookups, not oracle runs or a
@@ -196,7 +251,7 @@ preregistered untuned validation. Plan boxes and generated boards stay unchanged
 
 ### Evidence checklist disposition
 
-- Scoped race checks passed: `bash scripts/fathom-go.sh test -race -count=1 ./internal/extractor -run '^TestDialectGoldens$/^css$'`; `bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestLanguagesTrackerIsGenerated|TestRangeTierLegacyFallbackAndWeakestContributor)$'`; and `bash scripts/fathom-go.sh test -race -count=1 -run '^TestNoOrgSpecificNames$' ./cmd/fathom`. The changed code is JavaScript; its five native adapter tests run with Node's test runner, which has no Go race mode.
+- Scoped race checks passed: `bash scripts/fathom-go.sh test -race -count=1 ./internal/extractor -run '^TestDialectGoldens$/^css$'`; `bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestLanguagesTrackerIsGenerated|TestRangeTierLegacyFallbackAndWeakestContributor)$'`; and `bash scripts/fathom-go.sh test -race -count=1 -run '^TestNoOrgSpecificNames$' ./cmd/fathom`. The changed code is JavaScript; its ten native adapter tests run with Node's test runner, which has no Go race mode.
 - `go run ./third_party/agentic-kit/cmd/release-notes -check`, `bash scripts/check-merge-debris.sh`, its `--staged` form, and `git diff --check` pass. No Go file changed, so gofmt has no changed input. Checks run under the track wrapper and machine lease; no full gate is claimed.
 - Tracked subject manifests, per-subject calibration ratios, three-run timing and consumer regrades are not new evidence in this lane: no subject checkout is created or measured. All corpus pins and Reading-schema files (including nested readings and frozen baseline) remain byte-identical; the numbers above are historical, not new measurements. No generated tracker, level table, grammar, epoch, public door or root dependency changes. The test's depth-64 population is 65/65 synthetic selectors, not a support denominator.
 - No plan box flips; scratch-ingest verify and deployment are not attempted. The session's daemon is unavailable and is not restarted. The controller owns fresh criticism, integration, the full gate and eventual cleanup of `workspace/artifacts/lang-css/` and scratch npm tools after review.
