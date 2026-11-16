@@ -299,6 +299,11 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 		if head.SyntaxErrors > 0 || len(head.Dropped) > 0 {
 			status.unknown("CloudFormation template syntax incomplete")
 		}
+		// An empty result can be a valid empty map or an unsupported section
+		// the reader skipped. Its counters do not distinguish those cases.
+		if len(head.Resources) == 0 {
+			status.unknown("CloudFormation resource coverage not established")
+		}
 		read++
 		var baseRes map[string]iacfacts.Resource
 		var baseSource []byte
@@ -306,6 +311,9 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 			if bs, err := iacfacts.ReadCloudFormationFile(f, baseSrc); err == nil {
 				if bs.SyntaxErrors > 0 || len(bs.Dropped) > 0 {
 					status.unknown("CloudFormation base syntax incomplete")
+				}
+				if len(bs.Resources) == 0 {
+					status.unknown("CloudFormation base resource coverage not established")
 				}
 				baseSource = baseSrc
 				baseRes = map[string]iacfacts.Resource{}

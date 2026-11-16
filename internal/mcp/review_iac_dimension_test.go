@@ -282,6 +282,58 @@ check "health" {
 		}
 		review(t, iacRepo(t, files), changed, false)
 	})
+	t.Run("cloudformation unsupported Resources section", func(t *testing.T) {
+		cfnHome(t, true)
+		// Exact independent critic witness. Preserve the current reader and
+		// compatibility payload while refusing to infer complete coverage.
+		source := "AWSTemplateFormatVersion: \"2010-09-09\"\nResources: [not-a-resource-map]\n"
+		set, err := iacfacts.ReadCloudFormationFile("stack.yaml", []byte(source))
+		if err != nil || set.SyntaxErrors != 0 || len(set.Dropped) != 0 || len(set.Resources) != 0 {
+			t.Fatalf("reader behavior changed: set=%+v err=%v", set, err)
+		}
+		p, dimension := review(t, iacRepo(t, map[string]string{"stack.yaml": source}), []string{"stack.yaml"}, false)
+		if dimension["count"] != float64(0) || len(dimension["findings"].([]any)) != 0 {
+			t.Fatalf("unsupported Resources section produced facts: %v", dimension)
+		}
+		legacy := iacBlock(t, p)["cloudformation"].(map[string]any)
+		if legacy["findings_total"] != float64(0) || len(legacy["findings"].([]any)) != 0 ||
+			!reflect.DeepEqual(legacy["resources"], map[string]any{"bound": float64(0), "unbound": float64(0)}) {
+			t.Fatalf("legacy payload changed: %v", legacy)
+		}
+	})
+	t.Run("cloudformation empty map coverage unestablished", func(t *testing.T) {
+		cfnHome(t, true)
+		source := "AWSTemplateFormatVersion: \"2010-09-09\"\nResources: {}\n"
+		_, dimension := review(t, iacRepo(t, map[string]string{"stack.yaml": source}), []string{"stack.yaml"}, false)
+		reason, _ := dimension["reason"].(string)
+		if !strings.Contains(reason, "coverage not established") || strings.Contains(reason, "malformed") {
+			t.Fatalf("empty result must not assert malformed input: %v", dimension)
+		}
+	})
+	t.Run("cloudformation empty base coverage unestablished", func(t *testing.T) {
+		cfnHome(t, true)
+		// The same exact critic witness at the base cannot establish complete
+		// replacement coverage for a currently readable resource.
+		base := "AWSTemplateFormatVersion: \"2010-09-09\"\nResources: [not-a-resource-map]\n"
+		root := iacRepo(t, map[string]string{"stack.yaml": base})
+		gitIn(t, root, "init", "-q")
+		gitIn(t, root, "add", "stack.yaml")
+		gitIn(t, root, "commit", "-q", "-m", "base")
+		head := "AWSTemplateFormatVersion: \"2010-09-09\"\nResources:\n  Widget:\n    Type: Example::Widget::Thing\n    Properties:\n      Name: a\n"
+		if err := os.WriteFile(filepath.Join(root, "stack.yaml"), []byte(head), 0600); err != nil {
+			t.Fatal(err)
+		}
+		payload, _ := iacCall(t, cfnServer(root), "review_diff", map[string]any{"service": "svc", "changed_files": []string{"stack.yaml"}, "since": "HEAD"})
+		dimension := laneIaCDimension(t, payload, false)
+		if !strings.Contains(dimension["reason"].(string), "base resource coverage not established") {
+			t.Fatalf("missing base coverage reason: %v", dimension)
+		}
+		legacy := iacBlock(t, payload)["cloudformation"].(map[string]any)
+		if legacy["findings_total"] != float64(0) || len(legacy["findings"].([]any)) != 0 ||
+			!reflect.DeepEqual(legacy["resources"], map[string]any{"bound": float64(1), "unbound": float64(0)}) {
+			t.Fatalf("legacy head binding or findings changed: %v", legacy)
+		}
+	})
 	t.Run("cloudformation", func(t *testing.T) {
 		cfnHome(t, true)
 		template := "AWSTemplateFormatVersion: \"2010-09-09\"\nResources:\n  Widget:\n    Type: Example::Widget::Thing\n    Properties:\n      Name: secret-value-canary\n      Colour: red\n"
