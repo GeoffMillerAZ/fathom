@@ -21,7 +21,7 @@ algorithm, sampler, table, scheduler, surface inventory, knob writer or runner.
 |---|---|
 | D1: reference, never ownership | Seed `Lab.ID` and quality/harness names are references. No `surface`, `features`, new lab id, or new closure list. FT-D1; `internal/labs/load.go` `Lab`, `LoadLabs`; `closure.go` `CheckLabClosure`. |
 | D2: five small file records | Closed `#TuningCard`, exactly five committed feature mappings, non-recursive loader. FTU-0/1, FT-D1. Existing `LoadLabs` ignores directories, so `tuning/` cannot acquire surfaces. |
-| D3: reuse the actual seams | `LoadLabs(dir string, knownSurfaces []string) ([]Lab, error)` and `CheckLabClosure(dir string, shipped []string) error` remain unchanged. Reuse `QualityReading`, `LabKnob`, `KillCriterion`; do not silently tighten their existing APIs. LAB-1/2/3; FT-D1. |
+| D3: reuse the actual seams | `LoadLabs(dir string, knownSurfaces []string) ([]Lab, error)` and `CheckLabClosure(dir string, shipped []string) error` remain unchanged. Reuse `QualityReading` and `KillCriterion`; add tuning-local typed knobs without changing `LabKnob` or any existing API (W3-4/C1). LAB-1/2/3; FT-D1. |
 | D4: distinguish policy from proof | Cards specify bars and point to FTU-2 preregistration; loading never registers a bar or measures an outcome. FT-D1, FTU-2, correction 1/BX-40; ADR-082 decisions 4..6. |
 | D5: file-local schema grant | New `tuning.go` embeds `tuning.cue` and validates it independently; production schema dispatch is an integrating-helper request. T2-3, `schema/AGENTS.md`. |
 | D6: existing report style | Add a file-only report builder/renderer; request serial shared wiring after WPF-3, ahead of FTU-3/5. FTU plan's serial order; `instrument_adoption_labs.go` `adoptionLabsSection`/`renderAdoptionLabs`. |
@@ -43,12 +43,15 @@ No implementation lane edits a shared file as an incidental prerequisite.
 
 | Group | Exact owned paths | Handed / completion boundary |
 |---|---|---|
-| A: independent schema | `schema/labs/tuning.cue`, `schema/labs/tuning.go`, `schema/labs/testdata/tuning_valid.cue`, `schema/labs/testdata/tuning_invalid.cue` | T2-3 grants all four. Independent validator only; no `schema.go`/`schema.cue` edits. Schema test ownership request below must be resolved before dispatch. |
-| B: loader and report functions | `internal/labs/tuning_cards.go`, `internal/labs/tuning_cards_test.go`, `cmd/fathom/instrument_adoption_tuning.go`, `cmd/fathom/instrument_adoption_tuning_test.go` | A's validator and current LAB-1/2/3 APIs. Function-level proof only until integrating helper wires report. |
-| C: committed cards and reconciliation | `calibration/labs.d/tuning/maps.yaml`, `calibration/labs.d/tuning/semantic-layers.yaml`, `calibration/labs.d/tuning/freshness.yaml`, `calibration/labs.d/tuning/resource-envelope.yaml`, `calibration/labs.d/tuning/edit-obligations.yaml`, `cmd/fathom/instrument_adoption_tuning_cards_test.go`, `docs/bench/readings/feature-tuning/ftu-1-card-reconciliation.md` | B's loader; no dependency on implemented FTU-2. Exactly five mappings and existing seed/closure proofs. |
+| A+B: independent schema, loader and report functions | `schema/labs/tuning.cue`, `schema/labs/tuning.go`, `schema/labs/testdata/tuning_valid.cue`, `schema/labs/testdata/tuning_invalid.cue`, `internal/labs/tuning_cards.go`, `internal/labs/tuning_cards_test.go`, `cmd/fathom/instrument_adoption_tuning.go`, `cmd/fathom/instrument_adoption_tuning_test.go` | T2-3 grants the independent validator; current LAB-1/2/3 APIs supply seeds. All schema assertions live in the already-owned `internal/labs/tuning_cards_test.go`. No `schema.go`/`schema.cue` edits. Function-level report proof until integrating-helper wiring. |
+| C: committed cards and reconciliation | `calibration/labs.d/tuning/maps.yaml`, `calibration/labs.d/tuning/semantic-layers.yaml`, `calibration/labs.d/tuning/freshness.yaml`, `calibration/labs.d/tuning/resource-envelope.yaml`, `calibration/labs.d/tuning/edit-obligations.yaml`, `cmd/fathom/instrument_adoption_tuning_cards_test.go`, `docs/bench/readings/feature-tuning/ftu-1-card-reconciliation.md` | A+B's loader; no dependency on implemented FTU-2. Exactly five mappings and existing seed/closure proofs. |
 
-A is bounded separately from B; C follows B. This contract lane owns only this
-file and its ignored handback. It changes no plan checkbox or changelog fragment.
+The owner-directed correction settles MERGE A+B: one bounded implementation lane
+owns eight paths, then C runs as a separate serial lane with seven paths: exactly 15 implementation paths.
+No additional ownership request is needed. T2-3 governs independent schema placement;
+W3-2 governs full schema assertions in the existing owned test file.
+This contract lane owns only this file and its ignored scratch/handback. It changes
+no plan checkbox or changelog fragment.
 
 ## Exact CUE and Go card shapes
 
@@ -93,8 +96,10 @@ quoted CUE strings. `quality.reading`, `reading`, `kill.reading`, and
 exist to load a card. `source` is a cited policy section/row, not a claimed measurement.
 `bar.preregistration` is exactly `docs/bench/prereg/feature-tuning.md` in all five
 committed cards; no loader probes it. CUE conditional constraints enforce: maps
-references the two brief seeds; semantic-layers/edit-obligations reference only
-`lab-obligations`; freshness/resource-envelope have empty `labs` and `mode: "n/a"`.
+has exactly the two distinct brief seed ids in either order; semantic-layers/edit-obligations
+have exactly one `lab-obligations` id; freshness/resource-envelope have empty `labs`
+and `mode: "n/a"`. Cardinality and membership are enforced together in CUE, so
+no repeated lab id can pass schema validation.
 The other three use `mode: "seed"`; that means consult each seed's actual firing
 mode (session brief is itself n/a), never synthesize a new firing question.
 Go validates exact lab sets without dependence on caller list order.
@@ -115,6 +120,9 @@ lookup `#TuningCard`, unify JSON and `Validate(cue.Concrete(true))`. Invalid JSO
 schema or incomplete data returns `*TuningValidationError`, identifying the bad
 field. No context, I/O, caches, mutable registry, dependency or existing schema edit.
 YAML conversion belongs to the loader, using the already imported CUE YAML decoder.
+Malformed or multi-document YAML is `TuningCardSchema`, wrapping a
+`TuningValidationError` with a document diagnostic; later schema failures wrap the
+validator error unchanged. Field diagnostics apply when a field can be identified.
 
 In `internal/labs/tuning_cards.go`, exact exported types and entrypoint:
 
@@ -122,6 +130,13 @@ In `internal/labs/tuning_cards.go`, exact exported types and entrypoint:
 type TuningFeature string
 type TuningFiringMode string
 type TuningDefaultState string
+type TuningKnobKind string
+
+type TuningKnob struct {
+    Name string `json:"name"`
+    Kind TuningKnobKind `json:"kind"`
+    Location string `json:"location"`
+}
 
 type TuningFiring struct {
     Mode TuningFiringMode `json:"mode"`
@@ -156,7 +171,7 @@ type FeatureTuningCard struct {
     Population string `json:"population"`
     EligibilitySource string `json:"eligibility_source"`
     Comparison TuningComparison `json:"comparison"`
-    Knobs []LabKnob `json:"knobs"`
+    Knobs []TuningKnob `json:"knobs"`
     Inputs []TuningInput `json:"inputs"`
     Reading string `json:"reading"`
     Bar TuningBar `json:"bar"`
@@ -183,13 +198,17 @@ Export these constants with their named type (no public bare-string closed field
 |---|---|
 | `TuningFeature` | `TuningMaps="maps"`, `TuningSemanticLayers="semantic-layers"`, `TuningFreshness="freshness"`, `TuningResourceEnvelope="resource-envelope"`, `TuningEditObligations="edit-obligations"` |
 | `TuningFiringMode` | `TuningFiringSeed="seed"`, `TuningFiringNA="n/a"` |
+| `TuningKnobKind` | `TuningKnobText="text"`, `TuningKnobCap="cap"`, `TuningKnobThreshold="threshold"`, `TuningKnobMembership="membership"`, `TuningKnobDefault="default"` |
 | `TuningDefaultState` | `TuningDefaultUnchangedCandidateOff="unchanged_candidate_off"` |
 | `TuningPreflightRung` | `TuningW0="W0"`, `TuningW1="W1"`, `TuningW2="W2"`, `TuningW3="W3"`, `TuningW6="W6"` |
 | `TuningCardErrorKind` | `TuningCardRead="read"`, `TuningCardSchema="schema"`, `TuningCardFilename="filename"`, `TuningCardDuplicate="duplicate"`, `TuningCardUnknownLab="unknown_lab"`, `TuningCardUnknownInstrument="unknown_instrument"` |
 
-Existing `LabKnob.Kind`, `QualityReading.Instrument` and `KillCriterion` remain
-existing types; CUE constrains knob kinds, while instrument names are references
-into an open caller-derived vocabulary, not a new exported enum/registry.
+W3-4/C1 requires `TuningKnob.Kind` to use the closed five-value Go vocabulary
+as well as CUE validation. Define it only in the new `tuning_cards.go`; the existing
+`LabKnob` API (`internal/labs/load.go:LabKnob`, whose `Kind` is `string`) stays
+unchanged. `QualityReading.Instrument` is an open caller-derived reference, not a
+closed vocabulary; reuse it and `KillCriterion` unchanged. No new registry/API for
+future use.
 
 Loader rules, in order: read directory entries by name; inspect regular `.yaml`
 files only, ignoring directories and unrelated extensions; refuse symlink `.yaml`
@@ -206,9 +225,21 @@ through `LoadLabs`, never synthesizes them from tuning files or `features` label
 Sort returned cards by feature, lab ids lexically, quality by instrument then reading,
 metrics lexically, knobs by location then name then kind, inputs by path then commit
 then SHA256 then purpose, kill by reading then criterion. Keep WPF's exact rung order.
-Reject duplicate list elements with `TuningCardDuplicate`; for lab references reject
-repeated ids, for quality repeated (instrument,reading), and for inputs repeated paths.
-Other lists reject exact duplicate elements. All exported slices are nonnil, including
+Schema validation takes precedence over every Go-only duplicate, filename or
+reference check (W3-2; the fixed `#TuningCard` shape above). In particular
+duplicate WPF rungs violate the exact five-element tuple and return `TuningCardSchema`,
+not `TuningCardDuplicate`; missing, extra or reordered rungs do likewise. Repeated
+lab ids also violate the feature-specific exact lab set (two distinct brief seeds,
+one obligations seed or empty set), so return `TuningCardSchema`. Assert both
+exceptions without weakening the schema to reach a later error.
+For otherwise schema-valid lists return `TuningCardDuplicate`: quality repeated
+(instrument,reading), inputs repeated paths (even with different pins/purpose),
+and exact duplicate purpose metrics, knobs or kill elements. These are all remaining
+list checks; WPF and labs have the schema exceptions just stated. Duplicate feature
+across schema-valid files is checked before filename, so a second maps card under
+another filename reports `TuningCardDuplicate` rather than `TuningCardFilename`.
+Invalid schema in that second file still reports `TuningCardSchema` first.
+All exported slices are nonnil, including
 empty results and every error return (`[]FeatureTuningCard{}`, never partial cards).
 Missing directory is `TuningCardRead`, not a successful empty inventory. An existing
 empty directory returns `[]`, and cannot qualify reconciliation. Preserve wrapped
@@ -239,10 +270,24 @@ replace the seed's existing K1/K4 kill. Keep seed helped-arm meanings intact.
 
 Exact knob locations (one record per knob, descriptive names from FT-D2..D5):
 
-- Maps: pointer/expansion and primer share at `cmd/fathom/brief.go` and
-  `cmd/fathom/sessionhook.go`; display cap/overlap at `cmd/fathom/mapshow.go`;
-  composition depth at `internal/explmap/resolve.go`. Recent-use horizon and
-  injection selection refer to their existing brief selection code, not new config keys.
+Maps use these exact source anchors and roles (FT-D2; FTU-1). Each location record names one anchor from this table; roles distinguish current controls from
+candidate choices. No invented configuration setting is implied.
+
+| Map knob / role | Existing source anchors and current semantics |
+|---|---|
+| Pointer versus expansion | `cmd/fathom/maphooks.go:mapShowHint` emits the explicit `map show --budget 1200` recovery; `cmd/fathom/maphooks.go:renderMapPointer` emits the bounded pointer, not inline expansion. Candidate delivery choice stays within these seams. |
+| Entry/delivery cap | `cmd/fathom/maphooks.go:mapPointerLineMax` (280 bytes), `cmd/fathom/maphooks.go:mapPointerMaxLines` (2 maps) and `cmd/fathom/maphooks.go:mapPointerFreshCap` (60 checked entries) bound pointer delivery/checking; `cmd/fathom/maphooks.go:maxBriefMaps` caps brief selection at 3. These are distinct limits, not an invented expansion-entry setting. |
+| Task overlap selection | `cmd/fathom/maphooks.go:briefMaps` (currently line 652) ranks named maps then unique recent-file overlap, retaining stable recent-use order; `cmd/fathom/maphooks.go:mapPointerLine` ranks matched anchored entries for a prompt/edit touch. |
+| Recent-use horizon | `cmd/fathom/maphooks.go:loadAliveMapsCut` sorts alive candidates by `LastUsed`, id tie-break; `cmd/fathom/maphooks.go:threadRecentFiles` derives recent files from current worktree/open-note pointers. There is no configurable recent-use horizon here. `internal/explmap/lifetime.go:mapLifetime` reports idle time without expiring maps; a candidate horizon is a reading proposal, not an existing setting. |
+| Composition depth | `internal/explmap/model.go:MaxDepth` (currently line 30) sets 4; `internal/explmap/resolve.go:ResolveMap` enforces it. Tune only within this existing limit. |
+| Primer share | `cmd/fathom/maphooks.go:joinSubagentPrimer` preserves the map id within the supplied budget; `cmd/fathom/sessionhook.go:composePrimer` includes `briefMapLines` inside the thread brief and whole-primer cap (`sessionPrimerBudget`). Preserve I12. |
+| Injection on/off selection | `cmd/fathom/maphooks.go:threadsHoldMaps` gates map channels; `cmd/fathom/maphooks.go:briefMapLines` selects alive maps for the primer and `cmd/fathom/maphooks.go:withMapPointer` / `cmd/fathom/maphooks.go:withPromptMapPointer` deliver edit/prompt pointers. These are existing call seams, not a new on/off config key. |
+
+`cmd/fathom/brief.go` is the fleet narrative, not map injection.
+`cmd/fathom/mapshow.go` renders requested expansion; it does not select the brief's
+overlap. Neither is an injection/overlap knob anchor. Pointer constants currently
+start at `maphooks.go:385`; use named symbols, not fragile line-only identities.
+
 - Layers: pack/corpus selection at `internal/semantic/packs.go`; section/digest
   boundaries at `internal/semantic/compile.go`; payload order/caps/raw fallback at
   `cmd/fathom/edithook.go`. No tier/citation weakening.
@@ -320,7 +365,7 @@ kill and WPF requirements, preregistration pointer, default state and explicit l
 errors print `CARDS UNREADABLE` with the category; do not print registration or
 outcome success. JSON carries complete cards and errors, no invented measurements.
 
-Integrating-helper wiring requests, not files owned by A/B/C:
+Integrating-helper wiring requests, not files owned by A+B or C:
 
 1. After WPF-3's call-site integration, add
    `FeatureTuning AdoptionFeatureTuning` with `json:"feature_tuning"` to existing
@@ -334,7 +379,7 @@ Integrating-helper wiring requests, not files owned by A/B/C:
    Identify the actual validation entry during integration rather than inventing
    a shared dispatcher name. The new loader already calls the independent validator.
 3. Integrator adds its shared-call-site tests in its own explicitly owned turn;
-   B's function tests cannot prove this wiring. WPF-3, LAB-3/LAB-5 dependencies,
+   A+B's function tests cannot prove this wiring. WPF-3, LAB-3/LAB-5 dependencies,
    production reachability and verify still gate FTU-0. No box is checked here.
 
 App-kit review: `docs/app-kit.md`, `appkit.adoption.json`, MCP guidance → intent →
@@ -348,14 +393,13 @@ This scoped divergence is recorded here because the lane cannot edit adoption do
 
 ## Implementing-lane RED and exact tests
 
-Group A requires one additional NEW test path not in FTU-0/T2-3's enumerated grant:
-`schema/labs/tuning_test.go`. Request that exact ownership before dispatching A;
-never edit existing `schema_test.go` or add it implicitly. Alternatively assign the
-same schema assertions to B's already-owned `internal/labs/tuning_cards_test.go`
-and dispatch A+B as one bounded serial lane. Recommendation: grant the new test
-path and retain the three groups. No other new schema file is needed.
+A+B places ALL schema and loader assertions below in its already-owned
+`internal/labs/tuning_cards_test.go`, importing the independent validator and
+`TuningSource`. No separate schema test grant or shared schema edit is required.
+The fixtures remain at the four T2-3 schema paths above. W3-2 requires the full
+mutation assertions, not a reduced fixture smoke test.
 
-A's tests (or the named alternative location, unchanged assertions):
+A+B's schema tests in `internal/labs/tuning_cards_test.go`:
 
 - `TestFeatureTuningCardSchemaValid`: compile embedded `TuningSource` alone; load
   `tuning_valid.cue` with one fully concrete case per feature, including empty labs
@@ -369,9 +413,11 @@ A's tests (or the named alternative location, unchanged assertions):
   absolute/backslash/traversal paths, wrong seed set/mode for each feature and W4,
   W5, missing, reordered or duplicate preflight rung. Each returns
   `*TuningValidationError` and diagnostic names the mutated field. Malformed JSON
-  returns that type. Valid controls must pass before each mutation.
+  returns that type. Include repeated lab ids for each feature, and wrong lab
+  cardinality; schema rejects these before Go reference checks. Valid controls must
+  pass before each mutation.
 
-B's `internal/labs/tuning_cards_test.go`:
+A+B's loader tests in the same `internal/labs/tuning_cards_test.go`:
 
 - `TestFeatureTuningCardLoad`: write valid YAML in reverse feature order; load with
   validated current-shaped seed fixtures. Assert every field decodes exactly,
@@ -381,10 +427,21 @@ B's `internal/labs/tuning_cards_test.go`:
   replace a quality instrument with an unknown name. Assert respective typed
   `unknown_lab`/`unknown_instrument`, basename and exact unresolved reference,
   nonnil empty result. Add an instrument only to seed `Quality`, then only to seed
-  `Harness`; both are accepted without a new static list. Reject `none`/empty.
-- `TestFeatureTuningCardRefusals`: each wrong filename, duplicate feature, duplicate
-  list reference, invalid field, multi-document YAML, missing directory and broken
-  YAML returns its stated typed kind, nonnil empty result, and no partial success.
+  `Harness`; both are accepted without a new static list. `none` returns
+  `TuningCardUnknownInstrument`; empty instrument text returns `TuningCardSchema`
+  before reference validation. Assert their exact field/reference and wrapped types.
+- `TestFeatureTuningCardRefusals`: isolated wrong filename returns `TuningCardFilename`;
+  a schema-valid duplicate feature in a later differently named file returns
+  `TuningCardDuplicate` before filename checking. Independently test schema-valid duplicate list cases: quality pair, input path with different pins/purpose, exact
+  metric, knob and kill; each is `TuningCardDuplicate` with the offending field.
+  Duplicate lab ids and duplicate WPF rungs (both replacement and appended rung)
+  return `TuningCardSchema` with `labs`/`wpf.preflight` diagnostic, never duplicate.
+  Combine invalid schema with wrong filename/duplicate feature/unknown reference:
+  each returns `TuningCardSchema` before those Go checks. Other invalid fields and
+  multi-document/broken YAML return `TuningCardSchema`; missing directory is
+  `TuningCardRead`. Assert each kind via `errors.As` to `*TuningCardError`, basename
+  and field/reference; schema cases unwrap to `*TuningValidationError`.
+  Every refusal returns nonnil empty results and no partial success.
   A dangling symlink YAML is `read`; missing-directory errors preserve
   `errors.Is(err, os.ErrNotExist)`. Never rely on chmod failures under privileged
   runners. Unrelated extensions/subdirs are ignored.
@@ -392,12 +449,12 @@ B's `internal/labs/tuning_cards_test.go`:
 - `TestFeatureTuningCardJSON`: recursively assert every exported slice is nonnil
   in loaded results, empty results and error results; marshal empty labs as `[]`,
   never `null`; all introduced field keys are exactly the lower_snake_case tags.
-- `TestFeatureTuningCardSchemaFixtures`: if A has its own test grant, require the
-  embedded validator accepts the five positive fixture objects and rejects at
-  least the unknown-field and missing-bar negatives. If A+B are combined, run the
-  full two schema tests above here instead; do not omit their mutation assertions.
+  Assert `TuningKnob.Kind` has named type `TuningKnobKind`, each of its five typed
+  constants round-trips with the exact string above, and all other kind strings
+  fail schema validation. This asserts the Go field type, not merely JSON validity;
+  the existing `LabKnob.Kind` remains unchanged.
 
-B's `cmd/fathom/instrument_adoption_tuning_test.go`:
+A+B's report tests in `cmd/fathom/instrument_adoption_tuning_test.go`:
 
 - `TestFeatureTuningCardAdoption`: call new builder on scratch root with supplied
   validated seeds and valid tuning files. Assert exact cards directory, sorted
@@ -426,7 +483,19 @@ C's `cmd/fathom/instrument_adoption_tuning_cards_test.go`:
   input via `git show <commit>:<path>` and compare SHA256 (immutable, not worktree
   bytes). Assert pinned paths exist at the named commit. Do not require planned
   readings/preregistration or future independent labels to exist. Validate all
-  named existing source/knob paths; no fabricated config key. Preserve metrics
+  named existing source/knob paths AND each map anchor's symbol identity and semantic role
+  from the map table above. Parse Go declarations/bodies (standard `go/parser` / `go/ast`):
+  require `briefMaps` to rank `Named` then `Overlap` and cap by `maxBriefMaps`;
+  `mapPointerLine` to count `touch.touches` matches and bound `mapPointerMaxLines`;
+  pointer constants to be 280/2/60; `loadAliveMapsCut` to sort `LastUsed` with id tie-break;
+  `threadRecentFiles` to consume worktree/open-note paths; `mapLifetime` not to expire
+  by idle duration; `MaxDepth` to be 4 and `ResolveMap` to enforce it;
+  `composePrimer` to call `briefMapLines` under `threadsHoldMaps` and retain the cap;
+  `joinSubagentPrimer` to preserve the id under its budget; and the named hint,
+  pointer renderer and edit/prompt wrappers to call the delivery seams stated above.
+  Assert each committed knob location matches its prescribed anchor/role; a location
+  pointing overlap at `mapshow.go` or injection at `brief.go` must fail even though
+  both files exist. No fabricated config key. Preserve metrics
   as unmeasured until actual readings, not a numeric zero.
 - `TestCommittedSeedCardsLoad`: NEW cmd-package test wrapper, not a duplicate of
   the existing internal-package test: call real shipped inventory and `LoadLabs`,
@@ -442,9 +511,7 @@ C's `cmd/fathom/instrument_adoption_tuning_cards_test.go`:
 Proof commands for implementing lanes (never this documentary lane's claimed proof):
 
 ```sh
-# A, only after its test ownership grant:
-go test -race ./schema/labs -run '^TestFeatureTuningCardSchema'
-# B:
+# A+B (all schema assertions in internal/labs/tuning_cards_test.go):
 go test -race ./internal/labs ./cmd/fathom -run '^TestFeatureTuningCard'
 # C (cmd wrapper makes all three names real in this package):
 go test -race ./cmd/fathom -run '^TestCommitted(SeedCardsLoad|LabsCloseOverShippedSurfaces|FeatureTuningCardsLoad)$'
@@ -464,18 +531,16 @@ otherwise `FTU-1 verdict: FAIL` and concrete gaps. Explain that this is reconcil
 not feature benefit or FTU-2 registration. Completion still requires the integrating
 helper's dependency/wiring proof and `fathom verify` before any assigned plan box.
 
-## Genuine unresolved points and recommendations
+## Pending integration gates
 
-1. Schema test ownership: grant exactly `schema/labs/tuning_test.go` to A.
-   Alternative: merge A+B and put all assertions in B's owned test; no existing
-   schema edits. T2-3 grants the independent validator, not a silently added test path.
-2. WPF-3 and LAB/WR frozen handoffs: keep production call-site and receipt integration
-   with the integrating helper after those contracts land. Alternative: defer row
-   completion entirely until that integration turn. No provisional receipt API.
-3. FTU-2 registration format is not handed to this lane. Recommend keep registration
-   explicitly unestablished in this report until its owner supplies the validated
-   format and a separately owned integration. Alternative: defer registration display
-   changes to the later reading reports. Never infer registration from path existence.
+1. WPF-3 and LAB/WR frozen handoffs: production call-site and receipt integration
+   remain with the integrating helper after those contracts land (T2-2/T2-3 and
+   FTU-0's dependencies). No row completion or provisional receipt API here.
+2. FTU-2 registration format is not handed to this lane. Registration remains
+   explicitly unestablished until that owner supplies the validated format and a
+   separately owned integration (FT-D1/D4, FTU-2, ADR-082 decisions 4..6).
+   Never infer registration from path existence. The merged grant needs no decision
+   or additional ownership request.
 
 ## Decision models
 
