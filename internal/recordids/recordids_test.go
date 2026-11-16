@@ -1,11 +1,15 @@
 package recordids
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func write(t *testing.T, root, path, body string) {
@@ -418,5 +422,218 @@ func TestLaneRangeIntersectionMatchesRenderedIDs(t *testing.T) {
 	// that candidate prefix violates the frozen grammar before overlap testing.
 	if err := (IDRange{Family: FamilyPlan, Prefix: "ADR-00", First: 1, Last: 1}).Validate(); err == nil {
 		t.Fatal("embedded-hyphen prefix accepted")
+	}
+}
+
+func TestCritic252NonPlanPerFileCannotExcuseDuplicate(t *testing.T) {
+	cfg := Defaults()
+	for i := range cfg.Families {
+		if cfg.Families[i].Name == "adr" {
+			cfg.Families[i].PerFile = true
+		}
+	}
+	defs := []Definition{{Family: FamilyADR, ID: "ADR-10000", At: Location{Path: "a.md", Line: 1}}, {Family: FamilyADR, ID: "ADR-10000", At: Location{Path: "b.md", Line: 1}}}
+	trust := TrustedInventory{Revision: strings.Repeat("a", 40), Lanes: []LaneGrant{{ID: "demo", OwnedPaths: []string{"a.md", "b.md"}, IDRanges: []IDRange{{Family: FamilyADR, Prefix: "ADR-", First: 10000, Last: 10001}}}}}
+	if v, err := ValidateInventory(defs, cfg, trust); err == nil || v.Valid() {
+		t.Fatalf("new duplicate ADR-10000 validated across a.md/b.md without grandfather exception: valid=%v error=%v", v.Valid(), err)
+	}
+}
+
+func TestCritic252TrustedInventoryUsesGitBlobBytes(t *testing.T) {
+	root, lane := laneFixture(t)
+	laneManifest(t, root, "demo", lane)
+	write(t, root, "ADR.md", "## ADR-001: existing\n")
+	write(t, root, ".gitattributes", "ADR.md export-ignore\n")
+	git := func(args ...string) string {
+		t.Helper()
+		c := exec.Command("git", append([]string{"-C", root}, args...)...)
+		c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Geoff Miller", "GIT_AUTHOR_EMAIL=geoff.e.miller@gmail.com", "GIT_COMMITTER_NAME=Geoff Miller", "GIT_COMMITTER_EMAIL=geoff.e.miller@gmail.com")
+		b, err := c.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %s %v", args, b, err)
+		}
+		return strings.TrimSpace(string(b))
+	}
+	git("init", "-q")
+	git("add", ".")
+	git("-c", "user.name=Geoff Miller", "-c", "user.email=geoff.e.miller@gmail.com", "commit", "-qm", "test: immutable input")
+	revision := git("rev-parse", "HEAD")
+	if !strings.Contains(git("show", revision+":ADR.md"), "ADR-001") {
+		t.Fatal("invalid fixture")
+	}
+	s, err := LoadTrusted(context.Background(), root, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range s.Inventory.Legacy {
+		if d.ID == "ADR-001" {
+			return
+		}
+	}
+	t.Fatalf("trusted legacy ADR-001 silently omitted despite presence in immutable git blob: %+v", s.Inventory.Legacy)
+}
+
+func rawTrustGit(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	c := exec.Command("git", append([]string{"-C", root}, args...)...)
+	c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Geoff Miller", "GIT_AUTHOR_EMAIL=geoff.e.miller@gmail.com", "GIT_COMMITTER_NAME=Geoff Miller", "GIT_COMMITTER_EMAIL=geoff.e.miller@gmail.com")
+	b, e := c.CombinedOutput()
+	if e != nil {
+		t.Fatalf("git %v: %s %v", args, b, e)
+	}
+	return strings.TrimSpace(string(b))
+}
+func rawTrustCommit(t *testing.T, root string) string {
+	t.Helper()
+	rawTrustGit(t, root, "init", "-q")
+	rawTrustGit(t, root, "add", ".")
+	rawTrustGit(t, root, "commit", "-qm", "test: trusted raw input")
+	return rawTrustGit(t, root, "rev-parse", "HEAD")
+}
+func TestTrustedRawBlobAttributesAndTypes(t *testing.T) {
+	for _, name := range []string{"export-subst", "ignored-schema", "ignored-owned-target", "symlink", "gitlink"} {
+		t.Run(name, func(t *testing.T) {
+			root, lane := laneFixture(t)
+			lane.Goal = "Keep literal $Format:%H$ bytes"
+			lane.OwnedPaths = append(lane.OwnedPaths, "extra.md")
+			laneManifest(t, root, "demo", lane)
+			write(t, root, "ADR.md", "## ADR-001: existing\n")
+			write(t, root, "extra.md", "## ADR-002: other\n")
+			switch name {
+			case "export-subst":
+				write(t, root, ".gitattributes", "docs/lanes/demo.cue export-subst\n")
+			case "ignored-schema":
+				write(t, root, ".gitattributes", "schema/records/lane.cue export-ignore\n")
+			case "ignored-owned-target":
+				write(t, root, ".gitattributes", "extra.md export-ignore\n")
+			case "symlink":
+				if e := os.Remove(filepath.Join(root, "extra.md")); e != nil {
+					t.Fatal(e)
+				}
+				if e := os.Symlink("ADR.md", filepath.Join(root, "extra.md")); e != nil {
+					t.Fatal(e)
+				}
+			}
+			rev := rawTrustCommit(t, root)
+			if name == "gitlink" {
+				rawTrustGit(t, root, "update-index", "--add", "--cacheinfo", "160000,"+rev+",extra.md")
+				rawTrustGit(t, root, "commit", "-qm", "test: non-blob target")
+				rev = rawTrustGit(t, root, "rev-parse", "HEAD")
+			}
+			expected, e := os.ReadFile(filepath.Join(root, "docs/lanes/demo.cue"))
+			if e != nil {
+				t.Fatal(e)
+			}
+			state, e := LoadTrusted(context.Background(), root, rev)
+			if name == "symlink" || name == "gitlink" {
+				if e == nil {
+					t.Fatal("nonregular target accepted")
+				}
+				return
+			}
+			if e != nil {
+				t.Fatal(e)
+			}
+			if string(state.Manifests["demo"]) != string(expected) || state.Lanes[0].Goal != lane.Goal {
+				t.Fatal("trusted manifest changed by export attributes")
+			}
+			for _, id := range []string{"ADR-001", "ADR-002"} {
+				found := false
+				for _, d := range state.Inventory.Legacy {
+					found = found || d.ID == id
+				}
+				if !found {
+					t.Fatalf("raw legacy %s missing: %+v", id, state.Inventory.Legacy)
+				}
+			}
+		})
+	}
+}
+func TestTrustedGitReadBoundsAndCancellation(t *testing.T) {
+	root, lane := laneFixture(t)
+	laneManifest(t, root, "demo", lane)
+	write(t, root, "ADR.md", "## ADR-001: existing\n")
+	rev := rawTrustCommit(t, root)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, e := LoadTrusted(ctx, root, rev); !errors.Is(e, context.Canceled) {
+		t.Fatalf("cancellation lost: %v", e)
+	}
+	oid := rawTrustGit(t, root, "rev-parse", rev+":ADR.md")
+	if _, e := readTrustedGit(context.Background(), root, 4, "cat-file", "blob", oid); e == nil {
+		t.Fatal("unbounded blob output")
+	} else {
+		var refusal *RefusalError
+		if !errors.As(e, &refusal) || refusal.Code != ErrTrust || !strings.Contains(refusal.Detail, "limit") {
+			t.Fatalf("wrong bound refusal: %v", e)
+		}
+	}
+	b, e := readTrustedGit(context.Background(), root, 64, "cat-file", "blob", oid)
+	if e != nil || string(b) != "## ADR-001: existing\n" {
+		t.Fatalf("raw output: %q %v", b, e)
+	}
+}
+func TestLaneFullKeyValidationDoesNotMutatePolicy(t *testing.T) {
+	cfg := Defaults()
+	for i := range cfg.Families {
+		cfg.Families[i].PerFile = true
+	}
+	before, _ := json.Marshal(cfg)
+	_, e := ValidateInventory(nil, cfg, TrustedInventory{Revision: strings.Repeat("a", 40), Lanes: []LaneGrant{}, Legacy: []Definition{}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	after, _ := json.Marshal(cfg)
+	if string(before) != string(after) {
+		t.Fatal("lane validation mutated caller policy")
+	}
+}
+
+func TestTrustedGitReadCancelsRunningProcess(t *testing.T) {
+	root := t.TempDir()
+	bin := filepath.Join(root, "bin")
+	if err := os.MkdirAll(bin, 0700); err != nil {
+		t.Fatal(err)
+	}
+	script := []byte("#!/bin/sh\n[ \"$GIT_NO_LAZY_FETCH\" = 1 ] || exit 42\nprintf started > \"$REC1_GIT_STARTED\"\nexec sleep 10\n")
+	if err := os.WriteFile(filepath.Join(bin, "git"), script, 0700); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "started")
+	t.Setenv("REC1_GIT_STARTED", marker)
+	t.Setenv("GIT_NO_LAZY_FETCH", "0")
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := readTrustedGit(ctx, root, 64, "cat-file", "blob", strings.Repeat("a", 40))
+		done <- err
+	}()
+	tick := time.NewTicker(5 * time.Millisecond)
+	defer tick.Stop()
+	deadline := time.NewTimer(3 * time.Second)
+	defer deadline.Stop()
+started:
+	for {
+		select {
+		case err := <-done:
+			t.Fatalf("reader exited before subprocess start: %v", err)
+		case <-deadline.C:
+			t.Fatal("git subprocess did not start")
+		case <-tick.C:
+			if _, err := os.Stat(marker); err == nil {
+				break started
+			}
+		}
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("lost running-process cancellation: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("git subprocess not cancelled")
 	}
 }

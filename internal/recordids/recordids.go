@@ -3,13 +3,11 @@
 package recordids
 
 import (
-	"archive/tar"
 	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -452,9 +450,13 @@ func CheckOwnership(defs []Definition, trusted TrustedInventory) ([]OwnershipVio
 	return out, nil
 }
 func ValidateInventory(defs []Definition, policy Config, trusted TrustedInventory) (ValidatedInventory, error) {
-	// Legacy Check may scope plan keys per file. Lane validation always enforces
-	// full keys, retaining the effective policy's exact grandfather path sets.
+	// Legacy Check may scope any family per file. Lane validation always enforces
+	// full keys through that same checker, retaining exact grandfather path sets.
 	policy.CrossPlan = true
+	policy.Families = slices.Clone(policy.Families)
+	for i := range policy.Families {
+		policy.Families[i].PerFile = false
+	}
 	d, e := CheckDefinitions(defs, policy)
 	if e != nil {
 		return ValidatedInventory{}, e
@@ -649,43 +651,84 @@ func LoadTrusted(ctx context.Context, root, revision string) (TrustedState, erro
 	if !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(revision) {
 		return empty, Refuse(ErrTrust, "a full trusted commit id is required")
 	}
-	gitRead := func(args ...string) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
-		b, e := cmd.Output()
-		if e != nil {
-			return nil, Refuse(ErrTrust, fmt.Sprintf("git object read failed: %v", e))
+
+	if _, err := readTrustedGit(ctx, root, trustedBlobLimit, "cat-file", "-e", revision+"^{commit}"); err != nil {
+		return empty, err
+	}
+	list, err := readTrustedGit(ctx, root, trustedTreeLimit, "ls-tree", "-r", "-z", revision)
+	if err != nil {
+		return empty, err
+	}
+	tree := map[string]trustedBlob{}
+	paths := []string{}
+	objectID := regexp.MustCompile(`^[0-9a-f]{40}$`)
+	for _, entry := range strings.Split(string(list), "\x00") {
+		if err := ctx.Err(); err != nil {
+			return empty, err
 		}
+		if entry == "" {
+			continue
+		}
+		parts := strings.SplitN(entry, "\t", 2)
+		if len(parts) != 2 {
+			return empty, Refuse(ErrTrust, "malformed trusted tree entry")
+		}
+		header := strings.Fields(parts[0])
+		if len(header) != 3 || !objectID.MatchString(header[2]) {
+			return empty, Refuse(ErrTrust, "malformed trusted tree object")
+		}
+		path := parts[1]
+		if _, exists := tree[path]; exists {
+			return empty, Refuse(ErrTrust, "duplicate trusted tree path")
+		}
+		tree[path] = trustedBlob{mode: header[0], kind: header[1], oid: header[2]}
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	cache := map[string][]byte{}
+	total := 0
+	readBlob := func(path string) ([]byte, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if b, ok := cache[path]; ok {
+			return b, nil
+		}
+		if !CanonicalPath(path) {
+			return nil, Refuse(ErrTrust, "noncanonical trusted path")
+		}
+		object, ok := tree[path]
+		if !ok || object.kind != "blob" || (object.mode != "100644" && object.mode != "100755") {
+			return nil, Refuse(ErrTrust, "nonregular trusted inventory file "+path)
+		}
+		if len(cache) >= trustedPathLimit {
+			return nil, Refuse(ErrTrust, "trusted inventory path limit exceeded")
+		}
+		limit := min(trustedBlobLimit, trustedTotalLimit-total)
+		b, err := readTrustedGit(ctx, root, limit, "cat-file", "blob", object.oid)
+		if err != nil {
+			return nil, err
+		}
+		total += len(b)
+		cache[path] = b
 		return b, nil
 	}
-	if _, e := gitRead("cat-file", "-e", revision+"^{commit}"); e != nil {
-		return empty, e
-	}
 	policy := Defaults()
-	config, e := gitRead("show", revision+":.fathom/record-ids.json")
-	if e == nil {
-		dec := json.NewDecoder(bytes.NewReader(config))
-		dec.DisallowUnknownFields()
-		if e := dec.Decode(&policy); e != nil {
-			return empty, Refuse(ErrPolicy, e.Error())
-		}
-	} else {
-		// A missing optional policy uses Defaults; a present unreadable object fails.
-		list, err := gitRead("ls-tree", "--name-only", revision, "--", ".fathom/record-ids.json")
+	if _, exists := tree[".fathom/record-ids.json"]; exists {
+		config, err := readBlob(".fathom/record-ids.json")
 		if err != nil {
 			return empty, err
 		}
-		if len(list) > 0 {
-			return empty, e
+		dec := json.NewDecoder(bytes.NewReader(config))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&policy); err != nil {
+			return empty, Refuse(ErrPolicy, err.Error())
 		}
 	}
-	list, e := gitRead("ls-tree", "-r", "--name-only", "-z", revision)
-	if e != nil {
-		return empty, e
-	}
 	selected := []string{}
-	for _, p := range strings.Split(string(list), "\x00") {
-		if p == "" {
-			continue
+	for _, p := range paths {
+		if err := ctx.Err(); err != nil {
+			return empty, err
 		}
 		include := p == "cue.mod/module.cue" || strings.HasPrefix(p, "schema/records/") || strings.HasPrefix(p, "docs/lanes/") && strings.Count(p, "/") == 2 && strings.HasSuffix(p, ".cue") || p == ".fathom/record-ids.json"
 		for _, f := range policy.Families {
@@ -720,53 +763,32 @@ func LoadTrusted(ctx context.Context, root, revision string) (TrustedState, erro
 		return empty, e
 	}
 	defer os.RemoveAll(scratch)
+
+	materialized := map[string]bool{}
 	extract := func(paths []string) error {
-		if len(paths) == 0 {
-			return nil
-		}
-		args := append([]string{"archive", "--format=tar", revision, "--"}, paths...)
-		archive, e := gitRead(args...)
-		if e != nil {
-			return e
-		}
-		tr := tar.NewReader(bytes.NewReader(archive))
-		for {
-			h, e := tr.Next()
-			if e == io.EOF {
-				break
+		for _, path := range paths {
+			if err := ctx.Err(); err != nil {
+				return err
 			}
-			if e != nil {
-				return e
-			}
-			p := strings.TrimSuffix(h.Name, "/")
-			if !CanonicalPath(p) {
-				return Refuse(ErrTrust, "unsafe git archive path")
-			}
-			target := filepath.Join(scratch, p)
-			switch h.Typeflag {
-			case tar.TypeXGlobalHeader: // git archive commit metadata, never a filesystem entry.
+			if materialized[path] {
 				continue
-			case tar.TypeDir:
-				if e := os.MkdirAll(target, 0700); e != nil {
-					return e
-				}
-			case tar.TypeReg:
-				if e := os.MkdirAll(filepath.Dir(target), 0700); e != nil {
-					return e
-				}
-				b, e := io.ReadAll(tr)
-				if e != nil {
-					return e
-				}
-				if e := os.WriteFile(target, b, 0600); e != nil {
-					return e
-				}
-			default:
-				return Refuse(ErrTrust, "nonregular trusted inventory file "+p)
 			}
+			b, err := readBlob(path)
+			if err != nil {
+				return err
+			}
+			target := filepath.Join(scratch, path)
+			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+				return err
+			}
+			if err := os.WriteFile(target, b, 0600); err != nil {
+				return err
+			}
+			materialized[path] = true
 		}
 		return nil
 	}
+
 	if e := extract(selected); e != nil {
 		return empty, e
 	}
@@ -799,7 +821,7 @@ func LoadTrusted(ctx context.Context, root, revision string) (TrustedState, erro
 			}
 		}
 		for _, p := range l.OwnedPaths {
-			if slices.Contains(strings.Split(string(list), "\x00"), p) {
+			if _, exists := tree[p]; exists {
 				targets = append(targets, p)
 			}
 		}
@@ -846,6 +868,9 @@ func LoadTrusted(ctx context.Context, root, revision string) (TrustedState, erro
 				return empty, Refuse(ErrTrust, "plan prefix has no trusted owned definition: "+r.Prefix)
 			}
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return empty, err
 	}
 	state.definitions = append([]Definition{}, defs...)
 	return state, nil
@@ -1057,4 +1082,52 @@ func DefinitionsForFile(rel string, raw []byte, cfg Config) ([]Definition, error
 	}
 	sortDefinitions(out)
 	return out, nil
+}
+
+// Trusted Git reads are raw object reads, never archive/export views. Limits
+// bound the tree listing, selected regular paths, each blob and aggregate bytes.
+const (
+	trustedTreeLimit  = 32 << 20
+	trustedBlobLimit  = 16 << 20
+	trustedTotalLimit = 64 << 20
+	trustedPathLimit  = 16384
+)
+
+type trustedBlob struct{ mode, kind, oid string }
+type trustedGitOutput struct {
+	buffer   bytes.Buffer
+	limit    int
+	exceeded bool
+}
+
+func (w *trustedGitOutput) Write(p []byte) (int, error) {
+	if len(p) > w.limit-w.buffer.Len() {
+		w.exceeded = true
+		return 0, Refuse(ErrTrust, "trusted git output limit exceeded")
+	}
+	return w.buffer.Write(p)
+}
+func readTrustedGit(ctx context.Context, root string, limit int, args ...string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if limit < 0 {
+		return nil, Refuse(ErrTrust, "trusted git output limit exceeded")
+	}
+	cmd := exec.CommandContext(ctx, "git", append([]string{"--no-replace-objects", "-C", root}, args...)...)
+	// A trusted read may not fetch missing promisor objects or run a download.
+	cmd.Env = append(os.Environ(), "GIT_NO_LAZY_FETCH=1")
+	out := &trustedGitOutput{limit: limit}
+	cmd.Stdout = out
+	err := cmd.Run()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if out.exceeded {
+		return nil, Refuse(ErrTrust, "trusted git output limit exceeded")
+	}
+	if err != nil {
+		return nil, Refuse(ErrTrust, fmt.Sprintf("git object read failed: %v", err))
+	}
+	return out.buffer.Bytes(), nil
 }
