@@ -225,3 +225,17 @@ each phase's execution budget begins at launch. Every post-spend failed attempt
 records its phase and fixed failure label before a false-gate receipt is published.
 The collector executes committed instrument bytes from a scratch copy, even if
 the live instrument checkout changes during a run.
+
+## Next holdout pin
+```json
+{"subject":"Path-Tiny","source_commit":"1dda36044d4a7dc8d5b73e4a30cc6f27f9bfadfe","remote":"https://github.com/dagolden/Path-Tiny.git","license":"Apache-2.0","dependency_declaration":"Makefile.PL"}
+```
+
+Issue 215 freezes this selection before any clone or source read. The public
+release tag is `release-0.148`; release metadata identifies Apache-2.0.
+The full-population floors above remain unchanged: >=95% compiled units,
+>=95% reciprocally paired named tags, zero Ctags-unknown files, and equal
+native/harness populations, with every failed unit retained. This holdout
+stays unspent until a native call adapter passes the anonymous-CV and
+compiler-elided-call controls. It is outside canonical corpus shards and
+must not be substituted for the spent Dancer2 diagnostic.
