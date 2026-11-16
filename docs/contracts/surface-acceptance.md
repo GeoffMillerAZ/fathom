@@ -1,9 +1,11 @@
 # Per-language surface acceptance: independent truth and answer extent
 
-Status: DRAFT for #183. Contract only, based on source at
-`8fd89510675fe8416338d348a81883680cac9e98`. Separate critic LAND and wave approval
-are required before implementation dispatch. This document supplies neither an
-executable adapter nor oracle evidence, a reading, fixtures, a plan or a completed
+Status: DRAFT amendment for #183. Contract only, based on source at
+`8fd89510675fe8416338d348a81883680cac9e98`. Q1 is resolved by the architect's
+2026-11-16 preregistration below. Approval under the standing wave contract rule
+remains pending a separate critic LAND covering this amendment, including its
+numeric section. Only then may S1 dispatch in its turn. This document supplies
+neither an executable adapter nor oracle evidence, a reading, fixtures, a plan or a completed
 #183. Wave brief V2 item 7 assigns this shared contract to the wave, not the
 language track. Subsequent source grants are serial and explicit.
 
@@ -40,7 +42,7 @@ in particular, there is no new L0 reading below 0.95 or three measured deferrals
 | D3 | Grade the registered `tools/call` result, including dispatch budgeting. Existing `indexbench.Dispatcher`/`ReplayGolden` and `mcp.Server.HandleRequest` are the seam. Backend-only equality cannot prove surface acceptance. Bench-pyramid E1 and §3.1. |
 | D4 | Keep identity, full-definition extent, displayed window, call relation and coverage separate. Existing `core.SymbolNode`, `OracleDef`, SCIP `Occurrence` and L0 unadjudicated accounting supply the foundations, not interchangeable truths. ADR-027/048; extent rules below. |
 | D5 | Retain every intended language/stratum and every selected query, including missing truth and capped answers. I38 and L0 `ToolScore.Population`/`UnadjudicatedQueries` require visible denominators. No blanket oracle-blind exemption is imported from language grading. |
-| D6 | Freeze method and report numbers now, never infer a new acceptance bar. ADR-032's exact governed readings and bench-prep C4 retain their own 0.95 precision/recall scope. They do not give all non-Go definitions, extents or MCP strata that bar. Numeric #183 acceptance is Q1 below. |
+| D6 | Apply #183's own bars/floors preregistered by the architect on 2026-11-16, resolving Q1 before any reading. Numeric eligibility precedes PASS/FAIL, and all four strata must PASS for a language PASS. Numbers never move after a reading exists. The architect ruling below governs, not an inferred transfer of ADR-032/C4. |
 
 Source anchors, with their present limits:
 
@@ -274,7 +276,7 @@ must iterate the selected query list, including completely empty responses;
 
 | Tool | Exact answer scope to grade, from current source |
 |---|---|
-| `find_symbol` | `tools.go`/`findsymbol.go` and query `symbolMatches`: exact/suffix-qualified, then case-insensitive, then substring. `matched_via` must identify the tier actually served. Suggestions are not definitions. Fallbacks cap at 20, suggestions at 5, with name/file/line/kind tie order (substring first orders shortest name). Exact hits have no 20-row handler cap but still pass dispatch budgeting. Grade returned sites and the independently expected candidates for that query tier, not only whether one desired name appeared. |
+| `find_symbol` | `tools.go`/`findsymbol.go` and query `symbolMatches`: exact/suffix-qualified, then case-insensitive, then substring. `matched_via` must identify the tier actually served. Suggestions are not definitions. The case-insensitive tier returns name matches before package matches, with name/file/line/kind order within each group. Substring orders shortest name first, then name/file/line/kind. Module symbols are excluded from case-insensitive, substring and fuzzy suggestions, remaining available through exact module queries. Fallbacks cap at 20 and suggestions at 5. Exact hits have no 20-row handler cap but still pass dispatch budgeting. Grade returned sites and the independently expected candidates for that query tier, not only whether one desired name appeared. |
 | `symbol_context` | `nav_tools.go`/`cold_graph.go`: unique definition plus direct callers/callees from the served combined graph, not transitive closure. Compare these relations to independently resolved direct-call truth where covered; separate type references. Ambiguity lists at most 10 candidates. More than 50 callers triggers `scope_required` on the current handler's graph count. Verify flags/count/candidates and absence of a fabricated neighborhood. Truth fan-in and observed cap behavior are separate, since a wrong graph could trigger a correct-looking refusal. Callers/callees each have half the 16000-byte tool budget, references each a quarter, plus the dispatch backstop. Snippet is optional/default on, capped at 40 lines. |
 | `blast_radius` | `kind:change`, one callee file as `changed_files`. Independently seed every covered in-scope symbol in that file, reverse-walk calls to the requested depth with cycle/diamond dedup. Explicitly record `include_heuristic`, `max_depth`, `max_symbols`. Defaults are depth 2 and 500 symbols. Selection is shallowest then display key, output symbols sorted by key. Grade symbols, files, depths and total/truncation/depth-cap metadata against that same bounded scope. The current default uses resolved edges when available, otherwise syntax with `edge_filter:all`; never compare a depth-2 listing with unbounded truth. Rename/delete, service-ref hops, IaC facts and unrelated test-coverage claims are outside this initial contract. Their omission from scoring is explicit. |
 
@@ -344,7 +346,7 @@ landed parent commit. No parallel writer owns a shared indexbench file.
 | S1 truth foundation | Shared indexbench owner, after this contract's critic LAND/approval: new `internal/indexbench/surface_truth.go` and `surface_truth_test.go`. Pure identity/coordinate/coverage handoff plus raw adapter boundary. Use existing raw SCIP/Go foundations. If access requires changing an existing shared helper, request its exact path before editing. No dialect/reading/schema work. |
 | S2 first adapters | Same foundation lane after S1 lands, exclusive `internal/indexbench/surface_truth_go.go`, `surface_truth_scip.go` and paired `_test.go` files, plus only explicitly transferred existing helper paths. Prove the Go bridge and first available non-Go raw producer path with independent extents/call ownership, not a promise of ten adapters. Missing producer capabilities stay unknown. |
 | S3 sampler and grader | Shared indexbench owner after S2's handoff: `internal/indexbench/surface_acceptance.go` and `surface_acceptance_test.go`, then exclusive `cmd/indexbench/surface_acceptance.go`, `surface_acceptance_test.go` and a separately granted registration edit in `main.go`. Reuse Dispatcher/L0 accounting, one indexbench command path, no new harness package. Sampler owns selection and grading; language authors supply provenance/source facts only. |
-| S4 readings | Reading lane after S3 lands, pins/artifacts exist, Q1 is resolved in a preregistration and the foreman assigns exact output paths. First review independent truth coverage, freeze the sample, then execute registered handlers on a scratch store. Publish honest below-bar/unknown results. At least five readings and a plan are parent-issue work, not produced or closed here. |
+| S4 readings | Reading lane after S3 lands, pins/artifacts exist, the request binds the 2026-11-16 #183 preregistration below and the foreman assigns exact output paths. First review independent truth coverage, freeze the sample, then execute registered handlers on a scratch store. Publish honest below-bar/unknown results. At least five readings and a plan are parent-issue work, not produced or closed here. |
 
 Minimum implementing-lane failing tests, run before implementation and then with
 `-race` in the exact owning package. These test names are prospective assertions,
@@ -358,8 +360,9 @@ not claims that tests exist or ran:
 | `TestSurfaceTruthSCIPCoverage`, `surface_truth_scip_test.go` | Raw definition absent from tested nodes remains truth. Name-only/enclosing-expression ranges never become body truth. Reference without proven call role, missing owner, unresolved target, namespace/module and producer-generated site each get the specified disposition/count. No imported mapped-node fallback supplies truth. |
 | `TestSurfaceSampler`, `surface_acceptance_test.go` | Permuted inputs yield byte-identical IDs/selection. Stride boundaries, seed refusal, C6 external-unit/test rules and overlap dedup are exact. Missing language/stratum and empty responses retain denominator. No outcome-dependent replacement. |
 | `TestSurfaceAnswerGrading`, same file | Known index miss differs from present-index surface miss. Wrong site/extent/edge is wrong. Positive-only truth never labels uncovered predictions FP or absent calls true negatives. Zero denominator is null. Unknowns, overload collision and correct abstention cannot inflate exact-complete counts. |
-| `TestSurfaceRegisteredHandlers`, same file | Real scratch ingest plus registered tools/call, not graph-only/fake backend. Test exact/fallback/ambiguous/colliding names, 20/21 fallback candidates, 10/11 ambiguity candidates, 50/51 callers, 40/41 snippet lines, per-field and dispatch-byte cap boundaries, depth/cycle/diamond/500/501 blast membership, truth zero-call negatives, not-indexed, cold partial, malformed/error and disagreeing payload copies. Assert wrong disclosure/total/order is detected. Test source drift independently of graph correctness. Synthetic inputs prove the grader only, never public language results. |
-| `TestSurfaceAcceptanceCommand`, `cmd/indexbench/surface_acceptance_test.go` | Command freezes truth/request/sample before ingest, requires real registered tools, contains all artifacts in workspace, rejects incomplete preregistration for acceptance and reports numbers without PASS when no bar exists. Truth/handler failure retains query records and returns a named operational error, never a zero-success reading. |
+| `TestSurfaceRegisteredHandlers`, same file | Real scratch ingest plus registered tools/call, not graph-only/fake backend. Test exact/fallback/ambiguous/colliding names, case-insensitive name-before-package groups and within-group order, module exclusion in both fallback tiers and fuzzy suggestions with exact module lookup retained, 20/21 fallback candidates, 10/11 ambiguity candidates, 50/51 callers, 40/41 snippet lines, per-field and dispatch-byte cap boundaries, depth/cycle/diamond/500/501 blast membership, truth zero-call negatives, not-indexed, cold partial, malformed/error and disagreeing payload copies. Assert wrong disclosure/total/order is detected. Test source drift independently of graph correctness. Synthetic inputs prove the grader only, never public language results. |
+| `TestSurfaceNumericAcceptance`, `surface_acceptance_test.go` | Per language/stratum, graded 29 is INCONCLUSIVE even with zero unknowns, graded 30 meets the floor, 10 unknown/ungraded of 40 selected meets 25%, and 11 of 44 meets 25% while 11 of 43 exceeds it. Count unknown/ungraded union once. Eligibility failure is INCONCLUSIVE even when graded metrics are below bar. On eligible strata 38/40 meets 0.95 and 37/40 fails it. High fan-in/cross-unit need both precision and recall, neither alone. Definition extent/identity error prevents exact credit, justified negative/abstention alone earns negative credit, and unknown required components are ungraded. Only four PASS strata yield language PASS, never pooled counts or three PASS plus FAIL/INCONCLUSIVE. Fixed bars/floors cannot be changed after a reading exists. |
+| `TestSurfaceAcceptanceCommand`, `cmd/indexbench/surface_acceptance_test.go` | Command freezes truth/request/sample before ingest, requires real registered tools, contains all artifacts in workspace, rejects incomplete preregistration for acceptance, binds the fixed 2026-11-16 #183 numbers and emits INCONCLUSIVE before bar evaluation when either eligibility limit is missed. Truth/handler failure retains query records and returns a named operational error, never a zero-success reading. |
 
 An unavailable native tool does not block hermetic grader tests or create oracle
 evidence. Collection remains an explicitly assigned reading action. No automatic
@@ -367,22 +370,66 @@ installation/download, SDK/native execution or paid call belongs to this contrac
 
 ## Numeric authority and handback boundary
 
-Apply ADR-032's 0.95 only where its exact surface and population govern, including
-bench-prep C4's named `find_callers` and resolved `blast_radius` comparison on its
-admitted subjects. Do not transfer a backend, Go, depth-1 or caller bar to all
-non-Go `symbol_context`, definition, extent or fallback strata. ADR-048 language
-thresholds still compute language levels only. This draft defines and reports
-#183 metrics without PASS until preregistered bars and sample floors exist.
+**Q1 RESOLVED: architect preregistration, 2026-11-16, before any #183 reading.**
+The wave brief V2's appended architect answer for #183 Q1 governs the following
+numbers as #183's own bars. They are not inferred from ADR-032. This section
+records that ruling; it does not assert critic approval of the amended contract.
 
-**Q1 (unguided, architect):** No #183 numeric floor or surface-wide bar is governed.
-Recommend preregister per-stratum bars/floors before readings, with no PASS before
-then. Alternative: approve explicit #183-wide numbers now. Existing scoped
-ADR-032 bars remain unchanged.
+Evaluate each language and each of the four strata independently. Let S be
+selected unique queries in that stratum, G its graded queries and U the count
+of selected queries that are unknown or otherwise ungraded. Unknown and ungraded
+are a union, counted once: S = G + U. Preserve partial component metrics but
+place a query in U when an unknown required component prevents grading the
+stratum's primary metric. Known wrong answers and known omissions remain graded
+failures under the existing grading rules, never relabeled unknown to improve
+the result. Query memberships can overlap strata, but neither repeated execution
+nor membership duplication increases a stratum's selected/graded denominator.
 
-Send Q1 through the wave foreman; continue guided contract work. A truthful
-source-check commit proves this draft's anchors and scope, not implementation or
-acceptance. The next exact implementing lane is S1, contingent on separate critic
-LAND and foreman approval. No plan box or language grade changes here.
+Eligibility requires **G ≥ 30** and **U/S ≤ 0.25**. If G < 30 **or** U/S > 0.25,
+the stratum is **INCONCLUSIVE**, never PASS or FAIL, regardless of the metrics
+on its graded subset. An empty/unknown selection cannot meet the floor. Publish
+S, G, U and U/S (null when undefined), along with the existing coverage counts.
+Do not replace unknown queries or shrink S after observing outcomes.
+
+Only eligible strata evaluate these bars on their graded queries:
+
+| Stratum | Preregistered PASS condition |
+|---|---|
+| Definitions | Exact-correct / G ≥ 0.95. Exact-correct requires the independently adjudicable definition answer's correct identity, sites, kind and matching start/full-end extent projections, including the expected candidate set. Partial component credit is reported separately, never an exact-correct query. |
+| High fan-in | Precision ≥ 0.95 **and** recall ≥ 0.95, using the existing TP/FP/FN micro counts over graded queries and the same bounded truth scope. |
+| Cross-unit calls | Precision ≥ 0.95 **and** recall ≥ 0.95, using the existing TP/FP/FN micro counts over graded queries and the same bounded truth scope. |
+| Negatives and boundaries | Correct-abstention / G ≥ 0.95. Credit requires the independently justified negative or abstention/boundary response specified above, with correct disclosure and no fabricated claim. An unsupported refusal of a truth-known positive receives no credit. |
+
+An eligible stratum below any applicable bar is FAIL. Undefined required metrics
+never supply a passing value or turn known omissions into unknown truth. For
+example, no returned callers against known positive truth retains its graded
+FN and fails recall; undefined precision cannot excuse that miss. Truth-unknown
+required components instead follow U above. Compare exact counts/ratios, not
+rounded display values. A language receives **#183 PASS only if all four strata PASS**.
+Every other combination lands as an honest per-stratum reading, retaining FAIL
+and INCONCLUSIVE rather than substituting a pooled language PASS. Publish extent
+and coverage metrics beside these verdicts; no separate extent/coverage bar is
+invented beyond the exact-correct definition and eligibility rules above.
+
+These numeric bars and floors are immutable once a reading exists. Freeze the
+request and its binding to this dated preregistration before collection. A
+below-bar or inconclusive reading never permits changing its numbers or sample
+to obtain a pass. The eligibility floor does not manufacture missing truth or
+change the C6 membership rules.
+
+ADR-032's existing 0.95 applies only where its exact surface and population
+govern, including bench-prep C4's named `find_callers` and resolved `blast_radius`
+comparison on its admitted subjects. No backend, Go, depth-1 or caller bar is
+transferred to other strata. ADR-048 still computes language support levels
+only. The same numeric value in #183 has the distinct architect authority above.
+
+The prior guided-shape critic LAND for `80900b198` does not cover this amendment.
+Contract approval remains pending separate critic LAND covering the edited
+numeric section and F1 fallback correction, under the standing wave contract
+rule. S1 may then dispatch in its serial turn. This source-check commit proves
+only the documentary amendment; it proves no adapter, reading or acceptance.
+Q1 is closed, with no remaining unguided numeric choice. No plan box or language
+grade changes here.
 
 ## Decision models
 
