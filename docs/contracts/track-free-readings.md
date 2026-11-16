@@ -1,6 +1,6 @@
 # Free reading contract: FTU-M4 historical resource component
 
-Status: draft for independent contract review, 2026-11-15. No reading report has
+Status: approved by rule W2-3 after independent LAND review, 2026-11-15. No reading report has
 run under this contract; the supplied diagnostic below has run.
 Source: fetched `origin/main` = `83226aece9b0f421381373f8dafc4a912d3888e5`;
 historical extraction pins this source revision. Recheck fingerprints before execution.
