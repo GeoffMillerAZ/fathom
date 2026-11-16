@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
@@ -20,15 +19,18 @@ import (
 // attribute findings of the changed Terraform files.
 //
 // Catalogs are found only through the one directory `fathom iac` fills ($FATHOM_HOME/iac). Nothing is downloaded
-// (I56). With no catalog installed neither surface adds a key: both answer exactly as they did before.
+// (I56). Without catalogs the compatibility sections stay absent; review_diff still reports unchecked coverage.
 
 // iacCatalogs lists the installed catalogs. dir is empty and the list nil when there are none.
-func iacCatalogs() (string, []iacfacts.IaCCatalogInfo) {
+func iacCatalogs(coverage ...*iacReviewCoverage) (string, []iacfacts.IaCCatalogInfo) {
 	dir := fathomhome.Path("iac")
 	if dir == "" {
 		return "", nil
 	}
-	list, _ := iacfacts.ListIaCCatalogs(dir, false)
+	list, bad := iacfacts.ListIaCCatalogs(dir, false)
+	if len(bad) > 0 && len(coverage) > 0 {
+		coverage[0].unknown("installed catalog unreadable or invalid")
+	}
 	if len(list) == 0 {
 		return "", nil
 	}
@@ -174,11 +176,15 @@ const (
 // deprecated attributes and unmarked sensitive outputs of the changed Terraform and OpenTofu files, read against
 // the contract each block binds to. It is nil when no catalog is installed or no such file changed. The section
 // sits in the payload's other fields, so review_diff's response cap trims its findings list like any other.
-func reviewIaCFindings(ctx context.Context, backend QueryInterface, service string, changed []string) map[string]any {
+func reviewIaCFindings(ctx context.Context, backend QueryInterface, service string, changed []string, coverage ...*iacReviewCoverage) map[string]any {
+	status := &iacReviewCoverage{}
+	if len(coverage) > 0 {
+		status = coverage[0]
+	}
 	byDir := map[string]map[string]bool{}
 	for _, f := range changed {
 		f = filepath.ToSlash(filepath.Clean(f))
-		if !strings.HasSuffix(f, ".tf") && !strings.HasSuffix(f, ".tofu") {
+		if !terraformReviewFile(f) {
 			continue
 		}
 		d := path.Dir(f)
@@ -190,12 +196,15 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 	if len(byDir) == 0 {
 		return nil
 	}
-	dir, list := iacCatalogs()
+	status.relevant = true
+	dir, list := iacCatalogs(status)
 	if len(list) == 0 {
+		status.unknown("Terraform catalog absent or unreadable")
 		return nil
 	}
 	root, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
+		status.unknown("Terraform source root unavailable")
 		return nil
 	}
 	dirs := make([]string, 0, len(byDir))
@@ -210,25 +219,49 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 	notes := map[string]bool{}
 	blobs := 0
 	if len(dirs) > iacReviewDirCap {
+		status.unknown("Terraform module directory limit reached")
 		notes["only the first "+strconv.Itoa(iacReviewDirCap)+" of "+strconv.Itoa(len(dirs))+" changed module directories were read"] = true
 		dirs = dirs[:iacReviewDirCap]
 	}
 	for _, d := range dirs {
 		if ctx.Err() != nil {
+			status.unknown("IaC review cancelled or deadline exceeded")
 			break
+		}
+		// A missing changed file is not an empty module. Check exact paths, even
+		// when other files in their directory are readable.
+		for file := range byDir[d] {
+			real, err := (corpusFS{root: root}).resolve(file)
+			var st fs.FileInfo
+			if err == nil {
+				st, err = os.Stat(real)
+			}
+			if err != nil || !st.Mode().IsRegular() {
+				status.unknown("Terraform changed source absent or unreadable")
+			}
 		}
 		got, err := iacfacts.CheckIaCModule(iacfacts.IaCModuleQuery{
 			Repo: corpusFS{root: root}, CatalogDir: dir, Catalogs: list, Dir: d, Files: byDir[d], Outputs: true,
 		})
 		if err != nil {
+			status.unknown("Terraform module unreadable or read limit reached")
 			notes[d+" was not read: "+err.Error()] = true
 			continue
 		}
+		if len(got.Disclosures) > 0 || len(got.Outputs.Disclosures) > 0 {
+			status.unknown("Terraform read or catalog coverage incomplete")
+		}
 		blobs += got.BlobsRead
 		for _, b := range got.Blocks {
+			if b.Contract == nil || (b.Binding.Status != iacfacts.BindLocked && b.Binding.Status != iacfacts.BindConstraintMatched) {
+				status.unknown("Terraform binding or contract unavailable")
+			}
 			counts[b.Binding.Status]++
 			if b.Binding.AddLine != "" {
 				addLines[b.Binding.AddLine] = true
+			}
+			if len(b.Check.Disclosures) > 0 {
+				status.unknown("Terraform attribute checks incomplete or capped")
 			}
 			findings = append(findings, b.Check.Findings...)
 			for _, n := range b.Check.Disclosures {
@@ -241,6 +274,15 @@ func reviewIaCFindings(ctx context.Context, backend QueryInterface, service stri
 		}
 		for _, n := range got.Disclosures {
 			notes[n] = true
+		}
+		// CheckIaCModule does not expose dropped declarations. Reuse the
+		// bounded resource reader to earn completeness only when the checks
+		// above have not already established that coverage is incomplete.
+		if len(status.reasons) == 0 {
+			set, err := iacfacts.ReadTerraformModule(corpusFS{root: root}, d)
+			if err != nil || set.SyntaxErrors > 0 || len(set.Dropped) > 0 {
+				status.unknown("Terraform resource read incomplete or declarations dropped")
+			}
 		}
 	}
 	out := map[string]any{

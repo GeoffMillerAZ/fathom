@@ -327,3 +327,72 @@ func TestReviewDiffCompactionSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewBudgetIaCDimension(t *testing.T) {
+	for _, dropDimensions := range []bool{false, true} {
+		t.Run(fmt.Sprint(dropDimensions), func(t *testing.T) {
+			payload := reviewEnvelopeFixture()
+			findings := make([]any, 100)
+			for i := range findings {
+				findings[i] = map[string]any{"kind": "unknown-attribute", "path": fmt.Sprintf("attr%03d", i), "message": strings.Repeat("detail", 50)}
+			}
+			revision := "abcdef0"
+			iac := map[string]any{"name": "iac", "checked": !dropDimensions, "reason": "", "as_of": revision, "count": 100, "findings": findings}
+			if dropDimensions {
+				iac["reason"] = "dated review"
+			}
+			payload["dimensions"] = append(payload["dimensions"].([]any), iac)
+			if dropDimensions {
+				for i, value := range payload["dimensions"].([]any) {
+					d := value.(map[string]any)
+					d["checked"] = false
+					d["reason"] = strings.Repeat("\x00", 200)
+					if i == 7 {
+						d["reason"] = strings.Repeat("ordinary ", 30)
+					}
+				}
+			}
+			encoded, err := json.Marshal(payload)
+			if err != nil {
+				t.Fatal(err)
+			}
+			envelope := map[string]any{"content": []any{map[string]any{"type": "text", "text": string(encoded)}}, "structuredContent": json.RawMessage(encoded)}
+			got, err := capReviewDiffEnvelope(envelope, 16000)
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, err := json.Marshal(got)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(raw) > 16000 {
+				t.Fatalf("over cap: %d", len(raw))
+			}
+			var p map[string]any
+			if err := json.Unmarshal(got["structuredContent"].(json.RawMessage), &p); err != nil {
+				t.Fatal(err)
+			}
+			statuses := p["dimension_status"].(map[string]any)
+			if len(statuses) != 9 {
+				t.Fatalf("status count %d", len(statuses))
+			}
+			status := statuses["iac"].(map[string]any)
+			if status["as_of"] != revision {
+				t.Fatalf("lost exact revision: %v", status)
+			}
+			if status["checked"] != false || status["unchecked_reason"] == "" {
+				t.Fatalf("capped IaC looks complete: %v", status)
+			}
+			dims := p["dimensions"].([]any)
+			if dropDimensions && len(dims) != 0 {
+				t.Fatalf("expected status-only fallback, retained %d dimensions", len(dims))
+			}
+			for _, value := range dims {
+				d := value.(map[string]any)
+				if d["name"] == "iac" && (d["checked"] != false || d["reason"] == "") {
+					t.Fatalf("capped dimension looks complete: %v", d)
+				}
+			}
+		})
+	}
+}

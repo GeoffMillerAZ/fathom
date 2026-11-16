@@ -205,22 +205,11 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		}
 
 		payload := v.Payload(persisted)
-		// IF-10: the attribute findings of changed Terraform files, read
-		// against installed catalogs. Absent without a catalog, and on a
-		// dated review, which reads the tree as it stands.
-		if !asOf.active() {
-			// IF-C4: the same for changed CloudFormation templates, under
-			// iac.cloudformation, with replacement findings against in.Base.
-			iac := reviewIaCFindings(ctx, backend, p.Service, p.ChangedFiles)
-			if cfn := reviewCFNFindings(ctx, backend, p.Service, p.ChangedFiles, in.Base); cfn != nil {
-				if iac == nil {
-					iac = map[string]any{}
-				}
-				iac["cloudformation"] = cfn
-			}
-			if iac != nil {
-				payload["iac"] = iac
-			}
+		iacDimension, iac := reviewIaCDimension(ctx, backend, p.Service, p.ChangedFiles, in.Base, p.AsOf)
+		payload["dimensions"] = append(payload["dimensions"].([]any), iacDimension.payload())
+		payload["summary"] = summarizeReviewWithIaC(v, iacDimension)
+		if iac != nil {
+			payload["iac"] = iac
 		}
 		if len(sources.excluded) > 0 {
 			excluded := make([]reviewSourceExclusion, 0, len(sources.excluded))
@@ -608,6 +597,25 @@ func (rc reviewCorpus) partialNote() string {
 		return "partial: " + gap
 	}
 	return rc.partial
+}
+
+func summarizeReviewWithIaC(v review.Verdict, iac HazardDimension) string {
+	checked, active := 0, 0
+	var unchecked []string
+	for _, d := range v.Dimensions {
+		if d.Checked {
+			checked++
+			active += d.Count
+		} else {
+			unchecked = append(unchecked, d.Name)
+		}
+	}
+	if iac.Checked {
+		checked++
+	} else {
+		unchecked = append(unchecked, "iac")
+	}
+	return iacReviewSummary(v.Service, len(v.ChangedFiles), checked, active, len(iac.Findings), unchecked)
 }
 
 func summarizeReviewVerdict(v review.Verdict) string {

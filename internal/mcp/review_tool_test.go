@@ -203,17 +203,17 @@ func TestReviewDiff_ComposesDimensionsHonestly(t *testing.T) {
 		t.Errorf("service = %v", p["service"])
 	}
 	dims, ok := p["dimensions"].([]any)
-	if !ok || len(dims) != 8 {
-		// 8 (ADR-044 CV-12/CV-24): impact, obligations, arch_conformance,
-		// spec_coverage, coverage, certifications, integrity, conservation.
-		t.Fatalf("expected 8 dimensions, got %v", p["dimensions"])
+	if !ok || len(dims) != 9 {
+		// The existing eight (ADR-044 CV-12/CV-24) plus IaC: impact, obligations, arch_conformance,
+		// spec_coverage, coverage, certifications, integrity, conservation, iac.
+		t.Fatalf("expected 9 dimensions, got %v", p["dimensions"])
 	}
 	byName := map[string]map[string]any{}
 	for _, raw := range dims {
 		d := raw.(map[string]any)
 		byName[d["name"].(string)] = d
 	}
-	for _, want := range []string{"impact", "obligations", "arch_conformance", "spec_coverage", "coverage", "certifications"} {
+	for _, want := range []string{"impact", "obligations", "arch_conformance", "spec_coverage", "coverage", "certifications", "integrity", "conservation", "iac"} {
 		if _, ok := byName[want]; !ok {
 			t.Errorf("missing dimension %q", want)
 		}

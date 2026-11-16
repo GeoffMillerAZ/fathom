@@ -513,6 +513,7 @@ type reviewDiffResult struct {
 
 // reviewDimensionStatus remains available when dispatch elides detailed dimensions.
 type reviewDimensionStatus struct {
+	AsOf            string `json:"as_of,omitempty"`
 	Checked         bool   `json:"checked"`
 	Count           int    `json:"count"`
 	UncheckedReason string `json:"unchecked_reason,omitempty"`

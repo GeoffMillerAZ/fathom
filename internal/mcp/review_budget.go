@@ -50,10 +50,10 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 		return nil, errors.New("malformed review object")
 	}
 	dims, ok := payload["dimensions"].([]any)
-	if !ok || len(dims) != 8 {
-		return nil, errors.New("eight review dimensions required")
+	if !ok || (len(dims) != 8 && len(dims) != 9) {
+		return nil, errors.New("eight legacy review dimensions with optional iac required")
 	}
-	statuses := make(map[string]reviewDimensionStatus, 8)
+	statuses := make(map[string]reviewDimensionStatus, len(dims))
 	for _, value := range dims {
 		dim, ok := value.(map[string]any)
 		if !ok {
@@ -61,7 +61,7 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 		}
 		name, _ := dim["name"].(string)
 		switch name {
-		case review.DimImpact, review.DimObligations, review.DimArch, review.DimSpecCoverage, "coverage", review.DimCertifications, "integrity", review.DimConservation:
+		case review.DimImpact, review.DimObligations, review.DimArch, review.DimSpecCoverage, "coverage", review.DimCertifications, "integrity", review.DimConservation, "iac":
 		default:
 			return nil, errors.New("unknown review dimension")
 		}
@@ -72,6 +72,9 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 			return nil, errors.New("malformed review status")
 		}
 		status := reviewDimensionStatus{Checked: checked, Count: count}
+		if name == "iac" {
+			status.AsOf, _ = dim["as_of"].(string)
+		}
 		if !checked {
 			reason, valid := dim["reason"].(string)
 			if !valid {
@@ -81,6 +84,13 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 		}
 		statuses[name] = status
 	}
+
+	for _, name := range []string{review.DimImpact, review.DimObligations, review.DimArch, review.DimSpecCoverage, "coverage", review.DimCertifications, "integrity", review.DimConservation} {
+		if _, ok := statuses[name]; !ok {
+			return nil, errors.New("legacy review dimension missing")
+		}
+	}
+	originalIaCStatus, hasIaC := statuses["iac"]
 
 	// Normalize only envelope metadata: never marshal/decode the two payload
 	// copies just to obtain refresh, suppression and partial-budget fields.
@@ -111,11 +121,62 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 	for k, v := range original {
 		payload[k] = v
 	}
+	if hasIaC {
+		copyDims := append([]any(nil), dims...)
+		for i, value := range copyDims {
+			dim := value.(map[string]any)
+			if dim["name"] == "iac" {
+				copyDim := make(map[string]any, len(dim))
+				for k, v := range dim {
+					copyDim[k] = v
+				}
+				copyDims[i] = copyDim
+			}
+		}
+		payload["dimensions"] = copyDims
+	}
 	payload["dimension_status"] = statuses
 	payload["details_complete"] = false
 	wire["details_complete"] = false
 
 	fit := func() (bool, error) {
+		if hasIaC {
+			status := originalIaCStatus
+			for path := range omitted {
+				if path == "/dimensions" || strings.HasPrefix(path, "/dimensions/iac/") || strings.HasPrefix(path, "/iac/") {
+					status.Checked = false
+					status.UncheckedReason = "IaC response details capped"
+					break
+				}
+			}
+			statuses["iac"] = status
+			checked, coreActive := 0, 0
+			var unchecked []string
+			for _, value := range dims {
+				name := value.(map[string]any)["name"].(string)
+				s := statuses[name]
+				if s.Checked {
+					checked++
+					if name != "iac" {
+						coreActive += s.Count
+					}
+				} else {
+					unchecked = append(unchecked, name)
+				}
+			}
+			service, _ := original["service"].(string)
+			changed, _ := original["changed_files"].([]any)
+			payload["summary"] = iacReviewSummary(service, len(changed), checked, coreActive, status.Count, unchecked)
+			// Preserve checked/reason consistency in both the surviving dimension
+			// and the status floor. Candidate prefixes can restore full coverage.
+			for _, value := range payload["dimensions"].([]any) {
+				dim := value.(map[string]any)
+				if dim["name"] == "iac" {
+					dim["checked"] = status.Checked
+					dim["reason"] = status.UncheckedReason
+				}
+			}
+		}
 		// Counts describe logical items, counting the payload once, never its
 		// text mirror. Byte-prefix losses each count as one incomplete value.
 		returned, total := reviewItemCounts(original, "", omitted)
@@ -178,7 +239,7 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 		path := "/dimensions/" + dim["name"].(string)
 		out := make(map[string]any, len(dim))
 		for _, key := range reviewSortedKeys(dim) {
-			if key == "name" || key == "checked" || key == "count" {
+			if key == "name" || key == "checked" || key == "count" || (dim["name"] == "iac" && key == "as_of") {
 				out[key] = dim[key]
 			} else {
 				out[key] = compactReviewValue(dim[key], path+"/"+reviewPointerToken(key), omitted)
@@ -270,7 +331,7 @@ func capReviewDiffEnvelope(envelope map[string]any, limit int) (map[string]any, 
 		return wire, nil
 	}
 
-	return nil, errors.New("eight review statuses and omission metadata cannot fit")
+	return nil, errors.New("review statuses and omission metadata cannot fit")
 }
 
 // reviewElision extends the standard disclosure with payload-only loss paths.
@@ -288,6 +349,10 @@ type reviewArrayPrefix struct {
 
 func (p reviewArrayPrefix) priority() int {
 	switch {
+	case p.path == "/iac/findings" || p.path == "/iac/cloudformation/findings":
+		return 0
+	case p.path == "/dimensions/iac/findings":
+		return 4 // Preserve the compatibility lists before their additive projection.
 	case strings.HasPrefix(p.path, "/dimensions/") && strings.HasSuffix(p.path, "/findings"):
 		return 0
 	case p.path == "/changed_files":

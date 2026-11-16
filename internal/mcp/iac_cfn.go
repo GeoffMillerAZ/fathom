@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -34,8 +35,8 @@ const (
 )
 
 // cfnCatalogs lists the installed catalogs when at least one is a CloudFormation catalog.
-func cfnCatalogs() []iacfacts.IaCCatalogInfo {
-	_, list := iacCatalogs()
+func cfnCatalogs(coverage ...*iacReviewCoverage) []iacfacts.IaCCatalogInfo {
+	_, list := iacCatalogs(coverage...)
 	for _, c := range list {
 		if c.Manifest.Kind == iacfacts.KindCloudFormation {
 			return list
@@ -47,16 +48,36 @@ func cfnCatalogs() []iacfacts.IaCCatalogInfo {
 // readCFNFile reads one repo-relative file through the corpus guard, at most cfnFileCap bytes. ok is false for a file
 // that is not there, is over the cap, escapes the corpus or is not a CloudFormation template.
 func readCFNFile(root, name string) ([]byte, bool) {
-	f, err := corpusFS{root: root}.Open(name)
+	src, err := readCFNSource(root, name)
+	return src, err == nil && iacfacts.LooksLikeCloudFormation(src)
+}
+
+// readCFNSource separates a readable non-template from an unread or capped input.
+func readCFNSource(root, name string) ([]byte, error) {
+	real, err := (corpusFS{root: root}).resolve(name)
 	if err != nil {
-		return nil, false
+		return nil, err
+	}
+	st, err := os.Stat(real)
+	if err != nil {
+		return nil, err
+	}
+	if !st.Mode().IsRegular() || st.Size() > cfnFileCap {
+		return nil, fmt.Errorf("template is not regular or exceeds read limit")
+	}
+	f, err := os.Open(real)
+	if err != nil {
+		return nil, err
 	}
 	defer f.Close()
 	src, err := io.ReadAll(io.LimitReader(f, cfnFileCap+1))
-	if err != nil || len(src) > cfnFileCap || !iacfacts.LooksLikeCloudFormation(src) {
-		return nil, false
+	if err != nil {
+		return nil, err
 	}
-	return src, true
+	if len(src) > cfnFileCap {
+		return nil, fmt.Errorf("template exceeds read limit")
+	}
+	return src, nil
 }
 
 // cfnBindingJSON is the binding of a CloudFormation answer.
@@ -209,11 +230,19 @@ func cfnTemplateExt(f string) bool {
 // property their schema says forces replacement or may. A file the base lacks is new and replaces nothing. It is nil
 // when no CloudFormation catalog is installed or no changed file is a template. The list is capped, and the response
 // cap trims it further like any other field.
-func reviewCFNFindings(ctx context.Context, backend QueryInterface, service string, changed []string, base string) map[string]any {
+func reviewCFNFindings(ctx context.Context, backend QueryInterface, service string, changed []string, base string, coverage ...*iacReviewCoverage) map[string]any {
+	status := &iacReviewCoverage{}
+	if len(coverage) > 0 {
+		status = coverage[0]
+	}
 	var files []string
 	seen := map[string]bool{}
 	for _, f := range changed {
 		f = path.Clean(filepath.ToSlash(f))
+		if cfnTemplateExt(f) && !fsValidName(f) {
+			status.relevant = true
+			status.unknown("CloudFormation changed path invalid")
+		}
 		if cfnTemplateExt(f) && fsValidName(f) && !seen[f] {
 			seen[f] = true
 			files = append(files, f)
@@ -222,17 +251,23 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 	if len(files) == 0 {
 		return nil
 	}
-	list := cfnCatalogs()
+	list := cfnCatalogs(status)
 	if len(list) == 0 {
+		status.relevant = true
+		status.unknown("CloudFormation catalog absent or unreadable")
 		return nil
 	}
 	root, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
+		status.relevant = true
+		status.unknown("CloudFormation source root unavailable")
 		return nil
 	}
 	sort.Strings(files)
 	notes := map[string]bool{}
 	if len(files) > cfnReviewFiles {
+		status.relevant = true
+		status.unknown("CloudFormation changed file limit reached")
 		notes[fmt.Sprintf("only the first %d of %d changed files were read", cfnReviewFiles, len(files))] = true
 		files = files[:cfnReviewFiles]
 	}
@@ -241,32 +276,57 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 	catalogs := map[string]bool{}
 	for _, f := range files {
 		if ctx.Err() != nil {
+			status.relevant = true
+			status.unknown("IaC review cancelled or deadline exceeded")
 			break
 		}
-		src, ok := readCFNFile(root, f)
-		if !ok {
+		src, readErr := readCFNSource(root, f)
+		if readErr != nil {
+			status.relevant = true
+			status.unknown("CloudFormation source absent, unreadable or over read limit")
 			continue
 		}
+		if !iacfacts.LooksLikeCloudFormation(src) {
+			continue
+		}
+		status.relevant = true
 		head, err := iacfacts.ReadCloudFormationFile(f, src)
 		if err != nil {
+			status.unknown("CloudFormation template unreadable or incomplete")
 			notes[f+" was not read: "+err.Error()] = true
 			continue
+		}
+		if head.SyntaxErrors > 0 || len(head.Dropped) > 0 {
+			status.unknown("CloudFormation template syntax incomplete")
 		}
 		read++
 		var baseRes map[string]iacfacts.Resource
 		var baseSource []byte
 		if baseSrc, ok := cfnBaseFile(ctx, root, base, f); ok {
 			if bs, err := iacfacts.ReadCloudFormationFile(f, baseSrc); err == nil {
+				if bs.SyntaxErrors > 0 || len(bs.Dropped) > 0 {
+					status.unknown("CloudFormation base syntax incomplete")
+				}
 				baseSource = baseSrc
 				baseRes = map[string]iacfacts.Resource{}
 				for _, r := range bs.Resources {
 					baseRes[r.Name] = r
 				}
+			} else {
+				status.unknown("CloudFormation base unreadable or incomplete")
+			}
+		} else if base != "" {
+			// Only a proven absent base path is a new file. A failed, capped or
+			// unreadable base must not silently suppress replacement coverage.
+			exists, err := exec.CommandContext(ctx, "git", "-C", root, "ls-tree", "-z", base, "--", f).Output()
+			if err != nil || len(exists) > 0 {
+				status.unknown("CloudFormation base unreadable or over read limit")
 			}
 		}
 		for _, r := range head.Resources {
 			u := iacfacts.CheckCloudFormationUse(list, "", r)
 			if !u.Binding.Bound {
+				status.unknown("CloudFormation binding or schema unavailable")
 				unbound++
 				notes[u.Binding.Note] = true
 				continue
@@ -308,6 +368,7 @@ func reviewCFNFindings(ctx context.Context, backend QueryInterface, service stri
 	})
 	total := len(findings)
 	if total > cfnFindingCap {
+		status.unknown("CloudFormation finding limit reached")
 		findings = findings[:cfnFindingCap]
 		notes[fmt.Sprintf("%d of %d findings are listed", cfnFindingCap, total)] = true
 	}

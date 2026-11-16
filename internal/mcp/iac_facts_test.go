@@ -251,13 +251,13 @@ func TestIaCSurfacesUnchangedWithoutACatalog(t *testing.T) {
 	rev := map[string]any{"service": "svc", "changed_files": []string{"main.tf"}}
 
 	iacHome(t, false) // FATHOM_HOME exists, its iac directory does not
-	symNone, _ := iacCall(t, iacServer(root), "symbol_context", sym)
-	revNone, _ := iacCall(t, iacServer(root), "review_diff", rev)
+	symNone, _ := laneIaCUncappedCall(t, iacServer(root), "symbol_context", sym)
+	revNone, _ := laneIaCUncappedCall(t, iacServer(root), "review_diff", rev)
 	if os.MkdirAll(filepath.Join(os.Getenv("FATHOM_HOME"), "iac"), 0o755) != nil {
 		t.Fatal("mkdir")
 	}
-	symEmpty, _ := iacCall(t, iacServer(root), "symbol_context", sym)
-	revEmpty, _ := iacCall(t, iacServer(root), "review_diff", rev)
+	symEmpty, _ := laneIaCUncappedCall(t, iacServer(root), "symbol_context", sym)
+	revEmpty, _ := laneIaCUncappedCall(t, iacServer(root), "review_diff", rev)
 	for name, p := range map[string]map[string]any{"symbol none": symNone, "review none": revNone, "symbol empty": symEmpty, "review empty": revEmpty} {
 		if _, has := p["iac"]; has {
 			t.Fatalf("%s: an iac key appeared with no catalog: %v", name, p["iac"])
@@ -269,8 +269,8 @@ func TestIaCSurfacesUnchangedWithoutACatalog(t *testing.T) {
 
 	// A catalog adds the iac key and changes nothing else.
 	iacHome(t, true)
-	symWith, _ := iacCall(t, iacServer(root), "symbol_context", sym)
-	revWith, _ := iacCall(t, iacServer(root), "review_diff", rev)
+	symWith, _ := laneIaCUncappedCall(t, iacServer(root), "symbol_context", sym)
+	revWith, _ := laneIaCUncappedCall(t, iacServer(root), "review_diff", rev)
 	iacBlock(t, symWith)
 	iacBlock(t, revWith)
 	delete(symWith, "iac")
@@ -278,7 +278,7 @@ func TestIaCSurfacesUnchangedWithoutACatalog(t *testing.T) {
 	if !reflect.DeepEqual(symNone, symWith) {
 		t.Fatalf("symbol_context changed beyond the iac key:\n%v\n%v", symNone, symWith)
 	}
-	if !reflect.DeepEqual(stripVolatile(revNone), stripVolatile(revWith)) {
+	if !reflect.DeepEqual(laneWithoutIaCDimension(revNone), laneWithoutIaCDimension(revWith)) {
 		t.Fatalf("review_diff changed beyond the iac key:\n%v\n%v", revNone, revWith)
 	}
 }

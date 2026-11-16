@@ -151,28 +151,28 @@ func TestCFNSurfacesUnchangedWithoutACatalog(t *testing.T) {
 	rev := map[string]any{"service": "svc", "changed_files": []string{"stack.yaml"}}
 
 	cfnHome(t, false)
-	symNone, _ := iacCall(t, cfnServer(root), "symbol_context", sym)
-	revNone, _ := iacCall(t, cfnServer(root), "review_diff", rev)
+	symNone, _ := laneIaCUncappedCall(t, cfnServer(root), "symbol_context", sym)
+	revNone, _ := laneIaCUncappedCall(t, cfnServer(root), "review_diff", rev)
 	iacHome(t, true) // a Terraform catalog only
-	symTF, _ := iacCall(t, cfnServer(root), "symbol_context", sym)
-	revTF, _ := iacCall(t, cfnServer(root), "review_diff", rev)
+	symTF, _ := laneIaCUncappedCall(t, cfnServer(root), "symbol_context", sym)
+	revTF, _ := laneIaCUncappedCall(t, cfnServer(root), "review_diff", rev)
 	for name, p := range map[string]map[string]any{"symbol none": symNone, "review none": revNone, "symbol terraform": symTF, "review terraform": revTF} {
 		if _, has := p["iac"]; has {
 			t.Fatalf("%s: an iac key appeared with no CloudFormation catalog: %v", name, p["iac"])
 		}
 	}
-	if !reflect.DeepEqual(symNone, symTF) || !reflect.DeepEqual(stripVolatile(revNone), stripVolatile(revTF)) {
+	if !reflect.DeepEqual(symNone, symTF) || !reflect.DeepEqual(laneWithoutIaCDimension(revNone), laneWithoutIaCDimension(revTF)) {
 		t.Fatal("a Terraform catalog changed a CloudFormation answer")
 	}
 
 	cfnHome(t, true)
-	symWith, _ := iacCall(t, cfnServer(root), "symbol_context", sym)
-	revWith, _ := iacCall(t, cfnServer(root), "review_diff", rev)
+	symWith, _ := laneIaCUncappedCall(t, cfnServer(root), "symbol_context", sym)
+	revWith, _ := laneIaCUncappedCall(t, cfnServer(root), "review_diff", rev)
 	iacBlock(t, symWith)
 	iacBlock(t, revWith)
 	delete(symWith, "iac")
 	delete(revWith, "iac")
-	if !reflect.DeepEqual(symNone, symWith) || !reflect.DeepEqual(stripVolatile(revNone), stripVolatile(revWith)) {
+	if !reflect.DeepEqual(symNone, symWith) || !reflect.DeepEqual(laneWithoutIaCDimension(revNone), laneWithoutIaCDimension(revWith)) {
 		t.Fatal("a CloudFormation catalog changed an answer beyond the iac key")
 	}
 }

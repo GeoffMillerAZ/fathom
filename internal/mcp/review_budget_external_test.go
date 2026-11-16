@@ -111,7 +111,7 @@ func TestReviewDiffWholeResultFitsBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	statuses, ok := p["dimension_status"].(map[string]any)
-	if !ok || len(statuses) != 8 {
+	if !ok || len(statuses) != 9 {
 		t.Fatalf("all eight dimension statuses required: %v", p["dimension_status"])
 	}
 	// Ground all final states against the same generated service's small result.
@@ -193,7 +193,7 @@ func TestReviewDiffWholeResultLongFindings(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Structured.Statuses) != 8 || result.Structured.Statuses["obligations"].Count != 100 {
+	if len(result.Structured.Statuses) != 9 || result.Structured.Statuses["obligations"].Count != 100 {
 		t.Fatal("round-one statuses/counts lost")
 	}
 	if result.Structured.Elided.Fields["/dimensions/obligations/findings"].Total != 100 {
