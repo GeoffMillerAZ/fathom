@@ -1,16 +1,17 @@
 # CTR-4, CTR-6, CTR-8 and CTR-9: wiring and honest witnesses
 
-Artifact: `contributor-tooling-wiring-readings-w15`, branch `lane/contract-contributor-tooling-wiring-readings`.
+Artifact: `contributor-tooling-wiring-readings-w15-fix1`, branch `lane/contract-contributor-tooling-wiring-readings`.
 Original source-only extraction from `a598d4bbfcecbcc0108164382dc2a22bf6c915eb`.
 W15-4 revises U1/U2 in source draft `7410870f9d1299ad64e134c8c02ac280c81b0490`.
+FIX1 addresses critic F1 on exact `25eb5eafa4ecdec63c3e1bda935655f86badfeef`.
 This branch adds only `docs/contracts/contributor-tooling-wiring-readings.md`.
 Companion citations resolve to that preserved source until individually
 landed. Only the W15-4 authority, acceptance and activation clauses are amended;
 companion ports, remaining assertions and source/native-proof prerequisites stay fixed.
 
-Status: W15-4 applied; revised draft requires fresh secondary criticism. No implementation.
+Status: W15-4 FIX1 applied; fresh secondary re-review required. No implementation.
 Source base: `83226aece9b0f421381373f8dafc4a912d3888e5`.
-Fetched main before revision: `54bca03154ea35c39bf08acba4c3572e843da56a`.
+Fetched main before FIX1: `17d930d2f1b96b707b03ec84d5f87a3a5333c24d`.
 W15-4 resolves design choices; it grants no required-check activation or fan-out.
 Exact ownership and serial order: `docs/contracts/contributor-tooling-split.md` (preserved source `a598d4bbfcecbcc0108164382dc2a22bf6c915eb`).
 Handed interfaces: `docs/contracts/contributor-tooling-trust-paths.md` (preserved source `a598d4bbfcecbcc0108164382dc2a22bf6c915eb`),
@@ -152,48 +153,77 @@ check when an input is absent:
    Do not substitute proof text from issue comments/body or candidate CUE.
    This is never executed in the trusted data-only preflight job.
 5. Retain the existing full `task validate` and REC-1 ownership checks under
-   the existing machine lease until REC-7. Then run static strict plan
-   verification on a fresh scratch ingest of this
-   exact head, using the built candidate binary, all active top-level plans
-   except README.md, and `--since` the immutable base. This follows the
-   current integrator proof in agent-waves.md:92-95; no shared daemon store.
-   The exact proposed commands are below. `fathom verify` is not a test runner and lexical receipts cannot prove
-   execution. Unknown/operational proof is reported as unknown and prevents
-   **this readiness claim**; existing global verify fail-open stays unchanged.
+   the existing machine lease until REC-7. The authoritative ingest **and**
+   strict plan verification use the evaluator built from CONTROL's pinned
+   trusted base and dependencies, never DATA/bin/fathom or candidate verdicts.
+   Inspect the exact DATA head and every active top-level plan except README.md,
+   with `--since` the immutable base, into a fresh protected scratch store.
+   DATA is inspected input only for this evaluation. The existing fresh-store,
+   complete-plan and exact-head requirements remain; the candidate-binary
+   integrator recipe does not supply this independent authority.
+   Missing, unproven or incompatible trusted evaluator/source/dependencies
+   yields unknown/nonzero and blocks the readiness claim. Never fall back to
+   a candidate-built evaluator or relabel candidate success as trusted proof.
+   Required candidate runtime/regression proof still runs in its advisory
+   disposable job; it cannot self-certify the authoritative decision.
+   `fathom verify` remains static, lexical receipts do not prove execution,
+   and existing global verify fail-open semantics are unchanged.
 6. Verify head/tree/clean state again and attach command, exit, source hashes
    and current head to the receipt. Include the trusted base/check-source blob
-   ids, operator admission/snapshot digest and the separately inspected REC-1
-   ownership result. Record `required-check activation: HELD OQ9` and
+   ids, trusted evaluator source/dependency/binary identity and its independent
+   ingest/verify results, operator admission/snapshot digest and the separately
+   inspected REC-1 ownership result. Keep candidate runtime/regression results
+   separately identified as advisory proof, never authoritative verification.
+   Record `required-check activation: HELD OQ9` and
    `automatic fan-out: HELD OQ9`; no prospective local PASS alters those holds.
    These are wiring receipt assertions, not new queue output fields or a
    lifecycle format. Any changed head/source/snapshot invalidates results.
 
-Exact scratch verification command sequence, UNRUN here, after the full gate
-has produced the candidate `bin/fathom` (the task checks binary source identity):
+Exact authoritative scratch command sequence, UNRUN here. CONTROL/bin/fathom
+is built and identity-checked from CONTROL's trusted base/module/dependency
+pins, outside DATA, using the existing toolchain without pin changes. The
+trusted driver owns the resolved absolute CONTROL/DATA roots and launches
+this block with **DATA as working directory**, so local git-aware plan checks
+inspect DATA rather than CONTROL. Its executable selection is still CONTROL:
 
 ```sh
-lane_ready_tmp=$(mktemp -d workspace/tmp/lane-ready.XXXXXX)
-bin/fathom ingest --store "$lane_ready_tmp/verify.sqlite" --service fathom --path .
+lane_ready_tmp=$(mktemp -d "$CONTROL/workspace/tmp/lane-ready.XXXXXX")
+"$CONTROL/bin/fathom" ingest --store "$lane_ready_tmp/verify.sqlite" \
+  --service fathom --path "$DATA"
 lane_ready_args=()
-for lane_ready_plan in docs/plans/*.md; do
-  [ "$lane_ready_plan" = docs/plans/README.md ] && continue
+for lane_ready_plan in "$DATA"/docs/plans/*.md; do
+  [ "$lane_ready_plan" = "$DATA/docs/plans/README.md" ] && continue
   lane_ready_args+=(--plan "$lane_ready_plan")
 done
-bin/fathom verify --strict --since "$FATHOM_LANE_TRUSTED_BASE" \
+"$CONTROL/bin/fathom" verify --strict --since "$FATHOM_LANE_TRUSTED_BASE" \
   --store "$lane_ready_tmp/verify.sqlite" --service fathom "${lane_ready_args[@]}"
 ```
 
-Taskfile executes this sequence with Bash and immediate error propagation.
-The unique scratch directory stays under workspace for logs/critic inspection.
+The base-owned Taskfile executes this sequence with Bash and immediate error
+propagation. CONTROL and DATA are the existing trusted driver root bindings,
+not new configuration fields. The evaluator, its dependencies and decision
+policy are fixed by CONTROL; candidate executable/module/plugin/env/config
+content cannot replace them or be executed as authority. The candidate job
+cannot write the trusted store, evaluator or output. Do not reuse its ingest
+store, receipts or successful verdict as the authoritative evaluation.
+Missing/incompatible trusted evaluator or inability to inspect the complete
+DATA head is unknown/nonzero, never a candidate fallback or vacuous pass.
+The unique scratch directory stays under protected CONTROL/workspace for
+logs/critic inspection, with no shared daemon store. Freeze DATA head/tree
+before and after, as well as CONTROL evaluator/source and capture identity.
 No shell expansion of filenames into proof command text. Gofmt input uses
 NUL-aware tracked Go path enumeration and argument arrays, not a whitespace
-split. Empty active-plan set is a missing-input failure, never a vacuous pass.
+split. Empty active-plan set remains a missing-input failure.
 
 For CI a runner is exclusive: keep existing `task validate:unleased` as today.
 Run the extra queue/path/commit/stack preflight in a separate preceding job,
 not a nested full `task lane:ready` that repeats the full suite. Both the
-preflight and the existing full CI plus REC-1 ownership must pass on the exact
-candidate head to form the combined **fixture/proof** lane-ready result.
+preflight, independent CONTROL-built ingest/verify decision, and the existing
+full CI plus REC-1 ownership are required on the exact candidate head for the
+combined **fixture/proof** lane-ready result. The required disposable candidate
+runtime/regression job is advisory evidence to the trusted decision, never a
+replacement for it. A candidate-reported success cannot make a failing or
+unknown authoritative evaluation pass.
 No result from this design enables a required check or automatic fan-out.
 Those activations remain held for OQ9 and a separately authorized turn.
 Push jobs retain today's full suite even
@@ -255,8 +285,14 @@ acquisition API or required-check activation.
 
 Candidate build/test job uses that exact PR head, persist-credentials:false,
 no secrets or token environment, and the ordinary read-only job permissions.
-It runs full existing validation, including untrusted tests, in its disposable
-unprivileged runner. Do not interpolate untrusted branch names into shell.
+It still runs full existing validation and the required candidate runtime/
+regression proof, including candidate-built ingest/verify when that proof
+requires them, in its advisory disposable unprivileged runner. Candidate
+success, even with matching head/source identity, is not an independent
+verdict and cannot replace or certify CONTROL's authoritative ingest/verify.
+The trusted decision does not consume candidate-created stores or executable
+outputs as authoritative evidence. Do not interpolate untrusted branch names
+into shell.
 Public artifacts carry relative source spans and role ids only.
 
 An arbitrary fork can edit its workflow. A check printed by candidate code
@@ -292,7 +328,7 @@ clear and under the lease. No stubbed full gate can count as that proof.
 
 | Case | Required witness |
 |---|---|
-| `valid` | Base-owned `task lane:ready` exit 0 on frozen clean head, complete source/admission capture, current full gate plus REC-1 ownership logs and strict verify receipt; no omitted step; activation/fan-out still HELD OQ9 |
+| `valid` | Base-owned `task lane:ready` exit 0 on frozen clean head, complete source/admission capture, current full gate plus REC-1 ownership logs and independent CONTROL-built ingest/strict-verify result; candidate runtime/regression proof remains required and separately advisory; no omitted step; activation/fan-out still HELD OQ9 |
 | `outside` | Outside addition/deletion and either rename endpoint fail paths before candidate proof; owner/path in output |
 | `self-broaden` | Candidate manifest/schema/script substitution cannot authorize the outside file; missing trusted manifest fails |
 | `claimed` | Winning session with independent refreshed grounding passes preflight; wrong/incomplete/raced token fails |
@@ -300,7 +336,7 @@ clear and under the lease. No stubbed full gate can count as that proof.
 | `stacked` | Another open unlanded PR head ancestor refuses; already-on-base ancestor doesn't; unavailable object fails |
 | `fork` | Trusted operator owns admission/snapshot; check and driver blobs come from base branch; changed candidate check/Taskfile/schema/capture cannot judge itself; no persistent credential/secrets/write permission; fixture PASS never claims required-check activation |
 | `gates` | Current full validate dependency set, REC-1 ownership, perfgate/test/race/symlink temp canary, pre-push and message checks remain until REC-7; record-ids is never counted as rec vet; each seeded step failure is named and nonzero |
-| `trusted-source` | `TestContributorCheckSourceFromTrustedBase`: inspect check/driver/schema blob ids against trusted base; substitute candidate copies/ref/capture and assert they never become authority; missing trusted source/admission yields unknown/nonzero |
+| `trusted-source` | `TestContributorCheckSourceFromTrustedBase`: inspect check/driver/schema/evaluator source/dependency/binary identity against CONTROL trusted base; substitute candidate copies/ref/capture and assert they never become authority. In an independently failing fixture, substitute candidate-built ingester, verifier and both together returning false success; CONTROL ingest/verify must still reject the fixture despite those successes. Candidate-only stores/receipts cannot satisfy the decision. Missing or incompatible trusted evaluator, source/dependencies or complete admission yields unknown/nonzero; never candidate fallback |
 | `activation-held` | `TestContributorActivationHeldForOQ9`: local PASS, contract LAND and prior reviewer approval each leave required-check activation and automatic fan-out HELD; no forge/settings mutation, token or self-granted permission |
 | `rec1-until-rec7` | `TestContributorFullGateAndREC1UntilREC7`: without REC-7, demand the complete current full gate plus shared REC-1 ownership; absent/failing ownership or omitted full-gate step blocks; passing record-ids never supplies record shape/link/cycle vet proof |
 
@@ -321,7 +357,9 @@ inspection of logs. The exact receipt line stays
 is the witnessed fixtures, not required-check/settings deployment. Report
 activation/fan-out HELD OQ9 separately. No receipt presence, contract ruling,
 prior borrowed approval or configuration-only inspection substitutes for
-integration proof or grants activation. This revision runs none of those tests.
+integration proof or grants activation. Candidate runtime/regression success
+cannot replace the independent CONTROL evaluation. This FIX1 runs none of
+those tests and claims no actual RED.
 
 ## CTR-6: independent handoff replay
 
@@ -341,7 +379,8 @@ filed receipt. Log the unsafe case's exact refusing check. All assertions must
 hold before `CTR-6 verdict: PASS unsafe-merges=0`. A lexical match only proves
 filing. Missing admission/gate/critic proof yields incomplete/unknown, not PASS.
 This is not WSL2 evidence and cannot close CTR-8. Use the W15-4 base-owned
-entrypoint and trusted operator captures throughout the replay, retain full
+entrypoint, independent CONTROL-built ingest/verify and trusted operator
+captures throughout the replay, retain full
 gate plus REC-1 ownership until REC-7, and show required-check activation and
 automatic fan-out HELD for OQ9. Fixture merge eligibility is not real merge or
 fan-out permission.
@@ -359,7 +398,8 @@ hooks unknown unless separately witnessed. Linux CI, macOS gate, drafted
 command or source portability is not a WSL2 witness. No run is claimed here.
 A full gate this row needs belongs to that authorized worker after the gate
 lease is available, not to this author and not to CTR-9. The witness must use
-the trusted base-owned check and complete operator admission/snapshot, with
+the trusted base-owned check, independent CONTROL-built ingest/verify and
+complete operator admission/snapshot, with
 full gate plus REC-1 ownership until REC-7. A native PASS does not enable a
 required check or automatic fan-out before OQ9 and a separate activation turn.
 
@@ -423,7 +463,11 @@ reusable kit implementation changed and no upstream write is authorized.
 ## W15-4 disposition and dispatch conditions
 
 * U1 resolved: trusted base-branch check source and operator-owned complete
-  admission/snapshot, never candidate authority. Design and named tests only;
+  admission/snapshot, never candidate authority. FIX1 pins authoritative
+  ingest/verify to CONTROL's trusted base evaluator with DATA as inspected
+  input; candidate runtime/regression proof stays required but advisory.
+  Missing/incompatible trusted evaluation blocks as unknown/nonzero.
+  Design and named tests only;
   required-check activation and automatic fan-out wait on owner OQ9 plus a
   separately authorized activation turn. No unresolved acquisition API is
   invented and no operational channel/enforcement is claimed to exist.
