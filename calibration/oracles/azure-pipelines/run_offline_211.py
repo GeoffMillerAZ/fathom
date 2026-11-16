@@ -23,6 +23,7 @@ def main():
         invalidate_summary(args.out/'receipt.json')
         refuse_aliases([args.dotnet, args.assembly],
                        [args.out/'raw.json', args.out/'stderr.log'])
+        refuse_aliases([args.out/'raw.json'], [args.out/'stderr.log'])
         args.out.mkdir(exist_ok=True,parents=True)
         local=args.out.resolve()/'runtime'
         local.mkdir(exist_ok=True)

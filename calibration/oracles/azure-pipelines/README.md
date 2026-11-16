@@ -176,8 +176,10 @@ Both Python entrypoints share one recursive duplicate-key decoder and the same
 types and conflicting duplicate keys refuse the whole unit with exit 1 and a
 `receipt_refused:` diagnostic. No summary is published on refusal. Successful
 summaries replace their destination atomically; retries invalidate the explicitly
-owned prior summary. Input/output aliases are refused before invalidation or
-capture writes. Preserve historical artifacts and use a fresh path for new work.
+owned prior summary. Summary/input aliases are refused before invalidation.
+After invalidation, the launcher refuses capture/input and capture/capture aliases
+before producer launch or capture writes. Preserve historical artifacts and use a
+fresh path for new work.
 
 The current launcher overrides inherited T14 guards, including `DOTNET_NOLOGO=1`,
 before its process invocation. CLI home and NuGet caches live under the requested

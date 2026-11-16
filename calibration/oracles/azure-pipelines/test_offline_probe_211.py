@@ -1,5 +1,6 @@
 """Receipt honesty controls for an authored offline feasibility probe."""
 import contextlib
+import hashlib
 import io
 import os
 import runpy
@@ -148,6 +149,42 @@ class CorrectionTest(OfflineProbeTest):
             try:runpy.run_path(argv[0],run_name='__main__')
             except SystemExit as exc:code=exc.code
         return code,capture.getvalue(),launched
+
+    def test_runtime_capture_aliases_refuse_before_producer_or_capture_writes(self):
+        here=Path(__file__).resolve().parent
+        content=json.dumps(self.receipt()).encode()
+        for mode in ('symlink','hardlink'):
+            for retry in (False,True):
+                with self.subTest(mode=mode,retry=retry),self.scratch() as folder:
+                    root=Path(folder)
+                    code,message,out,launched=self.invoke(root,content,True)
+                    self.assertEqual(0,code,message)
+                    launched.assert_called_once()
+                    summary=out/'receipt.json'
+                    self.assertEqual(hashlib.sha256((out/'raw.json').read_bytes()).hexdigest(),
+                                     json.loads(summary.read_text())['raw_sha256'])
+                    if not retry:summary.unlink()
+                    retained=b'retained capture bytes'
+                    stderr=out/'stderr.log';stderr.write_bytes(retained)
+                    raw=out/'raw.json';raw.unlink()
+                    if mode=='symlink':raw.symlink_to(stderr)
+                    else:os.link(stderr,raw)
+                    argv=[str(here/'run_offline_211.py'),'--dotnet',str(root/'dotnet'),
+                          '--assembly',str(root/'probe.dll'),'--out',str(out)]
+                    code,message,launched=self.retry_without_input_writes(argv,content)
+                    # Keep every boundary assertion visible in a RED run.
+                    for boundary in ('refusal','receipt','producer','raw','stderr'):
+                        with self.subTest(boundary=boundary):
+                            if boundary=='refusal':
+                                self.assertEqual(1,code,message)
+                                self.assertIn('receipt_refused:',message)
+                                self.assertNotIn('Traceback',message)
+                            elif boundary=='receipt':
+                                self.assertFalse(summary.exists())
+                                self.assertNotIn('"raw_sha256"',message)
+                            elif boundary=='producer':launched.assert_not_called()
+                            elif boundary=='raw':self.assertEqual(retained,raw.read_bytes())
+                            else:self.assertEqual(retained,stderr.read_bytes())
 
     def test_success_then_runtime_alias_retry_preserves_inputs(self):
         here=Path(__file__).resolve().parent
