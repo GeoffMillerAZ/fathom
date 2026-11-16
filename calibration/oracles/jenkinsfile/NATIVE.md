@@ -19,7 +19,7 @@ the library's one Jenkinsfile, **23 files / 17,401 bytes**. There is no holdout,
 new canonical subject or scope selected from fathom output. The examples' source
 bytes are copied unchanged under `.jenkinsfile` staging names, following the
 existing shard contract. Scripted pipelines and vars remain the prior tolerated
-scope, not a new claim. L3 stays held for D19.
+scope, not a new claim. D19 has since landed; the native Converter still does not resolve L3 file joins.
 
 | Population | Inputs accepted | Model nodes | Positioned nodes | Named nodes |
 |---|---:|---:|---:|---:|
@@ -61,7 +61,7 @@ Ten unit tests have zero skips. Three mutants fail then restore GREEN: ignore
 plugin drift, silently drop an unknown receipt field, and truncate cap+1 inputs.
 Caps are 128 inputs, 1 MiB per source, 8 MiB total source, 100,000 model nodes per
 file, 32 MiB raw JSON, 180 seconds and a 768 MiB JVM heap. Unit controls prove
-input-count and node-count cap+1 refusal; the other bounds are declared limits,
+input-count and node-count cap+1 refusal by the receipt validator; the other bounds are declared limits,
 not separately measured cap+1 claims. Throughput is unmeasured.
 
 The exact design section 13.3.1 manifest recipe runs before and after the owner
@@ -129,3 +129,33 @@ When retaining private raw outputs, add `--canonical-raw <final/raw.json>` and
 The published receipt contains only their hashes and aggregate counts, not raw
 subject names or model text. The measured SDK, clones and controller builds have
 been pruned; replay preparation creates fresh private copies.
+
+## Follow-up disclosures (#135 m2–m5, 2026-11-15)
+
+The launcher and Groovy instrument have different boundaries. The instrument's
+node cap refuses that file: it clears that file's nodes, records `refused`, and
+continues with the other inputs. The Python receipt validator rejects an
+oversized supplied node array as a whole receipt. The earlier whole-receipt
+wording described that validator control, not a demonstrated owner-process
+whole-batch refusal. Native refusals must remain in any comparison denominator.
+
+The 32 MiB check runs after the owner process writes raw JSON. It therefore
+bounds parsing, not output size; it is not a disk-write cap. No cap+1 owner-process
+output experiment was run. Heap and time limits are separate bounds.
+
+The 16/23 and 21/23 historical environment trials are not individually bound to
+instrument and bundle identities. The final 23/23 and authored receipts do have
+those identities. The earlier trials are configuration history, not reproducible
+identity-attested measurements; their missing identities cannot be reconstructed
+from the final bundle. No historic receipt is rewritten to manufacture them.
+
+D19 has landed. It is not the blocker for Jenkins L1/L2: the complete written-unit,
+range, ownership and pair comparator remains unbuilt. The existing L3 reading
+remains tier C because the Groovy walk supplies file joins; Converter acceptance
+and the Declarative linter do not resolve `load` targets or library step files.
+See [OWNER-COMPARISON.md](OWNER-COMPARISON.md) for the conservative native probe.
+
+Issue 211 replay and current partial comparison: see the indexed
+[assessment](../../../docs/assessments/2026-10-26-tools-jenkins-native.md#issue-211-replay-and-written-unit-comparison-2026-11-15)
+and comparison-211.json. The historical r1 receipt above is unchanged; current
+corpora, tools and raw receipts remain retained for controller-owned review.

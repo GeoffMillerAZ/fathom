@@ -7,7 +7,8 @@ available route. This audit does not equate model nodes with dialect definitions
 or grant a tier from an unbuilt comparator. The canonical
 [reading](../bench/readings/lang/jenkinsfile.json) remains unchanged, including
 163/163 definitions and 133/133 local pairs under the existing tier-C walk.
-L3 remains held for D19; no ENGINE, epoch or corpus change is made.
+D19 has since landed; L3 remains C because the Groovy walk, rather than
+Converter or the linter, supplies file joins. No ENGINE, epoch or corpus change is made.
 
 **Measured population:** the existing examples pin contributes 22 declarative
 sources / 16,994 bytes, the library pin one / 407. Criteria and pins are in
@@ -46,7 +47,9 @@ model; replacing only that name makes the remaining trees equal. Fathom output
 is never an instrument input. Ten unit tests have zero skips; three mutants
 ignore plugin drift, discard an unknown native field or truncate cap+1 inputs,
 and each focused test fails before the restored GREEN run. Input 128+1 and
-node 100,000+1 refuse whole receipts. Other declared caps (1 MiB per source,
+node 100,000+1 refuse whole receipts in the Python validator. The owner-process
+node cap instead refuses the current file and continues; the post-write raw-size
+check bounds parsing, not output. Other declared caps (1 MiB per source,
 8 MiB total, 32 MiB raw result, 180 seconds and 768 MiB heap) are not separately
 claimed as measured cap+1 controls. Throughput is unmeasured.
 
@@ -82,3 +85,103 @@ Decisions applied: ADR-048/054/067, P-T1, T-R4 and X-R1 through X-R5; the new
 LB-Q-jenkinsfile-rest records unbuilt mapping work. No new design decision or
 model invocation applies. No plan box, canonical reading, tier or L3 result is
 changed by this assessment.
+
+The #135 follow-up limitations are disclosed in [NATIVE.md](../../calibration/oracles/jenkinsfile/NATIVE.md#follow-up-disclosures-135-m2m5-2026-11-15): the historical environment trials lack individual bundle/instrument identities. They are configuration history, not replay attestations.
+
+
+## Issue 211 replay and written-unit comparison (2026-11-15)
+
+The new [contract](../../calibration/oracles/jenkinsfile/OWNER-COMPARISON.md)
+and [count/hash receipt](../../calibration/oracles/jenkinsfile/comparison-211.json)
+retain the entire existing 23-input / 17,401-byte L1/L2 population. This is a
+partial diagnostic, not a replacement Reading or a native support metric.
+The replay hash-checks the existing bundle and unchanged source manifests.
+All 23 final inputs parsed; zero refused and zero no_pipeline. The first current
+trial parsed 21/23 and refused two; both current trial receipts bind the bundle
+and instrument. Historical intermediate trials still lack individual attestation.
+All short-lived owner processes ended with HTTP/HTTPS disabled; no jobs ran.
+
+| Subject | Exact declarations / native / candidate | Written call occurrences matched / native / candidate edges |
+|---|---:|---:|
+| examples (22 files) | 123 / 123 / 156 (candidate fraction .78846) | 18 / 19 / 127 |
+| library (1 file) | 6 / 6 / 7 (candidate fraction .85714) | 2 / 2 / 6 |
+| pooled | 129 / 129 / 163 (candidate fraction .79141) | 20 / 21 / 133 |
+
+The 34 unmatched candidate declarations and 113 unmatched candidate edges are
+unverified, not established false positives. One native occurrence is unmatched;
+repeated written occurrences and product caller/callee edges differ in
+multiplicity, so the call intersections are **not L2 precision/recall**. Native
+coverage cannot certify the required `step` kind: 34 stage branches lack written
+steps declaration/range/owner evidence. Functions and library annotations also
+remain outside this native projection; required kinds and bars are unchanged.
+All 753 nodes are accounted for: 129 declarations, 429 arguments, 106 call-model
+nodes, 53 synthetic branches, 30 structural nodes and six opaque bodies (three
+script and three when-expression). Of 106 call-model nodes, one is an excluded
+declaration keyword, 84 lack certified written ownership and 21 are represented.
+No model omission is silently removed from the candidate population.
+
+Truth independence was exercised with the actual public candidate snapshot:
+removing all candidate symbols/references leaves the native raw digest unchanged
+and the diagnostic succeeds with zero intersections. The authored native stage
+rename changes truth while unrelated trees remain equal. The raw native process
+never accepts candidate output. Exact raw/candidate/projection identities and
+per-subject accounting are in the receipt; names and per-file inventories stay
+private. The existing canonical L3 C-good reading is unchanged. No new holdout
+was read and no reused subject is called fresh holdout confirmation.
+
+Current focused tests: 27 passed, zero skips after routing the m1 shared-index
+correction and its regression test to the integrating helper. Before that scope
+separation all 28 passed. The m1 correction is retained locally as an exact patch;
+it is not claimed landed. m2–m5 disclosures are retained in dialect-owned docs.
+Public `pkg/lang` dispatch actually reads both Jenkinsfile and probe.jenkinsfile,
+asserting the Build stage's exact lines 4–6; its race test passed. A generic regex
+that previously selected zero tests is not evidence. Strict top-level Reading
+round-trip, privacy, release-notes and merge-debris checks passed; no nested
+Reading was changed, no global generator or full gate was run, no box flipped.
+
+Mutation: `owner_compare.py` mutants disabling branch ownership propagation,
+collapsing end ranges, claiming completeness and admitting declaration keywords
+fail the focused `test_owner_compare.py` suite with respectively 1, 2, 3 and 1
+failures; restored nine-test run passes. To reproduce, copy owner_compare.py,
+native_model_probe.py and test_owner_compare.py to an ignored scratch directory,
+replace respectively `if parent in blocked:` with `if False:`,
+`node['line'], node['end']` with `node['line'], node['line']`,
+`complete_l1=False, complete_l2=False` with `complete_l1=True, complete_l2=True`,
+or `if node['name'] in KEYWORDS:` with `if False:`, one at a time, then run
+`python3 -B -m unittest discover -s <scratch> -p test_owner_compare.py`.
+Restore the source between mutants. Raw results remain in the lane mutation log.
+
+Caps: `test_owner_compare.OwnerCompareTest.test_caps_refuse_whole_unit` supplies
+129 inputs (cap 128) and 100,008 nodes (cap 100,000); each validator rejects the
+whole supplied receipt. Candidate boundary controls reject wrong dialect,
+incomplete/skipped reads, missing/duplicate/traversing files without output.
+These do not claim an owner-process output-write cap; the 32 MiB bound remains
+post-write parsing only. Heap/time/source bounds are declared, not new cap+1
+measurements. Throughput remains unmeasured for this diagnostic.
+
+Five-source refreshes (URLs, statuses and hashes in the receipt) read the owner
+Pipeline development docs, GitHub scip-jenkins/scip-groovy searches, the Groovy
+language-server repository, PyPI jenkinsfilelint and FlowGraphWalker Javadoc.
+All six retrievals returned HTTP 200. The full pinned candidate inventory and
+catalog access gaps remain in candidate-audit-r1.json/candidate-inventory-r1.json;
+no missing tool is inferred from a negative search. The available Converter
+cannot enumerate all written opaque-body calls or certify synthetic branch
+ranges as written steps. A complete independent written-unit producer supplying
+those missing units, script methods/library imports and exact owners/ranges is
+the concrete retry trigger; merely accepting these 23 models is already satisfied.
+
+Reproduction after the existing pinned native preparation in NATIVE.md:
+
+```sh
+python3 -B -m unittest discover -s calibration/oracles/jenkinsfile -p 'test_*.py'
+python3 -B calibration/oracles/jenkinsfile/owner_compare.py --raw workspace/artifacts/lang-211/final/raw.json --out workspace/artifacts/lang-211/projection.json
+python3 -B calibration/oracles/jenkinsfile/compare_candidate.py --candidate workspace/artifacts/lang-211/candidate-raw.json --inputs workspace/corpora/jenkins-211/inputs --raw workspace/artifacts/lang-211/final/raw.json --out workspace/artifacts/lang-211/candidate-comparison.json
+bash scripts/fathom-go.sh test -race -count=1 ./pkg/lang -run '^TestJenkinsfile211PublicDispatch$'
+```
+
+Build the public snapshot tool with `go build -o workspace/tools/fathom-lang-211
+./cmd/fathom-lang`; run its `extract -in-process -root
+workspace/corpora/jenkins-211/inputs` with the complete sorted staged input roster
+and retain stdout as candidate-raw.json. The receipt records that snapshot's hash.
+All corpora, tools and raw receipts are retained for controller-owned fresh review
+and cleanup afterward. m1 shared index wiring remains helper-owned under T9.

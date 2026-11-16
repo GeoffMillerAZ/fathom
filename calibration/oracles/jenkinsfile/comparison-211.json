@@ -1,0 +1,305 @@
+{
+  "id": "jenkins-written-units-211",
+  "status": "partial-diagnostic-no-support-claim",
+  "base": "17d930d2f1b96b707b03ec84d5f87a3a5333c24d",
+  "native": {
+    "core_version": "2.568.3",
+    "tool_declarations": 3,
+    "tools_installed": false,
+    "inputs": 23,
+    "parsed": 23,
+    "refused": 0,
+    "no_pipeline": 0,
+    "model_nodes": 753,
+    "positioned_nodes": 747,
+    "named_nodes": 200,
+    "model_classes": {
+      "ModelASTAgent": 27,
+      "ModelASTBranch": 53,
+      "ModelASTBuildCondition": 19,
+      "ModelASTBuildParameter": 3,
+      "ModelASTBuildParameters": 2,
+      "ModelASTClosureMap": 5,
+      "ModelASTEnvironment": 8,
+      "ModelASTInternalFunctionCall": 4,
+      "ModelASTKey": 167,
+      "ModelASTKeyValueOrMethodCallPair": 13,
+      "ModelASTMethodCall": 1,
+      "ModelASTNamedArgumentList": 88,
+      "ModelASTOption": 8,
+      "ModelASTOptions": 3,
+      "ModelASTParallel": 1,
+      "ModelASTPipelineDef": 23,
+      "ModelASTPostBuild": 5,
+      "ModelASTPostStage": 3,
+      "ModelASTScriptBlock": 3,
+      "ModelASTSingleArgument": 6,
+      "ModelASTStage": 35,
+      "ModelASTStages": 23,
+      "ModelASTStep": 79,
+      "ModelASTTools": 2,
+      "ModelASTTreeStep": 5,
+      "ModelASTTrigger": 1,
+      "ModelASTTriggers": 1,
+      "ModelASTValue$ConstantValue": 134,
+      "ModelASTValue$GStringValue": 16,
+      "ModelASTWhen": 7,
+      "ModelASTWhenCondition": 5,
+      "ModelASTWhenExpression": 3
+    },
+    "subjects": [
+      {
+        "subject": "examples",
+        "inputs": 22,
+        "parsed": 22,
+        "refused": 0,
+        "no_pipeline": 0,
+        "model_nodes": 727,
+        "positioned_nodes": 721,
+        "named_nodes": 193
+      },
+      {
+        "subject": "library",
+        "inputs": 1,
+        "parsed": 1,
+        "refused": 0,
+        "no_pipeline": 0,
+        "model_nodes": 26,
+        "positioned_nodes": 26,
+        "named_nodes": 7
+      }
+    ],
+    "input_sha256": "731caf1e55df03337709485fe74603e044aa59e0d23407ce28e83798e1141925",
+    "calibration_measured": false,
+    "tier_granted": false,
+    "pipeline_executed": false,
+    "instrument_sha256": "bd7170853e035cc629bc029215fa76e568a0e6b6a3b932438c9c9fbf85af20b3",
+    "core_sha256": "ccdbfdceade83489e34285a4d57c12134ffea0a09ca20062282e580cbfa5f09e",
+    "plugin_count": 50,
+    "bundle_sha256": "4b4d2d04927fa2bbd0fe216f97ddceb0cd39b7e26814d7cc463ee94e818ab47c"
+  },
+  "projection": {
+    "pairs": 21,
+    "accounting": {
+      "arguments": 429,
+      "calls": 106,
+      "declarations": 129,
+      "opaque": 6,
+      "structure_without_call_label": 30,
+      "synthetic_branches": 53
+    },
+    "disclosures": {
+      "calls_without_written_owner": 84,
+      "declaration_keyword_calls": 1,
+      "opaque_bodies": 6,
+      "structural_call_labels_unmapped": 30,
+      "written_steps_unmapped": 34
+    },
+    "complete_l1": false,
+    "complete_l2": false,
+    "declarations": 129,
+    "subjects": [
+      {
+        "subject": "examples",
+        "files": 22,
+        "declarations": 123,
+        "pairs": 19,
+        "accounting": {
+          "arguments": 416,
+          "calls": 102,
+          "declarations": 123,
+          "opaque": 6,
+          "structure_without_call_label": 29,
+          "synthetic_branches": 51
+        },
+        "disclosures": {
+          "calls_without_written_owner": 82,
+          "declaration_keyword_calls": 1,
+          "opaque_bodies": 6,
+          "structural_call_labels_unmapped": 29,
+          "written_steps_unmapped": 33
+        }
+      },
+      {
+        "subject": "library",
+        "files": 1,
+        "declarations": 6,
+        "pairs": 2,
+        "accounting": {
+          "arguments": 13,
+          "calls": 4,
+          "declarations": 6,
+          "structure_without_call_label": 1,
+          "synthetic_branches": 2
+        },
+        "disclosures": {
+          "calls_without_written_owner": 2,
+          "structural_call_labels_unmapped": 1,
+          "written_steps_unmapped": 1
+        }
+      }
+    ],
+    "tier_granted": false,
+    "calibration_measured": false
+  },
+  "comparison": {
+    "subjects": {
+      "examples": {
+        "files": 22,
+        "definitions": {
+          "truth": 123,
+          "candidate": 156,
+          "matched": 123,
+          "precision_lower_bound": 0.7884615384615384
+        },
+        "pairs": {
+          "truth": 19,
+          "candidate": 127,
+          "matched": 18,
+          "precision_lower_bound": 0.14173228346456693
+        }
+      },
+      "library": {
+        "files": 1,
+        "definitions": {
+          "truth": 6,
+          "candidate": 7,
+          "matched": 6,
+          "precision_lower_bound": 0.8571428571428571
+        },
+        "pairs": {
+          "truth": 2,
+          "candidate": 6,
+          "matched": 2,
+          "precision_lower_bound": 0.3333333333333333
+        }
+      }
+    },
+    "full_population_native_metrics": false,
+    "tier_granted": false,
+    "reading_changed": false,
+    "projection_sha256": "93035f27809c14ab17e247d82429b7377bb1e8dd87f15f01451901ebe9f8fe68",
+    "candidate_raw_sha256": "2d9b003b7480d22ade87215d7a28862cce823dbff5c4ee648e8956d60806e3e8"
+  },
+  "manifests": {
+    "examples": {
+      "before": {
+        "bytes": 18490,
+        "entries": 25,
+        "files": 25,
+        "gitlinks": 0,
+        "sha256": "3b05c0cfea2b9c4b621968797109ce24f018c1bda86845eef4b90db8d41e44b5",
+        "symlinks": 0
+      },
+      "after": {
+        "bytes": 18490,
+        "entries": 25,
+        "files": 25,
+        "gitlinks": 0,
+        "sha256": "3b05c0cfea2b9c4b621968797109ce24f018c1bda86845eef4b90db8d41e44b5",
+        "symlinks": 0
+      }
+    },
+    "library": {
+      "before": {
+        "bytes": 407,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "a5a1abc5653fb336d681d0b7022cd796e2eadedee5e9d21bc2b53f6236192f0d",
+        "symlinks": 0
+      },
+      "after": {
+        "bytes": 407,
+        "entries": 1,
+        "files": 1,
+        "gitlinks": 0,
+        "sha256": "a5a1abc5653fb336d681d0b7022cd796e2eadedee5e9d21bc2b53f6236192f0d",
+        "symlinks": 0
+      }
+    }
+  },
+  "identities": {
+    "owner_compare.py": "93035f27809c14ab17e247d82429b7377bb1e8dd87f15f01451901ebe9f8fe68",
+    "compare_candidate.py": "8cfc492416cb783b328e8fe1f978c3de7458ba1c6e3201748305c9b032844a70",
+    "native_model_probe.py": "6ecb3a44ad3096a002beeecd6b05dd34a12865d8ef569431889534ec07db0cd2",
+    "native_model.groovy": "bd7170853e035cc629bc029215fa76e568a0e6b6a3b932438c9c9fbf85af20b3",
+    "internal/extractor/dialects/jenkinsfile/tags.scm": "a4b00340b4f0b08d796df9b35b221656e1502a229df1b9c1542bc9976e028b5f",
+    "internal/extractor/tsengine/grammars/grammars.lock.json": "7737905a2766320b75ccb2cf4edc60620314dc9924ee6ccb4388c796d5f59f49",
+    "workspace/artifacts/lang-211/final/raw.json": "610ffc9361f5e1bd018d434f102eb9789448199e20124065a58c0b7a64a7fe91",
+    "internal/extractor/tsengine/grammars/groovy.wasm.gz": "c63006bc13f8867eef3ec3d58e8f651ae1b5a009608b90f01b3adb934f6ec998"
+  },
+  "search_refresh": [
+    {
+      "source": "jenkins-own",
+      "url": "https://www.jenkins.io/doc/book/pipeline/development/",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "c20185552d8fd1607670911f16b2062ee655e0ad77e57310852561062a650119"
+    },
+    {
+      "source": "jenkins-scip",
+      "url": "https://api.github.com/search/repositories?q=scip-jenkins+in:name",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "189f392e542eedfbde558a6341634fed3fd74c45035c1ca181f7c1aebcd8ec67"
+    },
+    {
+      "source": "groovy-scip",
+      "url": "https://api.github.com/search/repositories?q=scip-groovy",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "08c082fdf7ca87ba911a2aabb0f0cf2d3e482a6feeaac9713e4578c20b2600b2"
+    },
+    {
+      "source": "jenkins-lsp",
+      "url": "https://api.github.com/repos/GroovyLanguageServer/groovy-language-server",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "e1abad69a842c72efe8236129dbc8cbc0503d88f5638199b6b814b16da393ba8"
+    },
+    {
+      "source": "jenkins-registry",
+      "url": "https://pypi.org/pypi/jenkinsfilelint/json",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "7c1672838ae8d3ba55003aabb91e35f10b8bf61a98abac97e7a66b4f8ef85b3e"
+    },
+    {
+      "source": "jenkins-runtime",
+      "url": "https://javadoc.jenkins.io/plugin/workflow-api/org/jenkinsci/plugins/workflow/graph/FlowGraphWalker.html",
+      "http_status": "200",
+      "exit": 0,
+      "sha256": "4f7d5ef71ffae5b3bc63f85a2577ccef114732ab501eff31247ee191c4451fc7"
+    }
+  ],
+  "candidate_control": {
+    "empty_candidate_exit": 0,
+    "native_raw_sha256_before_after": "610ffc9361f5e1bd018d434f102eb9789448199e20124065a58c0b7a64a7fe91",
+    "input_change_control": "authored stage rename changes native truth; unrelated trees equal"
+  },
+  "limits": {
+    "full_native_l1_l2": false,
+    "canonical_reading_changed": false,
+    "required_kinds_changed": false,
+    "holdout": "none; no fresh holdout claim",
+    "unverified_candidate_declarations": 34,
+    "unmatched_candidate_edges": 113,
+    "native_occurrences_unmatched": 1,
+    "candidate_edges_and_native_occurrences_same_metric": false
+  },
+  "grammar_blob_bytes_gz": 171362,
+  "grammar_pin": "2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c",
+  "required_kinds": [
+    "job",
+    "resource",
+    "section",
+    "stage",
+    "step",
+    "variable_decl"
+  ],
+  "required_kinds_native_uncovered": [
+    "step"
+  ],
+  "native_dynamic_evaluation": "CONVERSION only; no pipeline execution or runtime path coverage"
+}
