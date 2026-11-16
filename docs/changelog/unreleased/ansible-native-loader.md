@@ -1,3 +1,3 @@
 ### Added
 
-- An offline native Ansible loader audit records positioned declarations, handler bindings and unresolved cases across the frozen corpus. The existing Ansible support grade is unchanged.
+- An offline native Ansible loader audit records positioned declarations, handler bindings and unresolved cases across the frozen corpus. It bounds every edge append, validates frozen population/mode/product completeness, refuses consumed symlinks, classifies malformed child output, and protects input aliases while invalidating owned stale CLI artifacts. A synthetic read canary tests the production boundary. The retained one-shot cohort overlaps a canonical-loaded dependency; it has no independent-holdout authority. Frozen diagnostic counts and the existing Ansible support grade are unchanged.

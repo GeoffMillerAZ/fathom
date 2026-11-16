@@ -133,6 +133,7 @@ python calibration/oracles/ansible/native_loader.py \
 python calibration/oracles/ansible/native_measure.py \
   --native workspace/artifacts/lang-ansible/SUBJECT-native.json \
   --product workspace/artifacts/lang-ansible/SUBJECT-product.json \
+  --population workspace/artifacts/lang-ansible/population.json \
   --out workspace/artifacts/lang-ansible/SUBJECT-comparison.json
 FATHOM_ANSIBLE_TEST_TMP=workspace/tmp/ansible-tests PYTHONDONTWRITEBYTECODE=1 \
   python -m unittest discover -s calibration/oracles/ansible -p 'test_native_loader.py'
@@ -141,5 +142,44 @@ python -m unittest discover -s calibration/oracles/ansible -p 'test_native_measu
 
 Create the test scratch directory first. Only the two named new suites form
 this lane's control set; the pre-existing native-candidate suite has separate
-optional tooling and is not included by implication. A released holdout is
-kept outside the canonical shard, frozen and read once, never tuned against.
+optional tooling and is not included by implication. The retained released cohort was read once and frozen, outside canonical shards.
+It overlaps a canonical-loaded dependency (25/34 identical files, 19/26 YAML,
+19 declarations already in canonical output), so independent-holdout authority
+is withdrawn. Its frozen results remain historical diagnostics, never retuned.
+
+
+## Correction1 boundaries
+
+The comparison CLI now requires the original frozen `--population` document.
+It verifies subject/SHA, exact YAML and derived role modes, unique expected
+units, result schemas and product coverage before publishing any ratio.
+Missing, duplicate, unexpected or malformed members refuse the whole comparison;
+complete collections report attempted/expected and loaded/rejected/refused counts.
+The retained published receipts are complete; their 263 denominator was not
+shown to be truncated. `truth`/`compare` on small dictionaries remain pure
+selection/scoring helpers; only the CLI validates a complete collection.
+
+The loader validates child JSON/schema into classified empty refusals and
+continues the remaining frozen units. Every edge append, including templated
+notifications and duplicates, obeys the cap before identity deduplication.
+Consumed files, directories and subject paths reject symlinks before launch.
+Both CLIs remove owned stale outputs before processing and publish atomically;
+input aliases (paths, symlinks, hardlinks) are refused without modifying inputs.
+These checks assume the private scratch tree is not concurrently replaced.
+
+The read control uses `FATHOM_ANSIBLE_OUTSIDE_CANARY`, an explicitly authored
+synthetic file outside this checkout and Python runtime, under the sanctioned
+scratch root. It exercises the general user-read boundary; no sentinel-specific
+deny remains. The original general policy was not shown to leak user data.
+For correction controls only (no native consumer or population), provide that
+canary and a private existing test directory, then run under the shared lease:
+
+```sh
+PYTHONPATH=calibration/oracles/ansible python -B -m unittest \
+  test_native_loader.BoundaryTests test_native_measure
+```
+
+The historical authored-native suite is a separate integration control; it was
+not rerun for correction1. Initial historical RED logs were import errors,
+not assertion RED. Correction1's real original-source assertion failures and
+mutation checks establish current boundaries, not historical test chronology.

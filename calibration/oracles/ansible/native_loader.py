@@ -48,7 +48,6 @@ def sandbox_profile(work):
 (allow default)
 (deny network*)
 (deny process-fork)
-(deny file-read-data (literal {quote(work / "private-read-witness")}))
 (deny file-write* (require-all (require-not (subpath {quote(work)}))
  (require-not (literal "/dev/null"))))
 (deny file-read-data (require-all (subpath "/Users")
@@ -97,7 +96,10 @@ def bounded(command, work, env):
             raise Refused('output cap')
         if p.returncode:
             raise Refused('sandbox child failed: ' + errors.decode(errors='replace')[-2000:])
-        return json.loads(output)
+        try:
+            return json.loads(output)
+        except (ValueError, UnicodeError, RecursionError) as exc:
+            raise Refused('malformed child JSON') from exc
 
 
 def empty(status, reason):
@@ -105,23 +107,22 @@ def empty(status, reason):
 
 
 def run_unit(root, path, mode, work, max_objects=MAX_OBJECTS, roles=None, collections=None):
-    root, work = root.resolve(), work.resolve()
-    if mode not in ('playbook', 'role', 'tasks', 'handlers'):
-        raise Refused('unknown loader mode')
-    target = (root / path).resolve()
-    if not target.is_relative_to(root):
-        raise Refused('input outside subject')
-    if target.is_file() and target.stat().st_size > MAX_INPUT_BYTES:
-        return empty('refused', 'input cap')
-    env = private_env(work, roles, collections)
-    command = [sys.executable, str(Path(__file__).resolve()), '--child', str(root), path, mode, str(max_objects)]
+    work = work.resolve()
     try:
-        return bounded(command, work, env)
+        if mode not in ('playbook', 'role', 'tasks', 'handlers'):
+            raise Refused('unknown loader mode')
+        target = checked_path(root, path, allow_root=mode == 'role')
+        root = root.resolve()
+        if target.is_file() and target.stat().st_size > MAX_INPUT_BYTES:
+            raise Refused('input cap')
+        env = private_env(work, roles, collections)
+        command = [sys.executable, str(Path(__file__).resolve()), '--child', str(root), path, mode, str(max_objects)]
+        return validate_result(bounded(command, work, env), max_objects)
     except Refused as exc:
         return empty('refused', str(exc))
 
 
-def containment_probe(work):
+def containment_probe(work, witness=None):
     work = work.resolve()
     env = private_env(work)
     # Probe the three independently enforced sandbox boundaries, no remote peer.
@@ -144,8 +145,13 @@ try:
 except PermissionError: r['fork_blocked']=True
 print(json.dumps(r))
 '''
-    witness = work / 'private-read-witness'
-    witness.write_text('authored containment witness')
+    # Only an explicitly supplied, caller-owned synthetic canary is read.
+    # It must exercise the general boundary, outside both allowed roots.
+    witness = Path(witness or os.environ['FATHOM_ANSIBLE_OUTSIDE_CANARY']).resolve()
+    lane = Path(__file__).resolve().parents[3]
+    if (not witness.is_relative_to(Path.home() / 'fathom-work') or
+            witness.is_relative_to(lane) or witness.is_relative_to(Path(sys.base_prefix).resolve())):
+        raise Refused('read canary must be owned scratch outside allowed roots')
     return bounded([sys.executable, '-c', code, str(witness)], work, env)
 
 
@@ -177,6 +183,12 @@ def native(root, path, mode, cap):
         # Dependency declarations remain native truth but outside subject metrics.
         return dict(path=os.path.relpath(p, root), line=int(line), external=not p.is_relative_to(root))
 
+    def edge(rows, value):
+        # Bound every append, including duplicates, before final identity dedup.
+        if len(bindings) + len(unresolved) >= cap:
+            raise Refused('edge cap')
+        rows.append(value)
+
     def declare(obj, kind, name):
         nonlocal objects
         objects += 1
@@ -185,7 +197,7 @@ def native(root, path, mode, cap):
         d = dict(kind=kind, name=str(name), **position(obj))
         declarations.append(d)
         if '{{' in d['name'] or '{%' in d['name']:
-            unresolved.append(dict(source=d, reason='templated declaration'))
+            edge(unresolved, dict(source=d, reason='templated declaration'))
         return d
 
     def walk(blocks, play, handler=False, depth=0):
@@ -205,13 +217,13 @@ def native(root, path, mode, cap):
             if action in ('include_tasks', 'include_role', 'include_vars'):
                 # Includes need runtime vars/loops/conditions. Never count visited-
                 # only output as complete or turn includes into execution.
-                unresolved.append(dict(source=source, reason='unresolved dynamic ' + action))
+                edge(unresolved, dict(source=source, reason='unresolved dynamic ' + action))
             notices = obj.notify or []
             if isinstance(notices, str):
                 notices = [notices]
             for notice in notices:
                 if '{{' in notice or '{%' in notice:
-                    unresolved.append(dict(source=source, reason='templated notify'))
+                    edge(unresolved, dict(source=source, reason='templated notify', notification=notice))
                     continue
                 strategy = object.__new__(StrategyBase)
                 strategy._variable_manager = vm
@@ -219,11 +231,9 @@ def native(root, path, mode, cap):
                 strategy._hosts_cache_all = []
                 found = list(strategy.search_handlers_by_notification(notice, SimpleNamespace(_play=play)))
                 if not found:
-                    unresolved.append(dict(source=source, reason='unbound notify', notification=notice))
+                    edge(unresolved, dict(source=source, reason='unbound notify', notification=notice))
                 for target in found:
-                    bindings.append(dict(source=source, notification=notice, target=position(target)))
-                if len(bindings) + len(unresolved) > cap:
-                    raise Refused('edge cap')
+                    edge(bindings, dict(source=source, notification=notice, target=position(target)))
 
     try:
         if mode == 'playbook':
@@ -265,6 +275,134 @@ def native(root, path, mode, cap):
         return empty('rejected', type(exc).__name__ + ': ' + str(exc))
 
 
+def checked_path(root, path, allow_root=False):
+    """Reject links in consumed paths before resolving or launching a child."""
+    root = Path(root).absolute()
+    path = Path(path)
+    if path.is_absolute() or '..' in path.parts or (str(path) == '.' and not allow_root):
+        raise Refused('input outside subject or noncanonical path')
+    target = root / path
+    for component in [target, *target.parents]:
+        if component.is_symlink():
+            raise Refused('symlink input requires explicit scope')
+    if not target.resolve().is_relative_to(root.resolve()):
+        raise Refused('input outside subject')
+    if not target.exists():
+        raise Refused('input missing')
+    return target
+
+
+def frozen_row(rows, subject, sha=None):
+    if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
+        raise Refused('malformed frozen population')
+    if not isinstance(subject, str) or not subject:
+        raise Refused('malformed subject identity')
+    matches = [r for r in rows if r.get('subject') == subject]
+    if len(matches) != 1:
+        raise Refused('missing or duplicate frozen subject')
+    row = matches[0]
+    files = row.get('yaml')
+    identity = row.get('sha')
+    if (not isinstance(identity, str) or len(identity) != 40 or
+            any(c not in '0123456789abcdef' for c in identity) or
+            (sha is not None and sha != identity)):
+        raise Refused('frozen subject identity mismatch')
+    if not isinstance(files, list) or any(not isinstance(f, str) for f in files):
+        raise Refused('malformed frozen YAML inventory')
+    if files != sorted(set(files)):
+        raise Refused('frozen inventory must be sorted and unique')
+    for f in files:
+        path = Path(f)
+        if (path.is_absolute() or '..' in path.parts or path.as_posix() != f or
+                path.suffix not in ('.yml', '.yaml')):
+            raise Refused('invalid frozen YAML path')
+    return row
+
+
+def expected_units(row):
+    roles = sorted({str(Path(f).parent.parent) for f in row['yaml']
+                    if Path(f).name in ('main.yml', 'main.yaml') and Path(f).parent.name == 'tasks'})
+    return ([(f, mode) for f in row['yaml'] for mode in ('playbook', 'tasks', 'handlers')] +
+            [(role, 'role') for role in roles])
+
+
+def validate_result(value, cap=MAX_OBJECTS, unit_fields=False):
+    """Validate the complete child envelope; never admit a partial refusal."""
+    def fail():
+        raise Refused('malformed child result schema')
+    def position(p):
+        if (not isinstance(p, dict) or not isinstance(p.get('path'), str) or not p['path'] or
+                type(p.get('line')) is not int or p['line'] < 1 or type(p.get('external')) is not bool):
+            fail()
+    def declaration(d):
+        position(d)
+        if d.get('kind') not in ('task', 'play', 'handler') or not isinstance(d.get('name'), str):
+            fail()
+    if not isinstance(value, dict) or value.get('status') not in ('loaded', 'rejected', 'refused'):
+        fail()
+    allowed = {'status', 'reason', 'declarations', 'bindings', 'unresolved', 'synthetic_objects'}
+    if unit_fields: allowed.update(('input', 'mode'))
+    if set(value) - allowed:
+        fail()
+    for key in ('declarations', 'bindings', 'unresolved'):
+        if not isinstance(value.get(key), list):
+            fail()
+    if len(value['declarations']) > cap or len(value['bindings']) + len(value['unresolved']) > cap:
+        raise Refused('child result count cap')
+    if value['status'] != 'loaded':
+        if (any(value[k] for k in ('declarations', 'bindings', 'unresolved')) or
+                not isinstance(value.get('reason'), str)):
+            fail()
+    if 'synthetic_objects' in value and (type(value['synthetic_objects']) is not int or value['synthetic_objects'] < 0):
+        fail()
+    for d in value['declarations']:
+        declaration(d)
+    for b in value['bindings']:
+        if not isinstance(b, dict): fail()
+        declaration(b.get('source')); position(b.get('target'))
+        if not isinstance(b.get('notification'), str): fail()
+    for u in value['unresolved']:
+        if not isinstance(u, dict): fail()
+        declaration(u.get('source'))
+        if not isinstance(u.get('reason'), str): fail()
+        if u['reason'] in ('templated notify', 'unbound notify') and not isinstance(u.get('notification'), str): fail()
+    return value
+
+
+def prepare_output(out, inputs=(), directories=()):
+    """Invalidate only an owned output, after protecting all caller inputs."""
+    out = Path(out).absolute()
+    if any(p.is_symlink() for p in (out, *out.parents)):
+        raise Refused('output symlink alias')
+    resolved = out.resolve()
+    for source in inputs:
+        if source is None: continue
+        source = Path(source)
+        if resolved == source.resolve() or (out.exists() and source.exists() and out.samefile(source)):
+            raise Refused('output aliases caller input')
+    for directory in directories:
+        if directory is not None and resolved.is_relative_to(Path(directory).resolve()):
+            raise Refused('output inside caller input directory')
+    if out.exists():
+        if out.stat().st_nlink != 1:
+            raise Refused('output hardlink alias')
+        out.unlink()
+    return out
+
+
+def write_output(out, document):
+    # Atomic publication keeps a failed write from leaving a partial JSON artifact.
+    payload = json.dumps(document, indent=2, sort_keys=True) + '\n'
+    with tempfile.NamedTemporaryFile(mode='w', dir=out.parent, prefix='.ansible-output-', delete=False) as f:
+        temporary = Path(f.name)
+        try:
+            f.write(payload)
+            f.flush()
+            os.replace(temporary, out)
+        finally:
+            if temporary.exists(): temporary.unlink()
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == '--child':
         print(json.dumps(native(Path(sys.argv[2]), sys.argv[3], sys.argv[4], int(sys.argv[5])), sort_keys=True))
@@ -277,12 +415,14 @@ def main():
     p.add_argument('--roles', type=Path)
     p.add_argument('--collections', type=Path)
     args = p.parse_args()
+    out = prepare_output(args.out, [args.population], [args.subject, args.roles, args.collections])
     rows = json.loads(args.population.read_text())
+    if any(p.is_symlink() for p in (args.subject.absolute(), *args.subject.absolute().parents)):
+        raise Refused('symlink subject requires explicit scope')
     root = args.subject.resolve()
-    row = next(r for r in rows if r['subject'] == root.name)
+    row = frozen_row(rows, root.name)
     sha = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
-    if sha != row['sha']:
-        raise Refused('frozen subject identity mismatch')
+    frozen_row(rows, root.name, sha)
     results = []
     for i, path in enumerate(row['yaml']):
         modes = ['playbook', 'tasks', 'handlers']
@@ -298,7 +438,7 @@ def main():
                                                              roles=args.roles, collections=args.collections)))
     document = dict(subject=root.name, sha=sha, yaml_candidates=len(row['yaml']), role_candidates=len(roles),
                     tasks_executed=False, results=results)
-    args.out.write_text(json.dumps(document, indent=2, sort_keys=True)+'\n')
+    write_output(out, document)
 
 
 if __name__ == '__main__':

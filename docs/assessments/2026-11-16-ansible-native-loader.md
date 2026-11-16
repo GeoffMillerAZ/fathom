@@ -41,9 +41,10 @@ includes and templated declarations/notifications remain unresolved misses.
 No host task, inventory action or automation playbook execution runs.
 
 Every subject requirements file was read, including nested requirements.
-The resolved 32 roles and five collections are frozen before native loading
-in `calibration/oracles/ansible/native-loader-pins.json`; raw installed-file
-hashes survive locally. Unversioned requirements use that frozen resolution,
+The resolved 32 roles and five collections have a pre-load installed-file
+hash manifest; the human-readable version-pin document
+`calibration/oracles/ansible/native-loader-pins.json` was written after loading.
+Raw installed-file hashes survive locally. Unversioned requirements use that frozen resolution,
 not an implicit latest version at reproduction. Downloaded dependencies are
 outside each subject, so their declarations remain counted as external
 context and do not become subject definitions.
@@ -96,7 +97,7 @@ Repeated alternative contexts are deduplicated; no context success silently
 repairs an entirely rejected input unit. The candidate/rejection inventory
 remains available beside the diagnostic denominator.
 
-The separate holdout is ansible-role-nginx release 3.2.0 at
+The separately retained cohort, originally described as a holdout, is ansible-role-nginx release 3.2.0 at
 `dbd7d5719418e860d16370ceee06e7abbd67935a`: all 26 tracked YAML candidates,
 with its role root, outside canonical shards and aggregation. Identity and
 selection were preregistered before content reads. After canonical tuning,
@@ -106,6 +107,15 @@ binding matches, eight unresolved dynamic includes. Its 34 tracked files /
 `8be98846f7ac637050e04af9b0ebedef80e6a562d17b332f047ec6ddf9b59161`,
 zero symlinks/gitlinks and no generated subject inputs. Its raw output is
 frozen; no holdout-driven extraction or scoring change followed.
+
+Independent-holdout authority is **withdrawn**. Comparing the retained
+premeasurement dependency manifest with this cohort finds 25/34 identical
+files, including 19/26 YAML files and eight task/handler files. The canonical
+run had already loaded the nginx dependency and retained 19 of its declarations.
+Being outside canonical aggregation did not prevent this substantive exposure.
+The one-shot 26/36, 0/6 and eight-miss result stays frozen as a contaminated
+historical diagnostic; it is not independent confirmation. No replacement,
+rerun, retuning or canonical regrade was performed.
 
 ## Containment and proof
 
@@ -118,10 +128,11 @@ system no-op before Python; the corrected policy preserves OS startup and
 enforces explicit data/network/write restrictions. The initial eight authored native
 controls then passed, including independent read/write/network probes.
 
-The initial RED import failure was observed before implementation. Controls
+The initial historical RED logs are import errors, not behavioral assertion
+RED; they do not establish the requested test-first chronology. Controls
 exercise positioned declarations, nested block/rescue/always tasks, native
 role loading, notify binding and listener topics, no execution, malformed
-input, whole-unit cap refusal, symlink refusal, and truth independence from
+input, whole-unit cap refusal, a separate population symlink control, and truth independence from
 extractor-output files. Raw truth changes when an input declaration changes.
 The committed-reading round-trip test passed with `-race`; the organization
 name gate passed. Six focused oracle/scoring mutants were caught and the restored controls passed;
@@ -154,8 +165,8 @@ Five sources were searched on 2026-11-16 before construction:
 The native start-position/notify instrument does not establish end ranges,
 all variable/include/role/inventory declaration kinds, or resolution of dynamic
 includes. Shared inventory strategy work remains held. L3 grading is not
-attempted. The separately preregistered released holdout was read once and frozen;
-it never joins the canonical shard and will not be rerun. No plan checkbox, product extractor or generated tracker
+attempted. The separately preregistered released cohort was read once and
+frozen; its independent-holdout authority is withdrawn. It never joins the canonical shard and will not be rerun. No plan checkbox, product extractor or generated tracker
 changes. Decision models: none; truth and scoring are deterministic.
 
 ## Reproduction and retained evidence
@@ -179,8 +190,9 @@ measured source is retained locally; the summary records both source hashes.
 This does not tune extraction, native truth selection or diagnostic scoring;
 raw canonical/holdout results remain frozen and are not rerun or replaced.
 
-Preregistration file creation and native population manifests precede source
-reads. The first locale-dependent `shasum` command aborted, leaving its digest
+Retained local timestamps corroborate that preregistration file creation and
+native population manifests precede source reads. They are not immutable external
+attestation. The first locale-dependent `shasum` command aborted, leaving its digest
 receipt empty; the original unchanged preregistration file was hashed after
 measurement with Python. This timing is disclosed in the summary rather than
 asserting an earlier successful hash receipt. The native tracked manifests
@@ -207,9 +219,11 @@ uses 2 MiB + 1 bytes at the direct entry boundary, four bindings at cap three,
 65 authored nesting levels at cap 64, and 8 MiB + 1 output bytes. Each refuses
 rather than serving a partial result. Imported files are bounded by native
 unit CPU/time/count/output limits; the direct-entry byte cap does not claim
-a separate per-import byte bound. Symlinks and path escapes are refused.
-The named native loader suite has nine passing controls; the comparison
-suite has three. These are the only new Python suites this lane claims.
+a separate per-import byte bound. The original actual CLI path did not reject in-subject symlinks;
+its separate `population()` control did not establish that entry boundary.
+Correction1 below enforces that boundary. Historically the native loader suite
+recorded nine passing controls and the comparison suite three; this is retained
+historical evidence, not a claim that those native controls were rerun now.
 
 Validation commands (run under the lease):
 
@@ -227,7 +241,102 @@ independent critic remain with the parent. The lane's private Python runtime,
 venv, dependencies, caches, config and corpora all reside in its workspace;
 it requires no retained runtime from another lane.
 
-The delivered read-denial control uses an authored private sentinel, so the
-suite requires no workstation file or credential read. The profile also
-denies user-file data outside its lane and Python runtime. Both this portable
-probe correction and fork denial are containment changes only.
+The original delivered read control used a special-deny sentinel and could
+pass with the general user-read restriction removed. That was a control defect;
+the baseline production policy was not shown to leak user data. Correction1
+replaces it with an owned outside-checkout synthetic canary governed by the
+production boundary. No host, credential or user-data probe is used.
+
+
+## Correction1: boundary and evidence corrections
+
+Only the loader, comparison driver, their tests, README, this assessment and
+the existing change fragment change. Pins, summary, plan, canonical readings,
+source/receipt/corpus/holdout manifests and original proof logs stay frozen.
+The published canonical **232/263**, **2/18**, **17 misses** and contaminated
+one-shot **26/36**, **0/6**, **8 misses** are unchanged. Full native excellence
+remains **UNPROVED**; canonical **L3 good C** remains unchanged.
+
+- F1: distinct templated notifications retain their identity. One shared edge
+  append guard bounds declarations' unresolved records, dynamic includes,
+  templates, unbound notifications and handler targets before deduplication.
+  `BoundaryTests.test_template_identity_and_every_edge_append_cap` proves
+  three distinct misses at cap three, four attempts (including duplicates)
+  refusing with empty declarations/bindings/unresolved, and mixed append paths.
+- F2: the overlap above withdraws independent-holdout authority. Local file
+  timestamps corroborate preregistration only; late preregistration digest and
+  post-load human-readable pin chronology remain disclosed.
+- F3: the comparison CLI requires the external frozen population and validates
+  subject/SHA, YAML/role counts, every mode and unique unit, child envelope,
+  and exact product membership. Incomplete/malformed collections refuse
+  without publishing a ratio; complete collections expose expected/attempted
+  and loaded/rejected/refused accounting. The retained actual receipts validate
+  complete (39, 67, 368 canonical attempts; 79 contaminated-cohort attempts).
+  This is not a finding that the published 263 denominator was truncated.
+- F4: the read control uses an explicitly owned outside-checkout synthetic
+  canary. Removing the general boundary makes it readable and makes the normal
+  denial assertion fail; no sentinel-specific deny remains.
+- F5: `run_unit` and the CLI check consumed paths and directory components,
+  including in-subject links, before child launch. The subject's own role root
+  remains valid. Controls mock the child and require it never be called for links.
+- F6: malformed child JSON or schema becomes typed, classified empty refusal;
+  subsequent units remain accounted for. Both CLIs invalidate owned stale
+  success before processing and publish atomically. Path/symlink/hardlink input
+  aliases are refused before invalidation. Private scratch must not be replaced
+  concurrently; this is not an OS-level race-free filesystem API.
+
+Correction1 first reproduced the exact original source with real behavioral
+assertion RED: ten controls, twenty assertion failures, zero errors; four
+additional cap/completeness/read-sensitivity checks, four assertion failures,
+zero errors. The first correction harness attempt also had test errors and is
+retained separately; it is not counted as clean RED. No current reproduction
+can establish historical test-first chronology. The original commit-time hook
+environment is not independently established by retained evidence.
+
+Current correction controls (pure/mocked plus finite synthetic sandbox probes):
+
+```sh
+PYTHONPATH=calibration/oracles/ansible python -B -m unittest \
+  test_native_loader.BoundaryTests test_native_measure
+```
+
+Set `FATHOM_ANSIBLE_TEST_TMP` to private scratch and
+`FATHOM_ANSIBLE_OUTSIDE_CANARY` to the owned synthetic outside-checkout file;
+run all sandbox and race checks under the language and machine leases.
+No Ansible consumer, native population, holdout, throughput or SDK run occurs.
+The historical nine authored-native controls are not rerun for correction1.
+
+Mutation: in-memory copies of `native_loader.py`/`native_measure.py` remove
+notification identity, edge cap, native coverage, product coverage, consumed
+symlink checks, child schema validation, typed JSON refusal, each CLI's stale
+invalidation, and the general read boundary. Each focused control fails an
+assertion (zero errors), then the restored correction suite passes. The focused
+tests are the corresponding `BoundaryTests.test_*` and
+`CollectionBoundaryTests.test_*` controls; retained runnable mutation harness
+and complete logs are under `workspace/tmp/fix1/`. No tracked source mutation
+or native measurement is part of those checks.
+
+Caps: the notification test above checks cap three/input four and cap one/input
+two across mixed unresolved paths, asserting whole-unit empty refusal. Child
+schema controls refuse partial/malformed success envelopes, not merely invalid
+JSON. Collection controls include missing, duplicate, unexpected and malformed
+native/product members and a self-consistent truncated header against the
+external freeze. Normal mandatory hooks are verified currently by installed
+script hashes and the actual correction commit trace; no bypass or allowlist
+change is permitted. Current hook proof cannot establish the historical environment.
+
+
+Current proof: 16 correction controls PASS; all ten targeted in-memory mutants
+caught by assertion failures with zero test errors. Scoped existing Go checks
+PASS under the lease:
+
+```sh
+bash scripts/fathom-go.sh test -race ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestCommittedReadingsAreCanonical|TestCommittedToolingReadingsKeepMetricsOnRegrade|TestRequiredKindsThroughCanonical|TestTrackerDispatchColumnMatchesRegistry|TestValidateReading)$' -count=1
+bash scripts/fathom-go.sh test -race ./internal/extractor ./internal/connector ./internal/fusion -run 'Dialect|Tracker|Grammar|Classify|Unsupported|Canonical' -count=1
+bash scripts/fathom-go.sh test -count=1 -run '^TestNoOrgSpecificNames$' ./cmd/fathom
+go run ./third_party/agentic-kit/cmd/release-notes -check
+bash scripts/check-merge-debris.sh
+```
+
+These are scoped checks, not a full gate, native remeasurement, support
+promotion or integration claim. No plan box or generated reading changed.
