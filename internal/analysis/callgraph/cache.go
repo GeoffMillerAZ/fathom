@@ -214,18 +214,19 @@ func BuildBoth(nodes []core.SymbolNode, typed []core.Edge) *Graph {
 // Node payloads are immutable; adjacency slices and every mutable map are copied.
 func (g *Graph) WithTypedEdges(typed []core.Edge) *Graph {
 	ng := &Graph{
-		nodes:       cloneNodes(g.nodes),
-		callees:     cloneAdjacency(g.callees),
-		callers:     cloneAdjacency(g.callers),
-		byName:      cloneStrMap(g.byName),
-		byPkgName:   cloneStrMap(g.byPkgName),
-		byDirName:   cloneStrMap(g.byDirName),
-		byNameAll:   cloneAdjacency(g.byNameAll),
-		bySuffix:    cloneSuffixMap(g.bySuffix),
-		byDotSuffix: cloneSuffixMap(g.byDotSuffix),
-		edgeKind:    cloneEdgeKindMap(g.edgeKind),
-		typedFiles:  cloneBoolMap(g.typedFiles),
-		typedDirs:   cloneBoolMap(g.typedDirs),
+		packagePatched: g.packagePatched,
+		nodes:          cloneNodes(g.nodes),
+		callees:        cloneAdjacency(g.callees),
+		callers:        cloneAdjacency(g.callers),
+		byName:         cloneStrMap(g.byName),
+		byPkgName:      cloneStrMap(g.byPkgName),
+		byDirName:      cloneStrMap(g.byDirName),
+		byNameAll:      cloneAdjacency(g.byNameAll),
+		bySuffix:       cloneSuffixMap(g.bySuffix),
+		byDotSuffix:    cloneSuffixMap(g.byDotSuffix),
+		edgeKind:       cloneEdgeKindMap(g.edgeKind),
+		typedFiles:     cloneBoolMap(g.typedFiles),
+		typedDirs:      cloneBoolMap(g.typedDirs),
 	}
 	// These helpers predate this path and turn nil into an empty map. Keep
 	// optional maps nil until the typed pass populates them, just as Build does.
@@ -236,5 +237,19 @@ func (g *Graph) WithTypedEdges(typed []core.Edge) *Graph {
 		ng.instantiates = cloneAdjacency(g.instantiates)
 	}
 	AddTypedEdges(ng, typed)
+	return ng
+}
+
+// CanReuseSyntax reports whether this graph is eligible to seed a fresh
+// combined memo load. The memo marks its package-patched graphs ineligible:
+// ReplacePackage deliberately does not re-resolve other packages' calls.
+func (g *Graph) CanReuseSyntax() bool { return g != nil && !g.packagePatched }
+
+// WithPackagePatch is the memo's copy-on-write package patch, with provenance
+// that prevents its approximation from seeding a formerly fresh combined load.
+// ReplacePackage and its existing approximation contract remain unchanged.
+func (g *Graph) WithPackagePatch(pkg string, nodes []core.SymbolNode, typed []core.Edge) *Graph {
+	ng := g.ReplacePackage(pkg, nodes, typed)
+	ng.packagePatched = true
 	return ng
 }

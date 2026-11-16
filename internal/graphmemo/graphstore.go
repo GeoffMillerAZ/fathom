@@ -338,7 +338,8 @@ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLo
 		case GraphBoth:
 			// Reuse only a completed syntax graph at this exact scope. A cold
 			// combined-only load keeps its existing build and retention behavior.
-			if syntax, ok := graphGroup.Peek(graphKey{snap.Scope, GraphSyntax}); ok {
+			// Package-patched syntax is approximate and must not seed this load.
+			if syntax, ok := graphGroup.Peek(graphKey{snap.Scope, GraphSyntax}); ok && syntax.CanReuseSyntax() {
 				g = syntax.WithTypedEdges(edges)
 			} else {
 				g = callgraph.BuildBoth(snap.Nodes, edges)
@@ -452,7 +453,7 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 			t = nil
 		}
 		graphGroup.Update(graphKey{sc, k}, func(old *callgraph.Graph) (*callgraph.Graph, int64) {
-			ng := old.ReplacePackage(pkg, nodes, t)
+			ng := old.WithPackagePatch(pkg, nodes, t)
 			return ng, ng.EstimatedBytes()
 		})
 	}

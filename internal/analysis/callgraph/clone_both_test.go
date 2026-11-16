@@ -293,3 +293,25 @@ func TestCloneBothPruneMatchesDiscardedCopyOracle(t *testing.T) {
 		}
 	}
 }
+
+func TestCloneBothPreservesPatchIneligibility(t *testing.T) {
+	nodes := indexAllocationFixture(8)
+	fresh := Build(nodes)
+	if !fresh.CanReuseSyntax() {
+		t.Fatal("fresh syntax is ineligible")
+	}
+	patched := fresh.WithPackagePatch("not-present", nil, nil)
+	if patched.CanReuseSyntax() {
+		t.Fatal("package-patched syntax is eligible")
+	}
+	cloned := patched.WithTypedEdges(cloneBothEdges(nodes))
+	if cloned.CanReuseSyntax() {
+		t.Fatal("cloning promoted an approximate graph")
+	}
+	if !fresh.CanReuseSyntax() {
+		t.Fatal("patch mutated held fresh graph provenance")
+	}
+	if !fresh.WithTypedEdges(nil).CanReuseSyntax() {
+		t.Fatal("clone lost fresh graph provenance")
+	}
+}

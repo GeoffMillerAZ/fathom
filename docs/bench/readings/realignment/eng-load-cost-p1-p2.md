@@ -1,4 +1,197 @@
-# W7-1: combined graph load cost, P1/P2
+# W7-1 P1/P2: FIX1 eligibility correction and load cost
+
+FIX1 is implemented with local production-refresh and package proofs. **Architect
+class HOLD** remains pending independent re-review and the architect's diff read.
+No normal integration, issue 251 dispatch, RT-197 redesign, deployed ENG-1 proof or
+plan-row claim is authorized or implied.
+
+The latest admitted cache-miss snapshot+syntax+BOTH median is **1.506906375 s →
+1.264825542 s**, a **16.1% reduction (1.191x)** over the unchanged indexed baseline.
+The one-second bar still fails in every changed trial. The earlier W7 results are
+preserved below as historical data for the known-regressing source `fe3aa2234`.
+They are not evidence for the corrected source.
+
+## F1 and the minimal eligibility correction
+
+Independent review of `fe3aa2234` found a real regression: a completed resident
+syntax graph can be a package-patch approximation. In valid Go, `A.Run` initially
+makes `c.Call(h a.A) { h.Run() }` resolve uniquely. A refresh adds distinct `B.Run`
+with all full keys still unique. The existing syntax package patch may retain
+`c.Call → A.Run`; a first cold BOTH build previously resolved the current nodes
+fresh and refused that now-ambiguous receiver guess. P2 incorrectly cloned the
+approximate graph into that formerly fresh answer.
+
+The memo now applies its existing package patch through `WithPackagePatch`, which
+marks the returned graph as package-patched before publication. `GraphFor(BOTH)`
+reuses syntax only when its exact-scope resident graph passes `CanReuseSyntax`.
+Marked syntax takes the unchanged fresh `BuildBoth(current snapshot nodes, typed)`
+path. Full builds have an unmarked provenance bit; `WithTypedEdges` copies the bit
+and cannot promote a marked graph. Eligibility here is provenance for the memo's
+syntax entry, not a universal soundness claim about arbitrary caller-built graphs.
+
+This adds one boolean to the existing Graph value, no retained cache or memo group.
+`ReplacePackage` and its clone helpers are unchanged. Approximate syntax and already
+resident BOTH patch behavior remain as before, including their inherited limits.
+Cold combined-only retention, admission, singleflight, cancellation, typed-read
+failure disclosure, watermark and byte-accounting laws stay in force. No collision
+guard, snapshot reorder, wider refresh repair, store/handler read, schema/config
+change or RT-197 work is included. P1's implementation is unchanged by FIX1.
+
+## Actual production-refresh RED, then GREEN
+
+Before any FIX1 production edit, the new test exercised the actual
+`SnapshotFor → GraphFor(Syntax) → PatchPackage → PeekSnapshot → first GraphFor(BOTH)`
+route. The extracted `h.Run` fixture has no duplicate full key. It runs forward,
+reverse, sorted and seeded-shuffled inputs with nil, empty and populated typed
+edges. Every one of the twelve cases was RED on the reviewed source:
+
+```text
+go test -race ./internal/graphmemo -run '^TestCloneBothFirstLoadAfterProductionRefresh$' -count=1
+first BOTH after production refresh differs from fresh BuildBoth (all Graph fields); inherited A.Run=true
+served receiver-call answer differs from fresh oracle
+FAIL github.com/geoffmilleraz/fathom/internal/graphmemo 0.368s
+```
+
+The oracle remains a fresh `BuildBoth` over the actual refreshed snapshot, never a
+patched graph or relaxed edge comparison. It asserts every Graph field, the served
+callee output and immutability of both the pre-refresh and held patched graph plus
+the refreshed snapshot. It explicitly verifies that the inherited approximate
+syntax result remains present while the first BOTH answer refuses its stale guess.
+A separate clone test checks that fresh provenance survives cloning, package-patch
+provenance stays ineligible through cloning, and the held original is unchanged.
+All earlier generated/fixture/four-order equality, pruning, isolation and memo-law
+tests remain enabled.
+
+After the correction, direct package tests under the verified three-slot SH pool:
+
+```text
+go test -race ./internal/analysis/callgraph ./internal/graphmemo -count=1
+ok github.com/geoffmilleraz/fathom/internal/analysis/callgraph 12.526s
+ok github.com/geoffmilleraz/fathom/internal/graphmemo 3.080s
+```
+
+No EX wrapper was nested inside the package-test SH lease. Both timing binaries,
+the ten trials, analysis and evidence hashing use EX. The measured production
+files are checked against their recorded candidate hashes after the run.
+
+## Latest 5+5 exclusive timing: all trials
+
+The baseline is the original unchanged indexed source at
+`d9eef4794afdbc200d1b8697ce121d9d688fedaf`, not the regressing W7 commit. The candidate
+uses that exact archive with only the three owned production files overlaid from
+FIX1. Each fresh process reads a separate byte-identical copy of the stable W5
+input SHA256 `e22f40d4dd467b0201badae263901741db23a81864c4f545c111b5c469ecd704`.
+Copies and pinned input match before/after. The original corpus archive matches
+byte-for-byte. Archived W5/W6 evidence is read-only; no ingest is run.
+
+Same W5 admitted boundary and phase instrumentation as the historical run, with
+identical boundary memory/memo sampling in both arms. The common full-field
+serializer additionally emits the new package-patched provenance bit: false for
+the old baseline, which lacks this field, and its actual false value for the
+candidate's full builds. Every original field is still serialized unchanged.
+This occurs after the timed load. New output digests therefore need not equal the
+historical serialization; all ten latest outputs must and do match each other.
+
+Every trial has one actual successful admitted ticket, one symbol read, one typed
+read and zero refusal, stopped/context-error or incomplete-miss outcomes. At BOTH,
+snapshot and typed groups each have 1 miss/flight/entry; graphstore has 2 of each,
+then 3 after resolved. All groups have zero declined, abandoned, refuse-cancelled
+and uncached builds. No retry, omission, warm substitute or fast refusal is selected.
+
+Environment remains Go 1.27.4 darwin/arm64, cgo enabled, 32 GiB/12-core Apple M2 Pro,
+GOMAXPROCS 6, 4 GiB managed budget, 1 GiB memo budget, 8 GiB GC hint and normal level.
+The constructed gate uses `ModeEnforce`; the tree deadline alone is extended to
+ten minutes to obtain a complete timed load. This is a cold memo reading with no
+OS page-cache flush. The primary timer includes admission, scope setup, snapshot,
+syntax and BOTH including typed reads. Resolved and common memory-sampling overhead
+are outside that primary boundary and remain in the full-load time.
+
+Primary/full-load timers below are exact nanoseconds; displayed phases/memory are
+rounded. All raw values/counters/output files are retained in
+`workspace/tmp/w7-fix1/results` and `all-trials.json`.
+
+| Trial | Primary ns | Full-load ns | Snapshot s | Syntax s | BOTH s | Resolved extra s | Boundary allocated MiB | Boundary resident MiB | Process peak RSS MiB |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 01-baseline | 1527890000 | 1838141333 | 0.352660 | 0.323977 | 0.851253 | 0.310251 | 806.040 | 419.480 | 1791.938 |
+| 02-p1p2 | 1262763459 | 1563083042 | 0.356543 | 0.315222 | 0.590998 | 0.300319 | 707.658 | 418.980 | 1584.516 |
+| 03-p1p2 | 1264825542 | 1553005000 | 0.358576 | 0.318350 | 0.587899 | 0.288179 | 708.220 | 418.980 | 1329.672 |
+| 04-baseline | 1505867125 | 1795935542 | 0.359971 | 0.318858 | 0.827039 | 0.290068 | 806.372 | 419.479 | 1619.609 |
+| 05-baseline | 1563715458 | 1855670083 | 0.354695 | 0.314108 | 0.894913 | 0.291954 | 806.521 | 419.479 | 1781.250 |
+| 06-p1p2 | 1285233458 | 1601879417 | 0.357517 | 0.324431 | 0.603286 | 0.316645 | 707.499 | 418.979 | 1741.047 |
+| 07-p1p2 | 1272466041 | 1575350166 | 0.361299 | 0.316083 | 0.595083 | 0.302883 | 708.174 | 418.981 | 1534.844 |
+| 08-baseline | 1476450209 | 1774823875 | 0.351891 | 0.312096 | 0.812464 | 0.298373 | 805.966 | 419.481 | 1646.516 |
+| 09-baseline | 1506906375 | 1800981167 | 0.375601 | 0.309043 | 0.822262 | 0.294074 | 805.850 | 419.479 | 1481.828 |
+| 10-p1p2 | 1242951208 | 1535138958 | 0.356937 | 0.317082 | 0.568932 | 0.292166 | 708.159 | 418.981 | 1387.344 |
+
+| Latest median | Baseline | FIX1 P1/P2 | Reduction |
+|---|---:|---:|---:|
+| Primary seconds | 1.506906 | 1.264826 | 16.06% |
+| Full-load seconds | 1.800981 | 1.563083 | 13.21% |
+| Boundary allocated MiB | 806.040031 | 708.158607 | 12.14% |
+| Boundary live heap MiB | 480.208382 | 401.411743 | 16.41% |
+| Boundary memo estimate MiB | 419.479203 | 418.980317 | 0.12% |
+| Process peak RSS MiB | 1646.515625 | 1534.843750 | 6.78% |
+
+These are descriptive medians, not confidence intervals or separate P1/P2 causal
+estimates. Process peak RSS includes resolved building and canonical output
+serialization; it is not a primary-boundary peak. Current timings exercise a fresh
+load; the separate production-refresh test establishes the F1 fallback. No deployed
+or broad refresh soundness claim follows from either proof.
+
+## Latest source, binary, output and raw-proof identities
+
+The original corpus archive SHA256 is `0d2836139e55958e8d7f4ab3ef9198034cbe70bc1e98df7c9b43f723be57d082`.
+`identity.json` records the SHA256 of every overlaid production file and every
+common harness file in both source arms. `fix-source.diff` records the product
+correction against reviewed parent `fe3aa2234`.
+
+| Latest binary | SHA256 |
+|---|---|
+| baseline | `15539c6ab3d1cb9522c15c44728700934d498e472a24df24387b0095c9dbb662` |
+| p1p2 | `08bc8260aad84a9d437441ae3ad61ac1af214cfa3ae07c76fa29858c2302ddd0` |
+
+| Latest output, same in every trial | SHA256 |
+|---|---|
+| both | `e7a4a4a7764051b2c2462dcb938be9ad4928a765caf6a6ce08d604ef1f3088ac` |
+| resolved | `cafaba53c5b445595ace544567269223e0734b475998057dab8e4072676b21d7` |
+| snapshot | `106d44446d04dc54781a110e5e24f42a15bc9055e56346426e0121dbc3fab202` |
+| syntax | `cf89006dad2a148dc3b384167850a2966f2938aa317ce97eb13a27474678afca` |
+| typed | `1c07d1627ad3ac3f96ba8ecad7db5b2e2b97223f40de0c785a0a9719bf6510bf` |
+
+Latest raw proofs are isolated under `workspace/tmp/w7-fix1`: production RED,
+full-package GREEN, `source.tar`, per-arm source copies and diffs, `identity.json`,
+`fix-source.diff`, binaries/Go build metadata, ten result/exit/time/RSS/ambient and
+full-output receipts, before/after store hashes, `all-trials.json`, `summary.json`
+and `SHA256SUMS`. Hashing verifies that measured candidate files still equal the
+owned production source. Historical W7 raw proofs remain untouched under
+`workspace/tmp/w7`. Original W5/W6 evidence now resides read-only under
+`../out/evidence-bundle4/measurement-251/workspace`, with original suffixes intact.
+
+Reproduce using retained `w7-fix1` scripts, a fresh output area with existing
+proofs preserved, the stable pinned input, sourced lane environment and the shared
+`FATHOM_GATE_LOCK`. Wait for `GATE-RUNNING` before heavy work:
+
+```sh
+bash scripts/gate-lease.sh bash workspace/tmp/w7-fix1/run.sh
+bash scripts/gate-lease.sh python3 workspace/tmp/w7-fix1/analyze.py
+```
+
+Both binaries use `-trimpath -buildvcs=false`. The scripts copy from the archived
+harness/corpus as read-only inputs, preserve every trial, and reject mismatched
+input/output hashes, incomplete misses, declines or abandonments. Build/ingest/
+timing remain EX. No full integration gate or native plan verification ran in this
+lane. The integration owner still owns any performance changelog fragment outside
+the six-path allowlist. FIX1 requires a second independent review before the
+architect reads this held diff.
+
+---
+
+The following section is the unmodified historical W7 record apart from its
+heading. Its source was rejected for F1 and is superseded for acceptance by FIX1
+above. Old timings, hashes and test outputs remain evidence of exactly what ran,
+not evidence that the old source handled production refresh correctly.
+
+## Historical W7 source fe3aa2234 (superseded by FIX1)
 
 P1/P2 reduce the admitted cache-miss snapshot+syntax+BOTH median from **1.500602458 s
 to 1.266565417 s** on the same pinned W5 ingest: **15.6% less time, 1.185x speedup**.

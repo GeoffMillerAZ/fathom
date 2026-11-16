@@ -26,6 +26,10 @@ import (
 //
 // The zero value is not useful; always obtain a Graph via Build.
 type Graph struct {
+	// packagePatched marks the memo's approximate package-refresh result. It
+	// cannot seed a formerly fresh combined load. Full builds leave it false.
+	packagePatched bool
+
 	// nodes maps canonical key -> SymbolNode (for membership tests).
 	nodes map[string]core.SymbolNode
 
