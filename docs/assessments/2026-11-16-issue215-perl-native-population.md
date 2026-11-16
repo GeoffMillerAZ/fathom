@@ -25,8 +25,9 @@ This is a measured limitation of the post-optimization route, **not** an
 exhausted-tooling ceiling or a completed native adapter. No complete compiled
 population, native call grade, or support upgrade is claimed.
 
-Reproduce from the repository root, after sourcing the lane environment and
-under the common heavy wrapper (the wrapper acquires both locks, no nested lease):
+Historical probe commands (the test invocations below produced RED before the
+correction described at the end). Run from the repository root, after sourcing
+the lane environment and under the common heavy wrapper (the wrapper acquires both locks, no nested lease):
 
 ```sh
 LC_ALL=C /usr/bin/sandbox-exec -p '(version 1) (allow default) (deny network*)' \
@@ -90,3 +91,72 @@ Caps: no new population reader or expanded oracle format; existing bounded
 runner/collector unchanged. Tracked-set manifests and reading round-trips are
 not new evidence here: no subject or Reading JSON was read or changed.
 Controller owns the fresh critic and any post-critic corpus cleanup.
+
+## First correction: passing known-limitation control
+
+The historical RED above remains evidence of the missing capability. Before
+editing the test, both current native probes again exited 0 and the original
+unittest again failed at the exact missing constant target. Receipts, including
+the original prototype outputs, remain under `workspace/artifacts/lang-perl/`;
+the fresh correction receipts are under `fix1/` there.
+
+The committed test is now `test_native_population_known_constant_target_loss`.
+It launches the real compile-only probe in both normal and debugger modes;
+`PERL_POPULATION_TRACE` is no longer an input. Each mode must exit 0, report
+syntax OK, enumerate exactly one anonymous CV, retain its ordinary `target`
+call, emit the constant/literal/anonymous sections and fold the constant to 7.
+Only then does it require the exact
+`gv[*CompilerPopulationControl::native_constant]` target to be absent in the
+constant-caller section. Recovery fails with a report-revisit message. Compile
+failure, missing CVs or broken output fail independently; no skip or expected
+failure hides them. This is a bounded producer control, not a governed corpus
+reading under T13. Native producer HOLD and every full compiled-population bar
+above remain unproved; the holdout remains UNSPENT.
+
+After sourcing the lane environment, run under the common heavy wrapper:
+
+```sh
+python3 calibration/oracles/perl-db-ranges/test_compiler_population.py -v
+```
+
+Mutation: the test consumer was fed three perturbations of successful real native
+results: insert the exact constant target before the literal section, remove the
+CV=1 record, and change process status to failure. Each produced two focused
+assertion failures (normal/noopt), zero errors/skips. Restoring the original
+consumer produced `OK` in both modes. Full logs: `fix1/mutation.log` and
+`fix1/restored-green.log`. Reproduce the mutations under the same wrapper with:
+
+```sh
+python3 - <<'PYCONTROL'
+from pathlib import Path
+import unittest
+p = Path('calibration/oracles/perl-db-ranges/test_compiler_population.py')
+source = p.read_text()
+mutants = [
+    "raw = raw.replace('CONTROL=literal_caller\\n', 'gv[*CompilerPopulationControl::native_constant]\\nCONTROL=literal_caller\\n')",
+    "raw = raw.replace('ANONYMOUS_CVS=1\\n', 'ANONYMOUS_CVS=0\\n')",
+    'probe.returncode = 1',
+]
+for mutant in mutants:
+    namespace = dict(__file__=str(p), __name__='mutation_control')
+    changed = source.replace('raw = probe.stdout', 'raw = probe.stdout; ' + mutant)
+    exec(compile(changed, str(p), 'exec'), namespace)
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(namespace['CompilerPopulation'])
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    if len(result.failures) != 2 or result.errors or result.skipped:
+        raise SystemExit('expected assertion failures in both modes')
+PYCONTROL
+```
+
+Caps: unchanged; no new population reader. No Go source, Reading JSON, corpus,
+pin, grade or plan row changed. Verification passed (all exit 0), under the
+common heavy wrapper:
+
+```sh
+bash scripts/fathom-go.sh test -race -count=1 -run '^TestNoOrgSpecificNames$' ./cmd/fathom
+go run ./third_party/agentic-kit/cmd/release-notes -check
+bash scripts/check-merge-debris.sh
+```
+
+No full gate or support claim follows from this control. Fresh critic review
+remains controller-owned.
