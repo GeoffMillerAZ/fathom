@@ -1,0 +1,24 @@
+{
+  "calls.json": {
+    "bytes": 276013,
+    "sha256": "e3f422415aaac92995b490fabd41d4b2a4f3bc8cf1660d8329887308d3d0d403"
+  },
+  "coverage": 0.9072,
+  "covered": 215,
+  "definitions.json": {
+    "bytes": 97945,
+    "sha256": "f19e2f48430754cbfe44fd6dc50c00cc96f736532e464db5a0bae3c832b79d8a"
+  },
+  "denominator": 237,
+  "file_load_failures": 12,
+  "frozen-native-imports.json": {
+    "bytes": 36592,
+    "sha256": "90168a4604475e02380f617f8698cf253f3d85df7384c525d3cdd7c8fd32ec93"
+  },
+  "holdout": false,
+  "reading-final.json": {
+    "bytes": 5260,
+    "sha256": "0f9616b2e2bcf2cdd5d9b2e6c62a667d20250e64991590a56ffa146ae26e5022"
+  },
+  "test_exit": 0
+}

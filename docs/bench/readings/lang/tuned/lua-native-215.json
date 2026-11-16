@@ -1,0 +1,167 @@
+{
+  "dialect": "lua",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-11-16",
+  "fathom_commit": "4839e5101",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "nvim-telescope/telescope.nvim",
+      "sha": "5255aa27c422de944791318024167ad5d40aad20",
+      "files": 75,
+      "bytes": 703625,
+      "counts": {
+        "call_fathom": 3383,
+        "call_fathom_in_truth": 3235,
+        "call_truth": 3319,
+        "call_truth_found": 3235,
+        "callables": 941,
+        "callables_signed": 941,
+        "fathom_defs": 941,
+        "file_edges_agree": 198,
+        "file_edges_fathom": 207,
+        "file_edges_truth": 198,
+        "import_edges_agree": 215,
+        "import_edges_fathom": 235,
+        "import_edges_truth": 215,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 286,
+        "imports_in_repo": 215,
+        "imports_resolved_agree": 215,
+        "imports_unattested": 20,
+        "kind_equal": 941,
+        "matched": 941,
+        "oracle_defs": 941,
+        "range_eligible": 941,
+        "range_ok": 941
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "fathom:LuaModule": 75
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 178.12599999999998,
+        "extract_cpu_ms": 178.82800000000003,
+        "max_file_ms": 14,
+        "peak_module_pages": 301,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "luaparse",
+      "version": "0.3.1 (luaVersion LuaJIT)"
+    },
+    {
+      "tier": "A",
+      "tool": "neovim-require-trace",
+      "version": "Neovim 0.12.6; luaparse 0.3.1 literal-site population"
+    },
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:lua-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-lua 0.2.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9563,
+    "call_recall": 0.9747,
+    "def_mapping": null,
+    "file_edge_precision": 0.9565,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "call_fathom": 3383,
+    "call_fathom_in_truth": 3235,
+    "call_truth": 3319,
+    "call_truth_found": 3235,
+    "callables": 941,
+    "callables_signed": 941,
+    "fathom_defs": 941,
+    "file_edges_agree": 198,
+    "file_edges_fathom": 207,
+    "file_edges_truth": 198,
+    "import_edges_agree": 215,
+    "import_edges_fathom": 235,
+    "import_edges_truth": 215,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 286,
+    "imports_in_repo": 215,
+    "imports_resolved_agree": 215,
+    "imports_unattested": 20,
+    "kind_equal": 941,
+    "matched": 941,
+    "oracle_defs": 941,
+    "range_eligible": 941,
+    "range_ok": 941
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 3.93,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.95,
+    "max_file_ms": 14,
+    "peak_module_pages": 301,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:LuaModule": 75
+  },
+  "notes": [
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 215 of 215 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.9149 (215 of 235) and recall 1 (215 of 215); 20 of 286 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "nvim-telescope/telescope.nvim: 215/237 literal in-repo sites executed; at least 90% (214 sites) required for tier A; 22 unexecuted sites retain their denominator membership and have no emitted truth; original subject runtime/loaders and platform guards retained",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

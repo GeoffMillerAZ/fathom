@@ -1,4 +1,7 @@
 import copy
+import json
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 import unittest
@@ -37,6 +40,21 @@ class ExportNativeTrace(unittest.TestCase):
             path.write_bytes(b' ' * (MAX_BYTES + 1))
             with self.assertRaisesRegex(ValueError, 'byte cap'):
                 read(path)
+
+    def test_whole_unit_refusal_at_aggregate_byte_cap_plus_one(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for index, size in enumerate((MAX_BYTES // 2, MAX_BYTES // 2 + 1)):
+                prefix = json.dumps({'value': ''}) + '\n'
+                data = json.dumps({'value': 'x' * (size - len(prefix))}) + '\n'
+                self.assertEqual(len(data), size)
+                (root / f'{index}.jsonl').write_text(data)
+            result = subprocess.run([sys.executable, str(Path(__file__).with_name('export_native_trace.py')),
+                                     '--trace', str(root), '--out', str(root / 'oracle.json')],
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('aggregate byte cap exceeded', result.stderr)
+            self.assertFalse((root / 'oracle.json').exists())
 
     def test_whole_unit_refusal_at_event_cap_plus_one(self):
         with self.assertRaisesRegex(ValueError, 'event cap'):

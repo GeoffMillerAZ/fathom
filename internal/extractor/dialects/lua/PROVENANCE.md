@@ -48,3 +48,28 @@
   (`<module>`, line 1 to the last line) per file (K18), so a `require` at the top of a file, and any call there, is
   made from it. Oracle: `calibration/oracles/lua-require` (tier B, so L3 is at most good): luaparse for the
   statements, Lua 5.4.7's own `package.searchpath` over the same path list for the lookup.
+
+## Issue 215 native trace (2026-11-16)
+
+Telescope v0.2.2 and its existing full subject pin in `calibration/corpus.d/lua.yaml`
+are unchanged. The trace's Plenary dependency is
+https://github.com/nvim-lua/plenary.nvim/tree/74b06c6c75e4eeb3108ec01852001636d85a932b
+(MIT). Neovim's external runtime is v0.12.6:
+https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-macos-arm64.tar.gz
+(SHA256 `1dbd148222b051ba6c307c4d17a318ed083df018a4f6a5a0ce46955ffc9ab87b`).
+The independent call runner uses py-tree-sitter 0.25.2 and tree-sitter-lua 0.2.0,
+with luaparse 0.3.1 (MIT) supplying definitions/literal sites. The isolated
+Python tool is CPython 3.12.16 / python-build-standalone 20261110 (PSF license),
+https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16%2B20261110-aarch64-apple-darwin-install_only_stripped.tar.gz
+(SHA256 `2f11b8aa3726bdbd87dd9eb76568412faddf4f47e26913fa45d6a2e424972acd`).
+System Python 3.9 could not install py-tree-sitter 0.25.2; no system interpreter,
+root dependency or global configuration was changed. Tools/subjects are not shipped.
+
+The separate tuned reading grades Telescope L3 excellent (215/237 native
+literal sites, 90.72%; file precision 198/207); canonical Lua remains L3 good
+because Kong's tier-B evidence is unchanged. Before/after/final tracked-set
+SHA256 `52e0ad4e7e35d494335f90423c9be360ced642689050f046a8f84da992ea5fb3`,
+111 files / 1,508,436 bytes, no symlinks/gitlinks or ignored/untracked additions;
+harness population is all 75 Lua files / 703,625 bytes. See the complete
+[assessment](../../../../docs/assessments/2026-11-16-issue215-lua-native-trace.md)
+for exclusions, source independence, mutation/cap tests, commands and limits.
