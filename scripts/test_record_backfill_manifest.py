@@ -91,15 +91,37 @@ class ManifestTests(unittest.TestCase):
                     '- [ ] ordinary {id: OMIT}\n'
                     '  - [ ] (op) indented {id: OMIT-2}\n').encode()
         (self.plans / 'a.md').write_bytes(self.raw)
+        (self.plans / 'b.md').write_text('unselected plan\n')
         (self.plans / 'README.md').write_bytes(self.raw)
         (self.plans / 'archive').mkdir()
         (self.plans / 'archive/old.md').write_bytes(self.raw)
+        self.git('init', '-q')
+        self.git('add', 'docs')
+        self.git('-c', 'user.name=Test', '-c',
+                 'user.email=test@example.invalid', 'commit', '-q', '-m', 'test source')
+        self.base = self.git('rev-parse', 'HEAD').strip()
+
+    def git(self, *args):
+        return subprocess.check_output(['git', '-C', str(self.root), *args], text=True)
+
+    def test_actual_stale_base_refuses_before_output(self):
+        source = Path(__file__).resolve().parents[1]
+        output = self.root / 'stale-candidate.md'
+        # The real 468dc705 tree disagrees on library-roadmap and telemetry-links.
+        result = subprocess.run([
+            sys.executable, '-B', generator.__file__, '--root', str(source),
+            '--base', '468dc705813382d584926887b451cbea145c76ac',
+            '--output', str(output)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('source plan does not match base', result.stderr)
+        self.assertIn('468dc705813382d584926887b451cbea145c76ac', result.stderr)
+        self.assertFalse(output.exists())
 
     def test_preserves_format_selection_hashes_and_order(self):
         manifest = generator.generate(self.root)
         sha = lambda value: hashlib.sha256(value).hexdigest()
         self.assertEqual(manifest, dict(
-            schema='fathom.record-title-backfill/v1', base=generator.BASE,
+            schema='fathom.record-title-backfill/v1', base=self.base,
             files={'docs/plans/a.md': sha(self.raw)},
             rows=[dict(path='docs/plans/a.md', line=n, row_id=row_id,
                        before_sha256=sha(self.raw.splitlines()[n-1]), gate=gate, lane=lane)
@@ -134,8 +156,47 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(self.run_cli('--output', link / 'new.md').returncode, 2)
         self.assertFalse((companion.parent / 'new.md').exists())
 
+    def test_default_and_explicit_bind_to_source_commit(self):
+        output = self.root / 'workspace/tmp/default.md'
+        output.parent.mkdir(parents=True)
+        self.assertEqual(self.run_cli('--output', output).returncode, 0)
+        manifest = json.loads(output.read_text().split('~~~json\n')[1].split('\n~~~')[0])
+        self.assertEqual(manifest['base'], self.base)
+        explicit = output.with_name('explicit.md')
+        self.assertEqual(self.run_cli('--base', self.base, '--output', explicit).returncode, 0)
+        self.assertEqual(output.read_bytes(), explicit.read_bytes())
+        for invalid in ('arbitrary text', '--help', '0' * 40):
+            target = output.with_name('invalid.md')
+            self.assertEqual(self.run_cli('--base=' + invalid, '--output', target).returncode, 2)
+            self.assertFalse(target.exists())
+
+    def test_source_mismatch_refuses_for_default_and_explicit(self):
+        output = self.root / 'workspace/tmp/mismatch.md'
+        output.parent.mkdir(parents=True)
+        # Includes an unselected plan: the binding covers all scanned inputs.
+        cases = [('a.md', self.raw + b'changed\n'),
+                 ('b.md', b'changed unselected plan\n'),
+                 ('new.md', b'no selected rows\n')]
+        for name, raw in cases:
+            path = self.plans / name
+            original = path.read_bytes() if path.exists() else None
+            path.write_bytes(raw)
+            for flags in ((), ('--base', self.base)):
+                self.assertEqual(self.run_cli(*flags, '--output', output).returncode, 2)
+                self.assertFalse(output.exists())
+            if original is None:
+                path.unlink()
+            else:
+                path.write_bytes(original)
+        (self.plans / 'a.md').unlink()
+        self.assertEqual(self.run_cli('--base', self.base, '--output', output).returncode, 2)
+        self.assertFalse(output.exists())
+
     def test_bad_candidate_refuses_before_output(self):
         (self.plans / 'a.md').write_text('- [ ] (op) row {pattern: "id: decoy"}')
+        self.git('add', 'docs')
+        self.git('-c', 'user.name=Test', '-c',
+                 'user.email=test@example.invalid', 'commit', '-q', '-m', 'invalid candidate')
         output = self.root / 'workspace/tmp/candidate.md'
         output.parent.mkdir(parents=True)
         self.assertEqual(self.run_cli('--output', output).returncode, 2)

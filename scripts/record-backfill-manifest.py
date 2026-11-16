@@ -9,9 +9,9 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 
 
-BASE = "468dc705813382d584926887b451cbea145c76ac"
 HEADER = (
     "# REC-8 frozen lexical title-candidate manifest\n\n"
     "Contract companion to records-integration.md. This is a concrete immutable write\n"
@@ -76,12 +76,42 @@ def extract_row_id(line):
     return value
 
 
-def generate(root, base=BASE):
+def source_inputs(root, base):
+    """Resolve one commit and bind every scanned plan byte to that tree."""
+    root = root.resolve()
+
+    def git(*args):
+        try:
+            return subprocess.run(['git', '-C', str(root), *args],
+                                  check=True, capture_output=True).stdout
+        except subprocess.CalledProcessError as error:
+            raise ValueError("cannot resolve source commit or read its plan tree") from error
+
+    if Path(git('rev-parse', '--show-toplevel').decode().strip()).resolve() != root:
+        raise ValueError("source root must be the repository root")
+    commit = git('rev-parse', '--verify', '--end-of-options',
+                 (base if base is not None else 'HEAD') + '^{commit}').decode().strip()
+    pinned = {
+        name.decode() for name in git('ls-tree', '-r', '--name-only', '-z',
+                                      commit, '--', 'docs/plans').split(b'\0')
+        if name and Path(name.decode()).parent == Path('docs/plans')
+        and name.decode().endswith('.md') and Path(name.decode()).name != 'README.md'
+    }
+    inputs = {p.relative_to(root).as_posix(): p.read_bytes()
+              for p in sorted((root / 'docs/plans').glob('*.md'))
+              if p.name != 'README.md'}
+    if set(inputs) != pinned:
+        raise ValueError("source plan inventory does not match base " + commit)
+    for path, raw in inputs.items():
+        if raw != git('show', commit + ':' + path):
+            raise ValueError("source plan does not match base " + commit + ': ' + path)
+    return commit, inputs
+
+
+def generate(root, base=None):
+    base, inputs = source_inputs(root, base)
     entries, files = [], {}
-    for path in sorted((root / "docs/plans").glob("*.md")):
-        if path.name == "README.md":
-            continue
-        raw = path.read_bytes()
+    for rel, raw in sorted(inputs.items()):
         for number, line in enumerate(raw.decode().splitlines(), 1):
             match = re.match(r"^[-*] \[[ xX~-]\] (.*)", line)
             if not match:
@@ -92,7 +122,6 @@ def generate(root, base=BASE):
             lane = re.search(r"(?<!`)\(lane:\s*([A-Za-z0-9][A-Za-z0-9-]*)\)(?!`)", title)
             if not gate and not lane:
                 continue
-            rel = path.relative_to(root).as_posix()
             try:
                 row_id = extract_row_id(line)
             except ValueError as error:
@@ -113,7 +142,7 @@ def render(manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("."))
-    parser.add_argument("--base", default=BASE)
+    parser.add_argument("--base", help="source commit to validate (default: HEAD); emits full SHA")
     parser.add_argument("--output", type=Path, required=True,
                         help="new file under source root's workspace/tmp or workspace/artifacts")
     args = parser.parse_args()
