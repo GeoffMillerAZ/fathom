@@ -134,12 +134,13 @@ func guarded(ctx context.Context, c config, fn func() (*iacfacts.ResourceSet, er
 // .json or .template file that reads as a CloudFormation template as CloudFormation. Any other file returns a
 // *NoReaderError.
 //
-// Path is only a name and a classifier: nothing is read from disk, and it is the File of every Span. src is not
-// modified. A file past MaxFileBytes is refused with ErrLimit. The read returns by DefaultReadDeadline (lowered by
+// Path is only a name and a classifier: nothing is read from disk. Spans outside Evidence retain that name.
+// src is not modified. A file past MaxFileBytes is refused with ErrLimit. The read returns by DefaultReadDeadline (lowered by
 // WithDeadline) with ErrDeadline, and with ErrBusy while GOMAXPROCS abandoned reads are running. A context that ends
 // first returns its error and abandons the read the same way.
 //
-// Evidence names the actual input and any unresolved attributes or unread sections.
+// Evidence retains relative input names and uses the base name of an absolute input. Its unknown spans use
+// that same logical name when describing unresolved attributes or unread sections.
 // WithValues changes values only, never the read inventory or its completeness.
 // An error never carries a value from the file.
 func ReadFile(ctx context.Context, filePath string, src []byte, opts ...Option) (*ResourceSet, error) {

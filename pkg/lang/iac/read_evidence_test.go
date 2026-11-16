@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"testing/fstest"
@@ -95,5 +96,69 @@ func assertEvidenceCopy(t *testing.T, got *iac.ResourceSet, inner *iacfacts.Reso
 	raw, _ := json.Marshal(got)
 	if bytes.Contains(raw, []byte("default-value-canary")) || bytes.Contains(a, []byte("null")) {
 		t.Fatalf("values/null leaked: %s", raw)
+	}
+}
+
+// Absolute caller names remain accepted and retained by legacy spans. Only the new
+// evidence uses a logical input name, including early returns with no resources.
+func TestResourceReadEvidenceLogicalPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name, src string
+		unread    bool
+	}{
+		{"main.tf", "resource \"widget\" \"w\" {\n name = upper(var.name)\n}\n", false},
+		{"stack.yaml", "Resources:\n  W:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: !Sub '${Name}-bucket'\n", false},
+		{"Pulumi.yaml", "name: sample\nruntime: yaml\nresources:\n  w:\n    type: aws:s3:Bucket\n    properties:\n      bucket: {fn::join: [\"-\", [a, b]]}\n", false},
+		{"defaults.tf", "variable \"name\" { default = \"default-value-canary\" }\n", false},
+		{"defaults.yaml", "AWSTemplateFormatVersion: '2010-09-09'\nParameters:\n  Name: {Type: String, Default: default-value-canary}\n", false},
+		{"Pulumi.yml", "name: sample\nruntime: yaml\nconfiguration:\n  name: {default: default-value-canary}\n", false},
+		{"empty.tf", "", false},
+		{"broken.tf", "resource \"widget\" \"w\" {", true},
+		{"broken.yaml", "AWSTemplateFormatVersion: '2010-09-09'\nResources: [", true},
+		{"Pulumi.yaml", "resources: [", true},
+		{"main.tf.json", `{"resource":{}}`, true},
+		{"dropped.tf", "check \"c\" {\n data \"widget\" \"a\" {}\n}\n", true},
+		{"dropped.yaml", "AWSTemplateFormatVersion: '2010-09-09'\nResources:\n  Dropped: {}\n", true},
+		{"Pulumi.yaml", "resources:\n  dropped: {}\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// This is a classifier name, never a file-system read.
+			absolute := filepath.Join(string(filepath.Separator), "synthetic", "project", tc.name)
+			relative, err := iac.ReadFile(context.Background(), tc.name, []byte(tc.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := iac.ReadFile(context.Background(), absolute, []byte(tc.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got.Evidence, relative.Evidence) {
+				t.Fatalf("absolute evidence = %+v, relative = %+v", got.Evidence, relative.Evidence)
+			}
+			if tc.unread && (!reflect.DeepEqual(got.Evidence.Unread, []string{tc.name}) || len(got.Evidence.Unknowns) == 0) {
+				t.Fatalf("incomplete input lost: %+v", got.Evidence)
+			}
+			for _, r := range got.Resources {
+				if r.Span.File != absolute {
+					t.Fatalf("legacy resource span changed: %+v", r.Span)
+				}
+				for _, a := range r.Attrs {
+					if a.Span.File != absolute {
+						t.Fatalf("legacy attribute span changed: %+v", a.Span)
+					}
+				}
+			}
+			with, err := iac.ReadFile(context.Background(), absolute, []byte(tc.src), iac.WithValues())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got.Evidence, with.Evidence) {
+				t.Fatal("values changed evidence")
+			}
+			raw, _ := json.Marshal(got.Evidence)
+			if bytes.Contains(raw, []byte("synthetic")) || bytes.Contains(raw, []byte("default-value-canary")) {
+				t.Fatalf("host path/value leaked: %s", raw)
+			}
+		})
 	}
 }

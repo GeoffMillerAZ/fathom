@@ -1,6 +1,12 @@
 package iacfacts
 
-import "sort"
+import (
+	"path"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
 
 // ReadObservation records one actual input, including files declaring only defaults.
 // Read distinguishes an opened input from a refusal; Complete describes extraction.
@@ -15,6 +21,7 @@ type ReadObservation struct {
 // It copies, sorts and deduplicates reasons and actions without retaining values.
 func BuildReadEvidence(observations []ReadObservation) ReadEvidence {
 	out := ReadEvidence{Read: []string{}, Unread: []string{}, Unknowns: []UnknownReason{}}
+	logical := logicalEvidencePaths(observations)
 	paths := map[string]bool{}
 	type reasonKey struct {
 		code UnknownCode
@@ -23,10 +30,11 @@ func BuildReadEvidence(observations []ReadObservation) ReadEvidence {
 	reasons := map[reasonKey]map[DecidableBy]bool{}
 	for _, o := range observations {
 		complete := o.Read && o.Complete
-		if previous, exists := paths[o.Path]; exists {
+		p := logical[o.Path]
+		if previous, exists := paths[p]; exists {
 			complete = complete && previous
 		}
-		paths[o.Path] = complete
+		paths[p] = complete
 		unknowns := o.Unknowns
 		if (!o.Read || !o.Complete) && len(unknowns) == 0 {
 			code := UnknownUnsupportedForm
@@ -38,7 +46,9 @@ func BuildReadEvidence(observations []ReadObservation) ReadEvidence {
 			unknowns = []UnknownReason{{Code: code, Span: Span{File: o.Path}, DecidableBy: actions}}
 		}
 		for _, u := range unknowns {
-			k := reasonKey{u.Code, u.Span}
+			span := u.Span
+			span.File = logical[span.File]
+			k := reasonKey{u.Code, span}
 			if reasons[k] == nil {
 				reasons[k] = map[DecidableBy]bool{}
 			}
@@ -72,6 +82,73 @@ func BuildReadEvidence(observations []ReadObservation) ReadEvidence {
 		return a.Code < b.Code
 	})
 	return out
+}
+
+// logicalEvidencePaths maps evidence names only; legacy resource/attribute spans
+// still name the caller's input. Relative names are already logical and stay exact.
+// Absolute names use the shortest unambiguous suffix across the whole observation
+// set, so basename collisions never combine inputs or detach their reasons. No
+// working directory or file-system access is needed to choose these names.
+func logicalEvidencePaths(observations []ReadObservation) map[string]string {
+	names := map[string]string{}
+	for _, o := range observations {
+		names[o.Path] = o.Path
+		for _, u := range o.Unknowns {
+			names[u.Span.File] = u.Span.File
+		}
+	}
+	used := map[string]bool{}
+	suffixes := map[string][]string{}
+	counts := map[string]int{}
+	absolute := []string{}
+	for name := range names {
+		if !filepath.IsAbs(name) {
+			used[name] = true
+			continue
+		}
+		absolute = append(absolute, name)
+		// Strip the volume/root before making suffixes. Clean only absolute names:
+		// relative spellings and distinct caller identities must not be merged.
+		clean := filepath.ToSlash(filepath.Clean(name))
+		clean = strings.TrimLeft(strings.TrimPrefix(clean, filepath.ToSlash(filepath.VolumeName(name))), "/")
+		parts := strings.Split(clean, "/")
+		for i := len(parts) - 1; i >= 0; i-- {
+			suffix := strings.Join(parts[i:], "/")
+			if suffix == "" {
+				continue
+			}
+			suffixes[name] = append(suffixes[name], suffix)
+			counts[suffix]++
+		}
+	}
+	sort.Strings(absolute)
+	for index, name := range absolute {
+		chosen := ""
+		for _, suffix := range suffixes[name] {
+			if counts[suffix] == 1 && !used[suffix] {
+				chosen = suffix
+				break
+			}
+		}
+		if chosen == "" {
+			// A root-level absolute name may collide with a relative name, or distinct
+			// absolute spellings may clean to the same path. Allocate a deterministic
+			// unused logical namespace rather than drop or merge either input.
+			base := path.Base(filepath.ToSlash(filepath.Clean(name)))
+			if base == "/" || base == "." {
+				base = "input"
+			}
+			for n := index + 1; ; n++ {
+				chosen = "input-" + strconv.Itoa(n) + "/" + base
+				if !used[chosen] && counts[chosen] == 0 {
+					break
+				}
+			}
+		}
+		names[name] = chosen
+		used[chosen] = true
+	}
+	return names
 }
 
 // recordReadGaps describes the existing reader's incomplete syntax and dropped sections.

@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -219,5 +222,87 @@ func TestReadEvidenceNamesEveryDroppedSection(t *testing.T) {
 				t.Fatalf("dropped sections lost their spans: %v, want %v", lines, tc.lines)
 			}
 		})
+	}
+}
+
+func TestBuildReadEvidenceLogicalPaths(t *testing.T) {
+	// Keep complete and incomplete same-basename inputs distinct, including names
+	// that collide with existing logical names. Reasons must follow the same map.
+	paths := []string{"/synthetic/alpha/main.tf", "/synthetic/beta/main.tf", "main.tf", "alpha/main.tf", "/main.tf", "/synthetic/alpha/../beta/main.tf", "input-1/main.tf", "input-5/main.tf"}
+	observations := make([]ReadObservation, len(paths))
+	for i, p := range paths {
+		observations[i] = ReadObservation{Path: p, Read: true, Complete: i%2 == 0, Unknowns: []UnknownReason{{Code: UnknownExpression, Span: Span{File: p, StartLine: i + 1}, DecidableBy: []DecidableBy{DecidePlan}}}}
+	}
+	before, _ := json.Marshal(observations)
+	got := BuildReadEvidence(observations)
+	if len(got.Read)+len(got.Unread) != len(paths) || len(got.Unknowns) != len(paths) {
+		t.Fatalf("lost inputs/reasons: %+v", got)
+	}
+	seen := map[string]bool{}
+	for _, p := range append(append([]string{}, got.Read...), got.Unread...) {
+		if filepath.IsAbs(p) || strings.HasPrefix(p, "../") || seen[p] {
+			t.Fatalf("unsafe/colliding logical name %q: %+v", p, got)
+		}
+		seen[p] = true
+	}
+	reasonFiles := map[int]string{}
+	for i, u := range got.Unknowns {
+		reasonFiles[u.Span.StartLine] = u.Span.File
+		if !seen[u.Span.File] {
+			t.Fatalf("reason detached from inventory: %+v", u)
+		}
+		expected := got.Unread
+		if (u.Span.StartLine-1)%2 == 0 {
+			expected = got.Read
+		}
+		if !sort.StringsAreSorted(expected) || !containsEvidencePath(expected, u.Span.File) {
+			t.Fatalf("reason moved to another input at %d: %+v", i, got)
+		}
+	}
+	if reasonFiles[3] != "main.tf" || reasonFiles[4] != "alpha/main.tf" || reasonFiles[7] != "input-1/main.tf" || reasonFiles[8] != "input-5/main.tf" {
+		t.Fatalf("relative reasons remapped: %+v", got)
+	}
+	for _, relative := range []string{"main.tf", "alpha/main.tf", "input-1/main.tf", "input-5/main.tf"} {
+		if !seen[relative] {
+			t.Fatalf("relative name changed: %+v", got)
+		}
+	}
+	after, _ := json.Marshal(observations)
+	if !bytes.Equal(before, after) {
+		t.Fatal("builder mutated caller paths/spans")
+	}
+	first, _ := json.Marshal(got)
+	for i, j := 0, len(observations)-1; i < j; i, j = i+1, j-1 {
+		observations[i], observations[j] = observations[j], observations[i]
+	}
+	reversed, _ := json.Marshal(BuildReadEvidence(observations))
+	if !bytes.Equal(first, reversed) {
+		t.Fatalf("mapping depends on order: %s / %s", first, reversed)
+	}
+}
+
+func containsEvidencePath(paths []string, want string) bool {
+	i := sort.SearchStrings(paths, want)
+	return i < len(paths) && paths[i] == want
+}
+
+func TestBuildReadEvidenceDistinctModuleFiles(t *testing.T) {
+	observations := []ReadObservation{
+		{Path: "/synthetic/left/main.tf", Read: true, Complete: true, Unknowns: []UnknownReason{{Code: UnknownExpression, Span: Span{File: "/synthetic/left/main.tf", StartLine: 2}, DecidableBy: []DecidableBy{DecidePlan}}}},
+		{Path: "/synthetic/right/main.tf", Read: true, Complete: false, Unknowns: []UnknownReason{{Code: UnknownSyntax, Span: Span{File: "/synthetic/right/main.tf"}, DecidableBy: []DecidableBy{}}}},
+	}
+	want := ReadEvidence{Read: []string{"left/main.tf"}, Unread: []string{"right/main.tf"}, Unknowns: []UnknownReason{
+		{Code: UnknownExpression, Span: Span{File: "left/main.tf", StartLine: 2}, DecidableBy: []DecidableBy{DecidePlan}},
+		{Code: UnknownSyntax, Span: Span{File: "right/main.tf"}, DecidableBy: []DecidableBy{}},
+	}}
+	if got := BuildReadEvidence(observations); !reflect.DeepEqual(got, want) {
+		t.Fatalf("same-basename files/reasons: %+v, want %+v", got, want)
+	}
+	// A reason can name another input. Its span identity, rather than the position
+	// of its containing observation, chooses the same logical path as the inventory.
+	observations[0].Unknowns = append(observations[0].Unknowns, UnknownReason{Code: UnknownUnsupportedForm, Span: Span{File: "/synthetic/right/main.tf", StartLine: 3}, DecidableBy: []DecidableBy{}})
+	got := BuildReadEvidence(observations)
+	if len(got.Unknowns) != 3 || got.Unknowns[2].Span.File != "right/main.tf" || got.Unknowns[2].Span.StartLine != 3 {
+		t.Fatalf("cross-file reason detached: %+v", got)
 	}
 }
