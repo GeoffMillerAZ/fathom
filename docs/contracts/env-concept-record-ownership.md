@@ -71,13 +71,26 @@ All additions in this section are UNSETTLED. Extend the existing internal types,
 not a second registry or new exported package:
 
 ```go
-// One non-allocatable identity family; IDRange's numeric vocabulary is unchanged.
+// Label emitted by the new CUE adapter, NOT a reservation of an arbitrary name.
 const FamilyConcept FamilyName = "concept"
+// Add to Definition. Existing regex/Markdown definitions leave this false.
+CUEConcept bool `json:"cue_concept,omitempty"`
 // Add to Config. Omitted/false retains the exact legacy discovery behavior.
 Concepts bool `json:"concepts,omitempty"`
 // Add to BOTH LaneDeclaration and LaneGrant, and copy through validated grants.
 ConceptPaths []string `json:"concept_paths,omitempty"`
 ```
+
+UNSETTLED FIX1 disambiguation: CUEConcept is a discovery discriminator, not a
+new identity namespace or authority. Existing Family.Name is arbitrary, including
+"concept" (R:29-34,116-154,1000-1003). Never infer this marker or new permission
+from Family alone, reserve/rename a family string, or relabel existing definitions.
+Only the shared raw CUE adapter sets it on the new AST occurrences. Authored
+fields/JSON supplied by a candidate do not establish discovery or grants; production
+callers use the shared Inventory output without dropping or synthesizing markers.
+Existing definitions' omitted/false marker preserves their wire representation.
+The marker survives trusted snapshots, copies and supported checker serialization;
+a lossy transport cannot be used to turn CUE ownership proof into legacy proof.
 
 The proposed standalone `#Lane` addition is only
 `concept_paths?: [...string]`. Omitted means no concept permission; when authored,
@@ -106,8 +119,12 @@ only literal top-level `inventory` structs (including the normative
 `inventory: #ConceptInventory & {...}`) and their `concepts` list members' `key`
 fields. Repeated inventory/struct declarations and same-line key declarations
 are all retained, not merged. References in groups, citations and other records
-are not definitions. Each occurrence yields FamilyConcept, the decoded exact
-string and the key token's original repository-relative path/1-based line.
+are not definitions. Each occurrence yields FamilyConcept with CUEConcept:true,
+the decoded exact string and the key token's original repository-relative
+path/1-based line. Existing regex/Markdown discoveries retain CUEConcept:false,
+including an arbitrary family literally named "concept". If enabled AST and legacy
+regex discovery overlap, retain both occurrences and let the same duplicate check
+refuse; do not coalesce, relabel, ignore one source or weaken collision policy.
 Keys must satisfy ENV's existing #Text requirement; invalid blank keys refuse
 ErrShape rather than entering ownership. Preserve accepted bytes without trimming.
 No case folding, slugification, trimming, normalization or numeric parsing.
@@ -126,6 +143,8 @@ this does not change its pure validators or pretend all CUE expressions work.
 Unreadable files, parse failures and nonregular/symlink files or ancestors refuse;
 none becomes absent, zero definitions or healthy coverage. Paths and output order
 use existing canonicalization and deterministic family/id/path/line sorting.
+Only when all old tuple fields tie, the new marker sorts false before true;
+legacy-only ordering is unchanged. The marker never changes duplicate identity.
 Grounds: E:109-116,331-367,472-482,1393; R:107-162,1000-1035; I38.
 
 ### U1c: proposed trusted grant and shared checking
@@ -146,12 +165,26 @@ immutable commit, using the accepted raw blob/limit/no-replacement machinery.
 It includes the fixed discovery envelope in that snapshot as well as the existing
 numeric discovery. Candidate config, claimed lane, BaseCommit, imports and altered
 manifest bytes never broaden it. Missing policy/schema/grant fails closed.
-If concept ownership is requested, gate record-ids must require the trusted path;
-it cannot claim that proof through its legacy duplicate-only fallback. Within
-trusted validation, concept definitions or active ConceptPaths with the flag false
-refuse ErrPolicy; they cannot be discarded or activated by candidate fields. Legacy
-numeric-only Check remains duplicate-only. Existing unconfigured callers do not
-opt in accidentally. Grounds: C:177-202,232-236; R:647-727,811-820,919-930,1110-1127.
+UNSETTLED FIX1 activation semantics: the trusted Config.Concepts flag controls
+new CUE discovery/proof, never the interpretation of an existing family name.
+
+| Effective flag and discovered definition | Required behavior |
+|---|---|
+| Omitted/false; CUEConcept:false, any Family.Name including "concept" | Original discovery, Legacy matching, shared validation and generic gate behavior unchanged. No CUE scan/grant inference from the name. |
+| True; CUEConcept:false, including legacy "concept" | Existing checker/Legacy path still applies, with no implicit CUE grant requirement. |
+| True; CUEConcept:true | Require the trusted CUE policy and exact-file grant; never Legacy-exempt. |
+| Omitted/false; CUEConcept:true passed to ValidateInventory | ErrPolicy even if trusted.Legacy contains an identical tuple. Do not erase the marker. |
+
+Active ConceptPaths with the flag false also refuse ErrPolicy. LoadTrusted must
+carry only the effective trusted policy/grants into this flow. A generic legacy
+check/gate may still succeed for an unchanged regex family named "concept" with
+the flag omitted/false; that success is NOT ENV ownership evidence. An ENV consumer
+must independently require trusted Config.Concepts:true and the shared marked CUE
+inventory before treating gate/validation success as its RecordOwnership proof.
+Missing activation/trust cannot fall back to a legacy success for that purpose.
+No new CLI verb/flag or family-name-based mode inference is proposed. Legacy Check
+remains duplicate-only for every configured family, not only numeric families.
+Grounds: C:143-202,232-236; R:29-34,414-424,647-727,811-820,919-930,1110-1127.
 
 ValidateInventory still invokes the SAME CheckDefinitions across the entire
 inventory and then the SAME CheckOwnership, producing the same opaque validated
@@ -161,10 +194,15 @@ reusing one of their full IDs or any new duplicate refuses. Existing copies,
 stable ordering, full-ID collisions and typed refusals remain (R:263-279,299-311,
 452-489; C:143-173; W2-2).
 
-UNSETTLED ownership branch: for FamilyConcept, require exactly one trusted concept
-grant and its exact path, BEFORE the existing legacy exemption. Do not classify
-concept definitions as unrestricted Legacy when building TrustedInventory.
-Existing numeric Legacy matching and closed-range matching are unchanged.
+UNSETTLED ownership branch: only for CUEConcept:true, require exactly one trusted
+concept grant and its exact path, BEFORE the existing legacy exemption. The marker
+must also have the adapter's FamilyConcept label; an inconsistent marked tuple
+refuses ErrPolicy. CheckOwnership enforces that grant even if a marked definition
+is manually present in trusted.Legacy. LoadTrusted excludes marked CUE definitions
+from unrestricted Legacy, but keeps existing unmarked definitions of EVERY family,
+including "concept", under their original family/full-id/path rules. Numeric range
+matching is unchanged. ValidateInventory/LoadTrusted enforce activation; the
+CheckOwnership signature and its existing unmarked ownership role are unchanged.
 OwnedPaths alone, or a numeric range for another family, is not concept authority.
 Deep-copy ConceptPaths at every existing grant-copy boundary. Preserve
 ValidatedInventory's checker-only constructor and defensive Definitions/Grant.
@@ -178,8 +216,8 @@ UNSETTLED requested implementation allowlist, only AFTER a ruling, exact-source
 review, acknowledgement of REC-1 and fresh implementer assignment:
 
 - `internal/recordids/recordids.go` and `internal/recordids/recordids_test.go`:
-  additive policy/grant fields, bounded AST discovery, shared trust/ownership and
-  defensive copies. No generic discovery plug-in or public door package.
+  additive policy/grant/discovery-marker fields, bounded AST discovery, shared
+  trust/ownership and defensive copies. No generic discovery plug-in or public door package.
 - `internal/records/lane.go` and `internal/records/allocate_test.go`:
   optional-field JSON presence/null validation and numeric compatibility tests;
   `internal/records/allocate.go` remains read-only.
@@ -213,14 +251,32 @@ already pass must be distinguished from new-feature RED. Apply W3-2/W2-2's real
 RED/GREEN and independent assertion-by-assertion review; never land failing tests
 or promote a fixture/schema/list-presence check to native proof.
 
+### FIX1 exact compatibility control, prospective and UNRUN
+
+Source analysis of accepted R:29-34,1000-1003,834-852,414-424 predicts acceptance
+of this witness; native confirmation remains a future implementing obligation:
+a trusted Config.Families entry has Name:"concept", Files:["legacy.md"],
+Pattern:"^record: (.+)$"; the file has the single line `record: K`, where K is a
+supplied nonempty synthetic fixture key. With a real trusted fixture commit and
+no ranges/grants, LoadTrusted discovers that record and retains it in Legacy.
+Re-inventorying the unchanged family/full-id/path yields valid ValidateInventory
+and successful generic trusted gate behavior. This is an existing-behavior control,
+not a new key, live config, grant or an executed test. Run both missing Concepts
+and explicit Concepts:false. Neither case may require a concept grant, inspect the
+CUE envelope or return ErrPolicy merely because the family string is "concept".
+Then keep that record while enabling the new adapter with a separate valid CUE
+fixture/grant: the legacy record stays unmarked/valid; newly marked CUE occurrences
+remain grant-required and cannot use either genuine or injected Legacy tuples.
+An overlapping regex/AST occurrence must still fail the shared duplicate check.
+
 | Exact proposed test and file | Required assertions |
 |---|---|
-| `TestConceptRecordDiscovery` in `internal/recordids/recordids_test.go` | Supplied nonempty K in literal inventory data yields its exact bytes/path/key line. Two declarations of K in separate discovered files with disjoint fields yield TWO definitions and both original locations before unification; shared validation returns ErrDuplicate with both. Repeat in one file and on one line; retain multiplicity. Ignore comments/group references. Unsupported computed/imported/alias/list forms and unreadable/symlink paths refuse rather than omit. Reordering inputs preserves deterministic diagnostics. |
-| `TestConceptRecordOwnership` in the same file | One valid trusted data-only ConceptPaths+single OwnedPaths grant with IDRanges: [] accepts supplied K only at the sole inventory path. A mixed numeric/concept lane refuses ErrShape. A unique K in a second discovered file, a missing/mismatched/duplicate grant, read-only-only path or numeric-only grant returns ErrOwnership/ErrShape as applicable, never healthy zero. Put a concept in the trusted snapshot: moving it or omitting the concept grant still refuses; no Legacy escape. |
-| `TestConceptRecordTrust` in the same file | Candidate flag/manifest/schema edits cannot broaden trusted discovery/grants; modified/extra/missing lane bytes refuse. A real raw-blob snapshot with export-ignore/export-subst/replacement-object attempts retains the accepted trust protections. Omitted flag leaves old discovery byte-for-byte unchanged. Mutating returned ConceptPaths cannot mutate the validated grant. |
+| `TestConceptRecordDiscovery` in `internal/recordids/recordids_test.go` | Supplied nonempty K in literal inventory data yields CUEConcept:true with its exact bytes/path/key line; legacy regex/Markdown output stays false regardless of family name. Two declarations of K in separate discovered files with disjoint fields yield TWO definitions and both original locations before unification; shared validation returns ErrDuplicate with both. Repeat in one file and on one line; retain multiplicity. Ignore comments/group references. Unsupported computed/imported/alias/list forms and unreadable/symlink paths refuse rather than omit. Reordering inputs preserves deterministic diagnostics. |
+| `TestConceptRecordOwnership` in the same file | One valid trusted data-only ConceptPaths+single OwnedPaths grant with IDRanges: [] accepts supplied K only at the sole inventory path. A mixed numeric/concept lane refuses ErrShape. A unique K in a second discovered file, a missing/mismatched/duplicate grant, read-only-only path or numeric-only grant returns ErrOwnership/ErrShape as applicable, never healthy zero. Put a marked CUE definition in the trusted snapshot or inject it into Legacy: moving it or omitting the concept grant still refuses; no Legacy escape. An unmarked legacy regex "concept" keeps its original exemption. |
+| `TestConceptRecordTrust` in the same file | Candidate flag/manifest/schema edits cannot broaden trusted discovery/grants; modified/extra/missing lane bytes refuse. A real raw-blob snapshot with export-ignore/export-subst/replacement-object attempts retains the accepted trust protections. Exercise the exact FIX1 regex Name:"concept" control with omitted and false flag: trusted reload, validation and output remain unchanged, with no CUE path reads/grant requirement. Candidate marker/flag fields cannot manufacture or erase the shared AST classification. Marked CUE definitions with flag false still refuse even if injected into Legacy. Copies/serialization retain markers; mutating returned ConceptPaths cannot mutate the validated grant. |
 | `TestConceptRecordNumericCompatibility` in `internal/records/allocate_test.go` | With the effective grandfathered pair present, shared validation and an unrelated existing numeric fixture grant in a separate lane still allocate its lowest unused id. A new duplicate, concept collision with a grandfathered full ID and attempted grandfather reuse all refuse through existing shared checks/allocator rules. Numeric signatures and emitted payload bytes are unchanged; asking the numeric allocator for concept refuses without writes. No exceptions are hardcoded from this repository. Test optional field omission/empty array and reject explicit null, wrong type or unknown labels through JSON and CUE. |
-| `TestGateConceptRecordOwnership` in `cmd/fathom/rec_new_test.go` | Requested concept proof with no trusted base or missing canonical inventory refuses ErrTrust; trusted exact grant plus existing inventory succeeds; second-file/duplicate/candidate-policy mutations fail through shared ValidateInventory. A legacy duplicate-only success cannot satisfy ENV ownership. Existing numeric-only gate exits/output stay unchanged. |
-| `TestConceptRecordCorpusParity` in `internal/recordids/recordids_test.go` | On identical immutable real-corpus bytes, compare accepted REC source and candidate with concepts omitted/false: full Definition tuples, duplicate/ownership diagnostics and native record-id verdicts unchanged. Then enable only in isolated supplied fixtures for feature proofs. Publish source/tree/config/digests and every difference; any existing real-corpus verdict change stops and escalates. No count-only parity or borrowed old native approval. |
+| `TestGateConceptRecordOwnership` in `cmd/fathom/rec_new_test.go` | Requested concept proof with no trusted base or missing canonical inventory refuses ErrTrust; trusted exact grant plus existing inventory succeeds; second-file/duplicate/candidate-policy mutations fail through shared ValidateInventory. A legacy duplicate-only success cannot satisfy ENV ownership. Run the exact FIX1 Name:"concept" Legacy control through the generic trusted gate with flag omitted/false: same successful verdict/output as accepted REC. That verdict cannot satisfy an ENV ownership request without true trusted activation/marked discovery. Existing legacy gate exits/output are preserved for all family names. |
+| `TestConceptRecordCorpusParity` in `internal/recordids/recordids_test.go` | On identical immutable real-corpus bytes, compare accepted REC source and candidate with concepts omitted/false: full Definition tuples, duplicate/ownership diagnostics and native record-id verdicts unchanged. Also compare the exact FIX1 custom regex Name:"concept" control, both flag omissions/false and its coexistence with a separately activated CUE fixture. Then enable only in isolated supplied fixtures for feature proofs. Publish source/tree/config/digests and every difference; any existing real-corpus verdict change stops and escalates. No count-only parity or borrowed old native approval. |
 
 Future guarded proof commands (not run here):
 `go test -race ./internal/recordids -run '^TestConceptRecord' -count=1`;
@@ -233,9 +289,9 @@ RecordOwnership consumer proof and reviewed DATA remain separate prerequisites.
 
 ## Disposition
 
-WR-CORE-REC/U1 is UNSETTLED as the complete family, syntax/discovery and trusted
-opaque-key grant policy. Architect acceptance is required before amendment of
-existing Config/schema/interfaces or dispatch. Core bounded publication, local
+WR-CORE-REC/U1 is UNSETTLED as the complete family, syntax/discovery, FIX1
+classification/activation and trusted opaque-key grant policy. Architect acceptance
+is required before amendment of existing Config/schema/interfaces or dispatch. Core bounded publication, local
 join validation, this draft and historical native evidence do not answer U1 or
 activate a required gate. REC-1 acknowledgement and current-source critic review
 remain prerequisites, not presumed facts. No key, range or grant is reserved.
