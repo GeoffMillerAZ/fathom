@@ -1,6 +1,6 @@
 # WPF-1 — phase-separated wiring conformance schema
 
-Status: F1: HOLD — unapproved applicability policy; governed F5/F6 corrections only.
+Status: Draft awaiting independent critic; T4-1 applicability amendment applied.
 Not an implementation, approval receipt or implementation dispatch.
 Scope: `docs/plans/wiring-proof.md`, WPF-1. Governing design:
 `docs/design/wiring-proof.md` WP-D1, WP-D3, WP-D6 (WP-D2 clarifies admission).
@@ -20,8 +20,9 @@ change, paid experiment or future map feature is authorized. No matching future
 promotion or revisit trigger is evidenced by this document-only work. A harness
 unable to expose a required observation would fire ADR-110's first revisit trigger;
 no live harness is evaluated here. Compatibility: new file-only shapes, no change
-to an existing schema or published API; F1 conflicts with frozen BEN admission
-policy below and remains unapproved. This contract changes no frozen interface.
+to an existing schema or published API. T4-1 settles disabled-channel applicability;
+the integrating helper must amend CTR-13 as the shared-contract dependency below.
+This lane changes no frozen interface.
 Free option: separate records preserve
 later adapters without building them. No intent record needs changing.
 
@@ -32,7 +33,7 @@ later adapters without building them. No intent record needs changing.
 | D3 Closed wire shapes | Definitions and nested structs are closed, explicit lower_snake_case keys, finite vocabularies, no extension map. W3-4; LAB-1's definitions and required-field conventions in `schema/labs/schema.cue`. No Go exported types are needed. |
 | D4 Evidence and identity | Explicit phase, source kind, range, clock, pins, revisions, digests and expected service; registration, negotiation and answered call evidence are independently required for W1, startup service for W2. WP-D1 W1/W2 table rows, WP-D3/D6. |
 | D5 Validation mechanism | Existing CUE Go API, independent mutations of validated positives, field-specific diagnostics; `schema/labs/schema_test.go` and WPF-1. No shell CUE process in Go tests, no new dependency. |
-| D6 Defaults and absence — F1 HOLD | Proposed explicit product absence and per-rung applicability; surface-off alone exempts no other channel. Product-present hook-only applicability is unapproved pending the ruling below. No implicit PASS, missing samples stay UNKNOWN, N/A needs preregistered absence evidence, daemon-free arms have no invented stamp. WP-D1 table and baseline paragraph, WP-D2 registration mask, WP-D3 channels; ADR-105 decision 9 exempts stamps/RT-M15 only. |
+| D6 Defaults and absence | T4-1 allows N/A for a channel the profile declares off only with frozen preflight evidence that the channel is absent. Active checks are unchanged; surface-off alone exempts no other channel. No implicit PASS, missing samples stay UNKNOWN, daemon-free arms have no invented stamp. WP-D1 table and baseline paragraph, WP-D2 registration mask, WP-D3 channels, WP-R3 and T4-1; ADR-105 decision 9 exempts stamps/RT-M15 only. |
 | D7 Windows and cloud | Actual harness plus environment, explicit WSL witness fields; fixtures never certify installation. WP-D5/D6, WPF-7/8. |
 | D8 Routine encodings | Exact definitions below use LAB-1 SHA/text/arm vocabulary, W3-4 closed JSON, and WP-D3's canonical effective data. Encoding choices impose no extra eligibility policy. |
 | D9 Honest outcomes | Preserve known counts independently of unavailable capture or unvalidated classifiers; no invented numerator or provenance. P3, WP-D1 rate paragraph, LAB-M1a counts-only rule; `internal/labs/firing.go` `FiringReadingRow` and `stages` preserve margins while stages may be not measured. |
@@ -42,34 +43,33 @@ W2-3 approval still requires an independent LAND verdict and citations for every
 decision; W3-2 requires implementing tests to match every assertion below. Exact
 field names and conservative mechanics are settled here under D3/D5/D8, not
 escalated for lack of literal schema prose. F2 count preservation, F3 integer ratios
-and F4 registration/service bindings remain unchanged. F5/F6 below correct governed
-evidence constraints; they do not settle F1. A missing downstream interface is a
+and F4 registration/service bindings remain unchanged. F5/F6 below preserve governed
+evidence constraints; T4-1 settles F1. A missing downstream interface is a
 dependency, not permission to invent it.
 
-### F1: HOLD — product-present disabled-channel applicability
+### F1: governed disabled-channel applicability (T4-1)
 
-Frozen [CTR-13](ctr-13.md), section “One preflight admission contract shared with
-CTR-12 (U1)” (the paragraph beginning “Each applicable rung”), permits NOT-APPLICABLE only where a baseline's
-frozen applicability profile explicitly declares no product/daemon. T2-1 makes
-CTR-13 and [bench consolidation](bench-consolidation.md) at `83226aece` binding.
-The proposed per-channel mask below instead permits W1 N/A on a product-present
-hook-only profile, and W2/W3 N/A for disabled prime/hooks while product is present.
-WP-D1's ladder/baseline paragraph, WP-D2's frozen mask, WP-D3's separate channels
-and WP-R3 motivate that proposal but do not amend frozen CTR-13. ADR-105 decision 9
-exempts daemon stamps/RT-M15 only. No ruling in T2 or W1-W9 resolves this conflict.
+T4-1 permits NOT-APPLICABLE for a channel the profile declares off only with
+frozen preflight evidence that the channel is absent. Active checks are unchanged.
+This settles product-present hook-only W1 N/A and disabled prime/hooks W2/W3 N/A
+under the frozen per-rung mask below. Surface-off alone changes no other rung.
+Never translate N/A to PASS. Missing absence evidence cannot substantiate N/A.
+W0 product identity, W6 bounds, active-channel checks and baseline checks retain
+their existing requirements; scoring, whole-pair preflight, assigned-arm accounting
+and outcome separation are unchanged (WP-D1/D2/D3, WP-R3, T4-1).
 
-Unapproved question: may a product-present profile use N/A for a disabled channel
-with frozen absence evidence? Recommendation: a narrow BEN amendment permitting
-exactly that case, requiring preregistered applicability and frozen absence evidence,
-with unchanged scoring, whole-pair preflight, assigned-arm accounting and outcome
-separation. Alternative: leave such profiles unadmitted pending an architect ruling.
-Neither option is adopted here. Never translate N/A to PASS. The applicability
-paragraphs, hook_only_preflight positive and related surface-off assertions remain
-explicitly held proposals, not approved acceptance policy; preserve them for the
-ruling rather than weakening their assertions. W2-3 approval is impossible while
-this point lacks an architect answer and the independent verdict is HOLD.
-No implementation dispatch follows this contract. Frozen BEN, plan and design are
-unchanged; the controller carries F1 in the next hourly escalation.
+Shared-contract dependency: the integrating helper must amend CTR-13, section
+“One preflight admission contract shared with CTR-12 (U1)”, paragraph beginning
+“Each applicable rung”, to apply T4-1's disabled-channel N/A rule. T2-1 identifies
+[CTR-13](ctr-13.md) and [bench consolidation](bench-consolidation.md) at
+`83226aece` as the approved frozen BEN contracts; T4-1 governs this narrow
+applicability amendment. This lane proceeds on that ruling and does not edit the
+shared contract. The dependency belongs to the integrating helper.
+
+The applicability paragraphs, hook_only_preflight positive and related surface-off
+assertions below now follow T4-1. This draft still awaits an independent critic's
+LAND verdict under W2-3; it is neither self-approved nor an implementation dispatch.
+No policy question remains for F1, and no new bar or fixture cohort is introduced.
 
 ## Files and implementation boundary
 
@@ -144,7 +144,7 @@ directions, regardless of verdict or product presence. A disabled hooks channel
 retains all disabled and unsupported declared HookSpecs, never silently drops them.
 No hooks absence proof can coexist with an enabled treatment hook. Unsupported
 hooks remain disabled with channel_inventory evidence; missing evidence is not
-absence. This consistency rule does not decide F1's applicability policy.
+absence. T4-1 governs the disabled-channel applicability rule below.
 
 Digest algorithm (D8, WP-D3/D6): SHA-256 over UTF-8 compact canonical JSON;
 object keys lexical, no insignificant whitespace, integers decimal, other numbers in non-exponent decimal with no redundant
@@ -191,10 +191,9 @@ revision evidence, W1 registration, negotiation and answered probe evidence (inc
 W3 all hook triple evidence, W6 its sample evidence. FAIL and UNKNOWN are valid
 records, never admission success. Schema validity alone is not an admission verdict.
 
-**Proposed applicability — F1 HOLD.** The following two paragraphs and their
-policy-dependent fixtures/assertions await the architect answer above; they cannot
-authorize schema implementation or BEN admission. Other evidence constraints apply
-independently. Applicability is frozen per rung and channel, never inferred from surface-off.
+**Governed applicability — T4-1.** A channel declared off may use N/A only with
+frozen preflight evidence of its absence. Active checks are unchanged.
+Applicability is frozen per rung and channel, never inferred from surface-off.
 W0 is applicable iff product_present; W1 iff the surface channel is enabled;
 W2 iff prime is enabled; W3 iff at least one declared hook is enabled; W6 is
 always applicable. Disabled surface has empty surface_tools, negotiated_tools and
@@ -212,11 +211,11 @@ harness pin, permitted tools, startup instructions and action capture, also boun
 by environment_digest. Other declared channels retain their own enabled/absence
 evidence; this flag does not fabricate their contents. Every off channel needs
 inventory absence evidence. Missing inventory never proves absence. Unsupported
-hooks are declared disabled with evidence, never silently skipped. The held hook-only
-positive proposes product_present: true, surface off, prime/hooks enabled, W1 N/A and
+hooks are declared disabled with evidence, never silently skipped. The hook-only
+positive has product_present: true, surface off, prime/hooks enabled, W1 N/A and
 W0/W2/W3/W6 PASS. No surface-off shortcut is permitted. Authority: WP-D1 table
 W0-W3 and its exact paragraph beginning “A baseline without fathom”, WP-D2's
-applicability mask, WP-D3's separate channels, WP-R3; ADR-105 decision 9 removes
+applicability mask, WP-D3's separate channels, WP-R3 and T4-1; ADR-105 decision 9 removes
 only daemon stamps/RT-M15 for daemon-free readings, not other applicable checks.
 
 ### Delivery outcome: never an admission input
@@ -340,9 +339,9 @@ zero-use or zero-action outcome never changes its preflight representation.
 
 All functions live in `internal/wiring/conformance_schema_test.go`; names are exact.
 The implementing lane writes tests first, witnesses intended assertion RED, then
-adds schema/fixtures. No runtime RED is claimed by this authoring lane; local
-structural RED for F5/F6
-is separate evidence about this document only. Implementation remains on F1 HOLD.
+adds schema/fixtures. Documentary RED/GREEN checks in this authoring lane concern
+this document only; no runtime RED, schema validation or package/full-gate proof
+is claimed. Independent criticism and approval remain pending under W2-3.
 Future implementation proof command:
 `go test -race ./internal/wiring -run '^TestConformanceSchema'`.
 
@@ -355,9 +354,8 @@ Future implementation proof command:
    `classifier_failed_validation`, `unknown_denominator`,
    `one_third`, `two_thirds` against #Outcome;
    `preflight_only`, `with_zero_calls`, `with_zero_actions` against #Conformance.
-   hook_only_preflight is a held policy proposal under F1, not an approved valid
-   fixture or admitted profile until the architect answers; retain its exact proposed
-   assertions and dependent negatives. Wired has all rungs PASS; baseline has explicit product absence, four N/A plus W6 PASS and proved absence; hook-only has W1 N/A and W0/W2/W3/W6 PASS with actual product, primer and hook bindings;
+   hook_only_preflight follows T4-1 with frozen surface-absence evidence; retain
+   its exact assertions and dependent negatives. Wired has all rungs PASS; baseline has explicit product absence, four N/A plus W6 PASS and proved absence; hook-only has W1 N/A and W0/W2/W3/W6 PASS with actual product, primer and hook bindings;
    unknown/failed have applicable UNKNOWN/FAIL respectively, not masquerading as PASS.
    Assert empty lists encode `[]`, never null; no fixture asserts real installation.
 2. `TestConformanceSchemaNegatives`: invalid.cue is entirely commented, LAB-1 style
@@ -403,7 +401,7 @@ Future implementation proof command:
    to measured without each required provenance/status, and invented acted zero
    under unavailable capture. k=1 and k=3 accepted, k=0 and k=-1 rejected. No schema claim to
    match targets or count calls: k-1/k/k+1 joins, wrong targets and duplicate calls
-   remain WPF-3 tests awaiting LAB/BEN events.
+   remain WPF-3 tests awaiting phase-labelled LAB/BEN event integration.
 
 Negative case inventory (each semicolon-separated name is a separate subtest of
 `TestConformanceSchemaNegatives`, not a collection of faults in one fixture):
@@ -447,14 +445,18 @@ shared ledger boundary supplies PreflightReceipt/PairPreflight/AdmitPair; its
 six-readiness-harness section supplies Control, ControlResult, Runner and
 RunReadiness. Registration/consolidation follow those exact contracts and their
 serial grants, not an invented runner or a claim that BEN lacks an interface.
-Approval of those contracts is not proof of BEN implementation. F1's mismatch
-with their N/A restriction remains HOLD and cannot be hidden in an adapter.
+Approval of those contracts is not proof of BEN implementation. T4-1 governs
+disabled-channel N/A; the integrating helper must amend CTR-13 as specified in F1.
+That shared amendment is a dependency, not a file owned by this lane.
 
 LAB/WR frozen contracts remain pending under T2-2: LAB-7 and WR-1/2/4/5/12 exact
 adapter/admission/stamp/firing interfaces still block their dependent WPF rows.
-The shared transcript decoder already exists: `internal/transcript/decode.go`
-DecodeLine, with event projection in `internal/transcript/events.go`; WPF extends
-LAB-7 rather than introducing a second decoder (WP-D5). Existing decoding is not
+The shared transcript decoder already exists in `internal/transcript/events.go`:
+`func DecodeTranscriptEvents(path, salt string, fileIndex int) Result` (package
+`transcript`). It reads Claude Code events, counts and names failures, and uses the
+caller-supplied bundle salt and deterministic file ordinal; `DecodeLine` in
+`internal/transcript/decode.go` supplies line decoding. WPF extends LAB-7 rather
+than introducing a second decoder (WP-D5). Existing decoding is not
 proof of complete action capture or of the pending frozen interfaces. This contract
 invents none and does not claim dependent rows proven. WPF-9 owns hash
 recomputation; WPF-3 owns actual action windows; WPF-M1 owns witnessed environments.
