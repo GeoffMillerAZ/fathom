@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/recordids"
@@ -20,6 +22,32 @@ func cmdGateRecordIDs(args []string, stdout, stderr io.Writer) int {
 	if fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "error: record-ids takes no positional arguments")
 		return 1
+	}
+
+	trustedBase := os.Getenv("FATHOM_LANE_TRUSTED_BASE")
+	_, lanesErr := os.Stat(filepath.Join(*root, "docs/lanes"))
+	if trustedBase != "" || lanesErr == nil || !os.IsNotExist(lanesErr) {
+		if *path != "" {
+			fmt.Fprintln(stderr, "error: trusted ownership policy cannot be overridden by --config")
+			return 1
+		}
+		state, err := recordids.LoadTrusted(context.Background(), *root, trustedBase)
+		if err == nil {
+			err = state.CheckManifests(*root)
+		}
+		if err == nil {
+			var defs []recordids.Definition
+			defs, err = recordids.Inventory(*root, state.Policy)
+			if err == nil {
+				_, err = recordids.ValidateInventory(defs, state.Policy, state.Inventory)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(stderr, "error:", err)
+			return 1
+		}
+		fmt.Fprintln(stdout, "record ids: unique and owned")
+		return 0
 	}
 	cfg := recordids.Defaults()
 	configPath := *path
