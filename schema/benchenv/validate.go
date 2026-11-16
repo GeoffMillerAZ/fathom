@@ -1364,14 +1364,15 @@ var metricRules = map[Metric]metricRule{
 	"table_questions":       {"questions", 1, "BE-D2:Output fidelity and judgments"},
 }
 
-func expectationShape(d any, defaults bool, es *[]*ValidationError) {
+func expectationShape(d any, defaults bool, relations *[]*ValidationError) []*ValidationError {
+	citations := []*ValidationError{}
 	m, ok := d.(map[string]any)
 	if !ok {
-		return
+		return citations
 	}
 	cs, ok := m["concepts"].(map[string]any)
 	if !ok {
-		return
+		return citations
 	}
 	for _, k := range keys(cs) {
 		c, ok := cs[k].(map[string]any)
@@ -1396,30 +1397,31 @@ func expectationShape(d any, defaults bool, es *[]*ValidationError) {
 			minimum, nok := number(e["minimum"])
 			rule, known := metricRules[Metric(metric)]
 			if mok && !known {
-				add(es, p+"/metric", ValidationShape)
+				add(relations, p+"/metric", ValidationShape)
 			}
 			// Individual shape errors are collected before this relation is considered.
 			if !known || !uok || !contains(enumValues["MetricUnit"], unit) || !nok || minimum <= 0 {
 				continue
 			}
 			if unit != string(rule.unit) {
-				add(es, p+"/unit", ValidationShape)
+				add(relations, p+"/unit", ValidationShape)
 				continue
 			}
 			if minimum < rule.floor {
-				add(es, p+"/minimum", ValidationShape)
+				add(relations, p+"/minimum", ValidationShape)
 				continue
 			}
 			cite, exists := e["lower_minimum"]
 			if minimum >= 30 {
 				if exists {
-					add(es, p+"/lower_minimum", ValidationShape)
+					add(&citations, p+"/lower_minimum", ValidationShape)
 				}
 			} else if cite != string(rule.citation) || !exists {
-				add(es, p+"/lower_minimum", ValidationShape)
+				add(&citations, p+"/lower_minimum", ValidationShape)
 			}
 		}
 	}
+	return citations
 }
 func inventoryShape(d any, defaults bool) error {
 	// Apply the CUE minimum default to the parsed projection only. This does not
@@ -1433,8 +1435,13 @@ func inventoryShape(d any, defaults bool) error {
 	if e := first(es); e != nil {
 		return e
 	}
-	expectationShape(d, false, &es)
-	return first(es)
+	citations := expectationShape(d, false, &es)
+	// Relation errors take precedence across the whole inventory. Pointer ordering
+	// selects only among candidates in the same phase.
+	if e := first(es); e != nil {
+		return e
+	}
+	return first(citations)
 }
 
 // ValidateConceptInventory evaluates CUE field identity and validates the local

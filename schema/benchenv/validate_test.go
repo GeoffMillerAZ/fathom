@@ -1520,6 +1520,65 @@ func TestConceptInventory_ShapePhaseOrder(t *testing.T) {
 	}
 }
 
+func TestConceptInventory_ExpectationPhasePrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		cite    MinimumCitation
+		unit    MetricUnit
+		minimum int64
+		want    string
+	}{
+		{"MinimumBeforeCitation", "", MetricUnitPaths, 29, "/concepts/Z/expectations/0/minimum"},
+		{"UnitBeforeCitation", "", MetricUnitSymbols, 30, "/concepts/Z/expectations/0/unit"},
+		{"RelationOnlyControl", MinimumFalsePlan, MetricUnitPaths, 29, "/concepts/Z/expectations/0/minimum"},
+		{"CitationOnlyControl", "", MetricUnitPaths, 30, "/concepts/A/expectations/0/lower_minimum"},
+		{"ValidControl", MinimumFalsePlan, MetricUnitPaths, 30, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := ConceptInventory{Concepts: map[string]ConceptRecord{
+				"A": {
+					RequiredBy:   []ConceptCitation{{DesignRow: ConceptDesignBED2}},
+					Expectations: []MetricExpectation{{Metric: MetricAbsentSymbols, Unit: MetricUnitSymbols, Minimum: 1, LowerMinimum: tc.cite}},
+				},
+				"Z": {
+					RequiredBy:   []ConceptCitation{{DesignRow: ConceptDesignBED2}},
+					Expectations: []MetricExpectation{{Metric: MetricCrossFilePaths, Unit: tc.unit, Minimum: tc.minimum}},
+				},
+			}, Groups: []ConceptGroup{}}
+			check := func(t *testing.T, err error, prefix string) {
+				t.Helper()
+				if tc.want == "" {
+					if err != nil {
+						t.Fatal(err)
+					}
+					return
+				}
+				assertValidation(t, err, ValidationShape, prefix+tc.want)
+			}
+			t.Run("Source", func(t *testing.T) {
+				source := encoded(t, in)
+				var data map[string]any
+				if err := json.Unmarshal(source, &data); err != nil {
+					t.Fatal(err)
+				}
+				for _, source := range [][]byte{source, reversedJSON(t, data)} {
+					got, err := ValidateConceptInventory(source)
+					check(t, err, "")
+					if tc.want != "" && string(encoded(t, got)) != emptyInventoryJSON {
+						t.Fatal("failure result")
+					}
+				}
+			})
+			t.Run("Value", func(t *testing.T) {
+				check(t, ValidateConceptInventoryValue(in), "")
+			})
+			t.Run("Join", func(t *testing.T) {
+				check(t, ValidateEnvironmentConceptJoin(emptyRecords(), in, nil), "/inventory")
+			})
+		})
+	}
+}
+
 func TestEnvironmentRequest_FieldMutations(t *testing.T) {
 	for _, mode := range keys(modePayloads) {
 		payload := modePayloads[mode]
