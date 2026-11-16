@@ -2,7 +2,6 @@ package iacfacts
 
 import (
 	"path"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -102,15 +101,22 @@ func logicalEvidencePaths(observations []ReadObservation) map[string]string {
 	counts := map[string]int{}
 	absolute := []string{}
 	for name := range names {
-		if !filepath.IsAbs(name) {
+		// Classifier names may use another host's absolute path syntax. Recognize
+		// rooted drive and UNC names without reinterpreting relative spellings.
+		clean := name
+		drive := len(name) >= 3 && ((name[0] >= 'A' && name[0] <= 'Z') || (name[0] >= 'a' && name[0] <= 'z')) && name[1] == ':' && (name[2] == '/' || name[2] == '\\')
+		if drive {
+			clean = strings.ReplaceAll(name[2:], `\`, "/")
+		} else if strings.HasPrefix(name, `\\`) {
+			clean = strings.ReplaceAll(name, `\`, "/")
+		} else if !path.IsAbs(name) {
 			used[name] = true
 			continue
 		}
 		absolute = append(absolute, name)
 		// Strip the volume/root before making suffixes. Clean only absolute names:
 		// relative spellings and distinct caller identities must not be merged.
-		clean := filepath.ToSlash(filepath.Clean(name))
-		clean = strings.TrimLeft(strings.TrimPrefix(clean, filepath.ToSlash(filepath.VolumeName(name))), "/")
+		clean = strings.TrimLeft(path.Clean(clean), "/")
 		parts := strings.Split(clean, "/")
 		for i := len(parts) - 1; i >= 0; i-- {
 			suffix := strings.Join(parts[i:], "/")
@@ -134,9 +140,9 @@ func logicalEvidencePaths(observations []ReadObservation) map[string]string {
 			// A root-level absolute name may collide with a relative name, or distinct
 			// absolute spellings may clean to the same path. Allocate a deterministic
 			// unused logical namespace rather than drop or merge either input.
-			base := path.Base(filepath.ToSlash(filepath.Clean(name)))
-			if base == "/" || base == "." {
-				base = "input"
+			base := "input"
+			if len(suffixes[name]) > 0 {
+				base = suffixes[name][0]
 			}
 			for n := index + 1; ; n++ {
 				chosen = "input-" + strconv.Itoa(n) + "/" + base

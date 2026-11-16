@@ -162,3 +162,55 @@ func TestResourceReadEvidenceLogicalPaths(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceReadEvidenceForeignAbsolutePaths(t *testing.T) {
+	for _, prefix := range []string{
+		`C:/synthetic/project/`, `C:\synthetic\project\`, `\\synthetic-server\share\`,
+		`//synthetic-server/share/`, `/synthetic/project/`,
+		`./C:/synthetic/`, `../synthetic/`, `relative/`, ``,
+	} {
+		for _, unread := range []bool{false, true} {
+			name := "main.tf"
+			src := []byte("resource \"widget\" \"w\" {\n name = upper(var.name)\n}\n")
+			if unread {
+				name += ".json"
+				src = []byte(`{"resource":{}}`)
+			}
+			input := prefix + name
+			t.Run(input, func(t *testing.T) {
+				logical := name
+				if prefix == "./C:/synthetic/" || prefix == "../synthetic/" || prefix == "relative/" {
+					logical = input
+				}
+				want := iac.ReadEvidence{Read: []string{logical}, Unread: []string{}, Unknowns: []iac.UnknownReason{{
+					Code:        iac.UnknownExpression,
+					Span:        iac.Span{File: logical, StartLine: 2, StartCol: 2, EndLine: 2, EndCol: 24},
+					DecidableBy: []iac.DecidableBy{iac.DecidePlan},
+				}}}
+				if unread {
+					want.Read, want.Unread = []string{}, []string{logical}
+					want.Unknowns[0].Code = iac.UnknownUnsupportedForm
+					want.Unknowns[0].Span = iac.Span{File: logical}
+				}
+				for _, options := range [][]iac.Option{nil, {iac.WithValues()}} {
+					got, err := iac.ReadFile(context.Background(), input, src, options...)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(got.Evidence, want) {
+						t.Fatalf("evidence = %+v, want %+v", got.Evidence, want)
+					}
+					if unread {
+						if len(got.Resources) != 0 {
+							t.Fatalf("unsupported input produced resources: %+v", got.Resources)
+						}
+					} else if len(got.Resources) != 1 || len(got.Resources[0].Attrs) != 1 ||
+						got.Resources[0].Span.File != filepath.ToSlash(input) ||
+						got.Resources[0].Attrs[0].Span.File != filepath.ToSlash(input) {
+						t.Fatalf("legacy resource/attribute spans changed: %+v", got.Resources)
+					}
+				}
+			})
+		}
+	}
+}

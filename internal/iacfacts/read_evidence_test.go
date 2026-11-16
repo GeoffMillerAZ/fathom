@@ -228,7 +228,7 @@ func TestReadEvidenceNamesEveryDroppedSection(t *testing.T) {
 func TestBuildReadEvidenceLogicalPaths(t *testing.T) {
 	// Keep complete and incomplete same-basename inputs distinct, including names
 	// that collide with existing logical names. Reasons must follow the same map.
-	paths := []string{"/synthetic/alpha/main.tf", "/synthetic/beta/main.tf", "main.tf", "alpha/main.tf", "/main.tf", "/synthetic/alpha/../beta/main.tf", "input-1/main.tf", "input-5/main.tf"}
+	paths := []string{"/synthetic/alpha/main.tf", "/synthetic/beta/main.tf", "main.tf", "alpha/main.tf", "/main.tf", "/synthetic/alpha/../beta/main.tf", "input-1/main.tf", "input-5/main.tf", `C:/synthetic/alpha/main.tf`, `C:\synthetic\alpha\main.tf`, `D:\synthetic\alpha\main.tf`, `\\synthetic-server\share\alpha\main.tf`, `//synthetic-server/share/alpha/main.tf`}
 	observations := make([]ReadObservation, len(paths))
 	for i, p := range paths {
 		observations[i] = ReadObservation{Path: p, Read: true, Complete: i%2 == 0, Unknowns: []UnknownReason{{Code: UnknownExpression, Span: Span{File: p, StartLine: i + 1}, DecidableBy: []DecidableBy{DecidePlan}}}}
@@ -248,6 +248,9 @@ func TestBuildReadEvidenceLogicalPaths(t *testing.T) {
 	reasonFiles := map[int]string{}
 	for i, u := range got.Unknowns {
 		reasonFiles[u.Span.StartLine] = u.Span.File
+		if u.Span.StartLine > 8 && (strings.Contains(u.Span.File, ":") || strings.Contains(u.Span.File, `\`)) {
+			t.Fatalf("foreign host-qualified name retained: %+v", u)
+		}
 		if !seen[u.Span.File] {
 			t.Fatalf("reason detached from inventory: %+v", u)
 		}
