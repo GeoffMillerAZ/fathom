@@ -122,6 +122,26 @@ function prelude(src, off) {
   return null;
 }
 
+// A native nesting rule locates its at-keyword, not its selector. Consume that
+// token only; CSS escapes can include up to six hex digits and one whitespace
+// terminator. Existence and selector count still come solely from lightningcss.
+function afterAtKeyword(src, off) {
+  let i = off + 1;
+  while (i < src.length) {
+    if (src[i] === '\\') {
+      i++;
+      let digits = 0;
+      while (digits < 6 && /[0-9a-fA-F]/.test(src[i] || '')) { i++; digits++; }
+      if (digits) {
+        if (src[i] === '\r' && src[i + 1] === '\n') i += 2;
+        else if (isSpace(src[i])) i++;
+      } else if (i < src.length) i++;
+    } else if (/[A-Za-z0-9_\-\u0080-￿]/.test(src[i])) i++;
+    else break;
+  }
+  return i;
+}
+
 // blockEnd is the offset of the `}` closing the block opened at open.
 function blockEnd(src, open) {
   let depth = 0;
@@ -252,8 +272,9 @@ function oracleFile(root, rel, out, stats) {
     }
   };
 
-  const style = (rule) => {
-    const off = offsetOf(rule.loc);
+  const style = (rule, nesting = false) => {
+    const start = offsetOf(rule.loc);
+    const off = nesting ? afterAtKeyword(src, start) : start;
     const pre = prelude(src, off);
     let owner = null;
     if (pre && pre.parts.length === rule.selectors.length) {
@@ -268,11 +289,18 @@ function oracleFile(root, rel, out, stats) {
     walk(rule.rules || [], owner);
   };
 
+  let nestingDepth = 0;
   const walk = (rules, owner) => {
     for (const r of rules) {
       const v = r.value;
       switch (r.type) {
         case 'style': style(v); break;
+        case 'nesting':
+          // Bound the newly traversed withdrawn-rule recursion. Throw before main
+          // serializes anything, so over-limit subjects never yield partial truth.
+          if (++nestingDepth > 64) throw new Error('withdrawn nesting depth exceeds 64');
+          try { style(v.style, true); } finally { nestingDepth--; }
+          break;
         case 'media': case 'supports': case 'container': case 'layer-block': case 'starting-style':
         case 'scope': case 'moz-document':
           walk(v.rules || [], owner); break;

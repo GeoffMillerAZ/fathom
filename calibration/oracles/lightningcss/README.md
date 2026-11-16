@@ -55,3 +55,31 @@ MPL-2.0: run in the measuring harness only, never vendored or modified, installe
 The script prints its counts on stderr: files, warnings (error recovery), unknown at-rules,
 `selector_cut_mismatch`, `custom_located`, `custom_unlocated`, `animation_unparsed`, imports
 (resolved, unread), bundle errors and parse failures.
+
+## Withdrawn nesting rules (O849)
+
+The adapter walks Lightning CSS 1.33.0's `nesting.value.style`, including nested
+children, custom properties and references. The native location starts at the
+at-keyword; the adapter consumes that token (including CSS escapes) before using
+the existing selector-position logic. Each reference belongs to the first nested
+selector or to its custom property, rather than to the enclosing style rule.
+Full end ranges remain unmeasured. Historical W2 labels are unchanged; C2-F1's
+primary-tier question still requires owner disposition before canonical adoption.
+
+Run the bench-only tests with the pinned package already installed in scratch:
+
+```sh
+NODE_PATH="$PWD/workspace/tools/npm/node_modules" node --test calibration/oracles/lightningcss/lightningcss_oracle.test.cjs
+```
+
+They cover native population, selector/custom-property positions, grouped and
+recursive nesting, reference ownership, imports, ordinary nesting, escaped
+at-keywords, comments, CRLF, malformed recovery and independent raw truth.
+The newly traversed withdrawn nesting is capped at depth 64. Depth 65 fails the
+whole invocation before any JSON is emitted, including files processed earlier.
+This is a bench-adapter bound, not a new production parser limit.
+
+The correction is tested on authored synthetic inputs only. Existing readings
+keep their historical truth; the spent open-props and Tachyons holdouts cannot
+supply fresh validation. See the [scoped follow-up assessment](../../../docs/assessments/2026-10-26-core-t1-css-ceiling.md#scoped-o849-follow-up-2026-11-16)
+for pending regrades and shared-engine helper requests. No new holdout is pinned.

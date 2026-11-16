@@ -94,3 +94,109 @@ with tooling-acquired-range errors. The unchanged committed source passes
 `bash scripts/fathom-go.sh test -race -count=1 -run TestCommittedToolingReadingsKeepMetricsOnRegrade ./internal/langbench`.
 The committed postprocessing commands reproduce both published candidate
 files byte for byte, including the serializer's provenance note.
+
+## Scoped O849 follow-up (2026-11-16)
+
+Issue #207 is ENGINE-class. The T9 exception owns the CSS oracle, its tests and
+this assessment; it grants no shared parser, pre-pass, grammar build/lock, harness
+or embedded-language changes. The result is an adapter correction and a scoped
+ceiling, not a new support reading. I54/ADR-048 require an independent committed
+reading for support, I55 retains the grammar pin, and I8/I17 forbid an unproven
+plan claim. C-R7/C2-F1 and W-R9 retain range tier C and PostCSS tier C. No
+compatibility surface, decision-port site or documented future changes here.
+No adoption trigger has fired: the parser and primary-tier prerequisites remain.
+
+### Adapter proof and limits
+
+Lightning CSS 1.33.0's own AST exposes a withdrawn `nesting` node containing a
+`style`. The old default branch emitted its references with the parent's owner
+and omitted its definitions. The corrected walk uses that native style and skips
+only the native at-keyword token when locating its source selector. Native
+selector counts still control admission. References from a custom property
+remain owned by that property; grouped selectors use their first selector.
+The five tests in `calibration/oracles/lightningcss/lightningcss_oracle.test.cjs`
+assert exact definitions, positions and reference pairs, native population,
+unchanged import resolution, ordinary nested styles, recursive nesting under a
+group, escaped/case-varied keywords, comment/string braces and commas, CRLF,
+malformed recovery, and whole-output refusal. End lines remain zero.
+
+Reproduce with Lightning CSS **1.33.0**, MPL-2.0, installed unmodified only under
+ignored scratch, using the README's `NODE_PATH` command. RED before implementation:
+four substantive tests fail (missing selectors/custom properties, parent-owned
+references and missing depth boundary); malformed recovery passes. GREEN: all
+five pass. Raw output is byte-stable when a synthetic extractor-result artifact
+is perturbed or removed, and changes when the CSS input reference changes. No
+Fathom extraction result supplies native truth. These synthetic controls prove
+the adapter behavior; they do not grade a language or replace a corpus census.
+
+Mutation: in `lightningcss_oracle.cjs`, remove the `nesting` switch case; the
+`withdrawn nesting enumerates` test fails. Replace its selector offset with the
+at-keyword's own offset; `nesting prelude excludes` fails. Remove the depth check;
+`withdrawn nesting accepts depth 64` fails. Run each with
+`node --test --test-name-pattern='<test prefix>' calibration/oracles/lightningcss/lightningcss_oracle.test.cjs`
+and the pinned `NODE_PATH`; restore and rerun all five. Raw logs are retained
+under `workspace/artifacts/lang-css/`.
+
+Caps: withdrawn nesting depth **64**, input depth **65**, test
+`withdrawn nesting accepts depth 64 and refuses the whole output at 65` in the
+same test file. It asserts exit 1 and empty stdout even with an earlier valid
+file. Depth 64 enumerates all 65 selectors. This bounds the added traversal;
+pre-existing generic scanner/file-walk limits are not redesigned by this lane.
+
+### Search-before-ceiling receipt
+
+Search date 2026-11-16; these are source/metadata lookups, not oracle runs or a
+new release cohort. Raw HTTP receipts, hashes, versions and access errors are in
+`workspace/artifacts/lang-css/search/summary.json`. Prior pinned source audits and
+measured failures above remain historical evidence; no canonical, consumer or
+holdout is rerun. No current HEAD is admitted as a release measurement.
+
+| Required group | Source/query and disposition |
+|---|---|
+| Own toolchain | [Lightning CSS 1.33.0 metadata](https://registry.npmjs.org/lightningcss/1.33.0), MPL-2.0, gitHead `1d680fa14e9a089c92dc0929f869d6757ae91c30`; native synthetic AST confirms `nesting.value.style`. Full ends remain absent in the current adapter. [Tailwind 4.3.2](https://registry.npmjs.org/tailwindcss/4.3.2), MIT; retain the exact parser-span audit in the Tailwind assessment, not a new run. |
+| SCIP/LSIF | [SCIP catalog](https://github.com/scip-code/scip), [recommended indexers](https://sourcegraph.com/docs/code-navigation/writing-an-indexer), GitHub API `search/repositories?q=scip-css` (27 substring hits; none identified as a CSS producer), `q=scip-tailwind` (0). Legacy `sourcegraph/lsif-indexer-docs/master/README.md` returns 404; the LSIF documentation URL was also inaccessible. This is an access gap, not proof of absence. |
+| Language servers | [vscode-css-languageservice 6.3.10](https://registry.npmjs.org/vscode-css-languageservice/6.3.10) and [Tailwind language-server 0.16.0](https://registry.npmjs.org/@tailwindcss/language-server/0.16.0), both MIT; registry pins verified, upstream editor features inspected. Full-source range adaptation remains live and untried here, not measured failure. |
+| Registry parsers | [PostCSS 8.5.28](https://registry.npmjs.org/postcss/8.5.28), MIT, gitHead `e544bffc4f4b3966d8ec69c41744b3ed65afc64a`; source ends are a tier-C route under W-R9. The two pinned CSS grammar census failures above remain 120/212; no new candidate is measured. |
+| Runtime tracing | [CDP CSS](https://chromedevtools.github.io/devtools-protocol/tot/CSS/) and [Tailwind source detection](https://tailwindcss.com/docs/detecting-classes-in-source-files) inspected. Loaded/used CSS and generated utilities are conditional populations. Recursive browser CSSOM enumeration remains a live unmeasured candidate, not an exhausted route. No browser was executed or downloaded here. |
+
+### Helper requests and unchanged ceiling
+
+1. **Shared parser turn:** a serialized ENGINE owner must evaluate the lossless
+   `@-moz-document` header pre-pass at `internal/extractor/tsextract.go`
+   (`extractLocked`, `p.Parse(src)`), or a preregistered grammar candidate. Preserve
+   coordinates and every graded definition/reference/import; pass the pooled
+   under-5% ERROR-or-MISSING gate. This lane supplies no parser patch or serial grant.
+2. **K29:** the old `lang/holdout/css-open-props.json` truth is stale relative to
+   this adapter's O849 correction; its historical bytes and spent status are
+   preserved. Before adopting the corrected oracle in readings, audit/regrade
+   `lang/css.json` and both CSS browser candidate readings and their primary/range
+   pairing. Any spent-set replay requires a concrete authorized retrospective
+   purpose and cannot count as fresh validation. Tailwind's three readings name
+   `tailwindcss`, not this adapter; a future production grammar/pre-pass change
+   additionally reaches CSS, Tailwind and embedded HTML/Vue/Astro consumers. The
+   ENGINE owner must inventory and regrade every affected canonical/nested reading
+   or explicitly mark it stale under K29; this lane changes no Reading-schema file.
+3. **Owner disposition before adoption:** resolve W2/P-T1's primary-tier tension
+   and any conditional coverage floor. Browser proposals remain tier C unless a
+   new first-party route supplies its own complete enumerated population. PostCSS
+   remains tier C for Tailwind. Do not substitute the existing proposal scanner.
+4. **Validation sequence:** the O849 synthetic prerequisite is now tested; only
+   after the remaining authorized prerequisites may the next owner preregister
+   a new release-pinned holdout outside canonical shards before its first read
+   or tuning. Never reuse open-props or Tachyons, both SPENT.
+
+Historical results remain **120/212** eligible canonical files in error, canonical
+range agreement **134,456/134,456** over **137,732** paired definitions (97.62%
+coverage, tier C), and the spent Tachyons range **2,498/2,498**. Tailwind's L1
+range remains null with its tier ceiling unchanged. No parser-candidate, corpus,
+throughput, memory, holdout or excellent-support PASS is added. The falsifiable
+retry is a scoped/serialized parser candidate passing the unchanged pooled gate,
+plus the required oracle-tier disposition, affected-reading proofs and a newly
+preregistered untuned validation. Plan boxes and generated boards stay unchanged.
+
+### Evidence checklist disposition
+
+- Scoped race checks passed: `bash scripts/fathom-go.sh test -race -count=1 ./internal/extractor -run '^TestDialectGoldens$/^css$'`; `bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestLanguagesTrackerIsGenerated|TestRangeTierLegacyFallbackAndWeakestContributor)$'`; and `bash scripts/fathom-go.sh test -race -count=1 -run '^TestNoOrgSpecificNames$' ./cmd/fathom`. The changed code is JavaScript; its five native adapter tests run with Node's test runner, which has no Go race mode.
+- `go run ./third_party/agentic-kit/cmd/release-notes -check`, `bash scripts/check-merge-debris.sh`, its `--staged` form, and `git diff --check` pass. No Go file changed, so gofmt has no changed input. Checks run under the track wrapper and machine lease; no full gate is claimed.
+- Tracked subject manifests, per-subject calibration ratios, three-run timing and consumer regrades are not new evidence in this lane: no subject checkout is created or measured. All corpus pins and Reading-schema files (including nested readings and frozen baseline) remain byte-identical; the numbers above are historical, not new measurements. No generated tracker, level table, grammar, epoch, public door or root dependency changes. The test's depth-64 population is 65/65 synthetic selectors, not a support denominator.
+- No plan box flips; scratch-ingest verify and deployment are not attempted. The session's daemon is unavailable and is not restarted. The controller owns fresh criticism, integration, the full gate and eventual cleanup of `workspace/artifacts/lang-css/` and scratch npm tools after review.
