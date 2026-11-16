@@ -372,3 +372,40 @@ func TestCloneBothEligibilityComparesEveryNodeField(t *testing.T) {
 		t.Fatal("accepted an additional snapshot node")
 	}
 }
+
+// Every reflected field must have a nonzero fixture value before equality can
+// prove it was copied. A new zero-valued Graph field must not silently pass.
+func TestCloneBothCopiesEveryGraphField(t *testing.T) {
+	g := &Graph{
+		packagePatched: true,
+		nodes:          map[string]core.SymbolNode{"node": {Service: "svc", Package: "p", Name: "Node", Calls: []string{"Target"}}},
+		callees:        map[string][]string{"caller": {"callee"}},
+		callers:        map[string][]string{"callee": {"caller"}},
+		byName:         map[string]string{"Node": "node"},
+		byPkgName:      map[string]string{"p.Node": "node"},
+		byNameAll:      map[string][]string{"Node": {"node"}},
+		byDirName:      map[string]string{"dir.Node": "node"},
+		bySuffix:       map[string]suffixCandidate{"Node": {key: "node", count: 1}},
+		byDotSuffix:    map[string]suffixCandidate{"Node": {key: "node", count: 1}},
+		edgeKind:       map[string]core.EdgeKind{"caller\x00callee": core.EdgeIfaceDispatch},
+		instantiates:   map[string][]string{"caller": {"type"}},
+		typedFiles:     map[string]bool{"p/p.go": true},
+		typedDirs:      map[string]bool{"p": true},
+		dispatchOut:    map[string]int{"caller": 1},
+	}
+	// mutation overlay sentinel is inserted here
+	value := reflect.ValueOf(g).Elem()
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		if field.IsZero() || field.Kind() == reflect.Map && field.Len() == 0 {
+			t.Fatalf("Graph.%s needs a nonzero clone-guard fixture", value.Type().Field(i).Name)
+		}
+	}
+	cloned := g.WithTypedEdges(nil)
+	if cloned == g {
+		t.Fatal("WithTypedEdges returned the original graph")
+	}
+	if !reflect.DeepEqual(g, cloned) {
+		t.Fatal("WithTypedEdges did not copy every nonzero Graph field")
+	}
+}
