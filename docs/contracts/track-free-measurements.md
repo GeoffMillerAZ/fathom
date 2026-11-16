@@ -1,6 +1,8 @@
 # Free measurement contract: FCT-10 coverage feasibility
 
-Status: T4-2 feasibility-only amendment for separate lane review; contract only, no reading results.
+Status: Approved by rule W2-3 after independent LAND on T4-2 amendment 19c068e82 (critic 02fcdcd6b).
+Authority: T4-2 and T4-3; governing population and unchanged-method citations below settle all decision points.
+Contract only: no reading results or FCT-10/TQ-M3 completion.
 Base: `83226aece9b0f421381373f8dafc4a912d3888e5` (all production sources and fixtures pinned to this commit).
 
 ## Intent and scope
