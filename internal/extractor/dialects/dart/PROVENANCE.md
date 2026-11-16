@@ -56,3 +56,7 @@
   already-indexed `.dart` file was fingerprinted as "no extractor registered", so `ExtractorEpoch` is 30.
 - `references.scm` (LB-F74, LB-F75, wave lc): written in this repository; no upstream query adapted
   (type names, prefixed names, and `export` with show and hide).
+
+- Issue 191: the preregistration, immutable pins, failed evidence-floor refresh,
+  per-package receipts and replay commands are recorded in
+  [the native oracle evidence](../../../../calibration/oracles/scip-dart/README.md#issue-191--preregistered-evidence-floor-refresh-2026-11-16).

@@ -1150,7 +1150,8 @@
     ],
     "calibration_subjects": [
       "felangel/bloc",
-      "dart-lang/http"
+      "dart-lang/http",
+      "dart-lang/test"
     ],
     "depends_on": [
       "LB-F1",

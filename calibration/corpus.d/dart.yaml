@@ -35,3 +35,14 @@ repos:
       - 'conditional imports (import ... if (dart.library.io)) and a browser client using js_interop external functions and an extension type'
       - 'enums with members and library-private classes across lib/src'
       - 'relative imports between the files of lib/src and package: imports in tests'
+  - name: dart-lang/test
+    url: https://github.com/dart-lang/test
+    ref: 269bdfdea30accc5ec3cd8e41012b024a0a88910
+    sha: 269bdfdea30accc5ec3cd8e41012b024a0a88910
+    licence: BSD-3-Clause
+    subpath: pkgs/test
+    idioms:
+      - 'pure-Dart test runner with multi-file implementation libraries'
+      - 'package and relative imports across runner and platform modules'
+      - 'named show and hide combinators over imported declarations'
+      - 'async tests and platform-specific browser and VM implementations'
