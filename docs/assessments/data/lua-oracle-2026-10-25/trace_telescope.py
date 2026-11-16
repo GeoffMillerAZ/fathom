@@ -9,6 +9,7 @@ ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument('--nvim', required=True)
 ap.add_argument('--subject', required=True)
 ap.add_argument('--out', required=True)
+ap.add_argument('--exercise', action='store_true', help='also exercise native public APIs')
 ap.add_argument('--luaparse', required=True, help='local node_modules containing luaparse 0.3.1')
 a = ap.parse_args()
 root, out = Path(a.subject).resolve(), Path(a.out).resolve()
@@ -45,11 +46,18 @@ for source in sorted(root.rglob('*.lua')):
         loads.append({'path': source.relative_to(root).as_posix(), 'exit': result.returncode})
     except subprocess.TimeoutExpired:
         loads.append({'path': source.relative_to(root).as_posix(), 'exit': 'timeout'})
+if a.exercise:
+    exercise = subprocess.run([str(Path(a.nvim).resolve()), '--headless', '--noplugin', '-u', str(hook),
+                               '-l', str(here / 'exercise_telescope.lua')],
+                              cwd=root, env=env, capture_output=True, text=True, timeout=60)
+    (out / 'exercise.log').write_text(exercise.stdout + exercise.stderr)
+    if exercise.returncode != 0:
+        raise SystemExit('native API exercise failed: see exercise.log')
 events = [json.loads(line) for f in sorted(out.glob('*.jsonl')) for line in f.read_text().splitlines()]
-imports = sorted({(r['path'], r['line'], r['module'], r.get('to_path')) for r in events if 'path' in r}, key=str)
+imports = sorted({(r['path'], r['line'], r['module'], r.get('to_path')) for r in events if 'path' in r and r.get('accepted')}, key=str)
 population = json.loads((out / 'population.json').read_text())
-seen = {(p, line, m) for p,line,m,to in imports if to}
-covered = [r for r in population['imports'] if (r['path'], r['line'], r['module']) in seen]
+seen = set(imports)
+covered = [r for r in population['imports'] if (r['path'], r['line'], r['module'], r['to_path']) in seen]
 summary = {'file_loads': loads, 'literal_in_subject_statements': len(population['imports']), 'covered_literal_statements': len(covered),
            'coverage': round(len(covered) / len(population['imports']), 4),
            'scanner_counts': population['counts'],
