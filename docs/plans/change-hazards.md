@@ -18,7 +18,7 @@ Stop rules:
 
 - [ ] (op) Landscape table from primary sources: Terrascan and Datree status, licence wording, per-platform counts, no `[prior]` tag left in the design {id: HZ-0, oracle: lexical, path: docs/bench/readings/change-hazards/landscape.md, pattern: "^HZ-0 verdict:"}
 - [ ] (op) HZ-M2: the live CloudFormation change check (IF-C4) against `cdk diff --template` on template pairs, the independent oracle IF-CM3 is waiting for, at the IF-CM3 floor of 0.85. A reading row of its own that needs only the check already built, not IF-13, because the finding is already served to agents and its floor has never been read. It needs a small harness that runs the live check and `cdk diff` on template pairs and scores them, and none exists. IF-CM3 stays as a second independent read beside it, still waiting on IF-13 {id: HZ-1, oracle: lexical, path: docs/bench/readings/change-hazards/m2-cdk-diff.md, pattern: "^HZ-M2 verdict:"}
-- [ ] `iac` is a seventh review dimension with `Checked` and `Reason`, so an absent catalog or an `as_of` review states why it is silent, output schema change with a change note {id: HZ-2, symbol: reviewIaCDimension, package: internal/mcp, reachable_from: reviewIaCFindings}
+- [ ] `iac` is a seventh review dimension with `Checked` and `Reason`, so an absent catalog or an `as_of` review states why it is silent, output schema change with a change note {id: HZ-2, symbol: reviewIaCDimension, package: internal/mcp, reachable_from: registerReviewDiff}
 
 ## Phase B: additive facts
 
