@@ -207,3 +207,34 @@ collector, capture, raw JSON, canonical fixture or plan row is changed. The four
 AUTHORED controls remain FEASIBILITY ONLY (two evaluated, two refused), with
 zero canonical files measured; the historical 91-file L2 C reading and absent
 L3 remain exactly as recorded. Independent fresh critic review is parent-owned.
+
+### Correction 2: refused capture aliases after success, 2026-11-16
+
+Correction 1 still left an independent old success receipt when a retry refused
+an aliased capture. The exact correction-1 source reproduced both critic cases
+(`raw.json` and `stderr.log` symlinked to the assembly): two assertion failures,
+zero test errors. Summary ownership is now checked separately, then the owned
+summary is invalidated before checking capture aliases. A summary that aliases
+caller input is refused intact. No capture or caller input is removed to clear
+old success. Combined success-to-retry controls cover receipt/raw/stderr aliases
+to either runtime input and summary aliases to the case input, using identical
+paths, symlinks and hard links. The new controls failed at 12 assertions before
+the fix; the final 20-test suite and separate two-case critic replay pass.
+
+Mutation: duplicate-key, stale-summary, shape, SDK-guard, alias, restored old
+retry-order and missing summary-ownership guards produce respectively 4, 20, 13,
+1, 27, 12 and 7 assertion failures, with zero test errors. Restored source passes.
+These synthetic mutation receipts are separate from the successful verification
+commands below and remain in ignored correction proof storage.
+
+Verification: `python3 -B -m unittest discover -s calibration/oracles/azure-pipelines -p test_offline_probe_211.py`
+passes 20 tests; `bash scripts/fathom-go.sh test -race -count=1 -v ./internal/langbench -run '^(TestCommittedReadingsRoundTrip|TestCommittedReadingsAreCanonical|TestRequiredKindsThroughCanonical)$'`
+and `bash scripts/fathom-go.sh test -race -count=1 -v ./pkg/lang -run '^TestAzurePipeline211PublicDispatch$'`
+pass the four existing scoped tests. The correction-1 commit message was reworded
+only on the new correction branch to name successful runnable commands; its tree
+remains identical. The original and correction-1 references and proof receipts
+are preserved. All SDK launches in these checks are mocked. The historical
+build-environment gap, certificate LEAVE disposition, four AUTHORED feasibility
+controls (two evaluated, two refused; zero canonical files), historical 91-file
+L2 C reading and absent L3 remain unchanged. No native, holdout or population
+reading was rerun; final independent review remains parent-owned.

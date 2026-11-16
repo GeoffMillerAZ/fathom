@@ -17,10 +17,13 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args()
     try:
-        refuse_aliases([args.dotnet, args.assembly],
-                       [args.out/'receipt.json', args.out/'raw.json', args.out/'stderr.log'])
-        args.out.mkdir(exist_ok=True,parents=True)
+        # Establish summary ownership separately so a refused capture alias still
+        # invalidates old success, while a summary alias never removes an input.
+        refuse_aliases([args.dotnet, args.assembly], [args.out/'receipt.json'])
         invalidate_summary(args.out/'receipt.json')
+        refuse_aliases([args.dotnet, args.assembly],
+                       [args.out/'raw.json', args.out/'stderr.log'])
+        args.out.mkdir(exist_ok=True,parents=True)
         local=args.out.resolve()/'runtime'
         local.mkdir(exist_ok=True)
         env=dict(os.environ,DOTNET_ROOT=str(args.dotnet.resolve().parent),DOTNET_CLI_HOME=str(local/'cli-home'),

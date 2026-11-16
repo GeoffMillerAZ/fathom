@@ -141,6 +141,74 @@ class CorrectionTest(OfflineProbeTest):
                 self.assertEqual(1,code,output);self.assertIn('receipt_refused: aliased input/output',output)
                 self.assertEqual(b'mocked assembly',assembly.read_bytes());launched.assert_not_called()
 
+    def retry_without_input_writes(self, argv, content):
+        capture=io.StringIO();code=0
+        launched=mock.Mock(return_value=subprocess.CompletedProcess([],0,content,b''))
+        with mock.patch.object(sys,'argv',argv),mock.patch('subprocess.run',launched),contextlib.redirect_stdout(capture),contextlib.redirect_stderr(capture):
+            try:runpy.run_path(argv[0],run_name='__main__')
+            except SystemExit as exc:code=exc.code
+        return code,capture.getvalue(),launched
+
+    def test_success_then_runtime_alias_retry_preserves_inputs(self):
+        here=Path(__file__).resolve().parent
+        content=json.dumps(self.receipt()).encode()
+        for name in ('receipt.json','raw.json','stderr.log'):
+            for source_name in ('dotnet','probe.dll'):
+                for mode in ('same','symlink','hardlink'):
+                    with self.subTest(output=name,source=source_name,mode=mode),self.scratch() as folder:
+                        root=Path(folder)
+                        code,message,out,_=self.invoke(root,content,True)
+                        self.assertEqual(0,code,message)
+                        summary=out/'receipt.json'
+                        self.assertTrue(summary.is_file())
+                        target=out/name;source=root/source_name
+                        if mode=='same':source=target
+                        else:
+                            target.unlink()
+                            if mode=='symlink':target.symlink_to(source)
+                            else:os.link(source,target)
+                        inputs={'dotnet':root/'dotnet','probe.dll':root/'probe.dll'}
+                        inputs[source_name]=source
+                        before={path:path.read_bytes() for path in inputs.values()}
+                        target_before=target.read_bytes()
+                        argv=[str(here/'run_offline_211.py'),'--dotnet',str(inputs['dotnet']),
+                              '--assembly',str(inputs['probe.dll']),'--out',str(out)]
+                        code,message,launched=self.retry_without_input_writes(argv,content)
+                        self.assertEqual(1,code,message)
+                        self.assertIn('receipt_refused: aliased input/output',message)
+                        self.assertNotIn('Traceback',message)
+                        launched.assert_not_called()
+                        for path,data in before.items():
+                            self.assertTrue(path.exists(),"refusal removed caller input")
+                            self.assertEqual(data,path.read_bytes())
+                        self.assertTrue(target.exists(),"refusal removed aliased caller input")
+                        self.assertEqual(target_before,target.read_bytes())
+                        if name=='receipt.json':self.assertTrue(summary.exists())
+                        else:self.assertFalse(summary.exists(),'refusal left an independent stale success receipt')
+
+    def test_success_then_case_input_alias_retry_preserves_input(self):
+        here=Path(__file__).resolve().parent
+        content=json.dumps(self.receipt()).encode()
+        for mode in ('same','symlink','hardlink'):
+            with self.subTest(mode=mode),self.scratch() as folder:
+                root=Path(folder)
+                code,message,out,_=self.invoke(root,content)
+                self.assertEqual(0,code,message)
+                raw=root/'input.json'
+                if mode=='same':raw=out
+                else:
+                    out.unlink()
+                    if mode=='symlink':out.symlink_to(raw)
+                    else:os.link(raw,out)
+                before=raw.read_bytes()
+                argv=[str(here/'offline_probe_211.py'),'--raw',str(raw),'--out',str(out)]
+                code,message,launched=self.retry_without_input_writes(argv,content)
+                self.assertEqual(1,code,message)
+                self.assertIn('receipt_refused: aliased input/output',message)
+                self.assertNotIn('Traceback',message)
+                launched.assert_not_called()
+                self.assertEqual(before,raw.read_bytes());self.assertEqual(before,out.read_bytes())
+
     def test_wrong_shapes_are_typed_refusals(self):
         import offline_probe_211 as probe
         for raw in (None,[],dict(self.receipt(),cases=[None]*4)):
