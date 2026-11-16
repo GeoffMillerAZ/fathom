@@ -24,7 +24,9 @@ def validate_candidate(result, data):
  for ref in references:
   if not isinstance(ref,dict) or any(not isinstance(ref[k],str) or not ref[k] for k in ('from','to')) or ref['from'] not in keys:
    raise ComparisonRefused('undefined candidate owner')
-  if type(ref['line']) is not int or not ranges[ref['from']][0]<=ref['line']<=ranges[ref['from']][1]:
+  # Public Reference.line=0 means unavailable, not a guessed owner position.
+  # Positive coordinates must still lie inside the validated caller's range.
+  if type(ref['line']) is not int or (ref['line'] != 0 and not ranges[ref['from']][0]<=ref['line']<=ranges[ref['from']][1]):
    raise ComparisonRefused('candidate reference range')
  return keys
 

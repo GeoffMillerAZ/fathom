@@ -112,3 +112,53 @@ class CandidateComparisonTest(unittest.TestCase):
         self.assertNotEqual(0,run.returncode)
         self.assertIsNone(out)
         self.assertIn('"error": "comparison_refused"',run.stderr)
+
+    def test_public_reader_unavailable_reference_location(self):
+        """Consume actual public-reader JSON, including its documented zero sentinel."""
+        repo=HERE.parents[2]
+        with tempfile.TemporaryDirectory(dir=repo/'workspace/tmp') as directory:
+            root=Path(directory);inputs=root/'inputs';(inputs/'authored').mkdir(parents=True)
+            data=b"pipeline {\n agent any\n stages {\n stage('Build') {\n steps { echo 'ok' }\n }\n }\n}\n"
+            (inputs/'authored/Jenkinsfile').write_bytes(data)
+            read=subprocess.run(['go','run','./cmd/fathom-lang','extract','-in-process','-root',str(inputs),'authored/Jenkinsfile'],cwd=repo,capture_output=True,text=True)
+            self.assertEqual(0,read.returncode,read.stderr)
+            candidate=json.loads(read.stdout)
+            refs=candidate['files'][0]['result']['references']
+            self.assertTrue(refs)
+            self.assertEqual({0},{r['line'] for r in refs})
+            # Authored owner model is independent of candidate owners/coordinates.
+            raw=dict(core_version='authored',tool_declarations=0,files=[dict(subject='authored',sha256=hashlib.sha256(data).hexdigest(),status='parsed',nodes=[dict(type='ModelASTPipelineDef',name=None,line=1,end=8,parent=-1)])])
+            (root/'raw.json').write_text(json.dumps(raw))
+            (root/'candidate.json').write_text(read.stdout)
+            command=[sys.executable,'-B',str(HERE/'compare_candidate.py'),'--raw',str(root/'raw.json'),'--candidate',str(root/'candidate.json'),'--inputs',str(inputs),'--out',str(root/'out.json')]
+            run=subprocess.run(command,capture_output=True,text=True)
+            self.assertEqual(0,run.returncode,run.stderr)
+            out=json.loads((root/'out.json').read_text())
+            self.assertEqual(len(refs),out['subjects']['authored']['pairs']['candidate'])
+            self.assertFalse(out['tier_granted']);self.assertFalse(out['full_population_native_metrics'])
+            self.assertEqual(read.stdout,(root/'candidate.json').read_text())
+
+    def test_reference_coordinates_and_unknown_owner_remain_strict(self):
+        for line in (-1, True, False, 1.0, '0', None, 4):
+            with self.subTest(line=line):
+                def change(raw,c):
+                    c['files'][0]['result']['references']=[{'from':'pipeline','to':'echo','line':line}]
+                run,out=self.run_case(change,stale=True)
+                self.assertNotEqual(0,run.returncode);self.assertIsNone(out)
+                self.assertIn('"error": "comparison_refused"',run.stderr)
+        for line in (0, 1, 3):
+            with self.subTest(valid=line):
+                def change(raw,c):
+                    c['files'][0]['result']['references']=[{'from':'pipeline','to':'echo','line':line}]
+                run,out=self.run_case(change)
+                self.assertEqual(0,run.returncode,run.stderr)
+                self.assertEqual(1,out['subjects']['authored']['pairs']['candidate'])
+        def undefined(raw,c):
+            c['files'][0]['result']['references']=[{'from':'missing','to':'echo','line':0}]
+        run,out=self.run_case(undefined,stale=True)
+        self.assertNotEqual(0,run.returncode);self.assertIsNone(out)
+        def outside(raw,c):
+            c['files'][0]['result']['symbols'][0].update(line=2,end_line=2)
+            c['files'][0]['result']['references']=[{'from':'pipeline','to':'echo','line':1}]
+        run,out=self.run_case(outside,stale=True)
+        self.assertNotEqual(0,run.returncode);self.assertIsNone(out)

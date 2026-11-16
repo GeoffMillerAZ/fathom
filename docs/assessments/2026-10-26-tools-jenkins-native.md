@@ -220,3 +220,158 @@ nodes, 129/163 declaration intersection, 34 excluded step branches and six
 opaque bodies remain historical results. Full L1/L2 remains HOLD; existing
 L3 C-good, scope, denominator and support bars are unchanged. Earlier race
 receipts remain historical evidence; no fresh race, gate or support claim is made.
+
+
+## Issue 211 second correction (2026-11-16)
+
+The first correction incorrectly required every candidate reference to have a
+positive coordinate. Public `pkg/lang.Reference.Line` documents zero as an
+unavailable location, and the actual Jenkins public reader emits that sentinel.
+The comparator now accepts exact integer zero without inferring a position.
+It still requires a unique defined caller, strict positive symbol ranges and
+owner-contained positive reference coordinates. Negative lines, booleans,
+non-integers and undefined owners refuse the entire output, including a stale
+success receipt. Pair matching remains an owner/target multiset diagnostic;
+accepting an unavailable call location supplies no range evidence.
+
+The new end-to-end test invokes the public `fathom-lang extract` command and
+passes its unchanged JSON to the comparator. Before the fix it fails at the
+success assertion with `comparison_refused`; the zero-boundary case also fails.
+After the fix all 38 Python tests pass, including strict coordinate/owner
+controls and an in-source positive call outside its caller's range. Scoped
+public-dispatch and Reading round-trip tests pass with `-race`.
+
+Historical native 23/23 acceptance and 129/163 declaration intersection remain
+historical. Fresh results below are a new partial diagnostic, with the same
+pinned population and SDK; they do not grant native L1/L2, change a reading or
+move any support bar. The existing C-good reading is unchanged. The incomplete
+written-unit producer, excluded synthetic branches and opaque bodies remain
+substantive limits. The minor #135 m1 index formatting issue remains separately
+recorded for integration.
+
+Fresh native acceptance is 23/23, 17,401 source bytes and 753 nodes (747
+positioned, 200 named), with three declaration-only tool names. All 133 public
+candidate references retain line zero. Exact declaration matches are 129/163;
+projected pair matches are 20/21 against 133 candidate pairs (20/133 lower-bound
+precision). These ratios describe the partial projection only.
+
+| Subject | Native accepted | Declaration matched/truth/candidate | Pair matched/truth/candidate | Lower-bound declaration/pair precision |
+|---|---:|---:|---:|---:|
+| examples | 22/22 | 123/123/156 | 18/19/127 | 0.788462 / 0.141732 |
+| library | 1/1 | 6/6/7 | 2/2/6 | 0.857143 / 0.333333 |
+
+Both subject manifests remain byte-identical before/after: examples 25 tracked
+files / 18,490 bytes, with three metadata files excluded from the 22 source
+inputs; library one tracked file / 407 bytes. There are no symlinks/gitlinks.
+The input-hash aggregate is
+`731caf1e55df03337709485fe74603e044aa59e0d23407ce28e83798e1141925`;
+candidate JSON SHA-256 is
+`2d9b003b7480d22ade87215d7a28862cce823dbff5c4ee648e8956d60806e3e8`.
+The authored native controls again yield two parsed, one refused and one
+no-pipeline input, changed stage truth and unchanged unrelated truth. No subject
+pipeline executes. The frozen corpus pins remain
+`jenkinsci/pipeline-examples@fb9575a8182b51614f5f0df912b46b37d95fbb8d` and
+`jenkins-infra/pipeline-library@96587b4815b03388e7f61a36ad96ac255c46f577`.
+
+Execution disclosure: the current track authorizes a 12 GiB machine floor;
+pre-run free disk was about 18.1 GiB and one-minute load was 12.74. This differs
+from the historical protocol's 20 GiB / load-at-most-six execution conditions.
+The replay used the common machine lease and nice priority; no throughput or
+performance conclusion is drawn. The raw population/model comparison above is
+reported with that execution difference, not as exact protocol conformance.
+Private corpora/controllers remain under the replay directories until independent
+review finishes; their later cleanup is controller-owned.
+
+### Portable second-correction replay
+
+Run from the checkout, serialize heavy commands through the local machine lease,
+and use fresh ignored output directories. Check free disk and load first. The
+old replay helper enforces a 20 GiB preparation floor; the current track's
+machine policy uses 12 GiB. No tool installation or global state change is needed
+when reusing the checksum-verified SDK. The JVM home and temporary directory stay
+under the output directory. A missing SDK can be prepared with the commented
+checksum-pinned command when its preparation preconditions hold.
+
+```sh
+# From the source checkout; use fresh output directories. SDK may point to an
+# existing bundle: verify_bundle checks every pinned binary/archive before use.
+O=workspace/artifacts/jenkins-fix2
+C=workspace/corpora/jenkins-fix2
+SDK=workspace/tools/jenkins-211
+mkdir -p "$O"
+# If the pinned bundle is absent:
+# python3 -B calibration/oracles/jenkinsfile/prepare_native.py sdk --out "$SDK"
+export O C SDK
+python3 -B - <<'PYCODE'
+import json,os,subprocess,sys
+from pathlib import Path
+oracle=Path('calibration/oracles/jenkinsfile').resolve();sys.path.insert(0,str(oracle))
+from prepare_native import manifests
+corpus=Path(os.environ['C']).resolve();(corpus/'inputs').mkdir(parents=True)
+for row in json.loads((oracle/'native-protocol-r1.json').read_text())['population']:
+    root=corpus/('subject-'+row['subject']);root.mkdir()
+    def git(*args):return subprocess.check_output(['git','-c','credential.helper=','-C',str(root),*args],env=dict(os.environ,GIT_TERMINAL_PROMPT='0'))
+    git('init');git('remote','add','origin','https://github.com/'+row['repository'])
+    git('fetch','--filter=blob:none','--depth=1','origin',row['sha'])
+    git('sparse-checkout','init','--no-cone')
+    git('sparse-checkout','set','--no-cone','/declarative-examples/' if row['subject']=='examples' else '/Jenkinsfile')
+    git('checkout','--detach',row['sha'])
+    assert git('rev-parse','HEAD').decode().strip()==row['sha']
+    paths=sorted((root/'declarative-examples').rglob('*.groovy')) if row['subject']=='examples' else [root/'Jenkinsfile']
+    assert len(paths)==row['expected_files']
+    for source in paths:
+        relative=source.relative_to(root);data=source.read_bytes()
+        assert data==git('show',row['sha']+':'+relative.as_posix())
+        if row['subject']=='examples':relative=relative.with_suffix('.jenkinsfile')
+        target=corpus/'inputs'/row['subject']/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+manifests(corpus,'before')
+PYCODE
+python3 -B - <<'PY'
+import os,subprocess,sys
+from pathlib import Path
+oracle=Path('calibration/oracles/jenkinsfile').resolve()
+sys.path.insert(0,str(oracle))
+import native_model_probe as probe
+out=Path(os.environ['O']).resolve();corpus=Path(os.environ['C']).resolve();sdk=Path(os.environ['SDK']).resolve()
+for name in ('java-home','java-tmp'):(out/name).mkdir()
+popen=subprocess.Popen
+def contained(command,*a,**kw):
+    if isinstance(command,list) and str(command[0]).endswith('/bin/java'):
+        command=[command[0],'-Duser.home='+str(out/'java-home'),'-Djava.io.tmpdir='+str(out/'java-tmp'),*command[1:]]
+    return popen(command,*a,**kw)
+subprocess.Popen=contained
+args=dict(java=sdk/'jdk-21.0.13+9/Contents/Home/bin/java',war=sdk/'jenkins.war',plugins=sdk/'plugins')
+probe.run(**args,inputs=oracle/'native-fixtures',out=out/'authored')
+subprocess.run([sys.executable,'-B',str(oracle/'validate_native_controls.py'),str(out/'authored/raw.json')],check=True)
+probe.run(**args,inputs=corpus/'inputs',out=out/'first')
+subprocess.run([sys.executable,'-B',str(oracle/'prepare_native.py'),'tools','--log',str(out/'first/controller.log'),'--out',str(out/'tools.json')],check=True)
+probe.run(**args,inputs=corpus/'inputs',out=out/'native',tool_declarations=out/'tools.json')
+PY
+go build -o "$O/fathom-lang" ./cmd/fathom-lang
+python3 -B - <<'PY'
+import os,subprocess
+from pathlib import Path
+out=Path(os.environ['O']);inputs=Path(os.environ['C'])/'inputs'
+paths=sorted(p.relative_to(inputs).as_posix() for p in inputs.rglob('*') if p.is_file())
+assert len(paths)==23
+assert sum(p.stat().st_size for p in inputs.rglob('*') if p.is_file())==17401
+with (out/'candidate.json').open('w') as stream:
+    subprocess.run([str(out/'fathom-lang'),'extract','-in-process','-root',str(inputs),*paths],stdout=stream,check=True)
+PY
+python3 -B calibration/oracles/jenkinsfile/owner_compare.py --raw "$O/native/raw.json" --out "$O/projection.json"
+python3 -B calibration/oracles/jenkinsfile/compare_candidate.py --candidate "$O/candidate.json" --inputs "$C/inputs" --raw "$O/native/raw.json" --out "$O/comparison.json"
+python3 -B calibration/oracles/jenkinsfile/prepare_native.py after --out "$C"
+cmp "$C/examples-before.manifest" "$C/examples-after.manifest"
+cmp "$C/library-before.manifest" "$C/library-after.manifest"
+```
+
+Focused checks, also from the checkout:
+
+```sh
+python3 -B -m unittest discover -s calibration/oracles/jenkinsfile -p 'test_*.py'
+bash scripts/fathom-go.sh test -race -count=1 ./pkg/lang -run '^TestJenkinsfile211PublicDispatch$'
+bash scripts/fathom-go.sh test -race -count=1 ./internal/langbench -run '^TestCommittedReadingsRoundTrip$'
+bash scripts/fathom-go.sh test -count=1 ./cmd/fathom -run '^TestNoOrgSpecificNames$'
+go run ./third_party/agentic-kit/cmd/release-notes -check
+bash scripts/check-merge-debris.sh
+```
