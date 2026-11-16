@@ -5,9 +5,45 @@ owner receipt for truth; candidate definitions cannot fill owner-model gaps.
 """
 import argparse
 import collections
+import hashlib
 import json
+import sys
+from contextlib import contextmanager
 from pathlib import Path
 from native_model_probe import summarize
+
+class ComparisonRefused(ValueError):
+    """The diagnostic cannot attest a complete input unit."""
+
+
+@contextmanager
+def output_unit(out):
+    """Invalidate a previous receipt before reading; never retain partial success."""
+    try:
+        out.unlink(missing_ok=True)
+        yield
+    except (OSError, ValueError, TypeError, KeyError, IndexError, RecursionError) as error:
+        try:
+            out.unlink(missing_ok=True)
+        except OSError:
+            pass  # The structured refusal still reports an unusable output path.
+        raise ComparisonRefused('whole comparison refused') from error
+
+
+def read_json(path, with_digest=False):
+    # A bounded read also covers files which grow after stat; the handle always closes.
+    with path.open('rb') as stream:
+        data = stream.read(32 * 1024**2 + 1)
+    if len(data) > 32 * 1024**2:
+        raise ComparisonRefused('JSON parse cap')
+    parsed = json.loads(data)
+    return (parsed, hashlib.sha256(data).hexdigest()) if with_digest else parsed
+
+
+def refuse(error):
+    print(json.dumps(dict(error='comparison_refused', reason=str(error))), file=sys.stderr)
+    return 1
+
 
 DECLARATIONS = {
     'ModelASTPipelineDef': ('pipeline', 'job'),
@@ -116,19 +152,21 @@ if __name__ == '__main__':
     parser.add_argument('--raw', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
-    if args.raw.stat().st_size > 32 * 1024**2:
-        raise ValueError('raw parse cap')
-    raw = json.loads(args.raw.read_text())
-    result = project(raw)
-    # Never publish source/model names or individual positions in the receipt.
-    result['declarations'] = len(result.pop('definitions'))
-    result['pairs'] = len(result['pairs'])
-    result['subjects'] = []
-    for subject in sorted({r['subject'] for r in raw['files']}):
-        subset = dict(raw, files=[r for r in raw['files'] if r['subject'] == subject])
-        p = project(subset)
-        result['subjects'].append(dict(subject=subject, files=len(subset['files']),
-            declarations=len(p['definitions']), pairs=len(p['pairs']),
-            accounting=p['accounting'], disclosures=p['disclosures']))
-    result.update(tier_granted=False, calibration_measured=False)
-    args.out.write_text(json.dumps(result, indent=2) + '\n')
+    try:
+        with output_unit(args.out):
+            raw = read_json(args.raw)
+            result = project(raw)
+            # Never publish source/model names or individual positions in the receipt.
+            result['declarations'] = len(result.pop('definitions'))
+            result['pairs'] = len(result['pairs'])
+            result['subjects'] = []
+            for subject in sorted({r['subject'] for r in raw['files']}):
+                subset = dict(raw, files=[r for r in raw['files'] if r['subject'] == subject])
+                p = project(subset)
+                result['subjects'].append(dict(subject=subject, files=len(subset['files']),
+                    declarations=len(p['definitions']), pairs=len(p['pairs']),
+                    accounting=p['accounting'], disclosures=p['disclosures']))
+            result.update(tier_granted=False, calibration_measured=False)
+            args.out.write_text(json.dumps(result, indent=2) + '\n')
+    except ComparisonRefused as error:
+        sys.exit(refuse(error))

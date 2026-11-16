@@ -235,42 +235,60 @@
       "url": "https://www.jenkins.io/doc/book/pipeline/development/",
       "http_status": "200",
       "exit": 0,
-      "sha256": "c20185552d8fd1607670911f16b2062ee655e0ad77e57310852561062a650119"
+      "sha256": "c20185552d8fd1607670911f16b2062ee655e0ad77e57310852561062a650119",
+      "retrieved_at": "UNKNOWN",
+      "retrieval_time_gap": "Historical retrieval timestamp not retained; no filesystem-time proxy or refetch used.",
+      "purpose": "Owner documentation for offline Pipeline development tools."
     },
     {
       "source": "jenkins-scip",
       "url": "https://api.github.com/search/repositories?q=scip-jenkins+in:name",
       "http_status": "200",
       "exit": 0,
-      "sha256": "189f392e542eedfbde558a6341634fed3fd74c45035c1ca181f7c1aebcd8ec67"
+      "sha256": "189f392e542eedfbde558a6341634fed3fd74c45035c1ca181f7c1aebcd8ec67",
+      "retrieved_at": "UNKNOWN",
+      "retrieval_time_gap": "Historical retrieval timestamp not retained; no filesystem-time proxy or refetch used.",
+      "purpose": "Search inventory for Jenkins SCIP exporters; no absence proof."
     },
     {
       "source": "groovy-scip",
       "url": "https://api.github.com/search/repositories?q=scip-groovy",
       "http_status": "200",
       "exit": 0,
-      "sha256": "08c082fdf7ca87ba911a2aabb0f0cf2d3e482a6feeaac9713e4578c20b2600b2"
+      "sha256": "08c082fdf7ca87ba911a2aabb0f0cf2d3e482a6feeaac9713e4578c20b2600b2",
+      "retrieved_at": "UNKNOWN",
+      "retrieval_time_gap": "Historical retrieval timestamp not retained; no filesystem-time proxy or refetch used.",
+      "purpose": "Search inventory for Groovy SCIP exporters; no absence proof."
     },
     {
       "source": "jenkins-lsp",
       "url": "https://api.github.com/repos/GroovyLanguageServer/groovy-language-server",
       "http_status": "200",
       "exit": 0,
-      "sha256": "e1abad69a842c72efe8236129dbc8cbc0503d88f5638199b6b814b16da393ba8"
+      "sha256": "e1abad69a842c72efe8236129dbc8cbc0503d88f5638199b6b814b16da393ba8",
+      "retrieved_at": "UNKNOWN",
+      "retrieval_time_gap": "Historical retrieval timestamp not retained; no filesystem-time proxy or refetch used.",
+      "purpose": "Language-server repository metadata and scope."
     },
     {
       "source": "jenkins-registry",
       "url": "https://pypi.org/pypi/jenkinsfilelint/json",
       "http_status": "200",
       "exit": 0,
-      "sha256": "7c1672838ae8d3ba55003aabb91e35f10b8bf61a98abac97e7a66b4f8ef85b3e"
+      "sha256": "7c1672838ae8d3ba55003aabb91e35f10b8bf61a98abac97e7a66b4f8ef85b3e",
+      "retrieved_at": "UNKNOWN",
+      "retrieval_time_gap": "Historical retrieval timestamp not retained; no filesystem-time proxy or refetch used.",
+      "purpose": "Registry package metadata for Jenkinsfile tooling."
     },
     {
       "source": "jenkins-runtime",
       "url": "https://javadoc.jenkins.io/plugin/workflow-api/org/jenkinsci/plugins/workflow/graph/FlowGraphWalker.html",
       "http_status": "200",
       "exit": 0,
-      "sha256": "4f7d5ef71ffae5b3bc63f85a2577ccef114732ab501eff31247ee191c4451fc7"
+      "sha256": "4f7d5ef71ffae5b3bc63f85a2577ccef114732ab501eff31247ee191c4451fc7",
+      "retrieved_at": "UNKNOWN",
+      "retrieval_time_gap": "Historical retrieval timestamp not retained; no filesystem-time proxy or refetch used.",
+      "purpose": "Runtime graph API scope, distinct from all written branches."
     }
   ],
   "candidate_control": {

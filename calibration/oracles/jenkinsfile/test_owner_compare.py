@@ -58,3 +58,45 @@ class OwnerCompareTest(unittest.TestCase):
         p=compare.project(raw)
         self.assertEqual([],p['pairs'])
         self.assertEqual(1,p['disclosures']['declaration_keyword_calls'])
+
+    def test_cli_refusal_invalidates_existing_success(self):
+        import json, subprocess, sys, tempfile
+        from pathlib import Path
+        here=Path(__file__).resolve().parent
+        with tempfile.TemporaryDirectory(dir=here.parents[2]/'workspace/tmp') as directory:
+            root=Path(directory);raw=root/'raw.json';out=root/'out.json'
+            command=[sys.executable,'-B',str(here/'owner_compare.py'),'--raw',str(raw),'--out',str(out)]
+            for mode in ('malformed','unreadable','cap'):
+                raw.write_text(json.dumps(self.raw()))
+                good=subprocess.run(command,capture_output=True,text=True)
+                self.assertEqual(0,good.returncode,good.stderr)
+                if mode=='malformed':raw.write_text('{')
+                elif mode=='unreadable':raw.unlink()
+                else:
+                    with raw.open('r+b') as stream:stream.truncate(32*1024**2+1)
+                run=subprocess.run(command,capture_output=True,text=True)
+                self.assertNotEqual(0,run.returncode)
+                self.assertFalse(out.exists(),run.stderr)
+                self.assertIn('"error": "comparison_refused"',run.stderr)
+
+    def test_json_read_is_bounded_and_closes_on_cap_or_parse_failure(self):
+        import io
+        from unittest.mock import Mock
+        for data in (b'{', b' '*(32*1024**2+1)):
+            stream=io.BytesIO(data)
+            path=Mock();path.open.return_value=stream
+            with self.assertRaises(ValueError):compare.read_json(path)
+            self.assertTrue(stream.closed)
+            path.open.assert_called_once_with('rb')
+
+    def test_json_digest_uses_the_same_single_bounded_read(self):
+        import io, hashlib
+        from unittest.mock import Mock
+        data=b'{"authored": true}'
+        stream=io.BytesIO(data);stream.read=Mock(wraps=stream.read)
+        path=Mock();path.open.return_value=stream
+        parsed,digest=compare.read_json(path,with_digest=True)
+        self.assertEqual({'authored':True},parsed)
+        self.assertEqual(hashlib.sha256(data).hexdigest(),digest)
+        stream.read.assert_called_once_with(32*1024**2+1)
+        self.assertTrue(stream.closed)

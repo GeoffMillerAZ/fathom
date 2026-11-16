@@ -14,3 +14,19 @@ class NativeDisclosuresTest(unittest.TestCase):
         row=next(l for l in (ROOT/'docs/plans/language-breadth.md').read_text().splitlines() if 'id: LB-Q-jenkinsfile-rest,' in l)
         self.assertNotIn('ceiling audit',row)
         self.assertNotIn('L3 remains held for D19',row)
+
+    def test_fix1_does_not_relabel_import_error_as_assertion_red(self):
+        for path in ('calibration/oracles/jenkinsfile/NATIVE.md','calibration/oracles/jenkinsfile/OWNER-COMPARISON.md','docs/assessments/2026-10-26-tools-jenkins-native.md'):
+            text=' '.join((ROOT/path).read_text().split())
+            self.assertIn('ModuleNotFoundError',text)
+            self.assertIn('historical hook evidence gap',text)
+            self.assertIn('correction assertion RED',text)
+
+    def test_search_receipt_times_and_purposes_are_explicit(self):
+        import json
+        receipt=json.loads((ROOT/'calibration/oracles/jenkinsfile/comparison-211.json').read_text())
+        for row in receipt['search_refresh']:
+            self.assertEqual('UNKNOWN',row['retrieved_at'])
+            self.assertIn('not retained',row['retrieval_time_gap'])
+            self.assertTrue(row['purpose'])
+            self.assertEqual(64,len(row['sha256']))

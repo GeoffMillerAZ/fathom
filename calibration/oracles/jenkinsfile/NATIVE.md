@@ -159,3 +159,38 @@ Issue 211 replay and current partial comparison: see the indexed
 [assessment](../../../docs/assessments/2026-10-26-tools-jenkins-native.md#issue-211-replay-and-written-unit-comparison-2026-11-15)
 and comparison-211.json. The historical r1 receipt above is unchanged; current
 corpora, tools and raw receipts remain retained for controller-owned review.
+
+
+## Issue 211 first correction (2026-11-16)
+
+The original `comparator-red.log` records `ModuleNotFoundError`, not an
+assertion failure. It does not establish initial comparator TDD. That original
+file is preserved unchanged. The later keyword controls and four historical
+mutants establish their own failures, not earlier chronology. The correction
+assertion RED precedes this repair and covers existing success output followed
+by refusal, malformed positions and undefined caller ownership using authored
+mock owner JSON only.
+
+Both comparison entry points now invalidate previous output before reading the
+unit and remove partial output on refusal. Refusals are structured as
+`comparison_refused`; bounded JSON reads close their handles. Candidate symbol
+and reference positions require exact integers (excluding booleans), ordered
+in-source ranges and a unique defined caller whose range contains the call.
+Invalid records refuse the entire comparison before any receipt is published;
+no fallback caller string, coercion or partial-success receipt is used.
+
+There is a historical hook evidence gap: current inspection cannot attest the
+hooks active for the original commit. Required existing repository hooks were
+restored using installed `lefthook install` before the repair commit; current
+hook evidence is separate from that historical claim. Global gitleaks policy
+is unchanged. All six `search_refresh` entries now disclose `UNKNOWN` historical
+retrieval times because authentic timestamps were not retained. Existing URLs
+and fetched-byte hashes are unchanged, and purposes are explicit. No mtime
+proxy, page refetch, reconstructed receipt or saved-page transport was used.
+
+This correction runs only authored Python controls. It does not rerun native,
+SDK, canonical population or holdout work. The retained 23/23 acceptance, 753
+nodes, 129/163 declaration intersection, 34 excluded step branches and six
+opaque bodies remain historical results. Full L1/L2 remains HOLD; existing
+L3 C-good, scope, denominator and support bars are unchanged. Earlier race
+receipts remain historical evidence; no fresh race, gate or support claim is made.

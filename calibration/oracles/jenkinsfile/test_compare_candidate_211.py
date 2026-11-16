@@ -9,12 +9,20 @@ import unittest
 
 HERE=Path(__file__).resolve().parent
 class CandidateComparisonTest(unittest.TestCase):
-    def run_case(self, change=None):
+    def run_case(self, change=None, stale=False):
         with tempfile.TemporaryDirectory(dir=HERE.parents[2]/'workspace/tmp') as directory:
             root=Path(directory);inputs=root/'inputs';(inputs/'authored').mkdir(parents=True)
             data=b'pipeline {\n agent any\n}\n';(inputs/'authored/Jenkinsfile').write_bytes(data)
+            (inputs/'authored/other.jenkinsfile').write_bytes(data)
             raw=dict(core_version='authored',tool_declarations=0,files=[dict(subject='authored',sha256=hashlib.sha256(data).hexdigest(),status='parsed',nodes=[dict(type='ModelASTPipelineDef',name=None,line=1,end=3,parent=-1)])])
             candidate=dict(files=[dict(path='authored/Jenkinsfile',error='',result=dict(dialect='jenkinsfile',skipped='',incomplete=False,symbols=[dict(key='pipeline',name='pipeline',kind='JenkinsPipeline',line=1,end_line=3)],references=[]))])
+            for name,obj in [('raw',raw),('candidate',candidate)]:
+                (root/(name+'.json')).write_text(json.dumps(obj))
+            command=[sys.executable,'-B',str(HERE/'compare_candidate.py'),'--raw',str(root/'raw.json'),'--candidate',str(root/'candidate.json'),'--inputs',str(inputs),'--out',str(root/'out.json')]
+            if stale:
+                good=subprocess.run(command,capture_output=True,text=True)
+                self.assertEqual(0,good.returncode,good.stderr)
+                self.assertTrue((root/'out.json').exists())
             if change:change(raw,candidate)
             for name,obj in [('raw',raw),('candidate',candidate)]:
                 (root/(name+'.json')).write_text(json.dumps(obj))
@@ -44,3 +52,63 @@ class CandidateComparisonTest(unittest.TestCase):
         self.assertEqual(1,out['subjects']['authored']['definitions']['candidate'])
         self.assertEqual(0,out['subjects']['authored']['definitions']['matched'])
         self.assertFalse(out['tier_granted'])
+
+    def test_refusal_invalidates_existing_success(self):
+        for mode in ('incomplete', 'malformed', 'unreadable'):
+            def change(raw,c):
+                if mode=='incomplete':c['files'][0]['result']['incomplete']=True
+                elif mode=='malformed':c['files']=None
+                else:c['files'][0]['path']='authored/missing'
+            run,out=self.run_case(change,stale=True)
+            self.assertNotEqual(0,run.returncode)
+            self.assertIsNone(out,run.stderr)
+            self.assertIn('"error": "comparison_refused"',run.stderr)
+
+    def test_malformed_candidate_records_refuse_whole_unit(self):
+        cases=[('line',True),('line',0),('line','1'),('end_line',0),('end_line',4),('key',''),('name',None)]
+        for key,value in cases:
+            with self.subTest(key=key,value=value):
+                def change(raw,c):c['files'][0]['result']['symbols'][0][key]=value
+                run,out=self.run_case(change,stale=True)
+                self.assertNotEqual(0,run.returncode,run.stdout)
+                self.assertIsNone(out)
+        for mode in ('undefined','bool_reference','range_reference','symbol_cap','reference_cap'):
+            with self.subTest(mode=mode):
+                def change(raw,c):
+                    r=c['files'][0]['result']
+                    if mode=='symbol_cap':r['symbols']*=100001;return
+                    ref=dict(**{'from':'pipeline','to':'echo'},line=1)
+                    if mode=='undefined':r['symbols']=[]
+                    if mode=='bool_reference':ref['line']=True
+                    if mode=='range_reference':ref['line']=4
+                    r['references']=[ref]*(100001 if mode=='reference_cap' else 1)
+                    raw['files'][0]['nodes'].append(dict(type='ModelASTStep',name='echo',line=1,end=1,parent=0))
+                run,out=self.run_case(change,stale=True)
+                self.assertNotEqual(0,run.returncode,run.stdout)
+                self.assertIsNone(out)
+
+    def test_malformed_envelopes_have_structured_refusal(self):
+        for mode in ('row','result','symbol','reference','flag'):
+            with self.subTest(mode=mode):
+                def change(raw,c):
+                    if mode=='row':c['files']=[1]
+                    elif mode=='result':c['files'][0]['result']=None
+                    elif mode=='symbol':c['files'][0]['result']['symbols']=[None]
+                    elif mode=='reference':c['files'][0]['result']['references']=[None]
+                    else:c['files'][0]['result']['incomplete']=0
+                run,out=self.run_case(change,stale=True)
+                self.assertNotEqual(0,run.returncode)
+                self.assertIsNone(out)
+                self.assertIn('"error": "comparison_refused"',run.stderr)
+
+    def test_later_invalid_file_cannot_publish_partial_population(self):
+        import copy
+        def change(raw,c):
+            raw['files'].append(copy.deepcopy(raw['files'][0]))
+            second=copy.deepcopy(c['files'][0]);second['path']='authored/other.jenkinsfile'
+            second['result']['symbols'][0]['line']=True
+            c['files'].append(second)
+        run,out=self.run_case(change,stale=True)
+        self.assertNotEqual(0,run.returncode)
+        self.assertIsNone(out)
+        self.assertIn('"error": "comparison_refused"',run.stderr)
