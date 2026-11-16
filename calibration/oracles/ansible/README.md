@@ -94,3 +94,52 @@ reserved ANSIBLE_INVENTORY environment variable for its test CLI path, causing
 recursive CLI startup inside lint runtime initialisation. That run was stopped
 and discarded. The task-specific variable above and built-in-only inventory
 plugin fix that collision; the fresh native control and corpus run pass.
+
+## Full-population loader instrument (2026-11-16)
+
+`native_loader.py` adds direct ansible-core Playbook/Role loading and native
+handler lookup. `native_measure.py` compares its raw start positions/names and
+local bound targets with `fathom-lang extract` JSON. This diagnostic is **not**
+a tool-oracle Reading adapter: required kinds and native end ranges remain
+incomplete. No tier or level is promoted. See the indexed assessment
+`docs/assessments/2026-11-16-ansible-native-loader.md` and
+`native-loader-summary.json` for counts, scope and limitations.
+
+Use Python 3.12.16 with ansible-core 2.21.4. Resolve the subject requirements
+with the exact versions in `native-loader-pins.json`, into private role and
+collection directories. All 32 roles and five collections (transitive ones
+included) installed successfully for the audit. Never install globally.
+Every native unit uses sandbox-exec on macOS, a credential-free environment,
+private tool homes/config/cache, denied network, write/read boundaries, and
+CPU/wall/input/output/count/depth limits. No uncontained fallback exists.
+The caller must take the shared language measurement lease before commands.
+
+Freeze the native population before reading subject contents. A scratch JSON
+array holds one object per subject: `subject` (checkout basename), `sha`
+(full released commit), and `yaml` (sorted tracked regular YAML paths).
+Use the recipe section 13.3.1 exact before/after manifest command as well.
+Do not derive these paths from fathom output. Keep raw inventories local.
+For each subject, run:
+
+```sh
+python calibration/oracles/ansible/native_loader.py \
+  --subject workspace/calibration/SUBJECT \
+  --population workspace/artifacts/lang-ansible/population.json \
+  --work workspace/tmp/ansible-native/SUBJECT \
+  --out workspace/artifacts/lang-ansible/SUBJECT-native.json \
+  --roles "$PWD/workspace/tools/dependencies/roles" \
+  --collections "$PWD/workspace/tools/dependencies/collections"
+# Capture fathom-lang extract JSON for every frozen YAML path as SUBJECT-product.json.
+python calibration/oracles/ansible/native_measure.py \
+  --native workspace/artifacts/lang-ansible/SUBJECT-native.json \
+  --product workspace/artifacts/lang-ansible/SUBJECT-product.json \
+  --out workspace/artifacts/lang-ansible/SUBJECT-comparison.json
+FATHOM_ANSIBLE_TEST_TMP=workspace/tmp/ansible-tests PYTHONDONTWRITEBYTECODE=1 \
+  python -m unittest discover -s calibration/oracles/ansible -p 'test_native_loader.py'
+python -m unittest discover -s calibration/oracles/ansible -p 'test_native_measure.py'
+```
+
+Create the test scratch directory first. Only the two named new suites form
+this lane's control set; the pre-existing native-candidate suite has separate
+optional tooling and is not included by implication. A released holdout is
+kept outside the canonical shard, frozen and read once, never tuned against.

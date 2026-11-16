@@ -1,0 +1,300 @@
+{
+  "base": "17b1bc7037a5bb098687d022ef2c1c96478c5b69",
+  "containment_change_after_measurement": "process-fork denied after a failing containment control; extraction and scoring unchanged; original measured source and one-shot holdout preserved, no holdout rerun; read-denial probe uses an authored private witness rather than a workstation-specific file",
+  "controls": {
+    "comparison": 3,
+    "mutants_caught": 7,
+    "native_loader": 9,
+    "skipped_new_controls": 0
+  },
+  "delivered_instrument_sha256": "06923b3f41860a93ab23d244e16da68b2a25178eea062b18deb3842af3c6fbc0",
+  "holdout": {
+    "canonical": false,
+    "comparison": {
+      "authority": "native start/name and bound local target diagnostics only; no support grade",
+      "bindings": {
+        "matched": 0,
+        "native": 6,
+        "ratio": 0.0
+      },
+      "bindings_including_unresolved": {
+        "matched": 0,
+        "native": 14,
+        "ratio": 0.0
+      },
+      "declarations": {
+        "matched": 26,
+        "native": 36,
+        "ratio": 0.7222222222222222
+      },
+      "external_bindings": 6,
+      "external_declarations": 19,
+      "native_sha256": "b3bd5ab060e6797bc8a703fb680d88636c27cb7fbb67b9594f21c4a5fd223551",
+      "product_dialects": {
+        "ansible": 11,
+        "github-actions": 3,
+        "unread": 12
+      },
+      "product_sha256": "86c9df1068c268320d068d971f25a885cd8ec0a335e47d35e0e17175b3e5dc5b",
+      "sha": "dbd7d5719418e860d16370ceee06e7abbd67935a",
+      "subject": "ansible-role-nginx",
+      "truth_sha256": "f6ae954130c60afd0a904b2617e4c39055573452e0f561c5e6ea4ef2926daae4",
+      "unresolved_classes": {
+        "unresolved dynamic include_tasks": 7,
+        "unresolved dynamic include_vars": 1
+      },
+      "unresolved_misses": 8
+    },
+    "read_once": true,
+    "tracked_after": {
+      "bytes": 32593,
+      "entries": 34,
+      "files": 34,
+      "gitlinks": 0,
+      "sha256": "8be98846f7ac637050e04af9b0ebedef80e6a562d17b332f047ec6ddf9b59161",
+      "symlinks": 0
+    },
+    "tracked_before": {
+      "bytes": 32593,
+      "entries": 34,
+      "files": 34,
+      "gitlinks": 0,
+      "sha256": "8be98846f7ac637050e04af9b0ebedef80e6a562d17b332f047ec6ddf9b59161",
+      "symlinks": 0
+    },
+    "yaml_candidates": 26
+  },
+  "measured_at": "2026-11-16",
+  "native_loader_sha256": "3ea692b317f6501325f4ae449253d2d1f444185d819bf3b69192f1a23de82d7e",
+  "population": "all tracked YAML in the three canonical released subjects; roles independently loaded",
+  "population_sha256": "20097f2edf0ac28e67b91c98e56e299357204cbc2b0fc474ddd9669cfb2d0b52",
+  "preregistration_digest_note": "original preregistration file predates subject reads; digest computed after measurement because initial locale-dependent shasum aborted",
+  "preregistration_sha256": "e5472570ed17cff980af24d6cf8436366d3ca3b468f20b4ac04129a0d57d24ad",
+  "subjects": [
+    {
+      "comparison": {
+        "authority": "native start/name and bound local target diagnostics only; no support grade",
+        "bindings": {
+          "matched": 2,
+          "native": 10,
+          "ratio": 0.2
+        },
+        "bindings_including_unresolved": {
+          "matched": 2,
+          "native": 18,
+          "ratio": 0.1111111111111111
+        },
+        "declarations": {
+          "matched": 167,
+          "native": 187,
+          "ratio": 0.893048128342246
+        },
+        "external_bindings": 22,
+        "external_declarations": 226,
+        "native_sha256": "c06d0c50506f83d534fb50dd33b23fa773c0387dcd1b5deff993da17c72ad4dd",
+        "product_dialects": {
+          "ansible": 81,
+          "github-actions": 2,
+          "kubernetes": 3,
+          "unread": 36
+        },
+        "product_sha256": "344609343870562f1943053a34ddb7b5da8fcd05fb82c8abf4918dfccb3292e6",
+        "sha": "86e1bf80098239cd995d54217585e8d61117d2e7",
+        "subject": "ansible-for-devops",
+        "truth_sha256": "48bd4c90fc32bee679425231a6ecd3d19706f3d0cc75121667551e765908bb95",
+        "unresolved_classes": {
+          "templated declaration": 2,
+          "unbound notify": 6
+        },
+        "unresolved_misses": 8
+      },
+      "context_bindings": 10,
+      "context_declarations": 151,
+      "context_unresolved": 2,
+      "raw_sha256": "c06d0c50506f83d534fb50dd33b23fa773c0387dcd1b5deff993da17c72ad4dd",
+      "role_candidates": 2,
+      "sha": "86e1bf80098239cd995d54217585e8d61117d2e7",
+      "statuses": {
+        "handlers:loaded": 16,
+        "handlers:rejected": 106,
+        "playbook:loaded": 39,
+        "playbook:rejected": 83,
+        "role:loaded": 2,
+        "tasks:loaded": 16,
+        "tasks:rejected": 106
+      },
+      "subject": "ansible-for-devops",
+      "tracked_after": {
+        "bytes": 228980,
+        "entries": 237,
+        "files": 237,
+        "gitlinks": 0,
+        "sha256": "a03121c036078f65e36a1a7b3d3c5c52f1e2b87daaf211fc75116d4960d015e4",
+        "symlinks": 0
+      },
+      "tracked_before": {
+        "bytes": 228980,
+        "entries": 237,
+        "files": 237,
+        "gitlinks": 0,
+        "sha256": "a03121c036078f65e36a1a7b3d3c5c52f1e2b87daaf211fc75116d4960d015e4",
+        "symlinks": 0
+      },
+      "yaml_candidates": 122
+    },
+    {
+      "comparison": {
+        "authority": "native start/name and bound local target diagnostics only; no support grade",
+        "bindings": {
+          "matched": 0,
+          "native": 8,
+          "ratio": 0.0
+        },
+        "bindings_including_unresolved": {
+          "matched": 0,
+          "native": 15,
+          "ratio": 0.0
+        },
+        "declarations": {
+          "matched": 46,
+          "native": 57,
+          "ratio": 0.8070175438596491
+        },
+        "external_bindings": 8,
+        "external_declarations": 21,
+        "native_sha256": "409132762e154b421e03dbee9485400126ea89be1bbc640d6ab8a8f24b9cfab3",
+        "product_dialects": {
+          "ansible": 8,
+          "docker-compose": 1,
+          "github-actions": 3,
+          "unread": 10
+        },
+        "product_sha256": "30873043702e4bd331d9d391cb85603ffb7996fe9922240943bd49cf0fe01822",
+        "sha": "1d3968dbf0df48515ffda0f6561cbd25206f502a",
+        "subject": "ansible-role-docker",
+        "truth_sha256": "b606a9b6a425941325176df70b20b3f328f160c69ce50944e00b4789cf8e5719",
+        "unresolved_classes": {
+          "unbound notify": 1,
+          "unresolved dynamic include_tasks": 5,
+          "unresolved dynamic include_vars": 1
+        },
+        "unresolved_misses": 7
+      },
+      "context_bindings": 8,
+      "context_declarations": 31,
+      "context_unresolved": 6,
+      "raw_sha256": "409132762e154b421e03dbee9485400126ea89be1bbc640d6ab8a8f24b9cfab3",
+      "role_candidates": 1,
+      "sha": "1d3968dbf0df48515ffda0f6561cbd25206f502a",
+      "statuses": {
+        "handlers:loaded": 8,
+        "handlers:rejected": 14,
+        "playbook:loaded": 2,
+        "playbook:rejected": 20,
+        "role:loaded": 1,
+        "tasks:loaded": 8,
+        "tasks:rejected": 14
+      },
+      "subject": "ansible-role-docker",
+      "tracked_after": {
+        "bytes": 29683,
+        "entries": 27,
+        "files": 27,
+        "gitlinks": 0,
+        "sha256": "f3ac4a21b1c4ea94c53c1c508e3f54653ce8789baba21934a11ca7acab91a18c",
+        "symlinks": 0
+      },
+      "tracked_before": {
+        "bytes": 29683,
+        "entries": 27,
+        "files": 27,
+        "gitlinks": 0,
+        "sha256": "f3ac4a21b1c4ea94c53c1c508e3f54653ce8789baba21934a11ca7acab91a18c",
+        "symlinks": 0
+      },
+      "yaml_candidates": 22
+    },
+    {
+      "comparison": {
+        "authority": "native start/name and bound local target diagnostics only; no support grade",
+        "bindings": {
+          "matched": 0,
+          "native": 0,
+          "ratio": null
+        },
+        "bindings_including_unresolved": {
+          "matched": 0,
+          "native": 2,
+          "ratio": 0.0
+        },
+        "declarations": {
+          "matched": 19,
+          "native": 19,
+          "ratio": 1.0
+        },
+        "external_bindings": 5,
+        "external_declarations": 53,
+        "native_sha256": "d58c538b3f7aa7148d2b90ae0e5b1e95ea086ddced9f27c55e112e0a644a3b01",
+        "product_dialects": {
+          "ansible": 6,
+          "github-actions": 2,
+          "unread": 5
+        },
+        "product_sha256": "27ac395439867053fe8d542423745916b4eaeb7cafa429da80922134812348c8",
+        "sha": "be45b8f180f995c1165cb24541d0f9429f4fefe4",
+        "subject": "mac-dev-playbook",
+        "truth_sha256": "6f6a2ec8264cfdb007d8d0a064e3475b8e2b48de8a5294058cf2a2731743e1d2",
+        "unresolved_classes": {
+          "unresolved dynamic include_tasks": 1,
+          "unresolved dynamic include_vars": 1
+        },
+        "unresolved_misses": 2
+      },
+      "context_bindings": 0,
+      "context_declarations": 19,
+      "context_unresolved": 2,
+      "raw_sha256": "d58c538b3f7aa7148d2b90ae0e5b1e95ea086ddced9f27c55e112e0a644a3b01",
+      "role_candidates": 0,
+      "sha": "be45b8f180f995c1165cb24541d0f9429f4fefe4",
+      "statuses": {
+        "handlers:loaded": 5,
+        "handlers:rejected": 8,
+        "playbook:loaded": 1,
+        "playbook:rejected": 12,
+        "tasks:loaded": 5,
+        "tasks:rejected": 8
+      },
+      "subject": "mac-dev-playbook",
+      "tracked_after": {
+        "bytes": 57084,
+        "entries": 31,
+        "files": 31,
+        "gitlinks": 0,
+        "sha256": "cf9b9913c2ecc3961ddb590e8f2a682bb339582223a6b0fb30cf3197ae779426",
+        "symlinks": 0
+      },
+      "tracked_before": {
+        "bytes": 57084,
+        "entries": 31,
+        "files": 31,
+        "gitlinks": 0,
+        "sha256": "cf9b9913c2ecc3961ddb590e8f2a682bb339582223a6b0fb30cf3197ae779426",
+        "symlinks": 0
+      },
+      "yaml_candidates": 13
+    }
+  ],
+  "support_grade_changed": false,
+  "tasks_executed": false,
+  "tool_packages": {
+    "Jinja2": "3.1.6",
+    "MarkupSafe": "3.0.4",
+    "PyYAML": "6.0.3",
+    "ansible-core": "2.21.4",
+    "cffi": "2.1.1",
+    "cryptography": "50.0.2",
+    "packaging": "26.3",
+    "pycparser": "3.12",
+    "resolvelib": "1.2.1"
+  }
+}
