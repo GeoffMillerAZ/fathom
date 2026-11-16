@@ -1,6 +1,6 @@
 # FTU-0/1: feature-purpose reference cards
 
-Status: draft for contract review; no implementation, reading, or row completion claimed.
+Status: approved by rule W2-3 after independent LAND review; no implementation, reading, or row completion claimed.
 Authority: `docs/design/feature-tuning.md` FT-D1..D5;
 `docs/plans/feature-tuning.md` FTU-0/1; ADR-082 decisions 1..6;
 ADR-110 decisions 1..9 (proposed, owner-directed work); wave rulings W2-3,
