@@ -232,6 +232,15 @@ Not scheduled. On a yes it starts after HZ-3, HZ-4 and HZ-6.
 | HZ-15 (M3 half), HZ-16, HZ-18 | Soundness against plan values. Mutation operators (M5). Agreement on value checks (M6). | 1.000 on a literal basis and 0.99 on defaulted, 100% kill, a confusion matrix |
 | LIB-10 | The draft acceptance test. Fidelity against labels fathom did not derive. Strength by derived mutants. A receipt that binds the check, label and catalog digests. A person still accepts the check. | a seeded misread sentence is refused. A draft with no outside labels is advice only |
 
+### Dependency edges (ADR-114)
+
+The CI kit needs direct file dependencies and an explicit per-file completeness
+verdict for cache decisions. The standalone door supplies both, with unknowns and
+provenance, while the CI kit's dependency graph owns closure and hashing.
+The [dependency-edges plan](../plans/dependency-edges.md) owns the program and its
+deferred audit, closure move and remaining dialects. Done when the door, Go control,
+binary, three dialect readings and extension example have proof.
+
 ## 6. Where a hazard row differs from the policy review
 
 The policy review that preceded the hazard design used PK- ids. The hazard plan uses the same numbers as HZ-. This table lists where this roadmap differs from what the hazard plan carries today. The hazard plan has absorbed these amendments.
@@ -293,6 +302,25 @@ Not roadmap rows. Each moves when its trigger fires. OQ15 satisfies T-IaC. Where
 The three outside wedges the census ranks highest are the contract check outside the product, the module and chart interface diff, and the catalog as data with its diff. Each fails only the consumer clause.
 
 Refused: a default rule pack, a built-in best-practice corpus, own per-function analyzers, control flow for languages other than Go, a language server, a library MCP surface, workflow and migration linting, leases on resource addresses, transpiling open rules into the kernel's algebra. The wins-if lines are in section 12 (RL-12 and the corpus) and in `docs/design/beyond-determinism.md`, which also holds the wins-if for transpiling. The record change for infrastructure tools as sources for the system graph rides CAP-1 in the main register.
+
+### Adjacent capabilities (ADR-114)
+
+Register only. Each entry needs a named consumer and its stated trigger before work starts.
+
+| ID | Capability | Verdict or set | Trigger |
+|---|---|---|---|
+| ADJ-1 | Cacheability verdict | Per unit, cacheable or the nondeterministic inputs that forbid it: network fetches, unpinned images or actions, clock, random, `latest`. | First consumer stores a result cache. |
+| ADJ-2 | Affected set | Units, tests, images and deploy targets downstream of a diff. | DEP-P1 lands. |
+| ADJ-3 | Generated-file staleness | Generated files whose generator inputs changed since generation. | A gate failure caused by a stale generated file. |
+| ADJ-4 | Manifest truth | Declared but unused dependencies, and imports without declarations. | Two DEP readings pass. |
+| ADJ-5 | Import boundary rules | Violations of declared package or directory layering across languages. | A second repository asks. |
+| ADJ-6 | Computed path filters | CI path filters derived from edges and checked against the authored filters. | The CI kit wires DEP output. |
+| ADJ-7 | Build context minimum | Files an image build can read and gaps in the ignore file. | DEP-M3 passes. |
+| ADJ-8 | Task graph | Task, script and workflow job relationships, dead tasks and local/CI parity. | Configuration reference resolution (E16) starts. |
+| ADJ-9 | Environment surface | Environment variables read by code and build files, compared with declarations. | ADJ-1 starts. |
+| ADJ-10 | Toolchain version agreement | Versions demanded by module files, tool-version files, images and CI setup, and disagreements. | A gate failure caused by version drift. |
+| ADJ-11 | Public API delta | Per language, exported surface added, changed or removed between versions. | LIB-13 lands. |
+| ADJ-12 | Minimal checkout | The sparse file set required by a unit. | A consumer builds or tests from a sparse checkout. |
 
 ## 8. Spin-off steps, in order
 

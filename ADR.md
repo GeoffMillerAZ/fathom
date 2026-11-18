@@ -7345,3 +7345,26 @@ of that boundary, without establishing that a second contributor already has mai
 - A second outside consumer needs independent release cadence, so repository strategy is reconsidered against that evidence.
 - The records port or merged bench driver lands, so LBK-14 checks the actual package paths and required members.
 - A family test needs a permanent exception, so the architect records the specific dependency and its justification before weakening enforcement.
+
+## ADR-114: Standalone dependency edges disclose unknowns per file (2026-11-18)
+
+**Status.** Accepted 2026-11-18 (owner direction, owner-architect ruling). **Type.** product / architecture. Design: `docs/design/dependency-edges.md`. Plan: `docs/plans/dependency-edges.md` (DEP-). Contract: `docs/contracts/dependency-edges.md`.
+
+**Request (2026-11-18).** “I want the package to support exactly what you described” and “move this up”.
+
+**Context.** The CI kit needs direct dependencies for safe cache decisions. Undetected missing declarations can reuse stale results. The standalone library already has symbol, call, reference and unresolved evidence.
+
+**Decision.**
+1. DEP-D1. Add direct dependency edges in `pkg/lang/deps`. A reader detects imports, includes, embeds, build inputs and related file constructs, then resolves each to a target or discloses a typed unknown.
+2. DEP-D2. Complete means every dependency construct in a file was detected and resolved. Unknown reasons and evidence sources use closed sets. An empty evidence-source array grants no trust. Consumers widen or run on an incomplete closure.
+3. DEP-D3. Keep closure and hashing with the CI kit's dependency graph (ADR-063 O1). The public door and binary serialize direct facts for a data-only exchange. The grading harness may compute reachability.
+4. DEP-D4. Keep one closure engine. Its first passing reading prompts relocation planning. DEP-P1 starts only after two of DEP-M1 through DEP-M3 pass B1 and B2 and the owner approves amendments to both boundary records. Move the existing engine into the tool family as its own module.
+5. DEP-D5. Support data packs, registered Go resolvers and declared edges. Disclose provenance on each edge. Readers without passing evidence are unmeasured. Their files are incomplete unless the consumer opts in by dialect name and the output records that trust. Provide an extension conformance helper.
+6. DEP-D6. ADR-090 continues to own observed test reads. The consumer fires TQ-38. DEP-8 owns the audit that joins declarations, static edges and observed reads after the readings and a consumer integration.
+7. DEP-D7. Admit dialects at preregistered bars. A B1 or B2 miss leaves that dialect detect-only and its files incomplete.
+
+**Conformance.** ADR-011 and ADR-066 apply. The product runs no toolchain, serializes no absolute path and produces byte-identical output across runs and checkout paths. ADR-092 holds the `pkg/lang` closure at 80. ADR-112 supplies the builder precedent. The door meets Vision 46 §7: held facts, a set and verdict, existing library and binary, independent oracles, and a named consumer.
+
+**Decision models.** None applies. Repository bytes and resolution inputs determine the facts, and independent runs grade them. Provider `none` supports the whole path. Consumers opt in by invoking the door.
+
+**Revisit when.** A dialect misses B1 or B2, the `pkg/lang` door exceeds 80 packages, or a consumer needs a new closed-set member. Reopen the closure boundary at DEP-P1's recorded trigger. Reopen the under-keying audit and further dialects at the triggers on DEP-8 and DEP-9.

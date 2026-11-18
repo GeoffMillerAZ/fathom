@@ -150,7 +150,7 @@ failing test for none of the six triggers that reproduce.
 - **Not built.** A content-hash result cache (Go's test cache is one at package level, the CI
   kit's `InputKey` at the package closure), a package resolver (ADR-063 O1), a runner verb, and
   a second test registry. The manifest's declared `inputs` checked against observed reads
-  (TQ-38) and the gate's own results as attested runs (TQ-39) are deferred rows with triggers.
+  (TQ-38, moved to [DEP-8](../plans/dependency-edges.md#deferred)) and the gate's own results as attested runs (TQ-39) are deferred rows with triggers.
 
 ## 4. Tenancy and cost
 
