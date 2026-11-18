@@ -9,7 +9,8 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/lang/deps"
 )
 
-// TruthEdge is a native direct dependency inside the repository. Raw and Kind
+// TruthEdge is a native direct dependency. B1 counts only repository targets;
+// external bindings can also refute local targets under B2. Raw and Kind
 // identify the originating construct. Use Line 0 if the oracle has no line.
 type TruthEdge struct {
 	Kind       deps.Kind
@@ -48,7 +49,7 @@ type Reading struct {
 }
 
 type edgeCounts struct {
-	observed, missing, wrong, extra, inconclusive int
+	observed, expected, missing, wrong, extra, inconclusive int
 }
 
 // Score checks fixture and corpus observations without invoking an oracle. An
@@ -86,7 +87,7 @@ func Score(o Observation) Reading {
 		out.B4Extra += c.extra
 		if f.Complete {
 			out.CompleteWithOracle++
-			out.Expected += len(rows[0].Edges)
+			out.Expected += c.expected
 			out.CompleteEdges += c.observed
 			out.Missing += c.missing
 			out.Wrong += c.wrong
@@ -113,12 +114,14 @@ func compare(edges []deps.Edge, truth []TruthEdge) edgeCounts {
 	}
 	wanted := make(map[target]bool)
 	for _, u := range truth {
-		wanted[target{u.Kind, u.Resolution, u.To}] = true
+		if isRepositoryTarget(u.Resolution) {
+			wanted[target{u.Kind, u.Resolution, u.To}] = true
+		}
 	}
 	have := make(map[target]bool)
 	var out edgeCounts
 	for _, e := range edges {
-		if e.Resolution != deps.File && e.Resolution != deps.Directory {
+		if !isRepositoryTarget(e.Resolution) {
 			continue
 		}
 		out.observed++
@@ -135,6 +138,10 @@ func compare(edges []deps.Edge, truth []TruthEdge) edgeCounts {
 		}
 	}
 	for _, u := range truth {
+		if !isRepositoryTarget(u.Resolution) {
+			continue
+		}
+		out.expected++
 		if !have[target{u.Kind, u.Resolution, u.To}] {
 			out.missing++
 		}
@@ -142,19 +149,33 @@ func compare(edges []deps.Edge, truth []TruthEdge) edgeCounts {
 	return out
 }
 
+func isRepositoryTarget(resolution deps.Resolution) bool {
+	return resolution == deps.File || resolution == deps.Directory
+}
+
 func compareBinding(e deps.Edge, truth []TruthEdge) (paired, matched, inconclusive bool) {
 	knownRaw := hasOperand(e.Raw)
-	var exact, exactTarget, lineTarget, ambiguous bool
-	var lineOperand *TruthEdge
+	var exactTarget, lineTarget, ambiguous, conflictingLine bool
+	var differentExactTargets, exactMissingLine bool
+	var exactOperand, lineOperand *TruthEdge
 	for i := range truth {
 		u := &truth[i]
-		if e.Kind != u.Kind || (u.Line > 0 && e.Line > 0 && e.Line != u.Line) {
+		if e.Kind != u.Kind {
+			continue
+		}
+		sameOperand := knownRaw && hasOperand(u.Raw) && e.Raw == u.Raw
+		if u.Line > 0 && e.Line > 0 && e.Line != u.Line {
+			conflictingLine = conflictingLine || sameOperand
 			continue
 		}
 		sameTarget := e.To == u.To && e.Resolution == u.Resolution
 		if knownRaw && hasOperand(u.Raw) {
-			if e.Raw == u.Raw {
-				exact = true
+			if sameOperand {
+				if exactOperand == nil {
+					exactOperand = u
+				}
+				differentExactTargets = differentExactTargets || u.To != exactOperand.To || u.Resolution != exactOperand.Resolution
+				exactMissingLine = exactMissingLine || u.Line <= 0 || e.Line <= 0
 				exactTarget = exactTarget || sameTarget
 			}
 			continue
@@ -173,10 +194,13 @@ func compareBinding(e deps.Edge, truth []TruthEdge) (paired, matched, inconclusi
 		}
 		lineTarget = lineTarget || sameTarget
 	}
-	if exact {
-		return true, exactTarget, !exactTarget && (ambiguous || lineOperand != nil)
+	if exactOperand != nil {
+		// Multiple targets can come from one located operand. Without a line
+		// on both sides they can also be distinct occurrences of the same raw
+		// operand, so target membership alone cannot prove the binding.
+		return true, exactTarget, differentExactTargets && exactMissingLine || !exactTarget && (ambiguous || lineOperand != nil)
 	}
-	if ambiguous || (!knownRaw && lineOperand == nil) {
+	if conflictingLine || ambiguous || (!knownRaw && lineOperand == nil) {
 		return false, false, true
 	}
 	return lineOperand != nil, lineTarget, false

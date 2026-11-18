@@ -330,3 +330,60 @@ type fixtureEmbedResolver struct{}
 func (fixtureEmbedResolver) Resolve(fs.FS, string, string) ([]deps.Edge, *deps.Unknown) {
 	return []deps.Edge{{Kind: deps.Import, To: "go:embed", Resolution: deps.External, Version: "v1"}}, nil
 }
+
+func TestDependencyB2BindingIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		raw         [2]string
+		oracleLines [2]int
+		readerLines [2]int
+		wantPass    bool
+	}{
+		{"conflicting lines", [2]string{"first", "second"}, [2]int{4, 8}, [2]int{8, 4}, false},
+		{"repeated operand without oracle lines", [2]string{"same", "same"}, [2]int{}, [2]int{4, 8}, false},
+		{"multiple targets from one located operand", [2]string{"same", "same"}, [2]int{4, 4}, [2]int{4, 4}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			targets := [2]string{"a.txt", "b.txt"}
+			var truth []depbench.TruthEdge
+			var edges []deps.Edge
+			for i, raw := range tc.raw {
+				truth = append(truth, depbench.TruthEdge{
+					Kind: deps.Include, Raw: raw, Line: tc.oracleLines[i],
+					To: targets[i], Resolution: deps.File,
+				})
+				// Keep the B1 target set while reversing construct-to-target bindings.
+				edges = append(edges, deps.Edge{
+					From: "source.txt", Kind: deps.Include, Raw: raw, Line: tc.readerLines[i],
+					To: targets[1-i], Resolution: deps.File,
+				})
+			}
+			files := []deps.FileDeps{{Path: "source.txt", Complete: true, Edges: edges}}
+			score := depbench.Score(depbench.Observation{
+				Files: files, Repeat: files, Relocated: files,
+				Truth: []depbench.TruthFile{{Path: "source.txt", Edges: truth}},
+			})
+			if !score.B1 || score.B2 != tc.wantPass || !tc.wantPass && score.Wrong+score.B2Inconclusive == 0 {
+				t.Fatalf("B1=%t B2=%t, wrong=%d inconclusive=%d. Want B1=true B2=%t",
+					score.B1, score.B2, score.Wrong, score.B2Inconclusive, tc.wantPass)
+			}
+		})
+	}
+}
+
+func TestDependencyB2NativeExternalTarget(t *testing.T) {
+	files := []deps.FileDeps{{
+		Path: "source.txt", Complete: true,
+		Edges: []deps.Edge{{From: "source.txt", Kind: deps.Import, Raw: "dependency",
+			Line: 1, Resolution: deps.File, To: "local.txt"}},
+	}}
+	score := depbench.Score(depbench.Observation{
+		Files: files, Repeat: files, Relocated: files,
+		Truth: []depbench.TruthFile{{Path: "source.txt", Edges: []depbench.TruthEdge{{
+			Kind: deps.Import, Raw: "dependency", Line: 1, Resolution: deps.External, To: "example:dependency",
+		}}}},
+	})
+	if !score.B1 || score.Expected != 0 || score.Missing != 0 || score.B2 || score.Wrong != 1 {
+		t.Fatalf("native external input is outside B1 but refutes a local binding under B2: %+v", score)
+	}
+}
