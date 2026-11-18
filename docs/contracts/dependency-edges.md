@@ -7,8 +7,9 @@ preregistered admission bars.
 ## Read and consume
 
 `pkg/lang/deps` reads one file from bytes or a set of paths from a caller-supplied,
-read-only repository `fs.FS`. A file record names its repository-relative path,
-dialect, measurement and completeness, then its direct edges and unknowns.
+read-only, stable, repository-rooted `fs.FS`. A file record names its
+repository-relative path, dialect, measurement and completeness, then its direct
+edges and unknowns.
 `fathom-lang deps` serializes the same records as JSON. Edges and unknowns are
 sorted arrays, including when empty. Identical repository inputs produce identical
 bytes across runs and checkout paths.
@@ -19,6 +20,9 @@ reader without a passing admission is unmeasured. Its files remain incomplete
 unless the consumer explicitly trusts the dialect by name and the result records
 that trust. A dialect with a failed soundness reading is detect-only. A consumer
 must widen or run whenever the files in its closure include incomplete evidence.
+B2 is inconclusive when a reported local edge in a complete file has an ambiguous
+or missing operand identity. The grading harness counts those cases separately
+from wrong bindings and extra edges.
 
 A reader may reuse `pkg/lang` reference and unresolved evidence. It does no
 network reads, starts no toolchain and computes no closure or hash. It resolves
@@ -32,7 +36,12 @@ Call `deps.New(opts...)`, then `Reader.ReadFile(ctx, repo, path, dialect, src)` 
 dialect selects Go for a `.go` path. Explicit dialect IDs take precedence. The batch
 sorts paths and rejects duplicates. An unreadable file contributes an incomplete
 record and the batch returns an error. A single byte read can use bytes the caller
-has yet to store in the repository view.
+has yet to store in the repository view. The reader checks every path component
+below the supplied root with non-following metadata or parent directory entries.
+Built-in reads, resolver reads and local resolver targets all refuse observable
+symlinks and components they cannot safely inspect. These checks depend on an
+accurate view that stays stable for the read. The CLI uses `os.OpenRoot` for
+filesystem confinement.
 
 `WithResolver(id, resolver)` replaces the resolution of imports captured by an
 implemented detector. A resolver receives the repository view, importing file and

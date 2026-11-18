@@ -37,16 +37,18 @@ type Observation struct {
 // with oracle coverage. B4Extra / B4ComparableEdges covers all files with
 // oracle coverage, including incomplete files. UnknownByCode counts findings,
 // and Evidence is the denominator for their share of all reported evidence.
+// B2Inconclusive counts edges in complete files whose operands could not be
+// uniquely identified against the oracle.
 type Reading struct {
 	Files, OracleFiles, Complete, CompleteWithOracle, CompleteWithoutOracle int
-	Expected, CompleteEdges, Missing, Wrong, Extra                          int
+	Expected, CompleteEdges, Missing, Wrong, Extra, B2Inconclusive          int
 	B4Extra, B4ComparableEdges, Edges, Unknowns, Evidence                   int
 	UnknownByCode                                                           map[deps.UnknownCode]int
 	B1, B2, B3                                                              bool
 }
 
 type edgeCounts struct {
-	observed, missing, wrong, extra int
+	observed, missing, wrong, extra, inconclusive int
 }
 
 // Score checks fixture and corpus observations without invoking an oracle. An
@@ -88,13 +90,14 @@ func Score(o Observation) Reading {
 			out.CompleteEdges += c.observed
 			out.Missing += c.missing
 			out.Wrong += c.wrong
+			out.B2Inconclusive += c.inconclusive
 			out.Extra += c.extra
 		}
 	}
 	out.Evidence = out.Edges + out.Unknowns
 	covered := out.CompleteWithOracle > 0 && out.CompleteWithoutOracle == 0
 	out.B1 = covered && out.Missing == 0
-	out.B2 = covered && out.Wrong == 0
+	out.B2 = covered && out.Wrong == 0 && out.B2Inconclusive == 0
 	out.B3 = sameOutput(o)
 	return out
 }
@@ -121,14 +124,10 @@ func compare(edges []deps.Edge, truth []TruthEdge) edgeCounts {
 		out.observed++
 		k := target{e.Kind, e.Resolution, e.To}
 		have[k] = true
-		matched, paired := false, false
-		for _, u := range truth {
-			if e.Kind == u.Kind && e.Raw == u.Raw && (u.Line == 0 || e.Line == u.Line) {
-				paired = true
-				matched = matched || (u.To == e.To && u.Resolution == e.Resolution)
-			}
-		}
+		paired, matched, inconclusive := compareBinding(e, truth)
 		switch {
+		case inconclusive:
+			out.inconclusive++
 		case paired && !matched:
 			out.wrong++
 		case !wanted[k]:
@@ -142,6 +141,48 @@ func compare(edges []deps.Edge, truth []TruthEdge) edgeCounts {
 	}
 	return out
 }
+
+func compareBinding(e deps.Edge, truth []TruthEdge) (paired, matched, inconclusive bool) {
+	knownRaw := hasOperand(e.Raw)
+	var exact, exactTarget, lineTarget, ambiguous bool
+	var lineOperand *TruthEdge
+	for i := range truth {
+		u := &truth[i]
+		if e.Kind != u.Kind || (u.Line > 0 && e.Line > 0 && e.Line != u.Line) {
+			continue
+		}
+		sameTarget := e.To == u.To && e.Resolution == u.Resolution
+		if knownRaw && hasOperand(u.Raw) {
+			if e.Raw == u.Raw {
+				exact = true
+				exactTarget = exactTarget || sameTarget
+			}
+			continue
+		}
+		// A withheld operand needs a physical line on both sides. Several
+		// targets may come from one native operand, but two operands on the
+		// same line cannot be distinguished without their raw values.
+		if e.Line <= 0 || u.Line <= 0 {
+			ambiguous = true
+			continue
+		}
+		if lineOperand == nil {
+			lineOperand = u
+		} else if !hasOperand(u.Raw) || u.Raw != lineOperand.Raw {
+			ambiguous = true
+		}
+		lineTarget = lineTarget || sameTarget
+	}
+	if exact {
+		return true, exactTarget, !exactTarget && (ambiguous || lineOperand != nil)
+	}
+	if ambiguous || (!knownRaw && lineOperand == nil) {
+		return false, false, true
+	}
+	return lineOperand != nil, lineTarget, false
+}
+
+func hasOperand(raw string) bool { return raw != "" && raw != "***" }
 
 func sameOutput(o Observation) bool {
 	if len(o.Files) == 0 || len(o.Repeat) != len(o.Files) || len(o.Relocated) != len(o.Files) {

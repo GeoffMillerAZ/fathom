@@ -67,7 +67,13 @@ package dependencyedges
 		if !measured {
 			trusted: true
 		}
-		edges: [...{resolution: !="unknown", ...}]
+		edges: [...{
+			resolution: !="unknown"
+			if resolution == "external" {
+				version: !=""
+			}
+			...
+		}]
 		unknowns: []
 	}
 	if !complete {

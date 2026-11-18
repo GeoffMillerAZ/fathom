@@ -100,6 +100,10 @@ func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, file, dialect string,
 	if err := validateInput(repo, Input{Path: file, Dialect: dialect}); err != nil {
 		return FileDeps{}, err
 	}
+	return r.readFile(ctx, repositoryFS{view: repo}, file, dialect, src)
+}
+
+func (r *Reader) readFile(ctx context.Context, repo repositoryFS, file, dialect string, src []byte) (FileDeps, error) {
 	if err := ctx.Err(); err != nil {
 		return FileDeps{}, err
 	}
@@ -140,12 +144,13 @@ func (r *Reader) ReadFiles(ctx context.Context, repo fs.FS, inputs []Input) ([]F
 		}
 	}
 
+	view := repositoryFS{view: repo}
 	var readErr error
 	for _, input := range inputs {
 		if err := ctx.Err(); err != nil {
 			return out, err
 		}
-		src, code := readSource(repo, input.Path)
+		src, code := readSource(view, input.Path)
 		if err := ctx.Err(); err != nil {
 			return out, err
 		}
@@ -157,7 +162,7 @@ func (r *Reader) ReadFiles(ctx context.Context, repo fs.FS, inputs []Input) ([]F
 			readErr = errors.New("one or more dependency files could not be read")
 			continue
 		}
-		f, err := r.ReadFile(ctx, repo, input.Path, input.Dialect, src)
+		f, err := r.readFile(ctx, view, input.Path, input.Dialect, src)
 		if err != nil {
 			return out, err
 		}
@@ -199,8 +204,8 @@ func implemented(dialect string) bool { return dialect == "go" }
 
 // Read regular files only. Neither filesystem errors nor parser errors are
 // surfaced verbatim: their messages can contain repository data or host paths.
-func readSource(repo fs.FS, name string) ([]byte, UnknownCode) {
-	info, err := fs.Lstat(repo, name)
+func readSource(repo repositoryFS, name string) ([]byte, UnknownCode) {
+	info, err := repo.Stat(name)
 	if err != nil || !info.Mode().IsRegular() {
 		return nil, MissingConfig
 	}

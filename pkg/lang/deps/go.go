@@ -22,7 +22,7 @@ const maxPackageEntries = 4096
 
 type goRead struct {
 	ctx  context.Context
-	repo fs.FS
+	repo repositoryFS
 	out  *result
 }
 
@@ -32,7 +32,7 @@ type goConfig struct {
 	ambiguous bool
 }
 
-func readGo(ctx context.Context, repo fs.FS, src []byte, resolver Resolver, out *result) {
+func readGo(ctx context.Context, repo repositoryFS, src []byte, resolver Resolver, out *result) {
 	g := goRead{ctx, repo, out}
 	pos := token.NewFileSet()
 	parsed, err := parser.ParseFile(pos, out.Path, src, parser.ParseComments|parser.SkipObjectResolution)
@@ -45,6 +45,10 @@ func readGo(ctx context.Context, repo fs.FS, src []byte, resolver Resolver, out 
 		g.unknown(UnsupportedConstruct, "", 1, Toolchain, ConfigFile)
 	}
 	g.packageSources(dir, parsed.Name.Name, out.Path)
+	if parsed.Name.Name == "main" {
+		// Native PGO auto mode selects the profile next to the main package.
+		g.optionalInput(BuildInput, path.Join(dir, "default.pgo"), File)
+	}
 	cfg := g.config(dir)
 
 	hasEmbed := false
@@ -83,14 +87,14 @@ func (g goRead) config(start string) goConfig {
 			return cfg
 		}
 		name := path.Join(dir, "go.work")
-		if g.configInput(name, File) {
-			g.configInput(path.Join(dir, "go.work.sum"), File)
+		if g.optionalInput(ConfigRef, name, File) {
+			g.optionalInput(ConfigRef, path.Join(dir, "go.work.sum"), File)
 			cfg.ambiguous = true
 			g.unknown(UnsupportedConstruct, name, 1, Toolchain, ConfigFile)
 		}
 		if cfg.dir == "" {
 			name := path.Join(dir, "go.mod")
-			if g.configInput(name, File) {
+			if g.optionalInput(ConfigRef, name, File) {
 				cfg.dir = dir
 				src, code := readSource(g.repo, name)
 				if code != "" {
@@ -109,10 +113,10 @@ func (g goRead) config(start string) goConfig {
 						}
 					}
 				}
-				g.configInput(path.Join(dir, "go.sum"), File)
+				g.optionalInput(ConfigRef, path.Join(dir, "go.sum"), File)
 				vendor := path.Join(dir, "vendor")
-				if g.configInput(vendor, Directory) {
-					g.configInput(path.Join(vendor, "modules.txt"), File)
+				if g.optionalInput(ConfigRef, vendor, Directory) {
+					g.optionalInput(ConfigRef, path.Join(vendor, "modules.txt"), File)
 					cfg.ambiguous = true
 					g.unknown(UnsupportedConstruct, vendor, 1, Toolchain, ConfigFile)
 				}
@@ -128,9 +132,9 @@ func (g goRead) config(start string) goConfig {
 	return cfg
 }
 
-// A present but unreadable or irregular file still changes resolution policy.
-func (g goRead) configInput(name string, resolution Resolution) bool {
-	info, err := fs.Lstat(g.repo, name)
+// A present or uninspectable input can affect the build.
+func (g goRead) optionalInput(kind Kind, name string, resolution Resolution) bool {
+	info, err := g.repo.Stat(name)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false
 	}
@@ -139,7 +143,7 @@ func (g goRead) configInput(name string, resolution Resolution) bool {
 		g.unknown(MissingConfig, name, 1, ConfigFile)
 		return true
 	}
-	g.edge(ConfigRef, name, name, resolution, "", 1)
+	g.edge(kind, name, name, resolution, "", 1)
 	return true
 }
 
@@ -179,11 +183,11 @@ func importSuffix(operand, prefix string) (string, bool) {
 // the target directory. Paths have already been checked as logical identities.
 func (g goRead) withinPackage(base, dir string) bool {
 	for dir != base {
-		info, err := fs.Lstat(g.repo, dir)
+		info, err := g.repo.Stat(dir)
 		if err != nil || !info.IsDir() {
 			return false
 		}
-		_, err = fs.Lstat(g.repo, path.Join(dir, "go.mod"))
+		_, err = g.repo.Stat(path.Join(dir, "go.mod"))
 		if !errors.Is(err, fs.ErrNotExist) {
 			return false
 		}
@@ -249,8 +253,8 @@ func (g goRead) packageSources(dir, wantPackage, current string) bool {
 	return found
 }
 
-func packageEntries(repo fs.FS, name string) ([]fs.DirEntry, UnknownCode) {
-	info, err := fs.Lstat(repo, name)
+func packageEntries(repo repositoryFS, name string) ([]fs.DirEntry, UnknownCode) {
+	info, err := repo.Stat(name)
 	if err != nil || !info.IsDir() {
 		return nil, MissingConfig
 	}
@@ -382,7 +386,7 @@ func (g goRead) resolveEmbed(dir, raw string, line int) {
 		}
 	}
 	target := path.Join(dir, name)
-	info, err := fs.Lstat(g.repo, target)
+	info, err := g.repo.Stat(target)
 	switch {
 	case err != nil:
 		g.unknown(MissingConfig, raw, line, Observation)

@@ -161,14 +161,14 @@ func compareUnknowns(a, b Unknown) int {
 		cmp.Compare(a.Raw, b.Raw), slices.Compare(a.DecidableBy, b.DecidableBy))
 }
 
-func (f *result) resolveExtension(repo fs.FS, resolver Resolver, raw string, line int) {
+func (f *result) resolveExtension(repo repositoryFS, resolver Resolver, raw string, line int) {
 	edges, unknown := resolver.Resolve(repo, f.Path, raw)
 	requiresUnknown := len(edges) == 0
 	for _, e := range edges {
 		e.Line, e.Raw, e.Provenance = line, raw, Extension
 		requiresUnknown = requiresUnknown || e.Resolution == UnknownTarget
 		if validEdge(e) && (e.Resolution == File || e.Resolution == Directory) {
-			info, err := fs.Lstat(repo, e.To)
+			info, err := repo.Stat(e.To)
 			if err != nil || (e.Resolution == File && !info.Mode().IsRegular()) ||
 				(e.Resolution == Directory && !info.IsDir()) {
 				requiresUnknown = true

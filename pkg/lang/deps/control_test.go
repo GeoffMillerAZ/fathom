@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"slices"
 	"testing"
+	"testing/fstest"
 
 	"github.com/geoffmilleraz/fathom/pkg/lang/deps"
 	"github.com/geoffmilleraz/fathom/pkg/lang/deps/internal/depbench"
@@ -262,4 +263,70 @@ func TestGoDependencyOracleTruthCoverage(t *testing.T) {
 		got.Unknowns != 1 || got.UnknownByCode[deps.ComputedPath] != 1 {
 		t.Fatalf("missing B4 evidence or vacuous admission: %+v", got)
 	}
+}
+
+func TestDependencyB2WithheldOperands(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		directives          string
+		lines               [2]int
+		swap                bool
+		passB2              bool
+		wrong, inconclusive int
+	}{
+		{"correct", "//go:embed \"one file\"\n//go:embed \"two file\"", [2]int{3, 4}, false, true, 0, 0},
+		{"swapped", "//go:embed \"one file\"\n//go:embed \"two file\"", [2]int{3, 4}, true, false, 2, 0},
+		{"same line", "//go:embed \"one file\" \"two file\"", [2]int{3, 3}, true, false, 0, 2},
+		{"missing oracle line", "//go:embed \"one file\"\n//go:embed \"two file\"", [2]int{0, 4}, false, false, 0, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := fstest.MapFS{
+				"go.mod":   &fstest.MapFile{Data: []byte("module example.com/control\n")},
+				"one file": &fstest.MapFile{},
+				"two file": &fstest.MapFile{},
+			}
+			r, err := deps.New(deps.TrustUnmeasured("go"), deps.WithResolver("go", fixtureEmbedResolver{}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			src := []byte("package assets\nimport _ \"embed\"\n" + tc.directives + "\nvar assets embed.FS\n")
+			f, err := r.ReadFile(context.Background(), repo, "assets.go", "go", src)
+			if err != nil || !f.Complete {
+				t.Fatalf("fixture must be complete: %+v, %v", f, err)
+			}
+			for i, e := range f.Edges {
+				if e.Kind != deps.Embed {
+					continue
+				}
+				if e.Raw != "***" {
+					t.Fatal("fixture must withhold the raw operand")
+				}
+				if tc.swap {
+					if e.To == "one file" {
+						f.Edges[i].To = "two file"
+					} else {
+						f.Edges[i].To = "one file"
+					}
+				}
+			}
+			truth := []depbench.TruthEdge{
+				{Kind: deps.ConfigRef, Raw: "go.mod", Line: 1, Resolution: deps.File, To: "go.mod"},
+				{Kind: deps.Embed, Raw: "one file", Line: tc.lines[0], Resolution: deps.File, To: "one file"},
+				{Kind: deps.Embed, Raw: "two file", Line: tc.lines[1], Resolution: deps.File, To: "two file"},
+			}
+			files := []deps.FileDeps{f}
+			s := depbench.Score(depbench.Observation{Files: files, Repeat: files, Relocated: files,
+				Truth: []depbench.TruthFile{{Path: f.Path, Edges: truth}}})
+			if !s.B1 || s.B2 != tc.passB2 || s.Wrong != tc.wrong || s.B2Inconclusive != tc.inconclusive ||
+				s.Extra != 0 || s.Missing != 0 {
+				t.Errorf("withheld operands: %+v", s)
+			}
+		})
+	}
+}
+
+type fixtureEmbedResolver struct{}
+
+func (fixtureEmbedResolver) Resolve(fs.FS, string, string) ([]deps.Edge, *deps.Unknown) {
+	return []deps.Edge{{Kind: deps.Import, To: "go:embed", Resolution: deps.External, Version: "v1"}}, nil
 }

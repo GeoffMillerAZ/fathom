@@ -21,6 +21,15 @@ sample: #Batch & {
 			edges: []
 			unknowns: []
 		},
+		{
+			path:     "pinned.go"
+			dialect:  "go"
+			measured: false
+			trusted:  true
+			complete: true
+			edges: [{from: "pinned.go", kind: "import", raw: "example.org/lib", to: "go:example.org/lib", resolution: "external", version: "v1.0.0", line: 2, provenance: "extension"}]
+			unknowns: []
+		},
 	]
 }
 
