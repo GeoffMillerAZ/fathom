@@ -1,0 +1,11 @@
+name: Seeded path gaps
+on:
+  push:
+    paths: ['src/**', '!src/skip.ts', 'never/**']
+  pull_request:
+    paths-ignore: ['shared/**']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo fixture

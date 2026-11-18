@@ -1,0 +1,10 @@
+name: Covered control
+on:
+  pull_request:
+    paths: ['**', '!ignored/**']
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo fixture

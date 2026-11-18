@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "results": [
+    {
+      "workflow": ".github/workflows/control.yml",
+      "event": "pull_request",
+      "entry": "src/app.ts",
+      "verdict": "covered",
+      "paths": [
+        "shared/leaf.ts",
+        "src/app.ts",
+        "src/middle.ts",
+        "src/skip.ts"
+      ],
+      "missed": [],
+      "unknowns": []
+    },
+    {
+      "workflow": ".github/workflows/control.yml",
+      "event": "push",
+      "entry": "src/app.ts",
+      "verdict": "covered",
+      "paths": [
+        "shared/leaf.ts",
+        "src/app.ts",
+        "src/middle.ts",
+        "src/skip.ts"
+      ],
+      "missed": [],
+      "unknowns": []
+    },
+    {
+      "workflow": ".github/workflows/gap.yml",
+      "job": "build",
+      "event": "push",
+      "entry": "src/app.ts",
+      "verdict": "missed",
+      "paths": [
+        "shared/leaf.ts",
+        "src/app.ts",
+        "src/middle.ts",
+        "src/skip.ts"
+      ],
+      "missed": [
+        "shared/leaf.ts",
+        "src/skip.ts"
+      ],
+      "unknowns": []
+    },
+    {
+      "workflow": ".github/workflows/gap.yml",
+      "job": "build",
+      "event": "pull_request",
+      "entry": "src/app.ts",
+      "verdict": "missed",
+      "paths": [
+        "shared/leaf.ts",
+        "src/app.ts",
+        "src/middle.ts",
+        "src/skip.ts"
+      ],
+      "missed": [
+        "shared/leaf.ts"
+      ],
+      "unknowns": []
+    }
+  ],
+  "unused_patterns": [
+    {
+      "workflow": ".github/workflows/control.yml",
+      "event": "pull_request",
+      "pattern": "!ignored/**",
+      "position": 2
+    },
+    {
+      "workflow": ".github/workflows/gap.yml",
+      "event": "push",
+      "pattern": "never/**",
+      "position": 3
+    }
+  ]
+}

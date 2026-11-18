@@ -23,7 +23,7 @@ It is not a query engine. Nothing is stored, nothing is joined across files, and
 | `pkg/lang/iac` | Go package | `iac.ReadFile` and `iac.ReadModule`: the resources, data sources and module calls of Terraform, OpenTofu, CloudFormation and Pulumi YAML, each attribute with a path, a class, its references and a span (see Resource reads) |
 | `pkg/lang/deps` | Go package | Direct file dependencies and typed unknowns from a repository `fs.FS` |
 | `pkg/lang/langtest` | Go package | `CheckPack`: a pack's validation, required kinds and goldens, for pack authors |
-| `cmd/fathom-lang` | Binary (stdlib flags only) | `extract`, `dialects`, `resources`, `deps`, `contract` and `catalog import`, printing the same facts as JSON for tools not written in Go |
+| `cmd/fathom-lang` | Binary (stdlib flags only) | `extract`, `dialects`, `resources`, `deps`, `pathfilters`, `boundaries`, `contract` and `catalog import`, printing the same facts as JSON for tools not written in Go |
 
 ---
 
@@ -68,6 +68,7 @@ fathom-lang dialects [-pack DIR]
 fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                       [-in-process] PATH...
 fathom-lang deps [-root DIR] [-dialect ID] [-trust-unmeasured ID] [-export] PATH...
+fathom-lang pathfilters --map FILE [--root DIR] [--trust-unmeasured ID] [WORKFLOW...]
 fathom-lang boundaries --rules FILE [--root DIR] [--strict] [--trust-unmeasured ID] [PATH...]
 fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 fathom-lang catalog import -dir DIR [-version V] [-licence SPDX] [-tool NAME] [-replace] <export.json | V=export.json>...
@@ -85,6 +86,13 @@ $ fathom-lang extract -root infra main.tf | jq '.files[0].result | {dialect, lev
 unknowns. Read `complete` before using the edges for skip decisions. `-export` writes unit
 pairs for the declared-edge exchange. See the [dependency-edge contract](../contracts/dependency-edges.md)
 for the output and trust rules.
+
+`pathfilters` checks whether each known file in a declared entry's dependency
+closure passes a GitHub Actions workflow's `push` and `pull_request` path filters
+individually. Declare what the workflow or job builds or tests in a
+repository-relative JSON map. The command reports misses, incomplete evidence
+and unused patterns. Exit 1 covers both misses and unverified results.
+See the [coverage map and output contract](../contracts/dependency-edges.md#github-actions-path-filters).
 
 `boundaries` checks direct imports against a JSON rule file. Pass repository-relative
 paths to restrict the scope or omit them to discover governed files. JSON goes to
@@ -188,4 +196,4 @@ Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as fo
 
 ## Maintained
 
-This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources, deps, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources, deps, pathfilters, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.

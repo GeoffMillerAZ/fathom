@@ -153,6 +153,72 @@ evaluations, pre-merge violations caught and outside uses. Keep the capability
 if it identifies at least one violation more clearly than the existing checks
 or has at least one outside use. Otherwise demote it to the register.
 
+## GitHub Actions path filters
+
+Run `fathom-lang pathfilters --root DIR --map coverage.json [WORKFLOW...]`
+against a checkout. The map and optional workflow paths are relative to the
+checkout root, which defaults to the working directory. With no workflow
+arguments, the command checks the scopes in the map. A requested workflow
+without a declaration is unverified.
+
+```json
+{
+  "schema_version": 1,
+  "coverage": [
+    {
+      "workflow": ".github/workflows/ci.yml",
+      "job": "build",
+      "entries": ["src/main.ts"]
+    }
+  ]
+}
+```
+
+Each declaration names a workflow or, with `job`, a job that builds or tests
+the listed entry files. The map declares that relationship explicitly.
+Every scope and its entry paths must be unique. Entries are repository-relative
+file paths. A map is at most 1 MiB. Unknown fields, duplicate keys and null
+values are invalid. The schema is in [schema/dependency-pathfilters](../../schema/dependency-pathfilters).
+
+The companion checks `push` and `pull_request` separately. It evaluates every
+entry and known transitive local dependency as the only changed file.
+`paths` patterns match from the root and the last matching pattern wins.
+`paths-ignore` excludes each matching file. Events with neither filter
+include every file. See GitHub's [path filter rules](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore)
+and [pattern examples](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet).
+
+A miss means a known checkout file failed that event's path filter. An
+unevaluated condition on the event, the selected job or any of its steps
+is reported even when there is a miss. A workflow-scope declaration
+considers the conditions of its jobs. The check also discloses unsupported
+workflow syntax such as YAML aliases, incomplete dependency reads and
+directory dependencies.
+Resolved external dependencies contribute no checkout paths. The
+inventory uses regular files in the checkout and excludes symlinks and
+VCS metadata. A stable checkout is required for the duration of the call.
+
+The result is a static per-file path check. GitHub evaluates changed-file
+sets, branch and activity selectors, job and step conditions, and platform
+diff limits at runtime. The checker neither runs workflows nor derives
+the entries a job builds or tests. Only `push` and `pull_request` are checked.
+No Git, language toolchain, daemon or network connection is required.
+
+Stdout contains one JSON object with `schema_version: 1`, `results` and
+`unused_patterns`. Results are ordered by workflow, job, entry and event
+declaration. Each result records `paths`, `missed` and `unknowns` as arrays.
+`missed` takes precedence when there is a known miss, followed by
+`unverified` when any evidence is unknown. `covered` requires no misses
+or unknowns. `--trust-unmeasured ID` opts in to a supported unmeasured
+dependency reader, and `trusted` lists the closure files that used that
+opt-in. Unused patterns are advisory and include their declaration
+position. A partial inventory cannot prove that a pattern is unused.
+
+Exit 0 means every result was covered. Exit 1 means at least one miss,
+unverified result or operational failure. Exit 2 means misuse or an invalid
+coverage map. The first use is `TestPathFiltersFixtureFirstUse` through the
+normal command entry point. DEP-P1b owns the first live use in the CI kit,
+which starts the 30-day PF-M1 window.
+
 ## Serialized facts
 
 An edge names the importing path, kind, safe raw operand, target, resolution,
@@ -202,9 +268,9 @@ completeness before using a mapped result to skip work.
 
 Declared-edge JSON is the sole exchange between the two libraries.
 `cmd/fathom-lang` is the sole command authorized to compose their APIs in this
-program. For path filters, the companion will reverse the data edges and call
+program. For path filters, the companion reverses the data edges and calls
 `depgraph.Dependents` with the entry units as seeds to get their forward
-dependency closure. It will include the entry units in the coverage check.
+dependency closure. It includes the entry units in the coverage check.
 
 Every edge in the file records discloses provenance.
 A pack, registered Go resolver or caller-declared edge list can supply facts.

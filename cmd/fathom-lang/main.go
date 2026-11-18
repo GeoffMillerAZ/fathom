@@ -1,6 +1,6 @@
 // Command fathom-lang prints what fathom's language library reads from files,
 // as JSON, for tools not written in Go (ADR-092). It uses the standard flag
-// package only, so the binary's closure is the library's and nothing else.
+// package. Dependency checks compose the standalone family packages here.
 //
 //	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
 //	    [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
@@ -8,6 +8,7 @@
 //	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
 //	    [-in-process] PATH...
 //	fathom-lang deps [-root DIR] [-dialect ID] [-trust-unmeasured ID] [-export] PATH...
+//	fathom-lang pathfilters --map FILE [--root DIR] [--trust-unmeasured ID] [WORKFLOW...]
 //	fathom-lang boundaries --rules FILE [--root DIR] [--strict] [--trust-unmeasured ID] [PATH...]
 //	fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 //	fathom-lang catalog import -dir DIR [-version V] [-region R] [-licence SPDX] [-tool NAME] [-replace] INPUT...
@@ -56,6 +57,7 @@ const usage = `usage:
   fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                         [-in-process] PATH...
   fathom-lang deps [-root DIR] [-dialect ID] [-trust-unmeasured ID] [-export] PATH...
+  fathom-lang pathfilters --map FILE [--root DIR] [--trust-unmeasured ID] [WORKFLOW...]
   fathom-lang boundaries --rules FILE [--root DIR] [--strict] [--trust-unmeasured ID] [PATH...]
   fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
   fathom-lang catalog import -dir DIR [-version V] [-licence SPDX] [-tool NAME] [-replace] <export.json | V=export.json>...
@@ -88,6 +90,8 @@ and takes the same -deadline, -max-memory and -in-process; a file whose child wa
 killed has an error and a null result. A file no reader reads has an error.
 deps prints direct dependencies and typed unknowns from repository-relative
 paths. -export writes a bare array of declared unit pairs.
+pathfilters checks GitHub Actions push and pull request path filters against
+declared entries and their local dependencies.
 boundaries checks direct imports against a rule file. --strict fails on
 unverified rules as well as violations.
 contract prints a catalog's source, line and versions, with only -catalog; with
@@ -106,7 +110,7 @@ is merged, never dropped, and a release with different content is refused unless
 -replace. With -region the input is a CloudFormation registry schema zip you fetched,
 imported as that region's catalog. Nothing is downloaded.`
 
-// schemaVersion is the version of the JSON shape both commands print. It
+// schemaVersion is the version of the envelope the commands print. It
 // changes only with a break; added fields do not change it.
 const schemaVersion = 1
 
@@ -139,6 +143,11 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 		err = cmdResources(ctx, args[1:], in, out)
 	case "deps":
 		err = cmdDeps(ctx, args[1:], out)
+	case "pathfilters":
+		err = cmdPathFilters(ctx, args[1:], out)
+		if errors.Is(err, errPathFilterFindings) {
+			return 1
+		}
 	case "boundaries":
 		err = cmdBoundaries(ctx, args[1:], out, errw)
 		if errors.Is(err, errBoundaryFindings) {
