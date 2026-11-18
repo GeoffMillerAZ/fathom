@@ -7367,6 +7367,9 @@ of that boundary, without establishing that a second contributor already has mai
 
 **Decision models.** None applies. Repository bytes and resolution inputs determine the facts, and independent runs grade them. Provider `none` supports the whole path. Consumers opt in by invoking the door.
 
+**Consequence.** The generic closure and hashing engine at `pkg/depgraph` was moved from the CI kit's module.
+Declared-edge JSON is the exchange format between the understanding door and the engine. Each keeps its own import closure.
+
 **Revisit when.** A dialect misses B1 or B2, the `pkg/lang` door exceeds 80 packages, or a consumer needs a new closed-set member. Reopen the closure boundary at DEP-P1's recorded trigger. Reopen the under-keying audit and further dialects at the triggers on DEP-8 and DEP-9.
 
 
