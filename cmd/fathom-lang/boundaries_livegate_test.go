@@ -12,7 +12,11 @@ import (
 func TestFamilyDependencyBoundaryGate(t *testing.T) {
 	root := familyPhysicalRoot(t, "../..")
 	rules := filepath.Join(root, familyRulesFile)
-	packages := familyGoList(t, root, "./pkg/lang", "./pkg/lang/iac", "./pkg/lang/deps", "./pkg/lang/cue", "./cmd/fathom-lang")
+	packages := familyGoList(t, root,
+		"./pkg/lang", "./pkg/lang/iac", "./pkg/lang/deps", "./pkg/lang/cue",
+		"./pkg/depgraph", "./pkg/depgraph/hashw", "./pkg/depgraph/conformance", "./pkg/depgraph/mockresolver",
+		"./cmd/fathom-lang",
+	)
 	files := familySourceFiles(t, root, packages)
 	results, findings, code := runFamilyBoundaries(t, root, rules, files)
 	if code != 0 {

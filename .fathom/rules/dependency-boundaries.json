@@ -3,13 +3,13 @@
   "rules": [
     {
       "id": "standalone-ownership",
-      "from": ["pkg/lang/**/*.go", "cmd/fathom-lang/*.go", "internal/**/*.go", "third_party/**/*.go"],
+      "from": ["pkg/lang/**/*.go", "pkg/depgraph/**/*.go", "cmd/fathom-lang/*.go", "internal/**/*.go", "third_party/**/*.go"],
       "deny": ["internal/store/**", "internal/fusion/**", "internal/connector/**", "internal/mcp/**", "cmd/fathom/**", "go:net/http/**"],
       "reason": "The standalone production scope must stay independent of the product, daemon state and HTTP stack."
     },
     {
       "id": "separate-cue-door",
-      "from": ["pkg/lang/**/*.go", "cmd/fathom-lang/*.go", "internal/**/*.go", "third_party/**/*.go"],
+      "from": ["pkg/lang/**/*.go", "pkg/depgraph/**/*.go", "cmd/fathom-lang/*.go", "internal/**/*.go", "third_party/**/*.go"],
       "deny": ["pkg/lang/cue/**", "internal/extractor/cuelang/**", "go:cuelang.org/**"],
       "except": [
         {"from": ["pkg/lang/cue/*.go"], "to": ["internal/extractor/cuelang"]},
