@@ -199,16 +199,9 @@ note when a repository's indexer is not on `PATH`. Go's typed edges come from `g
 with no extra tool, but Go reads L3, not L4: struct fields and interface methods are not
 yet mapped, so definition mapping is .5891 against a .85 bar.
 
-**The board today** (generated, v0.11.0):
-
-| | Tracked | L4 | L3 | L2 | L1 | Measured, no level | Refused, tolerated or unsupported | At target |
-|---|---|---|---|---|---|---|---|---|
-| Languages | 37 | 10 | 10 | 5 | 1 | 1 | 10 | 19 |
-| Tool formats | 63 | n/a | 33 | 16 | 1 | 1 | 12 | 45 |
-
-The misses are published. Svelte meets no level (symbol precision .3816). Scala's file
-edges read .0112 against a .25 bar. Angular templates and Swift are refused at the grammar
-gate, because more than 5% of their calibration files fail to parse.
+The [generated excellence board](languages.md#excellence-board-generated)
+gives the current totals by level and shows which languages and tool formats meet
+their targets. It also links the readings and explains the next gap for each item.
 
 **Other measured readings.**
 

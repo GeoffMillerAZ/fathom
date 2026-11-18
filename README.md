@@ -23,9 +23,9 @@ The [overview](docs/overview.md) is a 15-minute tour of the design and its evide
    tool format is scored against an oracle fathom does not own (its own indexer or
    compiler where one exists), on subjects chosen before the run. The [board](docs/languages.md#excellence-board-generated)
    is generated from the committed readings, and `TestLanguagesTrackerIsGenerated` fails
-   if any row claims more than its reading shows. It tracks 37 languages and 63 tool
-   formats; 19 and 45 meet their target, and the misses (Go's typed level among them)
-   are listed.
+   if any row claims more than its reading shows. It tracks 45 languages and 74 tool
+   formats. Of these, 26 languages and 53 tool formats meet their targets. The board
+   lists missed targets, including Go's typed level.
 3. **Every answer says how it knows.** Each symbol and edge carries an evidence tier, and
    call answers count typed and heuristic edges separately. A heuristic edge is served
    with its label but never proves a plan row. Reports name the commit they were computed

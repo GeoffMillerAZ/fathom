@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -96,6 +97,34 @@ func TestLanguagesTrackerIsGenerated(t *testing.T) {
 	}
 	if errs := CheckTrackerAgainstReadings(string(got), in.Readings); len(errs) > 0 {
 		t.Fatalf("tracker vs readings: %v", errs)
+	}
+}
+
+func TestReadmeLanguageCountsMatchGeneratedBoard(t *testing.T) {
+	in, err := TrackerInputFromRepo("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var languages, formats boardCounts
+	for _, entry := range in.Queue {
+		if entry.Tier == "" {
+			continue
+		}
+		if entry.Kind == "tooling" {
+			formats.add(in, entry)
+		} else {
+			languages.add(in, entry)
+		}
+	}
+
+	readme, err := os.ReadFile("../../README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("It tracks %d languages and %d tool formats. Of these, %d languages and %d tool formats meet their targets.",
+		languages.items, formats.items, languages.atTarget, formats.atTarget)
+	if !strings.Contains(strings.Join(strings.Fields(string(readme)), " "), want) {
+		t.Fatalf("README counts must match the generated excellence board. Expected %q", want)
 	}
 }
 
