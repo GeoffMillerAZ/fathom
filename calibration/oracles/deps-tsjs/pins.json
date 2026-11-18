@@ -1,0 +1,127 @@
+{
+  "protocol": "dep-m1/typescript-program-trace-v1",
+  "node": "v26.12.0",
+  "typescript": "6.0.3",
+  "npmIntegrity": "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==",
+  "compilerSHA256": "569177652966bd528c319171c7dd22860dbf72bde116cbc4f644f1d02bb12e39",
+  "nativeMode": "Tracked-only sources. Nearest tsconfig.json then jsconfig.json compiler options, config references and root dirs. Unconfigured files use Node16 compiler options. Selected tracked files are explicit oracle roots even outside native build membership. No dependency installs, config rewriting, source execution, or auto-discovered external ambient types. Missing config inheritance or syntax failure gives no truth for affected roots. Missing installed dependencies and unsupported computed requests are disclosed.",
+  "selection": "All matching regular Git blobs (100644, 100755) in the listed path prefixes and case-sensitive extensions, including tracked declarations and tests within scope. SHA-256 over byte-sorted paths, each followed by NUL. No exclusions based on oracle or reader output.",
+  "bars": {
+    "subjectsPerDialect": 3,
+    "filesPerDialect": 300,
+    "completeShareNote": 0.8,
+    "B1Missing": 0,
+    "B2WrongOrInconclusive": 0,
+    "B3": "two in-place reads and one relocated read, byte-identical",
+    "B5": "detect-only on B1 or B2 failure"
+  },
+  "subjects": [
+    {
+      "name": "fp-ts",
+      "url": "https://github.com/gcanti/fp-ts.git",
+      "commit": "669cd3ed7cb5726024331a7a1cf35125669feb30",
+      "dialect": "typescript",
+      "prefixes": [
+        "src/",
+        "test/"
+      ],
+      "suffixes": [
+        ".cts",
+        ".mts",
+        ".ts",
+        ".tsx"
+      ],
+      "files": 204,
+      "selectionSHA256": "99a0d2969b016f8ecbfe9b1495548d16037b99cdf6f2884a56d17c8600f915df"
+    },
+    {
+      "name": "rxjs",
+      "url": "https://github.com/ReactiveX/rxjs.git",
+      "commit": "72bc92191ab959e27a969dc4476e14d95416573f",
+      "dialect": "typescript",
+      "prefixes": [
+        "src/",
+        "spec/",
+        "spec-dtslint/"
+      ],
+      "suffixes": [
+        ".cts",
+        ".mts",
+        ".ts",
+        ".tsx"
+      ],
+      "files": 586,
+      "selectionSHA256": "96581ca12364b1247407385da8e2d07d2b4027e6182bfd9ede2a661fad24e068"
+    },
+    {
+      "name": "react-bootstrap",
+      "url": "https://github.com/react-bootstrap/react-bootstrap.git",
+      "commit": "8b1cb721001cb1a47b068002d1bed12d12b8d88b",
+      "dialect": "typescript",
+      "prefixes": [
+        "src/",
+        "test/",
+        "tests/"
+      ],
+      "suffixes": [
+        ".cts",
+        ".mts",
+        ".ts",
+        ".tsx"
+      ],
+      "files": 233,
+      "selectionSHA256": "bf3d134145c8d943e005f3cd388a71ba2fb23687b6b95def5787439f3e9b71ee"
+    },
+    {
+      "name": "eslint",
+      "url": "https://github.com/eslint/eslint.git",
+      "commit": "a438ec39512c3381f4785a1f3058982ce9845970",
+      "dialect": "javascript",
+      "prefixes": [
+        "lib/"
+      ],
+      "suffixes": [
+        ".cjs",
+        ".js",
+        ".jsx",
+        ".mjs"
+      ],
+      "files": 389,
+      "selectionSHA256": "c53187bac639f4936d262263f2f78b102ac88fdbff64c051805434a278b1e524"
+    },
+    {
+      "name": "openlayers",
+      "url": "https://github.com/openlayers/openlayers.git",
+      "commit": "88fc44564552176b761dbb9531f9977386d041c0",
+      "dialect": "javascript",
+      "prefixes": [
+        "src/"
+      ],
+      "suffixes": [
+        ".cjs",
+        ".js",
+        ".jsx",
+        ".mjs"
+      ],
+      "files": 373,
+      "selectionSHA256": "dbd3eaa03dc4b34ac34951dacf051bcbff4f5f57443c65e63b8171528c3a9567"
+    },
+    {
+      "name": "webpack",
+      "url": "https://github.com/webpack/webpack.git",
+      "commit": "5a106753839fd7e1b86138c3a5f6b348341147a7",
+      "dialect": "javascript",
+      "prefixes": [
+        "lib/"
+      ],
+      "suffixes": [
+        ".cjs",
+        ".js",
+        ".jsx",
+        ".mjs"
+      ],
+      "files": 746,
+      "selectionSHA256": "94c078c579f1162de58e38bb677d318012a80770825ea539bd34461c4c0dca5f"
+    }
+  ]
+}
