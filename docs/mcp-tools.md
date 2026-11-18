@@ -43,6 +43,8 @@ recorded referents without proving absence. See the [investigation contract](mcp
 
 See [usage.md](usage.md) for how to connect a client and select a surface.
 See [architecture.md](architecture.md) for how the tool groups map to the three-layer design.
+The [standalone language CLI](use-cases/lang-library.md#from-a-shell) documents
+`fathom-lang pathfilters` and the other commands that run without the daemon.
 
 For Well-Architected and production-readiness evidence, inventory consumers and
 review/investigation packets, see [platform engineering](use-cases/platform-engineering.md).

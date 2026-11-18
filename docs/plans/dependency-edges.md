@@ -28,10 +28,10 @@ Start after DEP-1 through DEP-3 land.
 
 ## Engine move and computed path filters (ADJ-6)
 
-- [ ] Move the generic closure engine and conformance suite into `pkg/depgraph`. Enforce family import separation and satisfy HOLD-18 {id: DEP-P1a, symbol: Dependents, package: pkg/depgraph, library: true, reason: "The accepted engine door is a standalone library and PF is its separately admitted companion consumer", needs: DEP-7}
-- [-] Read push and pull request path filters with platform glob conformance and disclose unevaluated expressions {id: PF-1, disposition: deferred, reason: "the required family closure engine is held", trigger: "DEP-P1a lands", needs: DEP-P1a}
-- [-] Join the declared entry map, direct edges, closure and filters in `fathom-lang pathfilters` and prove the three verdicts and unused patterns {id: PF-2, disposition: deferred, reason: "the required family closure engine is held", trigger: "DEP-P1a lands and PF-1 is verified", needs: PF-1}
-- [-] Wire the first use in a fixture repository and detect every seeded miss with no false misses on the control. The first real consumer is the CI kit after DEP-P1b {id: PF-3, disposition: deferred, reason: "the required family closure engine is held", trigger: "DEP-P1a lands and PF-2 is verified", needs: PF-2}
+- [x] Move the generic closure engine and conformance suite into `pkg/depgraph`. Enforce family import separation and satisfy HOLD-18 {id: DEP-P1a, symbol: Dependents, package: pkg/depgraph, reachable_from: cmdPathFilters, library: true, reason: "The accepted engine door is a standalone library and PF is its separately admitted companion consumer", needs: DEP-7}
+- [x] Read push and pull request path filters with platform glob conformance and disclose unevaluated expressions {id: PF-1, symbol: ReadGitHubPathFilters, package: internal/extractor, reachable_from: cmdPathFilters, needs: DEP-P1a}
+- [x] Join the declared entry map, direct edges, closure and filters in `fathom-lang pathfilters` and prove the three verdicts and unused patterns {id: PF-2, symbol: checkPathFilterCoverage, package: cmd/fathom-lang, reachable_from: cmdPathFilters, needs: PF-1}
+- [x] Wire the first use in a fixture repository and detect every seeded miss with no false misses on the control. The first real consumer is the CI kit after DEP-P1b {id: PF-3, symbol: cmdPathFilters, package: cmd/fathom-lang, reachable_from: TestPathFiltersFixtureFirstUse, needs: PF-2}
 - [-] Read the first real workflow wiring and decide whether to keep or demote the check {id: PF-M1, disposition: deferred, reason: "fixture wiring alone does not start the real-use window", trigger: "30 days after the first wiring outside fixtures", needs: "PF-3,DEP-P1b"}
 
 ## Deferred
