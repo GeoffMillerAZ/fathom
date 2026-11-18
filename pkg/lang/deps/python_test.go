@@ -154,3 +154,18 @@ func TestPythonDependencyPackagePrecedence(t *testing.T) {
 		t.Fatalf("package and module precedence: %v, want %v", targets, want)
 	}
 }
+
+func TestPythonDependencyAdmission(t *testing.T) {
+	r := &deps.Reader{}
+	repo := fstest.MapFS{"helper.py": {}}
+	in := deps.Input{Path: "main.py"}
+	got, err := r.ReadFile(t.Context(), repo, in, []byte("import helper"))
+	if err != nil || !got.Measured || got.Trusted || !got.Complete || len(got.Edges) != 1 {
+		t.Fatalf("default reader must use the passing built-in admission: %+v, %v", got, err)
+	}
+	got, err = r.ReadFile(t.Context(), repo, in, []byte("__import__('helper')"))
+	if err != nil || !got.Measured || got.Trusted || got.Complete ||
+		!slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownDynamicImport }) {
+		t.Fatalf("dynamic import must remain incomplete after admission: %+v, %v", got, err)
+	}
+}

@@ -48,10 +48,7 @@ func TestPythonDependencyReading(t *testing.T) {
 	if err := json.Unmarshal(first, &native); err != nil {
 		t.Fatal(err)
 	}
-	reader, err := deps.New(deps.TrustUnmeasured("python"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	reader := &deps.Reader{}
 
 	var pooled depbench.Observation
 	names := make([]string, 0, len(native))
@@ -108,12 +105,9 @@ func TestPythonDependencyReading(t *testing.T) {
 	if len(names) < 3 || score.Files < 300 {
 		t.Fatalf("inconclusive population: %d subjects, %d Python files", len(names), score.Files)
 	}
-	if !score.B3 {
-		t.Error("B3 failed: outputs differ by run order or checkout path")
+	if !score.B1 || !score.B2 || !score.B3 {
+		t.Errorf("compiled Python admission failed: B1=%t B2=%t B3=%t", score.B1, score.B2, score.B3)
 	}
-	// B1/B2 determine the published admission. A test that always fails on
-	// a measured miss would hide the reproducible detect-only reading.
-	t.Logf("candidate admission B1=%t B2=%t B3=%t", score.B1, score.B2, score.B3)
 }
 
 func requiredPythonEnv(t *testing.T, name string) string {

@@ -11,6 +11,8 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
+func init() { admissions["python"] = measured } // DEP-M2
+
 var pythonImports = sync.OnceValues(func() (*extractor.TSExtractor, error) {
 	return extractor.NewTSExtractor("python")
 })
