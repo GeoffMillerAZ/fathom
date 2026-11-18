@@ -1,6 +1,9 @@
 // Package conformance checks the depgraph Resolver contract against
 // caller-supplied filesystem fixtures. The checks return violations and
 // are shared by mock and real resolvers.
+//
+// This package is outside the compatibility surface until the consumer
+// switch (DEP-P1b) lands.
 package conformance
 
 import (

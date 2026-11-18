@@ -58,9 +58,8 @@ Languages, surfaces, store, harnesses, the findings loop, the fleet, the substra
 
 ## Compatibility surface
 
-A change to any item is breaking: commit `!`, `### Breaking` in `CHANGELOG.md`, a
-migration note (`docs/rename-migration.md` is the precedent; new ones go to
-`docs/upgrades/<version>-<slug>.md`).
+A change to any item is breaking and bumps minor before 1.0. Use commit `!`, `### Breaking` in
+`CHANGELOG.md`, and a migration note in `docs/upgrades/<version>-<slug>.md` (see `docs/rename-migration.md`).
 
 - Governed Store Format v0: additive within v0; a rename, retype, or removal is v1 and a
   `format_version` bump. Evidence: `docs/spec/store-format-v0.md`,
@@ -141,7 +140,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - `fathom-lang extract|dialects|resources|contract` JSON (ADR-092): `lang.Result`, `lang.DialectInfo`, `iac.ResourceSet` and `iac.Contract` field names and the top-level `schema_version`, additive only, exit 2 on misuse; `extract` and `resources` read in a supervised child unless `-in-process` and print the same bytes either way. Evidence: `TestFathomLangJSONGolden`, `TestResourcesJSONGolden`, `TestContractJSONGolden`, `TestSupervisedOutputEqualsInProcess`, `TestResourcesSupervisedOutputEqualsInProcess`.
 - CLI verbs and their `--json` envelopes (law 10: every capability is a verb first).
 
-Pre-1.0: breaking changes bump minor. The line still gets written.
+`pkg/depgraph` and its subpackages are outside the compatibility surface until the consumer switch
+(DEP-P1b) lands. Until then, `InputKey` stays byte-compatible with the source engine.
 
 ## Non-goals
 

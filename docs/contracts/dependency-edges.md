@@ -200,6 +200,12 @@ IDs with that same inventory. The closure engine rejects a pair whose source or
 target is absent from the inventory. A caller checks the file records for
 completeness before using a mapped result to skip work.
 
-The exchange is data only. Every edge in the file records discloses provenance.
+Declared-edge JSON is the sole exchange between the two libraries.
+`cmd/fathom-lang` is the sole command authorized to compose their APIs in this
+program. For path filters, the companion will reverse the data edges and call
+`depgraph.Dependents` with the entry units as seeds to get their forward
+dependency closure. It will include the entry units in the coverage check.
+
+Every edge in the file records discloses provenance.
 A pack, registered Go resolver or caller-declared edge list can supply facts.
 The extension plan includes a conformance helper for grading readers.

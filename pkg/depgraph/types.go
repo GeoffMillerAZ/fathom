@@ -5,6 +5,10 @@
 // Empty directories are invisible. The exec bit is semantic, and a symlink
 // hashes its target path. Callers supply repository-relative, slash-separated,
 // NFC paths.
+//
+// This package and its subpackages are outside the compatibility surface
+// until the consumer switch (DEP-P1b) lands. Until then, InputKey stays
+// byte-compatible with the source engine.
 package depgraph
 
 import (

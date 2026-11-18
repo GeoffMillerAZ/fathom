@@ -2,6 +2,9 @@
 // Each write carries a kind tag, a big-endian length, and a payload.
 // The frame distinguishes value boundaries, strings from raw bytes,
 // and empty writes from omitted writes.
+//
+// This package is outside the compatibility surface until the consumer
+// switch (DEP-P1b) lands.
 package hashw
 
 import (

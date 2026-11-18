@@ -7370,6 +7370,10 @@ of that boundary, without establishing that a second contributor already has mai
 **Consequence.** The generic closure and hashing engine at `pkg/depgraph` was moved from the CI kit's module.
 Declared-edge JSON is the exchange format between the understanding door and the engine. Each keeps its own import closure.
 
+Owner approval on 2026-11-18 amends ADR-063 O1. The closure engine is now a standalone member of
+fathom's tool family. Fathom still builds no package resolver. Real resolvers stay with their consumers.
+DEP-P1b owns the consumer switch and the other repository's boundary amendment.
+
 **Revisit when.** A dialect misses B1 or B2, the `pkg/lang` door exceeds 80 packages, or a consumer needs a new closed-set member. Reopen the closure boundary at DEP-P1's recorded trigger. Reopen the under-keying audit and further dialects at the triggers on DEP-8 and DEP-9.
 
 

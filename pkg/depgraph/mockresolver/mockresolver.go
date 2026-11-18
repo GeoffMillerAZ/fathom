@@ -1,5 +1,8 @@
 // Package mockresolver provides an in-memory depgraph Resolver that
 // satisfies the same conformance suite as other resolvers.
+//
+// This package is outside the compatibility surface until the consumer
+// switch (DEP-P1b) lands.
 package mockresolver
 
 import (
