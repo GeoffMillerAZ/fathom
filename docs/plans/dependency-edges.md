@@ -5,7 +5,7 @@ Grammar v2 (`docs/plans/README.md`). Prefix DEP-. Decision ADR-114.
 
 ## Records and public door
 
-- [ ] (op) Record the accepted dependency-edges boundary, contract, preregistered admission bars and register {id: DEP-0, oracle: lexical, path: ADR.md, pattern: "^## ADR-114: Standalone dependency edges disclose unknowns per file"}
+- [x] (op) Record the accepted dependency-edges boundary, contract, preregistered admission bars and register {id: DEP-0, oracle: lexical, path: ADR.md, pattern: "^## ADR-114: Standalone dependency edges disclose unknowns per file"}
 - [ ] Public door, closed sets, completeness, deterministic output, CUE schema and API snapshot {id: DEP-1, needs: DEP-0}
 - [ ] Go control reader and independent-oracle grading harness {id: DEP-2, needs: DEP-1}
 - [ ] JSON CLI with golden and the declared-edge export {id: DEP-3, needs: "DEP-1,DEP-2"}
