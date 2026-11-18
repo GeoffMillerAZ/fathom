@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "standalone-ownership",
+      "from": ["pkg/lang/**/*.go", "cmd/fathom-lang/*.go", "internal/**/*.go", "third_party/**/*.go"],
+      "deny": ["internal/store/**", "internal/fusion/**", "internal/connector/**", "internal/mcp/**", "cmd/fathom/**", "go:net/http/**"],
+      "reason": "The standalone production scope must stay independent of the product, daemon state and HTTP stack."
+    },
+    {
+      "id": "separate-cue-door",
+      "from": ["pkg/lang/**/*.go", "cmd/fathom-lang/*.go", "internal/**/*.go", "third_party/**/*.go"],
+      "deny": ["pkg/lang/cue/**", "internal/extractor/cuelang/**", "go:cuelang.org/**"],
+      "except": [
+        {"from": ["pkg/lang/cue/*.go"], "to": ["internal/extractor/cuelang"]},
+        {"from": ["internal/extractor/cuelang/*.go"], "to": ["go:cuelang.org/**"]}
+      ],
+      "reason": "CUE is an opt-in sibling door with its own adapter and dependency closure."
+    },
+    {
+      "id": "base-to-checks",
+      "from": ["pkg/lang/*.go"],
+      "deny": ["pkg/lang/deps/**"],
+      "reason": "The base language door must not depend on the dependency reader or boundary checks."
+    }
+  ]
+}

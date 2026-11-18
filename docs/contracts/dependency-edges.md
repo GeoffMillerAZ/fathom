@@ -98,6 +98,61 @@ unknowns and extra edges. Score an unmeasured candidate with explicit trust.
 Fixture outcomes are evidence for those inputs. Admission still requires the
 preregistered population and bars, and detect-only built-ins remain detect-only.
 
+## Direct import boundaries
+
+`pkg/lang/deps/boundaries` evaluates the import edges in the supplied
+`deps.FileDeps` scope. Read the rule document with `ParseRules`, then pass the
+rules and file records to `EvaluateBoundaries`. The sibling package keeps direct
+evaluation separate from the base language door.
+
+A rule document is a version 1 JSON object with a nonempty `rules` array. Each
+rule has a unique lowercase `id`, nonempty `from` path globs, exactly one
+nonempty `deny` or `allow_only` list, and a nonblank one-line `reason`. An optional
+`except` array exempts an import only when both the exception's `from` and `to`
+lists match. Each list is any-of. Unknown fields, duplicate keys and null values
+are invalid. A rule document can be at most 1 MiB. The schema lives in
+`schema/dependency-boundaries`.
+
+Globs are anchored, slash-separated logical paths, with `*`, `?` and bracket
+classes within one component and a whole `**` component matching zero or more
+components. Target globs can also use `.` for the repository root or a literal
+ecosystem prefix such as `go:net/http/**`. External and repository targets occupy
+separate namespaces. Absolute paths, dot and parent components, backslashes
+and partial globstars are invalid.
+
+`fathom-lang boundaries --rules FILE` takes explicit repository-relative paths
+or discovers governed files under `--root` when paths are omitted. `--root`
+defaults to the working directory. The rule file is opened relative to the
+working directory unless its path is absolute. Discovery excludes root Git
+metadata and does not follow symlinks. The selected dependency reader determines
+dialect, measurement and trust. The binary needs no daemon or toolchain.
+
+Stdout is one JSON object with `schema_version: 1` and `rules` sorted by ID.
+Each result carries its `verdict`, `matched_files` count, offending `violations`
+and `unverified` file evidence. Evidence arrays are sorted and empty arrays
+stay arrays. A known forbidden import yields `violated` even if its target is
+unpinned or other evidence is incomplete. A rule with no violation is
+`unverified` if it matched no files or any matched file is incomplete or lacks
+measurement or explicit trust. Otherwise it is `clean`. Stderr has one line
+per offending import or unverified file, or one line for an empty rule scope.
+Exit 1 signals a violation, an operational error, or, with `--strict`, an
+unverified verdict. Exit 2 signals invalid rules or usage. Otherwise exit 0.
+
+### Repository gate and BND-M1
+
+`task dependency-boundaries` applies `.fathom/rules/dependency-boundaries.json`
+to the native Go production scope of the standalone family. It reports
+incomplete evidence and fails on known violations. The existing native closure
+tests continue to enforce package budgets and transitive closure, including
+paths through external packages. The rule evaluator reports direct crossings
+from the scoped repository files. The native fixture comparison includes a
+forbidden crossing reached through a helper and the permitted opt-in CUE door.
+
+BND-M1 opens when BND-3 lands and is due 30 days after landing. Count gate
+evaluations, pre-merge violations caught and outside uses. Keep the capability
+if it identifies at least one violation more clearly than the existing checks
+or has at least one outside use. Otherwise demote it to the register.
+
 ## Serialized facts
 
 An edge names the importing path, kind, safe raw operand, target, resolution,

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "no-network",
+      "verdict": "violated",
+      "matched_files": 2,
+      "violations": [
+        {
+          "from": "app/app.go",
+          "kind": "import",
+          "raw": "net/http",
+          "to": "go:net/http",
+          "resolution": "external",
+          "version": "",
+          "line": 2,
+          "provenance": "builtin"
+        }
+      ],
+      "unverified": [
+        {
+          "path": "app/app.go",
+          "dialect": "go",
+          "measured": false,
+          "trusted": false,
+          "unknowns": [
+            {
+              "from": "app/app.go",
+              "code": "unmeasured-reader",
+              "raw": "",
+              "line": 0,
+              "decidable_by": []
+            },
+            {
+              "from": "app/app.go",
+              "code": "external-unpinned",
+              "raw": "net/http",
+              "line": 2,
+              "decidable_by": [
+                "config-file",
+                "lockfile"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "app/okay/okay.go",
+          "dialect": "go",
+          "measured": false,
+          "trusted": false,
+          "unknowns": [
+            {
+              "from": "app/okay/okay.go",
+              "code": "unmeasured-reader",
+              "raw": "",
+              "line": 0,
+              "decidable_by": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

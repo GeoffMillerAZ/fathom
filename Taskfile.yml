@@ -393,7 +393,7 @@ tasks:
     cmds: ["bash scripts/gate-log.sh validate bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, simulink-gate, test
+    desc: Full gate — merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, simulink-gate, dependency-boundaries, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -405,8 +405,14 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate, simulink-gate, record-ids-check]
+    deps: [merge-debris-check, fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, intent-guard-check, bench-l0-gate, tenancy-lint, changelog-check, perfgate, simulink-gate, record-ids-check, dependency-boundaries]
     cmds: [{ task: test }]
+
+  dependency-boundaries:
+    desc: Evaluate the standalone family's direct import rules over native Go production scope
+    # The tagged live evaluation runs here once. The regular test suite runs
+    # its smaller native parity fixtures without repeating the repository scan.
+    cmds: ["CGO_ENABLED=1 bash scripts/temp-path-canary.sh {{.GO}} test -tags=boundarygate -race -count=1 -v -run '^TestFamilyDependencyBoundaryGate$' ./cmd/fathom-lang"]
 
   push:
     desc: "Gated push (I40/I41, agentic-kit fathom-pack push gates — docs/project-intent/operating.md §5 in the vendored kit): refuses without the lefthook pre-push hook, then pushes HEAD:main over smart HTTP derived from origin"

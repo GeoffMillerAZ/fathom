@@ -68,6 +68,7 @@ fathom-lang dialects [-pack DIR]
 fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                       [-in-process] PATH...
 fathom-lang deps [-root DIR] [-dialect ID] [-trust-unmeasured ID] [-export] PATH...
+fathom-lang boundaries --rules FILE [--root DIR] [--strict] [--trust-unmeasured ID] [PATH...]
 fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 fathom-lang catalog import -dir DIR [-version V] [-licence SPDX] [-tool NAME] [-replace] <export.json | V=export.json>...
 fathom-lang catalog import -dir DIR -region REGION [-licence SPDX] <schemas.zip>
@@ -84,6 +85,11 @@ $ fathom-lang extract -root infra main.tf | jq '.files[0].result | {dialect, lev
 unknowns. Read `complete` before using the edges for skip decisions. `-export` writes unit
 pairs for the declared-edge exchange. See the [dependency-edge contract](../contracts/dependency-edges.md)
 for the output and trust rules.
+
+`boundaries` checks direct imports against a JSON rule file. Pass repository-relative
+paths to restrict the scope or omit them to discover governed files. JSON goes to
+stdout and findings go to stderr. A violation exits 1. Use `--strict` to also
+fail on unverified rule verdicts.
 
 Release archives carry `fathom-lang` beside `fathom`, and `task deploy` installs it next to the daemon binary.
 
@@ -182,4 +188,4 @@ Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as fo
 
 ## Maintained
 
-This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources, deps, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources, deps, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
