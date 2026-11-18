@@ -151,3 +151,4 @@ Pass the threshold, were not written as ADR sections; point, do not duplicate.
 Session-scale rejections live in plans as `[-]` rows with `disposition: refused|deferred`
 and a `trigger:`; they die with the plan.
 | ADR-114 | accepted (owner-architect, 2026-11-18) | product / architecture | Standalone dependency edges disclose unknowns per file | a dialect misses B1/B2, the library exceeds its closure budget, or a consumer needs a new closed-set member |
+| ADR-115 | accepted (owner-architect, 2026-11-18) | product / architecture | Library capabilities can ship with a wired first use and a dated keep-or-cut reading | a keep-or-cut reading misses its bar, or the first use stops evaluating the capability |

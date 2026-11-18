@@ -32,8 +32,12 @@ for each file, including the reason and possible evidence source for every unkno
    and Dockerfile against a pinned BuildKit parser (DEP-M3). If oracle rules
    preclude BuildKit, use a labelled sample and keep Dockerfile detect-only.
 4. Add resolver, pack and declaration conformance with a runnable consumer example
-   (DEP-7). Keep closure relocation, the under-keying audit and dialect breadth at
-   their plan triggers.
+   (DEP-7).
+5. After the public door lands, wire the import boundary rules into the existing
+   family import gate (BND-1 through BND-3). After DEP-7, two passing B1/B2 readings
+   and architect acceptance permit moving the closure engine (DEP-P1a). Computed
+   path filters follow that move (PF-1 through PF-3). The consumer switch, the
+   under-keying audit and dialect breadth keep their plan triggers.
 
 ## Preregistered admission
 
@@ -54,6 +58,27 @@ No threshold changes after a run. Record per-repository and pooled counts, the
 oracle's coverage gaps and the evidence that limits the verdict. A fresh reviewer
 reruns each reading from a clean clone. Each dialect gets at most two correction
 rounds before publishing the result at its measured ceiling.
+
+## Library first uses
+
+ADR-115 allows a same-change first use and dated keep-or-cut reading to satisfy
+Vision 46 §7 clause 5 for library members. Boundary rules consume direct edges
+and return violated, clean or unverified. The gate's first use covers this
+repository's family boundaries and compares seeded violations with the Go import
+graph. BND-M1 counts actual evaluations, pre-merge findings and outside use 30 days
+after landing. It keeps the capability when a violation is caught more clearly
+than by the older tests or an outside use is observed.
+
+The engine move preserves the existing generic implementation. Its family
+closure test enforces independent imports for the dependency graph and
+understanding packages. Data crosses through the declared-edge export.
+The separate consumer-switch phase owns changing the other repository.
+
+Path filters read the workflow event patterns and join them with a declared map
+from workflows or jobs to entry paths. They return missed, unverified or covered
+and name unused patterns. The first use is a fixture with seeded misses and a
+clean control. The CI kit's consumer switch supplies the first real wiring and
+starts the 30-day PF-M1 window.
 
 ## Decision models
 

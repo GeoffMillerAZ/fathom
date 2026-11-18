@@ -211,9 +211,12 @@ Admission test. All five must hold, for outside slices and for fathom's own prog
 2. The answer is a verdict or a set, not prose.
 3. It rides an existing forced channel or verb. No new tool on the default surface.
 4. An oracle fathom does not own can grade it.
-5. It has a named consumer, or it deletes more than it adds.
+5. It has a named consumer, or it deletes more than it adds. A member of the library family can also
+   meet this clause with a first use wired in the same change and a dated keep-or-cut reading (ADR-115).
 
-Clause 5 is applied row by row, to old rows and new ones alike. A row marked FUTURE is a register entry with a trigger and
+Clause 5 is applied row by row, to old rows and new ones alike. Default product tools and hooks
+use the named-consumer or deletion rule. The library reading counts real uses after 30 days and cuts
+or demotes the capability when it misses its preregistered bar. A row marked FUTURE is a register entry with a trigger and
 not a roadmap row. Scanners stay "pair". Where fathom cannot prove, it pairs with what can and proves the borrowed
 answer.
 

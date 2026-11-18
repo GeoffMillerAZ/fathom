@@ -7358,7 +7358,7 @@ of that boundary, without establishing that a second contributor already has mai
 1. DEP-D1. Add direct dependency edges in `pkg/lang/deps`. A reader detects imports, includes, embeds, build inputs and related file constructs, then resolves each to a target or discloses a typed unknown.
 2. DEP-D2. Complete means every dependency construct in a file was detected and resolved. Unknown reasons and evidence sources use closed sets. An empty evidence-source array grants no trust. Consumers widen or run on an incomplete closure.
 3. DEP-D3. Keep closure and hashing with the CI kit's dependency graph (ADR-063 O1). The public door and binary serialize direct facts for a data-only exchange. The grading harness may compute reachability.
-4. DEP-D4. Keep one closure engine. The owner approved its move on 2026-11-18. The first passing reading prompts relocation planning. DEP-P1 stays deferred until two of DEP-M1 through DEP-M3 pass B1 and B2. The later program moves the existing engine into the tool family as its own module and amends both boundary records.
+4. DEP-D4. Keep one closure engine. The owner approved its move on 2026-11-18. The first passing reading prompts relocation planning. DEP-P1a moves the existing engine into the family at `pkg/depgraph` after two of DEP-M1 through DEP-M3 pass B1 and B2 and the architect accepts the public door. DEP-P1b switches the existing consumer and amends its boundary in a separate program. ADR-115 records the phased delivery.
 5. DEP-D5. Support data packs, registered Go resolvers and declared edges. Disclose provenance on each edge. Readers without passing evidence are unmeasured. Their files are incomplete unless the consumer opts in by dialect name and the output records that trust. Provide an extension conformance helper.
 6. DEP-D6. ADR-090 continues to own observed test reads. The consumer fires TQ-38. DEP-8 owns the audit that joins declarations, static edges and observed reads after the readings and a consumer integration.
 7. DEP-D7. Admit dialects at preregistered bars. A B1 or B2 miss leaves that dialect detect-only and its files incomplete.
@@ -7368,3 +7368,24 @@ of that boundary, without establishing that a second contributor already has mai
 **Decision models.** None applies. Repository bytes and resolution inputs determine the facts, and independent runs grade them. Provider `none` supports the whole path. Consumers opt in by invoking the door.
 
 **Revisit when.** A dialect misses B1 or B2, the `pkg/lang` door exceeds 80 packages, or a consumer needs a new closed-set member. Reopen the closure boundary at DEP-P1's recorded trigger. Reopen the under-keying audit and further dialects at the triggers on DEP-8 and DEP-9.
+
+
+## ADR-115: Library capabilities can ship with a wired first use and a dated keep-or-cut reading (2026-11-18)
+
+**Status.** Accepted 2026-11-18 (owner direction, owner-architect ruling). **Type.** product / architecture. Amends Vision 46 §7 clause 5 for members of the standalone library family. Design: `docs/design/dependency-edges.md`. Plan: `docs/plans/dependency-edges.md`.
+
+**Request (2026-11-18).** “How can we have consumers if we don't offer it? That's the problem with the trigger on consumer concept” and “Spec and implement everything that is 4,3,2 and better”.
+
+**Context.** Requiring an outside consumer for a capability before anyone can use it blocks its first use. The admission rule still needs evidence beyond a test that only imports its own analyzer.
+
+**Decision.**
+1. A library capability meets clause 5 if it has a named consumer, ships with a first use wired in the same change and a dated keep-or-cut reading, or deletes more than it adds. Clauses 1 through 4 and the default product tool and hook boundary keep their existing requirements.
+2. The reading counts real uses after 30 days: gate runs that evaluated the capability, outside imports and findings acted on. Below its preregistered bar the capability is cut or demoted. Its reading records that decision.
+3. The library roadmap register records value, effort and risk. The owner selects entries. The current cut is value at least 4, effort at most 3 and risk at most 2. ADJ-5 and ADJ-6 qualify and are selected.
+4. ADJ-5 evaluates direct import boundaries. Its first use is the family rules in the gate, compared with the existing Go import checks on seeded violations. BND-M1 checks for a clearer caught violation or an outside use.
+5. ADJ-6 compares declared workflow coverage against static inputs and the family closure engine. Its first wiring is a fixture because the repository's workflows have no path filters. PF-M1 starts its 30-day window at first real wiring. DEP-P1a must land before PF work starts.
+6. DEP-P1a moves the one engine's generic core into the family at `pkg/depgraph` after the two-reading B1/B2 bar and architect review. The CI kit continues to use its current copy until DEP-P1b switches the consumer in a separate program. Direct edge data crosses the family boundary through the declared-edge export.
+
+**Decision models.** None applies. The boundary and filter verdicts are deterministic, and the keep-or-cut readings count observed uses. Provider `none` covers the whole path.
+
+**Revisit when.** BND-M1 or PF-M1 reads below its preregistered bar, or an admission through first use stops evaluating the capability it was built to exercise.

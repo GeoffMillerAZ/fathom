@@ -239,7 +239,9 @@ verdict for cache decisions. The standalone door supplies both, with unknowns an
 provenance, while the CI kit's dependency graph owns closure and hashing.
 The [dependency-edges plan](../plans/dependency-edges.md) owns the program and its
 deferred audit, closure move and remaining dialects. Done when the door, Go control,
-binary, three dialect readings and extension example have proof.
+binary, three dialect readings and extension example have proof. ADR-115 adds
+the selected import boundary rules, phases the closure engine move and makes
+computed path filters depend on the moved engine.
 
 ## 6. Where a hazard row differs from the policy review
 
@@ -303,24 +305,26 @@ The three outside wedges the census ranks highest are the contract check outside
 
 Refused: a default rule pack, a built-in best-practice corpus, own per-function analyzers, control flow for languages other than Go, a language server, a library MCP surface, workflow and migration linting, leases on resource addresses, transpiling open rules into the kernel's algebra. The wins-if lines are in section 12 (RL-12 and the corpus) and in `docs/design/beyond-determinism.md`, which also holds the wins-if for transpiling. The record change for infrastructure tools as sources for the system graph rides CAP-1 in the main register.
 
-### Adjacent capabilities (ADR-114)
+### Adjacent capabilities (ADR-114, ADR-115)
 
-Register only. Each entry needs a named consumer and its stated trigger before work starts.
+The owner selects work from this register. Ratings are value, effort and risk on a
+scale of 1 to 5. ADJ-5 and ADJ-6 meet the current selection bar of at least 4 value,
+at most 3 effort and at most 2 risk.
 
-| ID | Capability | Verdict or set | Trigger |
-|---|---|---|---|
-| ADJ-1 | Cacheability verdict | Per unit, cacheable or the nondeterministic inputs that forbid it: network fetches, unpinned images or actions, clock, random, `latest`. | First consumer stores a result cache. |
-| ADJ-2 | Affected set | Units, tests, images and deploy targets downstream of a diff. | DEP-P1 lands. |
-| ADJ-3 | Generated-file staleness | Generated files whose generator inputs changed since generation. | A gate failure caused by a stale generated file. |
-| ADJ-4 | Manifest truth | Declared but unused dependencies, and imports without declarations. | Two DEP readings pass. |
-| ADJ-5 | Import boundary rules | Violations of declared package or directory layering across languages. | A second repository asks. |
-| ADJ-6 | Computed path filters | CI path filters derived from edges and checked against the authored filters. | The CI kit wires DEP output. |
-| ADJ-7 | Build context minimum | Files an image build can read and gaps in the ignore file. | DEP-M3 passes. |
-| ADJ-8 | Task graph | Task, script and workflow job relationships, dead tasks and local/CI parity. | Configuration reference resolution (E16) starts. |
-| ADJ-9 | Environment surface | Environment variables read by code and build files, compared with declarations. | ADJ-1 starts. |
-| ADJ-10 | Toolchain version agreement | Versions demanded by module files, tool-version files, images and CI setup, and disagreements. | A gate failure caused by version drift. |
-| ADJ-11 | Public API delta | Per language, exported surface added, changed or removed between versions. | LIB-13 lands. |
-| ADJ-12 | Minimal checkout | The sparse file set required by a unit. | A consumer builds or tests from a sparse checkout. |
+| ID | Capability | Verdict or set | Value / effort / risk | Selection |
+|---|---|---|---|---|
+| ADJ-5 | Import boundary rules | Violations of declared package or directory layering across languages. | 4 / 1 / 1 | Selected: BND-1–BND-3, BND-M1. |
+| ADJ-2 | Affected set | Units, tests, images and deploy targets downstream of a diff. | 5 / 2 / 3 | Register. |
+| ADJ-6 | Computed path filters | CI path filters derived from edges and checked against the authored filters. | 4 / 2 / 2 | Selected: PF-1–PF-3, PF-M1, after DEP-P1a. |
+| ADJ-10 | Toolchain version agreement | Versions demanded by module files, tool-version files, images and CI setup, and disagreements. | 3 / 2 / 1 | Register. |
+| ADJ-4 | Manifest truth | Declared but unused dependencies, and imports without declarations. | 3 / 2 / 2 | Register. |
+| ADJ-9 | Environment surface | Environment variables read by code and build files, compared with declarations. | 3 / 2 / 2 | Register. |
+| ADJ-11 | Public API delta | Per language, exported surface added, changed or removed between versions. | 4 / 3 / 3 | Register. |
+| ADJ-1 | Cacheability verdict | Per unit, cacheable or the nondeterministic inputs that forbid it: network fetches, unpinned images or actions, clock, random, `latest`. | 4 / 3 / 4 | Register. |
+| ADJ-8 | Task graph | Task, script and workflow job relationships, dead tasks and local/CI parity. | 4 / 4 / 3 | Register. |
+| ADJ-3 | Generated-file staleness | Generated files whose generator inputs changed since generation. | 3 / 3 / 3 | Register. |
+| ADJ-7 | Build context minimum | Files an image build can read and gaps in the ignore file. | 2 / 2 / 3 | Register. |
+| ADJ-12 | Minimal checkout | The sparse file set required by a unit. | 2 / 2 / 4 | Register. |
 
 ## 8. Spin-off steps, in order
 

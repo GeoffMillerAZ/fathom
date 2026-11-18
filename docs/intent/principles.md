@@ -70,7 +70,9 @@ daemon died; a gate never passes a claim the index refutes. Source: `docs/design
 compile. Source: ADR-005, product-vision standing non-goals.
 
 **P20. Build for a named consumer; generalize from two, not one.** A pack, layer, or
-abstraction ahead of demand is theater. Source: ADR-024, `docs/vision/07` R3.
+abstraction ahead of demand is theater. The library family can establish demand through
+a wired first use and a dated keep-or-cut reading under ADR-115. Source: ADR-024,
+`docs/vision/07` R3.
 
 **P21. Monorepo now, split on an enforced boundary.** Split when a boundary already
 exists and is enforced; never to create one. Source: `docs/handoff/repo-strategy.md`.
