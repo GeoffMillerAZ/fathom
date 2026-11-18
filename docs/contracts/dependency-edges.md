@@ -40,7 +40,7 @@ precedence.
 |---|---|---|
 | `go` | `.go` | Unmeasured. The Go fixture checks the grading harness. |
 | `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | Measured, low coverage (DEP-M1). |
-| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Detect-only (DEP-M1). |
+| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Measured, low coverage (DEP-M1). |
 | `python` | `.py` | Measured, low coverage (DEP-M2). |
 | `dockerfile` | `Dockerfile`, `Containerfile`, either with a dotted suffix, or a basename ending in `.dockerfile` or `.containerfile` (case-insensitive) | Detect-only (DEP-M3). |
 
