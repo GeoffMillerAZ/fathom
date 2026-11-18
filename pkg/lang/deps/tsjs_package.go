@@ -44,7 +44,7 @@ func (g *tsjsRead) packageExport(dir string, raw json.RawMessage, sub string, re
 	}
 	props, object := tsjsObject(raw)
 	if !object && len(raw) > 0 && raw[0] == '{' {
-		return "", UnsupportedConstruct
+		return "", UnknownUnsupportedConstruct
 	}
 	subpaths, conditions := false, false
 	for _, p := range props {
@@ -56,7 +56,7 @@ func (g *tsjsRead) packageExport(dir string, raw json.RawMessage, sub string, re
 	}
 	switch {
 	case subpaths && conditions:
-		return "", UnsupportedConstruct
+		return "", UnknownUnsupportedConstruct
 	case subpaths:
 		var pattern json.RawMessage
 		wildcard := ""
@@ -71,7 +71,7 @@ func (g *tsjsRead) packageExport(dir string, raw json.RawMessage, sub string, re
 				continue
 			}
 			if strings.Contains(post, "*") {
-				return "", UnsupportedConstruct
+				return "", UnknownUnsupportedConstruct
 			}
 			if len(pre) > bestPrefix || len(pre) == bestPrefix && len(p.key) > bestLen {
 				pattern, wildcard = p.value, wanted[len(pre):len(wanted)-len(post)]
@@ -81,17 +81,17 @@ func (g *tsjsRead) packageExport(dir string, raw json.RawMessage, sub string, re
 		if pattern != nil {
 			return g.exportBranch(dir, pattern, wildcard, require, 0)
 		}
-		return "", UnresolvedAlias
+		return "", UnknownUnresolvedAlias
 	case sub == "":
 		return g.exportBranch(dir, raw, "", require, 0)
 	default:
-		return "", UnresolvedAlias
+		return "", UnknownUnresolvedAlias
 	}
 }
 
 func (g *tsjsRead) exportBranch(dir string, raw json.RawMessage, wildcard string, require bool, depth int) (string, UnknownCode) {
 	if depth >= 16 {
-		return "", ReadLimit
+		return "", UnknownReadLimit
 	}
 	if string(raw) == "null" {
 		return "", ""
@@ -99,15 +99,15 @@ func (g *tsjsRead) exportBranch(dir string, raw json.RawMessage, wildcard string
 	var target string
 	if json.Unmarshal(raw, &target) == nil {
 		if !strings.HasPrefix(target, "./") || wildcard == "" && strings.Contains(target, "*") {
-			return "", UnsupportedConstruct
+			return "", UnknownUnsupportedConstruct
 		}
 		operand := strings.ReplaceAll(strings.TrimPrefix(target, "./"), "*", wildcard)
 		if !validPath(operand) || strings.HasSuffix(target, "/") {
-			return "", UnsupportedConstruct
+			return "", UnknownUnsupportedConstruct
 		}
 		for _, part := range strings.Split(operand, "/") {
 			if part == "node_modules" {
-				return "", UnsupportedConstruct
+				return "", UnknownUnsupportedConstruct
 			}
 		}
 		name := tsjsJoin(dir, operand)
@@ -115,7 +115,7 @@ func (g *tsjsRead) exportBranch(dir string, raw json.RawMessage, wildcard string
 	}
 	props, ok := tsjsObject(raw)
 	if !ok {
-		return "", UnsupportedConstruct
+		return "", UnknownUnsupportedConstruct
 	}
 	for _, p := range props {
 		switch {
@@ -126,7 +126,7 @@ func (g *tsjsRead) exportBranch(dir string, raw json.RawMessage, wildcard string
 			}
 		case strings.HasPrefix(p.key, "types@"):
 			// Version-qualified compiler conditions need a compiler version.
-			return "", UnsupportedConstruct
+			return "", UnknownUnsupportedConstruct
 		}
 	}
 	return "", ""
@@ -151,7 +151,7 @@ func (g *tsjsRead) external(r tsjsRequest, pkg, sub string, require bool) {
 				return
 			}
 			if len(p.raw.TypesVersions) != 0 {
-				g.finishTarget(r, "", UnsupportedConstruct)
+				g.finishTarget(r, "", UnknownUnsupportedConstruct)
 				return
 			}
 			to, code := g.localTarget(path.Join(base, sub), true, true)
@@ -163,9 +163,9 @@ func (g *tsjsRead) external(r tsjsRequest, pkg, sub string, require bool) {
 		}
 	}
 	pin := g.packagePin(pkg)
-	g.edge(Import, r.raw, "npm:"+r.raw, External, pin, r.line)
+	g.edge(KindImport, r.raw, "npm:"+r.raw, ResolvedExternal, pin, r.line)
 	if sub != "" && pin != "" {
-		g.unknown(UnresolvedAlias, r.raw, r.line, Toolchain, ConfigFile)
+		g.unknown(UnknownUnresolvedAlias, r.raw, r.line, DecideToolchain, DecideConfigFile)
 	}
 }
 
@@ -183,7 +183,7 @@ func (g *tsjsRead) packagePin(pkg string) string {
 	file := path.Join(path.Dir(m.file), "package-lock.json")
 	data, exists, code := g.metadata(file)
 	if code != "" {
-		g.unknown(code, file, 1, Lockfile)
+		g.unknown(code, file, 0, DecideLockfile)
 		return ""
 	}
 	if !exists {
@@ -201,7 +201,7 @@ func (g *tsjsRead) packagePin(pkg string) string {
 		}
 	}
 	if json.Unmarshal(data, &lock) != nil {
-		g.unknown(ParseError, file, 1, Lockfile)
+		g.unknown(UnknownParseError, file, 0, DecideLockfile)
 		return ""
 	}
 	root, hasRoot := lock.Packages[""]

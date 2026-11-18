@@ -93,7 +93,7 @@ func readTSJSDependencies(ctx context.Context, repo repositoryFS, src []byte, ov
 	g.loadConfig()
 	g.sourceManifest = g.nearestManifest()
 	if syntax.jsx && g.config.automaticJSX {
-		g.unknown(UnsupportedConstruct, "", 1, Toolchain, ConfigFile)
+		g.unknown(UnknownUnsupportedConstruct, "", 0, DecideToolchain, DecideConfigFile)
 	}
 	// Sanitized relative operands on one physical line cannot be uniquely
 	// attributed by the wire format when a second request shares the line.
@@ -102,7 +102,7 @@ func readTSJSDependencies(ctx context.Context, repo repositoryFS, src []byte, ov
 		prev, ok := byLine[req.line]
 		if ok && (prev.raw != req.raw || prev.mode != req.mode) &&
 			(safeRaw(prev.raw) == "***" || safeRaw(req.raw) == "***") {
-			g.unknown(UnsupportedConstruct, "", req.line, Declaration, Toolchain)
+			g.unknown(UnknownUnsupportedConstruct, "", req.line, DecideDeclaration, DecideToolchain)
 		}
 		if !ok || safeRaw(req.raw) == "***" {
 			byLine[req.line] = req
@@ -113,7 +113,7 @@ func readTSJSDependencies(ctx context.Context, repo repositoryFS, src []byte, ov
 			return
 		}
 		if override != nil {
-			out.resolveExtension(repo, override, req.raw, req.line)
+			out.resolveExtension(ctx, override, ResolveRequest{Repo: repo, From: out.Path, Raw: req.raw, Kind: KindImport, Line: req.line})
 		} else {
 			g.resolve(req, syntax.esm)
 		}
@@ -122,7 +122,7 @@ func readTSJSDependencies(ctx context.Context, repo repositoryFS, src []byte, ov
 
 func (g *tsjsRead) syntax(src []byte) (tsjsSyntax, bool) {
 	if !utf8.Valid(src) || bytes.IndexByte(src, 0) >= 0 {
-		g.unknown(ParseError, "", 1, Toolchain)
+		g.unknown(UnknownParseError, "", 0, DecideToolchain)
 		return tsjsSyntax{}, false
 	}
 	grammar := g.out.Dialect
@@ -139,7 +139,7 @@ func (g *tsjsRead) syntax(src []byte) (tsjsSyntax, bool) {
 	}
 	l, err := tsengine.AcquireParser(g.ctx, "deps:"+entry, grammar, entry)
 	if err != nil {
-		g.unknown(ReadLimit, "", 1, Toolchain)
+		g.unknown(UnknownReadLimit, "", 0, DecideToolchain)
 		return tsjsSyntax{}, false
 	}
 	defer l.Release()
@@ -147,7 +147,7 @@ func (g *tsjsRead) syntax(src []byte) (tsjsSyntax, bool) {
 	tree, err := parser.Parse(src)
 	if err != nil {
 		l.Discard()
-		g.unknown(ReadLimit, "", 1, Toolchain)
+		g.unknown(UnknownReadLimit, "", 0, DecideToolchain)
 		return tsjsSyntax{}, false
 	}
 	q, ok := parser.Cached("dependency-captures").(*tsengine.Query)
@@ -156,7 +156,7 @@ func (g *tsjsRead) syntax(src []byte) (tsjsSyntax, bool) {
 		if err != nil {
 			tree.Close()
 			l.Discard()
-			g.unknown(UnsupportedConstruct, "", 1, Toolchain)
+			g.unknown(UnknownUnsupportedConstruct, "", 0, DecideToolchain)
 			return tsjsSyntax{}, false
 		}
 		parser.SetCached("dependency-captures", q)
@@ -165,7 +165,7 @@ func (g *tsjsRead) syntax(src []byte) (tsjsSyntax, bool) {
 	tree.Close()
 	if err != nil {
 		l.Discard()
-		g.unknown(ReadLimit, "", 1, Toolchain)
+		g.unknown(UnknownReadLimit, "", 0, DecideToolchain)
 		return tsjsSyntax{}, false
 	}
 	l.Release()
@@ -215,7 +215,7 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 			if kind == "static" && operand.EndByte < node.EndByte {
 				tail := strings.TrimSpace(string(src[operand.EndByte:node.EndByte]))
 				if tail != "" && tail != ";" {
-					g.unknown(UnsupportedConstruct, "", node.Line(), Toolchain, ConfigFile)
+					g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideConfigFile)
 				}
 			}
 		case "dynamic", "direct", "member":
@@ -243,9 +243,9 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 		case "loader-use":
 			loaders[node.StartByte] = node
 		case "error":
-			g.unknown(ParseError, "", node.Line(), Toolchain)
+			g.unknown(UnknownParseError, "", node.Line(), DecideToolchain)
 		case "ambient", "other-loader":
-			g.unknown(UnsupportedConstruct, "", node.Line(), Toolchain, ConfigFile)
+			g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideConfigFile)
 		case "meta":
 			syntax.esm = true
 		case "jsx":
@@ -259,12 +259,12 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 		g.addRequest(&syntax, src, call.operand, call.line, call.mode, nil)
 		if call.operand.EndByte != 0 && call.args.EndByte > call.operand.EndByte &&
 			!tsjsCallTail(src[call.operand.EndByte:call.args.EndByte]) {
-			g.unknown(UnsupportedConstruct, "", call.line, Toolchain, Observation)
+			g.unknown(UnknownUnsupportedConstruct, "", call.line, DecideToolchain, DecideObservation)
 		}
 	}
 	for offset, node := range loaders {
 		if !used[offset] {
-			g.unknown(UnsupportedConstruct, "", node.Line(), Toolchain, Observation)
+			g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideObservation)
 		}
 	}
 	return syntax
@@ -312,11 +312,11 @@ func (g *tsjsRead) addRequest(s *tsjsSyntax, src []byte, operand tsengine.Node, 
 	token := operand.Text(src)
 	raw, literal := tsjsLiteral(token)
 	if !literal {
-		code := DynamicImport
+		code := UnknownDynamicImport
 		if mode == tsjsStatic || existing != nil {
-			code = UnsupportedConstruct
+			code = UnknownUnsupportedConstruct
 		}
-		g.unknown(code, "***", stmtLine, Toolchain, Observation)
+		g.unknown(code, "***", stmtLine, DecideToolchain, DecideObservation)
 		return
 	}
 	if spelling := existing[tsjsRequest{raw: raw, line: stmtLine, mode: tsjsStatic}]; spelling != "" {
@@ -329,7 +329,7 @@ func (g *tsjsRead) comment(comment string, line int) {
 	if strings.HasPrefix(comment, "///") && strings.Contains(comment, "<reference") ||
 		strings.HasPrefix(comment, "/**") && (strings.Contains(comment, "@import") ||
 			strings.Contains(comment, "import(") || strings.Contains(comment, "import (")) {
-		g.unknown(UnsupportedConstruct, "", line, Toolchain, ConfigFile)
+		g.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain, DecideConfigFile)
 	}
 }
 

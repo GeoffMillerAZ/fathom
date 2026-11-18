@@ -40,7 +40,7 @@ func (g *tsjsRead) unknown(code UnknownCode, raw string, line int, by ...Decidab
 }
 
 func (g *tsjsRead) edge(kind Kind, raw, to string, resolution Resolution, version string, line int) {
-	g.out.addEdge(Edge{Kind: kind, Raw: raw, To: to, Resolution: resolution, Version: version, Line: line, Provenance: Builtin})
+	g.out.addEdge(Edge{Kind: kind, Raw: raw, To: to, Resolution: resolution, Version: version, Line: line, Provenance: ProvenanceBuiltin})
 }
 
 // A failed higher-priority probe (including a symlink) must never be
@@ -50,14 +50,14 @@ func (g *tsjsRead) probe(name string, dir bool) (bool, UnknownCode) {
 		return true, ""
 	}
 	if !validPath(name) {
-		return false, UnsupportedConstruct
+		return false, UnknownUnsupportedConstruct
 	}
 	info, err := g.repo.Stat(name)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, ""
 	}
 	if err != nil {
-		return false, UnsupportedConstruct
+		return false, UnknownUnsupportedConstruct
 	}
 	if dir {
 		return info.IsDir(), ""
@@ -70,7 +70,7 @@ func (g *tsjsRead) metadata(name string) ([]byte, bool, UnknownCode) {
 	if !exists || code != "" {
 		return nil, exists, code
 	}
-	g.edge(ConfigRef, name, name, File, "", 1)
+	g.edge(KindConfigRef, name, name, ResolvedFile, "", 0)
 	data, code := readSource(g.repo, name)
 	return data, true, code
 }
@@ -85,7 +85,7 @@ func (g *tsjsRead) loadConfig() {
 			file := path.Join(dir, name)
 			data, exists, code := g.metadata(file)
 			if code != "" {
-				g.unknown(code, file, 1, ConfigFile)
+				g.unknown(code, file, 0, DecideConfigFile)
 				g.config.unprovable = true
 				return
 			}
@@ -114,7 +114,7 @@ func (g *tsjsRead) parseConfig(dir, file string, data []byte) {
 	if !bytes.HasPrefix(bytes.TrimSpace(clean), []byte("{")) ||
 		json.Unmarshal(clean, &cfg) != nil || json.Unmarshal(clean, &raw) != nil {
 		g.config.unprovable = true
-		g.unknown(ParseError, file, 1, ConfigFile)
+		g.unknown(UnknownParseError, file, 0, DecideConfigFile)
 		return
 	}
 	opts := cfg.CompilerOptions
@@ -163,7 +163,7 @@ func (g *tsjsRead) parseConfig(dir, file string, data []byte) {
 		c.unprovable = true
 	}
 	if c.unprovable {
-		g.unknown(UnsupportedConstruct, file, 1, Toolchain, ConfigFile)
+		g.unknown(UnknownUnsupportedConstruct, file, 0, DecideToolchain, DecideConfigFile)
 	}
 	g.config = c
 }

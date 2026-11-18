@@ -26,14 +26,14 @@ func (g *tsjsRead) manifest(dir string) (tsjsManifest, UnknownCode) {
 	}
 	var cfg tsjsPackageJSON
 	if len(data) == 0 || json.Unmarshal(data, &cfg) != nil || strings.TrimSpace(string(data))[0] != '{' {
-		return tsjsManifest{}, ParseError
+		return tsjsManifest{}, UnknownParseError
 	}
 	dts := cfg.Types
 	if dts == "" {
 		dts = cfg.Typings
 	}
 	if cfg.Type != "" && cfg.Type != "module" && cfg.Type != "commonjs" {
-		return tsjsManifest{}, UnsupportedConstruct
+		return tsjsManifest{}, UnknownUnsupportedConstruct
 	}
 	return tsjsManifest{file, cfg.Name, cfg.Type, cfg.Main, dts, cfg}, ""
 }
@@ -45,7 +45,7 @@ func (g *tsjsRead) nearestManifest() tsjsManifest {
 		}
 		p, code := g.manifest(dir)
 		if code != "" {
-			g.unknown(code, path.Join(dir, "package.json"), 1, ConfigFile)
+			g.unknown(code, path.Join(dir, "package.json"), 0, DecideConfigFile)
 			g.config.unprovable = true
 			return tsjsManifest{}
 		}
@@ -62,7 +62,7 @@ func (g *tsjsRead) resolve(r tsjsRequest, esm bool) {
 	if raw == "." || raw == ".." || strings.HasPrefix(raw, "./") || strings.HasPrefix(raw, "../") {
 		base := tsjsJoin(path.Dir(g.out.Path), raw)
 		if base == "" {
-			g.unknown(UnsupportedConstruct, raw, r.line, ConfigFile, Toolchain)
+			g.unknown(UnknownUnsupportedConstruct, raw, r.line, DecideConfigFile, DecideToolchain)
 			return
 		}
 		to, code := g.localTarget(base, extensions, true)
@@ -70,24 +70,28 @@ func (g *tsjsRead) resolve(r tsjsRequest, esm bool) {
 		return
 	}
 	if strings.HasPrefix(raw, "#") {
-		g.unknown(UnsupportedConstruct, raw, r.line, ConfigFile, Toolchain)
+		g.unknown(UnknownUnsupportedConstruct, raw, r.line, DecideConfigFile, DecideToolchain)
 		return
 	}
 	if strings.HasPrefix(raw, "node:") && validExternal(raw) {
-		g.edge(Import, raw, raw, External, "", r.line)
+		g.edge(KindImport, raw, raw, ResolvedExternal, "", r.line)
 		return
 	}
-	pkg, sub := tsjsPackageName(raw)
-	if pkg == "" {
-		g.unknown(UnsupportedConstruct, raw, r.line, Toolchain)
+	if !validPath(raw) {
+		g.unknown(UnknownUnsupportedConstruct, raw, r.line, DecideToolchain)
 		return
 	}
 	if g.config.unprovable {
-		g.unknown(UnresolvedAlias, raw, r.line, Toolchain, ConfigFile)
+		g.unknown(UnknownUnresolvedAlias, raw, r.line, DecideToolchain, DecideConfigFile)
 		return
 	}
 	if to, code := g.alias(raw, extensions); to != "" || code != "" {
 		g.finishTarget(r, to, code)
+		return
+	}
+	pkg, sub := tsjsPackageName(raw)
+	if pkg == "" {
+		g.unknown(UnknownUnsupportedConstruct, raw, r.line, DecideToolchain)
 		return
 	}
 	if pkg == g.sourceManifest.name && len(g.sourceManifest.raw.Exports) != 0 && g.config.resolution != "node10" {
@@ -100,13 +104,13 @@ func (g *tsjsRead) resolve(r tsjsRequest, esm bool) {
 
 func (g *tsjsRead) finishTarget(r tsjsRequest, to string, code UnknownCode) {
 	if to != "" {
-		g.edge(Import, r.raw, to, File, "", r.line)
+		g.edge(KindImport, r.raw, to, ResolvedFile, "", r.line)
 		return
 	}
 	if code == "" {
-		code = UnresolvedAlias
+		code = UnknownUnresolvedAlias
 	}
-	g.unknown(code, r.raw, r.line, Toolchain, ConfigFile)
+	g.unknown(code, r.raw, r.line, DecideToolchain, DecideConfigFile)
 }
 
 func (g *tsjsRead) localTarget(base string, extensionless, directory bool) (string, UnknownCode) {
@@ -138,7 +142,7 @@ func (g *tsjsRead) localTarget(base string, extensionless, directory bool) (stri
 	p, code := g.manifest(base)
 	if code != "" || len(p.raw.TypesVersions) != 0 {
 		if code == "" {
-			code = UnsupportedConstruct
+			code = UnknownUnsupportedConstruct
 		}
 		return "", code
 	}
@@ -149,7 +153,7 @@ func (g *tsjsRead) localTarget(base string, extensionless, directory bool) (stri
 	if entry != "" {
 		target := tsjsJoin(base, entry)
 		if target == "" || !tsjsWithin(base, target) {
-			return "", UnsupportedConstruct
+			return "", UnknownUnsupportedConstruct
 		}
 		// TypeScript may also apply an index fallback to a package entry
 		// pointing to a directory. That ambiguous shape needs the compiler.
@@ -157,7 +161,7 @@ func (g *tsjsRead) localTarget(base string, extensionless, directory bool) (stri
 			return to, code
 		}
 		if isDir, code := g.probe(target, true); isDir || code != "" {
-			return "", UnsupportedConstruct
+			return "", UnknownUnsupportedConstruct
 		}
 	}
 	return g.localTarget(path.Join(base, "index"), true, false)
@@ -225,7 +229,7 @@ func (g *tsjsRead) alias(raw string, extensions bool) (string, UnknownCode) {
 		}
 	}
 	if ambiguous {
-		return "", UnresolvedAlias
+		return "", UnknownUnresolvedAlias
 	}
 	root := c.dir
 	if c.base != "" {
@@ -234,15 +238,15 @@ func (g *tsjsRead) alias(raw string, extensions bool) (string, UnknownCode) {
 	if match != "" {
 		targets := c.paths[match]
 		if len(targets) == 0 || len(targets) > maxPackageEntries {
-			return "", UnsupportedConstruct
+			return "", UnknownUnsupportedConstruct
 		}
 		for _, candidate := range targets {
 			if strings.Count(candidate, "*") > 1 || c.base == "" && !strings.HasPrefix(candidate, "./") && !strings.HasPrefix(candidate, "../") {
-				return "", UnsupportedConstruct
+				return "", UnknownUnsupportedConstruct
 			}
 			base := tsjsJoin(root, strings.Replace(candidate, "*", replacement, 1))
 			if base == "" {
-				return "", UnsupportedConstruct
+				return "", UnknownUnsupportedConstruct
 			}
 			if to, code := g.localTarget(base, extensions, true); to != "" || code != "" {
 				return to, code
@@ -255,7 +259,7 @@ func (g *tsjsRead) alias(raw string, extensions bool) (string, UnknownCode) {
 		}
 	}
 	if match != "" {
-		return "", UnresolvedAlias
+		return "", UnknownUnresolvedAlias
 	}
 	return "", ""
 }

@@ -18,7 +18,7 @@ func readTSJSFixture(t *testing.T, repo fstest.MapFS, file, dialect, src string,
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := reader.ReadFile(context.Background(), repo, file, dialect, []byte(src))
+	got, err := reader.ReadFile(context.Background(), repo, deps.Input{Path: file, Dialect: dialect}, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,17 +57,17 @@ func TestTSJSDependencyForms(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := readTSJSFixture(t, repo, tc.fixture, "", string(src), deps.TrustUnmeasured(tc.dialect))
-			if got.Dialect != tc.dialect || got.Complete || !reflect.DeepEqual(tsjsTargets(got, deps.Import), tc.targets) {
+			if got.Dialect != tc.dialect || got.Complete || !reflect.DeepEqual(tsjsTargets(got, deps.KindImport), tc.targets) {
 				t.Fatalf("imports: %+v", got)
 			}
 			var lines []int
 			var grammarGap bool
 			for _, unknown := range got.Unknowns {
-				if tc.dialect == "typescript" && unknown.Code == deps.ParseError && unknown.Line == 7 {
+				if tc.dialect == "typescript" && unknown.Code == deps.UnknownParseError && unknown.Line == 7 {
 					grammarGap = true // The pinned grammar recovers the source of export type *.
 					continue
 				}
-				if unknown.Code != deps.DynamicImport || unknown.Raw != "***" {
+				if unknown.Code != deps.UnknownDynamicImport || unknown.Raw != "***" {
 					t.Fatalf("unexpected unknown: %+v", unknown)
 				}
 				lines = append(lines, unknown.Line)
@@ -85,7 +85,7 @@ func TestTSJSResolutionFixtures(t *testing.T) {
 		  // At equal prefix specificity, the first applicable mapping wins.
 		  "compilerOptions": {
 		    "moduleResolution": "bundler", "module": "esnext",
-		    "paths": {"@ui/*": ["./missing/*", "./src/ui/*"], "@ui/exact": ["./src/exact"]},
+		    "paths": {"@ui/*": ["./missing/*", "./src/ui/*"], "@exact": ["./src/exact"]},
 		  },
 		}`)},
 		"package.json": {Data: []byte(`{"name":"sample","type":"module","exports": {
@@ -100,13 +100,13 @@ func TestTSJSResolutionFixtures(t *testing.T) {
 		"src/fallback.mjs":       {},
 	}
 	got := readTSJSFixture(t, repo, "src/main.ts", "typescript", `import '@ui/button';
-import '@ui/exact';
+import '@exact';
 import './widget.js';
 export * from 'sample/feature';`, deps.TrustUnmeasured("typescript"))
-	if !got.Complete || !slices.Equal(tsjsTargets(got, deps.Import), []string{"src/ui/button/index.ts", "src/exact.ts", "src/widget.ts", "src/feature.d.ts"}) {
+	if !got.Complete || !slices.Equal(tsjsTargets(got, deps.KindImport), []string{"src/ui/button/index.ts", "src/exact.ts", "src/widget.ts", "src/feature.d.ts"}) {
 		t.Fatalf("config, index, substitution and export precedence: %+v", got)
 	}
-	if !slices.Equal(tsjsTargets(got, deps.ConfigRef), []string{"package.json", "tsconfig.json"}) {
+	if !slices.Equal(tsjsTargets(got, deps.KindConfigRef), []string{"package.json", "tsconfig.json"}) {
 		t.Fatalf("config inputs: %+v", got)
 	}
 }
@@ -116,16 +116,16 @@ func TestTSJSDependencyDisclosures(t *testing.T) {
 		name, file, src, config string
 		code                    deps.UnknownCode
 	}{
-		{"malformed TS", "x.ts", "import { x from './target';", "", deps.ParseError},
-		{"malformed JS", "x.js", "require('./target'", "", deps.ParseError},
-		{"unsupported config", "x.ts", "import './target';", `{"extends":"./base.json"}`, deps.UnsupportedConstruct},
-		{"malformed config", "x.ts", "import './target';", `{"compilerOptions":`, deps.ParseError},
-		{"symlink shadows fallback", "x.ts", "import './bad';", "", deps.UnsupportedConstruct},
-		{"missing file", "x.js", "import './missing';", "", deps.UnresolvedAlias},
-		{"relative escape", "x.js", "import '../../host';", "", deps.UnsupportedConstruct},
-		{"require escape", "x.js", "const load = require; load('./target')", "", deps.UnsupportedConstruct},
-		{"triple reference", "x.ts", "/// <reference path='./target.ts' />", "", deps.UnsupportedConstruct},
-		{"JSDoc module", "x.js", "/** @type {import('./target').T} */ let a;", "", deps.UnsupportedConstruct},
+		{"malformed TS", "x.ts", "import { x from './target';", "", deps.UnknownParseError},
+		{"malformed JS", "x.js", "require('./target'", "", deps.UnknownParseError},
+		{"unsupported config", "x.ts", "import './target';", `{"extends":"./base.json"}`, deps.UnknownUnsupportedConstruct},
+		{"malformed config", "x.ts", "import './target';", `{"compilerOptions":`, deps.UnknownParseError},
+		{"symlink shadows fallback", "x.ts", "import './bad';", "", deps.UnknownUnsupportedConstruct},
+		{"missing file", "x.js", "import './missing';", "", deps.UnknownUnresolvedAlias},
+		{"relative escape", "x.js", "import '../../host';", "", deps.UnknownUnsupportedConstruct},
+		{"require escape", "x.js", "const load = require; load('./target')", "", deps.UnknownUnsupportedConstruct},
+		{"triple reference", "x.ts", "/// <reference path='./target.ts' />", "", deps.UnknownUnsupportedConstruct},
+		{"JSDoc module", "x.js", "/** @type {import('./target').T} */ let a;", "", deps.UnknownUnsupportedConstruct},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := fstest.MapFS{
@@ -140,7 +140,7 @@ func TestTSJSDependencyDisclosures(t *testing.T) {
 			if got.Complete || !slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == tc.code }) {
 				t.Fatalf("want %s: %+v", tc.code, got)
 			}
-			if tc.name == "symlink shadows fallback" && len(tsjsTargets(got, deps.Import)) > 0 {
+			if tc.name == "symlink shadows fallback" && len(tsjsTargets(got, deps.KindImport)) > 0 {
 				t.Fatalf("unsafe higher-priority candidate bypassed: %+v", got)
 			}
 		})
@@ -162,7 +162,7 @@ func TestTSJSPackageLock(t *testing.T) {
 		pinned = pinned || e.To == "npm:@sample/lib" && e.Version == "1.2.3"
 		unpinned = unpinned || e.To == "npm:other" && e.Version == ""
 	}
-	if !pinned || !unpinned || got.Complete || !slices.Contains(tsjsTargets(got, deps.ConfigRef), "package-lock.json") {
+	if !pinned || !unpinned || got.Complete || !slices.Contains(tsjsTargets(got, deps.KindConfigRef), "package-lock.json") {
 		t.Fatalf("lock evidence: %+v", got)
 	}
 }
