@@ -233,6 +233,13 @@ func inferDialect(file, dialect string) string {
 	return inferTSJSDialect(ext)
 }
 
+func init() {
+	// DEP-M1 qualified JavaScript, with low coverage. The TypeScript trial
+	// had no native truth for its third subject and stays detect-only.
+	admissions["javascript"] = measured
+	admissions["typescript"] = detectOnly
+}
+
 func implemented(dialect string) bool {
 	switch dialect {
 	case "go", "python", "typescript", "javascript":

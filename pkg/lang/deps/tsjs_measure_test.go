@@ -36,6 +36,7 @@ func TestTSJSNativeOracle(t *testing.T) {
 	if mode == "" {
 		t.Skip("set FATHOM_DEP_TSJS_NATIVE=control or corpus to request the pinned compiler")
 	}
+	deps.TSJSUseCandidateAdmissionForTest(t)
 	compiler := tsjsRequiredPath(t, "FATHOM_DEP_TSJS_COMPILER")
 	scratch := tsjsRequiredPath(t, "FATHOM_DEP_TSJS_SCRATCH")
 	t.Run("control", func(t *testing.T) { tsjsOracleControl(t, compiler, scratch) })

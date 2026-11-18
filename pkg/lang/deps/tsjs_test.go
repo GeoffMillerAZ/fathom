@@ -39,6 +39,7 @@ func tsjsTargets(got deps.FileDeps, kind deps.Kind) []string {
 }
 
 func TestTSJSDependencyForms(t *testing.T) {
+	deps.TSJSUseCandidateAdmissionForTest(t)
 	for _, tc := range []struct {
 		dialect, fixture string
 		targets          []string
@@ -83,6 +84,7 @@ func TestTSJSDependencyForms(t *testing.T) {
 }
 
 func TestTSJSResolutionFixtures(t *testing.T) {
+	deps.TSJSUseCandidateAdmissionForTest(t)
 	repo := fstest.MapFS{
 		"tsconfig.json": {Data: []byte(`{
 		  // At equal prefix specificity, the first applicable mapping wins.
@@ -233,4 +235,36 @@ func TestTSJSResolutionCaps(t *testing.T) {
 			t.Fatalf("oversize exports nesting: %+v", got)
 		}
 	})
+}
+
+func TestTSJSDialectAdmission(t *testing.T) {
+	repo := fstest.MapFS{}
+	js := readTSJSFixture(t, repo, "main.js", "", "")
+	if !js.Measured || js.Trusted || !js.Complete {
+		t.Fatalf("JavaScript admission: %+v", js)
+	}
+	ts := readTSJSFixture(t, repo, "main.ts", "", "", deps.TrustUnmeasured("typescript"))
+	if ts.Measured || ts.Trusted || ts.Complete ||
+		!slices.ContainsFunc(ts.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownUnmeasuredReader }) {
+		t.Fatalf("TypeScript detect-only admission: %+v", ts)
+	}
+	resolver := tsjsTypedResolver(func(_ context.Context, request deps.ResolveRequest) deps.ResolveResult {
+		if request.From != "main.js" || request.Raw != "./target.cjs" ||
+			request.Kind != deps.KindImport || request.Line != 2 || request.Repo == nil {
+			t.Fatalf("bad resolver request: %+v", request)
+		}
+		return deps.ResolveResult{Edges: []deps.Edge{{Kind: request.Kind, Resolution: deps.ResolvedFile, To: "other.cjs"}}}
+	})
+	repo["other.cjs"] = &fstest.MapFile{}
+	custom := readTSJSFixture(t, repo, "main.js", "", "\nrequire('./target.cjs');", deps.WithResolver("javascript", resolver))
+	if custom.Measured || custom.Trusted || custom.Complete ||
+		!slices.Equal(tsjsTargets(custom, deps.KindImport), []string{"other.cjs"}) {
+		t.Fatalf("override inherited measurement: %+v", custom)
+	}
+}
+
+type tsjsTypedResolver func(context.Context, deps.ResolveRequest) deps.ResolveResult
+
+func (f tsjsTypedResolver) Resolve(ctx context.Context, req deps.ResolveRequest) deps.ResolveResult {
+	return f(ctx, req)
 }
