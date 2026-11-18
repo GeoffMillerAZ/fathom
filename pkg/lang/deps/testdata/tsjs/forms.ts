@@ -1,0 +1,18 @@
+import './side';
+import type { T } from './types';
+import * as ns from './namespace';
+import x = require('./equals');
+export { thing as renamed } from './named';
+export * as all from './all';
+export type * from './barrel';
+type Example = import('./type-import').T;
+const c = require('./common');
+const d = import('./dynamic');
+const e = import(`./template`);
+const f = import(`./${name}`);
+const g = require(name);
+// import './ignored-comment';
+const h = "export * from './ignored-string'";
+const i = /import\(['"]\.\/ignored-regex/;
+const j = object.require('./ignored-property');
+const k = `require('./ignored-template') ${require('./nested')}`;

@@ -137,6 +137,8 @@ func (r *Reader) readFile(ctx context.Context, repo repositoryFS, in Input, src 
 		readGo(ctx, repo, src, r.resolvers[f.Dialect], &f)
 	case "python":
 		readPythonDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
+	case "typescript", "javascript":
+		readTSJSDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
 	}
 	if err := ctx.Err(); err != nil {
 		return FileDeps{}, err
@@ -218,18 +220,27 @@ func validateInput(repo fs.FS, in Input) error {
 }
 
 func inferDialect(file, dialect string) string {
-	if dialect == "" {
-		switch path.Ext(file) {
-		case ".go":
-			return "go"
-		case ".py":
-			return "python"
-		}
+	if dialect != "" {
+		return dialect
 	}
-	return dialect
+	ext := path.Ext(file)
+	switch ext {
+	case ".go":
+		return "go"
+	case ".py":
+		return "python"
+	}
+	return inferTSJSDialect(ext)
 }
 
-func implemented(dialect string) bool { return dialect == "go" || dialect == "python" }
+func implemented(dialect string) bool {
+	switch dialect {
+	case "go", "python", "typescript", "javascript":
+		return true
+	default:
+		return false
+	}
+}
 
 // Read regular files only. Neither filesystem errors nor parser errors are
 // surfaced verbatim: their messages can contain repository data or host paths.
