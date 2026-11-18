@@ -91,6 +91,7 @@ type Reader struct{ readerOptions }
 
 type readerOptions struct {
 	resolvers map[string]Resolver
+	packs     map[string]dependencyPack
 	declared  map[string][]Edge
 	trusted   map[string]bool
 }
@@ -99,6 +100,7 @@ type readerOptions struct {
 func New(opts ...Option) (*Reader, error) {
 	r := &Reader{readerOptions{
 		resolvers: make(map[string]Resolver),
+		packs:     make(map[string]dependencyPack),
 		declared:  make(map[string][]Edge),
 		trusted:   make(map[string]bool),
 	}}
@@ -141,6 +143,10 @@ func (r *Reader) readFile(ctx context.Context, repo repositoryFS, in Input, src 
 		readTSJSDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
 	case "dockerfile":
 		readDockerfileDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
+	default:
+		if pack, ok := r.packs[f.Dialect]; ok {
+			readPackDependencies(ctx, repo, src, pack, r.resolvers[f.Dialect], &f)
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return FileDeps{}, err
@@ -201,10 +207,8 @@ func (r *Reader) finish(f *result) {
 }
 
 func (r *Reader) finishWithAdmission(f *result, state admission) {
-	if state == measured && r.resolvers[f.Dialect] != nil {
-		state = unmeasured
-	}
-	f.finish(state, implemented(f.Dialect), r.trusted[f.Dialect])
+	known := builtinDependencyKinds[f.Dialect] != nil || r.packs[f.Dialect].reader != nil
+	f.finish(r.activeAdmission(f.Dialect, state), known, r.trusted[f.Dialect])
 }
 
 func (r *Reader) applyDeclarations(f *result) {
@@ -243,15 +247,6 @@ func init() {
 	// had no native truth for its third subject and stays detect-only.
 	admissions["javascript"] = measured
 	admissions["typescript"] = detectOnly
-}
-
-func implemented(dialect string) bool {
-	switch dialect {
-	case "go", "python", "typescript", "javascript", "dockerfile":
-		return true
-	default:
-		return false
-	}
 }
 
 // Read regular files only. Neither filesystem errors nor parser errors are

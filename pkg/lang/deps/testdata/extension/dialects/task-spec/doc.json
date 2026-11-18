@@ -1,0 +1,17 @@
+{
+  "decode": "json",
+  "detect": {"globs": ["**/*.task.json"]},
+  "entities": [
+    {"select": "$", "kind": "resource", "source_kind": "TaskSpec", "name": ".name"}
+  ],
+  "cross_file": [
+    {"select": "$.imports[*]", "value": "$", "resolve": "repo-path", "edge": "loads"},
+    {"select": "$.includes[*]", "value": "$", "resolve": "repo-path", "edge": "includes"},
+    {"select": "$.embeds[*]", "value": "$", "resolve": "repo-path", "edge": "embeds"},
+    {"select": "$.sources[*]", "value": "$", "resolve": "repo-path", "edge": "inputs"},
+    {"select": "$.commands[*]", "value": "$", "resolve": "repo-path", "edge": "runs"},
+    {"select": "$.configs[*]", "value": "$", "resolve": "repo-path", "edge": "reads"},
+    {"select": "$.service", "value": "$", "resolve": "service-name", "edge": "loads"},
+    {"select": "$.extra", "value": "$", "resolve": "repo-path", "edge": "unclassified"}
+  ]
+}

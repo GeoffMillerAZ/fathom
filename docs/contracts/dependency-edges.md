@@ -33,8 +33,18 @@ read `***`. Values covered by the library's redaction rule are withheld.
 
 Call `deps.New(opts...)`, then `Reader.ReadFile(ctx, repo, deps.Input{Path: path, Dialect: dialect}, src)` or
 `Reader.ReadFiles(ctx, repo, []deps.Input{{Path: path, Dialect: dialect}})`. A blank
-dialect selects Go for a `.go` path. Explicit dialect IDs take precedence. The batch
-sorts paths and rejects duplicates. An unreadable file contributes an incomplete
+dialect infers a built-in reader from the filename. Explicit dialect IDs take
+precedence.
+
+| Dialect | Filename inference | Admission |
+|---|---|---|
+| `go` | `.go` | Unmeasured. The Go fixture checks the grading harness. |
+| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | Measured, low coverage (DEP-M1). |
+| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Detect-only (DEP-M1). |
+| `python` | `.py` | Measured, low coverage (DEP-M2). |
+| `dockerfile` | `Dockerfile`, `Containerfile`, either with a dotted suffix, or a basename ending in `.dockerfile` or `.containerfile` (case-insensitive) | Detect-only (DEP-M3). |
+
+The batch sorts paths and rejects duplicates. An unreadable file contributes an incomplete
 record and the batch returns an error. A single byte read can use bytes the caller
 has yet to store in the repository view. The reader checks every path component
 below the supplied root with non-following metadata or parent directory entries.
@@ -54,6 +64,39 @@ leaves every existing unknown and incomplete verdict in place. A version from a
 resolver or declaration comes from a manifest pin or lockfile.
 `TrustUnmeasured(id)` records explicit opt-in in `trusted` for an implemented,
 unmeasured reader. Detect-only and unimplemented readers stay incomplete.
+
+## Extension and conformance
+
+`Reader.Dialects()` lists the implemented dialect IDs, their construct kinds
+and the Reader's measured state. IDs and kinds are sorted. A resolver override
+sets the overridden dialect's `Measured` to false. Editing the returned metadata
+has no effect on reads.
+
+Load a document dialect with `lang.New(lang.WithDialects(packFS))`. Give that
+reader to `deps.WithPack(parser, id, kinds)` and supply the pack ID in
+`Input.Dialect` for either read entry point. Close the language reader after
+dependency reads finish. Map the pack's existing `cross_file` relation names to
+dependency kinds. For example, map `includes` to `deps.KindInclude`. Dependency
+kinds are the six values in the table below. The pack owns which constructs it
+captures.
+
+The dependency reader checks `repo-path` and `repo-root` targets in the supplied
+repository view and reports file or directory edges with `pack` provenance.
+A registered resolver can resolve a classified reference and reports
+`extension` provenance. Unresolved captures, unclassified cross-file captures,
+unsupported strategies and parser failures produce typed unknowns. Pack readers
+are unmeasured. Trusting one opts into its coverage and still requires all
+reported dependencies to resolve. See the runnable `ExampleWithPack` in
+`pkg/lang/deps`.
+
+`pkg/lang/deps/depstest.Check` runs a Reader twice against one repository view
+and once against a copy at a second root. Supply independent direct-dependency
+truth keyed by file, including an explicit empty row when the oracle found no
+dependencies. The helper reports B1 missing local targets, B2 wrong or
+inconclusive bindings, B3 byte-identical replay, and counts for coverage,
+unknowns and extra edges. Score an unmeasured candidate with explicit trust.
+Fixture outcomes are evidence for those inputs. Admission still requires the
+preregistered population and bars, and detect-only built-ins remain detect-only.
 
 ## Serialized facts
 

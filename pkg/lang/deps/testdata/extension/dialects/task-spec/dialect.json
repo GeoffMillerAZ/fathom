@@ -1,0 +1,15 @@
+{
+  "id": "task-spec",
+  "display": "Task specifications",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "task-spec",
+  "match": {"globs": ["**/*.task.json"]},
+  "kinds": {"task": {"source_kind": "TaskSpec", "canonical": "resource"}},
+  "required_kinds": ["task"],
+  "name_match": "identity",
+  "package": {"strategy": "none"},
+  "signature": {"max_chars": 200},
+  "target_level": "L2",
+  "queue_id": "task-spec"
+}

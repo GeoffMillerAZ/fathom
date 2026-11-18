@@ -23,6 +23,15 @@ const (
 	DecideObservation DecidableBy = "observation"
 	DecideDeclaration DecidableBy = "declaration"
 )
+type DialectInfo struct {
+	ID       string
+	Measured bool
+	Kinds    []Kind
+}
+    DialectInfo describes the dependency constructs a Reader implements for ID.
+    Kinds is ordered by its wire values. Measured reflects the Reader's active
+    resolver, independently of trust and any individual file's completeness.
+
 type Edge struct {
 	From       string     `json:"from"`
 	Kind       Kind       `json:"kind"`
@@ -81,6 +90,13 @@ func WithDeclaredEdges(edges ...Edge) Option
     Declarations never clear an unknown or make a file complete. To must
     identify a logical target. A version must be a manifest or lockfile pin.
 
+func WithPack(reader *lang.Reader, dialect string, kinds map[string]Kind) Option
+    WithPack registers one document dialect from a lang.Reader configured
+    with lang.WithDialects. The kinds map translates the dialect's cross-file
+    relation names to dependency kinds. Select the dialect in Input.Dialect.
+    The caller owns the lang.Reader and keeps it open for dependency reads.
+    A pack is unmeasured.
+
 func WithResolver(dialect string, resolver Resolver) Option
     WithResolver replaces resolver-driven resolution for an implemented dialect.
     A replacement voids built-in admission for this Reader. Its results
@@ -104,6 +120,10 @@ type Reader struct {
 func New(opts ...Option) (*Reader, error)
     New constructs a dependency reader. By default it trusts no unmeasured
     dialect.
+
+func (r *Reader) Dialects() []DialectInfo
+    Dialects lists the built-in and registered pack dialects by ID. The returned
+    metadata is owned by the caller.
 
 func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, in Input, src []byte) (FileDeps, error)
     ReadFile reads source bytes, consulting only repo for resolution. Dialect is

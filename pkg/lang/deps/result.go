@@ -48,13 +48,16 @@ func safeRaw(s string) string {
 	return "***"
 }
 
-func validEdge(e Edge) bool {
-	switch e.Kind {
+func validKind(kind Kind) bool {
+	switch kind {
 	case KindImport, KindInclude, KindEmbed, KindBuildInput, KindExec, KindConfigRef:
-	default:
-		return false
+		return true
 	}
-	if e.Line < 0 {
+	return false
+}
+
+func validEdge(e Edge) bool {
+	if !validKind(e.Kind) || e.Line < 0 {
 		return false
 	}
 	switch e.Resolution {
