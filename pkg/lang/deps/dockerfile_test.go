@@ -227,3 +227,12 @@ func assertDockerTargets(t *testing.T, got deps.FileDeps, targets []string, code
 		t.Errorf("unexpected completeness: %+v", got)
 	}
 }
+
+func TestDockerfileDetectOnly(t *testing.T) {
+	f := readDockerFixture(t, "Dockerfile", "FROM scratch\nCOPY payload /dest\n", fstest.MapFS{"payload": {}})
+	assertDockerTargets(t, f, []string{"payload"}, nil)
+	if f.Complete || f.Measured || f.Trusted || len(f.Unknowns) != 1 ||
+		f.Unknowns[0].Code != deps.UnknownUnmeasuredReader || f.Unknowns[0].Line != 0 {
+		t.Fatalf("explicit trust bypassed Dockerfile admission: %+v", f)
+	}
+}

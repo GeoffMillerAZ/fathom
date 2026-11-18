@@ -28,6 +28,11 @@ var (
 	dockerTag      = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$`)
 )
 
+func init() {
+	// DEP-M3 had no complete files with oracle coverage.
+	admissions["dockerfile"] = detectOnly
+}
+
 func readDockerfileDependencies(ctx context.Context, repo repositoryFS, src []byte, resolver Resolver, out *result) {
 	d := dockerRead{ctx: ctx, repo: repo, out: out, resolver: resolver, aliases: make(map[string]int)}
 	d.readIgnore()

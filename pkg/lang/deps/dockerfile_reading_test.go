@@ -49,6 +49,7 @@ func TestDockerfileAdmissionReading(t *testing.T) {
 	if os.Getenv("DEP_DOCKER_READING") != "1" {
 		t.Skip("set DEP_DOCKER_READING=1 for the pinned BuildKit reading")
 	}
+	deps.EnableDockerfileCandidateForTest(t)
 	pins, oracle := loadDockerOracle(t)
 	corpus := requireDockerPath(t, "DEP_DOCKER_CORPUS")
 	receipts := requireDockerPath(t, "DEP_DOCKER_RECEIPTS")
@@ -95,6 +96,7 @@ func TestDockerfileNativeFixture(t *testing.T) {
 	if os.Getenv("DEP_DOCKER_NATIVE_FIXTURE") != "1" {
 		t.Skip("set DEP_DOCKER_NATIVE_FIXTURE=1 to verify the pinned oracle on a synthetic fixture")
 	}
+	deps.EnableDockerfileCandidateForTest(t)
 	_, oracle := loadDockerOracle(t)
 	first, second := t.TempDir(), t.TempDir()
 	const source = "FROM scratch AS seed\nCOPY --exclude=drop src /dest\n" +
@@ -264,8 +266,8 @@ func readDockerObservation(t *testing.T, r *deps.Reader, first, second string, p
 			t.Fatal(err)
 		}
 		for _, f := range out {
-			if f.Dialect != "dockerfile" {
-				t.Fatalf("selected path did not route to Dockerfile: %q", f.Path)
+			if f.Dialect != "dockerfile" || !f.Trusted || f.Measured {
+				t.Fatalf("selected path did not use the Dockerfile admission candidate: %q", f.Path)
 			}
 		}
 		return out
