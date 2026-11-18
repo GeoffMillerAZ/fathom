@@ -20,6 +20,39 @@ Every selected file uses the tracked `packages/@headlessui-react/tsconfig.json`.
 
 The original population floor remains three oracle-covered subjects and 300 files per dialect. B1 allows zero missed repository dependencies on complete files. B2 allows zero wrong or ambiguous bindings on complete files. Any complete file lacking oracle coverage makes the candidate inconclusive. B3 requires byte-identical output on two runs at the primary path and another at the relocated path. B4 reports complete share, unknown codes and extra-edge rate, with complete share below 80% reported as low coverage. B5 retains detect-only on a B1 or B2 failure. The original subjects, selection, compiler and JavaScript admission remain in force.
 
+## TypeScript population completion result
+
+**TypeScript passes B1–B3 and qualifies as measured, sound, low coverage.** The completed population is 1,224 tracked files across four subjects, with oracle truth for 990 files across three subjects. All 250 candidate-complete files had oracle truth, with zero missing, wrong or ambiguous bindings. All 250 were from RxJS. Headless UI adds 201 oracle-covered files and zero candidate-complete files, so its subject-level B1 and B2 are inconclusive. The preregistered bars apply to the pooled dialect. A fresh independent rerun is required before integration.
+
+The selection and bars were committed at `88ebb0819bf6b01cd651743b2554afb2b5d3691b` before the single product attempt. The attempt reproduced the six original subject scores, native truth bytes and B3 output digests. The original TypeScript pool and the JavaScript pool reproduced. JavaScript remains measured, sound, low coverage. React Bootstrap still has 233 config losses and 1,113 reader unknowns. RxJS still has one syntax loss. The Headless UI oracle truth matched the compiler-only probe byte for byte. All 14 checkout receipts matched before and after and across paths, with no untracked inputs.
+
+| Subject or pool | Files | Oracle | Complete | Complete with oracle | Expected | Read | Missing | Wrong | B2 ambiguous | Extra | B4 extras / comparable |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Headless UI | 201 | 201 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 201/1187 (16.93%) |
+| **TypeScript pooled** | 1224 | 990 | 250 | 250 | 1296 | 1546 | 0 | 0 | 0 | 250 | 990/5990 (16.53%) |
+| **Combined** | 2732 | 2498 | 403 | 403 | 1755 | 2005 | 0 | 0 | 0 | 250 | 1743/14341 (12.15%) |
+
+| Subject or pool | Complete share | Edges | Unknowns / evidence | dynamic-import | external-unpinned | parse-error | unresolved-alias | unsupported-construct |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Headless UI | 0.00% | 1187 | 427/1614 (26.46%) | 0 | 0 | 41 | 185 | 201 |
+| **TypeScript pooled** | 20.42% | 7219 | 3624/10843 (33.42%) | 0 | 0 | 725 | 1829 | 1070 |
+| **Combined** | 14.75% | 15692 | 11761/27453 (42.84%) | 11 | 115 | 725 | 2036 | 8874 |
+
+| Subject or pool | Compiler listed | Config missing | Syntax lost | Outside build roots | In-repo trace edges | Native external | Unresolved relative | Unresolved bare | Computed | Trace fallback | Resolved outside file list |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Headless UI | 201 | 0 | 0 | 0 | 785 | 0 | 0 | 385 | 0 | 0 | 0 |
+| **TypeScript pooled** | 991 | 233 | 1 | 0 | 4505 | 20 | 0 | 836 | 0 | 3 | 504 |
+| **Combined** | 2499 | 233 | 1 | 0 | 18338 | 159 | 237 | 1461 | 12 | 8 | 505 |
+
+The B3 output digests include the two reads at the primary checkout and the relocated replay in the single corpus attempt.
+
+- Headless UI `d673da17238eb6b2de40bef13f37e10a27954ba80f620afb6573ef7295174519`
+- TypeScript pooled `d59f5967f17ff7e291c2156189d43c4653e9e7b97a8d3b423d8cbf4889250692`
+- JavaScript pooled `ed72b3de907ff4d8cd2188e568f54eeb2b2aac932043cdb30bbefe4a7f9fd781`
+- Combined `d9ca6694df7d1b2c1e7ad3244e48a61f5011076fd6710d8b26dd032afdf91c02`
+
+The Headless UI whole tracked set contains 478 regular files (3,770,520 bytes), with zero symlinks and gitlinks. Its manifest SHA-256 is `63bf25bfacc1b7512d91bcf44a335d85a64aca09af5200744e75dccf2c0e837b`.
+
 ## Original admission
 
 | Dialect | B1 and B2 on complete files | B3 | B4 complete share | B5 admission |
@@ -28,17 +61,17 @@ The original population floor remains three oracle-covered subjects and 300 file
 | TypeScript | 0 missing, wrong or ambiguous bindings in the covered candidate subset. Two of the three selected subjects have oracle truth | Pass | 250/1,023 (24.44%) | Inconclusive population. Detect-only |
 | Combined | 0 missing, wrong or ambiguous bindings in the pooled candidate subset | Pass | 403/2,531 (15.92%) | Reporting arm only |
 
-fp-ts, react-bootstrap and webpack had zero candidate-complete files, so the soundness bars are inconclusive for those individual subjects. RxJS, ESLint and OpenLayers passed the candidate checks, each with low coverage. The JavaScript verdict uses all three preregistered subjects and the pooled complete-file bar. TypeScript needs native coverage of its third subject to qualify. Independent reproduction from a clean clone is the integration review step.
+fp-ts, react-bootstrap and webpack had zero candidate-complete files, so the soundness bars are inconclusive for those individual subjects. RxJS, ESLint and OpenLayers passed the candidate checks, each with low coverage. The JavaScript verdict uses all three preregistered subjects and the pooled complete-file bar. The original TypeScript pool needed oracle truth from one more subject to qualify. Independent reproduction from a clean clone is the integration review step.
 
 ## Reproduce
 
 Use Node v26.12.0 and the TypeScript 6.0.3 distribution. The SHA-256 of `lib/typescript.js` is `569177652966bd528c319171c7dd22860dbf72bde116cbc4f644f1d02bb12e39`. The runner checks the digest and both versions. The npm archive's integrity is recorded in the preregistration.
 
-From a clean checkout of this revision with the Go module cache prepared, run the following in Bash. Use `--cache "$CORPUS_CACHE"` on the acquisition command when the six pinned bare Git repositories are available locally. If TypeScript is already available, set `FATHOM_DEP_TSJS_COMPILER` to its absolute `lib/typescript.js` path and omit the archive acquisition. The test requires its inputs when enabled and works offline with prepared checkouts and compiler.
+From a clean checkout of this revision with the Go module cache prepared, run the following in Bash. Use `--cache "$CORPUS_CACHE"` on the acquisition command when the pinned bare Git repositories are available locally. If TypeScript is already available, set `FATHOM_DEP_TSJS_COMPILER` to its absolute `lib/typescript.js` path and omit the archive acquisition. The test requires its inputs when enabled and works offline with prepared checkouts and compiler.
 
 ```sh
 dep_scratch="$PWD/workspace/artifacts/dep-m1"
-mkdir -p "$dep_scratch"/{compiler,first,second,tmp,gotmp}
+mkdir -p "$dep_scratch"/{compiler,run,tmp,gotmp}
 npm pack typescript@6.0.3 --ignore-scripts --cache "$dep_scratch/npm-cache" \
   --pack-destination "$dep_scratch"
 python3 - "$dep_scratch/typescript-6.0.3.tgz" <<'PY'
@@ -52,15 +85,11 @@ python3 calibration/oracles/deps-tsjs/prepare.py "$dep_scratch/subjects"
 export TMPDIR="$dep_scratch/tmp" GOTMPDIR="$dep_scratch/gotmp"
 export GOPROXY=off GOSUMDB=off
 export FATHOM_DEP_TSJS_NATIVE=corpus
-export FATHOM_DEP_TSJS_COMPILER="$dep_scratch/compiler/package/lib/typescript.js"
+export FATHOM_DEP_TSJS_COMPILER="${FATHOM_DEP_TSJS_COMPILER:-$dep_scratch/compiler/package/lib/typescript.js}"
 export FATHOM_DEP_TSJS_SUBJECTS="$dep_scratch/subjects"
-for dep_run in first second; do
-  export FATHOM_DEP_TSJS_SCRATCH="$dep_scratch/$dep_run"
-  go test -race -count=1 -v -run '^TestTSJSNativeOracle$' ./pkg/lang/deps \
-    > "$FATHOM_DEP_TSJS_SCRATCH/native.log" 2>&1 || exit 1
-done
-diff -u <(sed -n 's/.* DEP-M1 /DEP-M1 /p' "$dep_scratch/first/native.log") \
-  <(sed -n 's/.* DEP-M1 /DEP-M1 /p' "$dep_scratch/second/native.log")
+export FATHOM_DEP_TSJS_SCRATCH="$dep_scratch/run"
+go test -race -count=1 -v -run '^TestTSJSNativeOracle$' ./pkg/lang/deps \
+  > "$FATHOM_DEP_TSJS_SCRATCH/native.log" 2>&1
 ```
 
 In a shared lane, wrap each direct `go test` in the package lease. The fixture-only native control uses `FATHOM_DEP_TSJS_NATIVE=control`. Ordinary `go test` skips the native reader. Each corpus run verifies both checkout identities, membership digests and clean Git status before and after. It takes two observations at the primary path and one at the relocated path and checks byte equality. The [tracked-set recipe](../../../design/language-breadth.md#1331-freeze-the-measured-set-and-holdout) provides the wider before/after worktree receipt using `SUBPATH=.` for each subject checkout.
@@ -82,7 +111,7 @@ One correction followed the first corpus run. New fixtures reproduced seven load
 The native adapter's options produced TS5053 where a subject supplied `lib` and the probe disabled compiler library loading. The compiler also reported TS5101/TS5107 for deprecated RxJS and fp-ts options. These diagnostics do not grade a build. React Bootstrap's inherited configs could not load from a tracked-only checkout, leaving all 233 selected files without truth. RxJS had one syntactically invalid native file and 504 local resolution results beyond the Program file list. webpack had one such result. Those trace targets were checked against the repository view. The pinned grammar also reports recoverable syntax gaps in sources accepted by the compiler, including fp-ts generic overloads and the fixture's `export type *`.
 
 
-## Counts
+## Original counts
 
 Candidate completeness uses explicit trust for the trial. Its counts include only the listed tracked inputs. Complete oracle coverage is shown explicitly because an uncovered complete file makes B1 and B2 inconclusive. Expected and read are comparable repository edges in complete files. The B4 extras denominator includes every comparable repository edge in oracle-covered files, including incomplete files.
 
@@ -138,7 +167,7 @@ Each unknown count uses the same evidence denominator for its row (reported edge
 - **JavaScript pooled** `ed72b3de907ff4d8cd2188e568f54eeb2b2aac932043cdb30bbefe4a7f9fd781`
 - **Combined** `a9dbf338ffb38b8420d22d37082e138a970c652ccd33988496f7459338749e18`
 
-## Tracked-set receipts
+## Original tracked-set receipts
 
 The whole tracked set is wider than the frozen prefixes and suffixes in the preregistration. The counts below include regular entries across the entire subject. The selection hashes in the preregistration cover the measured files. Before and after receipts matched across relocated copies. No untracked or ignored inputs appeared. Symlinks and gitlinks are outside the regular-file selection and submodules were never checked out. Raw manifests, compiler traces and per-file paths stay in local scratch.
 

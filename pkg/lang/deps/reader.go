@@ -243,10 +243,9 @@ func inferDialect(file, dialect string) string {
 }
 
 func init() {
-	// DEP-M1 qualified JavaScript, with low coverage. The TypeScript trial
-	// had no native truth for its third subject and stays detect-only.
+	// DEP-M1 qualified JavaScript and TypeScript with low coverage.
 	admissions["javascript"] = measured
-	admissions["typescript"] = detectOnly
+	admissions["typescript"] = measured
 }
 
 // Read regular files only. Neither filesystem errors nor parser errors are

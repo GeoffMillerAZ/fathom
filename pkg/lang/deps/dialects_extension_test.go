@@ -14,7 +14,7 @@ func TestDependencyDialects(t *testing.T) {
 		{ID: "go", Kinds: []Kind{KindBuildInput, KindConfigRef, KindEmbed, KindImport}},
 		{ID: "javascript", Measured: true, Kinds: []Kind{KindConfigRef, KindImport}},
 		{ID: "python", Measured: true, Kinds: []Kind{KindImport}},
-		{ID: "typescript", Kinds: []Kind{KindConfigRef, KindImport}},
+		{ID: "typescript", Measured: true, Kinds: []Kind{KindConfigRef, KindImport}},
 	}
 	var defaults Reader
 	rows := defaults.Dialects()
@@ -36,6 +36,7 @@ func TestDependencyDialects(t *testing.T) {
 		t.Fatal(err)
 	}
 	want[2].Measured = false
+	want[4].Measured = false
 	if got := replaced.Dialects(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("override metadata: %+v", got)
 	}
@@ -45,7 +46,7 @@ func TestDependencyDialects(t *testing.T) {
 		trusted       bool
 	}{
 		{"main.js", "javascript", []byte("export const n = 1"), true},
-		{"main.ts", "typescript", []byte("export const n = 1"), false},
+		{"main.ts", "typescript", []byte("export const n = 1"), true},
 		{"Dockerfile", "dockerfile", []byte("FROM scratch"), false},
 		{"main.unknown", "unknown-dialect", nil, false},
 	} {

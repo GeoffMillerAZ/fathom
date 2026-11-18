@@ -243,10 +243,14 @@ func TestTSJSDialectAdmission(t *testing.T) {
 	if !js.Measured || js.Trusted || !js.Complete {
 		t.Fatalf("JavaScript admission: %+v", js)
 	}
-	ts := readTSJSFixture(t, repo, "main.ts", "", "", deps.TrustUnmeasured("typescript"))
-	if ts.Measured || ts.Trusted || ts.Complete ||
-		!slices.ContainsFunc(ts.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownUnmeasuredReader }) {
-		t.Fatalf("TypeScript detect-only admission: %+v", ts)
+	ts := readTSJSFixture(t, repo, "main.ts", "", "")
+	if !ts.Measured || ts.Trusted || !ts.Complete || len(ts.Unknowns) != 0 {
+		t.Fatalf("TypeScript admission: %+v", ts)
+	}
+	tsUnknown := readTSJSFixture(t, repo, "main.ts", "", "import(name);")
+	if !tsUnknown.Measured || tsUnknown.Trusted || tsUnknown.Complete ||
+		!slices.ContainsFunc(tsUnknown.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownDynamicImport }) {
+		t.Fatalf("TypeScript dynamic import completeness: %+v", tsUnknown)
 	}
 	resolver := tsjsTypedResolver(func(_ context.Context, request deps.ResolveRequest) deps.ResolveResult {
 		if request.From != "main.js" || request.Raw != "./target.cjs" ||
