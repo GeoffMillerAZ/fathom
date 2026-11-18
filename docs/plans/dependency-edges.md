@@ -20,5 +20,5 @@ Grammar v2 (`docs/plans/README.md`). Prefix DEP-. Decision ADR-114.
 ## Deferred
 
 - [-] Audit under-keying by comparing declared inputs, static edges and observed reads (formerly TQ-38) {id: DEP-8, disposition: deferred, reason: "the consumer is named and needs measured static edges", trigger: "DEP-M1 through DEP-M3 have been read and one consumer wires dependency edges"}
-- [-] Move the existing closure engine into the tool family as its own module {id: DEP-P1, disposition: deferred, reason: "the move amends ADR-063 O1 and the CI kit's boundary", trigger: "two of DEP-M1 through DEP-M3 pass B1 and B2 and the owner approves the move"}
+- [-] Move the existing closure engine into the tool family as its own module {id: DEP-P1, disposition: deferred, reason: "owner-approved 2026-11-18 for a later program that amends ADR-063 O1 and the CI kit's boundary", trigger: "two of DEP-M1 through DEP-M3 pass B1 and B2"}
 - [-] Add remaining dialects, cheapest class first {id: DEP-9, disposition: deferred, reason: "first prove the readers and the declared exchange", trigger: "DEP-P1 lands or a second consumer is named"}
