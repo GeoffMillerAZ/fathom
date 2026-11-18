@@ -1,0 +1,32 @@
+{
+  "oracle": "github.com/moby/buildkit@v0.33.1",
+  "oracle_commit": "8c91502cf280bd70a0c50912ce251c46a8881d9f",
+  "oracle_sum": "h1:UUrdifmRdRadykO+f5l8BT1CseUXst2sJHV7AmkjjxE=",
+  "go": "go1.27.4",
+  "selection": "(?i)^(?:(?:docker|container)file(?:\\.[^/]*)?|[^/]+\\.(?:docker|container)file)$",
+  "scope": "All stage-0 tracked regular files matching the basename expression, regardless of directory. No generated files, symlinks or submodule contents. Use Git bytes as committed; keep a selected file in the denominator even when native parsing or binding cannot supply truth.",
+  "context": "Repository root for top-level Dockerfiles. For nested files, a specific ignore file can be discovered beside the Dockerfile but do not infer a local context from its enclosing directory. No build invocation metadata.",
+  "subjects": [
+    {
+      "name": "docker-cli",
+      "url": "https://github.com/docker/cli.git",
+      "commit": "d1c06ef6b41d88d76866aea43c246cd7c63d04fa",
+      "files": 14,
+      "selection_sha256": "5cfbc3d5adef1d687999538645041755807786b6a510d26cd9b3ea310a4e8753"
+    },
+    {
+      "name": "docker-compose",
+      "url": "https://github.com/docker/compose.git",
+      "commit": "a32dc3da722e6b2e4fbfc72e40b1a697c4686460",
+      "files": 30,
+      "selection_sha256": "c3c785d14d2efc528d66ff044c690cbe703ff088e238db1bab1c6fc71bb416fc"
+    },
+    {
+      "name": "docker-python",
+      "url": "https://github.com/docker-library/python.git",
+      "commit": "8f2cb2e1c9cae4d8f772fe61f1427c96acea3257",
+      "files": 42,
+      "selection_sha256": "dbf0c5efd20b284f62d03bc0f404a3534a8c118f44bc4424ed1c32124d783f9e"
+    }
+  ]
+}
