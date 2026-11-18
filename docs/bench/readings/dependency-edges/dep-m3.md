@@ -56,6 +56,8 @@ Gap counts overlap. The native adapter built successfully, so tool build loss wa
 
 The [preregistration](../../../../calibration/oracles/deps-docker/pins.json) freezes three Git commits, the tracked regular-file basename predicate and the SHA-256 of each sorted, NUL-terminated selection. Docker CLI is pinned by the peeled commit. Docker Compose and Docker Library Python use their existing corpus commits. The population includes regular Dockerfile and Containerfile variants in all directories. No selected file drops out of the denominator after parsing. The checkouts contain no symlinks, gitlinks or untracked files. Both paths match their Git blob bytes and the tracked-set receipts before and after measurement.
 
+The manifest's phrase “No generated files” is imprecise. The registered Git predicate excludes untracked worktree output and includes matching files committed by upstream generators. All 42 Docker Library Python files have upstream generation notices and are members of the original hashed selection. The frozen manifest, corpus and bars are preserved.
+
 | Subject | Selected | Tracked files | Tracked bytes | Tracked-set SHA-256 |
 | --- | ---: | ---: | ---: | --- |
 | Docker CLI | 14 | 3,983 | 34,014,918 | `70fcc9b43aa74242d293dab80209a994ca1117579f43988849b8e1c5ddd914cf` |
