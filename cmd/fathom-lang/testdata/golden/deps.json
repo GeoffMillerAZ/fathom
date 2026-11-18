@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "lib/lib.go",
+      "dialect": "go",
+      "measured": false,
+      "trusted": false,
+      "complete": false,
+      "edges": [
+        {
+          "from": "lib/lib.go",
+          "kind": "config-ref",
+          "raw": "go.mod",
+          "to": "go.mod",
+          "resolution": "file",
+          "version": "",
+          "line": 1,
+          "provenance": "builtin"
+        }
+      ],
+      "unknowns": [
+        {
+          "from": "lib/lib.go",
+          "code": "unmeasured-reader",
+          "raw": "",
+          "line": 1,
+          "decidable_by": []
+        }
+      ]
+    },
+    {
+      "path": "main.go",
+      "dialect": "go",
+      "measured": false,
+      "trusted": false,
+      "complete": false,
+      "edges": [
+        {
+          "from": "main.go",
+          "kind": "config-ref",
+          "raw": "go.mod",
+          "to": "go.mod",
+          "resolution": "file",
+          "version": "",
+          "line": 1,
+          "provenance": "builtin"
+        },
+        {
+          "from": "main.go",
+          "kind": "import",
+          "raw": "example.com/control/lib",
+          "to": "lib",
+          "resolution": "directory",
+          "version": "",
+          "line": 3,
+          "provenance": "builtin"
+        }
+      ],
+      "unknowns": [
+        {
+          "from": "main.go",
+          "code": "unmeasured-reader",
+          "raw": "",
+          "line": 1,
+          "decidable_by": []
+        }
+      ]
+    }
+  ]
+}

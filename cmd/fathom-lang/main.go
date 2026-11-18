@@ -7,6 +7,7 @@
 //	fathom-lang dialects [-pack DIR]
 //	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
 //	    [-in-process] PATH...
+//	fathom-lang deps [-root DIR] [-dialect ID] [-trust-unmeasured ID] [-export] PATH...
 //	fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
 //	fathom-lang catalog import -dir DIR [-version V] [-region R] [-licence SPDX] [-tool NAME] [-replace] INPUT...
 //
@@ -53,6 +54,7 @@ const usage = `usage:
   fathom-lang dialects [-pack DIR]
   fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                         [-in-process] PATH...
+  fathom-lang deps [-root DIR] [-dialect ID] [-trust-unmeasured ID] [-export] PATH...
   fathom-lang contract -catalog PATH [-source S] [-version V] [-kind K] [TYPE [ATTR]]
   fathom-lang catalog import -dir DIR [-version V] [-licence SPDX] [-tool NAME] [-replace] <export.json | V=export.json>...
   fathom-lang catalog import -dir DIR -region REGION [-licence SPDX] <schemas.zip>
@@ -82,6 +84,8 @@ references and a span. A value is printed only under -values, and a value the
 source marks secret never is. It reads in the supervised child that extract uses
 and takes the same -deadline, -max-memory and -in-process; a file whose child was
 killed has an error and a null result. A file no reader reads has an error.
+deps prints direct dependencies and typed unknowns from repository-relative
+paths. -export writes a bare array of declared unit pairs.
 contract prints a catalog's source, line and versions, with only -catalog; with
 TYPE, what the catalog states about that type (default: the highest version and
 the catalog's own source), with each attribute's type, required, optional,
@@ -129,6 +133,8 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 		err = cmdDialects(args[1:], out)
 	case "resources":
 		err = cmdResources(ctx, args[1:], in, out)
+	case "deps":
+		err = cmdDeps(ctx, args[1:], out)
 	case "contract":
 		err = cmdContract(args[1:], out)
 	case "catalog":

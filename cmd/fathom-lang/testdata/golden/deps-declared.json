@@ -1,0 +1,22 @@
+[
+  {
+    "from": {
+      "ecosystem": "repo",
+      "name": "main.go"
+    },
+    "to": {
+      "ecosystem": "repo",
+      "name": "go.mod"
+    }
+  },
+  {
+    "from": {
+      "ecosystem": "repo",
+      "name": "main.go"
+    },
+    "to": {
+      "ecosystem": "repo",
+      "name": "lib"
+    }
+  }
+]

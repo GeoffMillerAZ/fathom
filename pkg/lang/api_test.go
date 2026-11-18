@@ -22,6 +22,7 @@ func TestLangAPISnapshot(t *testing.T) {
 		{"./cue", "cue.txt"},
 		{"./iac", "iac.txt"},
 		{"./langtest", "langtest.txt"},
+		{"./deps", "deps.txt"},
 	} {
 		cmd := exec.Command("go", "doc", "-all", pkg.dir)
 		cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")

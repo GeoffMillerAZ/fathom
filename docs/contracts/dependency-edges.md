@@ -24,14 +24,34 @@ A reader may reuse `pkg/lang` reference and unresolved evidence. It does no
 network reads, starts no toolchain and computes no closure or hash. It resolves
 using the supplied repository view and keeps absolute paths out of every output,
 including lexical diagnostics and untrusted extension returns. Raw dependency
-operands are kept only when safe to disclose. Values covered by the library's
-redaction rule are withheld.
+operands are kept as portable path tokens when safe to disclose. Other operands
+read `***`. Values covered by the library's redaction rule are withheld.
+
+Call `deps.New(opts...)`, then `Reader.ReadFile(ctx, repo, path, dialect, src)` or
+`Reader.ReadFiles(ctx, repo, []deps.Input{{Path: path, Dialect: dialect}})`. A blank
+dialect selects Go for a `.go` path. Explicit dialect IDs take precedence. The batch
+sorts paths and rejects duplicates. An unreadable file contributes an incomplete
+record and the batch returns an error. A single byte read can use bytes the caller
+has yet to store in the repository view.
+
+`WithResolver(id, resolver)` replaces the resolution of imports captured by an
+implemented detector. A resolver receives the repository view, importing file and
+decoded operand, and returns targets, a typed unknown, or both. The reader sets
+the source, line and extension provenance, and checks local targets against
+the repository view. A resolver override does not inherit the built-in reading.
+`WithDeclaredEdges(edges...)` adds logical edges for named source files with
+declared provenance. A version supplied by a resolver or declaration must come
+from a manifest pin or lockfile. `TrustUnmeasured(id)` records the explicit opt-in
+in `trusted` for an implemented, unmeasured reader. Detect-only and unimplemented
+readers stay incomplete.
 
 ## Serialized facts
 
 An edge names the importing path, kind, safe raw operand, target, resolution,
 version if pinned, one-based source line and provenance. Paths are logical
-repository-relative slash paths. An external ID is `ecosystem:name`. A version
+repository-relative slash paths with portable printable characters and no dot
+or parent segments. The directory target `.` names the repository root. An
+external ID is `ecosystem:name` with `repo` reserved for repository paths. A version
 comes only from a lockfile or manifest pin. Unknown targets carry a typed reason.
 An unknown names its file, code, safe raw operand, line and possible evidence
 sources. An empty `decidable_by` grants no trust.
@@ -49,10 +69,28 @@ and the CUE schema with valid and invalid fixtures hold the reviewed shape.
 
 ## Declared-edge exchange
 
-The export identifies a source unit and target unit, each by ecosystem and logical
-name, in the declared-edge shape consumed by the CI kit's dependency graph.
-It exports direct edges and preserves the caller's responsibility to check
-completeness before using any result as a skip key. This exchange is data only.
+`fathom-lang deps` prints one JSON document with `schema_version: 1` and a
+`files` array of `FileDeps`. `-export` instead prints a bare array of declared
+edges, for example:
+
+```json
+[
+  {
+    "from": {"ecosystem": "repo", "name": "app/main.go"},
+    "to": {"ecosystem": "repo", "name": "lib"}
+  }
+]
+```
+
+The source and each file or directory target use the `repo` ecosystem and the
+logical slash path as their name. An external target `ecosystem:name` supplies
+the two fields directly. Unknown targets are omitted. Pairs are sorted by source
+then target and deduplicated. The caller maps each repository file or directory
+to the ecosystem and name assigned by its unit resolver, and reconciles external
+IDs with that same inventory. The closure engine rejects a pair whose source or
+target is absent from the inventory. A caller checks the file records for
+completeness before using a mapped result to skip work.
+
+The exchange is data only. Every edge in the file records discloses provenance.
 A pack, registered Go resolver or caller-declared edge list can supply facts.
-Every edge discloses its provenance. Consumers can grade their extensions with
-the conformance helper.
+The extension plan includes a conformance helper for grading readers.
