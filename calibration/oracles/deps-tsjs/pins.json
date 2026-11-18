@@ -15,6 +15,53 @@
     "B3": "two in-place reads and one relocated read, byte-identical",
     "B5": "detect-only on B1 or B2 failure"
   },
+  "populationCompletion": {
+    "source": "calibration/corpus.d/typescript.yaml",
+    "candidateRule": "In corpus order, skip existing DEP-M1 members. Admit the first public pin with at least 100 tracked TypeScript files in its documented scope, a wholly tracked config chain, and a runnable pinned compiler oracle. Add one subject and make one product attempt at the existing bars.",
+    "decisions": [
+      {
+        "ordinal": 1,
+        "name": "gcanti/fp-ts",
+        "decision": "existing DEP-M1 subject"
+      },
+      {
+        "ordinal": 2,
+        "name": "ReactiveX/rxjs",
+        "decision": "existing DEP-M1 subject"
+      },
+      {
+        "ordinal": 3,
+        "name": "react-bootstrap/react-bootstrap",
+        "decision": "existing DEP-M1 subject"
+      },
+      {
+        "ordinal": 4,
+        "name": "tailwindlabs/headlessui",
+        "decision": "first eligible"
+      },
+      {
+        "ordinal": 5,
+        "name": "palantir/blueprint",
+        "decision": "after first eligible candidate"
+      }
+    ],
+    "config": {
+      "path": "packages/@headlessui-react/tsconfig.json",
+      "selectedFilesUsingConfig": 201,
+      "extends": [],
+      "references": []
+    },
+    "oracleProbe": {
+      "exitCode": 0,
+      "compilerListed": 201,
+      "truthFiles": 201,
+      "configUnavailable": 0,
+      "syntaxLost": 0,
+      "repoTraceEdges": 785,
+      "unresolvedBare": 385,
+      "truthSHA256": "cb8a77e4670f7cdadf87f33323caeb541a3b4f6b6e0bce3d440be4352ee0e605"
+    }
+  },
   "subjects": [
     {
       "name": "fp-ts",
@@ -122,6 +169,24 @@
       ],
       "files": 746,
       "selectionSHA256": "94c078c579f1162de58e38bb677d318012a80770825ea539bd34461c4c0dca5f"
+    },
+    {
+      "name": "headlessui",
+      "url": "https://github.com/tailwindlabs/headlessui",
+      "commit": "d13526d02a2de92c4ad7b62c15cd980636543fe2",
+      "dialect": "typescript",
+      "prefixes": [
+        "packages/@headlessui-react/src/",
+        "packages/@headlessui-react/types/"
+      ],
+      "suffixes": [
+        ".cts",
+        ".mts",
+        ".ts",
+        ".tsx"
+      ],
+      "files": 201,
+      "selectionSHA256": "e0ce54fbac2d399937ed46bfd69e474f3b9d521b8ebfcfdf4b2ff1c72140f3fb"
     }
   ]
 }

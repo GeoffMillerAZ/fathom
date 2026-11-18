@@ -2,7 +2,25 @@
 
 Protocol `dep-m1/typescript-program-trace-v1`. The [preregistration](../../../../calibration/oracles/deps-tsjs/pins.json) fixes the public URLs, full commit IDs, byte-sorted tracked-file selections, tool version and admission bars. Each dialect has its own admission. The combined arm pools the evidence for reporting.
 
-## Admission
+## TypeScript population completion preregistration
+
+The architect authorized one added subject and one product attempt. The selection source is the pinned TypeScript corpus list in repository order. A candidate needs at least 100 tracked TypeScript files in the documented scope, config chains wholly inside the tracked tree, and a successful run of the pinned compiler oracle. Only Git and the compiler oracle informed this choice.
+
+| Corpus ordinal | Public repository | Decision |
+|---|---|---|
+| 1 | gcanti/fp-ts | Existing DEP-M1 subject |
+| 2 | ReactiveX/rxjs | Existing DEP-M1 subject |
+| 3 | react-bootstrap/react-bootstrap | Existing DEP-M1 subject. All 233 files and their original unknowns remain in the reading. |
+| 4 | tailwindlabs/headlessui | First eligible subject |
+| 5 | palantir/blueprint | After the first eligible subject |
+
+Headless UI is pinned at `d13526d02a2de92c4ad7b62c15cd980636543fe2` from `https://github.com/tailwindlabs/headlessui`. The documented React package scope selects all regular tracked `.cts`, `.mts`, `.ts` and `.tsx` files under `packages/@headlessui-react/src/` and `packages/@headlessui-react/types/`, including declarations and tests. It selects 201 files (86 `.ts`, 115 `.tsx`), the complete TypeScript tracked set of that package. Selection SHA-256 over byte-sorted paths followed by NUL is `e0ce54fbac2d399937ed46bfd69e474f3b9d521b8ebfcfdf4b2ff1c72140f3fb`. Other packages and playgrounds are outside this scope. Resolution sees the whole pinned repository.
+
+Every selected file uses the tracked `packages/@headlessui-react/tsconfig.json`. It has no extends or project references. Node v26.12.0 and TypeScript 6.0.3 with the original compiler digest ran the tracked-only oracle successfully. The compiler listed all 201 selected roots and emitted truth for all 201. The probe recorded one config group, zero config or syntax losses, 785 in-repository import resolutions and 385 unresolved bare operands. The oracle truth JSON SHA-256 is `cb8a77e4670f7cdadf87f33323caeb541a3b4f6b6e0bce3d440be4352ee0e605`. The compiler reported option diagnostics TS5053, TS5101 and TS5107. The oracle grades file and resolution evidence.
+
+The original population floor remains three oracle-covered subjects and 300 files per dialect. B1 allows zero missed repository dependencies on complete files. B2 allows zero wrong or ambiguous bindings on complete files. Any complete file lacking oracle coverage makes the candidate inconclusive. B3 requires byte-identical output on two runs at the primary path and another at the relocated path. B4 reports complete share, unknown codes and extra-edge rate, with complete share below 80% reported as low coverage. B5 retains detect-only on a B1 or B2 failure. The original subjects, selection, compiler and JavaScript admission remain in force.
+
+## Original admission
 
 | Dialect | B1 and B2 on complete files | B3 | B4 complete share | B5 admission |
 |---|---|---|---:|---|
