@@ -12,9 +12,9 @@ Grammar v2 (`docs/plans/README.md`). Prefixes DEP-, BND- and PF-. Decisions ADR-
 
 ## Dialect readings and extension
 
-- [ ] TypeScript and JavaScript reader and resolution with DEP-M1 {id: DEP-4, needs: DEP-3}
-- [ ] Python reader and resolution with DEP-M2 {id: DEP-5, needs: DEP-3}
-- [ ] Dockerfile reader and resolution with DEP-M3 {id: DEP-6, needs: DEP-3}
+- [x] TypeScript and JavaScript reader and resolution with DEP-M1 {id: DEP-4, symbol: readTSJSDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-3}
+- [x] Python reader and resolution with DEP-M2 {id: DEP-5, symbol: readPythonDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-3}
+- [x] Dockerfile reader and resolution with DEP-M3 {id: DEP-6, symbol: readDockerfileDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-3}
 - [ ] Resolver registration, pack captures where needed, declared edges, trust, conformance helper and runnable example {id: DEP-7, needs: "DEP-4,DEP-5,DEP-6"}
 
 ## Import boundaries (ADJ-5)
