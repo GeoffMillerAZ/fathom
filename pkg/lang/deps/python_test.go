@@ -73,6 +73,10 @@ func TestPythonDependencyGaps(t *testing.T) {
 		target          string
 	}{
 		{"namespace", "entry.py", "import group.part", fstest.MapFS{"group/part.py": {}}, deps.UnknownMissingConfig, "group/part.py"},
+		{"namespace ancestor", "ns/regular/main.py", "from .leaf import value", fstest.MapFS{
+			"ns/regular/__init__.py": {},
+			"ns/regular/leaf.py":     {},
+		}, deps.UnknownMissingConfig, "ns/regular/leaf.py"},
 		{"relative namespace", "group/main.py", "from . import part", fstest.MapFS{"group/part.py": {}}, deps.UnknownMissingConfig, "group/part.py"},
 		{"beyond root", "entry.py", "from .. import side", fstest.MapFS{"side.py": {}}, deps.UnknownMissingConfig, ""},
 		{"built-in collision", "entry.py", "import sys", fstest.MapFS{"sys.py": {}}, deps.UnknownMissingConfig, "sys.py"},

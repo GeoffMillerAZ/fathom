@@ -55,6 +55,12 @@ func (p *pythonPaths) resolve(out *result, raw, member string, line int) {
 				dir = path.Dir(dir)
 			}
 		}
+		// Even a regular leaf package can sit inside a namespace. Its
+		// relative binding needs the surrounding package identity as well.
+		for ancestor := path.Dir(dir); ancestor != "."; ancestor = path.Dir(ancestor) {
+			ok, uncertain := p.initializer(ancestor, true)
+			gap = gap || !ok || uncertain
+		}
 		bindings = append(bindings, p.lookup(dir, module))
 	} else {
 		root := p.lookup(".", module)
