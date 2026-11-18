@@ -97,11 +97,11 @@ func (d *dockerRead) ignoreFile(name string) bool {
 		return false
 	}
 	if err == nil && info.Mode().IsRegular() {
-		d.edge(ConfigRef, name, name, File, "", 1)
+		d.edge(KindConfigRef, name, name, ResolvedFile, "", 0)
 	}
 	src, code := readSource(d.repo, name)
 	if code != "" {
-		d.unknown(code, name, 1, ConfigFile)
+		d.unknown(code, name, 0, DecideConfigFile)
 		d.blocked = true
 		return true
 	}
@@ -113,18 +113,18 @@ func (d *dockerRead) ignoreFile(name string) bool {
 		}
 		pattern, err := compileDockerPattern(line)
 		if err != nil || len(d.ignore) >= maxDockerContextVisits {
-			code := UnsupportedConstruct
+			code := UnknownUnsupportedConstruct
 			if err == nil {
-				code = ReadLimit
+				code = UnknownReadLimit
 			}
-			d.unknown(code, name, 1, ConfigFile)
+			d.unknown(code, name, 0, DecideConfigFile)
 			d.blocked = true
 			return true
 		}
 		d.ignore = append(d.ignore, pattern)
 	}
 	if scan.Err() != nil {
-		d.unknown(ReadLimit, name, 1, ConfigFile)
+		d.unknown(UnknownReadLimit, name, 0, DecideConfigFile)
 		d.blocked = true
 	}
 	return true
@@ -132,19 +132,21 @@ func (d *dockerRead) ignoreFile(name string) bool {
 
 func (d *dockerRead) local(raw string, excludes []dockerPattern, line int) {
 	if path.Dir(d.out.Path) != "." {
-		d.unknown(MissingConfig, raw, line, ConfigFile, Declaration)
+		d.unknown(UnknownMissingConfig, raw, line, DecideConfigFile, DecideDeclaration)
 		return
 	}
 	if d.blocked {
-		d.unknown(MissingConfig, raw, line, ConfigFile)
+		d.unknown(UnknownMissingConfig, raw, line, DecideConfigFile)
 		return
 	}
 	if strings.ContainsAny(raw, "\\:\x00\n\r\t") {
-		d.unknown(UnsupportedConstruct, "", line, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain)
 		return
 	}
 	if d.resolver != nil {
-		d.out.resolveExtension(d.repo, d.resolver, raw, line)
+		d.out.resolveExtension(d.ctx, d.resolver, ResolveRequest{
+			Repo: d.repo, From: d.out.Path, Raw: raw, Kind: KindBuildInput, Line: line,
+		})
 		return
 	}
 	// BuildKit normalizes sources against the context root, even when they
@@ -158,7 +160,7 @@ func (d *dockerRead) local(raw string, excludes []dockerPattern, line int) {
 	glob := strings.ContainsAny(name, "*?[")
 	if glob {
 		if _, err := path.Match(name, ""); err != nil {
-			d.unknown(UnboundedGlob, raw, line, Toolchain)
+			d.unknown(UnknownUnboundedGlob, raw, line, DecideToolchain)
 			return
 		}
 		d.glob(".", strings.Split(name, "/"), raw, excludes, line)
@@ -168,14 +170,14 @@ func (d *dockerRead) local(raw string, excludes []dockerPattern, line int) {
 	if d.visits > maxDockerContextVisits {
 		d.out.Edges = d.out.Edges[:start]
 		if visits <= maxDockerContextVisits {
-			d.unknown(ReadLimit, raw, line, Observation)
+			d.unknown(UnknownReadLimit, raw, line, DecideObservation)
 		}
 	} else if len(d.out.Edges) == start {
-		code := MissingConfig
+		code := UnknownMissingConfig
 		if glob {
-			code = UnboundedGlob
+			code = UnknownUnboundedGlob
 		}
-		d.unknown(code, raw, line, Toolchain, ConfigFile)
+		d.unknown(code, raw, line, DecideToolchain, DecideConfigFile)
 	}
 }
 
@@ -203,7 +205,7 @@ func (d *dockerRead) glob(dir string, parts []string, raw string, excludes []doc
 	}
 	entries, err := fs.ReadDir(d.repo, dir)
 	if err != nil {
-		d.unknown(UnsupportedConstruct, raw, line, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, raw, line, DecideToolchain)
 		return
 	}
 	for _, entry := range entries {
@@ -220,7 +222,7 @@ func (d *dockerRead) glob(dir string, parts []string, raw string, excludes []doc
 		} else if entry.IsDir() {
 			d.glob(name, parts[1:], raw, excludes, line)
 		} else if entry.Type()&fs.ModeSymlink != 0 && !dockerIgnored(d.ignore, name) {
-			d.unknown(UnsupportedConstruct, raw, line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, raw, line, DecideToolchain)
 		}
 	}
 }
@@ -232,14 +234,14 @@ func (d *dockerRead) includeSource(name, raw string, excludes []dockerPattern, l
 	info, err := d.repo.Stat(name)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) && !dockerIgnored(d.ignore, name) {
-			d.unknown(UnsupportedConstruct, raw, line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, raw, line, DecideToolchain)
 		}
 		return
 	}
 	if info.IsDir() {
 		d.walkSource(name, name, raw, excludes, line)
 	} else if !dockerIgnored(d.ignore, name) && !dockerIgnored(excludes, path.Base(name)) {
-		d.edge(BuildInput, raw, name, File, "", line)
+		d.edge(KindBuildInput, raw, name, ResolvedFile, "", line)
 	}
 }
 
@@ -251,13 +253,13 @@ func (d *dockerRead) walkSource(root, name, raw string, excludes []dockerPattern
 	}
 	entries, err := fs.ReadDir(d.repo, name)
 	if err != nil {
-		d.unknown(UnsupportedConstruct, raw, line, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, raw, line, DecideToolchain)
 		return
 	}
 	if len(entries) == 0 && !dockerIgnored(d.ignore, name) {
 		rel := dockerSourceRelative(root, name)
 		if rel == "" || !dockerIgnored(excludes, rel) {
-			d.edge(BuildInput, raw, name, Directory, "", line)
+			d.edge(KindBuildInput, raw, name, ResolvedDirectory, "", line)
 		}
 	}
 	for _, entry := range entries {
@@ -274,9 +276,9 @@ func (d *dockerRead) walkSource(root, name, raw string, excludes []dockerPattern
 			continue
 		}
 		if entry.Type().IsRegular() {
-			d.edge(BuildInput, raw, member, File, "", line)
+			d.edge(KindBuildInput, raw, member, ResolvedFile, "", line)
 		} else {
-			d.unknown(UnsupportedConstruct, raw, line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, raw, line, DecideToolchain)
 		}
 	}
 }

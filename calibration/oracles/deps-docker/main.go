@@ -202,7 +202,7 @@ func (d *dockerTruth) loadIgnore() {
 		if err != nil {
 			d.gap("ignore-pattern")
 		}
-		d.Edges = append(d.Edges, edge{Kind: "config-ref", Raw: name, Resolution: "file", To: name, Line: 1})
+		d.Edges = append(d.Edges, edge{Kind: "config-ref", Raw: name, Resolution: "file", To: name})
 		break
 	}
 }

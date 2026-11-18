@@ -2,6 +2,7 @@ package deps_test
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"slices"
@@ -31,7 +32,12 @@ func TestDockerfileDependencies(t *testing.T) {
 	want := []string{"Dockerfile.dockerignore", "app.txt", "name with space.txt", "plain.txt", "sub/input.txt"}
 	assertDockerTargets(t, f, want, nil)
 	if !slices.ContainsFunc(f.Edges, func(e deps.Edge) bool {
-		return e.To == "sub/input.txt" && e.Kind == deps.BuildInput && e.Line == 4
+		return e.Kind == deps.KindConfigRef && e.To == "Dockerfile.dockerignore" && e.Line == 0
+	}) {
+		t.Fatalf("Dockerfile-specific ignore input must be unlocated: %+v", f.Edges)
+	}
+	if !slices.ContainsFunc(f.Edges, func(e deps.Edge) bool {
+		return e.To == "sub/input.txt" && e.Kind == deps.KindBuildInput && e.Line == 4
 	}) {
 		t.Fatalf("continuation did not keep the instruction line: %+v", f.Edges)
 	}
@@ -55,20 +61,20 @@ func TestDockerfileContextInputs(t *testing.T) {
 	})
 	t.Run("nested", func(t *testing.T) {
 		f := readDockerFixture(t, "nested/Dockerfile.dev", "FROM scratch\nCOPY root.txt /dest\n", files)
-		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.MissingConfig})
+		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.UnknownMissingConfig})
 	})
 	t.Run("excluded literal", func(t *testing.T) {
 		f := readDockerFixture(t, "Dockerfile", "FROM scratch\nCOPY src/drop.tmp /dest\n", files)
-		assertDockerTargets(t, f, []string{".dockerignore"}, []deps.UnknownCode{deps.MissingConfig})
+		assertDockerTargets(t, f, []string{".dockerignore"}, []deps.UnknownCode{deps.UnknownMissingConfig})
 	})
 	t.Run("symlink", func(t *testing.T) {
 		files := fstest.MapFS{"src/link": {Mode: fs.ModeSymlink, Data: []byte("../secret")}, "src/keep": {}}
 		f := readDockerFixture(t, "Dockerfile", "FROM scratch\nCOPY src /dest\n", files)
-		assertDockerTargets(t, f, []string{"src/keep"}, []deps.UnknownCode{deps.UnsupportedConstruct})
+		assertDockerTargets(t, f, []string{"src/keep"}, []deps.UnknownCode{deps.UnknownUnsupportedConstruct})
 	})
 	t.Run("unmatched glob", func(t *testing.T) {
 		f := readDockerFixture(t, "Dockerfile", "FROM scratch\nCOPY no-match-*.go /dest\n", files)
-		assertDockerTargets(t, f, []string{".dockerignore"}, []deps.UnknownCode{deps.UnboundedGlob})
+		assertDockerTargets(t, f, []string{".dockerignore"}, []deps.UnknownCode{deps.UnknownUnboundedGlob})
 	})
 }
 
@@ -79,13 +85,13 @@ func TestDockerfileUnknownInputs(t *testing.T) {
 			"FROM ${OTHER}\nCOPY ${PAYLOAD} /dest\nADD https://user:pass@example.com/private /remote\n" +
 			"COPY --from=named /root /dest\nRUN --mount=type=secret,id=unseen true\n"
 		f := readDockerFixture(t, "Dockerfile", src, nil)
-		for _, code := range []deps.UnknownCode{deps.ComputedPath, deps.UnresolvedAlias, deps.ExternalUnpinned, deps.UnsupportedConstruct} {
+		for _, code := range []deps.UnknownCode{deps.UnknownComputedPath, deps.UnknownUnresolvedAlias, deps.UnknownExternalUnpinned, deps.UnknownUnsupportedConstruct} {
 			if !slices.ContainsFunc(f.Unknowns, func(u deps.Unknown) bool { return u.Code == code }) {
 				t.Errorf("no %s in %+v", code, f.Unknowns)
 			}
 		}
 		if !slices.ContainsFunc(f.Edges, func(e deps.Edge) bool {
-			return e.Kind == deps.BuildInput && e.Resolution == deps.External && e.To == "docker:example/base" && e.Version == digest
+			return e.Kind == deps.KindBuildInput && e.Resolution == deps.ResolvedExternal && e.To == "docker:example/base" && e.Version == digest
 		}) {
 			t.Errorf("pinned image edge missing: %+v", f.Edges)
 		}
@@ -105,11 +111,75 @@ func TestDockerfileUnknownInputs(t *testing.T) {
 		"FROM scratch\nCOPY x /y \\\n",
 	} {
 		f := readDockerFixture(t, "Dockerfile", src, nil)
-		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.ParseError})
+		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.UnknownParseError})
 	}
 	t.Run("unsupported instruction", func(t *testing.T) {
 		f := readDockerFixture(t, "Dockerfile", "FROM scratch\nMAGIC input\nONBUILD COPY input /out\n", nil)
-		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.UnsupportedConstruct})
+		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.UnknownUnsupportedConstruct})
+	})
+}
+
+func TestDockerfileTypedResolver(t *testing.T) {
+	// Even an override sees a confined repository view and an attributable
+	// construct. Resolver-owned source, raw, provenance and line are ignored.
+	files := fstest.MapFS{"source": {}, "resolved": {}}
+	called := false
+	override := dockerFixtureResolver(func(ctx context.Context, req deps.ResolveRequest) deps.ResolveResult {
+		called = true
+		if ctx.Err() != nil || req.From != "build.input" || req.Raw != "source" ||
+			req.Kind != deps.KindBuildInput || req.Line != 2 {
+			t.Fatalf("request = %+v", req)
+		}
+		if _, err := fs.Stat(req.Repo, "source"); err != nil {
+			t.Fatal(err)
+		}
+		return deps.ResolveResult{Edges: []deps.Edge{{
+			From: "another", Raw: "overridden", Kind: deps.KindBuildInput,
+			To: "resolved", Resolution: deps.ResolvedFile, Line: 99,
+			Provenance: deps.ProvenanceDeclared,
+		}}}
+	})
+	r, err := deps.New(deps.WithResolver("dockerfile", override))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := r.ReadFile(context.Background(), files, deps.Input{Path: "build.input", Dialect: "dockerfile"},
+		[]byte("FROM scratch\nCOPY source /dest\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := deps.Edge{From: "build.input", Raw: "source", Kind: deps.KindBuildInput, To: "resolved",
+		Resolution: deps.ResolvedFile, Line: 2, Provenance: deps.ProvenanceExtension}
+	if !called || !slices.Equal(f.Edges, []deps.Edge{want}) || f.Measured || f.Complete {
+		t.Fatalf("override = %+v", f)
+	}
+}
+
+type dockerFixtureResolver func(context.Context, deps.ResolveRequest) deps.ResolveResult
+
+func (r dockerFixtureResolver) Resolve(ctx context.Context, req deps.ResolveRequest) deps.ResolveResult {
+	return r(ctx, req)
+}
+
+func TestDockerfileCaps(t *testing.T) {
+	t.Run("source", func(t *testing.T) {
+		f := readDockerFixture(t, "Dockerfile", strings.Repeat("x", (2<<20)+1), nil)
+		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.UnknownReadLimit})
+	})
+	t.Run("ignore rules", func(t *testing.T) {
+		const cap = 4096
+		files := fstest.MapFS{".dockerignore": {Data: []byte(strings.Repeat("ignored\n", cap+1))}, "payload": {}}
+		f := readDockerFixture(t, "Dockerfile", "FROM scratch\nCOPY payload /dest\n", files)
+		assertDockerTargets(t, f, []string{".dockerignore"}, []deps.UnknownCode{deps.UnknownMissingConfig, deps.UnknownReadLimit})
+	})
+	t.Run("context entries", func(t *testing.T) {
+		const cap = 4096
+		files := fstest.MapFS{}
+		for i := 0; i <= cap; i++ {
+			files[fmt.Sprintf("context/f%04d", i)] = &fstest.MapFile{}
+		}
+		f := readDockerFixture(t, "Dockerfile", "FROM scratch\nCOPY context /dest\n", files)
+		assertDockerTargets(t, f, nil, []deps.UnknownCode{deps.UnknownReadLimit})
 	})
 }
 
@@ -122,7 +192,7 @@ func readDockerFixture(t *testing.T, name, src string, files fstest.MapFS) deps.
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := reader.ReadFile(context.Background(), files, name, "", []byte(src))
+	f, err := reader.ReadFile(context.Background(), files, deps.Input{Path: name}, []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +203,7 @@ func assertDockerTargets(t *testing.T, got deps.FileDeps, targets []string, code
 	t.Helper()
 	var actual []string
 	for _, e := range got.Edges {
-		if e.Resolution == deps.File || e.Resolution == deps.Directory {
+		if e.Resolution == deps.ResolvedFile || e.Resolution == deps.ResolvedDirectory {
 			actual = append(actual, e.To)
 		}
 	}
@@ -144,7 +214,7 @@ func assertDockerTargets(t *testing.T, got deps.FileDeps, targets []string, code
 	}
 	var unknowns []deps.UnknownCode
 	for _, u := range got.Unknowns {
-		if u.Code != deps.UnmeasuredReader {
+		if u.Code != deps.UnknownUnmeasuredReader {
 			unknowns = append(unknowns, u.Code)
 		}
 	}

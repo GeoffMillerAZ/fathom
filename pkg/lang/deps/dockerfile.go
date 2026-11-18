@@ -39,7 +39,7 @@ func readDockerfileDependencies(ctx context.Context, repo repositoryFS, src []by
 			continue
 		}
 		if d.stages == 0 && in.name != "ARG" {
-			d.unknown(ParseError, "", in.line, Toolchain)
+			d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 		}
 		switch in.name {
 		case "COPY", "ADD":
@@ -49,23 +49,23 @@ func readDockerfileDependencies(ctx context.Context, repo repositoryFS, src []by
 		case "ARG", "CMD", "ENTRYPOINT", "ENV", "EXPOSE", "HEALTHCHECK", "LABEL",
 			"MAINTAINER", "SHELL", "STOPSIGNAL", "USER", "VOLUME", "WORKDIR":
 			if in.args == "" || len(in.flags) != 0 && in.name != "HEALTHCHECK" {
-				d.unknown(ParseError, "", in.line, Toolchain)
+				d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 			}
 		default:
 			// ONBUILD children have deferred instructions. Future instructions
 			// might also introduce a new source kind.
-			d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 		}
 	}
 	if parser.failed != 0 {
-		d.unknown(ParseError, "", parser.failed, Toolchain)
+		d.unknown(UnknownParseError, "", parser.failed, DecideToolchain)
 	} else if d.stages == 0 {
-		d.unknown(ParseError, "", 1, Toolchain)
+		d.unknown(UnknownParseError, "", 0, DecideToolchain)
 	}
 	if parser.frontend != "" {
-		d.image(ConfigRef, parser.frontend, parser.frontendLine)
+		d.image(KindConfigRef, parser.frontend, parser.frontendLine)
 		// The explicit frontend can have a different instruction set.
-		d.unknown(UnsupportedConstruct, "", parser.frontendLine, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, "", parser.frontendLine, DecideToolchain)
 	}
 }
 
@@ -74,41 +74,41 @@ func (d *dockerRead) unknown(code UnknownCode, raw string, line int, by ...Decid
 }
 
 func (d *dockerRead) edge(kind Kind, raw, to string, res Resolution, version string, line int) {
-	d.out.addEdge(Edge{Kind: kind, Raw: raw, To: to, Resolution: res, Version: version, Line: line, Provenance: Builtin})
+	d.out.addEdge(Edge{Kind: kind, Raw: raw, To: to, Resolution: res, Version: version, Line: line, Provenance: ProvenanceBuiltin})
 }
 
 func (d *dockerRead) from(in dockerInstruction) {
 	words := strings.Fields(in.args)
 	if len(words) != 1 && (len(words) != 3 || !strings.EqualFold(words[1], "as")) {
-		d.unknown(ParseError, "", in.line, Toolchain)
+		d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 		return
 	}
 	name := ""
 	if len(words) == 3 {
 		name = strings.ToLower(words[2])
 		if !dockerAlias.MatchString(name) || name == "scratch" || d.stageNamed(name) {
-			d.unknown(ParseError, "", in.line, Toolchain)
+			d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 			return
 		}
 	}
 	for _, flag := range in.flags {
 		if flag.key != "platform" || flag.value == "" {
-			d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 		} else if strings.Contains(flag.value, "$") {
-			d.unknown(ComputedPath, flag.value, in.line, ConfigFile)
+			d.unknown(UnknownComputedPath, flag.value, in.line, DecideConfigFile)
 		} else if !strings.HasPrefix(flag.value, "linux/") {
-			d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 			d.blocked = true
 		}
 	}
 	base := words[0]
 	if strings.Contains(base, "$") {
-		d.unknown(ComputedPath, base, in.line, ConfigFile)
+		d.unknown(UnknownComputedPath, base, in.line, DecideConfigFile)
 	} else if base != "scratch" && !d.stageNamed(base) {
-		d.image(BuildInput, base, in.line)
+		d.image(KindBuildInput, base, in.line)
 		// An image's inherited ONBUILD commands and a named context override
 		// cannot be read from the Dockerfile bytes.
-		d.unknown(UnsupportedConstruct, "", in.line, Toolchain, ConfigFile)
+		d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain, DecideConfigFile)
 	}
 	if name != "" {
 		d.aliases[name] = d.stages
@@ -123,57 +123,57 @@ func (d *dockerRead) stageNamed(name string) bool {
 
 func (d *dockerRead) image(kind Kind, raw string, line int) {
 	if strings.Contains(raw, "$") {
-		d.unknown(ComputedPath, raw, line, ConfigFile)
+		d.unknown(UnknownComputedPath, raw, line, DecideConfigFile)
 		return
 	}
 	name, digest, hasDigest := strings.Cut(raw, "@")
 	if hasDigest && !dockerDigest.MatchString(digest) {
-		d.unknown(UnsupportedConstruct, "", line, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain)
 		return
 	}
 	if colon := strings.LastIndexByte(name, ':'); colon > strings.LastIndexByte(name, '/') {
 		if !dockerTag.MatchString(name[colon+1:]) {
-			d.unknown(UnsupportedConstruct, "", line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain)
 			return
 		}
 		name = name[:colon]
 	}
 	if !dockerImage.MatchString(name) {
-		d.unknown(UnsupportedConstruct, "", line, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain)
 		return
 	}
-	d.edge(kind, raw, "docker:"+name, External, digest, line)
+	d.edge(kind, raw, "docker:"+name, ResolvedExternal, digest, line)
 }
 
 func (d *dockerRead) otherSource(name string, line int) {
 	if strings.Contains(name, "$") {
-		d.unknown(ComputedPath, name, line, ConfigFile)
+		d.unknown(UnknownComputedPath, name, line, DecideConfigFile)
 		return
 	}
 	if n, err := strconv.Atoi(name); err == nil {
 		if n < 0 || n >= d.stages-1 {
-			d.unknown(UnresolvedAlias, name, line, Toolchain)
+			d.unknown(UnknownUnresolvedAlias, name, line, DecideToolchain)
 		}
 		return
 	}
 	if i, ok := d.aliases[strings.ToLower(name)]; ok {
 		if i == d.stages-1 {
-			d.unknown(UnresolvedAlias, name, line, Toolchain)
+			d.unknown(UnknownUnresolvedAlias, name, line, DecideToolchain)
 		}
 		return
 	}
 	// A name outside the already known stages may be a forward stage, an
 	// image or a named context. Only a pinned image spelling merits an edge.
 	if strings.Contains(name, "@") {
-		d.image(BuildInput, name, line)
+		d.image(KindBuildInput, name, line)
 	}
-	d.unknown(UnresolvedAlias, name, line, ConfigFile, Toolchain)
+	d.unknown(UnknownUnresolvedAlias, name, line, DecideConfigFile, DecideToolchain)
 }
 
 func (d *dockerRead) copy(in dockerInstruction) {
 	sources, ok := dockerCopyWords(in.args, in.escape)
 	if !ok || len(sources) < 2 {
-		d.unknown(ParseError, "", in.line, Toolchain)
+		d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 		return
 	}
 	var from string
@@ -183,33 +183,33 @@ func (d *dockerRead) copy(in dockerInstruction) {
 		case "chown", "chmod", "link":
 		case "keep-git-dir", "checksum", "unpack":
 			if in.name != "ADD" {
-				d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+				d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 			}
 		case "from":
 			if in.name != "COPY" || flag.value == "" || from != "" {
-				d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+				d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 				return
 			}
 			from = flag.value
 		case "exclude":
 			if strings.Contains(flag.value, "$") {
-				d.unknown(ComputedPath, flag.value, in.line, ConfigFile)
+				d.unknown(UnknownComputedPath, flag.value, in.line, DecideConfigFile)
 				return
 			}
 			pattern, err := compileDockerPattern(flag.value)
 			if err != nil {
-				d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+				d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 				return
 			}
 			excludes = append(excludes, pattern)
 		default:
 			// --parents changes how source paths and exclusions are rooted.
-			d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 			return
 		}
 	}
 	if _, ok := dockerHeredoc(sources[len(sources)-1]); ok {
-		d.unknown(ParseError, "", in.line, Toolchain)
+		d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 		return
 	}
 	if from != "" {
@@ -220,12 +220,12 @@ func (d *dockerRead) copy(in dockerInstruction) {
 			continue
 		}
 		if strings.Contains(source, "$") {
-			d.unknown(ComputedPath, source, in.line, ConfigFile)
+			d.unknown(UnknownComputedPath, source, in.line, DecideConfigFile)
 		} else if from == "" {
 			if in.name == "ADD" && dockerRemote(source) {
 				// Suppress URL userinfo, host and payload. Native ADD can also
 				// unpack content whose dependencies are opaque to this view.
-				d.unknown(ExternalUnpinned, "", in.line, Lockfile, ConfigFile)
+				d.unknown(UnknownExternalUnpinned, "", in.line, DecideLockfile, DecideConfigFile)
 			} else {
 				d.local(source, excludes, in.line)
 			}
@@ -244,22 +244,22 @@ func (d *dockerRead) run(in dockerInstruction) {
 			d.mount(flag.value, in.line)
 		case "network", "security":
 		default:
-			d.unknown(UnsupportedConstruct, "", in.line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", in.line, DecideToolchain)
 		}
 	}
 	if in.args == "" {
-		d.unknown(ParseError, "", in.line, Toolchain)
+		d.unknown(UnknownParseError, "", in.line, DecideToolchain)
 	}
 }
 
 func (d *dockerRead) mount(raw string, line int) {
 	if strings.Contains(raw, "$") {
-		d.unknown(ComputedPath, raw, line, ConfigFile)
+		d.unknown(UnknownComputedPath, raw, line, DecideConfigFile)
 		return
 	}
 	fields, err := csv.NewReader(strings.NewReader(raw)).Read()
 	if err != nil {
-		d.unknown(ParseError, "", line, Toolchain)
+		d.unknown(UnknownParseError, "", line, DecideToolchain)
 		return
 	}
 	kind, source, from := "bind", ".", ""
@@ -277,7 +277,7 @@ func (d *dockerRead) mount(raw string, line int) {
 		case "target", "dst", "destination", "readonly", "ro", "readwrite", "rw", "required",
 			"id", "sharing", "size", "mode", "uid", "gid", "env":
 		default:
-			d.unknown(UnsupportedConstruct, "", line, Toolchain)
+			d.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain)
 		}
 	}
 	switch kind {
@@ -285,7 +285,7 @@ func (d *dockerRead) mount(raw string, line int) {
 		if from != "" {
 			d.otherSource(from, line)
 		} else if strings.ContainsAny(source, "*?[") {
-			d.unknown(UnboundedGlob, source, line, Toolchain)
+			d.unknown(UnknownUnboundedGlob, source, line, DecideToolchain)
 		} else {
 			d.local(source, nil, line)
 		}
@@ -294,8 +294,8 @@ func (d *dockerRead) mount(raw string, line int) {
 			d.otherSource(from, line)
 		}
 	case "secret", "ssh":
-		d.unknown(UnsupportedConstruct, "", line, Declaration, Observation)
+		d.unknown(UnknownUnsupportedConstruct, "", line, DecideDeclaration, DecideObservation)
 	default:
-		d.unknown(UnsupportedConstruct, "", line, Toolchain)
+		d.unknown(UnknownUnsupportedConstruct, "", line, DecideToolchain)
 	}
 }

@@ -263,6 +263,11 @@ func readDockerObservation(t *testing.T, r *deps.Reader, first, second string, p
 		if err != nil {
 			t.Fatal(err)
 		}
+		for _, f := range out {
+			if f.Dialect != "dockerfile" {
+				t.Fatalf("selected path did not route to Dockerfile: %q", f.Path)
+			}
+		}
 		return out
 	}
 	var truth []depbench.TruthFile
