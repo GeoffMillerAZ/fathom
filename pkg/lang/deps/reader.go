@@ -139,6 +139,8 @@ func (r *Reader) readFile(ctx context.Context, repo repositoryFS, in Input, src 
 		readPythonDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
 	case "typescript", "javascript":
 		readTSJSDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
+	case "dockerfile":
+		readDockerfileDependencies(ctx, repo, src, r.resolvers[f.Dialect], &f)
 	}
 	if err := ctx.Err(); err != nil {
 		return FileDeps{}, err
@@ -230,6 +232,9 @@ func inferDialect(file, dialect string) string {
 	case ".py":
 		return "python"
 	}
+	if dockerfileName.MatchString(path.Base(file)) {
+		return "dockerfile"
+	}
 	return inferTSJSDialect(ext)
 }
 
@@ -242,7 +247,7 @@ func init() {
 
 func implemented(dialect string) bool {
 	switch dialect {
-	case "go", "python", "typescript", "javascript":
+	case "go", "python", "typescript", "javascript", "dockerfile":
 		return true
 	default:
 		return false
