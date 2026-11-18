@@ -15,7 +15,7 @@
           "to": "go.mod",
           "resolution": "file",
           "version": "",
-          "line": 1,
+          "line": 0,
           "provenance": "builtin"
         }
       ],
@@ -24,7 +24,7 @@
           "from": "lib/lib.go",
           "code": "unmeasured-reader",
           "raw": "",
-          "line": 1,
+          "line": 0,
           "decidable_by": []
         }
       ]
@@ -43,7 +43,7 @@
           "to": "go.mod",
           "resolution": "file",
           "version": "",
-          "line": 1,
+          "line": 0,
           "provenance": "builtin"
         },
         {
@@ -62,7 +62,7 @@
           "from": "main.go",
           "code": "unmeasured-reader",
           "raw": "",
-          "line": 1,
+          "line": 0,
           "decidable_by": []
         }
       ]

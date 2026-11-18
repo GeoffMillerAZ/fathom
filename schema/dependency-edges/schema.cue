@@ -23,7 +23,7 @@ package dependencyedges
 	to:         string
 	resolution: #Resolution
 	version:    #Version
-	line:       int & >=1
+	line:       int & >=0
 	provenance: #Provenance
 
 	if resolution == "file" {
@@ -47,7 +47,7 @@ package dependencyedges
 	from: #Path
 	code: #UnknownCode
 	raw:  #Raw
-	line: int & >=1
+	line: int & >=0
 	decidable_by: [...#DecidableBy]
 }
 

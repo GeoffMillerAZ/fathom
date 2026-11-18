@@ -31,7 +31,7 @@ including lexical diagnostics and untrusted extension returns. Raw dependency
 operands are kept as portable path tokens when safe to disclose. Other operands
 read `***`. Values covered by the library's redaction rule are withheld.
 
-Call `deps.New(opts...)`, then `Reader.ReadFile(ctx, repo, path, dialect, src)` or
+Call `deps.New(opts...)`, then `Reader.ReadFile(ctx, repo, deps.Input{Path: path, Dialect: dialect}, src)` or
 `Reader.ReadFiles(ctx, repo, []deps.Input{{Path: path, Dialect: dialect}})`. A blank
 dialect selects Go for a `.go` path. Explicit dialect IDs take precedence. The batch
 sorts paths and rejects duplicates. An unreadable file contributes an incomplete
@@ -43,21 +43,23 @@ symlinks and components they cannot safely inspect. These checks depend on an
 accurate view that stays stable for the read. The CLI uses `os.OpenRoot` for
 filesystem confinement.
 
-`WithResolver(id, resolver)` replaces the resolution of imports captured by an
-implemented detector. A resolver receives the repository view, importing file and
-decoded operand, and returns targets, a typed unknown, or both. The reader sets
-the source, line and extension provenance, and checks local targets against
-the repository view. A resolver override does not inherit the built-in reading.
-`WithDeclaredEdges(edges...)` adds logical edges for named source files with
-declared provenance. A version supplied by a resolver or declaration must come
-from a manifest pin or lockfile. `TrustUnmeasured(id)` records the explicit opt-in
-in `trusted` for an implemented, unmeasured reader. Detect-only and unimplemented
-readers stay incomplete.
+`WithResolver(id, resolver)` replaces resolver-driven resolution for an
+implemented detector. `Resolve(ctx, req)` receives a `ResolveRequest` containing
+the repository view, source file, decoded operand, construct kind and source line.
+It returns a `ResolveResult` with targets, a typed unknown, or both. The reader
+sets the source, line and extension provenance and checks local targets in the
+repository view. The override voids the built-in reading for that reader.
+`WithDeclaredEdges(edges...)` adds logical edges with declared provenance and
+leaves every existing unknown and incomplete verdict in place. A version from a
+resolver or declaration comes from a manifest pin or lockfile.
+`TrustUnmeasured(id)` records explicit opt-in in `trusted` for an implemented,
+unmeasured reader. Detect-only and unimplemented readers stay incomplete.
 
 ## Serialized facts
 
 An edge names the importing path, kind, safe raw operand, target, resolution,
-version if pinned, one-based source line and provenance. Paths are logical
+version if pinned, source line and provenance. Line is one-based when known
+and zero for unlocated evidence. Paths are logical
 repository-relative slash paths with portable printable characters and no dot
 or parent segments. The directory target `.` names the repository root. An
 external ID is `ecosystem:name` with `repo` reserved for repository paths. A version

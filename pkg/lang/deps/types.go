@@ -7,65 +7,65 @@ package deps
 type Kind string
 
 const (
-	Import     Kind = "import"
-	Include    Kind = "include"
-	Embed      Kind = "embed"
-	BuildInput Kind = "build-input"
-	Exec       Kind = "exec"
-	ConfigRef  Kind = "config-ref"
+	KindImport     Kind = "import"
+	KindInclude    Kind = "include"
+	KindEmbed      Kind = "embed"
+	KindBuildInput Kind = "build-input"
+	KindExec       Kind = "exec"
+	KindConfigRef  Kind = "config-ref"
 )
 
 // Resolution describes the target's identity.
 type Resolution string
 
 const (
-	File          Resolution = "file"
-	Directory     Resolution = "directory"
-	External      Resolution = "external"
-	UnknownTarget Resolution = "unknown"
+	ResolvedFile      Resolution = "file"
+	ResolvedDirectory Resolution = "directory"
+	ResolvedExternal  Resolution = "external"
+	ResolvedUnknown   Resolution = "unknown"
 )
 
 // Provenance names the provider of an edge.
 type Provenance string
 
 const (
-	Builtin   Provenance = "builtin"
-	Pack      Provenance = "pack"
-	Extension Provenance = "extension"
-	Declared  Provenance = "declared"
+	ProvenanceBuiltin   Provenance = "builtin"
+	ProvenancePack      Provenance = "pack"
+	ProvenanceExtension Provenance = "extension"
+	ProvenanceDeclared  Provenance = "declared"
 )
 
 // UnknownCode gives the reason a file's dependency evidence is incomplete.
 type UnknownCode string
 
 const (
-	DynamicImport        UnknownCode = "dynamic-import"
-	ComputedPath         UnknownCode = "computed-path"
-	UnresolvedAlias      UnknownCode = "unresolved-alias"
-	MissingConfig        UnknownCode = "missing-config"
-	UnboundedGlob        UnknownCode = "unbounded-glob"
-	UnsupportedConstruct UnknownCode = "unsupported-construct"
-	ParseError           UnknownCode = "parse-error"
-	UnmeasuredReader     UnknownCode = "unmeasured-reader"
-	ExternalUnpinned     UnknownCode = "external-unpinned"
-	ReadLimit            UnknownCode = "read-limit"
+	UnknownDynamicImport        UnknownCode = "dynamic-import"
+	UnknownComputedPath         UnknownCode = "computed-path"
+	UnknownUnresolvedAlias      UnknownCode = "unresolved-alias"
+	UnknownMissingConfig        UnknownCode = "missing-config"
+	UnknownUnboundedGlob        UnknownCode = "unbounded-glob"
+	UnknownUnsupportedConstruct UnknownCode = "unsupported-construct"
+	UnknownParseError           UnknownCode = "parse-error"
+	UnknownUnmeasuredReader     UnknownCode = "unmeasured-reader"
+	UnknownExternalUnpinned     UnknownCode = "external-unpinned"
+	UnknownReadLimit            UnknownCode = "read-limit"
 )
 
 // DecidableBy names evidence that could resolve an unknown.
 type DecidableBy string
 
 const (
-	Toolchain   DecidableBy = "toolchain"
-	Lockfile    DecidableBy = "lockfile"
-	ConfigFile  DecidableBy = "config-file"
-	Observation DecidableBy = "observation"
-	Declaration DecidableBy = "declaration"
+	DecideToolchain   DecidableBy = "toolchain"
+	DecideLockfile    DecidableBy = "lockfile"
+	DecideConfigFile  DecidableBy = "config-file"
+	DecideObservation DecidableBy = "observation"
+	DecideDeclaration DecidableBy = "declaration"
 )
 
 // Edge is one direct dependency. From is a repository-relative slash path. To
 // is a logical repository path or an external ecosystem:name ID. Version is
-// populated only from a lockfile or manifest pin. Line is one-based, with 1
-// used for file-wide evidence.
+// populated only from a lockfile or manifest pin. Line is one-based when known,
+// and zero for evidence without a source line.
 type Edge struct {
 	From       string     `json:"from"`
 	Kind       Kind       `json:"kind"`
@@ -77,7 +77,8 @@ type Edge struct {
 	Provenance Provenance `json:"provenance"`
 }
 
-// Unknown discloses missing evidence. An empty DecidableBy grants no trust.
+// Unknown discloses missing evidence. Line is zero when no source line is
+// available. An empty DecidableBy grants no trust.
 type Unknown struct {
 	From        string        `json:"from"`
 	Code        UnknownCode   `json:"code"`

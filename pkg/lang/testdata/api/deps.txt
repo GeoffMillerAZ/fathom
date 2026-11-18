@@ -17,11 +17,11 @@ type DecidableBy string
     DecidableBy names evidence that could resolve an unknown.
 
 const (
-	Toolchain   DecidableBy = "toolchain"
-	Lockfile    DecidableBy = "lockfile"
-	ConfigFile  DecidableBy = "config-file"
-	Observation DecidableBy = "observation"
-	Declaration DecidableBy = "declaration"
+	DecideToolchain   DecidableBy = "toolchain"
+	DecideLockfile    DecidableBy = "lockfile"
+	DecideConfigFile  DecidableBy = "config-file"
+	DecideObservation DecidableBy = "observation"
+	DecideDeclaration DecidableBy = "declaration"
 )
 type Edge struct {
 	From       string     `json:"from"`
@@ -35,8 +35,8 @@ type Edge struct {
 }
     Edge is one direct dependency. From is a repository-relative slash path.
     To is a logical repository path or an external ecosystem:name ID. Version
-    is populated only from a lockfile or manifest pin. Line is one-based,
-    with 1 used for file-wide evidence.
+    is populated only from a lockfile or manifest pin. Line is one-based when
+    known, and zero for evidence without a source line.
 
 type FileDeps struct {
 	Path     string    `json:"path"`
@@ -62,12 +62,12 @@ type Kind string
     Kind is the dependency construct.
 
 const (
-	Import     Kind = "import"
-	Include    Kind = "include"
-	Embed      Kind = "embed"
-	BuildInput Kind = "build-input"
-	Exec       Kind = "exec"
-	ConfigRef  Kind = "config-ref"
+	KindImport     Kind = "import"
+	KindInclude    Kind = "include"
+	KindEmbed      Kind = "embed"
+	KindBuildInput Kind = "build-input"
+	KindExec       Kind = "exec"
+	KindConfigRef  Kind = "config-ref"
 )
 type Option func(*readerOptions) error
     Option configures a Reader at construction.
@@ -77,21 +77,24 @@ func TrustUnmeasured(dialect string) Option
     Unknowns still prevent completeness, and failed admission cannot be waived.
 
 func WithDeclaredEdges(edges ...Edge) Option
-    WithDeclaredEdges adds direct edges for the specified source paths. To must
+    WithDeclaredEdges adds direct edges for the specified source paths.
+    Declarations never clear an unknown or make a file complete. To must
     identify a logical target. A version must be a manifest or lockfile pin.
 
 func WithResolver(dialect string, resolver Resolver) Option
-    WithResolver replaces import resolution for an implemented dialect.
+    WithResolver replaces resolver-driven resolution for an implemented dialect.
+    A replacement voids built-in admission for this Reader. Its results
+    read Measured false and require TrustUnmeasured to become complete.
     An unimplemented dialect still lacks the detector needed for completeness.
 
 type Provenance string
     Provenance names the provider of an edge.
 
 const (
-	Builtin   Provenance = "builtin"
-	Pack      Provenance = "pack"
-	Extension Provenance = "extension"
-	Declared  Provenance = "declared"
+	ProvenanceBuiltin   Provenance = "builtin"
+	ProvenancePack      Provenance = "pack"
+	ProvenanceExtension Provenance = "extension"
+	ProvenanceDeclared  Provenance = "declared"
 )
 type Reader struct {
 	// Has unexported fields.
@@ -102,7 +105,7 @@ func New(opts ...Option) (*Reader, error)
     New constructs a dependency reader. By default it trusts no unmeasured
     dialect.
 
-func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, file, dialect string, src []byte) (FileDeps, error)
+func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, in Input, src []byte) (FileDeps, error)
     ReadFile reads source bytes, consulting only repo for resolution. Dialect is
     explicit when provided. Blank dialect infers from the logical path.
 
@@ -115,15 +118,31 @@ type Resolution string
     Resolution describes the target's identity.
 
 const (
-	File          Resolution = "file"
-	Directory     Resolution = "directory"
-	External      Resolution = "external"
-	UnknownTarget Resolution = "unknown"
+	ResolvedFile      Resolution = "file"
+	ResolvedDirectory Resolution = "directory"
+	ResolvedExternal  Resolution = "external"
+	ResolvedUnknown   Resolution = "unknown"
 )
-type Resolver interface {
-	Resolve(repo fs.FS, from, raw string) ([]Edge, *Unknown)
+type ResolveRequest struct {
+	Repo fs.FS
+	From string
+	Raw  string
+	Kind Kind
+	Line int
 }
-    Resolver resolves a detected import against the supplied repository view.
+    ResolveRequest describes a construct in a repository-rooted view. Line is
+    one-based when known, or zero when no source line is available.
+
+type ResolveResult struct {
+	Edges   []Edge
+	Unknown *Unknown
+}
+    ResolveResult holds the targets and optional missing evidence.
+
+type Resolver interface {
+	Resolve(ctx context.Context, req ResolveRequest) ResolveResult
+}
+    Resolver resolves a detected construct against the supplied repository view.
     It returns targets and/or a typed unknown. The reader owns source, line, raw
     operand and provenance. A version must come from a manifest pin or lockfile.
     Callers sharing a Reader must supply concurrency-safe resolvers.
@@ -135,20 +154,21 @@ type Unknown struct {
 	Line        int           `json:"line"`
 	DecidableBy []DecidableBy `json:"decidable_by"`
 }
-    Unknown discloses missing evidence. An empty DecidableBy grants no trust.
+    Unknown discloses missing evidence. Line is zero when no source line is
+    available. An empty DecidableBy grants no trust.
 
 type UnknownCode string
     UnknownCode gives the reason a file's dependency evidence is incomplete.
 
 const (
-	DynamicImport        UnknownCode = "dynamic-import"
-	ComputedPath         UnknownCode = "computed-path"
-	UnresolvedAlias      UnknownCode = "unresolved-alias"
-	MissingConfig        UnknownCode = "missing-config"
-	UnboundedGlob        UnknownCode = "unbounded-glob"
-	UnsupportedConstruct UnknownCode = "unsupported-construct"
-	ParseError           UnknownCode = "parse-error"
-	UnmeasuredReader     UnknownCode = "unmeasured-reader"
-	ExternalUnpinned     UnknownCode = "external-unpinned"
-	ReadLimit            UnknownCode = "read-limit"
+	UnknownDynamicImport        UnknownCode = "dynamic-import"
+	UnknownComputedPath         UnknownCode = "computed-path"
+	UnknownUnresolvedAlias      UnknownCode = "unresolved-alias"
+	UnknownMissingConfig        UnknownCode = "missing-config"
+	UnknownUnboundedGlob        UnknownCode = "unbounded-glob"
+	UnknownUnsupportedConstruct UnknownCode = "unsupported-construct"
+	UnknownParseError           UnknownCode = "parse-error"
+	UnknownUnmeasuredReader     UnknownCode = "unmeasured-reader"
+	UnknownExternalUnpinned     UnknownCode = "external-unpinned"
+	UnknownReadLimit            UnknownCode = "read-limit"
 )

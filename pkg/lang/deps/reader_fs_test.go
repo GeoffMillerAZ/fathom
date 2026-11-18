@@ -74,8 +74,8 @@ func TestDependencyRepositoryComponents(t *testing.T) {
 					t.Errorf("resolver cannot read a regular repository file: %v", err)
 				}
 				return []Edge{
-					{Kind: Import, Resolution: File, To: "linked/sub/asset.txt"},
-					{Kind: Import, Resolution: Directory, To: "linked/sub"},
+					{Kind: KindImport, Resolution: ResolvedFile, To: "linked/sub/asset.txt"},
+					{Kind: KindImport, Resolution: ResolvedDirectory, To: "linked/sub"},
 				}, nil
 			})
 			r, err := New(TrustUnmeasured("go"), WithResolver("go", resolver))
@@ -83,17 +83,17 @@ func TestDependencyRepositoryComponents(t *testing.T) {
 				t.Fatal(err)
 			}
 			batch, err := r.ReadFiles(context.Background(), tc.view, []Input{{Path: "linked/sub/app.go"}, {Path: "safe/app.go"}})
-			if err == nil || len(batch) != 2 || batch[0].Complete || !hasUnknown(batch[0], MissingConfig) || len(batch[0].Edges) != 0 {
+			if err == nil || len(batch) != 2 || batch[0].Complete || !hasUnknown(batch[0], UnknownMissingConfig) || len(batch[0].Edges) != 0 {
 				t.Errorf("unsafe batch source: %+v, %v", batch, err)
 			}
-			if len(batch) != 2 || hasEdge(batch[1], ConfigRef, File, "safe/go.work") || !hasUnknown(batch[1], MissingConfig) ||
-				!hasEdge(batch[1], ConfigRef, File, "go.mod") {
+			if len(batch) != 2 || hasEdge(batch[1], KindConfigRef, ResolvedFile, "safe/go.work") || !hasUnknown(batch[1], UnknownMissingConfig) ||
+				!hasEdge(batch[1], KindConfigRef, ResolvedFile, "go.mod") {
 				t.Errorf("unsafe configuration must be disclosed and safe configuration retained: %+v", batch)
 			}
 
-			got, err := r.ReadFile(context.Background(), tc.view, "main.go", "go", []byte("package main\nimport _ \"example.org/dependency\"\n"))
-			if err != nil || got.Complete || !hasUnknown(got, UnresolvedAlias) ||
-				hasEdge(got, Import, File, "linked/sub/asset.txt") || hasEdge(got, Import, Directory, "linked/sub") {
+			got, err := r.ReadFile(context.Background(), tc.view, Input{Path: "main.go", Dialect: "go"}, []byte("package main\nimport _ \"example.org/dependency\"\n"))
+			if err != nil || got.Complete || !hasUnknown(got, UnknownUnresolvedAlias) ||
+				hasEdge(got, KindImport, ResolvedFile, "linked/sub/asset.txt") || hasEdge(got, KindImport, ResolvedDirectory, "linked/sub") {
 				t.Errorf("unsafe extension targets: %+v, %v", got, err)
 			}
 		})
@@ -104,7 +104,7 @@ func TestDependencyRepositoryComponents(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch, err := r.ReadFiles(context.Background(), noDirEntriesFS{os.DirFS(root)}, []Input{{Path: "safe/app.go"}})
-	if err == nil || len(batch) != 1 || batch[0].Complete || !hasUnknown(batch[0], MissingConfig) || len(batch[0].Edges) != 0 {
+	if err == nil || len(batch) != 1 || batch[0].Complete || !hasUnknown(batch[0], UnknownMissingConfig) || len(batch[0].Edges) != 0 {
 		t.Errorf("batch accepted components it could not inspect: %+v, %v", batch, err)
 	}
 }

@@ -95,8 +95,8 @@ func declaredPairs(files []deps.FileDeps) []dependencyPair {
 		for _, e := range f.Edges {
 			to := dependencyUnit{"repo", e.To}
 			switch e.Resolution {
-			case deps.File, deps.Directory:
-			case deps.External:
+			case deps.ResolvedFile, deps.ResolvedDirectory:
+			case deps.ResolvedExternal:
 				to.Ecosystem, to.Name, _ = strings.Cut(e.To, ":")
 			default:
 				continue

@@ -150,7 +150,7 @@ func compare(edges []deps.Edge, truth []TruthEdge) edgeCounts {
 }
 
 func isRepositoryTarget(resolution deps.Resolution) bool {
-	return resolution == deps.File || resolution == deps.Directory
+	return resolution == deps.ResolvedFile || resolution == deps.ResolvedDirectory
 }
 
 func compareBinding(e deps.Edge, truth []TruthEdge) (paired, matched, inconclusive bool) {

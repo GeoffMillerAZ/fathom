@@ -55,7 +55,7 @@ func TestGoDependencyOracle(t *testing.T) {
 			continue
 		}
 		for _, e := range f.Edges {
-			embedMatched = embedMatched || e.Kind == deps.Embed && e.To == "data/payload.txt"
+			embedMatched = embedMatched || e.Kind == deps.KindEmbed && e.To == "data/payload.txt"
 		}
 	}
 	if !embedMatched {
@@ -68,7 +68,7 @@ func TestGoDependencyOracle(t *testing.T) {
 		for i, f := range sample.Truth {
 			if f.Path == "app/main.go" {
 				sample.Truth[i].Edges = append(slices.Clone(f.Edges), depbench.TruthEdge{
-					Kind: deps.Import, Raw: "example.com/control/data", Resolution: deps.Directory, To: "data",
+					Kind: deps.KindImport, Raw: "example.com/control/data", Resolution: deps.ResolvedDirectory, To: "data",
 				})
 			}
 		}
@@ -85,7 +85,7 @@ func TestGoDependencyOracle(t *testing.T) {
 			if f.Path == "app/main.go" {
 				sample.Truth[i].Edges = slices.Clone(f.Edges)
 				for j, e := range f.Edges {
-					if e.Kind == deps.Import {
+					if e.Kind == deps.KindImport {
 						sample.Truth[i].Edges[j].To = "data"
 					}
 				}
@@ -96,7 +96,7 @@ func TestGoDependencyOracle(t *testing.T) {
 		for i, f := range sample.Files {
 			if f.Path == "app/main.go" {
 				sample.Files[i].Edges = append(slices.Clone(f.Edges), deps.Edge{
-					Kind: deps.Import, Raw: "different-operand", Resolution: deps.Directory, To: "data",
+					Kind: deps.KindImport, Raw: "different-operand", Resolution: deps.ResolvedDirectory, To: "data",
 				})
 			}
 		}
@@ -147,11 +147,11 @@ func goTruth(t *testing.T, root string) []depbench.TruthFile {
 			from := logical(t, root, filepath.Join(p.Dir, name))
 			row := depbench.TruthFile{Path: from, Edges: []depbench.TruthEdge{}}
 			mod := logical(t, root, p.Module.GoMod)
-			row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.ConfigRef, Raw: mod, Resolution: deps.File, To: mod})
+			row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.KindConfigRef, Raw: mod, Resolution: deps.ResolvedFile, To: mod})
 			for _, sibling := range p.GoFiles {
 				if sibling != name {
 					to := logical(t, root, filepath.Join(p.Dir, sibling))
-					row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.BuildInput, Raw: to, Resolution: deps.File, To: to})
+					row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.KindBuildInput, Raw: to, Resolution: deps.ResolvedFile, To: to})
 				}
 			}
 			single := goList(t, root, from)
@@ -169,13 +169,13 @@ func goTruth(t *testing.T, root string) []depbench.TruthFile {
 					t.Fatalf("native import missing its package: %s", operand)
 				}
 				if rel, err := filepath.Rel(root, q.Dir); err == nil && filepath.IsLocal(rel) {
-					row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.Import, Raw: operand, Resolution: deps.Directory, To: filepath.ToSlash(rel)})
+					row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.KindImport, Raw: operand, Resolution: deps.ResolvedDirectory, To: filepath.ToSlash(rel)})
 				}
 			}
 			for _, name := range entry.EmbedFiles {
 				// This fixture uses a single literal operand, with no remapping.
 				to := logical(t, root, filepath.Join(entry.Dir, name))
-				row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.Embed, Raw: name, Resolution: deps.File, To: to})
+				row.Edges = append(row.Edges, depbench.TruthEdge{Kind: deps.KindEmbed, Raw: name, Resolution: deps.ResolvedFile, To: to})
 			}
 			out = append(out, row)
 		}
@@ -254,13 +254,13 @@ func TestGoDependencyOracleTruthCoverage(t *testing.T) {
 		t.Fatalf("duplicate truth accepted: %+v", got)
 	}
 
-	file.Edges = []deps.Edge{{Kind: deps.Include, Raw: "extra", Resolution: deps.File, To: "extra"}}
-	file.Unknowns = []deps.Unknown{{Code: deps.ComputedPath}}
+	file.Edges = []deps.Edge{{Kind: deps.KindInclude, Raw: "extra", Resolution: deps.ResolvedFile, To: "extra"}}
+	file.Unknowns = []deps.Unknown{{Code: deps.UnknownComputedPath}}
 	file.Complete = false
 	observation.Files = []deps.FileDeps{file}
 	observation.Truth = []depbench.TruthFile{truth}
 	if got := depbench.Score(observation); got.B1 || got.B2 || got.B4Extra != 1 ||
-		got.Unknowns != 1 || got.UnknownByCode[deps.ComputedPath] != 1 {
+		got.Unknowns != 1 || got.UnknownByCode[deps.UnknownComputedPath] != 1 {
 		t.Fatalf("missing B4 evidence or vacuous admission: %+v", got)
 	}
 }
@@ -290,12 +290,12 @@ func TestDependencyB2WithheldOperands(t *testing.T) {
 				t.Fatal(err)
 			}
 			src := []byte("package assets\nimport _ \"embed\"\n" + tc.directives + "\nvar assets embed.FS\n")
-			f, err := r.ReadFile(context.Background(), repo, "assets.go", "go", src)
+			f, err := r.ReadFile(context.Background(), repo, deps.Input{Path: "assets.go", Dialect: "go"}, src)
 			if err != nil || !f.Complete {
 				t.Fatalf("fixture must be complete: %+v, %v", f, err)
 			}
 			for i, e := range f.Edges {
-				if e.Kind != deps.Embed {
+				if e.Kind != deps.KindEmbed {
 					continue
 				}
 				if e.Raw != "***" {
@@ -310,9 +310,9 @@ func TestDependencyB2WithheldOperands(t *testing.T) {
 				}
 			}
 			truth := []depbench.TruthEdge{
-				{Kind: deps.ConfigRef, Raw: "go.mod", Line: 1, Resolution: deps.File, To: "go.mod"},
-				{Kind: deps.Embed, Raw: "one file", Line: tc.lines[0], Resolution: deps.File, To: "one file"},
-				{Kind: deps.Embed, Raw: "two file", Line: tc.lines[1], Resolution: deps.File, To: "two file"},
+				{Kind: deps.KindConfigRef, Raw: "go.mod", Line: 0, Resolution: deps.ResolvedFile, To: "go.mod"},
+				{Kind: deps.KindEmbed, Raw: "one file", Line: tc.lines[0], Resolution: deps.ResolvedFile, To: "one file"},
+				{Kind: deps.KindEmbed, Raw: "two file", Line: tc.lines[1], Resolution: deps.ResolvedFile, To: "two file"},
 			}
 			files := []deps.FileDeps{f}
 			s := depbench.Score(depbench.Observation{Files: files, Repeat: files, Relocated: files,
@@ -327,8 +327,8 @@ func TestDependencyB2WithheldOperands(t *testing.T) {
 
 type fixtureEmbedResolver struct{}
 
-func (fixtureEmbedResolver) Resolve(fs.FS, string, string) ([]deps.Edge, *deps.Unknown) {
-	return []deps.Edge{{Kind: deps.Import, To: "go:embed", Resolution: deps.External, Version: "v1"}}, nil
+func (fixtureEmbedResolver) Resolve(context.Context, deps.ResolveRequest) deps.ResolveResult {
+	return deps.ResolveResult{Edges: []deps.Edge{{Kind: deps.KindImport, To: "go:embed", Resolution: deps.ResolvedExternal, Version: "v1"}}}
 }
 
 func TestDependencyB2BindingIdentity(t *testing.T) {
@@ -349,13 +349,13 @@ func TestDependencyB2BindingIdentity(t *testing.T) {
 			var edges []deps.Edge
 			for i, raw := range tc.raw {
 				truth = append(truth, depbench.TruthEdge{
-					Kind: deps.Include, Raw: raw, Line: tc.oracleLines[i],
-					To: targets[i], Resolution: deps.File,
+					Kind: deps.KindInclude, Raw: raw, Line: tc.oracleLines[i],
+					To: targets[i], Resolution: deps.ResolvedFile,
 				})
 				// Keep the B1 target set while reversing construct-to-target bindings.
 				edges = append(edges, deps.Edge{
-					From: "source.txt", Kind: deps.Include, Raw: raw, Line: tc.readerLines[i],
-					To: targets[1-i], Resolution: deps.File,
+					From: "source.txt", Kind: deps.KindInclude, Raw: raw, Line: tc.readerLines[i],
+					To: targets[1-i], Resolution: deps.ResolvedFile,
 				})
 			}
 			files := []deps.FileDeps{{Path: "source.txt", Complete: true, Edges: edges}}
@@ -374,13 +374,13 @@ func TestDependencyB2BindingIdentity(t *testing.T) {
 func TestDependencyB2NativeExternalTarget(t *testing.T) {
 	files := []deps.FileDeps{{
 		Path: "source.txt", Complete: true,
-		Edges: []deps.Edge{{From: "source.txt", Kind: deps.Import, Raw: "dependency",
-			Line: 1, Resolution: deps.File, To: "local.txt"}},
+		Edges: []deps.Edge{{From: "source.txt", Kind: deps.KindImport, Raw: "dependency",
+			Line: 1, Resolution: deps.ResolvedFile, To: "local.txt"}},
 	}}
 	score := depbench.Score(depbench.Observation{
 		Files: files, Repeat: files, Relocated: files,
 		Truth: []depbench.TruthFile{{Path: "source.txt", Edges: []depbench.TruthEdge{{
-			Kind: deps.Import, Raw: "dependency", Line: 1, Resolution: deps.External, To: "example:dependency",
+			Kind: deps.KindImport, Raw: "dependency", Line: 1, Resolution: deps.ResolvedExternal, To: "example:dependency",
 		}}}},
 	})
 	if !score.B1 || score.Expected != 0 || score.Missing != 0 || score.B2 || score.Wrong != 1 {

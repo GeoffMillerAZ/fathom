@@ -17,19 +17,37 @@ const maxReadBytes = 2 << 20
 // caller-supplied text.
 var ErrInput = errors.New("invalid dependency input")
 
-// Resolver resolves a detected import against the supplied repository view.
+// Resolver resolves a detected construct against the supplied repository view.
 // It returns targets and/or a typed unknown. The reader owns source, line,
 // raw operand and provenance. A version must come from a manifest pin or
 // lockfile. Callers sharing a Reader must supply concurrency-safe resolvers.
 type Resolver interface {
-	Resolve(repo fs.FS, from, raw string) ([]Edge, *Unknown)
+	Resolve(ctx context.Context, req ResolveRequest) ResolveResult
+}
+
+// ResolveRequest describes a construct in a repository-rooted view.
+// Line is one-based when known, or zero when no source line is available.
+type ResolveRequest struct {
+	Repo fs.FS
+	From string
+	Raw  string
+	Kind Kind
+	Line int
+}
+
+// ResolveResult holds the targets and optional missing evidence.
+type ResolveResult struct {
+	Edges   []Edge
+	Unknown *Unknown
 }
 
 // Option configures a Reader at construction.
 type Option func(*readerOptions) error
 
-// WithResolver replaces import resolution for an implemented dialect. An
-// unimplemented dialect still lacks the detector needed for completeness.
+// WithResolver replaces resolver-driven resolution for an implemented dialect.
+// A replacement voids built-in admission for this Reader. Its results read
+// Measured false and require TrustUnmeasured to become complete. An unimplemented
+// dialect still lacks the detector needed for completeness.
 func WithResolver(dialect string, resolver Resolver) Option {
 	return func(r *readerOptions) error {
 		if !validDialect(dialect) || resolver == nil || r.resolvers[dialect] != nil {
@@ -40,13 +58,14 @@ func WithResolver(dialect string, resolver Resolver) Option {
 	}
 }
 
-// WithDeclaredEdges adds direct edges for the specified source paths. To
-// must identify a logical target. A version must be a manifest or lockfile pin.
+// WithDeclaredEdges adds direct edges for the specified source paths. Declarations
+// never clear an unknown or make a file complete. To must identify a logical
+// target. A version must be a manifest or lockfile pin.
 func WithDeclaredEdges(edges ...Edge) Option {
 	edges = slices.Clone(edges)
 	return func(r *readerOptions) error {
 		for _, e := range edges {
-			if !validPath(e.From) || !validEdge(e) || e.Resolution == UnknownTarget {
+			if !validPath(e.From) || !validEdge(e) || e.Resolution == ResolvedUnknown {
 				return fmt.Errorf("%w: invalid declared edge", ErrInput)
 			}
 			r.declared[e.From] = append(r.declared[e.From], e)
@@ -96,20 +115,20 @@ func New(opts ...Option) (*Reader, error) {
 
 // ReadFile reads source bytes, consulting only repo for resolution. Dialect
 // is explicit when provided. Blank dialect infers from the logical path.
-func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, file, dialect string, src []byte) (FileDeps, error) {
-	if err := validateInput(repo, Input{Path: file, Dialect: dialect}); err != nil {
+func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, in Input, src []byte) (FileDeps, error) {
+	if err := validateInput(repo, in); err != nil {
 		return FileDeps{}, err
 	}
-	return r.readFile(ctx, repositoryFS{view: repo}, file, dialect, src)
+	return r.readFile(ctx, repositoryFS{view: repo}, in, src)
 }
 
-func (r *Reader) readFile(ctx context.Context, repo repositoryFS, file, dialect string, src []byte) (FileDeps, error) {
+func (r *Reader) readFile(ctx context.Context, repo repositoryFS, in Input, src []byte) (FileDeps, error) {
 	if err := ctx.Err(); err != nil {
 		return FileDeps{}, err
 	}
-	f := newResult(file, inferDialect(file, dialect))
+	f := newResult(in.Path, inferDialect(in.Path, in.Dialect))
 	if len(src) > maxReadBytes {
-		f.addUnknown(Unknown{Code: ReadLimit, DecidableBy: []DecidableBy{Observation}})
+		f.addUnknown(Unknown{Code: UnknownReadLimit, DecidableBy: []DecidableBy{DecideObservation}})
 		r.finish(&f)
 		return f.FileDeps, nil
 	}
@@ -156,13 +175,13 @@ func (r *Reader) ReadFiles(ctx context.Context, repo fs.FS, inputs []Input) ([]F
 		}
 		if code != "" {
 			f := newResult(input.Path, inferDialect(input.Path, input.Dialect))
-			f.addUnknown(Unknown{Code: code, DecidableBy: []DecidableBy{Observation}})
+			f.addUnknown(Unknown{Code: code, DecidableBy: []DecidableBy{DecideObservation}})
 			r.finish(&f)
 			out = append(out, f.FileDeps)
 			readErr = errors.New("one or more dependency files could not be read")
 			continue
 		}
-		f, err := r.readFile(ctx, view, input.Path, input.Dialect, src)
+		f, err := r.readFile(ctx, view, input, src)
 		if err != nil {
 			return out, err
 		}
@@ -172,7 +191,10 @@ func (r *Reader) ReadFiles(ctx context.Context, repo fs.FS, inputs []Input) ([]F
 }
 
 func (r *Reader) finish(f *result) {
-	state := admissions[f.Dialect]
+	r.finishWithAdmission(f, admissions[f.Dialect])
+}
+
+func (r *Reader) finishWithAdmission(f *result, state admission) {
 	if state == measured && r.resolvers[f.Dialect] != nil {
 		state = unmeasured
 	}
@@ -181,7 +203,7 @@ func (r *Reader) finish(f *result) {
 
 func (r *Reader) applyDeclarations(f *result) {
 	for _, e := range r.declared[f.Path] {
-		e.Provenance = Declared
+		e.Provenance = ProvenanceDeclared
 		f.addEdge(e)
 	}
 }
@@ -207,22 +229,22 @@ func implemented(dialect string) bool { return dialect == "go" }
 func readSource(repo repositoryFS, name string) ([]byte, UnknownCode) {
 	info, err := repo.Stat(name)
 	if err != nil || !info.Mode().IsRegular() {
-		return nil, MissingConfig
+		return nil, UnknownMissingConfig
 	}
 	if info.Size() > maxReadBytes {
-		return nil, ReadLimit
+		return nil, UnknownReadLimit
 	}
 	f, err := repo.Open(name)
 	if err != nil {
-		return nil, MissingConfig
+		return nil, UnknownMissingConfig
 	}
 	defer f.Close()
 	src, err := io.ReadAll(io.LimitReader(f, maxReadBytes+1))
 	if err != nil {
-		return nil, MissingConfig
+		return nil, UnknownMissingConfig
 	}
 	if len(src) > maxReadBytes {
-		return nil, ReadLimit
+		return nil, UnknownReadLimit
 	}
 	return src, ""
 }

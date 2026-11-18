@@ -2,6 +2,7 @@ package deps
 
 import (
 	"cmp"
+	"context"
 	"io/fs"
 	"regexp"
 	"slices"
@@ -49,7 +50,7 @@ func safeRaw(s string) string {
 
 func validEdge(e Edge) bool {
 	switch e.Kind {
-	case Import, Include, Embed, BuildInput, Exec, ConfigRef:
+	case KindImport, KindInclude, KindEmbed, KindBuildInput, KindExec, KindConfigRef:
 	default:
 		return false
 	}
@@ -57,14 +58,14 @@ func validEdge(e Edge) bool {
 		return false
 	}
 	switch e.Resolution {
-	case File:
+	case ResolvedFile:
 		return e.Version == "" && validPath(e.To)
-	case Directory:
+	case ResolvedDirectory:
 		return e.Version == "" && (validPath(e.To) || e.To == ".")
-	case External:
+	case ResolvedExternal:
 		return validExternal(e.To) && len(e.Version) <= maxIdentityBytes &&
 			(e.Version == "" || versionToken.MatchString(e.Version))
-	case UnknownTarget:
+	case ResolvedUnknown:
 		return e.To == "" && e.Version == ""
 	}
 	return false
@@ -72,8 +73,8 @@ func validEdge(e Edge) bool {
 
 func validUnknownCode(c UnknownCode) bool {
 	switch c {
-	case DynamicImport, ComputedPath, UnresolvedAlias, MissingConfig, UnboundedGlob,
-		UnsupportedConstruct, ParseError, UnmeasuredReader, ExternalUnpinned, ReadLimit:
+	case UnknownDynamicImport, UnknownComputedPath, UnknownUnresolvedAlias, UnknownMissingConfig, UnknownUnboundedGlob,
+		UnknownUnsupportedConstruct, UnknownParseError, UnknownUnmeasuredReader, UnknownExternalUnpinned, UnknownReadLimit:
 		return true
 	}
 	return false
@@ -81,7 +82,7 @@ func validUnknownCode(c UnknownCode) bool {
 
 func validEvidence(s DecidableBy) bool {
 	switch s {
-	case Toolchain, Lockfile, ConfigFile, Observation, Declaration:
+	case DecideToolchain, DecideLockfile, DecideConfigFile, DecideObservation, DecideDeclaration:
 		return true
 	}
 	return false
@@ -95,31 +96,31 @@ func newResult(file, dialect string) result {
 
 func (f *result) addEdge(e Edge) {
 	switch e.Provenance {
-	case Builtin, Pack, Extension, Declared:
+	case ProvenanceBuiltin, ProvenancePack, ProvenanceExtension, ProvenanceDeclared:
 	default:
-		f.addUnknown(Unknown{Code: UnsupportedConstruct, Line: e.Line})
+		f.addUnknown(Unknown{Code: UnknownUnsupportedConstruct, Line: e.Line})
 		return
 	}
 	if !validEdge(e) {
-		f.addUnknown(Unknown{Code: UnsupportedConstruct, Line: e.Line})
+		f.addUnknown(Unknown{Code: UnknownUnsupportedConstruct, Line: e.Line})
 		return
 	}
-	e.From, e.Line, e.Raw = f.Path, max(1, e.Line), safeRaw(e.Raw)
+	e.From, e.Raw = f.Path, safeRaw(e.Raw)
 	f.Edges = append(f.Edges, e)
-	if e.Resolution == External && e.Version == "" {
-		f.addUnknown(Unknown{Code: ExternalUnpinned, Line: e.Line, Raw: e.Raw,
-			DecidableBy: []DecidableBy{Lockfile, ConfigFile}})
+	if e.Resolution == ResolvedExternal && e.Version == "" {
+		f.addUnknown(Unknown{Code: UnknownExternalUnpinned, Line: e.Line, Raw: e.Raw,
+			DecidableBy: []DecidableBy{DecideLockfile, DecideConfigFile}})
 	}
 }
 
 func (f *result) addUnknown(u Unknown) {
-	u.From, u.Line = f.Path, max(1, u.Line)
+	u.From, u.Line = f.Path, max(0, u.Line)
 	sources := []DecidableBy{}
 	if !validUnknownCode(u.Code) {
-		u.Code, u.Raw = UnsupportedConstruct, ""
+		u.Code, u.Raw = UnknownUnsupportedConstruct, ""
 	} else {
 		u.Raw = safeRaw(u.Raw)
-		if (u.Code == DynamicImport || u.Code == ComputedPath) && u.Raw != "" {
+		if (u.Code == UnknownDynamicImport || u.Code == UnknownComputedPath) && u.Raw != "" {
 			u.Raw = "***"
 		}
 		for _, source := range u.DecidableBy {
@@ -137,10 +138,10 @@ func (f *result) finish(state admission, known, trust bool) {
 	f.Measured = known && state == measured
 	f.Trusted = known && state == unmeasured && trust
 	if !known {
-		f.addUnknown(Unknown{Code: UnsupportedConstruct})
+		f.addUnknown(Unknown{Code: UnknownUnsupportedConstruct})
 	}
 	if !f.Measured && !f.Trusted {
-		f.addUnknown(Unknown{Code: UnmeasuredReader})
+		f.addUnknown(Unknown{Code: UnknownUnmeasuredReader})
 	}
 	f.Complete = len(f.Unknowns) == 0 && (f.Measured || f.Trusted)
 
@@ -161,27 +162,27 @@ func compareUnknowns(a, b Unknown) int {
 		cmp.Compare(a.Raw, b.Raw), slices.Compare(a.DecidableBy, b.DecidableBy))
 }
 
-func (f *result) resolveExtension(repo repositoryFS, resolver Resolver, raw string, line int) {
-	edges, unknown := resolver.Resolve(repo, f.Path, raw)
-	requiresUnknown := len(edges) == 0
-	for _, e := range edges {
-		e.Line, e.Raw, e.Provenance = line, raw, Extension
-		requiresUnknown = requiresUnknown || e.Resolution == UnknownTarget
-		if validEdge(e) && (e.Resolution == File || e.Resolution == Directory) {
-			info, err := repo.Stat(e.To)
-			if err != nil || (e.Resolution == File && !info.Mode().IsRegular()) ||
-				(e.Resolution == Directory && !info.IsDir()) {
+func (f *result) resolveExtension(ctx context.Context, resolver Resolver, req ResolveRequest) {
+	resolved := resolver.Resolve(ctx, req)
+	requiresUnknown := len(resolved.Edges) == 0
+	for _, e := range resolved.Edges {
+		e.Line, e.Raw, e.Provenance = req.Line, req.Raw, ProvenanceExtension
+		requiresUnknown = requiresUnknown || e.Resolution == ResolvedUnknown
+		if validEdge(e) && (e.Resolution == ResolvedFile || e.Resolution == ResolvedDirectory) {
+			info, err := fs.Stat(req.Repo, e.To)
+			if err != nil || (e.Resolution == ResolvedFile && !info.Mode().IsRegular()) ||
+				(e.Resolution == ResolvedDirectory && !info.IsDir()) {
 				requiresUnknown = true
 				continue
 			}
 		}
 		f.addEdge(e)
 	}
-	if unknown != nil {
-		u := *unknown
-		u.Line, u.Raw = line, raw
+	if resolved.Unknown != nil {
+		u := *resolved.Unknown
+		u.Line, u.Raw = req.Line, req.Raw
 		f.addUnknown(u)
 	} else if requiresUnknown {
-		f.addUnknown(Unknown{Code: UnresolvedAlias, Raw: raw, Line: line})
+		f.addUnknown(Unknown{Code: UnknownUnresolvedAlias, Raw: req.Raw, Line: req.Line})
 	}
 }

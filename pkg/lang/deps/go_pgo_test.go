@@ -66,8 +66,8 @@ func TestGoDefaultPGO(t *testing.T) {
 		}
 	}
 	got := read("cmd/main.go")
-	want := deps.Edge{From: "cmd/main.go", Kind: deps.BuildInput, Raw: profile, To: profile,
-		Resolution: deps.File, Line: 1, Provenance: deps.Builtin}
+	want := deps.Edge{From: "cmd/main.go", Kind: deps.KindBuildInput, Raw: profile, To: profile,
+		Resolution: deps.ResolvedFile, Line: 0, Provenance: deps.ProvenanceBuiltin}
 	if !got.Complete || len(got.Edges) != 2 || got.Edges[0] != want {
 		t.Errorf("missing native default profile edge: %+v", got)
 	}
@@ -79,7 +79,7 @@ func TestGoDefaultPGO(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = read("cmd/main.go")
-	if got.Complete || len(got.Edges) != 1 || len(got.Unknowns) != 1 || got.Unknowns[0].Code != deps.MissingConfig {
+	if got.Complete || len(got.Edges) != 1 || len(got.Unknowns) != 1 || got.Unknowns[0].Code != deps.UnknownMissingConfig {
 		t.Errorf("unsafe profile must be disclosed: %+v", got)
 	}
 }
