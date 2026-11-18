@@ -1,0 +1,29 @@
+{
+  "implementation": "cpython",
+  "version": "3.13.17",
+  "modulefinder_sha256": "5447268e1fe922d334f59e2f370dae0130ab2b9eff48ca7bd71c4ec544443c8b",
+  "selection": "All tracked regular .py files at the pinned commit, case-sensitive; no submodule traversal or untracked files.",
+  "subjects": [
+    {
+      "name": "fastapi",
+      "url": "https://github.com/fastapi/fastapi.git",
+      "commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+      "roots": ["."],
+      "files": 1175
+    },
+    {
+      "name": "flask",
+      "url": "https://github.com/pallets/flask.git",
+      "commit": "22d924701a6ae2e4cd01e9a15bbaf3946094af65",
+      "roots": ["src", "."],
+      "files": 83
+    },
+    {
+      "name": "attrs",
+      "url": "https://github.com/python-attrs/attrs.git",
+      "commit": "c8bb9bfaa2843e7844b5bb13bed4370b51feec4f",
+      "roots": ["src", "."],
+      "files": 56
+    }
+  ]
+}
