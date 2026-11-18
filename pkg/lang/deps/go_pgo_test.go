@@ -13,7 +13,7 @@ import (
 )
 
 func TestGoDefaultPGO(t *testing.T) {
-	root := t.TempDir()
+	root := nativeGoFixtureRoot(t)
 	if err := os.Mkdir(filepath.Join(root, "cmd"), 0o700); err != nil {
 		t.Fatal(err)
 	}

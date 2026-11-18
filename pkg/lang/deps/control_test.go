@@ -219,7 +219,7 @@ func goList(t *testing.T, root, subject string) []nativePackage {
 
 func copyControl(t *testing.T) string {
 	t.Helper()
-	root := t.TempDir()
+	root := nativeGoFixtureRoot(t)
 	source := os.DirFS("testdata/control")
 	err := fs.WalkDir(source, ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -235,6 +235,17 @@ func copyControl(t *testing.T) string {
 		}
 		return os.WriteFile(dest, b, 0o600)
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// Native Go commands report physical paths when the gate places temporary
+// files under a symlink. Compare their results with the physical fixture root.
+func nativeGoFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
