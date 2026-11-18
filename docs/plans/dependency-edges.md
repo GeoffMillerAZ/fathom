@@ -28,10 +28,10 @@ Start after DEP-1 through DEP-3 land.
 
 ## Engine move and computed path filters (ADJ-6)
 
-- [ ] Move the generic closure engine and conformance suite into `pkg/depgraph` after two of DEP-M1 to DEP-M3 pass B1 and B2. Enforce family import separation and obtain HOLD-18 acceptance {id: DEP-P1a, needs: DEP-7}
-- [ ] Read push and pull request path filters with platform glob conformance and disclose unevaluated expressions {id: PF-1, needs: DEP-P1a}
-- [ ] Join the declared entry map, direct edges, closure and filters in `fathom-lang pathfilters` and prove the three verdicts and unused patterns {id: PF-2, needs: PF-1}
-- [ ] Wire the first use in a fixture repository and detect every seeded miss with no false misses on the control. The first real consumer is the CI kit after DEP-P1b {id: PF-3, needs: PF-2}
+- [-] Move the generic closure engine and conformance suite into `pkg/depgraph`. Enforce family import separation and obtain HOLD-18 acceptance {id: DEP-P1a, disposition: deferred, reason: "DEP-M2 alone qualified because DEP-M1 had mixed admission and DEP-M3 was inconclusive", trigger: "two of DEP-M1 through DEP-M3 pass B1 and B2", needs: DEP-7}
+- [-] Read push and pull request path filters with platform glob conformance and disclose unevaluated expressions {id: PF-1, disposition: deferred, reason: "the required family closure engine is held", trigger: "DEP-P1a lands", needs: DEP-P1a}
+- [-] Join the declared entry map, direct edges, closure and filters in `fathom-lang pathfilters` and prove the three verdicts and unused patterns {id: PF-2, disposition: deferred, reason: "the required family closure engine is held", trigger: "DEP-P1a lands and PF-1 is verified", needs: PF-1}
+- [-] Wire the first use in a fixture repository and detect every seeded miss with no false misses on the control. The first real consumer is the CI kit after DEP-P1b {id: PF-3, disposition: deferred, reason: "the required family closure engine is held", trigger: "DEP-P1a lands and PF-2 is verified", needs: PF-2}
 - [-] Read the first real workflow wiring and decide whether to keep or demote the check {id: PF-M1, disposition: deferred, reason: "fixture wiring alone does not start the real-use window", trigger: "30 days after the first wiring outside fixtures", needs: "PF-3,DEP-P1b"}
 
 ## Deferred
