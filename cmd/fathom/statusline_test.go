@@ -17,6 +17,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
 
@@ -30,6 +31,7 @@ type statuslineFake struct {
 
 func newStatuslineFake(t *testing.T, status int, body string) *statuslineFake {
 	t.Helper()
+	isolateHookBreaker(t)
 	f := &statuslineFake{}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
@@ -43,11 +45,7 @@ func newStatuslineFake(t *testing.T, status int, body string) *statuslineFake {
 		w.WriteHeader(status)
 		_, _ = io.WriteString(w, body)
 	}))
-	url := f.srv.URL
-	t.Cleanup(func() {
-		f.srv.Close()
-		(&hookguard.Guard{}).RecordSuccess(url) // leave no breaker state for a reused port
-	})
+	t.Cleanup(f.srv.Close)
 	return f
 }
 
@@ -205,6 +203,34 @@ func TestStatuslinePrintsOneOfFiveStatesNeverBlank(t *testing.T) {
 	})
 }
 
+func TestStatuslineIgnoresInheritedBreaker(t *testing.T) {
+	isolateHookRun(t)
+	inherited := &hookguard.Guard{HealthDir: hookcache.HealthDir, DaemonDir: t.TempDir()}
+	var url string
+	t.Run("daemon predates the root query", func(t *testing.T) {
+		f := newStatuslineFake(t, http.StatusOK, `{"schema_version":3,"services":[{"service":"svc"}]}`)
+		url = f.srv.URL
+		// Seed the same URL in the enclosing scope. A fixed future clock keeps
+		// the inherited breaker open even if this process is paused for seconds.
+		openedAt := time.Now().Add(time.Hour)
+		seed := &hookguard.Guard{HealthDir: inherited.HealthDir, Now: func() time.Time { return openedAt }}
+		seed.RecordFailure(url, errors.New("refused"))
+		seed.RecordFailure(url, errors.New("refused"))
+		if got := hookguard.BreakerAllows(inherited, url).Verdict; got != hookguard.Open {
+			t.Fatalf("inherited breaker = %v, want open", got)
+		}
+		if got := runStatusline(t, statuslineStdin, "--url", url); got != "fathom ○ daemon down\n" {
+			t.Fatalf("line = %q, want daemon down", got)
+		}
+		if asked := f.asked(); len(asked) != 1 || asked[0] != "/w/repo" {
+			t.Fatalf("roots asked = %q, want one GET for the project dir", asked)
+		}
+	})
+	if got := hookguard.BreakerAllows(&hookguard.Guard{DaemonDir: inherited.DaemonDir}, url).Verdict; got != hookguard.Open {
+		t.Fatalf("breaker after child cleanup = %v, want restored open breaker", got)
+	}
+}
+
 // writeStatuslineSwitch writes the managed daemon's kill-switch file naming
 // url (the hermetic home TestMain set), removed at cleanup.
 func writeStatuslineSwitch(t *testing.T, name, url string) {
@@ -249,6 +275,7 @@ func TestStatuslineCPUTimeP95AtMost100ms(t *testing.T) {
 	}
 
 	t.Run("a hung daemon is bounded by the deadline", func(t *testing.T) {
+		isolateHookBreaker(t)
 		release := make(chan struct{})
 		hang := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			select {
@@ -257,14 +284,12 @@ func TestStatuslineCPUTimeP95AtMost100ms(t *testing.T) {
 			case <-time.After(10 * time.Second):
 			}
 		}))
-		url := hang.URL
 		t.Cleanup(func() {
 			close(release)
 			hang.Close()
-			(&hookguard.Guard{}).RecordSuccess(url)
 		})
 		start := time.Now()
-		got := runStatusline(t, statuslineStdin, "--url", url)
+		got := runStatusline(t, statuslineStdin, "--url", hang.URL)
 		elapsed := time.Since(start)
 		if got != "fathom ○ daemon down\n" {
 			t.Fatalf("line = %q", got)
@@ -284,7 +309,6 @@ func TestStatuslineCPUTimeP95AtMost100ms(t *testing.T) {
 // kill source KS-6's gate names; with no [decide] block in either layer the
 // bytes are unchanged.
 func TestStatuslineJudgedTokenNeverPassStyled(t *testing.T) {
-	f := newStatuslineFake(t, http.StatusOK, statuslineAnswerJSON("0", "false"))
 	const plain = "fathom ● @abcdef1"
 	for _, tc := range []struct {
 		name, user, project, token, source string
@@ -305,6 +329,7 @@ func TestStatuslineJudgedTokenNeverPassStyled(t *testing.T) {
 		{name: "killed by enabled", user: "[decide]\nprovider = \"typesafe\"\nenabled = false\n", token: "J:killed", source: decide.KillSourceEnabled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			f := newStatuslineFake(t, http.StatusOK, statuslineAnswerJSON("0", "false"))
 			home := t.TempDir()
 			t.Setenv("FATHOM_HOME", home)
 			t.Setenv(decide.KillEnv, "")

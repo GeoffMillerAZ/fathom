@@ -182,14 +182,23 @@ func hookStdinPayload(repo string) string {
 		repo, filepath.Join(repo, "main.go"), filepath.Join(repo, "transcript.jsonl"))
 }
 
+// isolateHookBreaker gives a serial test its own default breaker store and
+// restores the enclosing scope at cleanup.
+func isolateHookBreaker(t *testing.T) {
+	t.Helper()
+	origHealth := hookcache.HealthDir
+	hookcache.HealthDir = filepath.Join(t.TempDir(), "health")
+	t.Cleanup(func() { hookcache.HealthDir = origHealth })
+}
+
 // isolateHookRun points every machine-shared hook cache at fresh temp dirs
 // so one case's breaker or identity answer cannot short-circuit the next.
 func isolateHookRun(t *testing.T) {
 	t.Helper()
-	origHealth, origIdent := hookcache.HealthDir, identCacheDir
-	hookcache.HealthDir = filepath.Join(t.TempDir(), "health")
+	isolateHookBreaker(t)
+	origIdent := identCacheDir
 	identCacheDir = filepath.Join(t.TempDir(), "ident")
-	t.Cleanup(func() { hookcache.HealthDir, identCacheDir = origHealth, origIdent })
+	t.Cleanup(func() { identCacheDir = origIdent })
 }
 
 func hookRepo(t *testing.T) string {
