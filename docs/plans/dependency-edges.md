@@ -6,9 +6,9 @@ Grammar v2 (`docs/plans/README.md`). Prefixes DEP-, BND- and PF-. Decisions ADR-
 ## Records and public door
 
 - [x] (op) Record the accepted dependency-edges boundary, contract, preregistered admission bars and register {id: DEP-0, oracle: lexical, path: ADR.md, pattern: "^## ADR-114: Standalone dependency edges disclose unknowns per file"}
-- [ ] Public door, closed sets, completeness, deterministic output, CUE schema and API snapshot {id: DEP-1, symbol: ReadFile, package: pkg/lang/deps, needs: DEP-0}
-- [ ] Go control reader and independent-oracle grading harness {id: DEP-2, symbol: readGo, package: pkg/lang/deps, reachable_from: ReadFile, needs: DEP-1}
-- [ ] JSON CLI with golden and the declared-edge export {id: DEP-3, symbol: cmdDeps, package: cmd/fathom-lang, reachable_from: run, needs: "DEP-1,DEP-2"}
+- [x] Public door, closed sets, completeness, deterministic output, CUE schema and API snapshot {id: DEP-1, symbol: ReadFiles, package: pkg/lang/deps, needs: DEP-0}
+- [x] Go control reader and independent-oracle grading harness {id: DEP-2, symbol: readGo, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-1}
+- [x] JSON CLI with golden and the declared-edge export {id: DEP-3, symbol: cmdDeps, package: cmd/fathom-lang, reachable_from: run, needs: "DEP-1,DEP-2"}
 
 ## Dialect readings and extension
 
