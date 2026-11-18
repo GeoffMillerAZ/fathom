@@ -15,15 +15,15 @@ Grammar v2 (`docs/plans/README.md`). Prefixes DEP-, BND- and PF-. Decisions ADR-
 - [x] TypeScript and JavaScript reader and resolution with DEP-M1 {id: DEP-4, symbol: readTSJSDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-3}
 - [x] Python reader and resolution with DEP-M2 {id: DEP-5, symbol: readPythonDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-3}
 - [x] Dockerfile reader and resolution with DEP-M3 {id: DEP-6, symbol: readDockerfileDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: DEP-3}
-- [ ] Resolver registration, pack captures where needed, declared edges, trust, conformance helper and runnable example {id: DEP-7, needs: "DEP-4,DEP-5,DEP-6"}
+- [x] Resolver registration, pack captures where needed, declared edges, trust, conformance helper and runnable example {id: DEP-7, symbol: readPackDependencies, package: pkg/lang/deps, reachable_from: ReadFiles, needs: "DEP-4,DEP-5,DEP-6"}
 
 ## Import boundaries (ADJ-5)
 
 Start after DEP-1 through DEP-3 land.
 
-- [ ] Evaluate declared direct-edge rules with violated, clean and unverified verdicts; hold the wire model to schema and fixture checks {id: BND-1, needs: DEP-3}
-- [ ] Run the rules from `fathom-lang boundaries --rules` with stable JSON, findings and strict exit status {id: BND-2, needs: BND-1}
-- [ ] Evaluate the rule file in the family gate and match the Go import tests on all seeded forbidden edges {id: BND-3, needs: BND-2}
+- [x] Evaluate declared direct-edge rules with violated, clean and unverified verdicts; hold the wire model to schema and fixture checks {id: BND-1, symbol: EvaluateBoundaries, package: pkg/lang/deps/boundaries, reachable_from: cmdBoundaries, needs: DEP-3}
+- [x] Run the rules from `fathom-lang boundaries --rules` with stable JSON, findings and strict exit status {id: BND-2, symbol: cmdBoundaries, package: cmd/fathom-lang, needs: BND-1}
+- [x] (op) Evaluate the rule file in the family gate and match the Go import tests on all seeded forbidden edges {id: BND-3, oracle: lexical, path: Taskfile.yml, pattern: "^    deps: .*record-ids-check, dependency-boundaries", eq: 1, needs: BND-2}
 - [-] Read gate evaluations, violations caught before merge and outside uses (BND-M1). Keep if a violation was caught more clearly than by the older tests or an outside use is observed {id: BND-M1, disposition: deferred, reason: "observe use after the boundary gate lands", trigger: "30 days after BND-3 lands", needs: BND-3}
 
 ## Engine move and computed path filters (ADJ-6)
