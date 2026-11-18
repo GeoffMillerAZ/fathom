@@ -99,6 +99,12 @@ func (g *tsjsRead) resolve(r tsjsRequest, esm bool) {
 		g.finishTarget(r, to, code)
 		return
 	}
+	// In a Node context these names can bind the runtime independently of
+	// an npm package by the same name. A manifest pin cannot pin the runtime.
+	if g.config.resolution != "bundler" && tsjsBareNodeBuiltins[raw] {
+		g.edge(KindImport, raw, "node:"+raw, ResolvedExternal, "", r.line)
+		return
+	}
 	g.external(r, pkg, sub, require)
 }
 

@@ -132,8 +132,34 @@ func (g *tsjsRead) exportBranch(dir string, raw json.RawMessage, wildcard string
 	return "", ""
 }
 
+// Node built-ins that accept a bare specifier. Prefix-only modules are
+// handled by the node: branch without treating them as npm aliases.
+var tsjsBareNodeBuiltins = func() map[string]bool {
+	names := strings.Fields(`
+assert assert/strict async_hooks buffer child_process cluster console constants
+crypto dgram diagnostics_channel dns dns/promises domain events fs fs/promises
+http http2 https inspector inspector/promises module net os path path/posix
+path/win32 perf_hooks process punycode querystring readline readline/promises
+repl stream stream/consumers stream/promises stream/web string_decoder sys
+timers timers/promises tls trace_events tty url util util/types v8 vm wasi
+worker_threads zlib
+`)
+	out := make(map[string]bool, len(names))
+	for _, name := range names {
+		out[name] = true
+	}
+	return out
+}()
+
 func (g *tsjsRead) external(r tsjsRequest, pkg, sub string, require bool) {
+	types := strings.TrimPrefix(strings.Replace(pkg, "/", "__", 1), "@")
 	for dir := path.Dir(g.out.Path); ; dir = path.Dir(dir) {
+		if exists, code := g.probe(path.Join(dir, "node_modules", "@types", types), true); exists || code != "" {
+			// A visible declaration package can change the selected file even
+			// when the corresponding runtime package has an exact version.
+			g.finishTarget(r, "", UnknownUnsupportedConstruct)
+			return
+		}
 		base := path.Join(dir, "node_modules", pkg)
 		if exists, code := g.probe(base, true); exists || code != "" {
 			if code != "" {
@@ -196,8 +222,8 @@ func (g *tsjsRead) packagePin(pkg string) string {
 		LockfileVersion int
 		Packages        map[string]struct {
 			tsjsPackageJSON
-			Version string
-			Link    bool
+			Version, Resolved string
+			Link              bool
 		}
 	}
 	if json.Unmarshal(data, &lock) != nil {
@@ -209,6 +235,7 @@ func (g *tsjsRead) packagePin(pkg string) string {
 	if lock.LockfileVersion != 2 && lock.LockfileVersion != 3 || !hasRoot ||
 		tsjsDependencySpec(root.tsjsPackageJSON, pkg) != spec || !hasPin || pin.Link ||
 		pin.Name != "" && pin.Name != pkg || !tsjsExactVersion.MatchString(pin.Version) ||
+		pin.Resolved != "" && !strings.HasPrefix(pin.Resolved, "https://") ||
 		tsjsExactVersion.MatchString(spec) && spec != pin.Version {
 		return ""
 	}

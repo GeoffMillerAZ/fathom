@@ -30,6 +30,19 @@ const tsjsQuery = `
  (#eq? @loader "require") (#eq? @method "resolve"))
 ((call_expression function: (member_expression object: (identifier) @loader property: (property_identifier) @method) @member arguments: (arguments . (_) @operand))
  (#eq? @loader "require") (#eq? @method "resolve"))
+(
+ [(variable_declarator name: (identifier) @shadow)
+  (assignment_expression left: (identifier) @shadow)
+  (function_declaration name: (identifier) @shadow)
+  (class_declaration name: (_) @shadow)
+  (import_clause (identifier) @shadow)
+  (namespace_import (identifier) @shadow)
+  (import_specifier alias: (identifier) @shadow)
+  (arrow_function parameter: (identifier) @shadow)
+  (catch_clause parameter: (identifier) @shadow)]
+ (#eq? @shadow "require"))
+((identifier) @escaped-loader
+ (#match? @escaped-loader "\\\\u"))
 ((identifier) @loader-use
  (#match? @loader-use "^(require|createRequire|requirejs)$"))
 ((call_expression function: (identifier) @other-loader)
@@ -37,15 +50,19 @@ const tsjsQuery = `
 ((new_expression constructor: (identifier) @other-loader)
  (#eq? @other-loader "Function"))
 ((member_expression object: (identifier) @module property: (property_identifier) @method) @other-loader
- (#eq? @module "module") (#eq? @method "require"))
+ (#match? @module "^(module|global|globalThis)$") (#eq? @method "require"))
+((subscript_expression object: (identifier) @module index: (_) @index) @module-subscript
+ (#match? @module "^(module|global|globalThis)$"))
+((member_expression object: (identifier) @module property: (property_identifier) @method) @other-loader
+ (#eq? @module "System") (#eq? @method "import"))
 (meta_property) @meta
 ((member_expression object: (meta_property) property: (property_identifier) @method) @other-loader
  (#match? @method "^(resolve|glob|globEager)$"))
 (subscript_expression object: (meta_property)) @other-loader
 ((new_expression constructor: (identifier) @url arguments: (arguments (member_expression object: (meta_property)))) @other-loader
  (#eq? @url "URL"))
-((shorthand_property_identifier_pattern) @loader-use
- (#eq? @loader-use "require"))
+((shorthand_property_identifier_pattern) @shadow
+ (#eq? @shadow "require"))
 (comment) @comment
 `
 
@@ -53,7 +70,15 @@ const tsjsJSXQuery = `
 [(jsx_element) (jsx_self_closing_element)] @jsx
 `
 
+const tsjsJavaScriptQuery = `
+((formal_parameters (identifier) @shadow)
+ (#eq? @shadow "require"))
+`
+
 const tsjsTSQuery = `
+([(required_parameter pattern: (identifier) @shadow)
+  (optional_parameter pattern: (identifier) @shadow)]
+ (#eq? @shadow "require"))
 (import_require_clause source: (string) @operand) @equals
 (ambient_declaration (module name: (string) @operand)) @ambient
 `
@@ -134,6 +159,9 @@ func (g *tsjsRead) syntax(src []byte) (tsjsSyntax, bool) {
 			entry = "tree_sitter_tsx"
 		}
 	}
+	if grammar == "javascript" {
+		query += tsjsJavaScriptQuery
+	}
 	if entry != "tree_sitter_typescript" {
 		query += tsjsJSXQuery
 	}
@@ -185,9 +213,10 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 	calls := make(map[tsjsSite]tsjsCall)
 	callOrder := []tsjsSite{}
 	var existing map[tsjsRequest]string
+	shadowed := false
 	for _, match := range matches {
 		var kind string
-		var node, args, operand, loader tsengine.Node
+		var node, args, operand, loader, index tsengine.Node
 		for _, c := range match.Captures {
 			switch c.Name {
 			case "args":
@@ -196,6 +225,8 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 				operand = c.Node
 			case "loader":
 				loader = c.Node
+			case "index":
+				index = c.Node
 			case "method", "module", "url":
 			default:
 				kind, node = c.Name, c.Node
@@ -242,8 +273,22 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 			calls[key] = call
 		case "loader-use":
 			loaders[node.StartByte] = node
+		case "shadow":
+			shadowed = true
+			g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideObservation)
+		case "escaped-loader":
+			name, _ := tsjsLiteral("'" + node.Text(src) + "'")
+			switch name {
+			case "require", "createRequire", "requirejs", "eval", "Function", "define":
+				g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideObservation)
+			}
 		case "error":
 			g.unknown(UnknownParseError, "", node.Line(), DecideToolchain)
+		case "module-subscript":
+			name, literal := tsjsLiteral(index.Text(src))
+			if !literal || name == "require" {
+				g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideObservation)
+			}
 		case "ambient", "other-loader":
 			g.unknown(UnknownUnsupportedConstruct, "", node.Line(), DecideToolchain, DecideConfigFile)
 		case "meta":
@@ -256,6 +301,9 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 	}
 	for _, key := range callOrder {
 		call := calls[key]
+		if shadowed && call.mode == tsjsRequire {
+			continue
+		}
 		g.addRequest(&syntax, src, call.operand, call.line, call.mode, nil)
 		if call.operand.EndByte != 0 && call.args.EndByte > call.operand.EndByte &&
 			!tsjsCallTail(src[call.operand.EndByte:call.args.EndByte]) {

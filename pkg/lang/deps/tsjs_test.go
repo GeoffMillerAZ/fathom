@@ -2,10 +2,13 @@ package deps_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -165,4 +168,69 @@ func TestTSJSPackageLock(t *testing.T) {
 	if !pinned || !unpinned || got.Complete || !slices.Contains(tsjsTargets(got, deps.KindConfigRef), "package-lock.json") {
 		t.Fatalf("lock evidence: %+v", got)
 	}
+}
+
+func TestTSJSLoaderUncertainty(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, src string
+	}{
+		{"JavaScript shadow", "main.js", "function use(require) { return require('./target.js'); }"},
+		{"TypeScript shadow", "main.ts", "const use = (require: (value: string) => unknown) => require('./target.js');"},
+		{"assigned loader", "main.js", "require = other; require('./target.js');"},
+		{"escaped loader", "main.js", `requ\u0069re('./target.js');`},
+		{"module subscript", "main.js", `module["require"]("./target.js");`},
+		{"computed global", "main.js", `globalThis[loader]("./target.js");`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := fstest.MapFS{"target.js": {}}
+			got := readTSJSFixture(t, repo, tc.file, "", tc.src, deps.TrustUnmeasured("typescript"), deps.TrustUnmeasured("javascript"))
+			if got.Complete || len(tsjsTargets(got, deps.KindImport)) != 0 ||
+				!slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownUnsupportedConstruct }) {
+				t.Fatalf("unproven loader yielded a binding: %+v", got)
+			}
+		})
+	}
+}
+
+func TestTSJSCompilerPackageAmbiguity(t *testing.T) {
+	repo := fstest.MapFS{
+		"package.json":                          {Data: []byte(`{"dependencies":{"sample":"1.2.3","fs":"0.0.1"}}`)},
+		"node_modules/@types/sample/index.d.ts": {},
+	}
+	got := readTSJSFixture(t, repo, "main.js", "", "require('sample');\nrequire('fs');", deps.TrustUnmeasured("javascript"))
+	if got.Complete || !slices.Equal(tsjsTargets(got, deps.KindImport), []string{"node:fs"}) ||
+		!slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownUnsupportedConstruct }) {
+		t.Fatalf("unproven package or built-in version: %+v", got)
+	}
+}
+
+func TestTSJSResolutionCaps(t *testing.T) {
+	t.Run("paths", func(t *testing.T) {
+		paths := make(map[string][]string)
+		for i := range 4097 {
+			paths[fmt.Sprintf("input%d", i)] = []string{"./target"}
+		}
+		config, err := json.Marshal(map[string]any{"compilerOptions": map[string]any{"paths": paths}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		repo := fstest.MapFS{"tsconfig.json": {Data: config}, "target.ts": {}}
+		got := readTSJSFixture(t, repo, "main.ts", "", "import 'input1';", deps.TrustUnmeasured("typescript"))
+		if got.Complete || len(tsjsTargets(got, deps.KindImport)) != 0 ||
+			!slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownUnsupportedConstruct && u.Line == 0 }) {
+			t.Fatalf("oversize alias map: %+v", got)
+		}
+	})
+	t.Run("exports", func(t *testing.T) {
+		branch := strings.Repeat(`{"default":`, 16) + `"./target.js"` + strings.Repeat("}", 16)
+		repo := fstest.MapFS{
+			"package.json": {Data: []byte(`{"name":"sample","exports":` + branch + "}")},
+			"target.js":    {},
+		}
+		got := readTSJSFixture(t, repo, "main.js", "", "require('sample');", deps.TrustUnmeasured("javascript"))
+		if got.Complete || len(tsjsTargets(got, deps.KindImport)) != 0 ||
+			!slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == deps.UnknownReadLimit }) {
+			t.Fatalf("oversize exports nesting: %+v", got)
+		}
+	})
 }
