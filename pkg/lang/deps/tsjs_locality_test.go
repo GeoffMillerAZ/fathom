@@ -85,6 +85,12 @@ func (v *tsLocalityFS) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 func (v *tsLocalityFS) Open(name string) (fs.File, error) {
+	if name == v.blocked {
+		return nil, fs.ErrPermission
+	}
+	if name == "packages" && v.cancel != nil {
+		v.cancel()
+	}
 	if name == "packages/member/package.json" {
 		v.manifestReads++
 	}
@@ -96,6 +102,7 @@ func TestTSRepositoryInventoryRefusal(t *testing.T) {
 		{"unreadable directory", "packages", `{}`},
 		{"malformed manifest", "", `{`},
 		{"invalid name", "", `{"name":42}`},
+		{"duplicate identity", "", `{"name":"@invented/absent","name":"@invented/other"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := []byte("import '@invented/absent';")
@@ -139,5 +146,29 @@ func TestTSRepositoryInventoryBatchAndCancellation(t *testing.T) {
 	_, err = r.ReadFile(ctx, view, deps.Input{Path: "a.ts"}, src)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation = %v", err)
+	}
+}
+
+func TestTSRepositoryInventoryConfined(t *testing.T) {
+	for _, mode := range []fs.FileMode{fs.ModeSymlink, fs.ModeIrregular} {
+		view := fstest.MapFS{
+			"package.json": {Data: []byte(`{"dependencies":{"@invented/absent":"1.2.3"}}`)},
+			"hidden":       {Mode: mode, Data: []byte("../outside")},
+		}
+		got, err := (&deps.Reader{}).ReadFile(t.Context(), view, deps.Input{Path: "main.ts"}, []byte("import '@invented/absent';"))
+		if err != nil || got.Complete || len(tsjsTargets(got, deps.KindImport)) != 0 {
+			t.Fatalf("uninspectable inventory entry: %+v, %v", got, err)
+		}
+	}
+}
+
+func TestTSLocalityDoesNotChangeJavaScript(t *testing.T) {
+	view := fstest.MapFS{
+		"package.json":                 {Data: []byte(`{"dependencies":{"@invented/locality":"1.2.3"}}`)},
+		"packages/member/package.json": {Data: []byte(`{"name":"@invented/locality"}`)},
+	}
+	got, err := (&deps.Reader{}).ReadFile(t.Context(), view, deps.Input{Path: "main.js"}, []byte("require('@invented/locality');"))
+	if err != nil || !got.Complete || !slices.Equal(tsjsTargets(got, deps.KindImport), []string{"npm:@invented/locality"}) {
+		t.Fatalf("JavaScript product path changed: %+v, %v", got, err)
 	}
 }
