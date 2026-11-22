@@ -38,10 +38,10 @@ precedence.
 
 | Dialect | Filename inference | Admission |
 |---|---|---|
-| `go` | `.go` | Unmeasured. The Go fixture checks the grading harness. |
-| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | Measured, low coverage (DEP-M1). |
-| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Measured, low coverage (DEP-M1). COV-D11 erratum: the later sealed baseline found 259 external-as-local claims across 222 baseline-complete files. R1 withholds completeness where repository-locality is unproved, even with a version pin. The aggregate-only R5 correction check remains pending. |
-| `python` | `.py` | Measured, low coverage (DEP-M2). |
+| `go` | `.go` | Unmeasured. COV-M3 found zero complete files out of 1,391. B1 and B2 were inconclusive, and B3 passed. |
+| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | Measured, low coverage (DEP-M1). The COV-M1 final reading is unverified. |
+| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Measured, low coverage (DEP-M1). The COV-D11 sealed baseline found 259 external-as-local claims across 222 baseline-complete files. R1 withholds completeness where repository locality is unproved, even with a version pin. The one R5 correction check closed with B1–B3 passing and 501 of 2,077 files complete. The COV-M1 final reading is unverified. |
+| `python` | `.py` | Measured, low coverage (DEP-M2). The COV-M2 final reading is unverified. |
 | `dockerfile` | `Dockerfile`, `Containerfile`, either with a dotted suffix, or a basename ending in `.dockerfile` or `.containerfile` (case-insensitive) | Detect-only (DEP-M3). |
 
 The batch sorts paths and rejects duplicates. An unreadable file contributes an incomplete
@@ -52,6 +52,10 @@ Built-in reads, resolver reads and local resolver targets all refuse observable
 symlinks and components they cannot safely inspect. These checks depend on an
 accurate view that stays stable for the read. The CLI uses `os.OpenRoot` for
 filesystem confinement.
+
+An inadmissible path, including one with parentheses or square brackets,
+refuses the whole batch. The coverage harness retains such inputs in the
+selected denominator as incomplete and reports them separately.
 
 `WithResolver(id, resolver)` replaces resolver-driven resolution for an
 implemented detector. `Resolve(ctx, req)` receives a `ResolveRequest` containing

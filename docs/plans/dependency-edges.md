@@ -45,9 +45,9 @@ Bind each implementation row to its new symbol when the change is written.
 - [x] Apply the admitted Python levers with failing and refusal fixtures {id: COV-2, symbol: pythonDeclarations, package: pkg/lang/deps, reachable_from: TestPythonDeclarativeFromList, needs: COV-1}
 - [x] Apply the admitted TypeScript and JavaScript levers with failing and refusal fixtures {id: COV-3, symbol: jsdocComments, package: pkg/lang/deps, reachable_from: TestTSJSJSDocTypeImports, needs: COV-1}
 - [x] (op) Read Go's first admission against its pinned native oracle (COV-M3) {id: COV-4, oracle: lexical, path: docs/bench/readings/dependency-edges/cov-m3.md, pattern: "^# COV-M3 · Go initial dependency admission", eq: 1}
-- [ ] (op) Publish the independently confirmed TypeScript and JavaScript final readings and their separate verdicts {id: COV-M1, needs: COV-3}
-- [ ] (op) Publish the independently confirmed Python final reading and verdict {id: COV-M2, needs: COV-2}
-- [ ] (op) Reconcile the admission table, readings, measured ceilings, change notes and public counts {id: COV-5, needs: "COV-M1,COV-M2,COV-4"}
+- [x] (op) Publish the independently confirmed TypeScript and JavaScript final readings and their separate verdicts {id: COV-M1, oracle: lexical, path: docs/bench/readings/dependency-edges/cov-m1.md, pattern: "^# COV-M1 · JavaScript and TypeScript final coverage$", eq: 1, needs: COV-3}
+- [x] (op) Publish the independently confirmed Python final reading and verdict {id: COV-M2, oracle: lexical, path: docs/bench/readings/dependency-edges/cov-m2.md, pattern: "^# COV-M2 · Python final coverage$", eq: 1, needs: COV-2}
+- [x] (op) Reconcile the admission table, readings, measured ceilings, change notes and public counts {id: COV-5, oracle: lexical, path: docs/bench/readings/dependency-edges/cov-records.md, pattern: "^# COV-5 · Dependency coverage records$", eq: 1, needs: "COV-M1,COV-M2,COV-4"}
 
 
 ## Deferred
