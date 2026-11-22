@@ -77,10 +77,10 @@ def python_truth(args):
     oracle.pin(declarative_fromlist=args.declarative_fromlist)
     pins = python_subjects() if args.pool == 'development' else subjects()[args.pool]
     subject = next(p for p in pins if p['name'] == args.subject and p['dialect'] == 'python')
-    root = args.root.resolve(strict=True)
-    names, before = oracle.contents(root, subject)
+    root = oracle.checkout_root(args.root, confined=args.declarative_fromlist)
+    names, before = oracle.contents(root, subject, confined=args.declarative_fromlist)
     rows = python_rows(oracle, root, subject, names, declarative_fromlist=args.declarative_fromlist)
-    if (names, before) != oracle.contents(root, subject):
+    if (names, before) != oracle.contents(root, subject, confined=args.declarative_fromlist):
         raise ValueError('oracle input drift')
     print(canonical({'manifest': before, 'rows': rows}))
 
@@ -126,11 +126,11 @@ def python_overlap(args):
     reports = {}
     for subject in python_subjects():
         name = subject['name']
-        root = (args.root / name).resolve(strict=True)
-        names, manifest = oracle.contents(root, subject)
+        root = oracle.checkout_root(args.root / name, confined=True)
+        names, manifest = oracle.contents(root, subject, confined=True)
         frozen = python_rows(oracle, root, subject, names, declarative_fromlist=False)
         extension = python_rows(oracle, root, subject, names, declarative_fromlist=True)
-        if (names, manifest) != oracle.contents(root, subject):
+        if (names, manifest) != oracle.contents(root, subject, confined=True):
             raise ValueError('oracle input drift')
         report = compare_python(frozen, extension)
         reports[name] = dict(report, commit=subject['commit'], roots=subject['roots'], manifest=manifest)

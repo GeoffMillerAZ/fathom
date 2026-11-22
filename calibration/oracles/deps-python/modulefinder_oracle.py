@@ -7,7 +7,11 @@ import argparse
 import ast
 import dis
 import hashlib
-from importlib.machinery import FrozenImporter, PathFinder, SourceFileLoader
+from importlib.machinery import (
+    AppleFrameworkLoader, ExtensionFileLoader, FrozenImporter, PathFinder,
+    SourceFileLoader, SourcelessFileLoader, all_suffixes,
+)
+import io
 import json
 import modulefinder
 import os
@@ -25,6 +29,27 @@ RUNTIME_MODULES = {"builtins", "imp", "importlib", "pkg_resources", "pkgutil", "
 RUNTIME_MEMBERS = {
     "exec_module", "load_module", "meta_path", "path_hooks", "path_importer_cache", "spec_from_file_location",
 }
+CHILD_SUFFIXES = (*all_suffixes(), ".fwork", ".pyd")
+
+
+class UnconfinedSource(ValueError):
+    pass
+
+
+class NamespaceTarget(ValueError):
+    pass
+
+
+def confined_file(root, filename):
+    return (filename.is_relative_to(root) and filename.resolve(strict=True) == filename
+            and stat.S_ISREG(filename.lstat().st_mode))
+
+
+def checkout_root(path, *, confined):
+    resolved = path.resolve(strict=True)
+    if confined and resolved != path.absolute():
+        raise UnconfinedSource("checkout path is not physical")
+    return resolved
 
 
 def pin(*, declarative_fromlist=False):
@@ -46,17 +71,27 @@ def git(root, *argv):
     return subprocess.check_output(["git", "-C", str(root), *argv])
 
 
-def contents(root, subject):
+def contents(root, subject, *, confined=False):
     if Path(os.fsdecode(git(root, "rev-parse", "--show-toplevel")).strip()).resolve() != root:
         raise ValueError(f"{subject['name']}: expected a checkout root")
     if git(root, "rev-parse", "HEAD").decode().strip() != subject["commit"]:
         raise ValueError(f"{subject['name']}: HEAD differs from the pin")
-    if git(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignored=matching"):
-        raise ValueError(f"{subject['name']}: checkout contains changed, generated or untracked files")
+    def require_clean():
+        if git(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignored=matching"):
+            raise ValueError(f"{subject['name']}: checkout contains changed, generated or untracked files")
+
+    if not confined:
+        require_clean()
     manifest = hashlib.sha256()
     names = []
     counts = dict(files=0, bytes=0, symlinks=0, gitlinks=0, python_bytes=0)
     rows = git(root, "ls-files", "-z", "--stage").split(b"\0")
+    if confined:
+        for row in filter(None, rows):
+            identity, filename = row.split(b"\t", 1)
+            if identity.split()[0] in (b"100644", b"100755") and not confined_file(root, root / os.fsdecode(filename)):
+                raise UnconfinedSource("tracked file is outside the physical checkout")
+        require_clean()
     for row in sorted(filter(None, rows), key=lambda r: r.split(b"\t", 1)[1]):
         identity, filename = row.split(b"\t", 1)
         mode, oid, stage = identity.split()
@@ -161,6 +196,7 @@ class EntryFinder(modulefinder.ModuleFinder):
         self.root = root
         self.tracked = tracked
         self.declarations = {}
+        self.package_children = {}
         self.declared_site = None
         self.active = None
         self.edges = set()
@@ -173,9 +209,11 @@ class EntryFinder(modulefinder.ModuleFinder):
                 continue
             source = filename.relative_to(root)
             parents = source.parts[:-1]
-            if not all((root.joinpath(*parents[:idx]) / "__init__.py").is_file()
-                       for idx in range(1, len(parents) + 1)):
+            initializers = [root.joinpath(*parents[:idx], "__init__.py") for idx in range(1, len(parents) + 1)]
+            if not all(path.is_file() for path in initializers):
                 continue
+            if self.tracked is not None and not all(self.tracked_source(path) for path in initializers):
+                raise UnconfinedSource("entry package context is outside the tracked source view")
             # run_script registers __main__ and cannot bind relative imports.
             # Establish the regular package identity without executing any code.
             for idx in range(1, len(parents) + 1):
@@ -213,6 +251,48 @@ class EntryFinder(modulefinder.ModuleFinder):
         if next(imports, None) is not None:
             raise ValueError("native IMPORT_NAME was omitted by modulefinder")
 
+    def tracked_source(self, source):
+        return (source.is_relative_to(self.root)
+                and source.relative_to(self.root).as_posix() in self.tracked
+                and confined_file(self.root, source))
+
+    def find_module(self, name, path, parent=None):
+        if self.tracked is None or (path is None and name in sys.builtin_module_names):
+            return super().find_module(name, path, parent)
+
+        # The stock finder opens a non-package origin inside _find_module.
+        # Classify the same native spec and open only its validated origin.
+        search = self.path if path is None else path
+        PathFinder.invalidate_caches()
+        spec = PathFinder.find_spec(name, search)
+        if spec is None:
+            raise ImportError(name)
+        if spec.loader is None:
+            raise NamespaceTarget(name)
+        if spec.origin is None:
+            raise UnconfinedSource("finder origin is unavailable")
+        source = Path(spec.origin)
+        if source.is_relative_to(self.root):
+            if type(spec.loader) is not SourceFileLoader or not self.tracked_source(source):
+                raise UnconfinedSource("finder origin is outside the tracked source view")
+            if spec.submodule_search_locations is not None and source.name != "__init__.py":
+                raise UnconfinedSource("unsupported package initializer")
+        elif source.resolve().is_relative_to(self.root):
+            raise UnconfinedSource("external finder origin points into the checkout")
+
+        if spec.loader.is_package(name):
+            return None, str(source.parent), ("", "", modulefinder._PKG_DIRECTORY)
+        match spec.loader:
+            case SourceFileLoader():
+                kind = modulefinder._PY_SOURCE
+            case ExtensionFileLoader() | AppleFrameworkLoader():
+                kind = modulefinder._C_EXTENSION
+            case SourcelessFileLoader():
+                kind = modulefinder._PY_COMPILED
+            case _:
+                raise UnconfinedSource("unsupported finder loader")
+        return io.open_code(str(source)), str(source), (source.suffix, "rb", kind)
+
     def import_module(self, partname, fqname, parent):
         loaded = super().import_module(partname, fqname, parent)
         if loaded is None or self.active is None or loaded is self.entry:
@@ -249,7 +329,7 @@ class EntryFinder(modulefinder.ModuleFinder):
         site = (self.active, mod)
         if self.declared_site == site:
             return True
-        _, _, level, names = self.active
+        raw, line, level, names = self.active
         if "*" in names or mod is self.entry or not mod.__file__:
             return False
         try:
@@ -260,12 +340,37 @@ class EntryFinder(modulefinder.ModuleFinder):
                 if package is None or self.package_bindings(package) is None:
                     return False
             bindings = self.package_bindings(mod)
+            if bindings is None or not bindings.issuperset(names):
+                return False
+            filename = Path(mod.__file__).relative_to(self.root)
+            targets = {(kind, to) for at, name, kind, to in self.edges if at == line and name == raw}
+            if targets != {("file", filename.as_posix())}:
+                return False
+            if self.has_possible_child(filename.parent, names):
+                return False
         except (OSError, SyntaxError, TypeError, ValueError, RuntimeError):
             return False
-        if bindings is None or not bindings.issuperset(names):
-            return False
+        # The declaration qualifies the site. In the tracked package view, an
+        # absent live binding cannot add a local direct edge via native fallback.
         self.declared_site = site
         return True
+
+    def has_possible_child(self, directory, names):
+        if directory not in self.package_children:
+            # The dispatcher verifies a clean tracked checkout. Also inspect
+            # the directory itself to include non-Python loaders, namespace
+            # directories and symlinks, without opening any of their sources.
+            prefix = directory.as_posix().casefold() + "/"
+            children = {path.name.casefold() for path in (self.root / directory).iterdir()}
+            children.update(path.casefold()[len(prefix):].split("/", 1)[0]
+                            for path in self.tracked if path.casefold().startswith(prefix))
+            self.package_children[directory] = children
+        children = self.package_children[directory]
+        members = {name.casefold() for name in names}
+        return any(
+            child == member or (child.startswith(member + ".") and child.endswith(CHILD_SUFFIXES))
+            for member in members for child in children
+        )
 
     def package_bindings(self, mod):
         filename = Path(mod.__file__)
@@ -290,12 +395,11 @@ class EntryFinder(modulefinder.ModuleFinder):
             source = Path(spec.origin)
             if not source.is_relative_to(self.root) or source.name != "__init__.py":
                 return None
-            name = source.relative_to(self.root).as_posix()
-            if name not in self.tracked or source.resolve(strict=True) != source:
+            if not self.tracked_source(source):
                 return None
             if index == len(parts) - 1 and source != filename:
                 return None
-            bindings = declarative_bindings(source, name)
+            bindings = declarative_bindings(source, source.relative_to(self.root).as_posix())
             if bindings is None:
                 return None
             search = spec.submodule_search_locations
@@ -317,6 +421,14 @@ class EntryFinder(modulefinder.ModuleFinder):
 def read_entry(root, roots, name, *, tracked=None):
     row = {"path": name, "edges": [], "gap": "", "optimized_away": 0}
     filename = root / name
+    if tracked is not None:
+        try:
+            if (name not in tracked or not confined_file(root, filename)
+                    or any(not r.is_relative_to(root) or r.resolve(strict=True) != r or not r.is_dir() for r in roots)):
+                raise UnconfinedSource("entry or search root is outside the tracked source view")
+        except (OSError, RuntimeError, UnconfinedSource):
+            row["gap"] = "native-target"
+            return row
     data = filename.read_bytes()
     try:
         entry = ast.parse(data, name)
@@ -330,12 +442,12 @@ def read_entry(root, roots, name, *, tracked=None):
 
     finder = EntryFinder(root, roots, tracked)
     try:
-        if tracked is not None:
-            canonical_roots = all(r.is_relative_to(root) and r.resolve(strict=True) == r for r in roots)
-            if not canonical_roots or name not in tracked or filename.resolve(strict=True) != filename:
-                finder.tracked = None
         finder.set_entry(roots, filename)
         finder.scan_code(code, finder.entry)
+    except UnconfinedSource:
+        row["gap"] = "native-target"
+    except NamespaceTarget:
+        row["gap"] = "namespace"
     except AttributeError as exc:
         # PathFinder gives a namespace spec without a concrete loader.
         row["gap"] = "namespace" if "'NoneType' object has no attribute 'is_package'" in str(exc) else "finder-error"
@@ -360,8 +472,8 @@ def read_entry(root, roots, name, *, tracked=None):
 
 def read_rows(root, subject, names, *, declarative_fromlist=False):
     declared_roots = [root / member for member in subject["roots"]]
-    roots = [member.resolve(strict=True) for member in declared_roots]
-    tracked = frozenset(names) if declarative_fromlist and roots == declared_roots else None
+    roots = declared_roots if declarative_fromlist else [member.resolve(strict=True) for member in declared_roots]
+    tracked = frozenset(names) if declarative_fromlist else None
     return [read_entry(root, roots, name, tracked=tracked) for name in names]
 
 
@@ -374,10 +486,11 @@ def main():
     subjects = {}
     for subject in pins["subjects"]:
         name = subject["name"]
-        root = (args.corpus / name).resolve(strict=True)
-        names, before = contents(root, subject)
+        path = args.corpus / name
+        root = checkout_root(path, confined=args.declarative_fromlist)
+        names, before = contents(root, subject, confined=args.declarative_fromlist)
         rows = read_rows(root, subject, names, declarative_fromlist=args.declarative_fromlist)
-        if (names, before) != contents(root, subject):
+        if (names, before) != contents(root, subject, confined=args.declarative_fromlist):
             raise ValueError(f"{name}: inputs changed during oracle collection")
         subjects[name] = {"manifest": before, "rows": rows}
     json.dump(subjects, sys.stdout, sort_keys=True, separators=(",", ":"))

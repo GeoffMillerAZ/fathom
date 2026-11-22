@@ -1,10 +1,13 @@
 """Focused offline fixtures for the pinned native adapter."""
+import importlib._bootstrap as bootstrap
+import io
 import modulefinder
 import pathlib
 import py_compile
 import subprocess
 import sys
 import tempfile
+from types import ModuleType
 import unittest
 from unittest.mock import patch
 from runpy import run_path
@@ -69,10 +72,9 @@ class OracleTests(unittest.TestCase):
             root = pathlib.Path(temp).resolve()
             self.write(root, "app/__init__.py", "from .leaf import value as value\nother = 3\n")
             self.write(root, "app/leaf.py", "raise AssertionError('source must not execute')\n")
-            self.write(root, "app/value.py", "pass\n")
             self.write(root, "app/main.py", "from . import value as alias, other\nimport sys\n")
             self.write(root, "sys.py", "pass\n")
-            tracked = {"app/__init__.py", "app/leaf.py", "app/value.py", "app/main.py", "sys.py"}
+            tracked = {"app/__init__.py", "app/leaf.py", "app/main.py", "sys.py"}
 
             def read():
                 return read_entry(root, [root], "app/main.py", tracked=tracked)
@@ -94,9 +96,129 @@ class OracleTests(unittest.TestCase):
             with patch.object(modulefinder.ModuleFinder, "scan_opcodes", without_native_store):
                 self.assertEqual(read()["gap"], "package-fromlist")
             self.write(root, "app/__init__.py", "other = 3\n")
-            self.assertEqual(read()["gap"], "package-fromlist")  # value.py alone supplies no proof
+            self.assertEqual(read()["gap"], "package-fromlist")
             self.write(root, "app/__init__.py", "value = 1\nother = 3\n")
-            self.assertEqual(read()["edges"], expected)
+            self.assertEqual(read(), {"path": "app/main.py", "edges": expected, "gap": "", "optimized_away": 0})
+
+    def test_declarative_fromlist_refuses_child_after_deletion_or_cycle(self):
+        package = ModuleType("pkg")
+        requested = []
+        bootstrap._handle_fromlist(package, ("token",), requested.append)
+        self.assertEqual(requested, ["pkg.token"])
+        package.token = 1
+        requested.clear()
+        bootstrap._handle_fromlist(package, ("token",), requested.append)
+        self.assertEqual(requested, [])
+
+        fixtures = {
+            "deletion": ("entry.py", {
+                "pkg/__init__.py": "token = 1\nfrom . import side_effect\n",
+                "pkg/side_effect.py": "import pkg\ndel pkg.token\n",
+                "entry.py": "from pkg import token\n",
+            }),
+            "cycle": ("pkg/consumer.py", {
+                "pkg/__init__.py": "from . import consumer\ntoken = 1\n",
+                "pkg/consumer.py": "from . import token\n",
+            }),
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            for case, (entry, sources) in fixtures.items():
+                with self.subTest(case=case):
+                    root = pathlib.Path(temp).resolve() / case
+                    for name, source in sources.items():
+                        self.write(root, name, source)
+                    without_child = read_entry(root, [root], entry, tracked=set(sources))
+                    self.assertEqual(without_child["gap"], "")
+                    self.assertEqual([e["To"] for e in without_child["edges"]], ["pkg/__init__.py"])
+                    child = "pkg/token.py"
+                    self.write(root, child, "pass\n")
+                    row = read_entry(root, [root], entry, tracked=set(sources) | {child})
+                    self.assertEqual(row["gap"], "package-fromlist")
+        self.assertTrue({"pkg", "pkg.side_effect", "pkg.consumer", "pkg.token"}.isdisjoint(sys.modules))
+
+    def test_declarative_fromlist_refuses_ambiguous_child(self):
+        for child in ("pkg/Token.py", "pkg/token/__init__.py", "pkg/Token/leaf.py",
+                      "pkg/token.so", "pkg/token.pyc", "pkg/token.py", "pkg/token"):
+            with self.subTest(child=child), tempfile.TemporaryDirectory() as temp:
+                root = pathlib.Path(temp).resolve()
+                self.write(root, "pkg/__init__.py", "token = 1\n")
+                self.write(root, "entry.py", "from pkg import token\n")
+                tracked = {"pkg/__init__.py", "entry.py"}
+                if child == "pkg/token":
+                    (root / child).symlink_to(root / "absent")
+                else:
+                    self.write(root, child, "raise AssertionError('source must not execute')\n")
+                    if child != "pkg/token.py":  # exercise a physical candidate outside the tracked view
+                        tracked.add(child)
+                self.assertTrue(read_entry(root, [root], "entry.py", tracked=tracked)["gap"])
+
+    def test_declarative_fromlist_requires_one_initializer_edge(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            sources = {
+                "pkg/__init__.py": "pass\n",
+                "pkg/nested/__init__.py": "token = 1\n",
+                "entry.py": "from pkg.nested import token\n",
+            }
+            for name, source in sources.items():
+                self.write(root, name, source)
+            row = read_entry(root, [root], "entry.py", tracked=set(sources))
+            self.assertEqual(row["gap"], "package-fromlist")
+            self.assertEqual([edge["To"] for edge in row["edges"]], ["pkg/__init__.py", "pkg/nested/__init__.py"])
+
+    def test_declarative_fromlist_confines_source_before_native_open(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = pathlib.Path(temp).resolve()
+            outside = base / "outside"
+            self.write(outside, "__init__.py", "token = 1\n")
+            root = base / "checkout"
+            self.write(root, "entry.py", "from pkg import token\n")
+            (root / "pkg").symlink_to(outside, target_is_directory=True)
+            (root / "linked_entry.py").symlink_to(outside / "__init__.py")
+            self.write(root, "untracked.py", "raise AssertionError('source must not execute')\n")
+            self.write(root, "untracked_user.py", "import untracked\n")
+            real_open, real_read, real_compile = io.open_code, pathlib.Path.read_bytes, compile
+            opened, read, compiled = set(), set(), set()
+
+            def record_open(path):
+                opened.add(pathlib.Path(path).resolve())
+                return real_open(path)
+
+            def record_read(path):
+                read.add(path.resolve())
+                return real_read(path)
+
+            def record_compile(data, path, *args, **kwargs):
+                if pathlib.Path(path).is_absolute():
+                    compiled.add(pathlib.Path(path).resolve())
+                return real_compile(data, path, *args, **kwargs)
+
+            for entry, roots, tracked, forbidden in [
+                ("entry.py", [root], None, outside / "__init__.py"),
+                ("entry.py", [root], {"entry.py", "pkg/__init__.py"}, outside / "__init__.py"),
+                ("untracked_user.py", [root], {"untracked_user.py"}, root / "untracked.py"),
+                ("linked_entry.py", [root], {"linked_entry.py"}, outside / "__init__.py"),
+                ("entry.py", [root / "pkg"], {"entry.py"}, outside / "__init__.py"),
+            ]:
+                with self.subTest(entry=entry, tracked=tracked):
+                    opened.clear()
+                    read.clear()
+                    compiled.clear()
+                    with (
+                        patch("io.open_code", record_open),
+                        patch.object(pathlib.Path, "read_bytes", record_read),
+                        patch("builtins.compile", record_compile),
+                    ):
+                        row = read_entry(root, roots, entry, tracked=tracked)
+                    if tracked is None:
+                        self.assertEqual(row["gap"], "native-target")
+                        self.assertIn(forbidden, opened)
+                        self.assertIn(forbidden, compiled)
+                    else:
+                        self.assertNotIn(forbidden, opened)
+                        self.assertNotIn(forbidden, read)
+                        self.assertNotIn(forbidden, compiled)
+                        self.assertTrue(row["gap"])
 
     def test_declarative_fromlist_refuses_uncertainty(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -124,7 +246,7 @@ class OracleTests(unittest.TestCase):
                     self.assertTrue(after["gap"])
             self.write(root, "app/__init__.py", "value = 1")
             self.write(root, "main.py", "from app import value")
-            self.assertEqual(read_entry(root, [root], "main.py", tracked={"main.py"})["gap"], "package-fromlist")
+            self.assertEqual(read_entry(root, [root], "main.py", tracked={"main.py"})["gap"], "native-target")
             self.write(root, "app/__init__.py", "from . import value\nvalue = 1")
             self.assertTrue(read_entry(root, [root], "app/__init__.py", tracked=tracked)["gap"])
 
