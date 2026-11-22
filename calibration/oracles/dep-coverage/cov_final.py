@@ -84,7 +84,8 @@ def sha(data):
 def git(*args):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     return subprocess.check_output(
-        ["git", "-c", "core.fsmonitor=false", "-c", "core.ignorestat=false",
+        ["git", "--no-replace-objects", f"--work-tree={REPO}",
+         "-c", "core.fsmonitor=false", "-c", "core.ignorestat=false",
          "-c", "core.trustctime=true", "-C", str(REPO), *args],
         env=env, stderr=subprocess.DEVNULL,
     )

@@ -308,6 +308,13 @@ with (root / 'worker.lock').open('wb') as lock:
                         except ProcessLookupError:
                             pass
 
+    def test_git_checks_bind_the_original_objects_and_worktree(self):
+        with patch.object(subprocess, "check_output", return_value=b"tree") as command:
+            self.assertEqual(final["git"]("ls-tree", "HEAD"), b"tree")
+        arguments = command.call_args.args[0]
+        self.assertIn("--no-replace-objects", arguments)
+        self.assertIn(f"--work-tree={scope['REPO']}", arguments)
+
     def test_clean_revision_drift_blocks_publication(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
