@@ -43,7 +43,14 @@ func TestCOVGoCapture(t *testing.T) {
 		t.Skip("opt-in COV-M3 native capture")
 	}
 	source := requiredPythonEnv(t, "FATHOM_COV_GO_SOURCES")
-	output := requiredPythonEnv(t, "FATHOM_COV_GO_ROOT")
+	output := os.Getenv("FATHOM_COV_GO_ROOT")
+	if output == "" {
+		t.Fatal("native capture requires FATHOM_COV_GO_ROOT")
+	}
+	output, err := filepath.Abs(output)
+	if err != nil {
+		t.Fatal(err)
+	}
 	script, err := filepath.Abs(filepath.Join(covOracleDir, "cov_go.py"))
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +96,7 @@ func TestCOVGoAdmission(t *testing.T) {
 	}
 	var pooled, cgoPooled depbench.Observation
 	var subjects []covGoSubjectReading
-	var external, disagreements, rejectedTotal int
+	var external, disagreements, rejectedTotal, rejectedOraclePrimary, rejectedOracleCGO int
 	allRejectedStable := true
 	for _, pin := range covGoPins(t) {
 		dir := filepath.Join(root, pin.Subject)
@@ -186,6 +193,22 @@ func TestCOVGoAdmission(t *testing.T) {
 		cgoScore := depbench.COVGoScore(alternative, inventory)
 		cgoScore.B3 = cgoScore.B3 && stable
 		cgoScore.RejectedInputs = len(one.Rejected)
+		rejectedSet := map[string]bool{}
+		for _, input := range one.Rejected {
+			rejectedSet[input.Path] = true
+		}
+		for _, row := range native[0].Truth {
+			if rejectedSet[row.Path] {
+				score.RejectedOracleFiles++
+			}
+		}
+		for _, row := range native[1].Truth {
+			if rejectedSet[row.Path] {
+				cgoScore.RejectedOracleFiles++
+			}
+		}
+		rejectedOraclePrimary += score.RejectedOracleFiles
+		rejectedOracleCGO += cgoScore.RejectedOracleFiles
 		truthMaps := [2]map[string][]depbench.TruthEdge{{}, {}}
 		for i := range native {
 			for _, f := range native[i].Truth {
@@ -220,11 +243,13 @@ func TestCOVGoAdmission(t *testing.T) {
 	score.B1 = score.B1 && external == 0
 	score.B3 = score.B3 && allRejectedStable
 	score.RejectedInputs = rejectedTotal
+	score.RejectedOracleFiles = rejectedOraclePrimary
 	cgoScore := depbench.COVScore(cgoPooled, nil)
 	cgoScore.ExternalAsLocal = external
 	cgoScore.B1 = cgoScore.B1 && external == 0
 	cgoScore.B3 = cgoScore.B3 && allRejectedStable
 	cgoScore.RejectedInputs = rejectedTotal
+	cgoScore.RejectedOracleFiles = rejectedOracleCGO
 	aggregate := struct {
 		Preregistration, ReaderBase, HarnessRevision string
 		Subjects                                     []covGoSubjectReading
