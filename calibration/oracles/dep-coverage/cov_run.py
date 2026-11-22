@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""COV-1 checkout preparation and unchanged Python-oracle dispatch.
+"""COV-1 checkout preparation and pinned Python-oracle dispatch.
 
-No subject code is executed. Truth goes to the caller's pipe, never a file.
+No subject code is executed. Per-file truth goes to the caller's pipe.
 """
 import argparse
+from collections import Counter
 import contextlib
+import hashlib
 import importlib.util
 import json
 import os
@@ -15,11 +17,13 @@ import sys
 HERE = Path(__file__).resolve().parent
 
 
+def python_subjects():
+    pins = json.loads((HERE.parent / 'deps-python/pins.json').read_text())['subjects']
+    return [dict(p, dialect='python', prefixes=[''], suffixes=['.py']) for p in pins]
+
+
 def subjects():
-    python = json.loads((HERE.parent / 'deps-python/pins.json').read_text())['subjects']
-    for p in python:
-        p.update(dialect='python', prefixes=[''], suffixes=['.py'])
-    dev = python + json.loads((HERE.parent / 'deps-tsjs/pins.json').read_text())['subjects']
+    dev = python_subjects() + json.loads((HERE.parent / 'deps-tsjs/pins.json').read_text())['subjects']
     return {'development': dev, 'holdout': json.loads((HERE / 'cov_holdout.json').read_text())}
 
 
@@ -53,23 +57,92 @@ def prepare(args):
     print('COV checkouts prepared: development=10 holdout=5 arms=2')
 
 
-def python_truth(args):
+def python_oracle():
     spec = importlib.util.spec_from_file_location('cov_pinned_python', HERE.parent / 'deps-python/modulefinder_oracle.py')
     oracle = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(oracle)
-    oracle.pin()
-    p = next(p for p in subjects()[args.pool] if p['name'] == args.subject and p['dialect'] == 'python')
-    root = args.root.resolve(strict=True)
-    names, before = oracle.contents(root, p)
-    roots = [(root / r).resolve(strict=True) for r in p['roots']]
-    # Existing adapter diagnostics can contain filenames. Never propagate them,
-    # even on development: only aggregate gap codes leave this wrapper.
+    return oracle
+
+
+def python_rows(oracle, root, subject, names, *, declarative_fromlist):
+    # Native diagnostics can contain filenames. Keep them inside this wrapper.
     with open(os.devnull, 'w') as sink, contextlib.redirect_stderr(sink):
-        rows = [oracle.read_entry(root, roots, name) for name in names]
-    if (names, before) != oracle.contents(root, p):
+        return oracle.read_rows(root, subject, names, declarative_fromlist=declarative_fromlist)
+
+
+def python_truth(args):
+    if args.declarative_fromlist and args.pool != 'development':
+        raise ValueError('declarative from-list truth is development-only')
+    oracle = python_oracle()
+    oracle.pin(declarative_fromlist=args.declarative_fromlist)
+    pins = python_subjects() if args.pool == 'development' else subjects()[args.pool]
+    subject = next(p for p in pins if p['name'] == args.subject and p['dialect'] == 'python')
+    root = args.root.resolve(strict=True)
+    names, before = oracle.contents(root, subject)
+    rows = python_rows(oracle, root, subject, names, declarative_fromlist=args.declarative_fromlist)
+    if (names, before) != oracle.contents(root, subject):
         raise ValueError('oracle input drift')
-    json.dump({'manifest': before, 'rows': rows}, sys.stdout, sort_keys=True, separators=(',', ':'))
-    print()
+    print(canonical({'manifest': before, 'rows': rows}))
+
+
+def canonical(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':'))
+
+
+def compare_python(frozen, extension):
+    paths = [r['path'] for r in frozen]
+    if paths != [r['path'] for r in extension] or len(paths) != len(set(paths)):
+        raise ValueError('oracle modes returned different file populations')
+    counts = dict.fromkeys(('agree', 'disagree', 'lost', 'gained', 'neither'), 0)
+    gaps = Counter()
+    disagreements = []
+    for old, new in zip(frozen, extension, strict=True):
+        before, after = old['gap'], new['gap']
+        gaps[before, after] += 1
+        if not before and not after:
+            if old == new:
+                counts['agree'] += 1
+            else:
+                counts['disagree'] += 1
+                disagreements.append(old['path'])
+        elif not before:
+            counts['lost'] += 1
+        elif not after:
+            counts['gained'] += 1
+        else:
+            counts['neither'] += 1
+    return {
+        'files': len(paths), 'counts': counts, 'disagreements': disagreements,
+        'gap_transitions': [[old, new, count] for (old, new), count in sorted(gaps.items())],
+        'frozen_sha256': hashlib.sha256(canonical(frozen).encode()).hexdigest(),
+        'extension_sha256': hashlib.sha256(canonical(extension).encode()).hexdigest(),
+    }
+
+
+def python_overlap(args):
+    oracle = python_oracle()
+    pin = oracle.pin(declarative_fromlist=True)
+    totals, gaps = Counter(), Counter()
+    reports = {}
+    for subject in python_subjects():
+        name = subject['name']
+        root = (args.root / name).resolve(strict=True)
+        names, manifest = oracle.contents(root, subject)
+        frozen = python_rows(oracle, root, subject, names, declarative_fromlist=False)
+        extension = python_rows(oracle, root, subject, names, declarative_fromlist=True)
+        if (names, manifest) != oracle.contents(root, subject):
+            raise ValueError('oracle input drift')
+        report = compare_python(frozen, extension)
+        reports[name] = dict(report, commit=subject['commit'], roots=subject['roots'], manifest=manifest)
+        totals.update(report['counts'])
+        gaps.update({(old, new): count for old, new, count in report['gap_transitions']})
+
+    print(canonical({
+        'pin': {key: pin[key] for key in ('implementation', 'version', 'modulefinder_sha256')},
+        'files': sum(totals.values()), 'counts': totals, 'subjects': reports,
+        'gap_transitions': [[old, new, count] for (old, new), count in sorted(gaps.items())],
+    }))
+    return int(bool(totals['disagree'] or totals['lost']))
 
 
 def main():
@@ -84,18 +157,23 @@ def main():
     truth.add_argument('pool', choices=['development', 'holdout'])
     truth.add_argument('subject')
     truth.add_argument('root', type=Path)
+    truth.add_argument('--declarative-fromlist', action='store_true')
+    overlap = sub.add_parser('python-overlap')
+    overlap.add_argument('root', type=Path, help='pinned development checkout cohort')
     args = ap.parse_args()
     if args.command == 'prepare':
         prepare(args)
-    else:
+    elif args.command == 'python-truth':
         python_truth(args)
+    else:
+        return python_overlap(args)
 
 
 if __name__ == '__main__':
     os.environ.update(GIT_CONFIG_COUNT='2', GIT_CONFIG_KEY_0='core.hooksPath', GIT_CONFIG_VALUE_0='/dev/null',
                       GIT_CONFIG_KEY_1='init.templateDir', GIT_CONFIG_VALUE_1='/dev/null', GIT_TERMINAL_PROMPT='0')
     try:
-        main()
+        sys.exit(main())
     except Exception:
         # Neither traceback nor native stderr may expose holdout per-file data.
         print('COV runner failed; no per-file diagnostics emitted', file=sys.stderr)

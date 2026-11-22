@@ -7,6 +7,7 @@ import argparse
 import ast
 import dis
 import hashlib
+from importlib.machinery import FrozenImporter, PathFinder, SourceFileLoader
 import json
 import modulefinder
 import os
@@ -26,7 +27,7 @@ RUNTIME_MEMBERS = {
 }
 
 
-def pin():
+def pin(*, declarative_fromlist=False):
     pins = json.loads(PINS.read_text(encoding="utf-8"))
     version = ".".join(map(str, sys.version_info[:3]))
     digest = hashlib.sha256(Path(modulefinder.__file__).read_bytes()).hexdigest()
@@ -36,6 +37,8 @@ def pin():
         raise ValueError("CPython or modulefinder identity differs from pins.json")
     if not (sys.flags.isolated and sys.flags.dont_write_bytecode and sys.flags.no_site):
         raise ValueError("invoke the pinned Python with -I -B -S")
+    if declarative_fromlist and (sys.flags.optimize or modulefinder.packagePathMap or modulefinder.replacePackageMap):
+        raise ValueError("declarative from-list requires stock, unoptimized modulefinder")
     return pins
 
 
@@ -112,13 +115,53 @@ def runtime_construct(entry):
     )
 
 
+def declarative_bindings(filename, name):
+    """Require syntactic declarations and CPython module-scope store evidence."""
+    data = filename.read_bytes()
+    tree = ast.parse(data, name)
+    code = compile(data, name, "exec", dont_inherit=True, optimize=0)
+    if runtime_construct(tree):
+        return None
+    reserved = RUNTIME_NAMES | RUNTIME_MEMBERS | {
+        "__cached__", "__class__", "__dict__", "__doc__", "__file__", "__getattr__", "__name__",
+    }
+    bindings = set()
+    for stmt in tree.body:
+        match stmt:
+            case ast.Pass() | ast.Expr(value=ast.Constant()):
+                continue
+            case ast.Import(names=imports):
+                added = [alias.asname or alias.name.split(".")[0] for alias in imports]
+            case ast.ImportFrom(names=imports):
+                added = [alias.asname or alias.name for alias in imports]
+            case ast.Assign(targets=targets, value=value) if all(isinstance(t, ast.Name) for t in targets):
+                # literal_eval also accepts set(), which still calls a name.
+                if any(isinstance(node, ast.Call) for node in ast.walk(value)):
+                    return None
+                ast.literal_eval(value)
+                added = [target.id for target in targets]
+            case _:
+                return None
+        names = set(added)
+        if len(names) != len(added) or names & (bindings | reserved | {"*"}):
+            return None
+        bindings.update(names)
+    # Do not recurse into code objects or ask modulefinder to load initializer
+    # imports. Its stock opcode scanner supplies native STORE_NAME evidence.
+    native = {args[0] for op, args in modulefinder.ModuleFinder().scan_opcodes(code) if op == "store"}
+    return bindings & native
+
+
 class EntryFinder(modulefinder.ModuleFinder):
     """Keep modulefinder's binding rules and trace imports attributed to one file."""
 
-    def __init__(self, root, roots):
+    def __init__(self, root, roots, tracked=None):
         # Isolated startup supplies only the pinned interpreter's stdlib.
         super().__init__(path=[*map(str, roots), *sys.path])
         self.root = root
+        self.tracked = tracked
+        self.declarations = {}
+        self.declared_site = None
         self.active = None
         self.edges = set()
         self.gaps = set()
@@ -194,11 +237,76 @@ class EntryFinder(modulefinder.ModuleFinder):
 
     def load_tail(self, head, tail):
         mod = super().load_tail(head, tail)
-        if self.active and self.active[3] and mod.__path__ is not None:
+        if self.active and self.active[3] and mod.__path__ is not None and not self.proves_fromlist(mod):
             # importlib checks live package attributes, __getattr__ and
             # __all__. Modulefinder's Module object has none of that state.
             self.gaps.add("package-fromlist")
         return mod
+
+    def proves_fromlist(self, mod):
+        if self.tracked is None:
+            return False
+        site = (self.active, mod)
+        if self.declared_site == site:
+            return True
+        _, _, level, names = self.active
+        if "*" in names or mod is self.entry or not mod.__file__:
+            return False
+        try:
+            if level:
+                package = self.entry
+                if not package.__path__:
+                    package = self.modules.get(package.__name__.rpartition(".")[0])
+                if package is None or self.package_bindings(package) is None:
+                    return False
+            bindings = self.package_bindings(mod)
+        except (OSError, SyntaxError, TypeError, ValueError, RuntimeError):
+            return False
+        if bindings is None or not bindings.issuperset(names):
+            return False
+        self.declared_site = site
+        return True
+
+    def package_bindings(self, mod):
+        filename = Path(mod.__file__)
+        if mod.__path__ != [str(filename.parent)]:
+            return None
+        key = (mod.__name__, filename)
+        if key in self.declarations:
+            return self.declarations[key]
+
+        # set_entry pre-seeds relative parents. Recheck each component in the
+        # original search order, including those that modulefinder cached.
+        search = self.path
+        PathFinder.invalidate_caches()
+        parts = mod.__name__.split(".")
+        for index, part in enumerate(parts):
+            fullname = ".".join(parts[:index + 1])
+            if (index == 0 and part in sys.builtin_module_names) or FrozenImporter.find_spec(fullname):
+                return None
+            spec = PathFinder.find_spec(part, search)
+            if spec is None or type(spec.loader) is not SourceFileLoader or spec.submodule_search_locations is None:
+                return None
+            source = Path(spec.origin)
+            if not source.is_relative_to(self.root) or source.name != "__init__.py":
+                return None
+            name = source.relative_to(self.root).as_posix()
+            if name not in self.tracked or source.resolve(strict=True) != source:
+                return None
+            if index == len(parts) - 1 and source != filename:
+                return None
+            bindings = declarative_bindings(source, name)
+            if bindings is None:
+                return None
+            search = spec.submodule_search_locations
+        self.declarations[key] = bindings
+        return bindings
+
+    def ensure_fromlist(self, mod, fromlist, recursive=0):
+        # Native Module attributes describe modules already discovered by the
+        # finder, not assignments in a package. Do not manufacture attributes.
+        if self.declared_site != (self.active, mod):
+            super().ensure_fromlist(mod, fromlist, recursive)
 
     def _add_badmodule(self, name, caller):
         super()._add_badmodule(name, caller)
@@ -206,7 +314,7 @@ class EntryFinder(modulefinder.ModuleFinder):
             self.gaps.add("unresolved-direct")
 
 
-def read_entry(root, roots, name):
+def read_entry(root, roots, name, *, tracked=None):
     row = {"path": name, "edges": [], "gap": "", "optimized_away": 0}
     filename = root / name
     data = filename.read_bytes()
@@ -220,8 +328,12 @@ def read_entry(root, roots, name):
         row["gap"] = "runtime"
         return row
 
-    finder = EntryFinder(root, roots)
+    finder = EntryFinder(root, roots, tracked)
     try:
+        if tracked is not None:
+            canonical_roots = all(r.is_relative_to(root) and r.resolve(strict=True) == r for r in roots)
+            if not canonical_roots or name not in tracked or filename.resolve(strict=True) != filename:
+                finder.tracked = None
         finder.set_entry(roots, filename)
         finder.scan_code(code, finder.entry)
     except AttributeError as exc:
@@ -246,18 +358,25 @@ def read_entry(root, roots, name):
     return row
 
 
+def read_rows(root, subject, names, *, declarative_fromlist=False):
+    declared_roots = [root / member for member in subject["roots"]]
+    roots = [member.resolve(strict=True) for member in declared_roots]
+    tracked = frozenset(names) if declarative_fromlist and roots == declared_roots else None
+    return [read_entry(root, roots, name, tracked=tracked) for name in names]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("corpus", type=Path)
+    parser.add_argument("--declarative-fromlist", action="store_true")
     args = parser.parse_args()
-    pins = pin()
+    pins = pin(declarative_fromlist=args.declarative_fromlist)
     subjects = {}
     for subject in pins["subjects"]:
         name = subject["name"]
         root = (args.corpus / name).resolve(strict=True)
-        roots = [(root / member).resolve(strict=True) for member in subject["roots"]]
         names, before = contents(root, subject)
-        rows = [read_entry(root, roots, entry) for entry in names]
+        rows = read_rows(root, subject, names, declarative_fromlist=args.declarative_fromlist)
         if (names, before) != contents(root, subject):
             raise ValueError(f"{name}: inputs changed during oracle collection")
         subjects[name] = {"manifest": before, "rows": rows}
