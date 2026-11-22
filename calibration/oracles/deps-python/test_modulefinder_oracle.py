@@ -1,5 +1,6 @@
 """Focused offline fixtures for the pinned native adapter."""
 import importlib._bootstrap as bootstrap
+from importlib.machinery import PathFinder
 import io
 import modulefinder
 import pathlib
@@ -270,6 +271,56 @@ class OracleTests(unittest.TestCase):
             self.write(root, "app/__init__.py", "value = 1")
             self.write(root, "app/main.py", "from . import value")
             self.assertTrue(read_entry(root, [root / "src", root], "app/main.py", tracked=tracked)["gap"])
+
+    def test_declarative_fromlist_requires_native_entry_package_order(self):
+        oracle["pin"](declarative_fromlist=True)
+        for prefix in ("", "second/"):
+            with self.subTest(entry_prefix=prefix), tempfile.TemporaryDirectory() as temp:
+                root = pathlib.Path(temp).resolve()
+                sentinel = "raise AssertionError('fixture executed')\n"
+                sources = {
+                    "src/pkg/__init__.py": "",
+                    "src/pkg/module.py": sentinel,
+                    prefix + "pkg/__init__.py": "",
+                    prefix + "pkg/module.py": sentinel,
+                    prefix + "pkg/consumer.py": "import pkg.module\nfrom helper import token\n",
+                    "helper/__init__.py": "token = 1\n",
+                }
+                if prefix:
+                    sources["second/__init__.py"] = ""
+                for name, source in sources.items():
+                    self.write(root, name, source)
+                git = ["git", "-C", str(root), "-c", "core.hooksPath=/dev/null"]
+                subprocess.run([*git, "init", "-q", "--template="], check=True)
+                subprocess.run([*git, "add", "--all"], check=True)
+                subprocess.run([*git, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                                "commit", "-qm", "Track search order fixture"], check=True)
+                revision = subprocess.check_output([*git, "rev-parse", "HEAD"], text=True).strip()
+                roots = [root / "src", root / "second", root] if prefix else [root / "src", root]
+                search = list(map(str, roots))
+                entry = prefix + "pkg/consumer.py"
+                if prefix:
+                    outer = PathFinder.find_spec("second", search)
+                    package = PathFinder.find_spec("second.pkg", outer.submodule_search_locations)
+                    qualified = PathFinder.find_spec("second.pkg.consumer", package.submodule_search_locations)
+                    self.assertEqual(qualified.origin, str(root / entry))
+                parent = PathFinder.find_spec("pkg", search)
+                child = PathFinder.find_spec("pkg.module", parent.submodule_search_locations)
+                self.assertEqual(parent.origin, str(root / "src/pkg/__init__.py"))
+                self.assertEqual(child.origin, str(root / "src/pkg/module.py"))
+
+                subject = {"name": "synthetic", "commit": revision, "files": len(sources)}
+                tracked, manifest = oracle["contents"](root, subject, confined=True)
+                self.assertEqual(read_entry(root, roots, entry)["gap"], "package-fromlist")
+                unshadowed = read_entry(root, roots[1:], entry, tracked=tracked)
+                self.assertEqual(unshadowed["gap"], "", unshadowed)
+                self.assertEqual([e["To"] for e in unshadowed["edges"]],
+                                 [prefix + "pkg/__init__.py", prefix + "pkg/module.py", "helper/__init__.py"])
+                row = read_entry(root, roots, entry, tracked=tracked)
+                self.assertEqual((tracked, manifest), oracle["contents"](root, subject, confined=True))
+                self.assertEqual(row["gap"], "native-target", row)
+                self.assertEqual(row["edges"], [])
+        self.assertTrue({"pkg", "pkg.module", "second", "second.pkg", "helper"}.isdisjoint(sys.modules))
 
     def test_declarative_fromlist_refuses_sourceless_loader(self):
         with tempfile.TemporaryDirectory() as temp:

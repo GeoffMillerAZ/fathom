@@ -212,8 +212,10 @@ class EntryFinder(modulefinder.ModuleFinder):
             initializers = [root.joinpath(*parents[:idx], "__init__.py") for idx in range(1, len(parents) + 1)]
             if not all(path.is_file() for path in initializers):
                 continue
-            if self.tracked is not None and not all(self.tracked_source(path) for path in initializers):
-                raise UnconfinedSource("entry package context is outside the tracked source view")
+            if self.tracked is not None and parents and self.native_package_sources(parents) != initializers:
+                # Every import site can reuse these modules, even when a
+                # from-list proof concerns a different package.
+                raise UnconfinedSource("entry package context differs from native search order")
             # run_script registers __main__ and cannot bind relative imports.
             # Establish the regular package identity without executing any code.
             for idx in range(1, len(parents) + 1):
@@ -372,19 +374,11 @@ class EntryFinder(modulefinder.ModuleFinder):
             for member in members for child in children
         )
 
-    def package_bindings(self, mod):
-        filename = Path(mod.__file__)
-        if mod.__path__ != [str(filename.parent)]:
-            return None
-        key = (mod.__name__, filename)
-        if key in self.declarations:
-            return self.declarations[key]
-
-        # set_entry pre-seeds relative parents. Recheck each component in the
-        # original search order, including those that modulefinder cached.
+    def native_package_sources(self, parts):
+        """Resolve a regular tracked package chain in the original search order."""
         search = self.path
+        sources = []
         PathFinder.invalidate_caches()
-        parts = mod.__name__.split(".")
         for index, part in enumerate(parts):
             fullname = ".".join(parts[:index + 1])
             if (index == 0 and part in sys.builtin_module_names) or FrozenImporter.find_spec(fullname):
@@ -393,16 +387,27 @@ class EntryFinder(modulefinder.ModuleFinder):
             if spec is None or type(spec.loader) is not SourceFileLoader or spec.submodule_search_locations is None:
                 return None
             source = Path(spec.origin)
-            if not source.is_relative_to(self.root) or source.name != "__init__.py":
+            if source.name != "__init__.py" or not self.tracked_source(source):
                 return None
-            if not self.tracked_source(source):
-                return None
-            if index == len(parts) - 1 and source != filename:
-                return None
+            sources.append(source)
+            search = spec.submodule_search_locations
+        return sources
+
+    def package_bindings(self, mod):
+        filename = Path(mod.__file__)
+        if mod.__path__ != [str(filename.parent)]:
+            return None
+        key = (mod.__name__, filename)
+        if key in self.declarations:
+            return self.declarations[key]
+
+        sources = self.native_package_sources(mod.__name__.split("."))
+        if sources is None or sources[-1] != filename:
+            return None
+        for source in sources:
             bindings = declarative_bindings(source, source.relative_to(self.root).as_posix())
             if bindings is None:
                 return None
-            search = spec.submodule_search_locations
         self.declarations[key] = bindings
         return bindings
 
