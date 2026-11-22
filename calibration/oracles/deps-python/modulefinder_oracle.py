@@ -204,6 +204,9 @@ class EntryFinder(modulefinder.ModuleFinder):
         self.bytecode_imports = 0
 
     def set_entry(self, roots, filename):
+        if self.tracked is not None:
+            self.set_native_entry(roots, filename)
+            return
         for root in roots:
             if not filename.is_relative_to(root):
                 continue
@@ -212,10 +215,6 @@ class EntryFinder(modulefinder.ModuleFinder):
             initializers = [root.joinpath(*parents[:idx], "__init__.py") for idx in range(1, len(parents) + 1)]
             if not all(path.is_file() for path in initializers):
                 continue
-            if self.tracked is not None and parents and self.native_package_sources(parents) != initializers:
-                # Every import site can reuse these modules, even when a
-                # from-list proof concerns a different package.
-                raise UnconfinedSource("entry package context differs from native search order")
             # run_script registers __main__ and cannot bind relative imports.
             # Establish the regular package identity without executing any code.
             for idx in range(1, len(parents) + 1):
@@ -230,6 +229,32 @@ class EntryFinder(modulefinder.ModuleFinder):
             return
         self.entry = self.add_module("__main__")
         self.entry.__file__ = str(filename)
+
+    def set_native_entry(self, roots, filename):
+        root = next((r for r in roots if filename.is_relative_to(r)), None)
+        if root is None:
+            raise UnconfinedSource("entry is outside the declared search roots")
+        source = filename.relative_to(root)
+        package = source.name == "__init__.py" and len(source.parts) > 1
+        parts = source.parts[:-1] if package else (*source.parts[:-1], source.stem)
+        if not all(part.isidentifier() for part in parts):
+            raise UnconfinedSource("entry has no unambiguous module name")
+        chain = self.native_source_chain(parts, package=package, namespace_root=root)
+        if chain is None or chain[-1] != filename:
+            raise UnconfinedSource("entry differs from native search order")
+
+        if None in chain or (len(parts) == 1 and not package):
+            # A unique namespace can locate the file, but modulefinder cannot
+            # bind relative imports through it. Do not seed a package or __main__.
+            self.entry = modulefinder.Module("__main__")
+            self.entry.__file__ = str(filename)
+            return
+        for index, origin in enumerate(chain):
+            module = self.add_module(".".join(parts[:index + 1]))
+            module.__file__ = str(origin)
+            if index < len(parts) - 1 or package:
+                module.__path__ = [str(origin.parent)]
+        self.entry = module
 
     def scan_code(self, co, module):
         # Load direct targets to let modulefinder establish filenames. Their
@@ -374,8 +399,8 @@ class EntryFinder(modulefinder.ModuleFinder):
             for member in members for child in children
         )
 
-    def native_package_sources(self, parts):
-        """Resolve a regular tracked package chain in the original search order."""
+    def native_source_chain(self, parts, *, package, namespace_root=None):
+        """Resolve identifiers in native order and validate each origin before reuse."""
         search = self.path
         sources = []
         PathFinder.invalidate_caches()
@@ -383,14 +408,33 @@ class EntryFinder(modulefinder.ModuleFinder):
             fullname = ".".join(parts[:index + 1])
             if (index == 0 and part in sys.builtin_module_names) or FrozenImporter.find_spec(fullname):
                 return None
+            # Modulefinder passes the one component with an explicit search
+            # path, so namespace lookup does not consult a live parent module.
             spec = PathFinder.find_spec(part, search)
-            if spec is None or type(spec.loader) is not SourceFileLoader or spec.submodule_search_locations is None:
+            if spec is None:
                 return None
-            source = Path(spec.origin)
-            if source.name != "__init__.py" or not self.tracked_source(source):
+            locations = spec.submodule_search_locations
+            is_package = index < len(parts) - 1 or package
+            if spec.loader is None and namespace_root is not None and index < len(parts) - 1:
+                directory = namespace_root.joinpath(*parts[:index + 1])
+                if list(locations or ()) != [str(directory)] or directory.resolve(strict=True) != directory:
+                    return None
+                sources.append(None)
+            elif type(spec.loader) is SourceFileLoader and (locations is not None) == is_package:
+                source = Path(spec.origin)
+                if not self.tracked_source(source):
+                    return None
+                if is_package and (source.name != "__init__.py" or list(locations) != [str(source.parent)]):
+                    return None
+                if namespace_root is not None:
+                    expected = namespace_root.joinpath(*parts[:index + 1])
+                    expected = expected / "__init__.py" if is_package else expected.with_suffix(".py")
+                    if source != expected:
+                        return None
+                sources.append(source)
+            else:
                 return None
-            sources.append(source)
-            search = spec.submodule_search_locations
+            search = locations
         return sources
 
     def package_bindings(self, mod):
@@ -401,7 +445,7 @@ class EntryFinder(modulefinder.ModuleFinder):
         if key in self.declarations:
             return self.declarations[key]
 
-        sources = self.native_package_sources(mod.__name__.split("."))
+        sources = self.native_source_chain(mod.__name__.split("."), package=True)
         if sources is None or sources[-1] != filename:
             return None
         for source in sources:

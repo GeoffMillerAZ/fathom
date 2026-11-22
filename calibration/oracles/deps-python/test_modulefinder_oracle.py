@@ -322,6 +322,68 @@ class OracleTests(unittest.TestCase):
                 self.assertEqual(row["edges"], [])
         self.assertTrue({"pkg", "pkg.module", "second", "second.pkg", "helper"}.isdisjoint(sys.modules))
 
+    def test_native_entry_rejects_package_shadowing_selected_module(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            entry = "second/pkg/consumer.py"
+            shadow = "second/pkg/consumer/__init__.py"
+            sources = {
+                "second/__init__.py": "",
+                "second/pkg/__init__.py": "",
+                entry: "import pkg.consumer\nfrom helper import token\n",
+                shadow: "raise AssertionError('fixture executed')\n",
+                "helper/__init__.py": "token = 1\n",
+            }
+            for name, source in sources.items():
+                self.write(root, name, source)
+            roots = [root / "second", root]
+            parent = PathFinder.find_spec("pkg", list(map(str, roots)))
+            self.assertEqual(parent.origin, str(root / "second/pkg/__init__.py"))
+            native = PathFinder.find_spec("pkg.consumer", parent.submodule_search_locations)
+            self.assertEqual(native.origin, str(root / shadow))
+            self.assertEqual(read_entry(root, roots, entry)["gap"], "package-fromlist")
+            finder = oracle["EntryFinder"](root, roots, set(sources))
+            with self.assertRaises(oracle["UnconfinedSource"]):
+                finder.set_entry(roots, root / entry)
+            self.assertEqual(finder.modules, {})
+            with patch("io.open_code", side_effect=AssertionError("unexpected native open")):
+                row = read_entry(root, roots, entry, tracked=set(sources))
+            self.assertEqual((row["gap"], row["edges"]), ("native-target", []), row)
+            (root / shadow).unlink()
+            row = read_entry(root, roots, entry, tracked=set(sources) - {shadow})
+            self.assertEqual(row["gap"], "", row)
+
+    def test_native_entry_refuses_namespace_and_root_module_shadow(self):
+        for entry, other in (
+            ("second/ns/consumer.py", "ns/__init__.py"),
+            ("second/ns/consumer.py", "ns/other.py"),
+            ("second/consumer.py", "second/consumer/__init__.py"),
+            ("second/consumer.extra.py", "second/consumer.py"),
+        ):
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temp:
+                root = pathlib.Path(temp).resolve()
+                self.write(root, entry, "from helper import token\n")
+                self.write(root, other, "")
+                self.write(root, "helper/__init__.py", "token = 1\n")
+                row = read_entry(root, [root / "second", root], entry,
+                                 tracked={entry, other, "helper/__init__.py"})
+                self.assertEqual((row["gap"], row["edges"]), ("native-target", []), row)
+
+    def test_native_entry_allows_unique_namespace_without_cache_reuse(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp).resolve()
+            entry = "ns/nested/consumer.py"
+            helper = "helper/__init__.py"
+            self.write(root, entry, "from helper import token\n")
+            self.write(root, helper, "token = 1\n")
+            finder = oracle["EntryFinder"](root, [root], {entry, helper})
+            finder.set_entry([root], root / entry)
+            self.assertFalse(finder.modules)
+            row = read_entry(root, [root], entry, tracked={entry, helper})
+            self.assertEqual(row["gap"], "", row)
+            self.write(root, entry, "from . import unproven\nfrom helper import token\n")
+            self.assertTrue(read_entry(root, [root], entry, tracked={entry, helper})["gap"])
+
     def test_declarative_fromlist_refuses_sourceless_loader(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp).resolve()
