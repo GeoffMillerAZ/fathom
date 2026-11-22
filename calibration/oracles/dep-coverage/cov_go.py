@@ -100,7 +100,9 @@ def capture(root, selected, cgo, tracked=None):
             gaps[file] = 'native-build-excluded' if file in excluded else 'native-unlisted'
             continue
         p, field = member
-        if field == 'CgoFiles':
+        native_fields = ('CgoFiles', 'CFiles', 'CXXFiles', 'MFiles', 'HFiles',
+                         'FFiles', 'SFiles', 'SwigFiles', 'SwigCXXFiles', 'SysoFiles')
+        if any(p.get(f) for f in native_fields):
             gaps[file] = 'native-cgo-attribution'
             continue
         module_dir = Path((p.get('Module') or {}).get('GoMod', root / 'go.mod')).parent
@@ -238,7 +240,15 @@ def campaign(sources, output):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('sources', type=Path)
-    ap.add_argument('output', type=Path)
+    ap.add_argument('sources', type=Path, nargs='?')
+    ap.add_argument('output', type=Path, nargs='?')
+    ap.add_argument('--fixture', type=Path)
     args = ap.parse_args()
-    campaign(args.sources.resolve(), args.output.resolve())
+    if args.fixture:
+        root = args.fixture.resolve()
+        selected = sorted(p.relative_to(root).as_posix() for p in root.rglob('*.go') if p.is_file())
+        print(encoded(capture(root, selected, '0')).decode())
+    elif args.sources and args.output:
+        campaign(args.sources.resolve(), args.output.resolve())
+    else:
+        ap.error('provide sources and output, or --fixture')

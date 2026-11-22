@@ -81,6 +81,7 @@ class NativeControl(unittest.TestCase):
             result = cov_go.capture(root, selected, '1')
             self.assertIn('lib/lib.go', result['gaps'])
             self.assertEqual(result['gaps']['app/native.go'], 'native-cgo-attribution')
+            self.assertEqual(result['gaps']['app/a.go'], 'native-cgo-attribution')
             self.assertNotIn('lib/lib.go', [r['Path'] for r in result['truth']])
 
     def test_ambiguous_embed_is_not_package_truth(self):
