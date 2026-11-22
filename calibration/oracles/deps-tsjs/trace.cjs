@@ -7,7 +7,10 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { builtinModules } = require("node:module");
 const pins = require("./pins.json");
-const [compiler, rootArg, pathsFile, traceFile] = process.argv.slice(2);
+const [compiler, rootArg, pathsFile, traceFile, mode, injection] = process.argv.slice(2);
+const classifyExit = mode === "--classify-native-exit";
+const inject = classifyExit && injection === "--inject-native-failure";
+const nativeNonzeroStatus = 79; // Private status consumed by the COV capture.
 if (!traceFile || process.version !== pins.node) {
   throw new Error("expected pinned Node and arguments: compiler root file-list trace");
 }
@@ -37,6 +40,31 @@ const stats = {
 };
 const builtin = new Set(builtinModules);
 const sink = [];
+let adapterFailure;
+function adapterCallback(operation) {
+  if (!classifyExit) return operation;
+  return (...args) => {
+    try {
+      return operation(...args);
+    } catch (error) {
+      // Keep the first host failure fatal even if the compiler catches it.
+      adapterFailure ??= { error };
+      throw error;
+    }
+  };
+}
+function compilerOperation(operation) {
+  if (!classifyExit) return operation();
+  let result;
+  try {
+    result = operation();
+  } catch {
+    if (adapterFailure) throw adapterFailure.error;
+    process.exit(nativeNonzeroStatus);
+  }
+  if (adapterFailure) throw adapterFailure.error;
+  return result;
+}
 function flushTrace() {
   if (sink.length) {
     fs.writeSync(traceFD, sink.join("\n") + "\n");
@@ -74,14 +102,14 @@ function readFile(file) {
 }
 const disk = {
   useCaseSensitiveFileNames: true,
-  fileExists,
-  readFile,
-  directoryExists,
-  getDirectories: (dir) => directoryExists(dir) ? ts.sys.getDirectories(dir).filter(physicallyWithin) : [],
-  readDirectory: (dir, ...args) => directoryExists(dir) ? ts.sys.readDirectory(dir, ...args).filter(physicallyWithin) : [],
-  realpath: (file) => physicallyWithin(file) ? ts.sys.realpath(file) : file,
+  fileExists: adapterCallback(fileExists),
+  readFile: adapterCallback(readFile),
+  directoryExists: adapterCallback(directoryExists),
+  getDirectories: adapterCallback((dir) => directoryExists(dir) ? ts.sys.getDirectories(dir).filter(physicallyWithin) : []),
+  readDirectory: adapterCallback((dir, ...args) => directoryExists(dir) ? ts.sys.readDirectory(dir, ...args).filter(physicallyWithin) : []),
+  realpath: adapterCallback((file) => physicallyWithin(file) ? ts.sys.realpath(file) : file),
   getCurrentDirectory: () => root,
-  trace,
+  trace: adapterCallback(trace),
 };
 function configFor(file) {
   for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
@@ -106,7 +134,8 @@ for (const [configFile, files] of groups) {
   let parsed;
   if (configFile) {
     stats.configGroups++;
-    parsed = ts.getParsedCommandLineOfConfigFile(configFile, {}, { ...disk, onUnRecoverableConfigFileDiagnostic: report });
+    const configHost = { ...disk, onUnRecoverableConfigFileDiagnostic: adapterCallback(report) };
+    parsed = compilerOperation(() => ts.getParsedCommandLineOfConfigFile(configFile, {}, configHost));
     const configErrors = parsed?.errors.filter((d) => d.code !== 18002 && d.code !== 18003);
     if (!parsed || configErrors.length) {
       for (const error of configErrors || []) report(error);
@@ -124,38 +153,44 @@ for (const [configFile, files] of groups) {
     types: [],
     traceResolution: true,
   };
-  const host = { ...ts.createCompilerHost(options), ...disk, useCaseSensitiveFileNames: () => true, writeFile: () => {
-    throw new Error("oracle attempted to emit a file");
-  } };
+  const host = {
+    ...compilerOperation(() => ts.createCompilerHost(options)),
+    ...disk,
+    useCaseSensitiveFileNames: () => true,
+    writeFile: adapterCallback(() => { throw new Error("oracle attempted to emit a file"); }),
+  };
   // createCompilerHost's default source reader closes over ts.sys. Construct
   // source files from the confined read, preserving the native Node mode.
-  host.getSourceFile = (file, languageVersion, onError) => {
+  const readSource = adapterCallback((file, onError) => {
     const source = readFile(file);
-    if (source === undefined) {
-      if (onError) onError("file not readable in pinned subject");
-      return undefined;
-    }
-    return ts.createSourceFile(file, source, languageVersion, true);
-  };
-  const program = ts.createProgram({
-    rootNames: files, options, host, projectReferences: parsed?.projectReferences,
+    if (source === undefined && onError) onError("file not readable in pinned subject");
+    return source;
   });
-  for (const error of program.getOptionsDiagnostics()) {
+  host.getSourceFile = (file, languageVersion, onError) => {
+    const source = readSource(file, onError);
+    return source === undefined ? undefined : ts.createSourceFile(file, source, languageVersion, true);
+  };
+  const programOptions = { rootNames: files, options, host, projectReferences: parsed?.projectReferences };
+  const program = compilerOperation(() => {
+    if (inject) throw new Error("synthetic compiler failure");
+    return ts.createProgram(programOptions);
+  });
+  for (const error of compilerOperation(() => program.getOptionsDiagnostics())) {
     stats.optionDiagnostics[error.code] = (stats.optionDiagnostics[error.code] || 0) + 1;
     report(error);
   }
-  const nativeFiles = new Set(program.getSourceFiles().map((file) => file.fileName));
+  const nativeFiles = new Set(compilerOperation(() => program.getSourceFiles()).map((file) => file.fileName));
   trace("Compiler file list:");
   for (const file of nativeFiles) trace(file);
-  const fallbackCache = ts.createModuleResolutionCache(root, (name) => name, options);
+  const fallbackCache = compilerOperation(() => ts.createModuleResolutionCache(root, (name) => name, options));
   for (const file of files) {
-    const source = program.getSourceFile(file);
+    const source = compilerOperation(() => program.getSourceFile(file));
     if (!nativeFiles.has(file) || !source) {
       stats.notInProgram++;
       continue;
     }
     stats.compilerListed++;
-    if (program.getSyntacticDiagnostics(source).length) {
+    if (compilerOperation(() => program.getSyntacticDiagnostics(source)).length) {
       stats.syntax++;
       continue;
     }
@@ -181,7 +216,8 @@ for (const [configFile, files] of groups) {
       }
     }
     for (const ref of source.typeReferenceDirectives) {
-      const answer = ts.resolveTypeReferenceDirective(ref.fileName, file, options, disk);
+      const typeName = ref.fileName;
+      const answer = compilerOperation(() => ts.resolveTypeReferenceDirective(typeName, file, options, disk));
       const target = answer.resolvedTypeReferenceDirective?.resolvedFileName;
       if (target && logical(target)) {
         add("config-ref", ref.fileName, source.getLineAndCharacterOfPosition(ref.pos).line + 1, "file", logical(target));
@@ -197,14 +233,15 @@ for (const [configFile, files] of groups) {
       if (examined.has(key)) return;
       examined.add(key);
       const line = node.pos < 0 ? 0 : source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
-      const mode = forcedMode ?? program.getModeForUsageLocation(source, node);
-      let result = program.getResolvedModule(source, node.text, mode);
+      const mode = forcedMode ?? compilerOperation(() => program.getModeForUsageLocation(source, node));
+      const request = node.text;
+      let result = compilerOperation(() => program.getResolvedModule(source, request, mode));
       if (!result) {
         // TypeScript's Program only enumerates a subset of literal calls
         // (for example, require in a TS file and require.resolve are absent).
         // Run its same resolver for those AST requests, under their mode.
         stats.moduleTraceFallback++;
-        result = ts.resolveModuleName(node.text, file, options, disk, fallbackCache, undefined, mode);
+        result = compilerOperation(() => ts.resolveModuleName(request, file, options, disk, fallbackCache, undefined, mode));
       }
       const target = result.resolvedModule?.resolvedFileName;
       if (target && logical(target)) {

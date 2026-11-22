@@ -94,6 +94,7 @@ OWNED = (
 SHARED_HARNESS = (
     "pkg/lang/deps/cov_measure_test.go",
     "calibration/oracles/dep-coverage/cov_python_pyright.py",
+    "calibration/oracles/deps-tsjs/trace.cjs",
 )
 PINS = (
     "calibration/oracles/dep-coverage/cov_holdout.json",
@@ -363,8 +364,7 @@ def identity(compiler, pyright, mode="initial"):
         raise ValueError("compiler identity differs")
     files = (*OWNED, *SHARED_HARNESS, *PINS,
              "calibration/oracles/dep-coverage/cov_run.py",
-             "calibration/oracles/deps-python/modulefinder_oracle.py",
-             "calibration/oracles/deps-tsjs/trace.cjs")
+             "calibration/oracles/deps-python/modulefinder_oracle.py")
     pins = cohorts() if mode != "rehearse" else {"development": rehearsal_subjects("development")}
     if mode == "rehearse":
         files = tuple(name for name in files if name not in PINS[:2])

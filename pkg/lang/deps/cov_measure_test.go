@@ -390,8 +390,11 @@ func covCaptureTruth(t *testing.T, python, compiler, pool string, s covSubject, 
 			t.Fatal("COV compiler adapter unavailable")
 		}
 		args := []string{script, compiler, root, filepath.Join(private, "inputs.json"), filepath.Join(private, "trace.log")}
-		if inject {
-			args = []string{"-e", "process.exit(79)"}
+		if isolate {
+			args = append(args, "--classify-native-exit")
+			if inject {
+				args = append(args, "--inject-native-failure")
+			}
 		}
 		cmd = exec.CommandContext(t.Context(), "node", args...)
 	}
@@ -402,7 +405,9 @@ func covCaptureTruth(t *testing.T, python, compiler, pool string, s covSubject, 
 	data, err := cmd.Output()
 	if err != nil {
 		var exit *exec.ExitError
-		if isolate && s.Dialect != "python" && t.Context().Err() == nil && errors.As(err, &exit) && exit.ExitCode() > 0 {
+		const nativeNonzeroStatus = 79 // Private exit status from trace.cjs.
+		if isolate && s.Dialect != "python" && t.Context().Err() == nil && len(data) == 0 &&
+			errors.As(err, &exit) && exit.ExitCode() == nativeNonzeroStatus {
 			return nil, nil, exit
 		}
 		t.Fatal("COV pinned oracle invocation failed; no per-file diagnostics emitted")

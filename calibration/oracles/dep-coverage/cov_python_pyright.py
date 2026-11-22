@@ -4,6 +4,7 @@ import ast
 import base64
 from collections import defaultdict
 import hashlib
+from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -65,7 +66,7 @@ def verify_tool(cache):
     return node, package / "index.js"
 
 
-def run_node(node, args, work, *, original=None, check=True):
+def run_node(node, args, work, *, original=None, check=True, text=True):
     profile = SANDBOX
     options = []
     if original is not None:
@@ -74,7 +75,7 @@ def run_node(node, args, work, *, original=None, check=True):
     return subprocess.run(
         ["/usr/bin/sandbox-exec", *options, "-p", profile, node, *args],
         cwd=work, env={"HOME": str(work), "TMPDIR": str(work), "PATH": "/usr/bin:/bin"},
-        text=True, capture_output=True, check=check, timeout=180,
+        text=text, capture_output=True, check=check, timeout=180,
     )
 
 
@@ -125,6 +126,24 @@ class NativeNonzero(Exception):
     """The pinned graph command returned a positive exit status."""
 
 
+def graph_exit_preload(work, launch):
+    # sandbox-exec can return a positive status before Node starts. Record the
+    # graph process's status within the same sandbox and private scratch root.
+    preload = work / "graph-exit.cjs"
+    status = work / "graph-exit.status"
+    preload.write_text(f"""
+const fs = require("node:fs");
+let uncaught = false;
+process.once("uncaughtExceptionMonitor", () => {{ uncaught = true; }});
+process.once("exit", (code) => {{
+  if (code > 0 && !uncaught && process.mainModule?.filename === {json.dumps(str(launch))}) {{
+    fs.writeFileSync({json.dumps(str(status))}, String(code), {{flag: "wx", mode: 0o600}});
+  }}
+}});
+""", encoding="utf-8")
+    return preload, status
+
+
 def run_graph(tool, view, roots, tracked, selected, work, *, original=None, classify_exit=False):
     if (view.parent != work or view.name != "00-view" or view.resolve(strict=True) != view
             or set(work.iterdir()) != {view}):
@@ -158,17 +177,30 @@ def run_graph(tool, view, roots, tracked, selected, work, *, original=None, clas
     project = work / "pyrightconfig.json"
     project.write_text(json.dumps(config, sort_keys=True), encoding="utf-8")
     node, launch = tool
-    result = run_node(node, [str(launch), "--project", str(project), "--dependencies", "--verbose"],
-                      work, original=original, check=False)
-    (work / "graph.log").write_text(result.stdout, encoding="utf-8")
-    (work / "stderr.log").write_text(result.stderr, encoding="utf-8")
+    args = [str(launch), "--project", str(project), "--dependencies", "--verbose"]
+    if classify_exit:
+        preload, status = graph_exit_preload(work, launch)
+        args = ["--require", str(preload), *args]
+    result = run_node(node, args, work, original=original, check=False, text=not classify_exit)
     if classify_exit and result.returncode > 0:
-        raise NativeNonzero("native truth tool exited nonzero")
-    if result.returncode or result.stderr:
+        try:
+            marked = stat.S_ISREG(status.lstat().st_mode) and status.read_bytes() == str(result.returncode).encode()
+        except FileNotFoundError:
+            marked = False
+        if marked:
+            # An exited graph command cannot deliver truth. Discard any partial output.
+            raise NativeNonzero("native truth tool exited nonzero")
+    stdout, stderr = result.stdout, result.stderr
+    if classify_exit:
+        # Decode only after checking the status. Partial output may end mid-character.
+        stdout, stderr = (StringIO(value.decode(), newline=None).read() for value in (stdout, stderr))
+    (work / "graph.log").write_text(stdout, encoding="utf-8")
+    (work / "stderr.log").write_text(stderr, encoding="utf-8")
+    if result.returncode or stderr:
         raise ValueError("Pyright graph collection failed; inspect the private logs")
     typeshed = launch.parent / "dist/typeshed-fallback"
     expected_paths = [typeshed / "stdlib", work, *search, stubs, typeshed / "stubs/...", empty]
-    _, _, listing = result.stdout.partition("  Search paths:\n")
+    _, _, listing = stdout.partition("  Search paths:\n")
     actual_paths = []
     for line in listing.splitlines():
         if not line.startswith("    "):
@@ -176,7 +208,7 @@ def run_graph(tool, view, roots, tracked, selected, work, *, original=None, clas
         actual_paths.append(line.strip())
     if actual_paths != list(map(str, expected_paths)):
         raise ValueError("Pyright effective search path differs")
-    return parse_graph(view, tracked, result.stdout)
+    return parse_graph(view, tracked, stdout)
 
 
 def literal_sites(source, entry, roots, tracked):

@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 from runpy import run_path
+import shutil
 import signal
 import stat
 import subprocess
@@ -134,23 +135,126 @@ class FinalControls(unittest.TestCase):
         pyright = final["PYRIGHT"]
         graph = pyright["run_graph"]
         graph_scope = graph.__globals__
+        node = shutil.which("node")
+        if sys.platform != "darwin" or not node:
+            self.skipTest("requires sandbox-exec and pinned Node")
+        self.assertEqual(subprocess.check_output([node, "--version"], text=True).strip(),
+                         pyright["NODE_VERSION"])
 
-        def run_with(result, **kwargs):
+        def run_graph(source, *, classify_exit=True, profile=pyright["SANDBOX"], tamper=False):
             with tempfile.TemporaryDirectory() as tmp:
-                work = Path(tmp).resolve()
+                root = Path(tmp).resolve()
+                work = root / "work"
                 view = work / "00-view"
-                view.mkdir()
-                with patch.dict(graph_scope, run_node=lambda *_, **__: result):
-                    graph(("node", work / "index.js"), view, [], set(), set(), work, **kwargs)
+                view.mkdir(parents=True)
+                launch = root / "index.js"
+                if source is not None:
+                    launch.write_text(source)
+                real_run = subprocess.run
 
+                def run(*args, **kwargs):
+                    result = real_run(*args, **kwargs)
+                    if tamper:
+                        result.returncode = 66
+                    return result
+
+                with patch.dict(graph_scope, SANDBOX=profile), patch.object(subprocess, "run", run):
+                    try:
+                        return graph((node, launch), view, [], set(), set(), work,
+                                     classify_exit=classify_exit)
+                    except pyright["NativeNonzero"]:
+                        self.assertFalse((work / "graph.log").exists())
+                        raise
+
+        native = "console.error('synthetic diagnostic'); process.exit(65);"
+        for source in (native, "console.log('partial graph'); " + native,
+                       "require('node:fs').writeSync(1, Buffer.from([0xe2])); " + native):
+            with self.subTest(source=source), self.assertRaises(pyright["NativeNonzero"]):
+                run_graph(source)
         with self.assertRaisesRegex(ValueError, "graph collection failed"):
-            run_with(subprocess.CompletedProcess([], 9, "", "synthetic"))
-        with self.assertRaisesRegex(Exception, "native truth tool exited nonzero") as raised:
-            run_with(subprocess.CompletedProcess([], 9, "", "synthetic"), classify_exit=True)
-        self.assertIs(type(raised.exception), pyright["NativeNonzero"])
-        for status, stderr in ((0, "synthetic"), (-9, ""), (0, "")):
-            with self.subTest(status=status, stderr=stderr), self.assertRaises(ValueError):
-                run_with(subprocess.CompletedProcess([], status, "", stderr), classify_exit=True)
+            run_graph(native, classify_exit=False)
+        for name, source, options in (
+            ("wrapper", native, {"profile": pyright["SANDBOX"] + "\n(invalid-rule)"}),
+            ("launch-missing", None, {}),
+            ("launch-uncaught", "throw new Error('startup');", {}),
+            ("status-mismatch", native, {"tamper": True}),
+            ("malformed", "console.log('invalid graph');", {}),
+            ("signal", "process.kill(process.pid, 'SIGTERM');", {}),
+        ):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                run_graph(source, **options)
+
+    def test_compiler_adapter_exit_boundaries(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("requires pinned Node")
+        adapter = SCRIPT.parent.parent / "deps-tsjs/trace.cjs"
+        pins = json.loads(adapter.with_name("pins.json").read_text())
+        self.assertEqual(subprocess.check_output([node, "--version"], text=True).strip(), pins["node"])
+        # Only synthetic compiler code is loaded. The real adapter and Node run
+        # unchanged, including nested host calls from the compiler.
+        compiler = """
+const fs = require("node:fs");
+module.exports = {
+  version: "synthetic",
+  sys: { fileExists: fs.existsSync },
+  ModuleKind: {Node16: 100}, ModuleResolutionKind: {Node16: 3},
+  createCompilerHost() { return {}; },
+  createProgram({host}) {
+    switch (process.env.SYNTHETIC_CASE) {
+      case "compiler": throw new Error("synthetic compiler failure");
+      case "generic": process.exit(9);
+      case "emit": host.writeFile();
+      case "trace-write":
+        const write = fs.writeSync;
+        fs.writeSync = (fd, data, ...args) => {
+          if (typeof data === "string" && data.startsWith("synthetic trace")) {
+            throw new Error("synthetic trace write failure");
+          }
+          return write(fd, data, ...args);
+        };
+        for (let i = 0; i < 1024; i++) host.trace("synthetic trace");
+    }
+    throw new Error("unexpected synthetic case");
+  },
+};
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "trace.cjs").write_bytes(adapter.read_bytes())
+            (root / "compiler.cjs").write_text(compiler)
+            pins.update(typescript="synthetic", compilerSHA256=final["sha"](compiler.encode()))
+            (root / "pins.json").write_text(json.dumps(pins))
+            (root / "a.ts").touch()
+            (root / "inputs.json").write_text('["a.ts"]')
+
+            for name, scenario, flags, status, diagnostic in (
+                ("compiler", "compiler", ["--classify-native-exit"], 79, ""),
+                ("legacy", "compiler", [], 1, "synthetic compiler failure"),
+                ("selected", "compiler", ["--classify-native-exit"], 1, "selected file absent"),
+                ("trace-open", "compiler", ["--classify-native-exit"], 1, "EISDIR"),
+                ("trace-write", "trace-write", ["--classify-native-exit"], 1, "synthetic trace write failure"),
+                ("emit", "emit", ["--classify-native-exit"], 1, "oracle attempted to emit a file"),
+                ("generic", "generic", ["--classify-native-exit"], 9, ""),
+                ("injected", "unexpected", ["--classify-native-exit", "--inject-native-failure"], 79, ""),
+            ):
+                with self.subTest(name=name):
+                    inputs = root / "inputs.json"
+                    if name == "selected":
+                        inputs = root / "absent.json"
+                        inputs.write_text('["absent.ts"]')
+                    trace = root if name == "trace-open" else root / "out.log"
+                    cmd = [node, str(root / "trace.cjs"), str(root / "compiler.cjs"),
+                           str(root), str(inputs), str(trace), *flags]
+                    env = dict(os.environ, SYNTHETIC_CASE=scenario)
+                    env.pop("NODE_OPTIONS", None)
+                    env.pop("NODE_PATH", None)
+                    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+                    self.assertEqual(result.returncode, status, result.stderr)
+                    self.assertEqual(result.stdout, "")
+                    self.assertIn(diagnostic, result.stderr)
+                    if not diagnostic:
+                        self.assertEqual(result.stderr, "")
 
     def test_final_authority_requires_both_failed_producers(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -872,6 +976,7 @@ with (root / 'worker.lock').open('wb') as lock:
             harness = commit(final["OWNED"][0], "reviewed harness")
             compiler_capture = commit("pkg/lang/deps/cov_measure_test.go", "compiler exit capture")
             graph_capture = commit("calibration/oracles/dep-coverage/cov_python_pyright.py", "graph exit capture")
+            trace_capture = commit("calibration/oracles/deps-tsjs/trace.cjs", "compiler boundary")
             other = commit("reader.txt", "different reader")
             git("checkout", "--detach", harness)
             journal = write_authorization(root, reader, harness)
@@ -879,7 +984,7 @@ with (root / 'worker.lock').open('wb') as lock:
 
             with patch.dict(scope, REPO=repo):
                 final["ensure_reader"](auth)
-                for head in (compiler_capture, graph_capture, other):
+                for head in (compiler_capture, graph_capture, trace_capture, other):
                     git("checkout", "--detach", head)
                     candidate = dict(auth, harness_revision=head)
                     if head == other:

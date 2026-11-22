@@ -98,20 +98,21 @@ exit 0
 	node := `#!/bin/sh
 arm=${PWD%/*}
 echo "${arm##*/}/${PWD##*/}" >> "$COV_FINAL_SYNTHETIC_ROOT/invocations"
-if [ "$1" = -e ]; then
+if [ "$7" = --inject-native-failure ] && [ "$6" = --classify-native-exit ]; then
   echo injected >> "$COV_FINAL_SYNTHETIC_ROOT/invocations"
-  [ "$2" = 'process.exit(79)' ] || exit 0
   exit 79
 fi
 case "$COV_FINAL_SYNTHETIC_CASE:${arm##*/}/${PWD##*/}" in
+  generic:primary/failed) exit 9 ;;
+  mixed:primary/failed) echo 'partial output'; exit 79 ;;
   parse:primary/failed) echo 'invalid JSON'; exit 0 ;;
   checkout:*|parse:*) ;;
   *:primary/typed)
     if [ "$(grep -c '^primary/typed$' "$COV_FINAL_SYNTHETIC_ROOT/invocations")" -gt 1 ]; then
-      echo 'synthetic native diagnostics' >&2; exit 9
+      echo 'synthetic native diagnostics' >&2; exit 79
     fi ;;
   injection:*) ;;
-  *:relocated/failed) echo 'synthetic native diagnostics' >&2; exit 9 ;;
+  *:relocated/failed) echo 'synthetic native diagnostics' >&2; exit 79 ;;
 esac
 ext=js
 if [ "${PWD##*/}" = typed ]; then ext=ts; fi
@@ -157,6 +158,8 @@ printf '{"truth":[{"Path":"a.%s"}]}\n' "$ext"
 		{"held-injection", ""},
 		{"identity", "COV final Python operation denied or failed"},
 		{"parse", "COV compiler native capture malformed"},
+		{"generic", "COV pinned oracle invocation failed"},
+		{"mixed", "COV pinned oracle invocation failed"},
 		{"checkout", "COV checkout identity or cleanliness mismatch"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
