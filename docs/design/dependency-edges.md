@@ -179,6 +179,38 @@ outputs remain losses under the oracle's grading rules.
 | TypeScript | Shard 5 | palantir/blueprint | After both selections |
 
 
+### Soundness correction and confirmation
+
+The sealed baseline found 259 TypeScript external claims naming repository
+packages and 14 inconclusive JavaScript bindings on complete files. Stop
+levers for both dialects under COV-D11. Diagnose only the flagged constructs
+and publish aggregate classes. Gate each conservative correction on synthetic
+fixtures and zero development-pool failures. After it lands, run one
+journaled aggregate holdout check per affected dialect. At most two rounds.
+B5 applies if either bar still fails. The final holdout reading keeps
+its separate COV-D2 run and conservative correction allowance.
+
+For separate confirmation, take one further eligible subject in the same
+corpus order and with the same tracked selection rule. Pin before the first
+correction. The confirmation is read once at the final, alongside the
+holdout. The original holdout supplies the value-bar denominator. Report
+ratios against the corrected baseline as secondary evidence.
+
+| Dialect | Candidate | Decision |
+|---|---|---|
+| TypeScript | typeorm/typeorm | Skipped. Tracked config chain unresolved in 3,313 of 3,316 selected files. |
+| TypeScript | palantir/blueprint | First eligible unused subject. Native oracle ran and all config chains resolved in the tracked tree. |
+| JavaScript | lodash/lodash | Skipped. 55 selected files, below the 100-file subject minimum. |
+
+The remaining candidates in each list are already in development or holdout.
+JavaScript has no eligible confirmation subject. TypeScript confirmation pins
+`palantir/blueprint` at `c5a3873b2e6de678aeee02d548732d92601884f5`.
+The 979 tracked TypeScript files have selection SHA-256
+`7d78d76e18d54939454387d1b74d867ba8407514ff7b308b196f90d8b66e8b48`.
+The compiler oracle ran with the existing pins for eligibility. Generated
+project outputs were unavailable for some selected roots. These remain
+oracle coverage losses. Eligibility used no product reader.
+
 ## Library first uses
 
 ADR-115 allows a same-change first use and dated keep-or-cut reading to satisfy
