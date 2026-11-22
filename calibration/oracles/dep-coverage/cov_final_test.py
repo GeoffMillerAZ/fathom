@@ -81,6 +81,196 @@ def synthetic_attempt(root):
 
 
 class FinalControls(unittest.TestCase):
+    def test_native_nonzero_is_ungraded_in_assessment(self):
+        def row(files, complete, native_classes=None):
+            return {"score": dict(Complete=complete, Files=files, B1=True, B2=True, B3=True,
+                                  CompleteWithoutOracle=0),
+                    "closure": {"Selected": files, "Complete": 0},
+                    "native_classes": native_classes or {}}
+
+        def ungraded(files, complete, exception="ExitError"):
+            return dict(native_exception=exception, files=files,
+                        reader_complete_ungraded=complete)
+
+        result = {
+            "development": {"python": row(1314, 121, {"original/exact": 156}),
+                            "javascript": row(1508, 153), "typescript": row(1224, 250)},
+            "holdout": {"python": row(1314, 242, {"original/exact": 156}),
+                        "javascript": ungraded(1508, 1000), "typescript": row(1224, 500)},
+            "confirmation": {"typescript": ungraded(204, 200)},
+        }
+        assess = final["assess"]
+        baseline = final["rehearsal_baselines"]()
+        output = assess(result, baseline, mode="rehearse")
+        self.assertEqual(output["verdicts"]["javascript"], dict(
+            label="unverified, native truth unavailable", soundness=False, doubled=False,
+            **ungraded(1508, 1000)))
+        self.assertEqual(output["current"]["holdout"]["javascript"], ungraded(1508, 1000))
+        self.assertIs(output["confirmation_soundness"], False)
+        self.assertNotIn("javascript", output["secondary_r5"])
+        self.assertTrue(output["verdicts"]["typescript"]["soundness"])
+        self.assertEqual(output["program"], {"dialects_doubled_with_soundness": 2, "met": True})
+
+        result["development"]["python"] = ungraded(1314, 121, "NativeNonzero")
+        output = assess(result, baseline, mode="rehearse")
+        self.assertFalse(output["verdicts"]["python"]["doubled"])
+        self.assertEqual(output["program"], {"dialects_doubled_with_soundness": 1, "met": False})
+        invalid = (
+            ("holdout", "javascript", ungraded(1507, 1000)),
+            ("holdout", "javascript", ungraded(1508, 1509)),
+            ("holdout", "javascript", dict(ungraded(1508, 1000), score={})),
+            ("holdout", "javascript", dict(ungraded(1508, 1000), native_exception="ValueError")),
+            ("holdout", "python", row(1314, 242, {"original/exact": 155})),
+            ("holdout", "typescript", row(1225, 500)),
+            ("confirmation", "typescript", ungraded(205, 200)),
+        )
+        for pool, dialect, replacement in invalid:
+            with self.subTest(pool=pool, dialect=dialect), self.assertRaises(ValueError):
+                changed = copy.deepcopy(result)
+                changed[pool][dialect] = replacement
+                assess(changed, baseline, mode="rehearse")
+
+    def test_pyright_graph_exit_is_opt_in(self):
+        pyright = final["PYRIGHT"]
+        graph = pyright["run_graph"]
+        graph_scope = graph.__globals__
+
+        def run_with(result, **kwargs):
+            with tempfile.TemporaryDirectory() as tmp:
+                work = Path(tmp).resolve()
+                view = work / "00-view"
+                view.mkdir()
+                with patch.dict(graph_scope, run_node=lambda *_, **__: result):
+                    graph(("node", work / "index.js"), view, [], set(), set(), work, **kwargs)
+
+        with self.assertRaisesRegex(ValueError, "graph collection failed"):
+            run_with(subprocess.CompletedProcess([], 9, "", "synthetic"))
+        with self.assertRaisesRegex(Exception, "native truth tool exited nonzero") as raised:
+            run_with(subprocess.CompletedProcess([], 9, "", "synthetic"), classify_exit=True)
+        self.assertIs(type(raised.exception), pyright["NativeNonzero"])
+        for status, stderr in ((0, "synthetic"), (-9, ""), (0, "")):
+            with self.subTest(status=status, stderr=stderr), self.assertRaises(ValueError):
+                run_with(subprocess.CompletedProcess([], status, "", stderr), classify_exit=True)
+
+    def test_final_authority_requires_both_failed_producers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp).resolve()
+            root = parent / "candidate"
+            root.mkdir()
+            auth = replacement_authorization(root)
+            previous = parent / "replacement"
+            (previous / "journal").mkdir(mode=0o700, parents=True)
+            failed = previous / "journal/replacement.json"
+            harness = "b67d4fe3e4cc9d324c9cca3c19b699b3c7500132"
+            record = dict(operation="replacement", status="failed", root=str(previous),
+                          authority="COV-D2/ESCALATE-23", reader_revision=LANDED_READER,
+                          harness_revision=harness, failed_initial=auth["failed_initial"],
+                          failure=dict(stage="native", pool="holdout", exception="CalledProcessError"))
+            final["claim"](failed, record)
+            auth.update(operation="final", authority="COV-D2/ESCALATE-24",
+                        failed_replacement=dict(path=str(failed), sha256=final["sha"](failed.read_bytes())))
+            self.assertEqual(scope.get("FAILED_REPLACEMENT_HARNESS"), harness)
+            self.assertEqual(scope.get("FAILED_REPLACEMENT_SHA256"),
+                             "7e191d908b378c0db3e53ae1622c868c02f9e4493679ddb7b71577166039c5be")
+            self.assertEqual(final["operation_pools"]("final"), final["operation_pools"]("initial"))
+            def authorize(value):
+                final["authorized"](value, root, "final", {}, CANDIDATE)
+
+            with patch.dict(scope, FAILED_INITIAL_SHA256=auth["failed_initial"]["sha256"],
+                            FAILED_REPLACEMENT_SHA256=auth["failed_replacement"]["sha256"]):
+                authorize(auth)
+                with self.assertRaises(ValueError):
+                    authorize(dict(auth, inject_native_failure=True))
+                self.synthetic_final_publication(root, auth)
+                for field in ("failed_initial", "failed_replacement", "metadata_preflight"):
+                    with self.subTest(field=field), self.assertRaises(ValueError):
+                        authorize(dict(auth, **{field: {}}))
+                with self.assertRaises(ValueError):
+                    authorize(dict(auth, authority="COV-D2/ESCALATE-23"))
+                aggregate = failed.with_name("replacement.aggregate.json")
+                aggregate.symlink_to(failed.with_name("missing"))
+                with self.assertRaises(ValueError):
+                    authorize(auth)
+                aggregate.unlink()
+                failed.chmod(0o640)
+                with self.assertRaises(ValueError):
+                    authorize(auth)
+                failed.chmod(0o600)
+                failed.write_bytes(failed.read_bytes() + b" ")
+                with self.assertRaises(ValueError):
+                    authorize(auth)
+                for change in (dict(status="completed"), dict(harness_revision=CANDIDATE),
+                               dict(aggregate_sha256="published"), dict(root=str(root)),
+                               dict(failure=dict(stage="native", pool="development", exception="CalledProcessError"))):
+                    data = final["canonical"](dict(record, **change))
+                    failed.write_bytes(data)
+                    digest = final["sha"](data)
+                    with self.subTest(change=change), patch.dict(scope, FAILED_REPLACEMENT_SHA256=digest), self.assertRaises(ValueError):
+                        authorize(dict(auth, failed_replacement=dict(path=str(failed), sha256=digest)))
+
+    def synthetic_final_publication(self, root, auth):
+        journal = root / "journal"
+        auth_path = journal / "final.authorization.json"
+        final["claim"](auth_path, auth)
+
+        def worker(config, _check):
+            record = final["active"](config, "holdout")
+            self.assertEqual(record["failed_initial"], auth["failed_initial"])
+            self.assertEqual(record["failed_replacement"], auth["failed_replacement"])
+            with self.assertRaisesRegex(ValueError, "requires rehearsal"):
+                final["active"](dict(config, inject_native_failure=True), "holdout")
+            with final["worker_stderr"](config) as receipt:
+                self.assertEqual(stat.S_IMODE(os.fstat(receipt.fileno()).st_mode), 0o600)
+            return {}
+
+        argv = [str(SCRIPT.with_name("cov_final.py")), "run", "--compiler", "compiler",
+                "--pyright", "pyright", str(root), "final"]
+        with redirect_stdout(StringIO()), patch.object(sys, "argv", argv), patch.dict(
+                scope, identity=lambda *_: {}, ensure_reader=lambda *_: None,
+                git=lambda *_: CANDIDATE.encode(), baselines=lambda *_: None, measure=worker,
+                assess=lambda _, __, *, mode, report: {"mode": mode}):
+            final["main"]()
+            with self.assertRaises(FileExistsError):
+                final["main"]()
+
+        record = json.loads((journal / "final.json").read_bytes())
+        self.assertEqual(record["status"], "completed")
+        for field in ("failed_initial", "failed_replacement", "metadata_preflight"):
+            self.assertEqual(record[field], auth[field])
+        aggregate = (journal / "final.aggregate.json").read_bytes()
+        self.assertEqual(json.loads(aggregate), {"mode": "final"})
+        self.assertEqual(record["aggregate_sha256"], final["sha"](aggregate))
+
+    def test_rehearsal_injection_requires_journal_and_cli_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp).resolve()
+            root = repo / "workspace/tmp/cov-final-rehearsal/run-synthetic"
+            root.mkdir(mode=0o700, parents=True)
+            journal = root / "journal"
+            journal.mkdir(mode=0o700)
+
+            def worker(config, _check):
+                self.assertIs(config["inject_native_failure"], True)
+                self.assertIs(final["active"](config, "holdout")["inject_native_failure"], True)
+                with self.assertRaises(ValueError):
+                    final["active"](dict(config, inject_native_failure=False), "holdout")
+                return {}
+
+            script = str(SCRIPT.with_name("cov_final.py"))
+            flags = ["--compiler", "compiler", "--pyright", "pyright", "--inject-native-failure"]
+            with patch.dict(scope, REPO=repo, identity=lambda *_: {}, ensure_reader=lambda *_: None,
+                            git=lambda *_: CANDIDATE.encode(), measure=worker,
+                            assess=lambda *_, **__: {}):
+                with redirect_stdout(StringIO()), patch.object(sys, "argv", [script, "rehearse", *flags, str(root)]):
+                    final["main"]()
+                record = json.loads((journal / "rehearse.json").read_bytes())
+                self.assertIs(record["inject_native_failure"], True)
+                with patch.object(sys, "argv", [script, "run", *flags, str(root), "final"]), \
+                        patch("sys.stderr", StringIO()), self.assertRaises(SystemExit) as raised:
+                    final["main"]()
+                self.assertEqual(raised.exception.code, 2)
+                self.assertFalse((journal / "final.json").exists())
+
     def test_rehearsal_claims_assesses_and_publishes_twice(self):
         def row(files, original_truth=None):
             value = {"score": dict(Complete=1, Files=files, B1=True, B2=True, B3=True,
@@ -390,7 +580,7 @@ class FinalControls(unittest.TestCase):
             self.assertFalse((journal / "initial.json").exists())
 
     def test_worker_stderr_is_private_on_success_and_failure(self):
-        for mode in ("rehearse", "replacement"):
+        for mode in ("rehearse", "replacement", "final"):
             for outcome in ("success", "failure", "signal", "occupied"):
                 with self.subTest(mode=mode, outcome=outcome), tempfile.TemporaryDirectory() as tmp:
                     root = Path(tmp).resolve()
@@ -680,6 +870,8 @@ with (root / 'worker.lock').open('wb') as lock:
             git("init", "-q")
             reader = commit("reader.txt", "approved reader")
             harness = commit(final["OWNED"][0], "reviewed harness")
+            compiler_capture = commit("pkg/lang/deps/cov_measure_test.go", "compiler exit capture")
+            graph_capture = commit("calibration/oracles/dep-coverage/cov_python_pyright.py", "graph exit capture")
             other = commit("reader.txt", "different reader")
             git("checkout", "--detach", harness)
             journal = write_authorization(root, reader, harness)
@@ -687,6 +879,15 @@ with (root / 'worker.lock').open('wb') as lock:
 
             with patch.dict(scope, REPO=repo):
                 final["ensure_reader"](auth)
+                for head in (compiler_capture, graph_capture, other):
+                    git("checkout", "--detach", head)
+                    candidate = dict(auth, harness_revision=head)
+                    if head == other:
+                        with self.assertRaisesRegex(ValueError, "exact landed reader"):
+                            final["ensure_reader"](candidate)
+                    else:
+                        final["ensure_reader"](candidate)
+                git("checkout", "--detach", harness)
                 (repo / "reader.txt").write_text("unreviewed bytes")
                 with self.assertRaisesRegex(ValueError, "dirty"):
                     final["ensure_reader"](auth)

@@ -121,7 +121,11 @@ def parse_graph(root, tracked, output):
     return graph
 
 
-def run_graph(tool, view, roots, tracked, selected, work, *, original=None):
+class NativeNonzero(Exception):
+    """The pinned graph command returned a positive exit status."""
+
+
+def run_graph(tool, view, roots, tracked, selected, work, *, original=None, classify_exit=False):
     if (view.parent != work or view.name != "00-view" or view.resolve(strict=True) != view
             or set(work.iterdir()) != {view}):
         raise ValueError("Pyright requires a fresh isolated project")
@@ -158,6 +162,8 @@ def run_graph(tool, view, roots, tracked, selected, work, *, original=None):
                       work, original=original, check=False)
     (work / "graph.log").write_text(result.stdout, encoding="utf-8")
     (work / "stderr.log").write_text(result.stderr, encoding="utf-8")
+    if classify_exit and result.returncode > 0:
+        raise NativeNonzero("native truth tool exited nonzero")
     if result.returncode or result.stderr:
         raise ValueError("Pyright graph collection failed; inspect the private logs")
     typeshed = launch.parent / "dist/typeshed-fallback"

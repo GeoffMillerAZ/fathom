@@ -62,7 +62,7 @@ func covFinalDualTruth(t *testing.T, original, extended pythonOracleSubject, com
 	return truth, classes
 }
 
-func covFinalSubject(t *testing.T, config covFinalConfig, base, pool string, subject covSubject) (covFinalRow, depbench.Observation, bool) {
+func covFinalSubject(t *testing.T, config covFinalConfig, base, pool string, subject covSubject, skipNative bool) (covFinalRow, depbench.Observation, bool) {
 	t.Helper()
 	primary := filepath.Join(base, "primary", subject.Name)
 	relocated := filepath.Join(base, "relocated", subject.Name)
@@ -80,44 +80,105 @@ func covFinalSubject(t *testing.T, config covFinalConfig, base, pool string, sub
 	if !slices.Equal(paths, again) || !bytes.Equal(asJSON(t, first), asJSON(t, second)) {
 		t.Fatal("COV final relocated tracked inputs differ")
 	}
-	config.progress(t, pool, "native")
 	var truth []depbench.TruthFile
 	var classes map[string]int
-	if subject.Dialect == "python" {
-		original := config.call(t, "_python", pool, subject.Name, "primary")
-		moved := config.call(t, "_python", pool, subject.Name, "relocated")
-		var capture covFinalPythonCapture
-		if !bytes.Equal(original, moved) || json.Unmarshal(original, &capture) != nil ||
-			len(capture.Original.Rows) != len(paths) || len(capture.Compared) != len(paths) {
-			t.Fatal("COV final relocated Python native evidence differs")
-		}
-		for i, file := range paths {
-			if capture.Original.Rows[i].Path != file || capture.Compared[file].Class == "" {
-				t.Fatal("COV final Python native population differs")
-			}
-		}
-		truth, classes = covFinalDualTruth(t, capture.Original, capture.Extended, capture.Compared)
-	} else {
-		original, gaps := covTruth(t, config.Python, config.Compiler, pool, subject, primary, paths)
-		moved, movedGaps := covTruth(t, config.Python, config.Compiler, pool, subject, relocated, paths)
-		if !bytes.Equal(asJSON(t, original), asJSON(t, moved)) || !bytes.Equal(asJSON(t, gaps), asJSON(t, movedGaps)) {
-			t.Fatal("COV final relocated compiler truth differs")
-		}
-		truth = original
-		classes = map[string]int{}
-		for _, class := range gaps {
-			classes[class]++
-		}
+	ungraded := skipNative
+	if !ungraded {
+		config.progress(t, pool, "native")
+		truth, classes, ungraded = covFinalNative(t, config, pool, subject, primary, relocated, paths)
 	}
-	// The native captures are complete and their private scratch has been
-	// removed before a product reader is created.
+	// The native captures and private scratch are gone before the reader is created.
 	config.progress(t, pool, "read")
-	row, observation, rejectedB3 := covFinalRead(t, subject, first, second, paths, truth)
-	row.NativeClasses = classes
+	var row covFinalRow
+	var observation depbench.Observation
+	var rejectedB3 bool
+	if ungraded {
+		batch := covFinalReadBatch(t, &deps.Reader{}, subject, first, paths)
+		exception := "ExitError"
+		if subject.Dialect == "python" {
+			exception = "NativeNonzero"
+		}
+		row.ungraded = &covFinalUngraded{NativeException: exception, Files: len(paths),
+			ReaderCompleteUngraded: covFinalComplete(batch.Files)}
+	} else {
+		row, observation, rejectedB3 = covFinalRead(t, subject, first, second, paths, truth)
+		row.NativeClasses = classes
+	}
 	config.progress(t, pool, "refreeze")
 	covFreeze(t, subject, primary)
 	covFreeze(t, subject, relocated)
 	return row, observation, rejectedB3
+}
+
+func covFinalNative(t *testing.T, config covFinalConfig, pool string, subject covSubject, primary, relocated string, paths []string) ([]depbench.TruthFile, map[string]int, bool) {
+	t.Helper()
+	if subject.Dialect == "python" {
+		original, capture, failed := covFinalCapturePython(t, config, pool, subject.Name, "primary", paths)
+		if failed {
+			return nil, nil, true
+		}
+		truth, classes := covFinalDualTruth(t, capture.Original, capture.Extended, capture.Compared)
+		moved, _, failed := covFinalCapturePython(t, config, pool, subject.Name, "relocated", paths)
+		if failed {
+			return nil, nil, true
+		}
+		if !bytes.Equal(original, moved) {
+			t.Fatal("COV final relocated Python native evidence differs")
+		}
+		return truth, classes, false
+	}
+
+	capture := func(root string, inject bool) ([]depbench.TruthFile, map[string]string, *exec.ExitError) {
+		t.Helper()
+		truth, gaps, exit := covCaptureTruth(t, config.Python, config.Compiler, pool, subject, root, paths, config.isolatesNative(), inject)
+		if exit != nil {
+			// trace.cjs also checks tool identity. Keep a failed identity probe fatal.
+			config.call(t, "_compiler_identity", pool)
+		}
+		return truth, gaps, exit
+	}
+	original, gaps, exit := capture(primary, false)
+	if exit != nil {
+		return nil, nil, true
+	}
+	inject := config.Mode == "rehearse" && config.InjectNativeFailure && pool == "holdout" && subject.Dialect == "javascript"
+	moved, movedGaps, exit := capture(relocated, inject)
+	if exit != nil {
+		return nil, nil, true
+	}
+	if !bytes.Equal(asJSON(t, original), asJSON(t, moved)) || !bytes.Equal(asJSON(t, gaps), asJSON(t, movedGaps)) {
+		t.Fatal("COV final relocated compiler truth differs")
+	}
+	classes := map[string]int{}
+	for _, class := range gaps {
+		classes[class]++
+	}
+	return original, classes, false
+}
+
+func covFinalCapturePython(t *testing.T, config covFinalConfig, pool, subject, arm string, paths []string) ([]byte, covFinalPythonCapture, bool) {
+	t.Helper()
+	var capture covFinalPythonCapture
+	raw, err := config.output(t, "_python", pool, subject, arm)
+	if err != nil {
+		const nativeNonzeroStatus = 73 // Private exit status from cov_final.py _python.
+		var exit *exec.ExitError
+		if config.isolatesNative() && t.Context().Err() == nil && len(raw) == 0 &&
+			errors.As(err, &exit) && exit.ExitCode() == nativeNonzeroStatus {
+			return nil, capture, true
+		}
+		t.Fatal("COV final Python operation denied or failed")
+	}
+	if json.Unmarshal(raw, &capture) != nil || len(capture.Original.Rows) != len(paths) ||
+		len(capture.Compared) != len(paths) {
+		t.Fatal("COV final Python native capture malformed")
+	}
+	for i, file := range paths {
+		if capture.Original.Rows[i].Path != file || capture.Compared[file].Class == "" {
+			t.Fatal("COV final Python native population differs")
+		}
+	}
+	return raw, capture, false
 }
 
 func covFinalRehearsalDirectories(t *testing.T, base, primary, relocated string) {
@@ -185,26 +246,37 @@ func covFinalPhysical(t *testing.T, root string) fs.FileInfo {
 	return info
 }
 
+func covFinalReadBatch(t *testing.T, reader *deps.Reader, subject covSubject, tree fstest.MapFS, selected []string) depbench.COVBatch {
+	t.Helper()
+	inputs := make([]deps.Input, len(selected))
+	for i, file := range selected {
+		inputs[i] = deps.Input{Path: file, Dialect: subject.Dialect}
+	}
+	batch, err := depbench.COVReadIsolated(t.Context(), reader, covView(tree), inputs)
+	if err != nil {
+		t.Fatal("COV final selected product read failed")
+	}
+	return batch
+}
+
+func covFinalComplete(files []deps.FileDeps) int {
+	complete := 0
+	for _, file := range files {
+		if file.Complete {
+			complete++
+		}
+	}
+	return complete
+}
+
 func covFinalRead(t *testing.T, subject covSubject, first, second fstest.MapFS, paths []string, truth []depbench.TruthFile) (covFinalRow, depbench.Observation, bool) {
 	t.Helper()
-	read := func(reader *deps.Reader, tree fstest.MapFS, selected []string) depbench.COVBatch {
-		t.Helper()
-		inputs := make([]deps.Input, len(selected))
-		for i, file := range selected {
-			inputs[i] = deps.Input{Path: file, Dialect: subject.Dialect}
-		}
-		batch, err := depbench.COVReadIsolated(t.Context(), reader, covView(tree), inputs)
-		if err != nil {
-			t.Fatal("COV final selected product read failed")
-		}
-		return batch
-	}
 	primaryReader, repeatReader, movedReader := &deps.Reader{}, &deps.Reader{}, &deps.Reader{}
 	reverse := slices.Clone(paths)
 	slices.Reverse(reverse)
-	primary := read(primaryReader, first, paths)
-	repeat := read(repeatReader, first, reverse)
-	moved := read(movedReader, second, paths)
+	primary := covFinalReadBatch(t, primaryReader, subject, first, paths)
+	repeat := covFinalReadBatch(t, repeatReader, subject, first, reverse)
+	moved := covFinalReadBatch(t, movedReader, subject, second, paths)
 	observation := depbench.Observation{
 		Files: depbench.COVIncludeRejected(primary), Repeat: depbench.COVIncludeRejected(repeat),
 		Relocated: depbench.COVIncludeRejected(moved), Truth: truth,

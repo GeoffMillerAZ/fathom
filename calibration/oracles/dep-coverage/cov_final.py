@@ -7,6 +7,8 @@ Preflight takes only a development directory and emits only its aggregates.
 Use a dedicated clean detached Git checkout at the exact harness revision.
 
 The test-only rehearse command uses development pins in all three positions.
+Its --inject-native-failure flag substitutes a synthetic nonzero exit in
+the simulated holdout JavaScript relocation arm.
 It takes a fresh workspace/tmp/cov-final-rehearsal/run-<id> directory with
 its own private journal/ and publishes a rehearsal-only aggregate.
 
@@ -26,7 +28,10 @@ authority="COV-D2/ESCALATE-23" and supply failed_initial and metadata_preflight
 as {path, sha256} references. The first binds the preserved failed initial
 journal in a different campaign. The second binds journal/metadata-preflight.txt
 with one "<check-name> PASS" per line. Rehearsal and replacement retain the
-Go worker's stderr in journal/<operation>.stderr (0600).
+Go worker's stderr in journal/<operation>.stderr (0600). For final, use
+authority="COV-D2/ESCALATE-24" and also supply failed_replacement as a
+{path, sha256} reference to the preserved replacement journal. Final uses
+its own journal and private stderr receipt.
 The operation journal is exclusive, including after failure. The independent
 post-run attestation binds the completed journal and aggregate digest.
 """
@@ -55,9 +60,15 @@ DIALECTS = ("python", "javascript", "typescript")
 ARMS = ("primary", "relocated")
 AUTHORITY = "COV-D2/ESCALATE-20-R7"
 REPLACEMENT_AUTHORITY = "COV-D2/ESCALATE-23"
-PRODUCTION_OPERATIONS = ("initial", "replacement")
+FINAL_AUTHORITY = "COV-D2/ESCALATE-24"
+PRODUCTION_OPERATIONS = ("initial", "replacement", "final")
+ISOLATION_MODES = ("rehearse", "final")
+NATIVE_NONZERO_STATUS = 73
+NATIVE_EXCEPTIONS = {"python": "NativeNonzero", "javascript": "ExitError", "typescript": "ExitError"}
 FAILED_INITIAL_HARNESS = "598ec9ded011ded5b93fa04805c07c168226c21f"
 FAILED_INITIAL_SHA256 = "91b36b4a463cfe1fde13b519abc3f8f9cbca5cc3ef02ea77c1c423dce59f8bf7"
+FAILED_REPLACEMENT_HARNESS = "b67d4fe3e4cc9d324c9cca3c19b699b3c7500132"
+FAILED_REPLACEMENT_SHA256 = "7e191d908b378c0db3e53ae1622c868c02f9e4493679ddb7b71577166039c5be"
 FINAL_READER = "59ef2b56bf979f5f4ed91ea7182338f30a63c9b9"
 REHEARSAL_CONFIRMATION = "fp-ts"
 REHEARSAL_CONFIRMATION_FILES = 204
@@ -79,6 +90,10 @@ OWNED = (
     "calibration/oracles/dep-coverage/cov_final.py",
     "calibration/oracles/dep-coverage/cov_final_test.py",
     "calibration/oracles/dep-coverage/cov_confirmation.json",
+)
+SHARED_HARNESS = (
+    "pkg/lang/deps/cov_measure_test.go",
+    "calibration/oracles/dep-coverage/cov_python_pyright.py",
 )
 PINS = (
     "calibration/oracles/dep-coverage/cov_holdout.json",
@@ -201,16 +216,20 @@ def rehearsal_root(path):
     return private(path, directory=True)
 
 
-def compare_python(names, original, extended, graph, source, roots, tracked):
+def validate_python_rows(names, original, extended):
     if len(names) != len(set(names)) or any([row["path"] for row in rows] != names
                                              for rows in (original, extended)):
         raise ValueError("CPython and Pyright selections differ")
+    if any(not old["gap"] and old != new for old, new in zip(original, extended, strict=True)):
+        raise ValueError("original CPython truth changed")
+
+
+def compare_python(names, original, extended, graph, source, roots, tracked):
+    validate_python_rows(names, original, extended)
     result = {}
     for old, new in zip(original, extended, strict=True):
         path = old["path"]
         if not old["gap"]:
-            if old != new:
-                raise ValueError("original CPython truth changed")
             row, cohort = old, "pre-existing"
         else:
             row, cohort = new, "new"
@@ -228,6 +247,9 @@ def compare_python(names, original, extended, graph, source, roots, tracked):
 
 def active(config, pool):
     mode = config["mode"]
+    inject = config.get("inject_native_failure", False)
+    if type(inject) is not bool or (inject and mode != "rehearse"):
+        raise ValueError("native failure injection requires rehearsal")
     if mode == "preflight":
         if pool != "development" or "journal" in config or "nonce" in config:
             raise ValueError("preflight is development-only")
@@ -246,7 +268,8 @@ def active(config, pool):
     if (record["status"] != "started" or record["nonce_sha256"] != sha(config["nonce"].encode()) or
             record["tool_paths"] != tools or
             record["binding"] != config["binding"] or record["root"] != str(root) or
-            record["operation"] != mode or record["pools"] != campaign_pools(mode)):
+            record["operation"] != mode or record["pools"] != campaign_pools(mode) or
+            record.get("inject_native_failure", False) is not inject):
         raise ValueError("operation journal is not active")
     return record
 
@@ -289,12 +312,16 @@ def python_capture(config, pool, name, arm):
         raise ValueError("Python input changed during original collection")
     oracle.pin(declarative_fromlist=True)
     extended = RUNNER["python_rows"](oracle, root, pin, names, declarative_fromlist=True)
+    isolate = config["mode"] in ISOLATION_MODES
+    if isolate:
+        validate_python_rows(names, original, extended)
     # The reviewed static host requires a physical, regular-only checkout.
     # A subject outside that host's domain retains only its original truth.
     scratch = private(config["scratch"], directory=True)
     if scratch.parent != (REPO / "workspace/tmp").resolve():
         raise ValueError("native scratch is outside the campaign workspace")
     graph, tracked = {}, set()
+    native_exit = False
     with tempfile.TemporaryDirectory(prefix="python-graph-", dir=scratch) as tmp:
         work = Path(tmp).resolve(strict=True)
         view = work / "00-view"
@@ -304,14 +331,22 @@ def python_capture(config, pool, name, arm):
                 raise ValueError("CPython and Pyright manifests differ")
             tool = PYRIGHT["verify_tool"](Path(config["pyright"]))
             try:
-                graph = PYRIGHT["run_graph"](tool, view, pin["roots"], tracked, set(names), work, original=root)
+                graph = PYRIGHT["run_graph"](tool, view, pin["roots"], tracked, set(names), work,
+                                             original=root, classify_exit=isolate)
+            except PYRIGHT["NativeNonzero"]:
+                native_exit = True
             except (ValueError, subprocess.TimeoutExpired):
+                if isolate:
+                    raise
                 # A graph unavailable from the pinned tool adds no truth.
                 graph = {}
-        compared = compare_python(names, original, extended, graph,
-                                  lambda name: (view / name).read_bytes(), pin["roots"], tracked)
+        if not native_exit:
+            compared = compare_python(names, original, extended, graph,
+                                      lambda name: (view / name).read_bytes(), pin["roots"], tracked)
     if (names, manifest) != oracle.contents(root, pin, confined=True):
         raise ValueError("Python input changed during native collection")
+    if native_exit:
+        raise PYRIGHT["NativeNonzero"]("native truth tool exited nonzero")
     graph_digest = sha(canonical({path: sorted(edges) for path, edges in graph.items()}))
     return {"original": {"manifest": manifest, "rows": original},
             "extended": {"manifest": manifest, "rows": extended},
@@ -326,9 +361,8 @@ def identity(compiler, pyright, mode="initial"):
     ts = json.loads((REPO / PINS[-1]).read_bytes())
     if sha(compiler.read_bytes()) != ts["compilerSHA256"] or ts["node"] != PYRIGHT["NODE_VERSION"]:
         raise ValueError("compiler identity differs")
-    files = (*OWNED, *PINS,
+    files = (*OWNED, *SHARED_HARNESS, *PINS,
              "calibration/oracles/dep-coverage/cov_run.py",
-             "calibration/oracles/dep-coverage/cov_python_pyright.py",
              "calibration/oracles/deps-python/modulefinder_oracle.py",
              "calibration/oracles/deps-tsjs/trace.cjs")
     pins = cohorts() if mode != "rehearse" else {"development": rehearsal_subjects("development")}
@@ -355,11 +389,11 @@ def revision(value):
 
 def authorized(record, root, mode, pinned, head):
     reader = record["reader_revision"]
-    authority = REPLACEMENT_AUTHORITY if mode == "replacement" else AUTHORITY
+    authority = {"initial": AUTHORITY, "replacement": REPLACEMENT_AUTHORITY, "final": FINAL_AUTHORITY}[mode]
     if (record["authority"] != authority or record["operation"] != mode
             or record["status"] != "authorized" or record["root"] != str(root)
             or record["identity"] != pinned or record["harness_revision"] != head
-            or not revision(head) or not revision(reader)):
+            or "inject_native_failure" in record or not revision(head) or not revision(reader)):
         raise ValueError("authorization does not bind this campaign")
     for name, rev in (("linux_ci", reader), ("processed_acks", reader), ("seal_review", head)):
         entry = record[name]
@@ -368,10 +402,12 @@ def authorized(record, root, mode, pinned, head):
     if record["linux_ci"]["status"] != "success" or not record["seal_review"]["reviewer"]:
         raise ValueError("gates are not green")
 
-    if mode == "replacement":
+    if mode in ("replacement", "final"):
         if reader != FINAL_READER:
             raise ValueError("replacement requires the exact landed reader")
         replacement_evidence(record, root)
+    if mode == "final":
+        final_evidence(record, root)
 
 
 def evidence_ref(record, field):
@@ -418,6 +454,40 @@ def replacement_evidence(record, root):
         raise ValueError("metadata preflight checks must all pass")
 
 
+def final_evidence(record, root):
+    failed, digest = evidence_ref(record, "failed_replacement")
+    if (digest != FAILED_REPLACEMENT_SHA256 or failed.name != "replacement.json"
+            or failed.parent.name != "journal"):
+        raise ValueError("final requires the preserved replacement journal")
+    private(failed.parent, directory=True)
+    previous_root = failed.parent.parent
+    if root.samefile(previous_root):
+        raise ValueError("final requires a different campaign root")
+    data = private(failed).read_bytes()
+    if sha(data) != digest:
+        raise ValueError("failed replacement journal digest differs")
+    previous = json.loads(data)
+    if (previous["operation"] != "replacement" or previous["authority"] != REPLACEMENT_AUTHORITY
+            or previous["status"] != "failed" or previous["reader_revision"] != FINAL_READER
+            or previous["harness_revision"] != FAILED_REPLACEMENT_HARNESS
+            or previous["root"] != str(previous_root) or "aggregate_sha256" in previous
+            or previous["failed_initial"] != record["failed_initial"]
+            or previous["failure"] != {"stage": "native", "pool": "holdout", "exception": "CalledProcessError"}):
+        raise ValueError("failed replacement journal does not bind the previous campaign")
+    try:
+        require_absent(failed.with_name("replacement.aggregate.json"))
+    except FileExistsError:
+        raise ValueError("replacement aggregate already exists") from None
+
+
+def require_absent(path):
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return
+    raise FileExistsError("campaign artifact already exists")
+
+
 def ensure_checkout_bytes(head):
     # The compiler reads the worktree bytes. Git status can compare bytes
     # after a configured clean filter, so check the raw blob identity too.
@@ -452,7 +522,8 @@ def ensure_reader(record):
     if git("rev-parse", "--abbrev-ref", "HEAD").strip() != b"HEAD":
         raise ValueError("measurement requires a detached checkout")
     git("merge-base", "--is-ancestor", reader, head)
-    if git("diff", "--name-only", reader, head, "--", ".", *[":(exclude)" + p for p in OWNED]):
+    allowed = (*OWNED, *SHARED_HARNESS)
+    if git("diff", "--name-only", reader, head, "--", ".", *[":(exclude)" + p for p in allowed]):
         raise ValueError("reviewed checkout does not contain the exact landed reader")
     # Git normally ignores some untracked files, including files a compiler
     # could consume. Allow scratch only in the designated workspace.
@@ -470,7 +541,15 @@ def read_aggregate(ref):
     return json.loads(data)
 
 
-def validate_population(row, files):
+def validate_population(row, files, *, native_exception=None):
+    if "native_exception" in row:
+        if (native_exception is None or row.keys() != {"native_exception", "files", "reader_complete_ungraded"}
+                or row["native_exception"] != native_exception
+                or type(row["files"]) is not int or row["files"] != files
+                or type(row["reader_complete_ungraded"]) is not int
+                or not 0 <= row["reader_complete_ungraded"] <= files):
+            raise ValueError("invalid ungraded campaign population")
+        return
     score, closure = row["score"], row["closure"]
     if (score["Files"] != files or closure["Selected"] != files or not 0 <= score["Complete"] <= files
             or not 0 <= closure["Complete"] <= score["Complete"]):
@@ -478,6 +557,8 @@ def validate_population(row, files):
 
 
 def sound(row):
+    if "native_exception" in row:
+        return False
     score = row["score"]
     return all(score[key] for key in ("B1", "B2", "B3")) and score["CompleteWithoutOracle"] == 0
 
@@ -549,35 +630,46 @@ def rehearsal_baselines():
 def assess(result, baseline, *, mode="initial", report=lambda _stage, _pool: None):
     before, corrected = baseline
     rehearsal = mode == "rehearse"
+    isolate = mode in ISOLATION_MODES
+    exceptions = NATIVE_EXCEPTIONS if isolate else {}
     original_holdout = ORIGINAL_DEVELOPMENT if rehearsal else ORIGINAL_HOLDOUT
     output = {"schema": "cov-final-rehearsal/v1" if rehearsal else "cov-final/v1",
               "current": result, "original": before,
               "secondary_r5": {}, "verdicts": {}}
     report("assessment", "confirmation")
     confirmation = result["confirmation"]["typescript"]
-    validate_population(confirmation, REHEARSAL_CONFIRMATION_FILES if rehearsal else 979)
+    validate_population(confirmation, REHEARSAL_CONFIRMATION_FILES if rehearsal else 979,
+                        native_exception=exceptions.get("typescript"))
     output["confirmation_soundness"] = sound(confirmation)
     doubled_and_sound = 0
     for pool in ("development", "holdout"):
         report("assessment", pool)
-        validate_python_overlap(result[pool]["python"], pool, mode)
+        python = result[pool]["python"]
+        if not isolate or "native_exception" not in python:
+            validate_python_overlap(python, pool, mode)
     for dialect in DIALECTS:
         complete, files = original_holdout[dialect]
         report("assessment", "development")
         dev = result["development"][dialect]
-        validate_population(dev, ORIGINAL_DEVELOPMENT[dialect][1])
+        validate_population(dev, ORIGINAL_DEVELOPMENT[dialect][1], native_exception=exceptions.get(dialect))
         report("assessment", "holdout")
         held = result["holdout"][dialect]
-        validate_population(held, files)
+        validate_population(held, files, native_exception=exceptions.get(dialect))
+        if "native_exception" in held:
+            output["verdicts"][dialect] = dict(
+                held, soundness=False, doubled=False, label="unverified, native truth unavailable")
+            continue
         count = held["score"]["Complete"]
         if dialect in corrected:
             r5 = corrected[dialect]
             output["secondary_r5"][dialect] = {"complete": r5["complete"], "files": files,
                                                  "ratio": count / r5["complete"] if r5["complete"] else None}
         passes = sound(dev) and sound(held)
-        value = count >= 2 * complete
+        value = "native_exception" not in dev and count >= 2 * complete
         doubled_and_sound += passes and value
-        if passes:
+        if "native_exception" in dev:
+            label = "unverified, native truth unavailable"
+        elif passes:
             label = "sound" if count * 5 >= files * 4 else "sound, low coverage, improved"
         else:
             label = "soundness failed; correction or revert required"
@@ -644,7 +736,7 @@ def run_group(command, *, cwd, env, check, data=None, stderr_target=subprocess.P
 
 @contextmanager
 def worker_stderr(config):
-    if config["mode"] not in ("rehearse", "replacement"):
+    if config["mode"] not in ("rehearse", "replacement", "final"):
         yield subprocess.PIPE
         return
     path = Path(config["journal"]).with_suffix(".stderr")
@@ -710,6 +802,8 @@ def rehearse(args):
     pinned = identity(args.compiler, args.pyright, "rehearse")
     head = git("rev-parse", "HEAD").decode().strip()
     record = dict(operation="rehearse", reader_revision=FINAL_READER, harness_revision=head)
+    if getattr(args, "inject_native_failure", False):
+        record["inject_native_failure"] = True
     ensure_reader(record)
     execute(args, root, journal, record, sha(canonical(dict(record, identity=pinned))), rehearsal_baselines())
 
@@ -724,6 +818,8 @@ def execute(args, root, journal, record, binding, baseline):
                   binding=binding, nonce_sha256=sha(nonce.encode()), tool_paths=tool_paths,
                   progress=[{"stage": "claim"}])
     config = dict(tool_paths, root=str(root), mode=mode, journal=str(path), binding=binding, nonce=nonce)
+    if mode == "rehearse" and record.get("inject_native_failure"):
+        config["inject_native_failure"] = True
 
     def report(stage, pool=None):
         progress(config, stage, pool)
@@ -732,6 +828,9 @@ def execute(args, root, journal, record, binding, baseline):
         check()
         claim(path, record)
         try:
+            if mode == "final":
+                require_absent(journal / "final.aggregate.json")
+                require_absent(journal / "final.stderr")
             report("checkout")
             ensure_reader(record)
             measured = measure(config, check)
@@ -773,10 +872,14 @@ def main():
             sub.add_argument("root", type=Path)
         if command == "run":
             sub.add_argument("operation", choices=PRODUCTION_OPERATIONS)
+        elif command == "rehearse":
+            sub.add_argument("--inject-native-failure", action="store_true")
     native = commands.add_parser("_python")
     native.add_argument("pool")
     native.add_argument("subject")
     native.add_argument("arm")
+    compiler_identity = commands.add_parser("_compiler_identity")
+    compiler_identity.add_argument("pool")
     check = commands.add_parser("_active")
     check.add_argument("pool")
     transition = commands.add_parser("_progress")
@@ -802,7 +905,21 @@ def main():
     elif args.command == "_python":
         if not all(stat.S_ISFIFO(os.fstat(pipe.fileno()).st_mode) for pipe in (sys.stdin, sys.stdout)):
             raise ValueError("native capture requires private instrument pipes")
-        sys.stdout.buffer.write(canonical(python_capture(json.load(sys.stdin), args.pool, args.subject, args.arm)))
+        try:
+            data = python_capture(json.load(sys.stdin), args.pool, args.subject, args.arm)
+        except PYRIGHT["NativeNonzero"]:
+            raise SystemExit(NATIVE_NONZERO_STATUS) from None
+        sys.stdout.buffer.write(canonical(data))
+    elif args.command == "_compiler_identity":
+        if not all(stat.S_ISFIFO(os.fstat(pipe.fileno()).st_mode) for pipe in (sys.stdin, sys.stdout)):
+            raise ValueError("compiler identity requires private instrument pipes")
+        config = json.load(sys.stdin)
+        record = active(config, args.pool)
+        if config["mode"] not in ISOLATION_MODES:
+            raise ValueError("compiler exit identity check requires an isolation operation")
+        pinned = identity(config["compiler"], config["pyright"], config["mode"])
+        if config["mode"] == "final" and pinned != record["identity"]:
+            raise ValueError("compiler exit identity differs from authorization")
     elif args.command == "identity":
         sys.stdout.buffer.write(canonical(identity(args.compiler, args.pyright)))
     elif args.command == "preflight":

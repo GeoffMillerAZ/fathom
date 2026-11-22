@@ -365,6 +365,12 @@ func covTree(tree fstest.MapFS) map[string][]byte {
 
 func covTruth(t *testing.T, python, compiler, pool string, s covSubject, root string, paths []string) ([]depbench.TruthFile, map[string]string) {
 	t.Helper()
+	truth, gaps, _ := covCaptureTruth(t, python, compiler, pool, s, root, paths, false, false)
+	return truth, gaps
+}
+
+func covCaptureTruth(t *testing.T, python, compiler, pool string, s covSubject, root string, paths []string, isolate, inject bool) ([]depbench.TruthFile, map[string]string, *exec.ExitError) {
+	t.Helper()
 	gaps := map[string]string{}
 	var cmd *exec.Cmd
 	if s.Dialect == "python" {
@@ -383,7 +389,11 @@ func covTruth(t *testing.T, python, compiler, pool string, s covSubject, root st
 		if err != nil {
 			t.Fatal("COV compiler adapter unavailable")
 		}
-		cmd = exec.CommandContext(t.Context(), "node", script, compiler, root, filepath.Join(private, "inputs.json"), filepath.Join(private, "trace.log"))
+		args := []string{script, compiler, root, filepath.Join(private, "inputs.json"), filepath.Join(private, "trace.log")}
+		if inject {
+			args = []string{"-e", "process.exit(79)"}
+		}
+		cmd = exec.CommandContext(t.Context(), "node", args...)
 	}
 	cmd.Dir = root
 	cmd.Env = slices.DeleteFunc(os.Environ(), func(v string) bool {
@@ -391,6 +401,10 @@ func covTruth(t *testing.T, python, compiler, pool string, s covSubject, root st
 	})
 	data, err := cmd.Output()
 	if err != nil {
+		var exit *exec.ExitError
+		if isolate && s.Dialect != "python" && t.Context().Err() == nil && errors.As(err, &exit) && exit.ExitCode() > 0 {
+			return nil, nil, exit
+		}
 		t.Fatal("COV pinned oracle invocation failed; no per-file diagnostics emitted")
 	}
 	var truth []depbench.TruthFile
@@ -422,7 +436,7 @@ func covTruth(t *testing.T, python, compiler, pool string, s covSubject, root st
 			}
 		}
 	}
-	return truth, gaps
+	return truth, gaps, nil
 }
 
 func covReach(t *testing.T, reader *deps.Reader, tree fstest.MapFS, selected []string, initial []deps.FileDeps, selectedRejected map[string]bool) depbench.COVClosureCounts {
