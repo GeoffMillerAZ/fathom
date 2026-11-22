@@ -1,0 +1,3 @@
+[
+ {"name":"blueprint","url":"https://github.com/palantir/blueprint.git","commit":"c5a3873b2e6de678aeee02d548732d92601884f5","dialect":"typescript","prefixes":[""],"suffixes":[".cts",".mts",".ts",".tsx"],"files":979,"selectionSHA256":"7d78d76e18d54939454387d1b74d867ba8407514ff7b308b196f90d8b66e8b48"}
+]
