@@ -2,6 +2,7 @@ package deps_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"reflect"
 	"testing"
@@ -209,5 +210,14 @@ func TestCOVGreedyMultiplePrerequisites(t *testing.T) {
 	steps := depbench.COVGreedy(map[string][]string{"one": {"a", "b", "c"}, "two": {"a", "b", "c"}}, 100, 5)
 	if len(steps) != 3 || steps[0].Unlock != 0 || steps[1].Unlock != 0 || steps[2].Unlock != 2 {
 		t.Fatalf("three blockers require two justified prerequisites: %+v", steps)
+	}
+}
+
+func TestCOVRejectedSelectedInputSynthetic(t *testing.T) {
+	tree := fstest.MapFS{"okay.ts": {Data: []byte("export const okay=1")}, "bad[case].ts": {Data: []byte("export const bad=1")}}
+	r := &deps.Reader{}
+	files, err := r.ReadFiles(t.Context(), tree, []deps.Input{{Path: "okay.ts"}, {Path: "bad[case].ts"}})
+	if !errors.Is(err, deps.ErrInput) || len(files) != 0 {
+		t.Fatalf("invalid selected path must refuse the batch, not disappear: files=%d err=%v", len(files), err)
 	}
 }
