@@ -1,6 +1,6 @@
 # Dependency edges
 
-Grammar v2 (`docs/plans/README.md`). Prefixes DEP-, BND- and PF-. Decisions ADR-114 and ADR-115.
+Grammar v2 (`docs/plans/README.md`). Prefixes DEP-, BND-, PF- and COV-. Decisions ADR-114 and ADR-115.
 [Design](../design/dependency-edges.md) · [Contract](../contracts/dependency-edges.md).
 
 ## Records and public door
@@ -33,6 +33,22 @@ Start after DEP-1 through DEP-3 land.
 - [x] Join the declared entry map, direct edges, closure and filters in `fathom-lang pathfilters` and prove the three verdicts and unused patterns {id: PF-2, symbol: checkPathFilterCoverage, package: cmd/fathom-lang, reachable_from: cmdPathFilters, needs: PF-1}
 - [x] Wire the first use in a fixture repository and detect every seeded miss with no false misses on the control. The first real consumer is the CI kit after DEP-P1b {id: PF-3, symbol: cmdPathFilters, package: cmd/fathom-lang, reachable_from: TestPathFiltersFixtureFirstUse, needs: PF-2}
 - [-] Read the first real workflow wiring and decide whether to keep or demote the check {id: PF-M1, disposition: deferred, reason: "fixture wiring alone does not start the real-use window", trigger: "30 days after the first wiring outside fixtures", needs: "PF-3,DEP-P1b"}
+
+## Coverage of the admitted readers
+
+Use the [coverage preregistration](../design/dependency-edges.md#coverage-of-the-admitted-readers)
+for the fixed bars, holdout pins and skips. Land the census before changing a reader.
+Bind each implementation row to its new symbol when the change is written.
+
+- [x] (op) Preregister the bars, cohort rules, holdout pins and skipped candidates {id: COV-0, oracle: lexical, path: docs/design/dependency-edges.md, pattern: "^### Holdout pins and selection$", eq: 1}
+- [ ] Add the test-only blocker census, confirm the development counts and seal the aggregate holdout baselines {id: COV-1, needs: COV-0}
+- [ ] Apply the admitted Python levers with failing and refusal fixtures {id: COV-2, needs: COV-1}
+- [ ] Apply the admitted TypeScript and JavaScript levers with failing and refusal fixtures {id: COV-3, needs: COV-1}
+- [ ] Read Go's first admission against its pinned native oracle (COV-M3) {id: COV-4}
+- [ ] (op) Publish the independently confirmed TypeScript and JavaScript final readings and their separate verdicts {id: COV-M1, needs: COV-3}
+- [ ] (op) Publish the independently confirmed Python final reading and verdict {id: COV-M2, needs: COV-2}
+- [ ] (op) Reconcile the admission table, readings, measured ceilings, change notes and public counts {id: COV-5, needs: "COV-M1,COV-M2,COV-4"}
+
 
 ## Deferred
 
