@@ -341,6 +341,14 @@ with (root / 'worker.lock').open('wb') as lock:
                 (repo / "reader.txt").write_text("unreviewed bytes")
                 with self.assertRaisesRegex(ValueError, "dirty"):
                     final["ensure_reader"](auth)
+                real_git = scope["git"]
+
+                def report_clean(*args):
+                    return b"" if args[0] == "status" else real_git(*args)
+
+                with patch.dict(scope, git=report_clean):
+                    with self.assertRaisesRegex(ValueError, "raw checkout bytes"):
+                        final["ensure_reader"](auth)
                 git("restore", "reader.txt")
                 (repo / ".git/info/exclude").write_text("unreviewed.go\n")
                 ignored = repo / "unreviewed.go"

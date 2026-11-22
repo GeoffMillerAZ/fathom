@@ -295,6 +295,33 @@ def authorized(record, root, mode, pinned, head):
         raise ValueError("gates are not green")
 
 
+def ensure_checkout_bytes(head):
+    # The compiler reads the worktree bytes. Git status can compare bytes
+    # after a configured clean filter, so check the raw blob identity too.
+    checked_directories = set()
+    for entry in filter(None, git("ls-tree", "-r", "-z", head).split(b"\0")):
+        metadata, name = entry.split(b"\t", 1)
+        mode, kind, expected = metadata.split()
+        file = REPO / os.fsdecode(name)
+        if file.parent not in checked_directories:
+            if file.parent.resolve(strict=True) != file.parent:
+                raise ValueError("reviewed raw checkout bytes cannot be confined")
+            checked_directories.add(file.parent)
+        actual_mode = file.lstat().st_mode
+        if kind == b"blob" and mode == b"120000" and stat.S_ISLNK(actual_mode):
+            content = os.readlink(os.fsencode(file))
+        elif kind == b"blob" and mode in (b"100644", b"100755") and stat.S_ISREG(actual_mode):
+            if bool(actual_mode & stat.S_IXUSR) != (mode == b"100755"):
+                raise ValueError("reviewed raw checkout bytes differ")
+            content = file.read_bytes()
+        else:
+            raise ValueError("reviewed raw checkout bytes differ")
+        blob = hashlib.sha1(f"blob {len(content)}\0".encode(), usedforsecurity=False)
+        blob.update(content)
+        if blob.hexdigest().encode() != expected:
+            raise ValueError("reviewed raw checkout bytes differ")
+
+
 def ensure_reader(record):
     reader, head = record["reader_revision"], record["harness_revision"]
     if git("rev-parse", "HEAD").decode().strip() != head:
@@ -310,6 +337,7 @@ def ensure_reader(record):
             or git("status", "--porcelain", "--untracked-files=no", "--ignore-submodules=none")
             or git("ls-files", "--others", "--exclude=/workspace/tmp/", "-z")):
         raise ValueError("reviewed checkout is dirty")
+    ensure_checkout_bytes(head)
 
 
 def read_aggregate(ref):
