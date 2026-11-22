@@ -1,13 +1,58 @@
 """COV-M1/M2 controls using synthetic rows and authorization records."""
 from concurrent.futures import ThreadPoolExecutor
 import copy
+import fcntl
 import json
+import os
 from pathlib import Path
 from runpy import run_path
+import signal
+import subprocess
+import sys
 import tempfile
+import time
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
-final = run_path(str(Path(__file__).with_name("cov_final.py")))
+SCRIPT = Path(__file__).resolve()
+final = run_path(str(SCRIPT.with_name("cov_final.py")))
+scope = final["run"].__globals__
+
+
+def authorization(root, reader, harness):
+    return dict(authority=final["AUTHORITY"], operation="initial", status="authorized",
+                root=str(root), identity={}, reader_revision=reader, harness_revision=harness,
+                linux_ci=dict(revision=reader, status="success", receipt="synthetic-ci"),
+                processed_acks=dict(revision=reader, receipt="synthetic-acks"),
+                seal_review=dict(revision=harness, reviewer="synthetic", receipt="synthetic-review"),
+                baselines={})
+
+
+def write_authorization(root, reader, harness):
+    journal = root / "journal"
+    journal.mkdir(mode=0o700)
+    final["claim"](journal / "initial.authorization.json", authorization(root, reader, harness))
+    return journal
+
+
+def initial_args(root):
+    return SimpleNamespace(root=root, operation="initial", compiler="compiler", pyright="pyright")
+
+
+def synthetic_attempt(root):
+    repo = root / "repo"
+    overrides = dict(REPO=repo, identity=lambda *_: {}, ensure_reader=lambda *_: None,
+                     git=lambda *_: b"b" * 40, baselines=lambda *_: None)
+    with patch.dict(scope, overrides), patch.dict(os.environ, {"PATH": str(root)}):
+        try:
+            final["run"](initial_args(root))
+        except FileExistsError:
+            print("replay denied")
+        except (Exception, KeyboardInterrupt):
+            print("operation failed")
+        else:
+            raise AssertionError("synthetic failure unexpectedly published")
 
 
 class FinalControls(unittest.TestCase):
@@ -57,11 +102,11 @@ class FinalControls(unittest.TestCase):
         with self.assertRaises(ValueError):
             final["compare_python"](names, [old, gap], [changed, extension], *args[3:])
 
-    def test_correction_never_acquires_confirmation(self):
+    def test_correction_is_disabled(self):
         self.assertEqual(final["operation_pools"]("initial"), ["development", "holdout", "confirmation"])
-        self.assertEqual(final["operation_pools"]("correction"), ["development", "holdout"])
-        with self.assertRaises(ValueError):
-            final["operation_pools"]("preflight")
+        for mode in ("correction", "preflight"):
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                final["operation_pools"](mode)
 
     def test_active_operation_is_bound_to_pool_and_nonce(self):
         final["active"]({"mode": "preflight"}, "development")
@@ -73,20 +118,20 @@ class FinalControls(unittest.TestCase):
             root = Path(tmp).resolve()
             journal = root / "journal"
             journal.mkdir(mode=0o700)
-            claim = journal / "correction.json"
-            config = dict(mode="correction", root=str(root), journal=str(claim), binding="synthetic",
+            claim = journal / "initial.json"
+            config = dict(mode="initial", root=str(root), journal=str(claim), binding="synthetic",
                           nonce="synthetic", python="python", compiler="compiler", pyright="pyright")
             tools = {key: config[key] for key in ("python", "compiler", "pyright")}
-            record = dict(operation="correction", status="started", root=str(root), binding="synthetic",
+            record = dict(operation="initial", status="started", root=str(root), binding="synthetic",
                           nonce_sha256=final["sha"](b"synthetic"), tool_paths=tools,
-                          pools=["development", "holdout"])
+                          pools=["development", "holdout", "confirmation"])
             final["claim"](claim, record)
             final["active"](config, "holdout")
             for change in ({"nonce": "wrong"}, {"binding": "wrong"}, {"pyright": "ad-hoc"}):
                 with self.assertRaises(ValueError):
                     final["active"](dict(config, **change), "holdout")
             with self.assertRaises(ValueError):
-                final["active"](config, "confirmation")
+                final["active"](config, "ad-hoc")
             final["finish"](claim, dict(record, status="failed"))
             with self.assertRaises(ValueError):
                 final["active"](config, "holdout")
@@ -134,13 +179,195 @@ class FinalControls(unittest.TestCase):
         initial = final["assess"](result, ({}, corrected))
         correction = copy.deepcopy(result)
         del correction["confirmation"]
-        corrected_result = final["assess"](correction, ({}, corrected), initial)
-        self.assertNotIn("confirmation", corrected_result["current"])
-        self.assertEqual(corrected_result["verdicts"]["python"]["label"], "reverted")
-        correction["holdout"]["python"]["dependency_evidence_sha256"] = "changed"
-        with self.assertRaises(ValueError):
+        before, after = {"a.py": True, "b.py": False}, {"a.py": False, "b.py": True}
+        self.assertEqual(sum(before.values()), sum(after.values()))
+        self.assertTrue(any(after[path] and not before[path] for path in before))
+        # Identical edge evidence and counts cannot prove a per-file transition.
+        with self.assertRaises((TypeError, ValueError)):
             final["assess"](correction, ({}, corrected), initial)
+
+    def test_hash_valid_closure_must_be_numeric_and_reconcile(self):
+        def closure(files):
+            return dict(Selected=files, Complete=1, OnlyUnmeasured=2, OnlyMeasured=3,
+                        MeasuredAndUnmeasured=files - 6, RejectedBlocked=4)
+        original = {"development": {}, "holdout": {}, "holdout_rejected_inputs": {}}
+        held = {}
+        for dialect, (complete, files) in final["ORIGINAL_HOLDOUT"].items():
+            dev_complete, dev_files = final["ORIGINAL_DEVELOPMENT"][dialect]
+            original["development"][dialect] = {
+                "Analysis": {"Score": dict(Complete=dev_complete, Files=dev_files, RejectedInputs=0)},
+                "Closure": closure(dev_files),
+            }
+            original["holdout"][dialect] = dict(complete=complete, files=files)
+            original["holdout_rejected_inputs"][dialect] = 0
+            held[dialect] = closure(files)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+
+            def reference(name, data):
+                path = root / name
+                blob = final["canonical"](data)
+                path.write_bytes(blob)
+                return dict(path=str(path), sha256=final["sha"](blob))
+
+            refs = {"original": reference("original", original), "closure": reference("closure", held)}
+            for dialect, complete in final["CORRECTED_HOLDOUT"].items():
+                refs[dialect + "_r5"] = reference(dialect, dict(
+                    complete=complete, files=final["ORIGINAL_HOLDOUT"][dialect][1], b1=True, b2=True, b3=True))
+            with patch.dict(scope, ORIGINAL_AGGREGATE=refs["original"]["sha256"]):
+                before, _ = final["baselines"](refs)
+                self.assertEqual(before["holdout"]["typescript"]["closure"], held["typescript"])
+                for change in ({"diagnostic": ["synthetic.py"]}, {"Complete": "1"}, {"Complete": True},
+                               {"Complete": 1.0}, {"OnlyMeasured": -1}, {"OnlyMeasured": 4},
+                               {"RejectedBlocked": held["typescript"]["Selected"]}, {"Complete": 724}):
+                    with self.subTest(change=change), self.assertRaises(ValueError):
+                        bad = dict(held, typescript=dict(held["typescript"], **change))
+                        final["baselines"](dict(refs, closure=reference("closure", bad)))
+                with self.assertRaises(ValueError):
+                    bad = dict(held, typescript={k: v for k, v in held["typescript"].items()
+                                                 if k != "RejectedBlocked"})
+                    final["baselines"](dict(refs, closure=reference("closure", bad)))
+                with self.assertRaises(ValueError):
+                    final["baselines"](dict(refs, closure=reference("closure", dict(held, diagnostic="synthetic"))))
+
+    def test_failure_receipt_cleanup_and_replay(self):
+        for condition in ("failure", "term", "kill"):
+            with self.subTest(condition=condition), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp).resolve()
+                journal = write_authorization(root, "a" * 40, "b" * 40)
+                (root / "repo/pkg/lang/deps").mkdir(parents=True)
+                go = root / "go"
+                go.write_text(f"#!{sys.executable}\n" + f"""
+import fcntl, json, os, sys, time
+from pathlib import Path
+
+if '-o' in sys.argv:
+    binary = Path(sys.argv[sys.argv.index('-o') + 1])
+    binary.symlink_to(Path(__file__).resolve())
+    sys.exit(0)
+root = Path({str(root)!r})
+config = json.load(sys.stdin)
+assert Path(config['scratch']).is_dir()
+assert json.loads(Path(config['journal']).read_bytes())['status'] == 'started'
+with (root / 'worker.lock').open('wb') as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    child = os.fork()
+    if child == 0:
+        time.sleep(30)
+        sys.exit(0)
+    pending = root / 'worker.pending'
+    pending.write_text(str(os.getpid()) + ' ' + str(child))
+    pending.replace(root / 'worker.json')
+    if {condition!r} == 'failure':
+        sys.exit(1)
+    time.sleep(30)
+""")
+                go.chmod(0o700)
+                cmd = [sys.executable, "-I", "-B", "-S", SCRIPT, str(root)]
+                pids = []
+                try:
+                    with subprocess.Popen(cmd, stdout=subprocess.PIPE, start_new_session=True) as proc:
+                        ready = root / "worker.json"
+                        deadline = time.monotonic() + 10
+                        while not ready.exists() and proc.poll() is None and time.monotonic() < deadline:
+                            time.sleep(0.02)
+                        self.assertTrue(ready.exists(), "synthetic measured worker never started")
+                        pids = [int(pid) for pid in ready.read_text().split()]
+                        self.assertEqual(len(pids), 2)
+                        if condition != "failure":
+                            proc.send_signal(signal.SIGTERM if condition == "term" else signal.SIGKILL)
+                        try:
+                            proc.communicate(timeout=10)
+                        finally:
+                            if proc.poll() is None:
+                                proc.kill()
+                    receipt = json.loads((journal / "initial.json").read_bytes())
+                    self.assertEqual(receipt["status"], "started" if condition == "kill" else "failed")
+                    self.assertEqual("finished_at" in receipt, condition != "kill")
+                    self.assertFalse((journal / "initial.aggregate.json").exists())
+                    if condition != "kill":
+                        self.assertEqual(list((root / "repo/workspace/tmp").iterdir()), [])
+                        with (root / "worker.lock").open("rb") as lock:
+                            deadline = time.monotonic() + 5
+                            while True:
+                                try:
+                                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                    break
+                                except BlockingIOError:
+                                    if time.monotonic() >= deadline:
+                                        self.fail("subprocess group still holds the worker lock")
+                                    time.sleep(0.02)
+                        pids.clear()
+                    replay = subprocess.check_output(cmd, timeout=10, text=True)
+                    self.assertEqual(replay, "replay denied\n")
+                    self.assertEqual(receipt, json.loads((journal / "initial.json").read_bytes()))
+                finally:
+                    for pid in pids:
+                        try:
+                            os.kill(pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+
+    def test_clean_revision_drift_blocks_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            repo = root / "repo"
+            repo.mkdir()
+
+            def git(*args):
+                return subprocess.check_output(
+                    ["git", "-C", str(repo), "-c", "core.hooksPath=/dev/null",
+                     "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic",
+                     "-c", "user.email=synthetic@example.test", *args], stderr=subprocess.PIPE).decode().strip()
+
+            def commit(path, contents):
+                file = repo / path
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text(contents)
+                git("add", path)
+                git("commit", "-qm", contents)
+                return git("rev-parse", "HEAD")
+
+            git("init", "-q")
+            reader = commit("reader.txt", "approved reader")
+            harness = commit(final["OWNED"][0], "reviewed harness")
+            other = commit("reader.txt", "different reader")
+            git("checkout", "--detach", harness)
+            journal = write_authorization(root, reader, harness)
+            auth = authorization(root, reader, harness)
+
+            with patch.dict(scope, REPO=repo):
+                final["ensure_reader"](auth)
+                (repo / "reader.txt").write_text("unreviewed bytes")
+                with self.assertRaisesRegex(ValueError, "dirty"):
+                    final["ensure_reader"](auth)
+                git("restore", "reader.txt")
+                (repo / ".git/info/exclude").write_text("unreviewed.go\n")
+                ignored = repo / "unreviewed.go"
+                ignored.write_text("synthetic")
+                with self.assertRaisesRegex(ValueError, "dirty"):
+                    final["ensure_reader"](auth)
+                ignored.unlink()
+                git("checkout", "-b", "synthetic")
+                with self.assertRaisesRegex(ValueError, "detached"):
+                    final["ensure_reader"](auth)
+                git("checkout", "--detach", harness)
+
+            def drift(*_):
+                git("checkout", "--detach", other)
+                self.assertEqual(git("status", "--porcelain"), "")
+                return {}
+
+            with patch.dict(scope, REPO=repo, identity=lambda *_: {}, baselines=lambda *_: None,
+                            measure=drift, assess=lambda *_: {}):
+                with self.assertRaisesRegex(ValueError, "HEAD"):
+                    final["run"](initial_args(root))
+            self.assertEqual(json.loads((journal / "initial.json").read_bytes())["status"], "failed")
+            self.assertFalse((journal / "initial.aggregate.json").exists())
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if len(sys.argv) == 2 and Path(sys.argv[1]).is_absolute():
+        synthetic_attempt(Path(sys.argv[1]))
+    else:
+        unittest.main()

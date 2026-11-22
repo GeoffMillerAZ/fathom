@@ -73,8 +73,6 @@ func TestCOVFinalMeasure(t *testing.T) {
 		pools = []string{"development"}
 	case "initial":
 		pools = []string{"development", "holdout", "confirmation"}
-	case "correction":
-		pools = []string{"development", "holdout"}
 	default:
 		t.Fatal("COV final worker operation denied")
 	}

@@ -4,10 +4,12 @@
 Use Python 3.13 -I -B -S. Run preflight and run under the machine gate lease.
 Each pool uses primary/<subject> and relocated/<subject> physical checkouts.
 Preflight takes only a development directory and emits only its aggregates.
+Run both commands from a dedicated clean detached Git checkout at the exact
+harness revision. Use a physical campaign directory outside the checkout.
 
 For run, ROOT is a dedicated physical campaign directory containing the
 three cohorts and a private journal/ directory. The foreman supplies
-journal/{initial,correction}.authorization.json (0600). No CLI grants access.
+journal/initial.authorization.json (0600). No CLI grants access.
 The authorization contains:
   authority="COV-D2/ESCALATE-20-R7", operation, status="authorized", root,
   reader_revision (landed full Git SHA), harness_revision (reviewed HEAD),
@@ -16,14 +18,13 @@ The authorization contains:
   processed_acks={revision, receipt}, seal_review={revision, reviewer, receipt},
   baselines={original, closure, javascript_r5, typescript_r5}, each
     {path: absolute aggregate path, sha256: digest}.
-A correction additionally binds the previous aggregate and reader and carries
-  conservative_review={initial_sha256, before_reader, after_reader, reviewer,
-    receipt, complete_to_incomplete_only:true, retains_dependency_evidence:true}.
-The operation journal is exclusive, including after failure. The independent
-post-run attestation binds the completed journal and aggregate digest.
+This harness runs the initial operation only. The operation journal is
+exclusive, including after failure. The independent post-run attestation
+binds the completed journal and aggregate digest.
 """
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -31,6 +32,7 @@ from pathlib import Path
 import re
 from runpy import run_path
 import secrets
+import signal
 import stat
 import subprocess
 import sys
@@ -49,6 +51,8 @@ ORIGINAL_AGGREGATE = "d8d68af4735a00a6711b92247fb8bac7f3fb8b6e244567c95d0f619605
 ORIGINAL_HOLDOUT = {"python": (795, 2820), "javascript": (112, 317), "typescript": (723, 2077)}
 CORRECTED_HOLDOUT = {"javascript": 112, "typescript": 501}
 ORIGINAL_DEVELOPMENT = {"python": (121, 1314), "javascript": (153, 1508), "typescript": (250, 1224)}
+CLOSURE_PARTITION = ("Complete", "OnlyUnmeasured", "OnlyMeasured", "MeasuredAndUnmeasured")
+CLOSURE_FIELDS = ("Selected", *CLOSURE_PARTITION, "RejectedBlocked")
 OWNED = (
     "pkg/lang/deps/cov_final_test.go",
     "pkg/lang/deps/cov_final_subject_test.go",
@@ -80,7 +84,8 @@ def sha(data):
 def git(*args):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     return subprocess.check_output(
-        ["git", "-c", "core.fsmonitor=false", "-C", str(REPO), *args],
+        ["git", "-c", "core.fsmonitor=false", "-c", "core.ignorestat=false",
+         "-c", "core.trustctime=true", "-C", str(REPO), *args],
         env=env, stderr=subprocess.DEVNULL,
     )
 
@@ -100,8 +105,6 @@ def subject(pool, name):
 def operation_pools(operation):
     if operation == "initial":
         return ["development", "holdout", "confirmation"]
-    if operation == "correction":
-        return ["development", "holdout"]
     raise ValueError("unknown final operation")
 
 
@@ -294,28 +297,19 @@ def authorized(record, root, mode, pinned, head):
 
 def ensure_reader(record):
     reader, head = record["reader_revision"], record["harness_revision"]
+    if git("rev-parse", "HEAD").decode().strip() != head:
+        raise ValueError("checkout HEAD differs from reviewed harness")
+    if git("rev-parse", "--abbrev-ref", "HEAD").strip() != b"HEAD":
+        raise ValueError("measurement requires a detached checkout")
     git("merge-base", "--is-ancestor", reader, head)
     if git("diff", "--name-only", reader, head, "--", ".", *[":(exclude)" + p for p in OWNED]):
         raise ValueError("reviewed checkout does not contain the exact landed reader")
-    if git("status", "--porcelain", "--untracked-files=all"):
+    # Git normally ignores some untracked files, including files a compiler
+    # could consume. Allow scratch only in the designated workspace.
+    if (any(not entry.startswith(b"H ") for entry in git("ls-files", "-v", "-z").split(b"\0") if entry)
+            or git("status", "--porcelain", "--untracked-files=no", "--ignore-submodules=none")
+            or git("ls-files", "--others", "--exclude=/workspace/tmp/", "-z")):
         raise ValueError("reviewed checkout is dirty")
-
-
-def check_correction(auth, previous, first):
-    review = auth["conservative_review"]
-    if (previous["status"] != "completed" or previous["operation"] != "initial" or
-            previous["authority"] != AUTHORITY or previous["root"] != auth["root"] or
-            previous["aggregate_sha256"] != sha(first) or
-            previous["identity"] != auth["identity"] or previous["baselines"] != auth["baselines"] or
-            review["initial_sha256"] != sha(first) or review["before_reader"] != previous["reader_revision"] or
-            review["after_reader"] != auth["reader_revision"] or review["after_reader"] == review["before_reader"] or
-            not review["reviewer"] or not review["receipt"] or
-            review["complete_to_incomplete_only"] is not True or review["retains_dependency_evidence"] is not True):
-        raise ValueError("correction is not bound to the initial campaign")
-    result = json.loads(first)
-    if all(row["soundness"] for row in result["verdicts"].values()):
-        raise ValueError("soundness passed; correction unavailable")
-    return result
 
 
 def read_aggregate(ref):
@@ -339,9 +333,17 @@ def sound(row):
 
 def original_metrics(score, closure, rejected, denominator, complete, *, sealed=False):
     c_key, f_key = ("complete", "files") if sealed else ("Complete", "Files")
-    if (score[c_key], score[f_key], closure["Selected"]) != (complete, denominator, denominator):
+    if (score[c_key], score[f_key]) != (complete, denominator):
         raise ValueError("original baseline differs from the preregistration")
-    return {"score": score, "closure": closure, "rejected_inputs": rejected}
+    if not isinstance(closure, dict) or closure.keys() != set(CLOSURE_FIELDS):
+        raise ValueError("baseline closure fields differ")
+    counts = {key: closure[key] for key in CLOSURE_FIELDS}
+    if any(type(count) is not int or count < 0 for count in counts.values()):
+        raise ValueError("baseline closure requires nonnegative integer counts")
+    if (counts["Selected"] != denominator or sum(counts[key] for key in CLOSURE_PARTITION) != denominator
+            or counts["Complete"] > complete or counts["RejectedBlocked"] > denominator - counts["Complete"]):
+        raise ValueError("baseline closure counts do not reconcile")
+    return {"score": score, "closure": counts, "rejected_inputs": rejected}
 
 
 def baselines(refs):
@@ -349,6 +351,8 @@ def baselines(refs):
         raise ValueError("original aggregate differs from the reproduced baseline")
     original = read_aggregate(refs["original"])
     closure = read_aggregate(refs["closure"])
+    if not isinstance(closure, dict) or closure.keys() != set(DIALECTS):
+        raise ValueError("baseline closure dialects differ")
     before = {"development": {}, "holdout": {}}
     for dialect in DIALECTS:
         complete, files = ORIGINAL_HOLDOUT[dialect]
@@ -374,15 +378,13 @@ def validate_python_overlap(row, pool):
         raise ValueError("original CPython coverage drifted from the frozen baseline")
 
 
-def assess(result, baseline, previous=None):
+def assess(result, baseline):
     before, corrected = baseline
     output = {"schema": "cov-final/v1", "current": result, "original": before,
               "secondary_r5": {}, "verdicts": {}}
-    confirmation = (previous["current"] if previous else result)["confirmation"]["typescript"]
+    confirmation = result["confirmation"]["typescript"]
     validate_population(confirmation, 979)
     output["confirmation_soundness"] = sound(confirmation)
-    if previous:
-        output["initial_confirmation_sha256"] = sha(canonical(confirmation))
     doubled_and_sound = 0
     for pool in ("development", "holdout"):
         validate_python_overlap(result[pool]["python"], pool)
@@ -396,20 +398,13 @@ def assess(result, baseline, previous=None):
             r5 = corrected[dialect]
             output["secondary_r5"][dialect] = {"complete": r5["complete"], "files": files,
                                                  "ratio": count / r5["complete"] if r5["complete"] else None}
-        if previous:
-            for pool in ("development", "holdout"):
-                a, b = previous["current"][pool][dialect], result[pool][dialect]
-                if (a["dependency_evidence_sha256"] != b["dependency_evidence_sha256"]
-                        or b["score"]["Complete"] > a["score"]["Complete"]
-                        or b["closure"]["Complete"] > a["closure"]["Complete"]):
-                    raise ValueError("correction changed retained evidence or increased completeness")
         passes = sound(dev) and sound(held)
         value = count >= 2 * complete
         doubled_and_sound += passes and value
         if passes:
             label = "sound" if count * 5 >= files * 4 else "sound, low coverage, improved"
         else:
-            label = "reverted" if previous else "soundness failed; correction or revert required"
+            label = "soundness failed; correction or revert required"
         output["verdicts"][dialect] = {
             "soundness": passes, "doubled": value, "label": label, "complete": count, "files": files,
             "original_ratio": count / complete,
@@ -418,7 +413,60 @@ def assess(result, baseline, previous=None):
     return output
 
 
-def measure(config):
+@contextmanager
+def termination():
+    pending = None
+
+    def request(signum, _frame):
+        nonlocal pending
+        pending = signum
+
+    def check():
+        if pending is not None:
+            raise InterruptedError(f"campaign interrupted by signal {pending}")
+
+    # Defer delivery across process creation and journal writes so neither
+    # process ownership nor the exclusive receipt can be lost on SIGTERM.
+    signals = (signal.SIGTERM, signal.SIGINT)
+    handlers = {sig: signal.signal(sig, request) for sig in signals}
+    try:
+        yield check
+    finally:
+        for sig, handler in handlers.items():
+            signal.signal(sig, handler)
+
+
+def run_group(command, *, cwd, env, check, data=None):
+    check()
+    with subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True,
+                          stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+        try:
+            while True:
+                check()
+                try:
+                    stdout, stderr = process.communicate(data, timeout=0.2)
+                    break
+                except subprocess.TimeoutExpired as error:
+                    # A failed leader can leave descendants holding its pipes.
+                    if process.poll():
+                        raise subprocess.CalledProcessError(process.returncode, command,
+                                                            error.output, error.stderr) from None
+                    data = None  # communicate retains pending input across retries.
+            check()
+            if process.returncode:
+                raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
+            return stdout
+        except BaseException:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+            raise
+
+
+def measure(config, check):
     workspace = REPO / "workspace/tmp"
     workspace.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cov-final-", dir=workspace) as tmp:
@@ -434,19 +482,19 @@ def measure(config):
                            GIT_CONFIG_KEY_1="core.fsmonitor", GIT_CONFIG_VALUE_1="false",
                            GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0")
         binary = scratch / "cov-final.test"
-        subprocess.run(["go", "test", "-race", "-c", "-o", str(binary), "./pkg/lang/deps"],
-                       cwd=REPO, env=environment, check=True, capture_output=True)
+        run_group(["go", "test", "-race", "-c", "-o", str(binary), "./pkg/lang/deps"],
+                  cwd=REPO, env=environment, check=check)
         environment["FATHOM_COV_FINAL_WORKER"] = "1"
-        run = subprocess.run([binary, "-test.run=^TestCOVFinalMeasure$", "-test.timeout=45m"],
-                             cwd=REPO / "pkg/lang/deps", env=environment, input=canonical(config),
-                             capture_output=True, check=True)
-        aggregate, marker = run.stdout.rsplit(b"\n", 2)[:2]
+        output = run_group([binary, "-test.run=^TestCOVFinalMeasure$", "-test.timeout=45m"],
+                           cwd=REPO / "pkg/lang/deps", env=environment, check=check, data=canonical(config))
+        aggregate, marker = output.rsplit(b"\n", 2)[:2]
         if marker != b"PASS":
             raise ValueError("final worker did not complete")
         return json.loads(aggregate)
 
 
 def run(args):
+    pools = operation_pools(args.operation)
     root = physical(args.root)
     pinned = identity(args.compiler, args.pyright)
     tool_paths = {"python": str(Path(sys.executable).resolve()), "compiler": str(args.compiler),
@@ -459,28 +507,29 @@ def run(args):
     head = git("rev-parse", "HEAD").decode().strip()
     authorized(auth, root, args.operation, pinned, head)
     ensure_reader(auth)
-    previous = None
-    if args.operation == "correction":
-        initial = json.loads(private(journal / "initial.json").read_bytes())
-        previous = check_correction(auth, initial, private(journal / "initial.aggregate.json").read_bytes())
     baseline = baselines(auth["baselines"])
     path = journal / (args.operation + ".json")
     binding = sha(auth_data)
     nonce = secrets.token_hex(32)
-    record = dict(auth, status="started", started_at=now(), pools=operation_pools(args.operation),
+    record = dict(auth, status="started", started_at=now(), pools=pools,
                   binding=binding, nonce_sha256=sha(nonce.encode()), tool_paths=tool_paths)
     config.update(journal=str(path), binding=binding, nonce=nonce)
-    claim(path, record)
-    status = "failed"
-    try:
-        aggregate = assess(measure(config), baseline, previous)
-        ensure_reader(auth)
-        claim(journal / (args.operation + ".aggregate.json"), aggregate)
-        record["aggregate_sha256"] = sha(canonical(aggregate))
-        status = "completed"
-    finally:
-        record.update(status=status, finished_at=now())
-        finish(path, record)
+    with termination() as check:
+        check()
+        claim(path, record)
+        status = "failed"
+        try:
+            ensure_reader(auth)
+            measured = measure(config, check)
+            aggregate = assess(measured, baseline)
+            ensure_reader(auth)
+            check()
+            claim(journal / "initial.aggregate.json", aggregate)
+            record["aggregate_sha256"] = sha(canonical(aggregate))
+            status = "completed"
+        finally:
+            record.update(status=status, finished_at=now())
+            finish(path, record)
     print(record["aggregate_sha256"])
 
 
@@ -494,7 +543,7 @@ def main():
         if command != "identity":
             sub.add_argument("root", type=Path)
         if command == "run":
-            sub.add_argument("operation", choices=("initial", "correction"))
+            sub.add_argument("operation", choices=("initial",))
     native = commands.add_parser("_python")
     native.add_argument("pool")
     native.add_argument("subject")
@@ -515,7 +564,13 @@ def main():
         identity(args.compiler, args.pyright)
         config = {"root": str(root), "mode": "preflight", "python": str(Path(sys.executable).resolve()),
                   "compiler": str(args.compiler), "pyright": str(args.pyright)}
-        rows = measure(config)["development"]
+        head = git("rev-parse", "HEAD").decode().strip()
+        expected = dict(reader_revision=head, harness_revision=head)
+        with termination() as check:
+            ensure_reader(expected)
+            rows = measure(config, check)["development"]
+            ensure_reader(expected)
+            check()
         validate_python_overlap(rows["python"], "development")
         for dialect, (_, files) in ORIGINAL_DEVELOPMENT.items():
             validate_population(rows[dialect], files)
