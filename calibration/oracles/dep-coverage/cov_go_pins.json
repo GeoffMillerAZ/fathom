@@ -1,0 +1,47 @@
+{
+  "id": "COV-M3",
+  "reader_base": "7f70e23d7feb3bd272fdf80cc1300035c48fb93c",
+  "go_version": "go1.27.4",
+  "go_sha256": "05f88ad8cc1e19f455104bd936e255e9ac9acf7b7725df96fb59e7260b425252",
+  "contexts": [
+    {
+      "GOOS": "darwin",
+      "GOARCH": "arm64",
+      "CGO_ENABLED": "0"
+    },
+    {
+      "GOOS": "darwin",
+      "GOARCH": "arm64",
+      "CGO_ENABLED": "1"
+    }
+  ],
+  "subjects": [
+    {
+      "classes": {},
+      "commit": "40b5bc1437a564fc795d388b23835e84f54cd1d1",
+      "dialect": "go",
+      "files": 36,
+      "rejects": 0,
+      "selection_sha256": "91f751b0f34a0affb41caa673f82010740893488973d8396b6baddeb66ac6542",
+      "subject": "cobra"
+    },
+    {
+      "classes": {},
+      "commit": "45ffa3c668f7105e92089220d42aa64c9acbd11c",
+      "dialect": "go",
+      "files": 737,
+      "rejects": 0,
+      "selection_sha256": "4506a3286b91722b4fc3059e293672f4cab75e32065320d3efe19d07fb3d6642",
+      "subject": "cli"
+    },
+    {
+      "classes": {},
+      "commit": "9ec59baffb547e24f1468a53eb82901e58feabd8",
+      "dialect": "go",
+      "files": 618,
+      "rejects": 0,
+      "selection_sha256": "638be820b8bcb021110f497fc3afdcfd7e9bd78b37059a0a304c5105a498c81b",
+      "subject": "prometheus"
+    }
+  ]
+}
