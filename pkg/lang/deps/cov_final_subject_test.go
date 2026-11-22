@@ -131,14 +131,22 @@ func covFinalRehearsalDirectories(t *testing.T, base, primary, relocated string)
 	}
 	for _, path := range []string{primary, relocated} {
 		gitDir := filepath.Join(path, ".git")
-		for _, directory := range []string{gitDir, filepath.Join(gitDir, "objects"), filepath.Join(gitDir, "objects", "info")} {
+		objects := filepath.Join(gitDir, "objects")
+		for _, directory := range []string{gitDir, objects, filepath.Join(objects, "info")} {
 			info, err := os.Lstat(directory)
 			if err != nil || !info.IsDir() {
 				t.Fatal("COV rehearsal requires a local Git object store")
 			}
 		}
-		if _, err := os.Lstat(filepath.Join(gitDir, "objects", "info", "alternates")); !errors.Is(err, fs.ErrNotExist) {
+		if _, err := os.Lstat(filepath.Join(gitDir, "commondir")); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatal("COV rehearsal requires a local Git object store")
+		}
+		if _, err := os.Lstat(filepath.Join(objects, "info", "alternates")); !errors.Is(err, fs.ErrNotExist) {
 			t.Fatal("COV rehearsal requires an independent Git object store")
+		}
+		effective, err := exec.CommandContext(t.Context(), "git", "-C", path, "rev-parse", "--path-format=absolute", "--git-path", "objects").Output()
+		if err != nil || strings.TrimSpace(string(effective)) != objects {
+			t.Fatal("COV rehearsal requires a local Git object store")
 		}
 		cmd := exec.CommandContext(t.Context(), "git", "-C", path, "symbolic-ref", "-q", "HEAD")
 		var exit *exec.ExitError

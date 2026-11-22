@@ -40,6 +40,37 @@ func TestCOVFinalSynthetic(t *testing.T) {
 	}
 }
 
+func TestCOVFinalRehearsalGitStore(t *testing.T) {
+	const fixture = "FATHOM_COV_REHEARSAL_GIT_FIXTURE"
+	if root := os.Getenv(fixture); root != "" {
+		covFinalRehearsalDirectories(t, root, filepath.Join(root, "primary", "subject"), filepath.Join(root, "relocated", "subject"))
+		return
+	}
+	root := t.TempDir()
+	primary := filepath.Join(root, "primary", "subject")
+	relocated := filepath.Join(root, "relocated", "subject")
+	for _, path := range []string{primary, relocated} {
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := exec.CommandContext(t.Context(), "git", "-C", path, "init", "-q").Run(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, ".git", "HEAD"), []byte("1111111111111111111111111111111111111111\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(primary, ".git", "commondir"), []byte(filepath.Join(relocated, ".git")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestCOVFinalRehearsalGitStore$")
+	cmd.Env = append(os.Environ(), fixture+"="+root)
+	output, err := cmd.CombinedOutput()
+	if err == nil || !bytes.Contains(output, []byte("requires a local Git object store")) {
+		t.Fatalf("redirected rehearsal object store was not refused: %s", output)
+	}
+}
+
 func TestCOVFinalDualTruth(t *testing.T) {
 	old := pythonOracleSubject{Rows: []pythonOracleRow{{Path: "a.py"}, {Path: "b.py", Gap: "old-gap"}, {Path: "c.py", Gap: "old-gap"}}}
 	initializer := depbench.TruthEdge{Kind: deps.KindImport, Raw: "pkg", Line: 1, Resolution: deps.ResolvedFile, To: "pkg/__init__.py"}

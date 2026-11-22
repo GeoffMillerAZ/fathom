@@ -304,6 +304,30 @@ class FinalControls(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     final["baselines"](dict(refs, closure=reference("closure", dict(held, diagnostic="synthetic"))))
 
+    def test_failed_journal_revalidation_preserves_last_transition(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            journal = write_authorization(root, "a" * 40, "b" * 40)
+            path = journal / "initial.json"
+            durable = None
+
+            def worker(config, _check):
+                nonlocal durable
+                final["progress"](config, "native", "development")
+                durable = path.read_bytes()
+                path.chmod(0o640)
+                raise InterruptedError
+
+            with patch.dict(scope, identity=lambda *_: {}, ensure_reader=lambda *_: None,
+                            git=lambda *_: b"b" * 40, baselines=lambda *_: None, measure=worker):
+                with self.assertRaisesRegex(ValueError, "journal storage must be private"):
+                    final["run"](initial_args(root))
+            self.assertIsNotNone(durable)
+            self.assertEqual(path.read_bytes(), durable)
+            self.assertEqual(json.loads(durable)["progress"][-1],
+                             {"stage": "native", "pool": "development"})
+            self.assertFalse((journal / "initial.aggregate.json").exists())
+
     def test_failure_receipt_cleanup_and_replay(self):
         for condition in ("failure", "term", "kill"):
             with self.subTest(condition=condition), tempfile.TemporaryDirectory() as tmp:

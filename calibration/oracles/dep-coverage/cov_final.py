@@ -667,6 +667,8 @@ def execute(args, root, journal, record, binding, baseline):
             check()
             claim(journal / (mode + ".aggregate.json"), aggregate)
         except BaseException as error:
+            # Only settle the receipt if its last durable transition is still trusted.
+            record = None
             record = active(config, "development")
             kind = type(error)
             record.update(status="failed", failure=dict(record["progress"][-1],
@@ -677,8 +679,9 @@ def execute(args, root, journal, record, binding, baseline):
         finally:
             # A terminated worker may have been writing its next transition.
             path.with_suffix(".progress").unlink(missing_ok=True)
-            record["finished_at"] = now()
-            finish(path, record)
+            if record is not None:
+                record["finished_at"] = now()
+                finish(path, record)
     print(record["aggregate_sha256"])
 
 
