@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"testing"
 	"testing/fstest"
 
@@ -46,7 +48,11 @@ func TestCOVFinalRehearsalGitStore(t *testing.T) {
 		covFinalRehearsalDirectories(t, root, filepath.Join(root, "primary", "subject"), filepath.Join(root, "relocated", "subject"))
 		return
 	}
-	root := t.TempDir()
+	tmp := t.TempDir()
+	root, err := filepath.EvalSymlinks(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
 	primary := filepath.Join(root, "primary", "subject")
 	relocated := filepath.Join(root, "relocated", "subject")
 	for _, path := range []string{primary, relocated} {
@@ -60,14 +66,57 @@ func TestCOVFinalRehearsalGitStore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(primary, ".git", "commondir"), []byte(filepath.Join(relocated, ".git")+"\n"), 0o600); err != nil {
+	covFinalRehearsalDirectories(t, root, primary, relocated)
+
+	gitBin := t.TempDir()
+	marker := filepath.Join(gitBin, "git-ran")
+	if err := os.WriteFile(filepath.Join(gitBin, "git"), []byte("#!/bin/sh\n: > \"$COV_FINAL_GIT_MARKER\"\nexit 1\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestCOVFinalRehearsalGitStore$")
-	cmd.Env = append(os.Environ(), fixture+"="+root)
-	output, err := cmd.CombinedOutput()
-	if err == nil || !bytes.Contains(output, []byte("requires a local Git object store")) {
-		t.Fatalf("redirected rehearsal object store was not refused: %s", output)
+	outside := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		path string
+		make func(string) error
+	}{
+		{"commondir", filepath.Join(primary, ".git", "commondir"), func(path string) error {
+			return os.WriteFile(path, []byte(filepath.Join(relocated, ".git")+"\n"), 0o600)
+		}},
+		{"symlink-directory", filepath.Join(relocated, ".git", "objects", "pack"), func(path string) error {
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+			return os.Symlink(outside, path)
+		}},
+		{"dangling-symlink-file", filepath.Join(primary, ".git", "objects", "info", "extra"), func(path string) error {
+			return os.Symlink(filepath.Join(outside, "missing"), path)
+		}},
+		{"fifo", filepath.Join(relocated, ".git", "objects", "info", "extra"), func(path string) error {
+			return exec.CommandContext(t.Context(), "mkfifo", path).Run()
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.make(tc.path); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Remove(tc.path); err != nil {
+					t.Error(err)
+				}
+			}()
+			cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestCOVFinalRehearsalGitStore$")
+			cmd.Env = append(os.Environ(), fixture+"="+root, "PATH="+gitBin, "COV_FINAL_GIT_MARKER="+marker)
+			output, err := cmd.CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte("requires a local Git object store")) {
+				t.Errorf("redirected or non-regular rehearsal object store was not refused: %s", output)
+			}
+			if _, err := os.Lstat(marker); !os.IsNotExist(err) {
+				t.Errorf("Git ran before object stores were validated: %v", err)
+				if err := os.Remove(marker); err != nil {
+					t.Error(err)
+				}
+			}
+		})
 	}
 }
 
@@ -88,6 +137,27 @@ func TestCOVFinalDualTruth(t *testing.T) {
 	}
 }
 
+func TestCOVFinalReplacementCohorts(t *testing.T) {
+	pools, initial := covFinalCohorts(t, "initial")
+	replacementPools, replacement := covFinalCohorts(t, "replacement")
+	if !slices.Equal(pools, replacementPools) || !reflect.DeepEqual(initial, replacement) {
+		t.Fatal("replacement does not use the exact initial cohorts")
+	}
+	for pool, count := range map[string]int{"development": 10, "holdout": 5, "confirmation": 1} {
+		if len(replacement[pool]) != count {
+			t.Fatalf("wrong number of %s pins", pool)
+		}
+	}
+	rehearsalPools, rehearsal := covFinalCohorts(t, "rehearse")
+	if !slices.Equal(rehearsalPools, pools) || rehearsal != nil {
+		t.Fatal("rehearsal did not leave pin selection to the non-held callback")
+	}
+	preflightPools, _ := covFinalCohorts(t, "preflight")
+	if !slices.Equal(preflightPools, []string{"development"}) {
+		t.Fatal("preflight is not development-only")
+	}
+}
+
 // TestCOVFinalMeasure is the pipe-only worker for the leased instrument.
 func TestCOVFinalMeasure(t *testing.T) {
 	if os.Getenv("FATHOM_COV_FINAL_WORKER") != "1" {
@@ -98,28 +168,7 @@ func TestCOVFinalMeasure(t *testing.T) {
 	if err != nil || json.Unmarshal(raw, &config) != nil {
 		t.Fatal("COV final worker configuration unavailable")
 	}
-	var pools []string
-	var expected map[string][]covSubject
-	switch config.Mode {
-	case "preflight":
-		pools = []string{"development"}
-	case "initial", "rehearse":
-		pools = []string{"development", "holdout", "confirmation"}
-	default:
-		t.Fatal("COV final worker operation denied")
-	}
-	if config.Mode != "rehearse" {
-		expected = covExpectedSubjects(t)
-	}
-	if config.Mode == "initial" {
-		pin, err := os.ReadFile(filepath.Join(covOracleDir, "cov_confirmation.json"))
-		var confirmation []covSubject
-		if err != nil || json.Unmarshal(pin, &confirmation) != nil || len(confirmation) != 1 ||
-			confirmation[0].Dialect != "typescript" || confirmation[0].Files != 979 {
-			t.Fatal("COV confirmation pin unavailable")
-		}
-		expected["confirmation"] = confirmation
-	}
+	pools, expected := covFinalCohorts(t, config.Mode)
 	result := map[string]map[string]covFinalRow{}
 	for _, pool := range pools {
 		response := config.call(t, "_active", pool)
@@ -139,6 +188,30 @@ func TestCOVFinalMeasure(t *testing.T) {
 	}
 	if _, err := fmt.Fprintln(os.Stdout, string(asJSON(t, result))); err != nil {
 		t.Fatal("COV final worker could not publish aggregates")
+	}
+}
+
+func covFinalCohorts(t *testing.T, mode string) ([]string, map[string][]covSubject) {
+	t.Helper()
+	pools := []string{"development", "holdout", "confirmation"}
+	switch mode {
+	case "preflight":
+		return pools[:1], covExpectedSubjects(t)
+	case "rehearse":
+		return pools, nil
+	case "initial", "replacement":
+		expected := covExpectedSubjects(t)
+		pin, err := os.ReadFile(filepath.Join(covOracleDir, "cov_confirmation.json"))
+		var confirmation []covSubject
+		if err != nil || json.Unmarshal(pin, &confirmation) != nil || len(confirmation) != 1 ||
+			confirmation[0].Dialect != "typescript" || confirmation[0].Files != 979 {
+			t.Fatal("COV confirmation pin unavailable")
+		}
+		expected["confirmation"] = confirmation
+		return pools, expected
+	default:
+		t.Fatal("COV final worker operation denied")
+		return nil, nil
 	}
 }
 

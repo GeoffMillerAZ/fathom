@@ -12,18 +12,23 @@ its own private journal/ and publishes a rehearsal-only aggregate.
 
 For run, ROOT is a dedicated physical campaign directory outside the checkout
 containing the three cohorts and a private journal/ directory. The foreman
-supplies journal/initial.authorization.json (0600). No CLI grants access.
+supplies journal/<operation>.authorization.json (0600). No CLI grants access.
 The authorization contains:
-  authority="COV-D2/ESCALATE-20-R7", operation, status="authorized", root,
+  authority, operation, status="authorized", root,
   reader_revision (landed full Git SHA), harness_revision (reviewed HEAD),
   identity (exact output of 'identity', decoded as JSON),
   linux_ci={revision, status:"success", receipt},
   processed_acks={revision, receipt}, seal_review={revision, reviewer, receipt},
   baselines={original, closure, javascript_r5, typescript_r5}, each
     {path: absolute aggregate path, sha256: digest}.
-This harness runs the initial operation only. The operation journal is
-exclusive, including after failure. The independent post-run attestation
-binds the completed journal and aggregate digest.
+Use authority="COV-D2/ESCALATE-20-R7" for initial. For replacement, use
+authority="COV-D2/ESCALATE-23" and supply failed_initial and metadata_preflight
+as {path, sha256} references. The first binds the preserved failed initial
+journal in a different campaign. The second binds journal/metadata-preflight.txt
+with one "<check-name> PASS" per line. Rehearsal and replacement retain the
+Go worker's stderr in journal/<operation>.stderr (0600).
+The operation journal is exclusive, including after failure. The independent
+post-run attestation binds the completed journal and aggregate digest.
 """
 
 import argparse
@@ -49,7 +54,11 @@ PYRIGHT = run_path(str(HERE / "cov_python_pyright.py"))
 DIALECTS = ("python", "javascript", "typescript")
 ARMS = ("primary", "relocated")
 AUTHORITY = "COV-D2/ESCALATE-20-R7"
-REHEARSAL_READER = "59ef2b56bf979f5f4ed91ea7182338f30a63c9b9"
+REPLACEMENT_AUTHORITY = "COV-D2/ESCALATE-23"
+PRODUCTION_OPERATIONS = ("initial", "replacement")
+FAILED_INITIAL_HARNESS = "598ec9ded011ded5b93fa04805c07c168226c21f"
+FAILED_INITIAL_SHA256 = "91b36b4a463cfe1fde13b519abc3f8f9cbca5cc3ef02ea77c1c423dce59f8bf7"
+FINAL_READER = "59ef2b56bf979f5f4ed91ea7182338f30a63c9b9"
 REHEARSAL_CONFIRMATION = "fp-ts"
 REHEARSAL_CONFIRMATION_FILES = 204
 POOL_CLASSES = ("development", "holdout", "confirmation")
@@ -128,7 +137,7 @@ def subject(pool, name, mode="initial"):
 
 
 def operation_pools(operation):
-    if operation == "initial":
+    if operation in PRODUCTION_OPERATIONS:
         return list(POOL_CLASSES)
     raise ValueError("unknown final operation")
 
@@ -346,7 +355,8 @@ def revision(value):
 
 def authorized(record, root, mode, pinned, head):
     reader = record["reader_revision"]
-    if (record["authority"] != AUTHORITY or record["operation"] != mode
+    authority = REPLACEMENT_AUTHORITY if mode == "replacement" else AUTHORITY
+    if (record["authority"] != authority or record["operation"] != mode
             or record["status"] != "authorized" or record["root"] != str(root)
             or record["identity"] != pinned or record["harness_revision"] != head
             or not revision(head) or not revision(reader)):
@@ -357,6 +367,55 @@ def authorized(record, root, mode, pinned, head):
             raise ValueError("missing gate evidence")
     if record["linux_ci"]["status"] != "success" or not record["seal_review"]["reviewer"]:
         raise ValueError("gates are not green")
+
+    if mode == "replacement":
+        if reader != FINAL_READER:
+            raise ValueError("replacement requires the exact landed reader")
+        replacement_evidence(record, root)
+
+
+def evidence_ref(record, field):
+    ref = record.get(field)
+    if (not isinstance(ref, dict) or ref.keys() != {"path", "sha256"}
+            or not isinstance(ref["path"], str) or not isinstance(ref["sha256"], str)
+            or not re.fullmatch("[0-9a-f]{64}", ref["sha256"])):
+        raise ValueError("invalid replacement evidence reference")
+    return Path(ref["path"]), ref["sha256"]
+
+
+def replacement_evidence(record, root):
+    failed, digest = evidence_ref(record, "failed_initial")
+    if digest != FAILED_INITIAL_SHA256 or failed.name != "initial.json" or failed.parent.name != "journal":
+        raise ValueError("replacement requires the preserved initial journal")
+    private(failed.parent, directory=True)
+    original_root = failed.parent.parent
+    if root.samefile(original_root):
+        raise ValueError("replacement requires a different campaign root")
+    data = private(failed).read_bytes()
+    if sha(data) != digest:
+        raise ValueError("failed initial journal digest differs")
+    original = json.loads(data)
+    if (original["operation"] != "initial" or original["status"] != "failed"
+            or original["reader_revision"] != FINAL_READER
+            or original["harness_revision"] != FAILED_INITIAL_HARNESS
+            or original["root"] != str(original_root) or "aggregate_sha256" in original):
+        raise ValueError("failed initial journal does not bind the original campaign")
+    try:
+        failed.with_name("initial.aggregate.json").lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise ValueError("initial aggregate already exists")
+
+    preflight, digest = evidence_ref(record, "metadata_preflight")
+    if preflight != root / "journal/metadata-preflight.txt":
+        raise ValueError("metadata preflight receipt is outside its journal location")
+    data = private(preflight).read_bytes()
+    if sha(data) != digest:
+        raise ValueError("metadata preflight receipt digest differs")
+    checks = data.splitlines()
+    if not checks or any(not re.fullmatch(rb"[a-zA-Z0-9][a-zA-Z0-9_.-]* PASS", line) for line in checks):
+        raise ValueError("metadata preflight checks must all pass")
 
 
 def ensure_checkout_bytes(head):
@@ -553,11 +612,11 @@ def termination():
             signal.signal(sig, handler)
 
 
-def run_group(command, *, cwd, env, check, data=None):
+def run_group(command, *, cwd, env, check, data=None, stderr_target=subprocess.PIPE):
     check()
     with subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True,
                           stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+                          stdout=subprocess.PIPE, stderr=stderr_target) as process:
         try:
             while True:
                 check()
@@ -583,6 +642,22 @@ def run_group(command, *, cwd, env, check, data=None):
             raise
 
 
+@contextmanager
+def worker_stderr(config):
+    if config["mode"] not in ("rehearse", "replacement"):
+        yield subprocess.PIPE
+        return
+    path = Path(config["journal"]).with_suffix(".stderr")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as receipt:
+        os.fchmod(receipt.fileno(), 0o600)
+        sync_directory(path.parent)
+        try:
+            yield receipt
+        finally:
+            os.fsync(receipt.fileno())
+
+
 def measure(config, check):
     workspace = REPO / "workspace/tmp"
     workspace.mkdir(parents=True, exist_ok=True)
@@ -604,8 +679,10 @@ def measure(config, check):
                   cwd=REPO, env=environment, check=check)
         environment["FATHOM_COV_FINAL_WORKER"] = "1"
         progress(config, "worker")
-        output = run_group([binary, "-test.run=^TestCOVFinalMeasure$", "-test.timeout=45m"],
-                           cwd=REPO / "pkg/lang/deps", env=environment, check=check, data=canonical(config))
+        with worker_stderr(config) as stderr:
+            output = run_group([binary, "-test.run=^TestCOVFinalMeasure$", "-test.timeout=45m"],
+                               cwd=REPO / "pkg/lang/deps", env=environment, check=check,
+                               data=canonical(config), stderr_target=stderr)
         aggregate, marker = output.rsplit(b"\n", 2)[:2]
         if marker != b"PASS":
             raise ValueError("final worker did not complete")
@@ -632,7 +709,7 @@ def rehearse(args):
     journal = private(root / "journal", directory=True)
     pinned = identity(args.compiler, args.pyright, "rehearse")
     head = git("rev-parse", "HEAD").decode().strip()
-    record = dict(operation="rehearse", reader_revision=REHEARSAL_READER, harness_revision=head)
+    record = dict(operation="rehearse", reader_revision=FINAL_READER, harness_revision=head)
     ensure_reader(record)
     execute(args, root, journal, record, sha(canonical(dict(record, identity=pinned))), rehearsal_baselines())
 
@@ -695,7 +772,7 @@ def main():
         if command != "identity":
             sub.add_argument("root", type=Path)
         if command == "run":
-            sub.add_argument("operation", choices=("initial",))
+            sub.add_argument("operation", choices=PRODUCTION_OPERATIONS)
     native = commands.add_parser("_python")
     native.add_argument("pool")
     native.add_argument("subject")

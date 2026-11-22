@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from runpy import run_path
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -40,6 +41,28 @@ def write_authorization(root, reader, harness):
 
 def initial_args(root):
     return SimpleNamespace(root=root, operation="initial", compiler="compiler", pyright="pyright")
+
+
+LANDED_READER = "59ef2b56bf979f5f4ed91ea7182338f30a63c9b9"
+FAILED_HARNESS = "598ec9ded011ded5b93fa04805c07c168226c21f"
+CANDIDATE = "b" * 40
+
+
+def replacement_authorization(root):
+    journal = root / "journal"
+    journal.mkdir(mode=0o700)
+    old = root.parent / "original"
+    (old / "journal").mkdir(mode=0o700, parents=True)
+    failed = old / "journal/initial.json"
+    final["claim"](failed, dict(operation="initial", status="failed", root=str(old),
+                               reader_revision=LANDED_READER, harness_revision=FAILED_HARNESS))
+    preflight = journal / "metadata-preflight.txt"
+    preflight.write_bytes(b"pin-check PASS\npopulation-check PASS\n")
+    preflight.chmod(0o600)
+    return dict(authorization(root, LANDED_READER, CANDIDATE), operation="replacement",
+                authority="COV-D2/ESCALATE-23",
+                failed_initial=dict(path=str(failed), sha256=final["sha"](failed.read_bytes())),
+                metadata_preflight=dict(path=str(preflight), sha256=final["sha"](preflight.read_bytes())))
 
 
 def synthetic_attempt(root):
@@ -227,6 +250,210 @@ class FinalControls(unittest.TestCase):
                        {"seal_review": dict(auth["seal_review"], revision=reader)}):
             with self.assertRaises(ValueError):
                 final["authorized"](dict(auth, **change), root, "initial", pinned, head)
+
+    def test_replacement_requires_bound_private_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "replacement"
+            root.mkdir()
+            auth = replacement_authorization(root)
+            failed = Path(auth["failed_initial"]["path"])
+            original = failed.read_bytes()
+            preflight = Path(auth["metadata_preflight"]["path"])
+            passed = preflight.read_bytes()
+            self.assertEqual(scope.get("FAILED_INITIAL_SHA256"),
+                             "91b36b4a463cfe1fde13b519abc3f8f9cbca5cc3ef02ea77c1c423dce59f8bf7")
+
+            def authorize(record=auth, mode="replacement"):
+                return final["authorized"](record, root, mode, {}, CANDIDATE)
+
+            with patch.dict(scope, FAILED_INITIAL_SHA256=auth["failed_initial"]["sha256"]):
+                authorize()
+                for change in ({"authority": final["AUTHORITY"]}, {"operation": "initial"},
+                               {"harness_revision": LANDED_READER},
+                               {"linux_ci": dict(auth["linux_ci"], status="pending")},
+                               {"processed_acks": dict(auth["processed_acks"], receipt="")},
+                               {"seal_review": dict(auth["seal_review"], revision=LANDED_READER)}):
+                    with self.subTest(change=change), self.assertRaises(ValueError):
+                        authorize(dict(auth, **change))
+                with self.assertRaises(ValueError):
+                    authorize(auth, "initial")
+                with self.assertRaises(ValueError):
+                    authorize(dict(auth, reader_revision=CANDIDATE,
+                                   linux_ci=dict(auth["linux_ci"], revision=CANDIDATE),
+                                   processed_acks=dict(auth["processed_acks"], revision=CANDIDATE)))
+                for field in ("failed_initial", "metadata_preflight"):
+                    for change in ({}, {"path": auth[field]["path"], "sha256": "0" * 64},
+                                   dict(auth[field], extra="unexpected")):
+                        with self.subTest(field=field, change=change), self.assertRaises(ValueError):
+                            authorize(dict(auth, **{field: change}))
+                    with self.assertRaises(ValueError):
+                        authorize({key: value for key, value in auth.items() if key != field})
+                    path = Path(auth[field]["path"])
+                    path.chmod(0o640)
+                    with self.assertRaises(ValueError):
+                        authorize()
+                    path.chmod(0o600)
+                aggregate = failed.with_name("initial.aggregate.json")
+                aggregate.symlink_to(failed.with_name("missing"))
+                with self.assertRaises(ValueError):
+                    authorize()
+                aggregate.unlink()
+                failed.write_bytes(original + b" ")
+                with self.assertRaises(ValueError):
+                    authorize()
+                failed.write_bytes(original)
+                preflight.write_bytes(passed + b" ")
+                with self.assertRaises(ValueError):
+                    authorize()
+                preflight.write_bytes(passed)
+                other = preflight.with_name("other.txt")
+                preflight.rename(other)
+                with self.assertRaises(ValueError):
+                    authorize(dict(auth, metadata_preflight=dict(auth["metadata_preflight"], path=str(other))))
+                preflight.symlink_to(other)
+                with self.assertRaises(ValueError):
+                    authorize()
+                preflight.unlink()
+                other.rename(preflight)
+                same_campaign = preflight.with_name("initial.json")
+                same_campaign.write_bytes(original)
+                same_campaign.chmod(0o600)
+                with self.assertRaisesRegex(ValueError, "different campaign root"):
+                    authorize(dict(auth, failed_initial=dict(auth["failed_initial"], path=str(same_campaign))))
+
+            for change in ({"operation": "replacement"}, {"status": "started"}, {"status": "completed"},
+                           {"harness_revision": CANDIDATE}, {"reader_revision": CANDIDATE},
+                           {"aggregate_sha256": "published"}, {"root": str(root)}):
+                with self.subTest(change=change):
+                    data = final["canonical"](dict(json.loads(original), **change))
+                    failed.write_bytes(data)
+                    digest = final["sha"](data)
+                    with patch.dict(scope, FAILED_INITIAL_SHA256=digest), self.assertRaises(ValueError):
+                        authorize(dict(auth, failed_initial=dict(auth["failed_initial"], sha256=digest)))
+            failed.write_bytes(original)
+            with patch.dict(scope, FAILED_INITIAL_SHA256=auth["failed_initial"]["sha256"]):
+                for evidence in (b"", b"\n", b"pin FAIL\n", b"pin PASS\nsecond FAIL\n",
+                                 b"pin PASS raw evidence\n", b"pin PASS\n\n"):
+                    with self.subTest(evidence=evidence):
+                        preflight.write_bytes(evidence)
+                        ref = dict(auth["metadata_preflight"], sha256=final["sha"](evidence))
+                        with self.assertRaises(ValueError):
+                            authorize(dict(auth, metadata_preflight=ref))
+
+    def test_replacement_uses_production_cohorts_and_journal(self):
+        self.assertEqual(final["operation_pools"]("replacement"), final["operation_pools"]("initial"))
+        for pool, pins in final["cohorts"]().items():
+            for pin in pins:
+                self.assertEqual(final["subject"](pool, pin["name"], "replacement"), pin)
+        with self.assertRaises(ValueError):
+            final["subject"]("confirmation", "fp-ts", "replacement")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "replacement"
+            root.mkdir()
+            auth = replacement_authorization(root)
+            journal = root / "journal"
+            path = journal / "replacement.json"
+            argv = [str(SCRIPT.with_name("cov_final.py")), "run", "--compiler", "compiler",
+                    "--pyright", "pyright", str(root), "replacement"]
+
+            def worker(config, _check):
+                self.assertEqual(config["mode"], "replacement")
+                record = final["active"](config, "holdout")
+                self.assertEqual(record["failed_initial"], auth["failed_initial"])
+                self.assertEqual(record["metadata_preflight"], auth["metadata_preflight"])
+                with self.assertRaises(ValueError):
+                    final["active"](dict(config, mode="initial"), "holdout")
+                return {}
+
+            with redirect_stdout(StringIO()), patch.object(sys, "argv", argv), patch.dict(
+                    scope, FAILED_INITIAL_SHA256=auth["failed_initial"]["sha256"],
+                    identity=lambda *_: {}, ensure_reader=lambda *_: None,
+                    git=lambda *_: CANDIDATE.encode(), baselines=lambda *_: None, measure=worker,
+                    assess=lambda _, __, *, mode, report: {"mode": mode}):
+                auth_path = journal / "replacement.authorization.json"
+                final["claim"](auth_path, dict(auth, metadata_preflight={}))
+                with self.assertRaises(ValueError):
+                    final["main"]()
+                self.assertFalse(path.exists())
+                auth_path.write_bytes(final["canonical"](auth))
+                final["main"]()
+                with self.assertRaises(FileExistsError):
+                    final["main"]()
+
+            record = json.loads(path.read_bytes())
+            self.assertEqual(record["status"], "completed")
+            self.assertEqual(record["binding"], final["sha"](auth_path.read_bytes()))
+            for field in ("failed_initial", "metadata_preflight"):
+                self.assertEqual(record[field], auth[field])
+            self.assertEqual(json.loads((journal / "replacement.aggregate.json").read_bytes()),
+                             {"mode": "replacement"})
+            self.assertFalse((journal / "initial.json").exists())
+
+    def test_worker_stderr_is_private_on_success_and_failure(self):
+        for mode in ("rehearse", "replacement"):
+            for outcome in ("success", "failure", "signal", "occupied"):
+                with self.subTest(mode=mode, outcome=outcome), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp).resolve()
+                    repo = root / "repo"
+                    (repo / "pkg/lang/deps").mkdir(parents=True)
+                    journal = root / "journal"
+                    journal.mkdir(mode=0o700)
+                    receipt = journal / (mode + ".stderr")
+                    if outcome == "occupied":
+                        receipt.write_bytes(b"existing receipt")
+                    go = root / "go"
+                    go.write_text(f"#!{sys.executable}\n" + rf"""
+import fcntl, os, signal, sys, time
+from pathlib import Path
+
+if '-o' in sys.argv:
+    os.write(2, b'compiler stderr')
+    Path(sys.argv[sys.argv.index('-o') + 1]).symlink_to(Path(__file__).resolve())
+    sys.exit(0)
+sys.stdin.buffer.read()
+os.write(2, b'worker stderr: \xff\n')
+if {outcome!r} in ('failure', 'signal'):
+    lock = (Path(__file__).resolve().parent / 'worker.lock').open('wb')
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    if os.fork() == 0:
+        time.sleep(5)
+        os._exit(0)
+if {outcome!r} == 'signal':
+    os.kill(os.getppid(), signal.SIGTERM)
+    signal.pause()
+if {outcome!r} == 'failure':
+    os.write(1, b'private stdout')
+    sys.exit(1)
+os.write(1, b'{{"aggregate":true}}\nPASS\n')
+""")
+                    go.chmod(0o700)
+                    config = dict(mode=mode, journal=str(journal / (mode + ".json")))
+                    with patch.dict(scope, REPO=repo, progress=lambda *_: None), patch.dict(
+                            os.environ, PATH=str(root)), final["termination"]() as check:
+                        if outcome == "success":
+                            self.assertEqual(final["measure"](config, check), {"aggregate": True})
+                        else:
+                            expected = {"failure": subprocess.CalledProcessError, "signal": InterruptedError,
+                                        "occupied": FileExistsError}[outcome]
+                            with self.assertRaises(expected):
+                                final["measure"](config, check)
+                    if outcome == "occupied":
+                        self.assertEqual(receipt.read_bytes(), b"existing receipt")
+                    else:
+                        self.assertEqual(stat.S_IMODE(receipt.stat().st_mode), 0o600)
+                        self.assertEqual(receipt.read_bytes(), b"worker stderr: \xff\n")
+                    self.assertEqual(list(journal.iterdir()), [receipt])
+                    if outcome in ("failure", "signal"):
+                        with (root / "worker.lock").open("rb") as lock:
+                            deadline = time.monotonic() + 2
+                            while True:
+                                try:
+                                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                    break
+                                except BlockingIOError:
+                                    if time.monotonic() >= deadline:
+                                        self.fail("subprocess group still holds the worker lock")
+                                    time.sleep(0.02)
 
     def test_program_bar_uses_the_original_denominators(self):
         def row(complete, files, passed=True):

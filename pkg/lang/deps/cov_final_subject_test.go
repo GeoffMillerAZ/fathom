@@ -144,6 +144,20 @@ func covFinalRehearsalDirectories(t *testing.T, base, primary, relocated string)
 		if _, err := os.Lstat(filepath.Join(objects, "info", "alternates")); !errors.Is(err, fs.ErrNotExist) {
 			t.Fatal("COV rehearsal requires an independent Git object store")
 		}
+		if err := filepath.WalkDir(objects, func(_ string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !entry.IsDir() && !entry.Type().IsRegular() {
+				return fs.ErrInvalid
+			}
+			return nil
+		}); err != nil {
+			t.Fatal("COV rehearsal requires a local Git object store")
+		}
+	}
+	for _, path := range []string{primary, relocated} {
+		objects := filepath.Join(path, ".git", "objects")
 		effective, err := exec.CommandContext(t.Context(), "git", "-C", path, "rev-parse", "--path-format=absolute", "--git-path", "objects").Output()
 		if err != nil || strings.TrimSpace(string(effective)) != objects {
 			t.Fatal("COV rehearsal requires a local Git object store")
