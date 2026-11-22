@@ -1,6 +1,14 @@
 # COV-1 dependency completeness census
 
-Status: provisional replacement baseline under ESCALATE-19. Independent rerun and foreman proof pending. COV-1 remains unchecked.
+Status: independently reproduced replacement baseline under ESCALATE-19.
+The clean rerun matched the development and allowed holdout aggregate
+bytes and the sealed closure receipt. Every reported count and
+denominator was confirmed, and all three pooled B3 checks passed.
+COV-D11 stops the TypeScript and JavaScript levers. The holdout found
+259 TypeScript external claims across 222 complete files and 14
+JavaScript inconclusive bindings across 14 complete files. A controlled
+diagnostic found a TypeScript product defect and a JavaScript oracle
+root-containment defect. Neither grader nor product changed for this reading.
 
 The preregistration in `docs/design/dependency-edges.md` fixes COV-D1 through
 COV-D11. The original DEP-M1 and DEP-M2 populations remain development inputs.
