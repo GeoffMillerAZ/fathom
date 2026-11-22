@@ -40,6 +40,7 @@ func TestTSJSNativeOracle(t *testing.T) {
 	compiler := tsjsRequiredPath(t, "FATHOM_DEP_TSJS_COMPILER")
 	scratch := tsjsRequiredPath(t, "FATHOM_DEP_TSJS_SCRATCH")
 	t.Run("control", func(t *testing.T) { tsjsOracleControl(t, compiler, scratch) })
+	t.Run("root-containment", func(t *testing.T) { tsjsOracleRootContainment(t, compiler, scratch) })
 	switch mode {
 	case "control":
 		return
@@ -151,6 +152,72 @@ func tsjsOracleControl(t *testing.T, compiler, scratch string) {
 		t.Fatal("removing a source import did not change independent oracle truth")
 	}
 	t.Log("pinned compiler control: alias, export and extension substitution PASS; dropped reader edge rejected, independent truth responds only to source mutation")
+}
+
+func tsjsOracleRootContainment(t *testing.T, compiler, scratch string) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "repo")
+	sibling := filepath.Join(parent, "repo-sibling")
+	for _, dir := range []string{filepath.Join(root, "nested"), sibling} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const requests = "nested/requests.cjs"
+	const escapes = "nested/escapes.cjs"
+	for name, content := range map[string]string{
+		filepath.Join(root, requests):      "\nrequire('..');\n\nrequire('../');\n",
+		filepath.Join(root, escapes):       "require('../../repo-sibling/');\nrequire('../linked/');\nrequire('../../repo-sibling/back/');\n",
+		filepath.Join(root, "index.js"):    "module.exports = 1;\n",
+		filepath.Join(sibling, "index.js"): "module.exports = 2;\n",
+	} {
+		if err := os.WriteFile(name, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(sibling, filepath.Join(root, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	// A path through the sibling must be refused even if its real path
+	// leads back into the repository.
+	if err := os.Symlink(root, filepath.Join(sibling, "back")); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("root-entry", func(t *testing.T) {
+		paths := []string{requests}
+		native := tsjsNative(t, compiler, filepath.Join(scratch, "root-containment", "root-entry"), root, paths)
+		want := []depbench.TruthEdge{
+			{Kind: deps.KindImport, Raw: "..", Line: 2, Resolution: deps.ResolvedFile, To: "index.js"},
+			{Kind: deps.KindImport, Raw: "../", Line: 4, Resolution: deps.ResolvedFile, To: "index.js"},
+		}
+		if len(native.Truth) != 1 || native.Truth[0].Path != requests || !slices.Equal(native.Truth[0].Edges, want) {
+			t.Fatalf("native root entries: got %+v, want %+v, stats %s", native.Truth, want, asJSON(t, native.Stats))
+		}
+		files := tsjsReadCorpus(t, tsjsCandidateReader(t), root, "javascript", paths)
+		if len(files) != 1 || !files[0].Complete || len(files[0].Edges) != len(want) {
+			t.Fatalf("reader root entries: %+v", files)
+		}
+		for i, edge := range files[0].Edges {
+			if edge.Kind != deps.KindImport || edge.Raw != "***" || edge.Line != want[i].Line {
+				t.Fatalf("expected withheld import at line %d, got %+v", want[i].Line, edge)
+			}
+		}
+		score := depbench.Score(depbench.Observation{Files: files, Truth: native.Truth})
+		if !score.B1 || !score.B2 || score.Expected != len(want) || score.CompleteEdges != len(want) {
+			t.Fatalf("withheld root binding: %+v", score)
+		}
+		t.Log("native root entries captured; both withheld operands pair in B2")
+	})
+
+	t.Run("escapes", func(t *testing.T) {
+		native := tsjsNative(t, compiler, filepath.Join(scratch, "root-containment", "escapes"), root, []string{escapes})
+		if len(native.Truth) != 1 || native.Truth[0].Path != escapes || len(native.Truth[0].Edges) != 0 ||
+			string(native.Stats["missingLocal"]) != "3" {
+			t.Fatalf("native escape controls: got %+v, stats %s", native.Truth, asJSON(t, native.Stats))
+		}
+		t.Log("native host refused sibling, symlink escape, and sibling symlink re-entry")
+	})
 }
 
 func tsjsCandidateReader(t *testing.T) *deps.Reader {

@@ -47,12 +47,17 @@ function trace(message) {
   sink.push(message);
   if (sink.length === 1024) flushTrace();
 }
+function confinedRelative(full) {
+  const rel = path.relative(root, full);
+  // An empty relative path identifies the root.
+  if (rel === ".." || rel.startsWith(".." + path.sep) || path.isAbsolute(rel)) return undefined;
+  return rel;
+}
 function logical(full) {
-  const rel = path.relative(root, full).split(path.sep).join("/");
-  return rel && rel !== ".." && !rel.startsWith("../") && !path.isAbsolute(rel) ? rel : "";
+  return confinedRelative(full)?.split(path.sep).join("/") ?? "";
 }
 function within(full) {
-  return full === root || logical(full) !== "";
+  return confinedRelative(full) !== undefined;
 }
 function physicallyWithin(full) {
   if (!within(full)) return false;
