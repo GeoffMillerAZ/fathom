@@ -1,0 +1,7 @@
+[
+ {"name":"django","url":"https://github.com/django/django.git","commit":"c14b756185c88f7f2eb745ff061f3c221fea9de7","dialect":"python","roots":["."],"prefixes":[""],"suffixes":[".py"],"files":2820,"selectionSHA256":"249607273bd5d422a036f13ecf5c1c3593c8c35a248ce48add6ed5ef59b7b7d2"},
+ {"name":"express","url":"https://github.com/expressjs/express.git","commit":"df0abc9333a3398b97b71f6ea7cd77d5ea3e9f97","dialect":"javascript","prefixes":[""],"suffixes":[".cjs",".js",".jsx",".mjs"],"files":152,"selectionSHA256":"259357e846a0a3c33fc6684e04b166f7e17ba3fc71e13ae25f5f60895c94eb66"},
+ {"name":"axios","url":"https://github.com/axios/axios.git","commit":"cdcfd214c169a1acba8e267ab8e77ff4dfec3105","dialect":"javascript","prefixes":[""],"suffixes":[".cjs",".js",".jsx",".mjs"],"files":165,"selectionSHA256":"13f0ac4ebf8043a4950165aa8a6cc0f77c94af28262cc63128599c36b3b732ea"},
+ {"name":"nest","url":"https://github.com/nestjs/nest.git","commit":"9ff83d540f50e96eb0093b4eb0dd96191aa6a285","dialect":"typescript","prefixes":[""],"suffixes":[".cts",".mts",".ts",".tsx"],"files":1673,"selectionSHA256":"5c53f4a879f68f2a08fcb3051fedc06f74fc4be1a96a252ecdfe2fb56aebd2e2"},
+ {"name":"zod","url":"https://github.com/colinhacks/zod.git","commit":"1fb56a5c18c27102dbc92260a4007c7732a0ccca","dialect":"typescript","prefixes":[""],"suffixes":[".cts",".mts",".ts",".tsx"],"files":404,"selectionSHA256":"5e0afbc75c1db4f0d47c085d7efe48d0f5f04e167ccbe3ac25b8eeb3f415ce1e"}
+]
