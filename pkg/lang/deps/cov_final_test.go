@@ -68,15 +68,18 @@ func TestCOVFinalMeasure(t *testing.T) {
 		t.Fatal("COV final worker configuration unavailable")
 	}
 	var pools []string
+	var expected map[string][]covSubject
 	switch config.Mode {
 	case "preflight":
 		pools = []string{"development"}
-	case "initial":
+	case "initial", "rehearse":
 		pools = []string{"development", "holdout", "confirmation"}
 	default:
 		t.Fatal("COV final worker operation denied")
 	}
-	expected := covExpectedSubjects(t)
+	if config.Mode != "rehearse" {
+		expected = covExpectedSubjects(t)
+	}
 	if config.Mode == "initial" {
 		pin, err := os.ReadFile(filepath.Join(covOracleDir, "cov_confirmation.json"))
 		var confirmation []covSubject
@@ -88,15 +91,30 @@ func TestCOVFinalMeasure(t *testing.T) {
 	}
 	result := map[string]map[string]covFinalRow{}
 	for _, pool := range pools {
-		config.call(t, "_active", pool)
+		response := config.call(t, "_active", pool)
+		var subjects []covSubject
+		if config.Mode == "rehearse" {
+			if err := json.Unmarshal(response, &subjects); err != nil || len(subjects) == 0 {
+				t.Fatal("COV rehearsal pins unavailable")
+			}
+		} else {
+			subjects = expected[pool]
+		}
 		base := config.Root
 		if config.Mode != "preflight" {
 			base = filepath.Join(base, pool)
 		}
-		result[pool] = covFinalPool(t, config, base, pool, expected[pool])
+		result[pool] = covFinalPool(t, config, base, pool, subjects)
 	}
 	if _, err := fmt.Fprintln(os.Stdout, string(asJSON(t, result))); err != nil {
 		t.Fatal("COV final worker could not publish aggregates")
+	}
+}
+
+func (c covFinalConfig) progress(t *testing.T, pool, stage string) {
+	t.Helper()
+	if c.Mode != "preflight" {
+		c.call(t, "_progress", pool, stage)
 	}
 }
 
@@ -161,6 +179,7 @@ func covFinalPool(t *testing.T, config covFinalConfig, base, pool string, subjec
 		}
 	}
 	out := make(map[string]covFinalRow, len(acc))
+	config.progress(t, pool, "score")
 	for dialect, p := range acc {
 		p.row.Score.Reading = depbench.COVScore(p.observation, nil).Reading
 		p.row.Score.B1 = p.row.Score.B1 && p.row.Score.ExternalAsLocal == 0

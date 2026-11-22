@@ -1,7 +1,9 @@
 """COV-M1/M2 controls using synthetic rows and authorization records."""
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stdout
 import copy
 import fcntl
+from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -56,6 +58,78 @@ def synthetic_attempt(root):
 
 
 class FinalControls(unittest.TestCase):
+    def test_rehearsal_claims_assesses_and_publishes_twice(self):
+        def row(files, original_truth=None):
+            value = {"score": dict(Complete=1, Files=files, B1=True, B2=True, B3=True,
+                                   CompleteWithoutOracle=0), "closure": {"Selected": files, "Complete": 0}}
+            if original_truth is not None:
+                value["native_classes"] = {"original/exact": original_truth}
+            return value
+
+        development = {"python": row(1314, 156), "javascript": row(1508), "typescript": row(1224)}
+        results = dict(development=development, holdout=development, confirmation={"typescript": row(204)})
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp).resolve()
+            parent = repo / "workspace/tmp/cov-final-rehearsal"
+            parent.mkdir(parents=True)
+            published = []
+            for run in ("run-one", "run-two"):
+                root = parent / run
+                root.mkdir(mode=0o700)
+                journal = root / "journal"
+                journal.mkdir(mode=0o700)
+
+                def worker(config, _check):
+                    self.assertEqual(config["mode"], "rehearse")
+                    final["active"](config, "holdout")
+                    return results
+
+                with redirect_stdout(StringIO()), patch.dict(scope, REPO=repo, git=lambda *_: b"b" * 40,
+                                identity=lambda *_: {}, ensure_reader=lambda *_: None, measure=worker,
+                                baselines=lambda *_: self.fail("rehearsal opened production baselines")):
+                    final["rehearse"](initial_args(root))
+                    with self.assertRaises(FileExistsError):
+                        final["rehearse"](initial_args(root))
+                aggregate = (journal / "rehearse.aggregate.json").read_bytes()
+                record = json.loads((journal / "rehearse.json").read_bytes())
+                self.assertEqual(record["status"], "completed")
+                self.assertEqual(record["aggregate_sha256"], final["sha"](aggregate))
+                self.assertEqual(json.loads(aggregate)["schema"], "cov-final-rehearsal/v1")
+                self.assertIn({"stage": "assessment", "pool": "holdout"}, record["progress"])
+                published.append(aggregate)
+            self.assertEqual(*published)
+
+    def test_rehearsal_selectors_and_frozen_truth_are_confined(self):
+        def forbidden():
+            self.fail("rehearsal consulted the production cohorts")
+
+        with patch.dict(scope, cohorts=forbidden):
+            development = final["rehearsal_subjects"]("development")
+            self.assertEqual(len(development), 10)
+            self.assertEqual(final["rehearsal_subjects"]("holdout"), development)
+            confirmation, = final["rehearsal_subjects"]("confirmation")
+            self.assertEqual((confirmation["name"], confirmation["files"]), ("fp-ts", 204))
+            for pool, name in (("holdout", "ad-hoc"), ("other", "fp-ts"), ("confirmation", "rxjs")):
+                with self.subTest(pool=pool, name=name), self.assertRaises(ValueError):
+                    final["subject"](pool, name, "rehearse")
+        for mode in ("rehearse", "initial"):
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                final["validate_python_overlap"]({"native_classes": {"original/exact": 155}}, "holdout", mode)
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp).resolve()
+            rehearsal = repo / "workspace/tmp/cov-final-rehearsal"
+            rehearsal.mkdir(parents=True)
+            unrelated = repo / "unrelated"
+            unrelated.mkdir()
+            alias = rehearsal / "run-alias"
+            alias.symlink_to(unrelated, target_is_directory=True)
+            with patch.dict(scope, REPO=repo, identity=lambda *_: self.fail("tools accessed before root validation")):
+                for root in (unrelated, alias, rehearsal / "../unrelated"):
+                    with self.subTest(root=root), self.assertRaises(ValueError):
+                        final["rehearse"](initial_args(root))
+        with self.assertRaises(ValueError):
+            final["run"](SimpleNamespace(operation="rehearse"))
+
     def test_exclusive_journal(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "initial.json"
@@ -249,6 +323,12 @@ root = Path({str(root)!r})
 config = json.load(sys.stdin)
 assert Path(config['scratch']).is_dir()
 assert json.loads(Path(config['journal']).read_bytes())['status'] == 'started'
+import subprocess
+callback = [sys.executable, '-I', '-B', '-S', {str(SCRIPT.with_name("cov_final.py"))!r}, '_progress']
+for pool, stage in [('holdout', 'native'), ('private-pool-name', 'native'), ('holdout', 'private-stage-name')]:
+    result = subprocess.run(callback + [pool, stage], input=json.dumps(config), text=True, capture_output=True)
+    assert result.returncode == int(pool != 'holdout' or stage != 'native')
+    assert 'private-' not in result.stdout + result.stderr
 with (root / 'worker.lock').open('wb') as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     child = os.fork()
@@ -259,6 +339,8 @@ with (root / 'worker.lock').open('wb') as lock:
     pending.write_text(str(os.getpid()) + ' ' + str(child))
     pending.replace(root / 'worker.json')
     if {condition!r} == 'failure':
+        print('private-stdout-snippet')
+        print('private-stderr-snippet', file=sys.stderr)
         sys.exit(1)
     time.sleep(30)
 """)
@@ -266,7 +348,8 @@ with (root / 'worker.lock').open('wb') as lock:
                 cmd = [sys.executable, "-I", "-B", "-S", SCRIPT, str(root)]
                 pids = []
                 try:
-                    with subprocess.Popen(cmd, stdout=subprocess.PIPE, start_new_session=True) as proc:
+                    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                          start_new_session=True) as proc:
                         ready = root / "worker.json"
                         deadline = time.monotonic() + 10
                         while not ready.exists() and proc.poll() is None and time.monotonic() < deadline:
@@ -277,14 +360,22 @@ with (root / 'worker.lock').open('wb') as lock:
                         if condition != "failure":
                             proc.send_signal(signal.SIGTERM if condition == "term" else signal.SIGKILL)
                         try:
-                            proc.communicate(timeout=10)
+                            stdout, stderr = proc.communicate(timeout=10)
                         finally:
                             if proc.poll() is None:
                                 proc.kill()
                     receipt = json.loads((journal / "initial.json").read_bytes())
                     self.assertEqual(receipt["status"], "started" if condition == "kill" else "failed")
                     self.assertEqual("finished_at" in receipt, condition != "kill")
+                    event = {"stage": "native", "pool": "holdout"}
+                    self.assertEqual(receipt["progress"], [{"stage": stage} for stage in
+                                     ("claim", "checkout", "compile", "worker")] + [event])
+                    if condition != "kill":
+                        kind = "CalledProcessError" if condition == "failure" else "InterruptedError"
+                        self.assertEqual(receipt["failure"], dict(event, exception=kind))
+                    self.assertNotIn(b"private-", (journal / "initial.json").read_bytes() + stdout + stderr)
                     self.assertFalse((journal / "initial.aggregate.json").exists())
+                    self.assertFalse((journal / "initial.progress").exists())
                     if condition != "kill":
                         self.assertEqual(list((root / "repo/workspace/tmp").iterdir()), [])
                         with (root / "worker.lock").open("rb") as lock:
@@ -374,7 +465,7 @@ with (root / 'worker.lock').open('wb') as lock:
                 return {}
 
             with patch.dict(scope, REPO=repo, identity=lambda *_: {}, baselines=lambda *_: None,
-                            measure=drift, assess=lambda *_: {}):
+                            measure=drift, assess=lambda *_, **__: {}):
                 with self.assertRaisesRegex(ValueError, "HEAD"):
                     final["run"](initial_args(root))
             self.assertEqual(json.loads((journal / "initial.json").read_bytes())["status"], "failed")

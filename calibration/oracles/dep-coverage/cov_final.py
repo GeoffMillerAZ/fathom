@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Run the aggregate-only COV-M1/M2 campaign.
 
-Use Python 3.13 -I -B -S. Run preflight and run under the machine gate lease.
+Use Python 3.13 -I -B -S. Take the machine gate lease for measurements.
 Each pool uses primary/<subject> and relocated/<subject> physical checkouts.
 Preflight takes only a development directory and emits only its aggregates.
-Run both commands from a dedicated clean detached Git checkout at the exact
-harness revision. Use a physical campaign directory outside the checkout.
+Use a dedicated clean detached Git checkout at the exact harness revision.
 
-For run, ROOT is a dedicated physical campaign directory containing the
-three cohorts and a private journal/ directory. The foreman supplies
-journal/initial.authorization.json (0600). No CLI grants access.
+The test-only rehearse command uses development pins in all three positions.
+It takes a fresh workspace/tmp/cov-final-rehearsal/run-<id> directory with
+its own private journal/ and publishes a rehearsal-only aggregate.
+
+For run, ROOT is a dedicated physical campaign directory outside the checkout
+containing the three cohorts and a private journal/ directory. The foreman
+supplies journal/initial.authorization.json (0600). No CLI grants access.
 The authorization contains:
   authority="COV-D2/ESCALATE-20-R7", operation, status="authorized", root,
   reader_revision (landed full Git SHA), harness_revision (reviewed HEAD),
@@ -46,6 +49,14 @@ PYRIGHT = run_path(str(HERE / "cov_python_pyright.py"))
 DIALECTS = ("python", "javascript", "typescript")
 ARMS = ("primary", "relocated")
 AUTHORITY = "COV-D2/ESCALATE-20-R7"
+REHEARSAL_READER = "59ef2b56bf979f5f4ed91ea7182338f30a63c9b9"
+REHEARSAL_CONFIRMATION = "fp-ts"
+REHEARSAL_CONFIRMATION_FILES = 204
+POOL_CLASSES = ("development", "holdout", "confirmation")
+WORKER_STAGES = ("pool", "freeze", "native", "read", "refreeze", "score")
+EXCEPTION_CLASSES = (ValueError, KeyError, TypeError, OSError, FileNotFoundError,
+                     PermissionError, FileExistsError, InterruptedError, KeyboardInterrupt,
+                     subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError)
 ORIGINAL_PYTHON_TRUTH = {"development": 156, "holdout": 896}
 ORIGINAL_AGGREGATE = "d8d68af4735a00a6711b92247fb8bac7f3fb8b6e244567c95d0f61960523b58a"
 ORIGINAL_HOLDOUT = {"python": (795, 2820), "javascript": (112, 317), "typescript": (723, 2077)}
@@ -96,8 +107,21 @@ def cohorts():
                 confirmation=json.loads((HERE / "cov_confirmation.json").read_bytes()))
 
 
-def subject(pool, name):
-    for pin in cohorts().get(pool, ()):
+def rehearsal_subjects(pool):
+    if pool not in POOL_CLASSES:
+        raise ValueError("pool is outside the rehearsal")
+    pins = RUNNER["python_subjects"]() + json.loads((REPO / PINS[-1]).read_bytes())["subjects"]
+    if pool == "confirmation":
+        pins = [pin for pin in pins if pin["name"] == REHEARSAL_CONFIRMATION
+                and pin["dialect"] == "typescript" and pin["files"] == REHEARSAL_CONFIRMATION_FILES]
+        if len(pins) != 1:
+            raise ValueError("rehearsal confirmation pin unavailable")
+    return pins
+
+
+def subject(pool, name, mode="initial"):
+    pins = rehearsal_subjects(pool) if mode == "rehearse" else cohorts().get(pool, ())
+    for pin in pins:
         if pin["name"] == name:
             return pin
     raise ValueError("subject is outside the pinned cohort")
@@ -105,8 +129,12 @@ def subject(pool, name):
 
 def operation_pools(operation):
     if operation == "initial":
-        return ["development", "holdout", "confirmation"]
+        return list(POOL_CLASSES)
     raise ValueError("unknown final operation")
+
+
+def campaign_pools(mode):
+    return list(POOL_CLASSES) if mode == "rehearse" else operation_pools(mode)
 
 
 def physical(path):
@@ -142,8 +170,8 @@ def sync_directory(directory):
         os.close(fd)
 
 
-def finish(path, record):
-    pending = path.with_suffix(".finish")
+def finish(path, record, suffix=".finish"):
+    pending = path.with_suffix(suffix)
     claim(pending, record)
     os.replace(pending, path)
     sync_directory(path.parent)
@@ -151,6 +179,17 @@ def finish(path, record):
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def rehearsal_root(path):
+    path = Path(path)
+    parent = REPO / "workspace/tmp/cov-final-rehearsal"
+    if path.parent != parent or not re.fullmatch(r"run-[a-z0-9]+", path.name):
+        raise ValueError("root is outside the rehearsal workspace")
+    for directory in (parent.parent.parent, parent.parent, parent, path, path / "journal"):
+        if not stat.S_ISDIR(directory.lstat().st_mode):
+            raise ValueError("rehearsal requires physical directories")
+    return private(path, directory=True)
 
 
 def compare_python(names, original, extended, graph, source, roots, tracked):
@@ -184,25 +223,46 @@ def active(config, pool):
         if pool != "development" or "journal" in config or "nonce" in config:
             raise ValueError("preflight is development-only")
         return
-    if pool not in operation_pools(mode):
+    if pool not in campaign_pools(mode):
         raise ValueError("pool is outside the operation")
-    root = physical(config["root"])
+    root = rehearsal_root(config["root"]) if mode == "rehearse" else physical(config["root"])
     journal = private(root / "journal", directory=True)
     expected = journal / (mode + ".json")
     if Path(config["journal"]) != expected:
         raise ValueError("journal outside campaign")
+    if mode == "rehearse" and not stat.S_ISREG(expected.lstat().st_mode):
+        raise ValueError("rehearsal requires a regular journal")
     record = json.loads(private(expected).read_bytes())
     tools = {key: config[key] for key in ("python", "compiler", "pyright")}
     if (record["status"] != "started" or record["nonce_sha256"] != sha(config["nonce"].encode()) or
             record["tool_paths"] != tools or
             record["binding"] != config["binding"] or record["root"] != str(root) or
-            record["operation"] != mode or record["pools"] != operation_pools(mode)):
+            record["operation"] != mode or record["pools"] != campaign_pools(mode)):
         raise ValueError("operation journal is not active")
+    return record
+
+
+def progress(config, stage, pool=None):
+    if config["mode"] == "preflight":
+        return
+    if pool is None:
+        if stage not in ("checkout", "compile", "worker", "publication"):
+            raise ValueError("unknown campaign stage")
+        event = {"stage": stage}
+    else:
+        if pool not in POOL_CLASSES or stage not in (*WORKER_STAGES, "assessment"):
+            raise ValueError("unknown pool transition")
+        event = {"stage": stage, "pool": pool}
+    record = active(config, pool or "development")
+    record["progress"].append(event)
+    # The parent waits for the worker, and the worker waits for each
+    # callback. Each transition is durable before its stage starts.
+    finish(Path(config["journal"]), record, ".progress")
 
 
 def python_capture(config, pool, name, arm):
     active(config, pool)
-    pin = subject(pool, name)
+    pin = subject(pool, name, config["mode"])
     if pin["dialect"] != "python" or arm not in ARMS:
         raise ValueError("wrong Python subject or relocation arm")
     base = Path(config["root"]) if config["mode"] == "preflight" else Path(config["root"]) / pool
@@ -249,7 +309,7 @@ def python_capture(config, pool, name, arm):
             "graph_sha256": graph_digest, "compared": compared}
 
 
-def identity(compiler, pyright):
+def identity(compiler, pyright, mode="initial"):
     compiler = physical(compiler)
     pyright = physical(pyright)
     cp = RUNNER["python_oracle"]().pin(declarative_fromlist=True)
@@ -262,8 +322,11 @@ def identity(compiler, pyright):
              "calibration/oracles/dep-coverage/cov_python_pyright.py",
              "calibration/oracles/deps-python/modulefinder_oracle.py",
              "calibration/oracles/deps-tsjs/trace.cjs")
+    pins = cohorts() if mode != "rehearse" else {"development": rehearsal_subjects("development")}
+    if mode == "rehearse":
+        files = tuple(name for name in files if name not in PINS[:2])
     return {
-        "pins": cohorts(),
+        "pins": pins,
         "exclusions": EXCLUSIONS,
         "source_sha256": {name: sha((REPO / name).read_bytes()) for name in files},
         "tools": {
@@ -401,26 +464,51 @@ def baselines(refs):
     return before, corrected
 
 
-def validate_python_overlap(row, pool):
+def validate_python_overlap(row, pool, mode="initial"):
     originally_graded = sum(n for kind, n in row["native_classes"].items() if kind.startswith("original/"))
-    if originally_graded != ORIGINAL_PYTHON_TRUTH[pool]:
+    expected = ORIGINAL_PYTHON_TRUTH["development" if mode == "rehearse" else pool]
+    if originally_graded != expected:
         raise ValueError("original CPython coverage drifted from the frozen baseline")
 
 
-def assess(result, baseline):
+def rehearsal_baselines():
+    # Use registered development counts and a synthetic closure partition.
+    # The rehearsal neither loads nor reconstructs a production artifact.
+    before = {"development": {}, "holdout": {}}
+    for dialect, (complete, files) in ORIGINAL_DEVELOPMENT.items():
+        score = dict(Complete=complete, Files=files, RejectedInputs=0)
+        closure = dict.fromkeys(CLOSURE_FIELDS, 0)
+        closure.update(Selected=files, OnlyUnmeasured=files)
+        before["development"][dialect] = original_metrics(score, closure, 0, files, complete)
+        before["holdout"][dialect] = original_metrics(
+            dict(complete=complete, files=files), closure, 0, files, complete, sealed=True)
+    corrected = {dialect: dict(complete=ORIGINAL_DEVELOPMENT[dialect][0])
+                 for dialect in ("javascript", "typescript")}
+    return before, corrected
+
+
+def assess(result, baseline, *, mode="initial", report=lambda _stage, _pool: None):
     before, corrected = baseline
-    output = {"schema": "cov-final/v1", "current": result, "original": before,
+    rehearsal = mode == "rehearse"
+    original_holdout = ORIGINAL_DEVELOPMENT if rehearsal else ORIGINAL_HOLDOUT
+    output = {"schema": "cov-final-rehearsal/v1" if rehearsal else "cov-final/v1",
+              "current": result, "original": before,
               "secondary_r5": {}, "verdicts": {}}
+    report("assessment", "confirmation")
     confirmation = result["confirmation"]["typescript"]
-    validate_population(confirmation, 979)
+    validate_population(confirmation, REHEARSAL_CONFIRMATION_FILES if rehearsal else 979)
     output["confirmation_soundness"] = sound(confirmation)
     doubled_and_sound = 0
     for pool in ("development", "holdout"):
-        validate_python_overlap(result[pool]["python"], pool)
+        report("assessment", pool)
+        validate_python_overlap(result[pool]["python"], pool, mode)
     for dialect in DIALECTS:
-        complete, files = ORIGINAL_HOLDOUT[dialect]
-        dev, held = result["development"][dialect], result["holdout"][dialect]
+        complete, files = original_holdout[dialect]
+        report("assessment", "development")
+        dev = result["development"][dialect]
         validate_population(dev, ORIGINAL_DEVELOPMENT[dialect][1])
+        report("assessment", "holdout")
+        held = result["holdout"][dialect]
         validate_population(held, files)
         count = held["score"]["Complete"]
         if dialect in corrected:
@@ -511,9 +599,11 @@ def measure(config, check):
                            GIT_CONFIG_KEY_1="core.fsmonitor", GIT_CONFIG_VALUE_1="false",
                            GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0")
         binary = scratch / "cov-final.test"
+        progress(config, "compile")
         run_group(["go", "test", "-race", "-c", "-o", str(binary), "./pkg/lang/deps"],
                   cwd=REPO, env=environment, check=check)
         environment["FATHOM_COV_FINAL_WORKER"] = "1"
+        progress(config, "worker")
         output = run_group([binary, "-test.run=^TestCOVFinalMeasure$", "-test.timeout=45m"],
                            cwd=REPO / "pkg/lang/deps", env=environment, check=check, data=canonical(config))
         aggregate, marker = output.rsplit(b"\n", 2)[:2]
@@ -523,12 +613,9 @@ def measure(config, check):
 
 
 def run(args):
-    pools = operation_pools(args.operation)
+    operation_pools(args.operation)
     root = physical(args.root)
     pinned = identity(args.compiler, args.pyright)
-    tool_paths = {"python": str(Path(sys.executable).resolve()), "compiler": str(args.compiler),
-                  "pyright": str(args.pyright)}
-    config = dict(tool_paths, root=str(root), mode=args.operation)
     journal = private(root / "journal", directory=True)
     auth_path = private(journal / (args.operation + ".authorization.json"))
     auth_data = auth_path.read_bytes()
@@ -537,27 +624,60 @@ def run(args):
     authorized(auth, root, args.operation, pinned, head)
     ensure_reader(auth)
     baseline = baselines(auth["baselines"])
-    path = journal / (args.operation + ".json")
-    binding = sha(auth_data)
+    execute(args, root, journal, auth, sha(auth_data), baseline)
+
+
+def rehearse(args):
+    root = rehearsal_root(args.root)
+    journal = private(root / "journal", directory=True)
+    pinned = identity(args.compiler, args.pyright, "rehearse")
+    head = git("rev-parse", "HEAD").decode().strip()
+    record = dict(operation="rehearse", reader_revision=REHEARSAL_READER, harness_revision=head)
+    ensure_reader(record)
+    execute(args, root, journal, record, sha(canonical(dict(record, identity=pinned))), rehearsal_baselines())
+
+
+def execute(args, root, journal, record, binding, baseline):
+    mode = record["operation"]
+    path = journal / (mode + ".json")
+    tool_paths = {"python": str(Path(sys.executable).resolve()), "compiler": str(args.compiler),
+                  "pyright": str(args.pyright)}
     nonce = secrets.token_hex(32)
-    record = dict(auth, status="started", started_at=now(), pools=pools,
-                  binding=binding, nonce_sha256=sha(nonce.encode()), tool_paths=tool_paths)
-    config.update(journal=str(path), binding=binding, nonce=nonce)
+    record = dict(record, status="started", root=str(root), started_at=now(), pools=campaign_pools(mode),
+                  binding=binding, nonce_sha256=sha(nonce.encode()), tool_paths=tool_paths,
+                  progress=[{"stage": "claim"}])
+    config = dict(tool_paths, root=str(root), mode=mode, journal=str(path), binding=binding, nonce=nonce)
+
+    def report(stage, pool=None):
+        progress(config, stage, pool)
+
     with termination() as check:
         check()
         claim(path, record)
-        status = "failed"
         try:
-            ensure_reader(auth)
+            report("checkout")
+            ensure_reader(record)
             measured = measure(config, check)
-            aggregate = assess(measured, baseline)
-            ensure_reader(auth)
+            aggregate = assess(measured, baseline, mode=mode, report=report)
+            report("checkout")
+            ensure_reader(record)
+            report("publication")
+            record = active(config, "development")
+            aggregate_sha256 = sha(canonical(aggregate))
             check()
-            claim(journal / "initial.aggregate.json", aggregate)
-            record["aggregate_sha256"] = sha(canonical(aggregate))
-            status = "completed"
+            claim(journal / (mode + ".aggregate.json"), aggregate)
+        except BaseException as error:
+            record = active(config, "development")
+            kind = type(error)
+            record.update(status="failed", failure=dict(record["progress"][-1],
+                          exception=kind.__name__ if kind in EXCEPTION_CLASSES else "Exception"))
+            raise
+        else:
+            record.update(status="completed", aggregate_sha256=aggregate_sha256)
         finally:
-            record.update(status=status, finished_at=now())
+            # A terminated worker may have been writing its next transition.
+            path.with_suffix(".progress").unlink(missing_ok=True)
+            record["finished_at"] = now()
             finish(path, record)
     print(record["aggregate_sha256"])
 
@@ -565,7 +685,7 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("preflight", "identity", "run"):
+    for command in ("preflight", "identity", "run", "rehearse"):
         sub = commands.add_parser(command)
         sub.add_argument("--compiler", required=True, type=Path)
         sub.add_argument("--pyright", required=True, type=Path)
@@ -579,9 +699,26 @@ def main():
     native.add_argument("arm")
     check = commands.add_parser("_active")
     check.add_argument("pool")
+    transition = commands.add_parser("_progress")
+    transition.add_argument("pool")
+    transition.add_argument("stage")
     args = parser.parse_args()
     if args.command == "_active":
-        active(json.load(sys.stdin), args.pool)
+        config = json.load(sys.stdin)
+        if config["mode"] == "preflight":
+            active(config, args.pool)
+        else:
+            progress(config, "pool", args.pool)
+        if config["mode"] == "rehearse":
+            sys.stdout.buffer.write(canonical(rehearsal_subjects(args.pool)))
+    elif args.command == "_progress":
+        if (args.stage not in WORKER_STAGES or
+                not all(stat.S_ISFIFO(os.fstat(pipe.fileno()).st_mode) for pipe in (sys.stdin, sys.stdout))):
+            raise ValueError("progress requires private instrument pipes")
+        config = json.load(sys.stdin)
+        if config["mode"] == "preflight":
+            raise ValueError("progress requires an active campaign journal")
+        progress(config, args.stage, args.pool)
     elif args.command == "_python":
         if not all(stat.S_ISFIFO(os.fstat(pipe.fileno()).st_mode) for pipe in (sys.stdin, sys.stdout)):
             raise ValueError("native capture requires private instrument pipes")
@@ -606,6 +743,8 @@ def main():
             if not sound(rows[dialect]):
                 raise ValueError("development soundness failed")
         sys.stdout.buffer.write(canonical({"schema": "cov-final-preflight/v1", "development": rows}))
+    elif args.command == "rehearse":
+        rehearse(args)
     else:
         run(args)
 

@@ -3,6 +3,7 @@ package deps_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -65,6 +66,10 @@ func covFinalSubject(t *testing.T, config covFinalConfig, base, pool string, sub
 	t.Helper()
 	primary := filepath.Join(base, "primary", subject.Name)
 	relocated := filepath.Join(base, "relocated", subject.Name)
+	config.progress(t, pool, "freeze")
+	if config.Mode == "rehearse" {
+		covFinalRehearsalDirectories(t, base, primary, relocated)
+	}
 	a := covFinalPhysical(t, primary)
 	b := covFinalPhysical(t, relocated)
 	if os.SameFile(a, b) {
@@ -75,6 +80,7 @@ func covFinalSubject(t *testing.T, config covFinalConfig, base, pool string, sub
 	if !slices.Equal(paths, again) || !bytes.Equal(asJSON(t, first), asJSON(t, second)) {
 		t.Fatal("COV final relocated tracked inputs differ")
 	}
+	config.progress(t, pool, "native")
 	var truth []depbench.TruthFile
 	var classes map[string]int
 	if subject.Dialect == "python" {
@@ -105,11 +111,41 @@ func covFinalSubject(t *testing.T, config covFinalConfig, base, pool string, sub
 	}
 	// The native captures are complete and their private scratch has been
 	// removed before a product reader is created.
+	config.progress(t, pool, "read")
 	row, observation, rejectedB3 := covFinalRead(t, subject, first, second, paths, truth)
 	row.NativeClasses = classes
+	config.progress(t, pool, "refreeze")
 	covFreeze(t, subject, primary)
 	covFreeze(t, subject, relocated)
 	return row, observation, rejectedB3
+}
+
+func covFinalRehearsalDirectories(t *testing.T, base, primary, relocated string) {
+	t.Helper()
+	// Lstat the enclosing components first so a symlink cannot redirect Git.
+	for _, path := range []string{base, filepath.Dir(primary), filepath.Dir(relocated), primary, relocated} {
+		info, err := os.Lstat(path)
+		if err != nil || !info.IsDir() {
+			t.Fatal("COV rehearsal requires physical stage directories")
+		}
+	}
+	for _, path := range []string{primary, relocated} {
+		gitDir := filepath.Join(path, ".git")
+		for _, directory := range []string{gitDir, filepath.Join(gitDir, "objects"), filepath.Join(gitDir, "objects", "info")} {
+			info, err := os.Lstat(directory)
+			if err != nil || !info.IsDir() {
+				t.Fatal("COV rehearsal requires a local Git object store")
+			}
+		}
+		if _, err := os.Lstat(filepath.Join(gitDir, "objects", "info", "alternates")); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatal("COV rehearsal requires an independent Git object store")
+		}
+		cmd := exec.CommandContext(t.Context(), "git", "-C", path, "symbolic-ref", "-q", "HEAD")
+		var exit *exec.ExitError
+		if err := cmd.Run(); !errors.As(err, &exit) || exit.ExitCode() != 1 {
+			t.Fatal("COV rehearsal requires detached checkouts")
+		}
+	}
 }
 
 func covFinalPhysical(t *testing.T, root string) fs.FileInfo {
