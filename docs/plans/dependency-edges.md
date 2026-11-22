@@ -44,7 +44,7 @@ Bind each implementation row to its new symbol when the change is written.
 - [x] Add the test-only blocker census, confirm the development counts and seal the aggregate holdout baselines {id: COV-1, symbol: covMeasure, package: pkg/lang/deps, reachable_from: TestCOVBaseline, needs: COV-0}
 - [ ] Apply the admitted Python levers with failing and refusal fixtures {id: COV-2, needs: COV-1}
 - [ ] Apply the admitted TypeScript and JavaScript levers with failing and refusal fixtures {id: COV-3, needs: COV-1}
-- [ ] (op) Read Go's first admission against its pinned native oracle (COV-M3) {id: COV-4, oracle: lexical, path: docs/bench/readings/dependency-edges/cov-m3.md, pattern: "^# COV-M3 · Go initial dependency admission", eq: 1}
+- [x] (op) Read Go's first admission against its pinned native oracle (COV-M3) {id: COV-4, oracle: lexical, path: docs/bench/readings/dependency-edges/cov-m3.md, pattern: "^# COV-M3 · Go initial dependency admission", eq: 1}
 - [ ] (op) Publish the independently confirmed TypeScript and JavaScript final readings and their separate verdicts {id: COV-M1, needs: COV-3}
 - [ ] (op) Publish the independently confirmed Python final reading and verdict {id: COV-M2, needs: COV-2}
 - [ ] (op) Reconcile the admission table, readings, measured ceilings, change notes and public counts {id: COV-5, needs: "COV-M1,COV-M2,COV-4"}

@@ -1,9 +1,9 @@
 # COV-M3 · Go initial dependency admission
 
-**Provisional admission: inconclusive.** None of 1,391 selected files is
-candidate-complete, even with explicit Go trust. B1 and B2 have an empty graded
-population and do not pass. B3 passes. Go remains unmeasured. COV-4 stays unchecked
-pending a fresh independent reading review and the foreman's disposition.
+**Independent admission result.** Go remains unmeasured. The 1,391-file
+pool contains 1,000 files with native truth and zero candidate-complete
+files. B1 and B2 are inconclusive in the empty complete slice. B3 passed
+in both build contexts.
 
 Preregistration commit: `cea1adaeb`. Measurement harness:
 `d9d7faf2b9943a798bf9e537b190f95b65acbbc4`. Product reader bytes are unchanged
@@ -139,12 +139,10 @@ No result claims another OS, architecture, tag set or installed dependency state
   constraints. A future candidate-complete file in that set would make B1/B2
   inconclusive until native evidence covers it.
 
-**Correction rounds:** zero reader rounds spent. No soundness defect was
-demonstrated on a complete file. A subsequent stage must decide reader coverage
-work and any admission change after the census lands. A conservative soundness
-correction is not established by zero candidates. Keep the existing unmeasured
-flag and leave COV-4 open. No subject substitution, threshold change, public API
-change, full gate, push or final independent review occurred in this lane.
+**Correction rounds.** Zero reader rounds were used. No complete file
+exposed a wrong or missed binding. The existing conservative go.mod
+disclosure blocks admission in this population. The Go reading supports
+no change to explicit trust or to the reader's admission flag.
 
 ## Receipts
 
@@ -177,7 +175,14 @@ byte-identical. The common SHA-256 per subject is:
 | GitHub CLI | `be595ee0de740910a41158faae731076758a037499f591dd242f4c12dd4e6da8` |
 | Prometheus | `003462b3124f392d99a39346f3de21c638906e3340c85312c94fea019ef233d2` |
 
-Raw aggregate JSON SHA-256:
+The independently reproduced aggregate matches byte for byte after removing
+only the six run-specific `Subjects[].Receipt.captures[].raw_sha256` values
+and encoding with sorted keys, compact separators, and a trailing newline.
+The normalized aggregate SHA-256 is
+`b086210afab74c97312ce129f3bfeb1b4cd98beeb9bf1054df678a64e340c18c`.
+Every field used in the verdict and all 1,391 reader rows agree.
+
+Original run aggregate receipt SHA-256:
 `20a8dcae1f9f440cf5f4acbe8a1f12b036ac807e54080d69360559360d02ff96`.
 
 ## Proof and reproduction
