@@ -124,13 +124,14 @@ func TestTSJSDependencyDisclosures(t *testing.T) {
 		{"malformed TS", "x.ts", "import { x from './target';", "", deps.UnknownParseError},
 		{"malformed JS", "x.js", "require('./target'", "", deps.UnknownParseError},
 		{"unsupported config", "x.ts", "import './target';", `{"extends":"./base.json"}`, deps.UnknownUnsupportedConstruct},
+		{"JSDoc with unsupported config", "x.js", "/** @type {import('./target.js').T} */ let a;", `{"extends":"./base.json"}`, deps.UnknownUnsupportedConstruct},
 		{"malformed config", "x.ts", "import './target';", `{"compilerOptions":`, deps.UnknownParseError},
 		{"symlink shadows fallback", "x.ts", "import './bad';", "", deps.UnknownUnsupportedConstruct},
 		{"missing file", "x.js", "import './missing';", "", deps.UnknownUnresolvedAlias},
 		{"relative escape", "x.js", "import '../../host';", "", deps.UnknownUnsupportedConstruct},
 		{"require escape", "x.js", "const load = require; load('./target')", "", deps.UnknownUnsupportedConstruct},
 		{"triple reference", "x.ts", "/// <reference path='./target.ts' />", "", deps.UnknownUnsupportedConstruct},
-		{"JSDoc module", "x.js", "/** @type {import('./target').T} */ let a;", "", deps.UnknownUnsupportedConstruct},
+		{"JSDoc module in TypeScript", "x.ts", "/** @type {import('./target').T} */ let a;", "", deps.UnknownUnsupportedConstruct},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := fstest.MapFS{
@@ -271,4 +272,109 @@ type tsjsTypedResolver func(context.Context, deps.ResolveRequest) deps.ResolveRe
 
 func (f tsjsTypedResolver) Resolve(ctx context.Context, req deps.ResolveRequest) deps.ResolveResult {
 	return f(ctx, req)
+}
+
+func TestTSJSJSDocTypeImports(t *testing.T) {
+	deps.TSJSUseCandidateAdmissionForTest(t)
+	repo := fstest.MapFS{
+		"target.d.ts":   {},
+		"target.js":     {},
+		"tsconfig.json": {Data: []byte(`{"compilerOptions":{"module":"esnext","moduleResolution":"bundler","paths":{"@type":["./target.js"]}}}`)},
+	}
+	for _, tc := range []struct {
+		name, source string
+		imports      map[int]string
+		gap          deps.UnknownCode
+	}{
+		{"type and multiline operand", `/** @typedef {import('./target.js').T} T */
+/**
+ * @param {Array<import
+ * ( "@type"
+ * ).T>} values
+ */
+function use(values) {}`, map[int]string{1: "***", 4: "@type"}, ""},
+		{"computed", "/** @type {import(name).T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"computed string", "/** @type {import('./target.js' + suffix).T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"template", "/** @type {import(`./target.js`).T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"malformed call", "/** @type {import('./target.js',).T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"malformed type", "/** @type {import('./target.js').} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"missing type close", "/** @type {import('./target.js').T */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"prose", "/** Example {import('./target.js').T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"non-type tag", "/** @example {import('./target.js').T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"tag-like text in inline link", `/** {@link
+ * @type {import('./target.js').T}
+ * }
+ */
+let value;`, nil, deps.UnknownUnsupportedConstruct},
+		{"standalone property", "/** @property {import('./target.js').T} child */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"property of object typedef", `/** @typedef {Object} Value
+ * @property {import('./target.js').T} child
+ */
+let value;`, map[int]string{2: "***"}, ""},
+		{"cast", "let value = /** @type {import('./target.js').T} */ (previous);", map[int]string{1: "***"}, ""},
+		{"trailing comment", "run(); /** @type {import('./target.js').T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"duplicate type tag", `/** @type {import('./target.js').T}
+ * @type {import('@type').T}
+ */
+let value;`, map[int]string{1: "***"}, deps.UnknownUnsupportedConstruct},
+		{"CRLF operand line", "/**\r\n * @type {import(\r\n * '@type').T}\r\n */\r\nlet value;", map[int]string{3: "@type"}, ""},
+		{"malformed named tag", "/** @param {import('./target.js').T} [value */\nfunction use(value) {}", nil, deps.UnknownUnsupportedConstruct},
+		{"mixed tag mechanisms", `/** @type {import('./target.js').T}
+ * @import { T } from './target.js'
+ */
+let value;`, map[int]string{1: "***"}, deps.UnknownUnsupportedConstruct},
+		{"qualified call", "/** @type {module.import('./target.js').T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"import tag", "/** @import { T } from './target.js' */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+		{"unattached", "/** @type {import('./target.js').T} */", nil, deps.UnknownUnsupportedConstruct},
+		{"nonattachment", "function use() { return; }\n/** @type {import('./target.js').T} */\n;", nil, deps.UnknownUnsupportedConstruct},
+		{"ambiguous mode", `/** @type {import('./target.js', { with: { 'resolution-mode': 'require' } }).T} */
+let value;`, nil, deps.UnknownUnsupportedConstruct},
+		{"mixed tags", `/**
+ * @param {import('./target.js').T} value
+ * @returns {import(name).T}
+ */
+function use(value) { return value; }`, map[int]string{2: "***"}, deps.UnknownUnsupportedConstruct},
+		{"unresolved", "/** @type {import('./missing.js').T} */\nlet value;", nil, deps.UnknownUnresolvedAlias},
+		{"escape", "/** @type {import('../target.js').T} */\nlet value;", nil, deps.UnknownUnsupportedConstruct},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := readTSJSFixture(t, repo, "main.js", "", tc.source, deps.TrustUnmeasured("javascript"))
+			seen := 0
+			for _, e := range got.Edges {
+				if e.Kind != deps.KindImport {
+					continue
+				}
+				seen++
+				if tc.imports[e.Line] != e.Raw || e.To != "target.d.ts" || e.Resolution != deps.ResolvedFile {
+					t.Fatalf("unexpected type import: %+v", e)
+				}
+			}
+			if seen != len(tc.imports) || got.Complete != (tc.gap == "") || tc.gap != "" &&
+				!slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool { return u.Code == tc.gap }) {
+				t.Fatalf("want imports %v and gap %q: %+v", tc.imports, tc.gap, got)
+			}
+		})
+	}
+}
+
+func TestTSJSJSDocResolutionModeAndAmbiguity(t *testing.T) {
+	deps.TSJSUseCandidateAdmissionForTest(t)
+	repo := fstest.MapFS{
+		"package.json":  {Data: []byte(`{"name":"sample","exports":{"./kind":{"require":"./requires.d.ts","import":"./imports.d.ts"}}}`)},
+		"tsconfig.json": {Data: []byte(`{"compilerOptions":{"moduleResolution":"node16","module":"node16"}}`)},
+		"requires.d.ts": {},
+		"imports.d.ts":  {},
+	}
+	for file, target := range map[string]string{"main.cjs": "requires.d.ts", "main.mjs": "imports.d.ts"} {
+		got := readTSJSFixture(t, repo, file, "", "/** @type {import('sample/kind').T} */\nlet value;", deps.TrustUnmeasured("javascript"))
+		if !got.Complete || !slices.Equal(tsjsTargets(got, deps.KindImport), []string{target}) {
+			t.Fatalf("%s did not use its file's module mode: %+v", file, got)
+		}
+	}
+	got := readTSJSFixture(t, repo, "main.cjs", "", "/** @type {import('./requires.d.ts').T | import('./imports.d.ts').T} */\nlet value;", deps.TrustUnmeasured("javascript"))
+	if got.Complete || len(tsjsTargets(got, deps.KindImport)) != 2 || !slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool {
+		return u.Code == deps.UnknownUnsupportedConstruct && u.Line == 1
+	}) {
+		t.Fatalf("two withheld operands on one line need a gap: %+v", got)
+	}
 }

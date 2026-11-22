@@ -73,6 +73,13 @@ const tsjsJSXQuery = `
 const tsjsJavaScriptQuery = `
 ((formal_parameters (identifier) @shadow)
  (#eq? @shadow "require"))
+(_ (comment) @doc . (comment) @doc-next)
+(_ (comment) @doc . (parenthesized_expression) @doc-cast)
+(_ (comment) @doc .
+ [(lexical_declaration) (variable_declaration) (function_declaration)
+  (generator_function_declaration) (class_declaration) (export_statement)
+  (expression_statement) (return_statement) (method_definition)
+  (field_definition) (pair)] @doc-site)
 `
 
 const tsjsTSQuery = `
@@ -213,10 +220,12 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 	calls := make(map[tsjsSite]tsjsCall)
 	callOrder := []tsjsSite{}
 	var existing map[tsjsRequest]string
+	var comments []tsengine.Node
+	followers := make(map[uint32]tsjsDocFollower)
 	shadowed := false
 	for _, match := range matches {
 		var kind string
-		var node, args, operand, loader, index tsengine.Node
+		var node, args, operand, loader, index, doc tsengine.Node
 		for _, c := range match.Captures {
 			switch c.Name {
 			case "args":
@@ -227,6 +236,8 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 				loader = c.Node
 			case "index":
 				index = c.Node
+			case "doc":
+				doc = c.Node
 			case "method", "module", "url":
 			default:
 				kind, node = c.Name, c.Node
@@ -296,9 +307,19 @@ func (g *tsjsRead) requests(src []byte, matches []tsengine.Match) tsjsSyntax {
 		case "jsx":
 			syntax.jsx = true
 		case "comment":
-			g.comment(node.Text(src), node.Line())
+			comment := node.Text(src)
+			if g.out.Dialect == "javascript" {
+				comments = append(comments, node)
+				if strings.HasPrefix(comment, "/**") {
+					continue
+				}
+			}
+			g.comment(comment, node.Line())
+		case "doc-next", "doc-site", "doc-cast":
+			followers[doc.StartByte] = tsjsDocFollower{node, kind}
 		}
 	}
+	g.jsdocComments(&syntax, src, comments, followers)
 	for _, key := range callOrder {
 		call := calls[key]
 		if shadowed && call.mode == tsjsRequire {
