@@ -100,6 +100,7 @@ func (v *tsLocalityFS) Open(name string) (fs.File, error) {
 func TestTSRepositoryInventoryRefusal(t *testing.T) {
 	for _, tc := range []struct{ name, blocked, manifest string }{
 		{"unreadable directory", "packages", `{}`},
+		{"unreadable manifest", "packages/member/package.json", `{}`},
 		{"malformed manifest", "", `{`},
 		{"invalid name", "", `{"name":42}`},
 		{"duplicate identity", "", `{"name":"@invented/absent","name":"@invented/other"}`},

@@ -49,6 +49,8 @@ func TestCOVR1Development(t *testing.T) {
 	}
 	pools := map[string]*depbench.Observation{"typescript": {}, "javascript": {}}
 	externals := map[string]int{}
+	rejected := map[string]int{}
+	stable := map[string]bool{"typescript": true, "javascript": true}
 	var subjects []covSubjectReading
 	for _, s := range pins.Subjects {
 		primary := filepath.Join(root, "development", "primary", s.Name)
@@ -84,6 +86,8 @@ func TestCOVR1Development(t *testing.T) {
 		score.B3 = score.B3 && depbench.COVSameRejected(aBatch.Rejected, bBatch.Rejected, cBatch.Rejected)
 		score.RejectedInputs = len(aBatch.Rejected)
 		externals[s.Dialect] += score.ExternalAsLocal
+		rejected[s.Dialect] += score.RejectedInputs
+		stable[s.Dialect] = stable[s.Dialect] && score.B3
 		covAppend(pools[s.Dialect], o, s.Name+"/")
 		subjects = append(subjects, covSubjectReading{Name: s.Name, Dialect: s.Dialect, Commit: s.Commit, SelectionSHA256: s.SelectionSHA256, SourceSHA256: fmt.Sprintf("%x", sha256.Sum256(asJSON(t, first))), Score: score})
 		// Check immutable development inputs after native and product reads.
@@ -98,8 +102,22 @@ func TestCOVR1Development(t *testing.T) {
 		o := *pools[dialect]
 		score := depbench.COVScore(o, nil)
 		score.ExternalAsLocal = externals[dialect]
+		score.RejectedInputs = rejected[dialect]
+		score.B3 = score.B3 && stable[dialect]
 		score.B1 = score.B1 && score.ExternalAsLocal == 0
 		before := depbench.COVScore(baseline[dialect], nil)
+		wasComplete := map[string]bool{}
+		for _, f := range baseline[dialect].Files {
+			wasComplete[f.Path] = f.Complete
+		}
+		for _, f := range o.Files {
+			if f.Complete && !wasComplete[f.Path] {
+				t.Errorf("%s R1 correction added a complete development file", dialect)
+			}
+		}
+		if dialect == "javascript" && !bytes.Equal(asJSON(t, o), asJSON(t, baseline[dialect])) {
+			t.Error("R1 changed JavaScript development output")
+		}
 		proof[dialect] = struct{ Before, After depbench.COVReading }{before, score}
 		if score.Files != before.Files || score.OracleFiles != before.OracleFiles || !bytes.Equal(asJSON(t, o.Truth), asJSON(t, baseline[dialect].Truth)) {
 			t.Errorf("%s development denominator/native evidence changed", dialect)
