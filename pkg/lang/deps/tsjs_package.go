@@ -188,6 +188,12 @@ func (g *tsjsRead) external(r tsjsRequest, pkg, sub string, require bool) {
 			break
 		}
 	}
+	if g.out.Dialect == "typescript" {
+		if code := g.provePackageAbsent(pkg); code != "" {
+			g.finishTarget(r, "", code)
+			return
+		}
+	}
 	pin := g.packagePin(pkg)
 	g.edge(KindImport, r.raw, "npm:"+r.raw, ResolvedExternal, pin, r.line)
 	if sub != "" && pin != "" {

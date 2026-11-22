@@ -148,6 +148,38 @@ func TestTSRepositoryInventoryBatchAndCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation = %v", err)
 	}
+	ctx, cancelBatch := context.WithCancel(t.Context())
+	defer cancelBatch()
+	view.cancel = cancelBatch
+	prefix, err := r.ReadFiles(ctx, view, []deps.Input{{Path: "a.ts"}, {Path: "b.ts"}})
+	if !errors.Is(err, context.Canceled) || len(prefix) != 0 {
+		t.Fatalf("batch cancellation: %d completed files, %v", len(prefix), err)
+	}
+}
+
+func TestTSRepositoryInventoryConcurrentCalls(t *testing.T) {
+	r := &deps.Reader{}
+	done := make(chan bool, 16)
+	for n := range 16 {
+		go func() {
+			local := n%2 == 0
+			identity := "@invented/unrelated"
+			if local {
+				identity = "@invented/target"
+			}
+			view := fstest.MapFS{
+				"package.json":                 {Data: []byte(`{"dependencies":{"@invented/target":"1.2.3"}}`)},
+				"packages/member/package.json": {Data: []byte(`{"name":"` + identity + `"}`)},
+			}
+			got, err := r.ReadFile(t.Context(), view, deps.Input{Path: "main.ts"}, []byte("import '@invented/target';"))
+			done <- err == nil && got.Complete != local
+		}()
+	}
+	for range 16 {
+		if !<-done {
+			t.Error("concurrent call reused another repository's locality proof")
+		}
+	}
 }
 
 func TestTSRepositoryInventoryConfined(t *testing.T) {

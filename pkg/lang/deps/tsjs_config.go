@@ -16,6 +16,7 @@ type tsjsRead struct {
 	out            *result
 	config         tsjsConfig
 	sourceManifest tsjsManifest
+	localityInputs bool
 }
 
 type tsjsMode uint8

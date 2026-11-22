@@ -40,7 +40,7 @@ precedence.
 |---|---|---|
 | `go` | `.go` | Unmeasured. The Go fixture checks the grading harness. |
 | `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | Measured, low coverage (DEP-M1). |
-| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Measured, low coverage (DEP-M1). |
+| `typescript` | `.ts`, `.tsx`, `.mts`, `.cts` | Measured, low coverage (DEP-M1). COV-D11 erratum: the later sealed baseline found 259 external-as-local claims across 222 baseline-complete files. R1 withholds completeness where repository-locality is unproved, even with a version pin. The aggregate-only R5 correction check remains pending. |
 | `python` | `.py` | Measured, low coverage (DEP-M2). |
 | `dockerfile` | `Dockerfile`, `Containerfile`, either with a dotted suffix, or a basename ending in `.dockerfile` or `.containerfile` (case-insensitive) | Detect-only (DEP-M3). |
 

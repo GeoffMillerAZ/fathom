@@ -121,7 +121,7 @@ func (r *Reader) ReadFile(ctx context.Context, repo fs.FS, in Input, src []byte)
 	if err := validateInput(repo, in); err != nil {
 		return FileDeps{}, err
 	}
-	return r.readFile(ctx, repositoryFS{view: repo}, in, src)
+	return r.readFile(ctx, repositoryFS{view: repo, tsPackages: &tsjsPackageInventory{}}, in, src)
 }
 
 func (r *Reader) readFile(ctx context.Context, repo repositoryFS, in Input, src []byte) (FileDeps, error) {
@@ -175,7 +175,7 @@ func (r *Reader) ReadFiles(ctx context.Context, repo fs.FS, inputs []Input) ([]F
 		}
 	}
 
-	view := repositoryFS{view: repo}
+	view := repositoryFS{view: repo, tsPackages: &tsjsPackageInventory{}}
 	var readErr error
 	for _, input := range inputs {
 		if err := ctx.Err(); err != nil {

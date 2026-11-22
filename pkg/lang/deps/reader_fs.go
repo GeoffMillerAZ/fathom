@@ -9,7 +9,10 @@ import (
 
 // repositoryFS checks path components before delegating reads. The supplied
 // root and the stability and accuracy of its entries are caller contracts.
-type repositoryFS struct{ view fs.FS }
+type repositoryFS struct {
+	view       fs.FS
+	tsPackages *tsjsPackageInventory
+}
 
 func (r repositoryFS) Open(name string) (fs.File, error) {
 	if _, err := r.Stat(name); err != nil {

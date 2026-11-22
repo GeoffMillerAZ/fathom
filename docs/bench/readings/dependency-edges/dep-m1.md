@@ -2,6 +2,8 @@
 
 Protocol `dep-m1/typescript-program-trace-v1`. The [preregistration](../../../../calibration/oracles/deps-tsjs/pins.json) fixes the public URLs, full commit IDs, byte-sorted tracked-file selections, tool version and admission bars. Each dialect has its own admission. The combined arm pools the evidence for reporting.
 
+Erratum (2026-11-22, COV-D11 / R1): the later sealed baseline found 259 external-as-local claims across 222 baseline-complete TypeScript files. The correction preserves supported local resolution and withholds completeness where repository-locality is unproved, including when an external version pin is present. The aggregate-only R5 correction check remains pending; this erratum does not close it.
+
 ## TypeScript population completion preregistration
 
 The architect authorized one added subject and one product attempt. The selection source is the pinned TypeScript corpus list in repository order. A candidate needs at least 100 tracked TypeScript files in the documented scope, config chains wholly inside the tracked tree, and a successful run of the pinned compiler oracle. Only Git and the compiler oracle informed this choice.
