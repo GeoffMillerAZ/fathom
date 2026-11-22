@@ -1,6 +1,7 @@
 package deps_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -219,5 +220,54 @@ func TestCOVRejectedSelectedInputSynthetic(t *testing.T) {
 	files, err := r.ReadFiles(t.Context(), tree, []deps.Input{{Path: "okay.ts"}, {Path: "bad[case].ts"}})
 	if !errors.Is(err, deps.ErrInput) || len(files) != 0 {
 		t.Fatalf("invalid selected path must refuse the batch, not disappear: files=%d err=%v", len(files), err)
+	}
+}
+
+func TestCOVIsolatesHardInputRejection(t *testing.T) {
+	tree := fstest.MapFS{"a.ts": {Data: []byte("export const a=1")}, "bad[case].ts": {Data: []byte("export const bad=1")}, "z.ts": {Data: []byte("export const z=1")}}
+	r := &deps.Reader{}
+	inputs := []deps.Input{{Path: "a.ts"}, {Path: "bad[case].ts"}, {Path: "z.ts"}}
+	batch, err := depbench.COVReadIsolated(t.Context(), r, tree, inputs)
+	if err != nil || len(batch.Files) != 2 || len(batch.Rejected) != 1 {
+		t.Fatalf("batch isolation: accepted=%d rejected=%d err=%v", len(batch.Files), len(batch.Rejected), err)
+	}
+	files := depbench.COVIncludeRejected(batch)
+	o := covObservation(files...)
+	o.Truth = []depbench.TruthFile{{Path: "a.ts"}, {Path: "bad[case].ts"}, {Path: "z.ts"}}
+	analysis := depbench.COVAnalyzeRejected(o, nil, nil, nil, map[string]bool{"bad[case].ts": true})
+	s := analysis.Score
+	if s.Files != 3 || s.OracleFiles != 3 || s.Complete != 2 || s.RejectedInputs != 1 || s.RejectedOracleFiles != 1 || s.Unknowns != 0 || s.Edges != 0 || !s.B1 || !s.B2 {
+		t.Fatalf("rejection must retain denominator and truth without inventing product findings: %+v", s)
+	}
+	if _, ok := analysis.BlockingSets["bad[case].ts"]; ok {
+		t.Fatal("rejected identity escaped memory into persisted development analysis")
+	}
+	if depbench.COVSameRejected(batch.Rejected, nil, batch.Rejected) {
+		t.Fatal("B3 must compare the rejected set independently of product output")
+	}
+	if !depbench.COVSameRejected(batch.Rejected, batch.Rejected, batch.Rejected) {
+		t.Fatal("rejected-set replay differs")
+	}
+	closure := depbench.COVClosureRejected([]string{"a.ts"}, map[string]deps.FileDeps{"a.ts": {Path: "a.ts", Measured: true, Complete: true, Edges: []deps.Edge{{Resolution: deps.ResolvedDirectory, To: "."}}}, "bad[case].ts": {Path: "bad[case].ts"}}, map[string]bool{"bad[case].ts": true})
+	if closure.Complete != 0 || closure.OnlyMeasured != 1 || closure.RejectedBlocked != 1 {
+		t.Fatalf("rejected target must block closure: %+v", closure)
+	}
+}
+
+func TestCOVRejectedIdentityNeverPersisted(t *testing.T) {
+	batch := depbench.COVBatch{Files: []deps.FileDeps{{Path: "okay.ts"}}, Rejected: []deps.Input{{Path: "bad[case].ts"}}}
+	if bytes.Contains(asJSON(t, batch), []byte("bad[case]")) {
+		t.Fatal("batch serialization leaked rejected identity")
+	}
+	files := depbench.COVIncludeRejected(batch)
+	o := covObservation(files...)
+	o.Truth = []depbench.TruthFile{{Path: "okay.ts"}, {Path: "bad[case].ts"}}
+	if bytes.Contains(asJSON(t, covWithoutRejected(o, map[string]bool{"bad[case].ts": true})), []byte("bad[case]")) {
+		t.Fatal("persisted development observation leaked rejected identity")
+	}
+	r := &deps.Reader{}
+	closure := covReach(t, r, fstest.MapFS{"okay.ts": {}, "bad[case].ts": {}}, []string{"okay.ts"}, []deps.FileDeps{{Path: "okay.ts", Measured: true, Complete: true, Edges: []deps.Edge{{Resolution: deps.ResolvedDirectory, To: "."}}}}, nil)
+	if closure.Complete != 0 || closure.RejectedBlocked != 1 {
+		t.Fatalf("target rejection was not isolated: %+v", closure)
 	}
 }

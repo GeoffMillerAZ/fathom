@@ -41,7 +41,7 @@ for the fixed bars, holdout pins and skips. Land the census before changing a re
 Bind each implementation row to its new symbol when the change is written.
 
 - [x] (op) Preregister the bars, cohort rules, holdout pins and skipped candidates {id: COV-0, oracle: lexical, path: docs/design/dependency-edges.md, pattern: "^### Holdout pins and selection$", eq: 1}
-- [ ] Add the test-only blocker census, confirm the development counts and seal the aggregate holdout baselines {id: COV-1, symbol: COVAnalyze, package: pkg/lang/deps/internal/depbench, reachable_from: TestCOVBaseline, needs: COV-0}
+- [ ] Add the test-only blocker census, confirm the development counts and seal the aggregate holdout baselines {id: COV-1, symbol: COVAnalyzeRejected, package: pkg/lang/deps/internal/depbench, reachable_from: TestCOVBaseline, needs: COV-0}
 - [ ] Apply the admitted Python levers with failing and refusal fixtures {id: COV-2, needs: COV-1}
 - [ ] Apply the admitted TypeScript and JavaScript levers with failing and refusal fixtures {id: COV-3, needs: COV-1}
 - [ ] Read Go's first admission against its pinned native oracle (COV-M3) {id: COV-4}

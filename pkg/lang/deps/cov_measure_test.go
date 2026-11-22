@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -75,6 +76,8 @@ type covPool struct {
 	shapes      map[string][]string
 	gaps        map[string]string
 	external    int
+	rejected    map[string]bool
+	b3Rejected  bool
 	closure     depbench.COVClosureCounts
 }
 
@@ -92,6 +95,21 @@ func covMeasure(t *testing.T) {
 	root := requiredPythonEnv(t, "FATHOM_COV_ROOT")
 	compiler := requiredPythonEnv(t, "FATHOM_COV_COMPILER")
 	python := requiredPythonEnv(t, "FATHOM_COV_PYTHON")
+	journalBytes, err := os.ReadFile(filepath.Join(root, "campaign.json"))
+	var journal struct {
+		Authority       string `json:"authority"`
+		ReaderRevision  string `json:"reader_revision"`
+		HarnessRevision string `json:"harness_revision"`
+		SubjectsSHA256  string `json:"subjects_sha256"`
+		Status          string `json:"status"`
+	}
+	if err != nil || json.Unmarshal(journalBytes, &journal) != nil || journal.Authority != "ESCALATE-19" || journal.ReaderRevision != "884c77754d17a8f09129d3fd5b0955bef0db9a81" || journal.Status != "authorized" {
+		t.Fatal("COV replacement requires its ESCALATE-19 journal")
+	}
+	rev, err := exec.CommandContext(t.Context(), "git", "rev-parse", "HEAD").Output()
+	if err != nil || journal.HarnessRevision != strings.TrimSpace(string(rev)) {
+		t.Fatal("COV replacement harness differs from its journal")
+	}
 	artifacts := filepath.Join(root, "reading")
 	if err := os.Mkdir(artifacts, 0o700); err != nil {
 		t.Fatal("COV campaign already exists or cannot be created; do not rerun the baseline")
@@ -108,11 +126,14 @@ func covMeasure(t *testing.T) {
 		t.Fatal("COV manifest differs from original population pins")
 	}
 	public := map[string]any{}
-	rev, err := exec.CommandContext(t.Context(), "git", "rev-parse", "HEAD").Output()
-	if err != nil {
-		t.Fatal("COV harness revision unavailable")
+	if digest := sha256.Sum256(manifest); hex.EncodeToString(digest[:]) != journal.SubjectsSHA256 {
+		t.Fatal("COV replacement subject manifest differs from journal")
 	}
 	public["harness_commit"] = strings.TrimSpace(string(rev))
+	public["campaign"] = "ESCALATE-19 replacement baseline"
+	public["reader_revision"] = journal.ReaderRevision
+	rejectionCounts := map[string]int{}
+	public["holdout_rejected_inputs"] = rejectionCounts
 	sealedClosure := map[string]depbench.COVClosureCounts{}
 	var subjects []covSubjectReading
 	for _, poolName := range []string{"development", "holdout"} {
@@ -133,36 +154,58 @@ func covMeasure(t *testing.T) {
 			// The independent oracle is fixed before constructing a product reader.
 			truth, gaps := covTruth(t, python, compiler, poolName, s, primary, paths)
 			reader := &deps.Reader{}
-			read := func(view fs.FS, selected []string) []deps.FileDeps {
+			read := func(view fs.FS, selected []string) depbench.COVBatch {
 				inputs := make([]deps.Input, len(selected))
 				for i, file := range selected {
 					inputs[i] = deps.Input{Path: file, Dialect: s.Dialect}
 				}
-				result, err := reader.ReadFiles(t.Context(), view, inputs)
+				result, err := depbench.COVReadIsolated(t.Context(), reader, view, inputs)
 				if err != nil {
 					t.Fatal("COV selected product read failed")
 				}
 				return result
 			}
 			firstView, secondView := covView(first), covView(second)
-			o := depbench.Observation{Truth: truth, Files: read(firstView, paths)}
+			firstBatch := read(firstView, paths)
+			o := depbench.Observation{Truth: truth, Files: depbench.COVIncludeRejected(firstBatch)}
 			reverse := slices.Clone(paths)
 			slices.Reverse(reverse)
-			o.Repeat = read(firstView, reverse)
-			o.Relocated = read(secondView, paths)
+			repeatBatch, relocatedBatch := read(firstView, reverse), read(secondView, paths)
+			o.Repeat = depbench.COVIncludeRejected(repeatBatch)
+			o.Relocated = depbench.COVIncludeRejected(relocatedBatch)
+			rejected := map[string]bool{}
+			for _, in := range firstBatch.Rejected {
+				rejected[in.Path] = true
+			}
+			b3Rejected := depbench.COVSameRejected(firstBatch.Rejected, repeatBatch.Rejected, relocatedBatch.Rejected)
 			inventory := depbench.COVInventory(covTree(first), s.Roots)
 			score := depbench.COVScore(o, inventory)
-			closure := covReach(t, reader, first, paths, o.Files)
+			score.B3 = score.B3 && b3Rejected
+			score.RejectedInputs = len(rejected)
+			truthCount := map[string]int{}
+			for _, row := range truth {
+				truthCount[row.Path]++
+			}
+			for file := range rejected {
+				if truthCount[file] == 1 {
+					score.RejectedOracleFiles++
+				}
+			}
+			closure := covReach(t, reader, first, paths, o.Files, rejected)
 			// Native invocation and product traversal must leave both checkouts clean.
 			covFreeze(t, s, primary)
 			covFreeze(t, s, relocated)
 			p := pools[s.Dialect]
 			if p == nil {
-				p = &covPool{shapes: map[string][]string{}, gaps: map[string]string{}}
+				p = &covPool{shapes: map[string][]string{}, gaps: map[string]string{}, rejected: map[string]bool{}, b3Rejected: true}
 				pools[s.Dialect] = p
 			}
 			covAppend(&p.observation, o, s.Name+"/")
 			p.external += score.ExternalAsLocal
+			p.b3Rejected = p.b3Rejected && b3Rejected
+			for file := range rejected {
+				p.rejected[s.Name+"/"+file] = true
+			}
 			covAddClosure(&p.closure, closure)
 			if poolName == "development" {
 				gapCounts := map[string]int{}
@@ -192,8 +235,9 @@ func covMeasure(t *testing.T) {
 				t.Fatal("COV pool missing dialect")
 			}
 			if poolName == "development" {
-				analysis := depbench.COVAnalyze(p.observation, p.shapes, p.gaps, nil)
-				covWrite(t, filepath.Join(artifacts, "development-"+dialect+"-observations.json"), asJSON(t, p.observation))
+				analysis := depbench.COVAnalyzeRejected(p.observation, p.shapes, p.gaps, nil, p.rejected)
+				analysis.Score.B3 = analysis.Score.B3 && p.b3Rejected
+				covWrite(t, filepath.Join(artifacts, "development-"+dialect+"-observations.json"), asJSON(t, covWithoutRejected(p.observation, p.rejected)))
 				analysis.Score.ExternalAsLocal = p.external
 				analysis.Score.B1 = analysis.Score.B1 && p.external == 0
 				rows[dialect] = struct {
@@ -204,6 +248,8 @@ func covMeasure(t *testing.T) {
 				score := depbench.COVScore(p.observation, nil)
 				score.ExternalAsLocal = p.external
 				score.B1 = score.B1 && p.external == 0
+				score.B3 = score.B3 && p.b3Rejected
+				rejectionCounts[dialect] = len(p.rejected)
 				rows[dialect] = json.RawMessage(depbench.COVSeal(score))
 				sealedClosure[dialect] = p.closure
 			}
@@ -379,9 +425,13 @@ func covTruth(t *testing.T, python, compiler, pool string, s covSubject, root st
 	return truth, gaps
 }
 
-func covReach(t *testing.T, reader *deps.Reader, tree fstest.MapFS, selected []string, initial []deps.FileDeps) depbench.COVClosureCounts {
+func covReach(t *testing.T, reader *deps.Reader, tree fstest.MapFS, selected []string, initial []deps.FileDeps, selectedRejected map[string]bool) depbench.COVClosureCounts {
 	t.Helper()
 	covViewForReach := covView(tree)
+	rejected := map[string]bool{}
+	for file := range selectedRejected {
+		rejected[file] = true
+	}
 	files := map[string]deps.FileDeps{}
 	children := map[string][]string{}
 	for file, entry := range tree {
@@ -407,7 +457,10 @@ func covReach(t *testing.T, reader *deps.Reader, tree fstest.MapFS, selected []s
 		if !read[file] {
 			if entry := tree[file]; entry != nil && entry.Mode.IsRegular() {
 				f, err := reader.ReadFile(t.Context(), covViewForReach, deps.Input{Path: file}, entry.Data)
-				if err != nil {
+				if errors.Is(err, deps.ErrInput) {
+					rejected[file] = true
+					f = deps.FileDeps{Path: file}
+				} else if err != nil {
 					t.Fatal("COV closure target read failed")
 				}
 				files[file] = f
@@ -423,7 +476,7 @@ func covReach(t *testing.T, reader *deps.Reader, tree fstest.MapFS, selected []s
 			}
 		}
 	}
-	return depbench.COVClosure(selected, files)
+	return depbench.COVClosureRejected(selected, files, rejected)
 }
 
 func covAddClosure(dst *depbench.COVClosureCounts, src depbench.COVClosureCounts) {
@@ -432,6 +485,7 @@ func covAddClosure(dst *depbench.COVClosureCounts, src depbench.COVClosureCounts
 	dst.OnlyUnmeasured += src.OnlyUnmeasured
 	dst.OnlyMeasured += src.OnlyMeasured
 	dst.MeasuredAndUnmeasured += src.MeasuredAndUnmeasured
+	dst.RejectedBlocked += src.RejectedBlocked
 }
 
 func covAppend(dst *depbench.Observation, src depbench.Observation, prefix string) {
@@ -551,4 +605,13 @@ func (v *covFrozenView) ReadDir(name string) ([]fs.DirEntry, error) {
 		return fs.ReadDir(v.tree, name)
 	}
 	return slices.Clone(v.dirs[name]), nil
+}
+
+// Persist accepted development observations only. A native row for a hard
+// rejection also carries its private identity, so it must be filtered too.
+func covWithoutRejected(o depbench.Observation, rejected map[string]bool) depbench.Observation {
+	filter := func(files []deps.FileDeps) []deps.FileDeps {
+		return slices.DeleteFunc(slices.Clone(files), func(f deps.FileDeps) bool { return rejected[f.Path] })
+	}
+	return depbench.Observation{Files: filter(o.Files), Repeat: filter(o.Repeat), Relocated: filter(o.Relocated), Truth: slices.DeleteFunc(slices.Clone(o.Truth), func(f depbench.TruthFile) bool { return rejected[f.Path] })}
 }

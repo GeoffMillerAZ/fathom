@@ -12,7 +12,8 @@ import (
 
 type COVReading struct {
 	Reading
-	ExternalAsLocal int
+	ExternalAsLocal                     int
+	RejectedInputs, RejectedOracleFiles int
 }
 
 // COVScore adds COV-D6 independently of native coverage. The native missing
@@ -216,11 +217,16 @@ func COVGreedy(sets map[string][]string, denominator, limit int) []COVStep {
 
 type COVClosureCounts struct {
 	Selected, Complete, OnlyUnmeasured, OnlyMeasured, MeasuredAndUnmeasured int
+	RejectedBlocked                                                         int
 }
 
 // COVClosure grades selected roots only. All local edge kinds participate,
 // including config-ref. Missing/unread targets are unmeasured blockers.
 func COVClosure(selected []string, files map[string]deps.FileDeps) COVClosureCounts {
+	return COVClosureRejected(selected, files, nil)
+}
+
+func COVClosureRejected(selected []string, files map[string]deps.FileDeps, rejected map[string]bool) COVClosureCounts {
 	out := COVClosureCounts{Selected: len(selected)}
 	direct := map[string][]string{}
 	for file := range files {
@@ -230,6 +236,7 @@ func COVClosure(selected []string, files map[string]deps.FileDeps) COVClosureCou
 		todo := []string{start}
 		seen := map[string]bool{}
 		measured, unmeasured := false, false
+		rejectedBlocked := false
 		for len(todo) > 0 {
 			file := todo[len(todo)-1]
 			todo = todo[:len(todo)-1]
@@ -238,11 +245,21 @@ func COVClosure(selected []string, files map[string]deps.FileDeps) COVClosureCou
 			}
 			seen[file] = true
 			f, ok := files[file]
-			if !ok || !f.Measured {
-				unmeasured = true
-			}
-			if ok && f.Measured && !f.Complete {
-				measured = true
+			if rejected[file] {
+				rejectedBlocked = true
+				switch path.Ext(file) {
+				case ".py", ".ts", ".tsx", ".cts", ".mts", ".js", ".jsx", ".cjs", ".mjs":
+					measured = true
+				default:
+					unmeasured = true
+				}
+			} else {
+				if !ok || !f.Measured {
+					unmeasured = true
+				}
+				if ok && f.Measured && !f.Complete {
+					measured = true
+				}
 			}
 			for _, e := range f.Edges {
 				switch e.Resolution {
@@ -252,6 +269,9 @@ func COVClosure(selected []string, files map[string]deps.FileDeps) COVClosureCou
 					todo = append(todo, direct[e.To]...)
 				}
 			}
+		}
+		if rejectedBlocked {
+			out.RejectedBlocked++
 		}
 		switch {
 		case measured && unmeasured:
@@ -287,6 +307,10 @@ type COVDevelopment struct {
 }
 
 func COVAnalyze(o Observation, shapes map[string][]string, gaps map[string]string, inventory map[string]bool) COVDevelopment {
+	return COVAnalyzeRejected(o, shapes, gaps, inventory, nil)
+}
+
+func COVAnalyzeRejected(o Observation, shapes map[string][]string, gaps map[string]string, inventory map[string]bool, rejected map[string]bool) COVDevelopment {
 	out := COVDevelopment{Score: COVScore(o, inventory), BlockingSets: map[string][]string{}, OracleGaps: map[string]int{}}
 	truth := map[string]int{}
 	for _, f := range o.Truth {
@@ -296,6 +320,13 @@ func COVAnalyze(o Observation, shapes map[string][]string, gaps map[string]strin
 	for _, f := range o.Files {
 		if gap := gaps[f.Path]; gap != "" {
 			out.OracleGaps[gap]++
+		}
+		if rejected[f.Path] {
+			out.Score.RejectedInputs++
+			if truth[f.Path] == 1 {
+				out.Score.RejectedOracleFiles++
+			}
+			continue
 		}
 		if COVIdentityOnly(f) {
 			out.IdentityOnly++
