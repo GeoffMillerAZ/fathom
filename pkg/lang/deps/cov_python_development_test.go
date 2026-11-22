@@ -55,16 +55,19 @@ func TestCOVPythonFromListDevelopment(t *testing.T) {
 		t.Fatal("COV Python proof requires a fresh evidence directory")
 	}
 	pinsDir := filepath.Join(covOracleDir, "..", "deps-python")
-	for _, file := range []string{
-		filepath.Join(pinsDir, "modulefinder_oracle.py"), filepath.Join(pinsDir, "test_modulefinder_oracle.py"),
-		filepath.Join(covOracleDir, "cov_run.py"), filepath.Join(covOracleDir, "cov_run_test.py"),
-		filepath.Join(covOracleDir, "cov_python_pyright.py"), filepath.Join(covOracleDir, "cov_python_pyright_test.py"),
-		filepath.Join(pinsDir, "pins.json"),
+	// The reviewed oracle was cherry-picked, so a clean clone may lack the
+	// review commit. Pin the exact contents accepted at covPythonDispatch.
+	for _, pin := range []struct{ file, digest string }{
+		{"deps-python/modulefinder_oracle.py", "28f9ff755ae24194748406aba39c799f4f5ac53e1376c54c94c294d43dd7f0e2"},
+		{"deps-python/test_modulefinder_oracle.py", "2589af2597e53b211b7a869492be8b4c4022a21d552b8b208c9f68b96760257f"},
+		{"dep-coverage/cov_run.py", "f8fb92e5d6fc121cd649195d252ae4d1d60d54cb575f4b72ca9be66f3c6b9086"},
+		{"dep-coverage/cov_run_test.py", "fe10818c09515e93681f352ed13e37719437cd553b06ec47fccaf46ff9b77391"},
+		{"dep-coverage/cov_python_pyright.py", "a8366f24b2b86ef0cde923cb0bdef1c09442f1eef958508791eb30f93607bd77"},
+		{"dep-coverage/cov_python_pyright_test.py", "5fb936aaa26f7dae43bd6c96650cdbf00414b2774145e48b4eb8dbe817a09c15"},
+		{"deps-python/pins.json", "0372b1c81ca2cb3c868ceb5c1dc5ea6a7e558610f5444c7b38c754cb475797be"},
 	} {
-		gitPath, ok := strings.CutPrefix(filepath.ToSlash(file), "../../../")
-		pinned, err := exec.CommandContext(t.Context(), "git", "show", covPythonDispatch+":"+gitPath).Output()
-		actual, readErr := os.ReadFile(file)
-		if !ok || err != nil || readErr != nil || !bytes.Equal(pinned, actual) {
+		actual, err := os.ReadFile(filepath.Join(covOracleDir, "..", filepath.FromSlash(pin.file)))
+		if digest := sha256.Sum256(actual); err != nil || hex.EncodeToString(digest[:]) != pin.digest {
 			t.Fatal("COV Python oracle dispatch identity differs")
 		}
 	}
