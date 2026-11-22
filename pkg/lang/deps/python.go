@@ -31,6 +31,14 @@ const pythonDependencyQuery = `
 (comment) @comment
 `
 
+const pythonAttributionQuery = `
+(import_statement name: [
+  (dotted_name) @site.module
+  (aliased_import name: (dotted_name) @site.module)
+]) @site.whole
+(import_from_statement module_name: (_) @site.module) @site.from
+`
+
 func readPythonDependencies(ctx context.Context, repo repositoryFS, src []byte, resolver Resolver, out *result) {
 	if !utf8.Valid(src) {
 		out.addUnknown(Unknown{Code: UnknownUnsupportedConstruct, DecidableBy: []DecidableBy{DecideToolchain}})
@@ -49,15 +57,15 @@ func readPythonDependencies(ctx context.Context, repo repositoryFS, src []byte, 
 	if ctx.Err() != nil {
 		return
 	}
-	matches, err := pythonDependencyMatches(ctx, src)
+	matches, err := pythonQueryMatches(ctx, src, "dependency-python", pythonDependencyQuery, false)
 	if err != nil {
 		pythonParseGap(out, err)
 		return
 	}
 
-	paths := pythonPaths{repo: repo, directories: make(map[string]pythonDirectory)}
-	resolve := func(raw, member string, line int) {
-		raw = strings.Join(strings.Fields(strings.ReplaceAll(strings.ReplaceAll(raw, "\\\r\n", ""), "\\\n", "")), "")
+	paths := pythonPaths{repo: repo, directories: make(map[string]pythonDirectory), declarations: make(map[string]map[string]bool)}
+	resolve := func(raw, member string, line int, declarationAllowed bool) {
+		raw = pythonCleanModule(raw)
 		if len(raw) > maxIdentityBytes || raw == "" {
 			out.addUnknown(Unknown{Code: UnknownUnsupportedConstruct, Line: line, DecidableBy: []DecidableBy{DecideToolchain}})
 			return
@@ -68,7 +76,7 @@ func readPythonDependencies(ctx context.Context, repo repositoryFS, src []byte, 
 			})
 			return
 		}
-		paths.resolve(out, raw, member, line)
+		paths.resolve(ctx, out, raw, member, line, declarationAllowed)
 	}
 	dynamic := func(line int) {
 		out.addUnknown(Unknown{Code: UnknownDynamicImport, Line: line, DecidableBy: []DecidableBy{DecideObservation, DecideDeclaration}})
@@ -79,7 +87,8 @@ func readPythonDependencies(ctx context.Context, repo repositoryFS, src []byte, 
 		if ctx.Err() != nil {
 			return
 		}
-		resolve(spec.Module, spec.ExportedName, spec.Line)
+		resolve(spec.Module, spec.ExportedName, spec.Line,
+			spec.Kind == extractor.ImportNamed && pythonIdentifier(spec.LocalName) && !pythonReservedDeclaration(spec.LocalName))
 		head, _, _ := strings.Cut(spec.Module, ".")
 		switch head {
 		case "builtins", "imp", "importlib", "pkg_resources", "pkgutil", "runpy", "zipimport":
@@ -95,17 +104,19 @@ func readPythonDependencies(ctx context.Context, repo repositoryFS, src []byte, 
 		}
 	}
 
+	invalidSyntax := false
 	for _, match := range matches {
 		node := match.Captures[0].Node
 		line := node.Line()
 		switch match.Captures[0].Name {
 		case "error":
+			invalidSyntax = true
 			out.addUnknown(Unknown{Code: UnknownParseError, Line: line, DecidableBy: []DecidableBy{DecideToolchain}})
 		case "star.statement":
-			resolve(match.Captures[1].Node.Text(src), "*", line)
+			resolve(match.Captures[1].Node.Text(src), "*", line, false)
 			dynamic(line)
 		case "future":
-			resolve("__future__", "", line)
+			resolve("__future__", "", line, false)
 		case "identifier":
 			switch node.Text(src) {
 			case "__builtins__", "__getattr__", "__import__", "__loader__", "__package__", "__path__", "__spec__",
@@ -124,28 +135,33 @@ func readPythonDependencies(ctx context.Context, repo repositoryFS, src []byte, 
 			}
 		case "comment":
 			if line <= 2 && strings.Contains(node.Text(src), "coding") {
+				invalidSyntax = true
 				// The Go parser reads UTF-8. A PEP 263 cookie may
 				// give these same bytes a different meaning.
 				out.addUnknown(Unknown{Code: UnknownUnsupportedConstruct, Line: line, DecidableBy: []DecidableBy{DecideToolchain}})
 			}
 		}
 	}
+	paths.finishFromLists(ctx, out, src, invalidSyntax)
 }
 
-func pythonDependencyMatches(ctx context.Context, src []byte) ([]tsengine.Match, error) {
+func pythonQueryMatches(ctx context.Context, src []byte, key, pattern string, types bool) ([]tsengine.Match, error) {
 	lease, err := tsengine.AcquireParser(ctx, "dependency-python", "python", "tree_sitter_python")
 	if err != nil {
 		return nil, err
 	}
 	defer lease.Release()
 	parser := lease.Parser()
-	query, ok := parser.Cached("dependency-python").(*tsengine.Query)
+	query, ok := parser.Cached(key).(*tsengine.Query)
 	if !ok {
-		query, err = parser.CompileQuery(pythonDependencyQuery)
+		query, err = parser.CompileQuery(pattern)
 		if err != nil {
 			return nil, err
 		}
-		parser.SetCached("dependency-python", query)
+		if types {
+			query.CaptureNodeTypes()
+		}
+		parser.SetCached(key, query)
 	}
 	tree, err := parser.Parse(src)
 	if err != nil {

@@ -169,3 +169,139 @@ func TestPythonDependencyAdmission(t *testing.T) {
 		t.Fatalf("dynamic import must remain incomplete after admission: %+v, %v", got, err)
 	}
 }
+
+func TestPythonDeclarativeFromList(t *testing.T) {
+	for _, tc := range []struct {
+		name, entry, source, initializer, candidate, childEdge string
+		complete                                               bool
+	}{
+		{name: "absolute reexports", entry: "entry.py", source: "from pack import one as renamed, two, dotted, VERSION", initializer: "'doc'\nfrom .leaf import first as one, two\nimport other.deep as dotted\nVERSION = (1, 2)", complete: true},
+		{name: "relative reexports", entry: "pack/entry.py", source: "from . import one, other", initializer: "from .leaf import one\nimport other.deep", complete: true},
+		{name: "one missing operand", entry: "entry.py", source: "from pack import one, missing", initializer: "from .leaf import one"},
+		{name: "child", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one", candidate: "pack/one.py", childEdge: "pack/one.py"},
+		{name: "case fold child", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one", candidate: "pack/One.py"},
+		{name: "full case fold child", entry: "entry.py", source: "from pack import mass", initializer: "mass = 1", candidate: "pack/maß.py"},
+		{name: "native child", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one", candidate: "pack/ONE.abi.so"},
+		{name: "namespace child", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one", candidate: "pack/one/nested.py"},
+		{name: "incompatible child", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one", candidate: "pack/one.pyi"},
+		{name: "package case alias", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one", candidate: "Pack/__init__.py"},
+		{name: "runtime hook", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one\ndef __getattr__(name): return name"},
+		{name: "conditional", entry: "entry.py", source: "from pack import one", initializer: "if enabled:\n    from .leaf import one"},
+		{name: "mutation", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import one\none = 1"},
+		{name: "computed", entry: "entry.py", source: "from pack import one", initializer: "one = make_value()"},
+		{name: "wildcard", entry: "entry.py", source: "from pack import one", initializer: "from .leaf import *"},
+		{name: "encoding", entry: "entry.py", source: "from pack import one", initializer: "# coding: latin-1\nfrom .leaf import one"},
+		{name: "invalid alias", entry: "entry.py", source: "from pack import one as __debug__", initializer: "one = 1"},
+		{name: "normalizing alias", entry: "entry.py", source: "from pack import one as K", initializer: "one = 1"},
+		{name: "normalization", entry: "entry.py", source: "from pack import K", initializer: "K = 1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := fstest.MapFS{
+				"pack/__init__.py":  {Data: []byte(tc.initializer)},
+				"pack/leaf.py":      {},
+				"other/__init__.py": {},
+				"other/deep.py":     {},
+			}
+			if tc.candidate != "" {
+				repo[tc.candidate] = &fstest.MapFile{}
+			}
+			r := &deps.Reader{}
+			got, err := r.ReadFile(t.Context(), repo, deps.Input{Path: tc.entry}, []byte(tc.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Complete != tc.complete {
+				t.Fatalf("complete = %v, want %v: %+v", got.Complete, tc.complete, got)
+			}
+			var targets []string
+			for _, e := range got.Edges {
+				if e.Resolution == deps.ResolvedFile {
+					targets = append(targets, e.To)
+				}
+			}
+			want := []string{"pack/__init__.py"}
+			if tc.childEdge != "" {
+				want = append(want, tc.childEdge)
+			}
+			if !slices.Equal(targets, want) {
+				t.Errorf("targets = %v, want %v", targets, want)
+			}
+			if !tc.complete && !slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool {
+				return u.Code == deps.UnknownDynamicImport && u.Line == 1
+			}) {
+				t.Errorf("missing from-list unknown: %+v", got.Unknowns)
+			}
+		})
+	}
+}
+
+func TestPythonDeclarativeFromListNeedsAttributableImports(t *testing.T) {
+	repo := fstest.MapFS{
+		"pack/__init__.py":         {Data: []byte("one = 1")},
+		"pack/leaf.py":             {},
+		"other/__init__.py":        {},
+		"other/nested/__init__.py": {},
+		"other/nested/leaf.py":     {},
+	}
+	for _, tc := range []struct {
+		name, entry, src string
+		targets          []string
+	}{
+		{"shared package target", "entry.py", "from pack import one\nimport pack", []string{"pack/__init__.py", "pack/__init__.py"}},
+		{"shared relative context", "pack/entry.py", "from . import one\nfrom .leaf import value", []string{"pack/__init__.py", "pack/leaf.py"}},
+		{"multi-file from site", "entry.py", "from pack import one\nfrom other.nested.leaf import value", []string{"pack/__init__.py", "other/__init__.py", "other/nested/__init__.py", "other/nested/leaf.py"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := (&deps.Reader{}).ReadFile(t.Context(), repo, deps.Input{Path: tc.entry}, []byte(tc.src))
+			if err != nil || got.Complete || !slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool {
+				return u.Code == deps.UnknownDynamicImport && u.Line == 1
+			}) {
+				t.Fatalf("expected the from-list gap to remain: %+v, %v", got, err)
+			}
+			var targets []string
+			for _, edge := range got.Edges {
+				if edge.Resolution == deps.ResolvedFile {
+					targets = append(targets, edge.To)
+				}
+			}
+			if !slices.Equal(targets, tc.targets) {
+				t.Fatalf("targets = %v, want %v", targets, tc.targets)
+			}
+		})
+	}
+}
+
+// A failed listing can still return part of a directory. The visible
+// initializer alone cannot prove that the requested child does not exist.
+type pythonPartialView struct{ fstest.MapFS }
+
+func (view pythonPartialView) Open(name string) (fs.File, error) {
+	f, err := view.MapFS.Open(name)
+	if name == "pack" && err == nil {
+		return pythonPartialDirectory{f}, nil
+	}
+	return f, err
+}
+
+type pythonPartialDirectory struct{ fs.File }
+
+func (d pythonPartialDirectory) ReadDir(n int) ([]fs.DirEntry, error) {
+	entries, err := d.File.(fs.ReadDirFile).ReadDir(n)
+	if err != nil {
+		return entries, err
+	}
+	return slices.DeleteFunc(entries, func(e fs.DirEntry) bool { return e.Name() == "one.py" }), fs.ErrNotExist
+}
+
+func TestPythonDeclarativeFromListRefusesPartialView(t *testing.T) {
+	repo := pythonPartialView{fstest.MapFS{
+		"pack/__init__.py": {Data: []byte("one = 1")},
+		"pack/one.py":      {},
+	}}
+	got, err := (&deps.Reader{}).ReadFile(t.Context(), repo, deps.Input{Path: "entry.py"}, []byte("from pack import one"))
+	if err != nil || got.Complete || !slices.ContainsFunc(got.Unknowns, func(u deps.Unknown) bool {
+		return u.Code == deps.UnknownDynamicImport && u.Line == 1
+	}) {
+		t.Fatalf("expected incomplete repository view to retain the gap: %+v, %v", got, err)
+	}
+}
