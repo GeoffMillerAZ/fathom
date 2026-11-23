@@ -90,6 +90,9 @@ the defect: `docs/bench/readings/tenancy/graph-patch-2026-10-26.md`, design `doc
 - [ ] Gate-clone verify runs recorded under the checkout they verify (5,489 of 15,329 ledger rows sit outside one). Proof: the ledger reading {id: ENG-10, symbol: recordUnderCheckout, package: internal/verify}
 - [ ] (op) Seven-day presence reading on the build fleet, each hook-path tool reported apart: the second step of the bar {id: ENG-M1, oracle: lexical, path: docs/bench/readings/realignment/eng-m1-presence-week.md, pattern: "^ENG-M1 verdict:", needs: "ENG-5,ENG-7,ENG-9,ENG-11"}
 
+- [-] ENG-12 Audit which query-time tools still read whole services, then move each to an indexed point lookup (4 / 3 / 2) {id: ENG-12, disposition: deferred, reason: "RT-85 already answers symbol and caller questions with indexed point lookups. Audit the remaining tools before expanding that pattern", trigger: "the owner lifts the engine program pause or ENG-M3 names a tool whose abandoned calls trace to a whole-service read"}
+- [-] ENG-13 Collect SQLite planner statistics after ingest with `PRAGMA optimize`. Test that the pinned query plans hold with and without statistics (3 / 1 / 2) {id: ENG-13, disposition: deferred, reason: "the store collects no planner statistics. RT-81 already has the query rewrite pinned by TestSymbolNamesForSource_QueryPlanRangesSourceRef", trigger: "ENG-12 starts or a second query is found planning badly"}
+
 ENG-M2 and ENG-M3 are readings that the order needs (the fresh tenant-clause week and the revert check). They carry the ENG-M
 prefix so the ENG-1 to ENG-11 ids stay as ruled.
 

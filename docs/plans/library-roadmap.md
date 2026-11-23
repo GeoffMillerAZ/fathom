@@ -1,8 +1,8 @@
-# The library roadmap: programs LP-1 to LP-7
+# The library roadmap: programs LP-1 to LP-8
 
 Status: Proposed 2026-11-12 (architect ruling, owner review pending).
 
-Grammar v2 (`docs/plans/README.md`). Prefixes: LP- (a program's done row), LIB- (library rows, LIB-1, LIB-4 and LIB-6 live in `docs/plans/realignment.md`, where LIB-2, LIB-3 and LIB-5 are retired as `[-]` rows), RL- (resource-lifetime rows, RL-Mn their readings), LREG- (register entries that wait on a trigger). Design: `docs/design/library-roadmap.md` (its sections 5, 7 and 12 are this plan). Decisions: ADR-092 (the library), ADR-099 (the hazard engine), ADR-105 to ADR-107 (ADR-107 opens the lifetime lane). Goal context: `docs/vision/46-proof-at-the-moment-of-change.md`.
+Grammar v2 (`docs/plans/README.md`). Prefixes: LP- (a program's done row), LIB- (library rows, LIB-1, LIB-4 and LIB-6 live in `docs/plans/realignment.md`, where LIB-2, LIB-3 and LIB-5 are retired as `[-]` rows), RL- (resource-lifetime rows, RL-Mn their readings), HLP- (consumer helpers), LREG- (register entries that wait on a trigger). Design: `docs/design/library-roadmap.md` (its sections 5, 7 and 12 are this plan). Decisions: ADR-092 (the library), ADR-099 (the hazard engine), ADR-105 to ADR-107 (ADR-107 opens the lifetime lane), ADR-116 (consumer helpers). Goal context: `docs/vision/46-proof-at-the-moment-of-change.md`.
 
 Rows owned by other plans are named by id in `needs` and never copied: the hazard rows are HZ-n in `docs/plans/change-hazards.md`, the infrastructure facts rows are IF-n in `docs/plans/iac-facts.md`, the library rows are LL-n in `docs/plans/lang-library.md`, and the main schedule is `docs/plans/realignment.md`. This plan holds only the rows those plans do not have: the licence notice, the closure bar, the hazard binary entry, stateful type candidates, the fact delta, the reading benchmark fixtures, the lifetime lane, one done row per program, and the register.
 
@@ -77,6 +77,17 @@ Not scheduled. On a yes to OQ3 it starts after HZ-3, HZ-4 and HZ-6, with HZ-13 a
 
 - [-] (op) The draft acceptance test: fidelity against labels fathom did not derive, strength by derived mutants, a receipt that binds the check, label and catalog digests, and a person still accepts the check. A seeded misread sentence is refused, and a draft with no outside labels is advice only {id: LIB-10, disposition: deferred, reason: "the kernel is not built until OQ3 reads yes, and nothing would consume the acceptance test before then", trigger: "OQ3 answered yes (the owner says yes, the policy tool's first design names evaluation through the library, or an outside adopter asks in writing), and HZ-14 landed"}
 
+## LP-8 Consumer helpers
+
+Scheduled in the order below. Work waits for the owner's lift of the pause.
+Record a miss as a miss. The program closes when all four helper rows are proven.
+
+- [ ] HLP-1 Span lookups over one Result. For each golden symbol and each line in its span, the enclosing lookup returns the innermost symbol. The touched set for fixed-seed random line ranges equals a brute-force scan. Pin the exact source slice and update the API snapshot. Reuse the existing read path {id: HLP-1, oracle: lexical, path: docs/bench/readings/library-roadmap/hlp-1-span-lookups.md, pattern: "^HLP-1 verdict: PASS$"}
+- [ ] HLP-3 Row export and schema. Rebuild the nested JSON from the JSON Lines rows and compare equal on every golden file. The schema accepts all golden outputs and rejects invalid fixtures. Row order is deterministic and rows expose only what the nested JSON exposes. Mark the surface provisional in the compatibility notes and pin the output in the binary goldens {id: HLP-3, oracle: lexical, path: docs/bench/readings/library-roadmap/hlp-3-row-export.md, pattern: "^HLP-3 verdict: PASS$"}
+- [ ] HLP-2 File outline. Equal input produces byte-equal output with only fields from the Result. Read outline bytes as a share of file bytes per code dialect on the pinned corpus. The median is at most 20 percent for code dialects. Pin the applicable API snapshot or binary goldens {id: HLP-2, oracle: lexical, path: docs/bench/readings/library-roadmap/hlp-2-file-outline.md, pattern: "^HLP-2 verdict: PASS$", needs: HLP-1}
+- [ ] HLP-4 Agent cookbook, second chapter of LBK-11. A test executes every tool definition and recipe against the built binary and the gate fails if a recipe stops running {id: HLP-4, oracle: lexical, path: docs/bench/readings/library-roadmap/hlp-4-agent-cookbook.md, pattern: "^HLP-4 verdict: PASS$", needs: "HLP-1,HLP-2,HLP-3,library-builder-kit.md#LBK-11"}
+- [ ] (op) LP-8 done: HLP-1 through HLP-4 proven {id: LP-8, oracle: lexical, path: docs/bench/readings/library-roadmap/lp-8-consumer-helpers.md, pattern: "^LP-8 verdict: PASS$", needs: "HLP-1,HLP-3,HLP-2,HLP-4"}
+
 ## Register: futures with their triggers
 
 Each row moves when its trigger fires. OQ15 satisfies T-IaC. Where a trigger names a second condition, it still needs that one. None is scheduled.
@@ -101,7 +112,7 @@ Entries whose row lives in another plan are held there with their triggers and a
 - [-] Interface diff for Terraform modules and Helm charts between two tags (U-8) {id: LREG-19, disposition: deferred, reason: "an outside wedge that fails only the consumer clause", trigger: "T-IaC, or a module maintainer asks"}
 - [-] The fact delta as a binary subcommand {id: LREG-20, disposition: deferred, reason: "the delta is internal until it has a consumer", trigger: "LIB-13 landed and a consumer outside the product asks"}
 - [-] The rest of the input inventory: base image pins, chart dependency versions, provider constraints (U-21) {id: LREG-21, disposition: deferred, reason: "constraints are values the door withholds", trigger: "a consumer, and a ruling on constraints"}
-- [-] A JSON Schema document for the fact JSON, for other policy engines (U-52) {id: LREG-22, disposition: deferred, reason: "no outside engine has asked", trigger: "an outside engine or the policy tool asks"}
+- [-] A JSON Schema document for the fact JSON (U-52) {id: LREG-22, disposition: refused, reason: "retired and superseded by HLP-3. Its trigger was met by the named row export use in ADR-116"}
 - [-] A validity grader for model-written infrastructure code (U-56) {id: LREG-23, disposition: deferred, reason: "a grader is an evaluator, which ADR-092 decision 10 leaves outside the library", trigger: "the policy tool or an evaluation builder asks"}
 - [-] An estate inventory inside an air gap, with file classification by measured level (U-58, U-67), a candidate vehicle for OQ2 {id: LREG-24, disposition: deferred, reason: "no outside adopter", trigger: "an outside adopter"}
 - [-] A conformance kit that grades other readers by the library's method (U-60), with CAP-28 {id: LREG-25, disposition: deferred, reason: "no outside reader exists", trigger: "the library is released and one outside reader asks"}
@@ -111,4 +122,19 @@ Entries whose row lives in another plan are held there with their triggers and a
 - [-] Control flow and def-use for languages other than Go {id: RL-12, disposition: refused, reason: "own build refused, site facts and ingest serve instead. Wins if typed edges are default for three languages and a consumer fleet is not Go. Re-read 2027-06-30"}
 - [-] A built-in best-practice corpus {id: LREG-29, disposition: refused, reason: "F90 refuses a general best-practice linter. Wins if a fleet language has no analyzer worth ingesting. Re-read 2027-06-30"}
 
-Also refused, with no row: a default rule pack, own per-function analyzers, a language server, a library MCP surface, workflow and migration linting, leases on resource addresses, and transpiling open rules into the kernel's algebra.
+### Consumer helpers
+
+The rated register is in [the library design](../design/library-roadmap.md#consumer-helpers-adr-116).
+
+- [-] HLP-5 Complete read key {id: LREG-30, disposition: deferred, reason: "an incomplete key serves stale facts silently", trigger: "LBK-9 shows repeated reads of unchanged files dominate a consumer's time and a critic lists every input the key must bind"}
+- [-] HLP-7 Long-running stdio mode {id: LREG-31, disposition: deferred, reason: "needs evidence that process overhead warrants a supervised mode", trigger: "LBK-9 shows process start dominates for a consumer not written in Go"}
+- [-] HLP-6 Tree reader in Go {id: LREG-32, disposition: deferred, reason: "the binary already supports -walk", trigger: "a Go consumer asks or LBK-12 shows consumers rewriting the walk"}
+- [-] HLP-9 Readability report {id: LREG-33, disposition: deferred, reason: "the need depends on adoption or the adjacent inventory uses", trigger: "an adopter asks or U-58 or U-67 moves"}
+- [-] HLP-10 Generated clients {id: LREG-34, disposition: deferred, reason: "generated types depend on a stable row schema and a consumer", trigger: "the HLP-3 schema is stable for one release and a consumer in that language asks"}
+- [-] HLP-8 In-memory fact set {id: LREG-35, disposition: deferred, reason: "overlaps the product index and E16", trigger: "FCT-11's census shows use (the E16 trigger) and a consumer needs lookups without the product"}
+- [-] HLP-14 Context packer {id: LREG-36, disposition: deferred, reason: "the product readouts own context selection", trigger: "a consumer outside the product asks and the readouts' own readings pass"}
+- [-] HLP-11 Incremental re-read {id: LREG-37, disposition: deferred, reason: "needs evidence that a full single-file re-read misses its budget", trigger: "LBK-9 shows single-file re-read time over its frozen budget"}
+- [-] HLP-13 Library MCP server {id: LREG-38, disposition: refused, reason: "the product owns the MCP surface (ADR-116). Wins if a named consumer asks in writing"}
+- [-] HLP-12 Library query language {id: LREG-39, disposition: refused, reason: "ADR-116 selects row export for existing query tools. Wins if a consumer shows a question the HLP-3 row export plus SQL or jq cannot express at acceptable cost"}
+
+Also refused, with no row: a default rule pack, own per-function analyzers, a language server, workflow and migration linting, leases on resource addresses, and transpiling open rules into the kernel's algebra.

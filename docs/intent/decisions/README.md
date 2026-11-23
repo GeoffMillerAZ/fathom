@@ -152,3 +152,4 @@ Session-scale rejections live in plans as `[-]` rows with `disposition: refused|
 and a `trigger:`; they die with the plan.
 | ADR-114 | accepted (owner-architect, 2026-11-18) | product / architecture | Standalone dependency edges disclose unknowns per file | a dialect misses B1/B2, the library exceeds its closure budget, or a consumer needs a new closed-set member |
 | ADR-115 | accepted (owner-architect, 2026-11-18) | product / architecture | Library capabilities can ship with a wired first use and a dated keep-or-cut reading | a keep-or-cut reading misses its bar, or the first use stops evaluating the capability |
+| ADR-116 | accepted (owner-architect, 2026-11-23) | product / architecture | The understanding library gets helpers and a row export, not a query language | SQL or jq cannot express a consumer's question at acceptable cost, a written requirement reorders the register, or the export goes unused for one release |

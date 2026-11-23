@@ -7396,3 +7396,34 @@ DEP-P1b owns the consumer switch and the other repository's boundary amendment.
 **Decision models.** None applies. The boundary and filter verdicts are deterministic, and the keep-or-cut readings count observed uses. Provider `none` covers the whole path.
 
 **Revisit when.** BND-M1 or PF-M1 reads below its preregistered bar, or an admission through first use stops evaluating the capability it was built to exercise.
+
+## ADR-116: The understanding library gets helpers and a row export, not a query language (2026-11-23)
+
+**Status.** Accepted 2026-11-23 (owner-architect ruling). **Type.** product / architecture.
+Design: [library roadmap §5](docs/design/library-roadmap.md#lp-8-consumer-helpers-adr-116) and [§7](docs/design/library-roadmap.md#consumer-helpers-adr-116).
+Plans: [LP-8](docs/plans/library-roadmap.md#lp-8-consumer-helpers) and
+[PG-1](docs/plans/realignment.md#pg-1-engine-presence).
+
+**Context.** The owner asked for a rated register of consumer helpers and a decision on a library query language. I69 and ADR-092 decision 1 keep a read stateless, with bytes in and facts out. ADR-093 decision 5 keeps one registry of named queries and rejects a product query language. ADR-068 applies the same boundary to receipts, and [Vision 29 §4](docs/vision/29-verbs-not-lookups.md#4-what-fathom-refuses-from-the-do-not-list-now-doctrine) keeps a general query DSL out. ADR-092 decision 10 keeps the library's scope narrow. Library roadmap §7 keeps the language server and library MCP surface refused. [F99](docs/intent/futures/f98-f99.md#f99-further-public-doors) governs further public doors.
+
+Builder kit [LK-D1](docs/design/library-builder-kit.md#lk-d1-attestation-meets-the-import-condition-not-every-trigger), [LK-D2](docs/design/library-builder-kit.md#lk-d2-ship-building-blocks-not-a-scanner-corpus), [LK-D4](docs/design/library-builder-kit.md#lk-d4-use-three-reference-consumers-until-requirements-arrive) and [LK-D6](docs/design/library-builder-kit.md#lk-d6-make-the-builder-path-stable-and-measurable) keep the outside import attested and unseen, the library focused on building blocks, and proofs on the API snapshots and binary goldens. The owner asks on a consumer's behalf. The LBK-2 requirements sheet is unanswered, so the ratings are architect estimates. No ADR revisit condition has fired.
+
+**Decision.**
+
+1. Keep the library free of a query language. A stateless read supplies facts. Cross-read indexing belongs to the product. The planned declarative layer is the caller-authored check kernel (HZ-13 to HZ-16 and LK-D4). Consumers can use existing SQL and jq skills without learning a new prompt vocabulary.
+2. Schedule HLP-3 as a provisional JSON Lines row export from `extract` with a published schema. The named export use meets the U-52 trigger. HLP-3 supersedes LREG-22.
+3. Scope scheduled helpers to pure functions over a Result or thin output modes. Each helper joins the API snapshot or binary goldens. The boundary excludes stores, processes, cache files, additional value reads and new dialect behavior.
+4. Record the ranked register using value at least 4, effort at most 3 and risk at most 2 as the selection bar. Schedule HLP-1, HLP-3, HLP-2 and HLP-4 in that order. The owner must lift the pause before work starts. Keep the other entries with their triggers or refusal conditions.
+5. Defer the point-lookup audit (ENG-12) and SQLite planner-statistics work (ENG-13) on the engine program.
+
+**Decision models.** None applies. Every helper is computed from a read.
+
+**Alternatives rejected.**
+
+- *Library query language.* It adds a language at a stateless boundary. Wins if a consumer shows a question that HLP-3 rows plus SQL or jq cannot express at acceptable cost.
+- *Library MCP server.* The product owns the MCP surface. Wins if a named consumer asks in writing ([library use census](docs/assessments/2026-11-12-library-uses.md#spin-offs-community-and-the-code-side)).
+- *In-memory index in the library.* It overlaps the product index and the E16 resolver. Wins if FCT-11's census shows use and a consumer needs cross-read lookups without the product.
+
+**Consequences.** Consumers can plan against four scoped helpers with acceptance bars set before implementation. The export's schema is provisional. The product keeps responsibility for indexed queries and MCP. Both programs remain paused.
+
+**Revisit when.** A consumer shows a question the HLP-3 row export plus SQL or jq cannot express at acceptable cost, a written consumer requirement reorders the table, or the HLP-3 surface has gone unused for one release after shipping.

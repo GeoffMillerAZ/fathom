@@ -232,6 +232,13 @@ Not scheduled. On a yes it starts after HZ-3, HZ-4 and HZ-6.
 | HZ-15 (M3 half), HZ-16, HZ-18 | Soundness against plan values. Mutation operators (M5). Agreement on value checks (M6). | 1.000 on a literal basis and 0.99 on defaulted, 100% kill, a confusion matrix |
 | LIB-10 | The draft acceptance test. Fidelity against labels fathom did not derive. Strength by derived mutants. A receipt that binds the check, label and catalog digests. A person still accepts the check. | a seeded misread sentence is refused. A draft with no outside labels is advice only |
 
+### LP-8 Consumer helpers (ADR-116)
+
+HLP-1 schedules span lookups, HLP-3 a provisional row export and schema,
+HLP-2 a compact file outline, and HLP-4 an executable second chapter of the
+agent cookbook. The helpers work from a read. LP-8 closes when all four rows
+are proven. Work remains paused until the owner lifts the pause for these rows.
+
 ### Dependency edges (ADR-114)
 
 The CI kit needs direct file dependencies and an explicit per-file completeness
@@ -293,7 +300,7 @@ Not roadmap rows. Each moves when its trigger fires. OQ15 satisfies T-IaC. Where
 | Interface diff for Terraform modules and Helm charts between two tags (U-8) | T-IaC, or a module maintainer asks |
 | The fact delta as a binary subcommand | LIB-13 landed and a consumer outside the product asks |
 | The rest of the input inventory: base image pins, chart dependency versions, provider constraints (U-21) | a consumer, and a ruling on constraints, which are values the door withholds |
-| A JSON Schema document for the fact JSON, for other policy engines (U-52) | an outside engine or the policy tool asks |
+| A JSON Schema document for the fact JSON (U-52, LREG-22) | Retired. The row export is its named use and meets the trigger. HLP-3 supersedes it. |
 | A validity grader for model-written infrastructure code (U-56). A grader is an evaluator, which ADR-092 decision 10 leaves outside. | the policy tool or an evaluation builder asks |
 | An estate inventory inside an air gap, with file classification by measured level (U-58, U-67) | an outside adopter. A candidate vehicle for OQ2 |
 | A conformance kit that grades other readers by the library's method (U-60), with CAP-28 | the library is released and one outside reader asks |
@@ -325,6 +332,29 @@ at most 3 effort and at most 2 risk.
 | ADJ-3 | Generated-file staleness | Generated files whose generator inputs changed since generation. | 3 / 3 / 3 | Register. |
 | ADJ-7 | Build context minimum | Files an image build can read and gaps in the ignore file. | 2 / 2 / 3 | Register. |
 | ADJ-12 | Minimal checkout | The sparse file set required by a unit. | 2 / 2 / 4 | Register. |
+
+### Consumer helpers (ADR-116)
+
+Ratings are architect estimates on the adjacent register's 1–5 scale. The bar
+is value at least 4, effort at most 3 and risk at most 2. The LBK-2 consumer
+requirements sheet remains unanswered.
+
+| ID | Helper | What a consumer gets | V / E / R | Selection |
+|---|---|---|---|---|
+| HLP-1 | Span lookups | The innermost symbol enclosing a line, the symbols a line range touches, and the exact source slice of a symbol. Pure functions over one Result. | 4 / 1 / 1 | Selected. Building block of LIB-13's touch set. |
+| HLP-3 | Row export and schema | `extract` can print one row per symbol, reference, fact and unresolved reference as JSON lines, with a published schema, so jq, SQLite or DuckDB query it directly. The answer to the query-language question. | 4 / 2 / 2 | Selected. Supersedes the U-52 register row. Provisional surface. |
+| HLP-2 | File outline | A compact, deterministic outline of one file from one read: names, kinds, the signatures the door already returns, line spans, nesting. For agent context in place of the whole file. | 4 / 2 / 2 | Selected. |
+| HLP-4 | Agent cookbook | Tested, copy-ready tool definitions and recipes for the common agent jobs (outline, enclosing symbol, touched symbols, file dependencies, boundary check). No server. A second chapter of the LBK-11 cookbook. | 4 / 2 / 2 | Selected, after HLP-1 to HLP-3. |
+| HLP-5 | Complete read key | One function returning the full key of a read: reader version, dialect table, options, pack digest and content digest. Storage stays with the caller. | 4 / 2 / 3 | Register. An incomplete key serves stale facts silently. |
+| HLP-7 | Long-running stdio mode | One supervised process answering many requests, so a consumer not written in Go stops paying process start per call. | 4 / 3 / 3 | Register. |
+| HLP-6 | Tree reader in Go | Read a file tree through the Go API with a bounded worker pool and deterministic order. The binary already has `-walk`. | 3 / 2 / 2 | Register. |
+| HLP-9 | Readability report | Per repository, the share of files by dialect and measured level, and the reasons files read incomplete. | 3 / 1 / 1 | Register. Neighbour of U-58 and U-67. |
+| HLP-10 | Generated clients | TypeScript and Python types generated from the HLP-3 schema. | 3 / 2 / 2 | Register, behind HLP-3. |
+| HLP-8 | In-memory fact set | Typed lookups across many reads: by name, by kind, by reference target. | 3 / 3 / 3 | Register. Overlaps the product's index and the cross-file resolver (E16). |
+| HLP-14 | Context packer | A budgeted selection of outlines and bodies across several files. | 3 / 3 / 3 | Register. The product's readouts own this today. |
+| HLP-11 | Incremental re-read | Re-read after an edit without parsing the whole file again. | 3 / 4 / 3 | Register. |
+| HLP-13 | Library MCP server | The helpers served over MCP. | 3 / 2 / 4 | Refused, unchanged (section 7). The product is the MCP surface. |
+| HLP-12 | Library query language | A language for asking questions of facts. | 2 / 5 / 4 | Refused (HLP-D1). |
 
 ## 8. Spin-off steps, in order
 
