@@ -42,8 +42,16 @@ type listedPackage struct {
 // package reached and a count over the budget. It is separate from the go list
 // call so its checks can be held to known inputs.
 func closureProblems(pkgs []listedPackage) []string {
-	var problems []string
-	nonStd := 0
+	problems, nonStd := forbiddenProblems(pkgs)
+	if nonStd > packageBudget {
+		problems = append(problems, "links "+strconv.Itoa(nonStd)+" non-standard packages, over the budget "+strconv.Itoa(packageBudget))
+	}
+	return problems
+}
+
+// forbiddenProblems returns the list errors and forbidden packages of a dependency set, and its count of
+// non-standard packages. closureProblems adds the budget to it.
+func forbiddenProblems(pkgs []listedPackage) (problems []string, nonStd int) {
 	for _, p := range pkgs {
 		if p.Error != nil {
 			problems = append(problems, "go list reports an error for "+p.ImportPath+": "+p.Error.Err)
@@ -57,10 +65,7 @@ func closureProblems(pkgs []listedPackage) []string {
 			}
 		}
 	}
-	if nonStd > packageBudget {
-		problems = append(problems, "links "+strconv.Itoa(nonStd)+" non-standard packages, over the budget "+strconv.Itoa(packageBudget))
-	}
-	return problems
+	return problems, nonStd
 }
 
 // goListDeps runs go list on pkg (a path relative to the working directory)
@@ -110,6 +115,44 @@ func TestLangClosure(t *testing.T) {
 func TestIacClosure(t *testing.T) {
 	for _, problem := range closureProblems(goListDeps(t, "./iac", "github.com/geoffmilleraz/fathom/pkg/lang/iac")) {
 		t.Error(problem)
+	}
+}
+
+// HLP-1 (CH-D5, ESCALATE-26 Q1): the door's budget is pkg/lang's and does not grow. pkg/lang/view holds the
+// forbidden set out, and its closure is pkg/lang's closure plus view itself and nothing else, so a consumer of
+// view links one package more than a pkg/lang-only consumer. It imports pkg/lang and the standard library only.
+func TestViewClosure(t *testing.T) {
+	const self = "github.com/geoffmilleraz/fathom/pkg/lang/view"
+	viewPkgs := goListDeps(t, "./view", self)
+	forbidden, _ := forbiddenProblems(viewPkgs)
+	for _, problem := range forbidden {
+		t.Error(problem)
+	}
+	inDoor := map[string]bool{}
+	for _, p := range goListDeps(t, ".", "github.com/geoffmilleraz/fathom/pkg/lang") {
+		inDoor[p.ImportPath] = true
+	}
+	for _, p := range viewPkgs {
+		if p.ImportPath != self && !inDoor[p.ImportPath] {
+			t.Errorf("pkg/lang/view reaches %s, which pkg/lang does not: the door's package budget would grow", p.ImportPath)
+		}
+	}
+	if len(viewPkgs) != len(inDoor)+1 {
+		t.Errorf("pkg/lang/view links %d packages, want pkg/lang's %d plus itself", len(viewPkgs), len(inDoor))
+	}
+	cmd := exec.Command("go", "list", "-e", "-f", "{{join .Imports \"\\n\"}}", "./view")
+	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list ./view: %v", err)
+	}
+	for _, imp := range strings.Fields(string(out)) {
+		if imp == "github.com/geoffmilleraz/fathom/pkg/lang" {
+			continue
+		}
+		if strings.Contains(strings.SplitN(imp, "/", 2)[0], ".") {
+			t.Errorf("pkg/lang/view imports %s: only pkg/lang and the standard library are allowed", imp)
+		}
 	}
 }
 

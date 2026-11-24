@@ -1,0 +1,82 @@
+package view // import "github.com/geoffmilleraz/fathom/pkg/lang/view"
+
+Package view answers span questions over a lang.Result: which symbol encloses
+a line or a line range, which symbols a line range touches, and what bytes a
+symbol's span holds in the caller's own source.
+
+Provisional: fields and functions may change in a minor release until the LP-8
+readings pass and one release has shipped (CH-D5). The package imports pkg/lang
+and the standard library only. Its closure is pkg/lang's plus this package,
+so a consumer of view links one package more than a consumer of pkg/lang alone.
+
+A symbol has a known span when EndLine >= Line > 0. A symbol without one
+is never guessed: a lookup the Result cannot decide answers StatusUnknown,
+and a Touched set says it is incomplete. Nothing here reads a file or adds text
+a Result does not already carry, except Slice, which returns the caller's own
+bytes to the caller.
+
+FUNCTIONS
+
+func Slice(src []byte, s lang.Symbol) ([]byte, bool)
+    Slice returns the bytes of lines s.Line to s.EndLine of src, with their line
+    endings, and false when the span is unknown or does not lie inside src.
+    It reads nothing but src, and the returned slice shares src's memory.
+
+
+TYPES
+
+type Index struct {
+	// Has unexported fields.
+}
+    Index answers span lookups over one Result. It is immutable after NewIndex
+    and safe for concurrent use. The zero Index holds no symbols and reads as
+    incomplete: every answer is unknown.
+
+func NewIndex(r lang.Result) *Index
+    NewIndex builds the lookup once. It keeps copies of what it needs, so a
+    later change to r by the caller changes no answer. Keys are expected to be
+    unique within r: two symbols with the same Key and span tie, and which one
+    an answer returns then follows the input order.
+
+func (ix *Index) Enclosing(line int) (lang.Symbol, Status)
+    Enclosing returns the innermost symbol whose known span holds line. It is
+    EnclosingRange(line, line).
+
+func (ix *Index) EnclosingRange(start, end int) (lang.Symbol, Status)
+    EnclosingRange returns the innermost symbol whose known span holds every
+    line of start..end: the latest Line, then the earliest EndLine, then the
+    largest Key (the last symbol in listing order).
+
+    The status is found only when the read is complete, a known span holds the
+    whole range, and no symbol with an unknown span could be the innermost:
+    none has a Line below 1, or a Line at or after the candidate's Line and
+    at or before start. A symbol with an unknown span that starts before the
+    candidate's Line can only be outer and does not block found. It is none only
+    when the read is complete, no known span holds the range and no symbol with
+    an unknown span starts at or before start, a Line below 1 counting as before
+    start. Otherwise it is unknown, and the candidate (possibly the zero Symbol)
+    is returned as a hint. A Skipped Result, start below 1 and end below start
+    are unknown with the zero Symbol.
+
+func (ix *Index) Touched(start, end int) (syms []lang.Symbol, complete bool)
+    Touched returns every symbol whose known span intersects start..end, plus
+    every symbol with an unknown span whose Line lies in the range, sorted by
+    Line, then EndLine descending, then Key. complete is false when the read is
+    Incomplete or Skipped, or a symbol with an unknown span starts before start
+    (it may have reached into the range). start below 1 and end below start give
+    an empty set and false.
+
+type Status string
+    Status is the answer class of Enclosing and EnclosingRange.
+
+const (
+	// StatusFound: the returned symbol is the innermost one holding the line.
+	StatusFound Status = "found"
+	// StatusNone: no symbol holds the line, and the Result can say so.
+	StatusNone Status = "none"
+	// StatusUnknown: the Result cannot decide. The symbol returned, possibly the
+	// zero Symbol, is a hint and not an answer.
+	StatusUnknown Status = "unknown"
+)
+    The closed set of Status values.
+
