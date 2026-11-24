@@ -4,6 +4,7 @@
 //
 //	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
 //	    [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
+//	fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
 //	fathom-lang dialects [-pack DIR]
 //	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
 //	    [-in-process] PATH...
@@ -53,6 +54,7 @@ import (
 const usage = `usage:
   fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
                       [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
+  fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
   fathom-lang dialects [-pack DIR]
   fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                         [-in-process] PATH...
@@ -67,6 +69,13 @@ extract reads each PATH (absolute, or relative to -root, default the working
 directory) and prints {"schema_version":1,"files":[{"path":...,"error":...,
 "result":...}]} as JSON. A file that cannot be read has an error and a null
 result, and the other files are still read.
+fathom-lang at (provisional: its JSON shape may change in a minor release) reads each distinct
+PATH once, as extract does, and answers each PATH:LINE or PATH:LINE-END with {"path","start","end",
+"status","enclosing","touched","complete","error"} in {"schema_version":1,"queries":[...]}, in argument
+order. status is found, none or unknown: unknown when the read cannot decide (a symbol with no end
+line, an incomplete or skipped read), and then enclosing is a hint or null. enclosing is the innermost
+symbol holding the whole range, touched every symbol the range reaches, complete false when a symbol
+without an end line may reach into it. No source text is printed. Exit codes as extract.
 dialects prints {"schema_version":1,"dialects":[...]} with every dialect and
 its measured level.
 Exit 0 on success, 1 when a file could not be read or the run failed, 2 on misuse.
@@ -137,6 +146,8 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 	switch args[0] {
 	case "extract":
 		err = cmdExtract(ctx, args[1:], in, out)
+	case "at":
+		err = cmdAt(ctx, args[1:], out)
 	case "dialects":
 		err = cmdDialects(args[1:], out)
 	case "resources":
