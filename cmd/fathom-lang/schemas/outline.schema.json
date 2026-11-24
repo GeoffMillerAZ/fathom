@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fathom.invalid/schema/fathom-lang/outline.schema.json",
+  "title": "fathom-lang outline -format json (provisional)",
+  "description": "The document fathom-lang outline -format json prints. Provisional: the shape may change in a minor release. The text form is not described by a schema.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/File"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "files"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "File": {
+      "description": "One PATH. outline is null when the file could not be read, and error says why.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "outline": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Outline"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "error",
+        "outline"
+      ],
+      "additionalProperties": false
+    },
+    "Outline": {
+      "description": "The shape of one file. The counts are those of the whole read, not of what -max-nodes kept. omitted is the number of nodes -max-nodes dropped. Every string is a field of the read or the path.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "dialect": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string"
+        },
+        "skipped": {
+          "type": "string"
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Node"
+          }
+        },
+        "symbols": {
+          "type": "integer"
+        },
+        "references": {
+          "type": "integer"
+        },
+        "unresolved": {
+          "type": "integer"
+        },
+        "facts": {
+          "type": "integer"
+        },
+        "notes": {
+          "type": "integer"
+        },
+        "omitted": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "dialect",
+        "language",
+        "level",
+        "skipped",
+        "incomplete",
+        "nodes",
+        "symbols",
+        "references",
+        "unresolved",
+        "facts",
+        "notes",
+        "omitted"
+      ],
+      "additionalProperties": false
+    },
+    "Node": {
+      "description": "One symbol. span_known is false when the symbol has no known span, and end_line is then not an end. children are the symbols its span holds, nested by span containment.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "canonical": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "span_known": {
+          "type": "boolean"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Node"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "kind",
+        "canonical",
+        "signature",
+        "line",
+        "end_line",
+        "span_known",
+        "children"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

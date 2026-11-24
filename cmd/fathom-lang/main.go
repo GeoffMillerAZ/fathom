@@ -5,6 +5,8 @@
 //	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
 //	    [-deadline DURATION] [-max-memory SIZE] [-in-process] [-rows] PATH...
 //	fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
+//	fathom-lang outline [-root DIR] [-format text|json] [-max-nodes N] [-deadline DURATION] [-max-memory SIZE]
+//	    [-in-process] PATH...
 //	fathom-lang schema [extract|rows|at|outline]
 //	fathom-lang dialects [-pack DIR]
 //	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
@@ -56,6 +58,8 @@ const usage = `usage:
   fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
                       [-deadline DURATION] [-max-memory SIZE] [-in-process] [-rows] PATH...
   fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
+  fathom-lang outline [-root DIR] [-format text|json] [-max-nodes N] [-deadline DURATION] [-max-memory SIZE]
+                      [-in-process] PATH...
   fathom-lang schema [extract|rows|at|outline]
   fathom-lang dialects [-pack DIR]
   fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
@@ -79,6 +83,16 @@ line, an incomplete or skipped read), and then enclosing is a hint or null. encl
 symbol holding the whole range, touched every symbol the range reaches, complete false when a symbol
 without an end line may reach into it. LINE and END are at least 1 and END is not below LINE, else exit 2.
 No source text is printed. Exit codes as extract.
+fathom-lang outline (provisional: its text and JSON forms may change in a minor release) reads each PATH as
+extract does and prints the shape of the file: its symbols nested by span containment, with only strings the
+read carries. Text form: a header "# PATH dialect=D level=L[ incomplete][ skipped=REASON]", one line per
+node, indented two spaces per depth, "LINE-END KIND NAME[  SIGNATURE]" (END is ? when the symbol has no end
+line, KIND is the canonical kind or else the kind), and a footer "# symbols=N references=N unresolved=N
+facts=N notes=N[ omitted=N]". -max-nodes N drops the deepest level first, then the next, until at most N
+nodes remain (a top level alone over N keeps its first N), and the footer then ends with omitted=. -format
+json prints {"schema_version":1,"files":[{"path","error","outline"}]} with outline null for a file that could
+not be read (text prints "# PATH error=..." for it). An incomplete or skipped read still prints an outline,
+flagged in its header. -max-nodes below 0, an unknown -format and no PATH exit 2. Exit codes as extract.
 extract -rows (provisional: the row shape may change in a minor release) prints JSON Lines in place of the
 nested document, from the same reads, with the same flags and exit codes. The first line is {"row":"header",
 "rows_version":1,"schema_version":1}. Each file then has a {"row":"file",...} line and, in array order, its
@@ -87,7 +101,7 @@ array) and the fields of the matching extract JSON object. A file that could not
 its error and "has_result":false. "null_arrays" names the arrays the nested document prints as null. Load the
 lines into SQLite or DuckDB, or query them with jq.
 fathom-lang schema (provisional) prints the JSON Schema (draft 2020-12) of extract, rows (one line of extract
--rows) or at, embedded in the binary. outline is not available yet. The same files are under
+-rows), at or outline (the JSON form), embedded in the binary. The same files are under
 docs/schema/fathom-lang in the source tree.
 dialects prints {"schema_version":1,"dialects":[...]} with every dialect and
 its measured level.
@@ -161,6 +175,8 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 		err = cmdExtract(ctx, args[1:], in, out)
 	case "at":
 		err = cmdAt(ctx, args[1:], out)
+	case "outline":
+		err = cmdOutline(ctx, args[1:], out)
 	case "schema":
 		err = cmdSchema(args[1:], out)
 	case "dialects":

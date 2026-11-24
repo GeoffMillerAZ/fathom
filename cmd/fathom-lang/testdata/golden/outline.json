@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "main.tf",
+      "error": "",
+      "outline": {
+        "path": "main.tf",
+        "dialect": "terraform",
+        "language": "terraform",
+        "level": "<level>",
+        "skipped": "",
+        "incomplete": false,
+        "nodes": [
+          {
+            "key": "main.aws_s3_bucket.b",
+            "name": "aws_s3_bucket.b",
+            "kind": "TerraformResource",
+            "canonical": "resource",
+            "signature": "",
+            "line": 1,
+            "end_line": 3,
+            "span_known": true,
+            "children": []
+          },
+          {
+            "key": "main.var.name",
+            "name": "var.name",
+            "kind": "TerraformVariable",
+            "canonical": "variable_decl",
+            "signature": "",
+            "line": 5,
+            "end_line": 5,
+            "span_known": true,
+            "children": []
+          }
+        ],
+        "symbols": 2,
+        "references": 1,
+        "unresolved": 0,
+        "facts": 0,
+        "notes": 0,
+        "omitted": 0
+      }
+    },
+    {
+      "path": "a.go",
+      "error": "",
+      "outline": {
+        "path": "a.go",
+        "dialect": "go",
+        "language": "go",
+        "level": "<level>",
+        "skipped": "",
+        "incomplete": false,
+        "nodes": [
+          {
+            "key": "a.F",
+            "name": "F",
+            "kind": "GoFunc",
+            "canonical": "function",
+            "signature": "func F()",
+            "line": 3,
+            "end_line": 3,
+            "span_known": true,
+            "children": []
+          },
+          {
+            "key": "a.G",
+            "name": "G",
+            "kind": "GoFunc",
+            "canonical": "function",
+            "signature": "func G()",
+            "line": 5,
+            "end_line": 5,
+            "span_known": true,
+            "children": []
+          }
+        ],
+        "symbols": 2,
+        "references": 1,
+        "unresolved": 0,
+        "facts": 0,
+        "notes": 0,
+        "omitted": 0
+      }
+    },
+    {
+      "path": "blob.bin",
+      "error": "",
+      "outline": {
+        "path": "blob.bin",
+        "dialect": "",
+        "language": "unclassified",
+        "level": "",
+        "skipped": "binary",
+        "incomplete": false,
+        "nodes": [],
+        "symbols": 0,
+        "references": 0,
+        "unresolved": 0,
+        "facts": 0,
+        "notes": 0,
+        "omitted": 0
+      }
+    },
+    {
+      "path": "misc.yaml",
+      "error": "",
+      "outline": {
+        "path": "misc.yaml",
+        "dialect": "",
+        "language": "yaml",
+        "level": "",
+        "skipped": "unclassified",
+        "incomplete": false,
+        "nodes": [],
+        "symbols": 0,
+        "references": 0,
+        "unresolved": 0,
+        "facts": 0,
+        "notes": 1,
+        "omitted": 0
+      }
+    },
+    {
+      "path": "missing.go",
+      "error": "open <root>/missing.go: no such file or directory",
+      "outline": null
+    }
+  ]
+}

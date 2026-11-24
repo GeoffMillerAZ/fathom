@@ -1,0 +1,4 @@
+# multi.go dialect=go level=<level>
+4-12 function Run  func Run( name string, count int, ) ( string, error, )
+14-18 interface Runner
+# symbols=2 references=0 unresolved=0 facts=0 notes=0

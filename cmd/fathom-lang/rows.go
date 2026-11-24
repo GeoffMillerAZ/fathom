@@ -40,15 +40,13 @@ func cmdSchema(args []string, out io.Writer) error {
 		return usageError{errors.New("schema takes one name: extract, rows, at or outline")}
 	}
 	switch name := args[0]; name {
-	case "extract", "rows", "at":
+	case "extract", "rows", "at", "outline":
 		b, err := schemaFS.ReadFile("schemas/" + name + ".schema.json")
 		if err != nil {
 			return err
 		}
 		_, err = out.Write(b)
 		return err
-	case "outline":
-		return fmt.Errorf("schema outline is not yet available: the outline shape does not exist yet")
 	default:
 		return usageError{fmt.Errorf("schema %q: want extract, rows, at or outline", name)}
 	}

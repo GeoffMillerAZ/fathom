@@ -1,0 +1,5 @@
+# nest.py dialect=python level=<level>
+1-12 module <module>
+  1-8 class Shape
+  11-12 function make  def make():
+# symbols=6 references=2 unresolved=0 facts=0 notes=0 omitted=3

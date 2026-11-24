@@ -121,7 +121,7 @@ func TestExtractWithoutRowsIsNested(t *testing.T) {
 	}
 }
 
-var schemaNames = []string{"extract", "rows", "at"}
+var schemaNames = []string{"extract", "rows", "at", "outline"}
 
 // HLP-3: the schemas the binary embeds are pinned by binary goldens and equal the published copies.
 func TestSchemaSubcommandGoldensAndPublishedCopies(t *testing.T) {
@@ -164,7 +164,7 @@ func TestSchemaSubcommandGoldensAndPublishedCopies(t *testing.T) {
 	}
 }
 
-func TestSchemaSubcommandMisuseAndOutline(t *testing.T) {
+func TestSchemaSubcommandMisuse(t *testing.T) {
 	if _, _, code := runCmd(t, "schema"); code != 2 {
 		t.Errorf("schema with no name exit %d, want 2", code)
 	}
@@ -173,10 +173,6 @@ func TestSchemaSubcommandMisuseAndOutline(t *testing.T) {
 	}
 	if _, _, code := runCmd(t, "schema", "extract", "rows"); code != 2 {
 		t.Errorf("schema with two names exit %d, want 2", code)
-	}
-	out, errw, code := runCmd(t, "schema", "outline")
-	if code != 1 || out != "" || !strings.Contains(errw, "not yet available") {
-		t.Errorf("schema outline = exit %d, stdout %q, stderr %q, want exit 1 and a not yet available error", code, out, errw)
 	}
 }
 
@@ -243,7 +239,7 @@ func validateRows(check func([]byte) error, jsonl string) error {
 // HLP-3: every golden output validates against its schema.
 func TestSchemasAcceptGoldens(t *testing.T) {
 	golden := filepath.Join("testdata", "golden")
-	for _, c := range []struct{ schema, file string }{{"extract", "extract.json"}, {"at", "at.json"}} {
+	for _, c := range []struct{ schema, file string }{{"extract", "extract.json"}, {"at", "at.json"}, {"outline", "outline.json"}} {
 		b, err := os.ReadFile(filepath.Join(golden, c.file))
 		if err != nil {
 			t.Fatal(err)
@@ -291,7 +287,7 @@ func TestSchemaFixturePairs(t *testing.T) {
 		}
 	}
 	// The faults the row says the schema rejects are all present.
-	for _, want := range []string{"rows.missing-required-field.json", "rows.wrong-type.json", "rows.unknown-row-kind.json", "extract.missing-required-field.json", "extract.wrong-type.json", "at.missing-required-field.json", "at.wrong-type.json"} {
+	for _, want := range []string{"rows.missing-required-field.json", "rows.wrong-type.json", "rows.unknown-row-kind.json", "extract.missing-required-field.json", "extract.wrong-type.json", "at.missing-required-field.json", "at.wrong-type.json", "outline.missing-required-field.json", "outline.wrong-type.json"} {
 		if _, err := os.Stat(filepath.Join("testdata", "schema", "invalid", want)); err != nil {
 			t.Errorf("missing invalid fixture %s", want)
 		}
@@ -395,6 +391,21 @@ func TestSchemasCoverEveryJSONTag(t *testing.T) {
 	})
 	// The at schema carries lang.Symbol for its enclosing and touched symbols.
 	check("at", loadSchemaDoc(t, "at"), []shape{{"Symbol", jsonTags(lang.Symbol{})}})
+	// The outline schema carries view.OutlineDoc and view.OutlineNode, and every lang.Symbol tag is either a node
+	// field or named here as one an outline does not carry (CH-D4: an outline adds no text and drops what is not
+	// structure).
+	check("outline", loadSchemaDoc(t, "outline"), []shape{
+		{"Outline", jsonTags(view.OutlineDoc{})},
+		{"Node", jsonTags(view.OutlineNode{})},
+		{"File", []string{"path", "error", "outline"}},
+	})
+	notInOutline := map[string]bool{"package": true, "tier": true}
+	nodeTags := jsonTags(view.OutlineNode{})
+	for _, tag := range jsonTags(lang.Symbol{}) {
+		if !notInOutline[tag] && !contains(nodeTags, tag) {
+			t.Errorf("lang.Symbol field %q is neither an outline node field nor listed as left out of outlines", tag)
+		}
+	}
 }
 
 func contains(list []string, s string) bool {

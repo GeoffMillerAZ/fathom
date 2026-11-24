@@ -1,0 +1,8 @@
+# nest.py dialect=python level=<level>
+1-12 module <module>
+  1-8 class Shape
+    2-5 function Shape.area  def area(self):
+      3-4 function helper  def helper():
+    7-8 function Shape.name  def name(self):
+  11-12 function make  def make():
+# symbols=6 references=2 unresolved=0 facts=0 notes=0
