@@ -2,7 +2,8 @@ package view // import "github.com/geoffmilleraz/fathom/pkg/lang/view"
 
 Package view answers span questions over a lang.Result: which symbol encloses
 a line or a line range, which symbols a line range touches, and what bytes a
-symbol's span holds in the caller's own source.
+symbol's span holds in the caller's own source. It also nests a Result's symbols
+into an outline of the file (Outline).
 
 Provisional: fields and functions may change in a minor release until the LP-8
 readings pass and one release has shipped (CH-D5). The package imports pkg/lang
@@ -67,9 +68,9 @@ type Index struct {
 
 func NewIndex(r lang.Result) *Index
     NewIndex builds the lookup once. It keeps copies of what it needs, so a
-    later change to r by the caller changes no answer. Keys are expected to be
-    unique within r: two symbols with the same Key and span tie, and which one
-    an answer returns then follows the input order.
+    later change to r by the caller changes no answer. Keys need not be unique:
+    two symbols with the same Key and span are ordered by their other fields,
+    so no input order changes an answer.
 
 func (ix *Index) Enclosing(line int) (lang.Symbol, Status)
     Enclosing returns the innermost symbol whose known span holds line. It is
@@ -98,6 +99,74 @@ func (ix *Index) Touched(start, end int) (syms []lang.Symbol, complete bool)
     Incomplete or Skipped, or a symbol with an unknown span starts before start
     (it may have reached into the range). start below 1 and end below start give
     an empty set and false.
+
+type OutlineDoc struct {
+	Path       string        `json:"path"`
+	Dialect    string        `json:"dialect"`
+	Language   string        `json:"language"`
+	Level      string        `json:"level"`
+	Skipped    string        `json:"skipped"`
+	Incomplete bool          `json:"incomplete"`
+	Nodes      []OutlineNode `json:"nodes"`
+	Symbols    int           `json:"symbols"`
+	References int           `json:"references"`
+	Unresolved int           `json:"unresolved"`
+	Facts      int           `json:"facts"`
+	Notes      int           `json:"notes"`
+	Omitted    int           `json:"omitted"`
+}
+    OutlineDoc is the shape of one file: its symbols nested by span containment.
+    Every string is a field of the Result it came from, or the path the caller
+    passed. The counts are those of the whole Result, not of what MaxNodes kept.
+    Omitted is the number of nodes MaxNodes dropped.
+
+func Outline(path string, r lang.Result, o OutlineOptions) OutlineDoc
+    Outline nests the Result's symbols by span containment, the rule of
+    contain.go: a node is a child of the innermost known-span symbol whose
+    span holds its own, and among equal spans the first in listing order (Line,
+    EndLine descending, Key) is the parent. A symbol without a known span is a
+    top-level node with SpanKnown false. The input order of r.Symbols does not
+    matter and r is not changed. An Incomplete or Skipped read still produces a
+    document that says so.
+
+func (d OutlineDoc) Text() string
+    Text is the line-oriented form: a header, one line per node, two spaces of
+    indent per depth, and a footer.
+
+        # <path> dialect=<d> level=<l>[ incomplete][ skipped=<reason>]
+        <indent><line>-<end or ?> <canonical or kind> <name>[  <signature>]
+        # symbols=<n> references=<n> unresolved=<n> facts=<n> notes=<n>[ omitted=<n>]
+
+    Every line ends with a newline. A string of the Result can span lines (a Go
+    Signature keeps its raw newlines and tabs), so the text form writes each run
+    of whitespace that holds a newline or CR as one space and drops such a run
+    at either end of a string. A run without a newline is written as it is. Only
+    Text does this: the nodes and the JSON form keep every string unchanged,
+    so a node is always exactly one line and the outline holds one more line per
+    node than it has nodes besides the header and the footer. The footer counts
+    are those of the whole Result and omitted appears only when MaxNodes dropped
+    nodes, so a truncated outline always says so on its last line.
+
+type OutlineNode struct {
+	Key       string        `json:"key"`
+	Name      string        `json:"name"`
+	Kind      string        `json:"kind"`
+	Canonical string        `json:"canonical"`
+	Signature string        `json:"signature"`
+	Line      int           `json:"line"`
+	EndLine   int           `json:"end_line"`
+	SpanKnown bool          `json:"span_known"`
+	Children  []OutlineNode `json:"children"`
+}
+    OutlineNode is one symbol. SpanKnown is false when the symbol has no
+    known span (EndLine is then not an end). Children are the symbols its span
+    strictly holds, never null.
+
+type OutlineOptions struct {
+	// MaxNodes is the most nodes the outline holds. 0 (or below) means no limit.
+	MaxNodes int
+}
+    OutlineOptions bounds an outline.
 
 type Row struct {
 	Kind       RowKind

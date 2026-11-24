@@ -1,6 +1,7 @@
 // Package view answers span questions over a lang.Result: which symbol
 // encloses a line or a line range, which symbols a line range touches, and what
-// bytes a symbol's span holds in the caller's own source.
+// bytes a symbol's span holds in the caller's own source. It also nests a Result's
+// symbols into an outline of the file (Outline).
 //
 // Provisional: fields and functions may change in a minor release until the
 // LP-8 readings pass and one release has shipped (CH-D5). The package imports

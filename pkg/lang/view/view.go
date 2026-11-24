@@ -31,24 +31,16 @@ type Index struct {
 }
 
 // NewIndex builds the lookup once. It keeps copies of what it needs, so a
-// later change to r by the caller changes no answer. Keys are expected to be
-// unique within r: two symbols with the same Key and span tie, and which one an
-// answer returns then follows the input order.
+// later change to r by the caller changes no answer. Keys need not be unique: two
+// symbols with the same Key and span are ordered by their other fields, so no
+// input order changes an answer.
 func NewIndex(r lang.Result) *Index {
 	ix := &Index{built: true, incomplete: r.Incomplete || r.Skipped != ""}
 	if r.Skipped != "" {
 		return ix
 	}
 	ix.syms = slices.Clone(r.Symbols)
-	slices.SortStableFunc(ix.syms, func(a, b lang.Symbol) int {
-		switch {
-		case before(a, b):
-			return -1
-		case before(b, a):
-			return 1
-		}
-		return 0
-	})
+	slices.SortFunc(ix.syms, order)
 	for _, s := range ix.syms {
 		if !known(s) {
 			ix.unknown = append(ix.unknown, s)
