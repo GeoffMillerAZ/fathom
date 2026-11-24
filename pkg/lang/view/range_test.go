@@ -9,7 +9,7 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/lang/view"
 )
 
-// refEnclosingRange is the brute-force reference of EnclosingRange (ESCALATE-26 Q2): the innermost known span
+// refEnclosingRange is the brute-force reference of EnclosingRange (ESCALATE-26 R2 as amended by ESCALATE-27 R3 and R4): the innermost known span
 // holding the whole range, with START in place of the line in the unknown-span rules. It shares no code with
 // the implementation.
 func refEnclosingRange(r lang.Result, start, end int) (lang.Symbol, view.Status) {
