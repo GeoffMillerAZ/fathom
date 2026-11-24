@@ -38,6 +38,7 @@ is the canonical short wiring summary the adoption guides expand on.
 | [test-certifications.md](test-certifications.md) | Say which test certifies which invariant, incident, spec, rule or port; ingest attested runs; list every target with no live certificate; gate a plan row on `certified_by` |
 | [refactor-conservation.md](refactor-conservation.md) | Run a refactor under a conservation law: generate a gate-ready plan, watch ratchets tighten, prove what must stay and what must be gone, and read the pre-push warning and the review kit pack honestly |
 | [lang-library.md](lang-library.md) | Read files into symbols, references and facts from Go (`pkg/lang`) or a shell (`fathom-lang`) with no store, daemon or network, with the measured level of each dialect |
+| [library-agent-cookbook.md](library-agent-cookbook.md) | Six recipes for a coding agent on `fathom-lang` (outline a file, which symbol holds a line, symbols a diff touches, file dependencies, boundary check, ad hoc SQL over rows), each with what unknown means, plus function-calling tool definitions; provisional |
 
 ---
 

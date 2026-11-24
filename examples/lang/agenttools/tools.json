@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "provisional": true,
+  "description": "Function-calling tool definitions for the six jobs of docs/use-cases/library-agent-cookbook.md, run by TestAgentCookbook in cmd/fathom-lang. A {name} command element is replaced by the parameter (an array becomes one argument per item). No server and no MCP (ADR-116). Provisional: the shapes may change in a minor release until the LP-8 readings pass and one release has shipped.",
+  "tools": [
+    {
+      "name": "outline_file",
+      "description": "Print the shape of one source file before reading it: its symbols nested by line span, with kinds, names and signatures, and a footer of counts. Read a file under about 50 lines whole instead. A header flag 'incomplete' or 'skipped=' means the outline may be partial, and an end line of '?' means that symbol's span is unknown.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "File path relative to the repository root, with forward slashes."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "command": [
+        "fathom-lang",
+        "outline",
+        "--",
+        "{path}"
+      ],
+      "output": {
+        "format": "text",
+        "schema": ""
+      },
+      "exit_codes": {
+        "0": "Every file was read. Read the header for incomplete or skipped.",
+        "1": "A file could not be read; its line says why."
+      },
+      "example_input": {
+        "path": "app.py"
+      }
+    },
+    {
+      "name": "enclosing_symbol",
+      "description": "Say which symbol contains each source location (a stack-trace line or a diff hunk). status is found, none or unknown; unknown means the read cannot decide, so read the file. For a range, enclosing is the symbol holding the whole range and touched lists every symbol it reaches.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "description": "Locations as PATH:LINE or PATH:LINE-END, with LINE at least 1."
+          }
+        },
+        "required": [
+          "locations"
+        ],
+        "additionalProperties": false
+      },
+      "command": [
+        "fathom-lang",
+        "at",
+        "--",
+        "{locations}"
+      ],
+      "output": {
+        "format": "json",
+        "schema": "at"
+      },
+      "exit_codes": {
+        "0": "Every file was read. Check each status and complete flag.",
+        "1": "A file could not be read; its query has an error.",
+        "2": "A malformed location."
+      },
+      "example_input": {
+        "locations": [
+          "app.py:6"
+        ]
+      }
+    },
+    {
+      "name": "symbols_touched_by_diff",
+      "description": "List the symbols the uncommitted and staged changes touch against a base revision, from git diff hunk headers, in the working tree. Deletion-only hunks, deleted files, binary changes, changes with no changed lines (mode only, empty files) and untracked files are not queried and are named on stderr. When every change is of those kinds the exit is 3, not 0, so empty output is never read as no symbol touched.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^-]",
+            "description": "A git revision to diff the working tree against, for example HEAD."
+          }
+        },
+        "required": [
+          "base"
+        ],
+        "additionalProperties": false
+      },
+      "command": [
+        "sh",
+        "-c",
+        "base=${1:-HEAD}\ncase $base in -*) echo \"base must be a revision, not an option\" >&2; exit 2 ;; esac\ngit rev-parse --verify --quiet \"$base^{commit}\" >/dev/null || { echo \"base is not a commit in a git work tree: $base\" >&2; exit 2; }\ntop=$(git rev-parse --show-toplevel) && [ -n \"$top\" ] && cd \"$top\" || { echo \"not in a git work tree\" >&2; exit 2; }\ndiff=$(git -c core.quotePath=false diff -U0 --inter-hunk-context=0 --submodule=short --no-renames --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ \"$base\" --) || { echo \"git diff failed\" >&2; exit 2; }\nothers=$(git -c core.quotePath=false ls-files --others --exclude-standard) || { echo \"git ls-files failed\" >&2; exit 2; }\nparsed=$(printf '%s\\n' \"$diff\" | awk '\n/^diff --git / { if (blk != \"\" && !said) printf \"n change with no changed lines: %s: not queried\\n\", blk; blk = $0; said = 0; inhdr = 1; file = \"\"; old = \"\"; next }\ninhdr && /^--- / { old = ($0 == \"--- /dev/null\") ? \"\" : substr($0, 7); next }\ninhdr && /^\\+\\+\\+ / {\n  if ($0 == \"+++ /dev/null\") { file = \"\"; said = 1; printf \"n deleted file %s: not queried\\n\", old } else file = substr($0, 7)\n  next\n}\ninhdr && /^Binary files / { said = 1; printf \"n binary change: %s: not queried\\n\", $0; next }\n/^@@ / {\n  inhdr = 0\n  if (file == \"\") next\n  split($3, r, \",\")\n  start = substr(r[1], 2) + 0\n  n = (r[2] == \"\") ? 1 : r[2] + 0\n  said = 1\n  if (n == 0) { printf \"n deletion-only hunk in %s after line %d: not queried\\n\", file, start; next }\n  printf \"q %s:%d-%d\\n\", file, start, start + n - 1\n}\nEND { if (blk != \"\" && !said) printf \"n change with no changed lines: %s: not queried\\n\", blk }') || { echo \"awk failed\" >&2; exit 2; }\nparsed=$(printf '%s\\n' \"$parsed\"; [ -z \"$others\" ] || printf '%s\\n' \"$others\" | sed 's/^/n untracked file /; s/$/: not queried/') || { echo \"sed failed\" >&2; exit 2; }\nnotes=$(printf '%s\\n' \"$parsed\" | sed -n 's/^n //p') || { echo \"sed failed\" >&2; exit 2; }\nqueries=$(printf '%s\\n' \"$parsed\" | sed -n 's/^q //p') || { echo \"sed failed\" >&2; exit 2; }\n[ -z \"$notes\" ] || printf '%s\\n' \"$notes\" >&2\nif [ -z \"$queries\" ]; then\n  [ -z \"$notes\" ] || { echo \"changes exist but none could be queried\" >&2; exit 3; }\n  echo \"no changes against $base\" >&2; exit 0\nfi\nfathom-lang at -- $queries",
+        "fathom-lang-diff",
+        "{base}"
+      ],
+      "output": {
+        "format": "json",
+        "schema": "at"
+      },
+      "exit_codes": {
+        "0": "The changed lines were queried (check each status and complete flag), or there were no changes at all (then stdout is empty and stderr says so).",
+        "1": "A file could not be read.",
+        "2": "The base started with a dash or is not a commit, or a tool failed (git outside a work tree or with no commit yet, awk or sed). Stdout is empty and stderr says which. Not the same as no changes.",
+        "3": "Changes exist but none could be queried (deletion-only hunks, deleted, binary, mode-only, empty or untracked files only). Stdout is empty and stderr names each change. The symbols touched are not known.",
+        "126": "The diff was too large for one at call (the system's argument-length limit). Nothing was queried. Split the diff by path."
+      },
+      "example_input": {
+        "base": "HEAD"
+      }
+    },
+    {
+      "name": "file_dependencies",
+      "description": "Print the direct dependencies of source files and what is unknown. A file with any unknown, or read by an unmeasured reader, has complete false: its edge list is a floor, not the whole set.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "description": "File paths relative to the repository root, with forward slashes, no duplicates."
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "additionalProperties": false
+      },
+      "command": [
+        "fathom-lang",
+        "deps",
+        "--",
+        "{paths}"
+      ],
+      "output": {
+        "format": "json",
+        "schema": ""
+      },
+      "exit_codes": {
+        "0": "Every file was read. Read complete before relying on the edges.",
+        "1": "A file could not be read."
+      },
+      "example_input": {
+        "paths": [
+          "app.py",
+          "web/index.ts",
+          "pkg/a.go"
+        ]
+      }
+    },
+    {
+      "name": "boundary_check",
+      "description": "Check files against a declared boundary rule file. Each rule is clean, violated or unverified, and unverified is not clean: a matched file was incomplete or read by an unmeasured reader.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Path of the JSON rule file."
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "description": "Changed files to check, relative to the repository root."
+          }
+        },
+        "required": [
+          "rules",
+          "paths"
+        ],
+        "additionalProperties": false
+      },
+      "command": [
+        "fathom-lang",
+        "boundaries",
+        "--rules",
+        "{rules}",
+        "--",
+        "{paths}"
+      ],
+      "output": {
+        "format": "json",
+        "schema": ""
+      },
+      "exit_codes": {
+        "0": "No rule is violated. Unverified rules are possible.",
+        "1": "A rule is violated, or a file could not be read.",
+        "2": "Bad rule file or path."
+      },
+      "example_input": {
+        "rules": "rules.json",
+        "paths": [
+          "app.py",
+          "web/index.ts",
+          "web/lib.ts"
+        ]
+      }
+    },
+    {
+      "name": "tree_rows",
+      "description": "Print the facts of source files as JSON Lines (one header row, then file, symbol, reference, unresolved, fact and note rows) for loading into SQLite or DuckDB. Every file under the working directory is visible as a sibling. A file row with incomplete, skipped or error set has partial or no rows.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "description": "File paths relative to the working directory."
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "additionalProperties": false
+      },
+      "command": [
+        "fathom-lang",
+        "extract",
+        "-walk",
+        "-rows",
+        "--",
+        "{paths}"
+      ],
+      "output": {
+        "format": "jsonl",
+        "schema": "rows"
+      },
+      "exit_codes": {
+        "0": "Every file was read.",
+        "1": "A file could not be read; its file row has the error."
+      },
+      "example_input": {
+        "paths": [
+          "app.py",
+          "util.py",
+          "pkg/a.go",
+          "web/index.ts",
+          "web/lib.ts"
+        ]
+      }
+    }
+  ]
+}

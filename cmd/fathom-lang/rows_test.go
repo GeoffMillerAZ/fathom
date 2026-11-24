@@ -14,9 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"cuelang.org/go/cue"
-	"cuelang.org/go/cue/cuecontext"
-	"cuelang.org/go/encoding/jsonschema"
 	_ "modernc.org/sqlite"
 
 	"github.com/geoffmilleraz/fathom/pkg/lang"
@@ -205,26 +202,7 @@ func validator(t *testing.T, name string) func(doc []byte) error {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := cuecontext.New()
-	sv := ctx.CompileBytes(src)
-	if err := sv.Err(); err != nil {
-		t.Fatalf("%s: %v", name, err)
-	}
-	f, err := jsonschema.Extract(sv, &jsonschema.Config{})
-	if err != nil {
-		t.Fatalf("%s: the pinned CUE cannot read the schema: %v", name, err)
-	}
-	schema := ctx.BuildFile(f)
-	if err := schema.Err(); err != nil {
-		t.Fatalf("%s: %v", name, err)
-	}
-	return func(doc []byte) error {
-		dv := ctx.CompileBytes(doc)
-		if err := dv.Err(); err != nil {
-			return err
-		}
-		return schema.Unify(dv).Validate(cue.Concrete(true))
-	}
+	return schemaChecker(t, name, src)
 }
 
 func validateRows(check func([]byte) error, jsonl string) error {
