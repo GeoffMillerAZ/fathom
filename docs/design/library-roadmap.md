@@ -234,10 +234,16 @@ Not scheduled. On a yes it starts after HZ-3, HZ-4 and HZ-6.
 
 ### LP-8 Consumer helpers (ADR-116)
 
-HLP-1 schedules span lookups, HLP-3 a provisional row export and schema,
-HLP-2 a compact file outline, and HLP-4 an executable second chapter of the
-agent cookbook. The helpers work from a read. LP-8 closes when all four rows
-are proven. Work remains paused until the owner lifts the pause for these rows.
+HLP-1 schedules span lookups (`Enclosing`, `Touched` and `Slice` in the new
+provisional `pkg/lang/view`, and an `at` verb), HLP-3 a provisional row export
+(`extract -rows`, `view.Rows`) with a published schema (`schema` verb), HLP-2 a
+compact file outline (`view.Outline`, `outline` verb), and HLP-4 an executable
+agent cookbook with tool definitions, which needs HLP-1, HLP-2 and HLP-3 only.
+The helpers work from a read. Where a read cannot decide an answer they say
+unknown. LP-8 closes when all four rows are proven. The owner lifted the pause
+for these rows on 2026-11-23. The build contract (signatures, semantics, bars,
+risks) is [consumer-helpers.md](consumer-helpers.md). HLP-15 follows HLP-3
+outside this program.
 
 ### Dependency edges (ADR-114)
 
@@ -344,7 +350,8 @@ requirements sheet remains unanswered.
 | HLP-1 | Span lookups | The innermost symbol enclosing a line, the symbols a line range touches, and the exact source slice of a symbol. Pure functions over one Result. | 4 / 1 / 1 | Selected. Building block of LIB-13's touch set. |
 | HLP-3 | Row export and schema | `extract` can print one row per symbol, reference, fact and unresolved reference as JSON lines, with a published schema, so jq, SQLite or DuckDB query it directly. The answer to the query-language question. | 4 / 2 / 2 | Selected. Supersedes the U-52 register row. Provisional surface. |
 | HLP-2 | File outline | A compact, deterministic outline of one file from one read: names, kinds, the signatures the door already returns, line spans, nesting. For agent context in place of the whole file. | 4 / 2 / 2 | Selected. |
-| HLP-4 | Agent cookbook | Tested, copy-ready tool definitions and recipes for the common agent jobs (outline, enclosing symbol, touched symbols, file dependencies, boundary check). No server. A second chapter of the LBK-11 cookbook. | 4 / 2 / 2 | Selected, after HLP-1 to HLP-3. |
+| HLP-4 | Agent cookbook | Tested, copy-ready tool definitions and recipes for the common agent jobs (outline, enclosing symbol, touched symbols, file dependencies, boundary check). No server. Needs HLP-1, HLP-2 and HLP-3 only. LBK-11's cookbook links this chapter when it lands. | 4 / 2 / 2 | Selected, after HLP-1 to HLP-3. |
+| HLP-15 | Row export for dependency edges | `deps -rows`: one row per edge and per unknown, the shape that makes cross-file questions one SQL join. | 4 / 2 / 2 | Selected, scheduled after HLP-3 is proven so it copies a proven row contract. Open row HLP-15 in the plan, outside the LP-8 build. |
 | HLP-5 | Complete read key | One function returning the full key of a read: reader version, dialect table, options, pack digest and content digest. Storage stays with the caller. | 4 / 2 / 3 | Register. An incomplete key serves stale facts silently. |
 | HLP-7 | Long-running stdio mode | One supervised process answering many requests, so a consumer not written in Go stops paying process start per call. | 4 / 3 / 3 | Register. |
 | HLP-6 | Tree reader in Go | Read a file tree through the Go API with a bounded worker pool and deterministic order. The binary already has `-walk`. | 3 / 2 / 2 | Register. |
@@ -355,6 +362,10 @@ requirements sheet remains unanswered.
 | HLP-11 | Incremental re-read | Re-read after an edit without parsing the whole file again. | 3 / 4 / 3 | Register. |
 | HLP-13 | Library MCP server | The helpers served over MCP. | 3 / 2 / 4 | Refused, unchanged (section 7). The product is the MCP surface. |
 | HLP-12 | Library query language | A language for asking questions of facts. | 2 / 5 / 4 | Refused (HLP-D1). |
+
+Register finding slots, filled by readings:
+
+- Dialects whose symbols lack an end line (`EndLine` is 0), to be filled by the HLP-1 reading. Span lookups answer unknown for them (CH-D3).
 
 ## 8. Spin-off steps, in order
 
