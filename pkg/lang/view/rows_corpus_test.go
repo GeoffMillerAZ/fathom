@@ -2,14 +2,10 @@ package view_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -26,24 +22,7 @@ import (
 //
 //	FATHOM_LP8_CORPUS=<manifest.json> go test -race -count=1 -run TestRowsCorpusReading -v ./pkg/lang/view
 func TestRowsCorpusReading(t *testing.T) {
-	mp := os.Getenv("FATHOM_LP8_CORPUS")
-	if mp == "" {
-		t.Skip("FATHOM_LP8_CORPUS not set")
-	}
-	raw, err := os.ReadFile(mp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var subjects []corpusSubject
-	if err := json.Unmarshal(raw, &subjects); err != nil {
-		t.Fatal(err)
-	}
-	sort.Slice(subjects, func(i, j int) bool {
-		if subjects[i].Dialect != subjects[j].Dialect {
-			return subjects[i].Dialect < subjects[j].Dialect
-		}
-		return subjects[i].Subject < subjects[j].Subject
-	})
+	subjects := corpusSubjects(t)
 	rd, err := lang.New()
 	if err != nil {
 		t.Fatal(err)
@@ -89,31 +68,13 @@ func TestRowsCorpusReading(t *testing.T) {
 		}
 	}
 	for _, s := range subjects {
-		if head := strings.TrimSpace(gitOut(t, s.Path, "rev-parse", "HEAD")); head != s.Commit {
-			t.Fatalf("%s: HEAD %s is not the pin %s", s.Subject, head, s.Commit)
-		}
-		if st := gitOut(t, s.Path, "status", "--porcelain", "--untracked-files=all"); st != "" {
-			t.Fatalf("%s: checkout is not clean", s.Subject)
-		}
-		files := selectFiles(t, s)
-		sr := subjectRow{Subject: s.Subject, Commit: s.Commit, Selected: len(files)}
+		sr := subjectRow{Subject: s.Subject, Commit: s.Commit}
 		dc := perDialect[s.Dialect]
 		if dc == nil {
 			dc = &counts{}
 			perDialect[s.Dialect] = dc
 		}
-		for _, rel := range files {
-			src, err := os.ReadFile(filepath.Join(s.Path, filepath.FromSlash(rel)))
-			if err != nil {
-				t.Fatal(err)
-			}
-			res, err := rd.Extract(context.Background(), lang.File{Path: rel, Src: src})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(res.Symbols) == 0 {
-				continue
-			}
+		sr.Selected = forEachMeasuredFile(t, rd, s, func(rel string, src []byte, res lang.Result) {
 			entry := []nestedEntry{{Path: rel, Result: &res}}
 			rows := rowsOf(1, entry)
 			var b bytes.Buffer
@@ -128,7 +89,7 @@ func TestRowsCorpusReading(t *testing.T) {
 			}
 			sr.Files++
 			add(&sr.counts, rows)
-		}
+		})
 		for _, c := range []*counts{&total, dc} {
 			c.Files += sr.Files
 			c.File += sr.File

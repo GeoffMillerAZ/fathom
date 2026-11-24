@@ -2,14 +2,11 @@ package view_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -27,24 +24,7 @@ import (
 //
 //	FATHOM_LP8_CORPUS=/path/to/manifest.json go test -race -count=1 -run TestCorpusReading -v ./pkg/lang/view
 func TestCorpusReading(t *testing.T) {
-	mp := os.Getenv("FATHOM_LP8_CORPUS")
-	if mp == "" {
-		t.Skip("FATHOM_LP8_CORPUS not set")
-	}
-	raw, err := os.ReadFile(mp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var subjects []corpusSubject
-	if err := json.Unmarshal(raw, &subjects); err != nil {
-		t.Fatal(err)
-	}
-	sort.Slice(subjects, func(i, j int) bool {
-		if subjects[i].Dialect != subjects[j].Dialect {
-			return subjects[i].Dialect < subjects[j].Dialect
-		}
-		return subjects[i].Subject < subjects[j].Subject
-	})
+	subjects := corpusSubjects(t)
 	rd, err := lang.New()
 	if err != nil {
 		t.Fatal(err)
@@ -53,31 +33,13 @@ func TestCorpusReading(t *testing.T) {
 
 	agg := corpusAggregate{Dialects: map[string]*dialectAgg{}, ReaderDialects: map[string]*readerAgg{}}
 	for _, s := range subjects {
-		if head := strings.TrimSpace(gitOut(t, s.Path, "rev-parse", "HEAD")); head != s.Commit {
-			t.Fatalf("%s: HEAD %s is not the pin %s", s.Subject, head, s.Commit)
-		}
-		if st := gitOut(t, s.Path, "status", "--porcelain", "--untracked-files=all"); st != "" {
-			t.Fatalf("%s: checkout is not clean", s.Subject)
-		}
-		files := selectFiles(t, s)
 		da := agg.Dialects[s.Dialect]
 		if da == nil {
 			da = &dialectAgg{}
 			agg.Dialects[s.Dialect] = da
 		}
-		sa := subjectAgg{Subject: s.Subject, Commit: s.Commit, Selected: len(files)}
-		for _, rel := range files {
-			src, err := os.ReadFile(filepath.Join(s.Path, filepath.FromSlash(rel)))
-			if err != nil {
-				t.Fatal(err)
-			}
-			res, err := rd.Extract(context.Background(), lang.File{Path: rel, Src: src})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(res.Symbols) == 0 {
-				continue
-			}
+		sa := subjectAgg{Subject: s.Subject, Commit: s.Commit}
+		sa.Selected = forEachMeasuredFile(t, rd, s, func(rel string, src []byte, res lang.Result) {
 			sa.Files++
 			if res.Incomplete {
 				sa.Incomplete++
@@ -114,7 +76,7 @@ func TestCorpusReading(t *testing.T) {
 				}
 			}
 			sa.Lines += lines
-		}
+		})
 		da.Subjects = append(da.Subjects, sa)
 		da.Selected += sa.Selected
 		da.Files += sa.Files
