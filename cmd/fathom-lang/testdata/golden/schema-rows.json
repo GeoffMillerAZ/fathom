@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fathom.invalid/schema/fathom-lang/rows.schema.json",
+  "title": "fathom-lang extract -rows, one line (provisional)",
+  "description": "One line of fathom-lang extract -rows. Provisional: the shape may change in a minor release.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/HeaderRow"
+    },
+    {
+      "$ref": "#/$defs/FileRow"
+    },
+    {
+      "$ref": "#/$defs/SymbolRow"
+    },
+    {
+      "$ref": "#/$defs/ReferenceRow"
+    },
+    {
+      "$ref": "#/$defs/UnresolvedRow"
+    },
+    {
+      "$ref": "#/$defs/FactRow"
+    },
+    {
+      "$ref": "#/$defs/NoteRow"
+    }
+  ],
+  "$defs": {
+    "HeaderRow": {
+      "description": "The first line: the row shape version and the schema_version of the nested document the rows mirror.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "header"
+        },
+        "rows_version": {
+          "const": 1
+        },
+        "schema_version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "row",
+        "rows_version",
+        "schema_version"
+      ],
+      "additionalProperties": false
+    },
+    "FileRow": {
+      "description": "One file. has_result false means the nested result is null. null_arrays names the arrays the nested document prints as null.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "file"
+        },
+        "path": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "dialect": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "skipped": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string"
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "has_result": {
+          "type": "boolean"
+        },
+        "null_arrays": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "symbols",
+              "references",
+              "unresolved",
+              "facts",
+              "notes"
+            ]
+          }
+        }
+      },
+      "required": [
+        "row",
+        "path",
+        "error",
+        "dialect",
+        "language",
+        "skipped",
+        "level",
+        "incomplete",
+        "has_result",
+        "null_arrays"
+      ],
+      "additionalProperties": false
+    },
+    "SymbolRow": {
+      "description": "One symbol, at position i of the file's symbols.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "symbol"
+        },
+        "path": {
+          "type": "string"
+        },
+        "i": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "package": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "canonical": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "row",
+        "path",
+        "i",
+        "key",
+        "name",
+        "package",
+        "kind",
+        "canonical",
+        "line",
+        "end_line",
+        "signature",
+        "tier"
+      ],
+      "additionalProperties": false
+    },
+    "ReferenceRow": {
+      "description": "One reference, at position i of the file's references.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "reference"
+        },
+        "path": {
+          "type": "string"
+        },
+        "i": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "to_key": {
+          "type": "string"
+        },
+        "edge": {
+          "type": "string"
+        },
+        "raw": {
+          "type": "string"
+        },
+        "strategy": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "row",
+        "path",
+        "i",
+        "from",
+        "to",
+        "to_key",
+        "edge",
+        "raw",
+        "strategy",
+        "line"
+      ],
+      "additionalProperties": false
+    },
+    "UnresolvedRow": {
+      "description": "One unresolved reference, at position i.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "unresolved"
+        },
+        "path": {
+          "type": "string"
+        },
+        "i": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "from": {
+          "type": "string"
+        },
+        "edge": {
+          "type": "string"
+        },
+        "raw": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "row",
+        "path",
+        "i",
+        "from",
+        "edge",
+        "raw",
+        "reason",
+        "line"
+      ],
+      "additionalProperties": false
+    },
+    "FactRow": {
+      "description": "One fact, at position i.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "fact"
+        },
+        "path": {
+          "type": "string"
+        },
+        "i": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entity": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "row",
+        "path",
+        "i",
+        "entity",
+        "key",
+        "value",
+        "line"
+      ],
+      "additionalProperties": false
+    },
+    "NoteRow": {
+      "description": "One note, at position i.",
+      "type": "object",
+      "properties": {
+        "row": {
+          "const": "note"
+        },
+        "path": {
+          "type": "string"
+        },
+        "i": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "row",
+        "path",
+        "i",
+        "note"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

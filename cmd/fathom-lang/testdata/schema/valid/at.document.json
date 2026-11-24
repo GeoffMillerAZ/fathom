@@ -1,0 +1,1 @@
+{"schema_version":1,"queries":[{"path":"a.go","start":3,"end":3,"status":"found","enclosing":{"key":"a.F","name":"F","package":"a","kind":"func","canonical":"function","line":3,"end_line":5,"signature":"","tier":"verified"},"touched":[],"complete":true,"error":""}]}

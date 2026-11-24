@@ -1,0 +1,12 @@
+{"row":"header","rows_version":1,"schema_version":1}
+{"row":"file","path":"main.tf","error":"","dialect":"terraform","language":"terraform","skipped":"","level":"<level>","incomplete":false,"has_result":true,"null_arrays":[]}
+{"row":"symbol","path":"main.tf","i":0,"key":"main.aws_s3_bucket.b","name":"aws_s3_bucket.b","package":"main","kind":"TerraformResource","canonical":"resource","line":1,"end_line":3,"signature":"","tier":"verified"}
+{"row":"symbol","path":"main.tf","i":1,"key":"main.var.name","name":"var.name","package":"main","kind":"TerraformVariable","canonical":"variable_decl","line":5,"end_line":5,"signature":"","tier":"verified"}
+{"row":"reference","path":"main.tf","i":0,"from":"main.aws_s3_bucket.b","to":"var.name","to_key":"main.var.name","edge":"references","raw":"","strategy":"","line":2}
+{"row":"file","path":"a.go","error":"","dialect":"go","language":"go","skipped":"","level":"<level>","incomplete":false,"has_result":true,"null_arrays":[]}
+{"row":"symbol","path":"a.go","i":0,"key":"a.F","name":"F","package":"a","kind":"GoFunc","canonical":"function","line":3,"end_line":3,"signature":"func F()","tier":"verified"}
+{"row":"symbol","path":"a.go","i":1,"key":"a.G","name":"G","package":"a","kind":"GoFunc","canonical":"function","line":5,"end_line":5,"signature":"func G()","tier":"verified"}
+{"row":"reference","path":"a.go","i":0,"from":"a.F","to":"a.G","to_key":"a.G","edge":"call","raw":"","strategy":"","line":0}
+{"row":"file","path":"blob.bin","error":"","dialect":"","language":"unclassified","skipped":"binary","level":"","incomplete":false,"has_result":true,"null_arrays":[]}
+{"row":"file","path":"misc.yaml","error":"","dialect":"","language":"yaml","skipped":"unclassified","level":"","incomplete":false,"has_result":true,"null_arrays":[]}
+{"row":"note","path":"misc.yaml","i":0,"note":"siblings-empty: this file's classification reads sibling paths (chart, role or module roots), and none were given"}

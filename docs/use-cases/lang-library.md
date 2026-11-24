@@ -64,8 +64,9 @@ The runnable versions are the godoc examples on `Reader.Extract`, `Reader.Dialec
 
 ```
 fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
-                    [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
+                    [-deadline DURATION] [-max-memory SIZE] [-in-process] [-rows] PATH...
 fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
+fathom-lang schema [extract|rows|at|outline]
 fathom-lang dialects [-pack DIR]
 fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                       [-in-process] PATH...
@@ -91,6 +92,23 @@ $ fathom-lang at -root infra main.tf:2 main.tf:1-5 | jq '.queries[] | {start, en
 ```
 
 From Go, `pkg/lang/view` gives the same answers over one `lang.Result` (`view.NewIndex(r).Enclosing(line)`, `EnclosingRange`, `Touched`, and `view.Slice` for the bytes of a symbol's lines in your own source). It is provisional too. A consumer of `view` links one package more than a consumer of `pkg/lang` alone.
+
+`extract -rows` (provisional) prints JSON Lines in place of the nested document, from the same reads, flags and exit codes, so jq, SQLite or DuckDB can query facts with no glue code. The first line is `{"row":"header","rows_version":1,"schema_version":1}`. Each file then has one `file` row (`path`, `error`, `dialect`, `language`, `skipped`, `level`, `incomplete`, `has_result`, `null_arrays`) and, in array order, its `symbol`, `reference`, `unresolved`, `fact` and `note` rows. Each of those has `path`, `i` (the zero-based position in its array) and the fields of the matching extract JSON object under their JSON names. A file that could not be read has a `file` row with its `error` and `has_result` false. `null_arrays` names the arrays the nested document prints as null rather than empty, so the document can be rebuilt from the rows exactly. Rows carry nothing the nested document withholds. From Go, `view.Header(schemaVersion)` and `view.Rows(path, errText, result)` give the same rows and `view.WriteJSONLines` the same bytes. The shape may change in a minor release until the LP-8 readings pass and one release has shipped.
+
+`schema [extract|rows|at]` (provisional) prints the JSON Schema (draft 2020-12) of the nested document, one line of rows or the `at` document, embedded in the binary so a consumer gets the schema of the version it runs. The same files are under `docs/schema/fathom-lang/`. `schema outline` exits 1 with a not yet available error until the outline shape exists.
+
+```
+$ fathom-lang extract -rows -walk -root infra main.tf | jq -c 'select(.row=="symbol") | {path, canonical, name}'
+```
+
+Loaded into SQLite (one table per row kind, columns as the row's fields), symbols per canonical kind per file and references with no in-file target are two queries:
+
+```sql
+SELECT path, canonical, COUNT(*) FROM symbol GROUP BY path, canonical ORDER BY path, canonical
+SELECT r.path, r."from", r."to", r.line FROM reference r LEFT JOIN symbol s ON s.path = r.path AND s.key = r.to_key WHERE s.key IS NULL ORDER BY r.path, r.i
+```
+
+A reference with no in-file target may still resolve in another file: the rows hold one read of one file, and nothing joins across files here. `TestRowsLoadIntoSQLite` executes both queries.
 
 `deps` takes repository-relative slash paths and prints direct dependency edges and typed
 unknowns. Read `complete` before using the edges for skip decisions. `-export` writes unit
@@ -206,4 +224,4 @@ Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as fo
 
 ## Maintained
 
-This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `pkg/lang/view`, `cmd/fathom-lang` (its extract, at, dialects, resources, deps, pathfilters, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `pkg/lang/view`, `cmd/fathom-lang` (its extract (with -rows), schema, at, dialects, resources, deps, pathfilters, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.

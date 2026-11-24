@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fathom.invalid/schema/fathom-lang/extract.schema.json",
+  "title": "fathom-lang extract (provisional)",
+  "description": "The nested document fathom-lang extract prints. Provisional: the shape may change in a minor release.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "description": "One file. result is null when the file could not be read, and error says why.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/Result"
+              }
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "error",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "files"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Result": {
+      "description": "What the reader read from one file. An array is null when the reader had none to report.",
+      "type": "object",
+      "properties": {
+        "dialect": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "skipped": {
+          "type": "string"
+        },
+        "symbols": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Symbol"
+          }
+        },
+        "references": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Reference"
+          }
+        },
+        "unresolved": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Unresolved"
+          }
+        },
+        "facts": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Fact"
+          }
+        },
+        "level": {
+          "type": "string"
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "dialect",
+        "language",
+        "skipped",
+        "symbols",
+        "references",
+        "unresolved",
+        "facts",
+        "level",
+        "incomplete",
+        "notes"
+      ],
+      "additionalProperties": false
+    },
+    "Symbol": {
+      "description": "One definition. end_line is 0 when the extractor does not compute it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "package": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "canonical": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "package",
+        "kind",
+        "canonical",
+        "line",
+        "end_line",
+        "signature",
+        "tier"
+      ],
+      "additionalProperties": false
+    },
+    "Reference": {
+      "description": "One resolved or named reference.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "to_key": {
+          "type": "string"
+        },
+        "edge": {
+          "type": "string"
+        },
+        "raw": {
+          "type": "string"
+        },
+        "strategy": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "to_key",
+        "edge",
+        "raw",
+        "strategy",
+        "line"
+      ],
+      "additionalProperties": false
+    },
+    "Unresolved": {
+      "description": "A reference the reader could not resolve, with the reason.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "edge": {
+          "type": "string"
+        },
+        "raw": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "from",
+        "edge",
+        "raw",
+        "reason",
+        "line"
+      ],
+      "additionalProperties": false
+    },
+    "Fact": {
+      "description": "One fact about an entity.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity",
+        "key",
+        "value",
+        "line"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

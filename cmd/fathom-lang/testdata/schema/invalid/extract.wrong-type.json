@@ -1,0 +1,1 @@
+{"schema_version":1,"files":[{"path":"a.go","error":"","result":{"dialect":"go","language":"go","skipped":"","symbols":[{"key":"a.F","name":"F","package":"a","kind":"func","canonical":"function","line":3,"end_line":5,"signature":"","tier":"verified"}],"references":[],"unresolved":null,"facts":[],"level":"L3","incomplete":"no","notes":null}}]}

@@ -3,8 +3,9 @@
 // package. Dependency checks compose the standalone family packages here.
 //
 //	fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
-//	    [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
+//	    [-deadline DURATION] [-max-memory SIZE] [-in-process] [-rows] PATH...
 //	fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
+//	fathom-lang schema [extract|rows|at|outline]
 //	fathom-lang dialects [-pack DIR]
 //	fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
 //	    [-in-process] PATH...
@@ -53,8 +54,9 @@ import (
 
 const usage = `usage:
   fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
-                      [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
+                      [-deadline DURATION] [-max-memory SIZE] [-in-process] [-rows] PATH...
   fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
+  fathom-lang schema [extract|rows|at|outline]
   fathom-lang dialects [-pack DIR]
   fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                         [-in-process] PATH...
@@ -77,6 +79,16 @@ line, an incomplete or skipped read), and then enclosing is a hint or null. encl
 symbol holding the whole range, touched every symbol the range reaches, complete false when a symbol
 without an end line may reach into it. LINE and END are at least 1 and END is not below LINE, else exit 2.
 No source text is printed. Exit codes as extract.
+extract -rows (provisional: the row shape may change in a minor release) prints JSON Lines in place of the
+nested document, from the same reads, with the same flags and exit codes. The first line is {"row":"header",
+"rows_version":1,"schema_version":1}. Each file then has a {"row":"file",...} line and, in array order, its
+symbol, reference, unresolved, fact and note lines, each with "path" and "i" (the zero-based position in its
+array) and the fields of the matching extract JSON object. A file that could not be read has a file line with
+its error and "has_result":false. "null_arrays" names the arrays the nested document prints as null. Load the
+lines into SQLite or DuckDB, or query them with jq.
+fathom-lang schema (provisional) prints the JSON Schema (draft 2020-12) of extract, rows (one line of extract
+-rows) or at, embedded in the binary. outline is not available yet. The same files are under
+docs/schema/fathom-lang in the source tree.
 dialects prints {"schema_version":1,"dialects":[...]} with every dialect and
 its measured level.
 Exit 0 on success, 1 when a file could not be read or the run failed, 2 on misuse.
@@ -149,6 +161,8 @@ func run(ctx context.Context, args []string, in io.Reader, out, errw io.Writer) 
 		err = cmdExtract(ctx, args[1:], in, out)
 	case "at":
 		err = cmdAt(ctx, args[1:], out)
+	case "schema":
+		err = cmdSchema(args[1:], out)
 	case "dialects":
 		err = cmdDialects(args[1:], out)
 	case "resources":
@@ -213,6 +227,7 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 	deadline := fs.Duration("deadline", lang.DefaultReadDeadline, "the time one file's read may take; it may only be lowered")
 	maxMemory := fs.String("max-memory", defaultMaxMemory, "the memory the supervised child may hold, such as 512MiB or 4GiB")
 	inProcess := fs.Bool("in-process", false, "read in this process, with no supervised child")
+	rows := fs.Bool("rows", false, "print JSON Lines rows (provisional) in place of the nested document")
 	child := fs.Bool("supervised-child", false, "run as the supervised child: read the batch from standard input (internal)")
 	if err := fs.Parse(args); err != nil {
 		return parseError(err)
@@ -270,11 +285,14 @@ func cmdExtract(ctx context.Context, args []string, in io.Reader, out io.Writer)
 	if err != nil {
 		return err
 	}
-	res := struct {
+	if *rows {
+		if err := writeRows(out, files); err != nil {
+			return err
+		}
+	} else if err := writeJSON(out, struct {
 		SchemaVersion int          `json:"schema_version"`
 		Files         []fileResult `json:"files"`
-	}{SchemaVersion: schemaVersion, Files: files}
-	if err := writeJSON(out, res); err != nil {
+	}{SchemaVersion: schemaVersion, Files: files}); err != nil {
 		return err
 	}
 	if unreadable {

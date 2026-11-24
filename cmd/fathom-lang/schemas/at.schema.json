@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fathom.invalid/schema/fathom-lang/at.schema.json",
+  "title": "fathom-lang at (provisional)",
+  "description": "The document fathom-lang at prints. Provisional: the shape may change in a minor release.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Query"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "queries"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Query": {
+      "description": "The answer to one PATH:LINE[-END] query. enclosing is a hint, or null, when status is unknown.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "start": {
+          "type": "integer"
+        },
+        "end": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "found",
+            "none",
+            "unknown"
+          ]
+        },
+        "enclosing": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Symbol"
+            }
+          ]
+        },
+        "touched": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Symbol"
+          }
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "start",
+        "end",
+        "status",
+        "enclosing",
+        "touched",
+        "complete",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "Symbol": {
+      "description": "One definition. end_line is 0 when the extractor does not compute it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "package": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "canonical": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "package",
+        "kind",
+        "canonical",
+        "line",
+        "end_line",
+        "signature",
+        "tier"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
