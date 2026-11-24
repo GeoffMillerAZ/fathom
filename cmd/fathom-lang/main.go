@@ -75,7 +75,8 @@ PATH once, as extract does, and answers each PATH:LINE or PATH:LINE-END with {"p
 order. status is found, none or unknown: unknown when the read cannot decide (a symbol with no end
 line, an incomplete or skipped read), and then enclosing is a hint or null. enclosing is the innermost
 symbol holding the whole range, touched every symbol the range reaches, complete false when a symbol
-without an end line may reach into it. No source text is printed. Exit codes as extract.
+without an end line may reach into it. LINE and END are at least 1 and END is not below LINE, else exit 2.
+No source text is printed. Exit codes as extract.
 dialects prints {"schema_version":1,"dialects":[...]} with every dialect and
 its measured level.
 Exit 0 on success, 1 when a file could not be read or the run failed, 2 on misuse.
