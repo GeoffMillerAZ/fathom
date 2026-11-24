@@ -52,6 +52,10 @@ func TestOutlineCorpusReading(t *testing.T) {
 		Incomplete   int     `json:"incomplete_files"`
 		Omitted      int     `json:"omitted_nodes"`
 		Verdict      string  `json:"verdict"`
+		// Description only, no bar (ESCALATE-28 R7): the ratio by file size in lines, and the bytes the header and
+		// footer lines add to each file.
+		Buckets    []bucketRow `json:"size_buckets"`
+		FixedBytes fixedRow    `json:"header_footer_bytes"`
 	}
 	type subjectRow struct {
 		Subject    string  `json:"subject"`
@@ -63,6 +67,10 @@ func TestOutlineCorpusReading(t *testing.T) {
 		P90Pct     float64 `json:"p90_percent"`
 	}
 	ratios := map[string][]float64{}
+	bucketRatios := map[string]map[int][]float64{}
+	bucketSrc := map[string]map[int]int{}
+	bucketOut := map[string]map[int]int{}
+	fixed := map[string][]int{}
 	dialects := map[string]*stats{}
 	var rows []subjectRow
 	for _, s := range subjects {
@@ -91,6 +99,14 @@ func TestOutlineCorpusReading(t *testing.T) {
 			ratio := 100 * float64(len(text)) / float64(len(src))
 			own = append(own, ratio)
 			ratios[s.Dialect] = append(ratios[s.Dialect], ratio)
+			if bucketRatios[s.Dialect] == nil {
+				bucketRatios[s.Dialect], bucketSrc[s.Dialect], bucketOut[s.Dialect] = map[int][]float64{}, map[int]int{}, map[int]int{}
+			}
+			b := sizeBucket(fileLines(src))
+			bucketRatios[s.Dialect][b] = append(bucketRatios[s.Dialect][b], ratio)
+			bucketSrc[s.Dialect][b] += len(src)
+			bucketOut[s.Dialect][b] += len(text)
+			fixed[s.Dialect] = append(fixed[s.Dialect], fixedBytes(text))
 			st.Files++
 			st.SourceBytes += len(src)
 			st.OutlineBytes += len(text)
@@ -115,6 +131,24 @@ func TestOutlineCorpusReading(t *testing.T) {
 		st.MedianPct = round4(median(r))
 		st.P90Pct = round4(nearestRank(r, 0.9))
 		st.MaxPct = round4(st.MaxPct)
+		for b, name := range bucketNames {
+			br := bucketRatios[d][b]
+			sort.Float64s(br)
+			row := bucketRow{Lines: name, Files: len(br), MedianPct: round4(median(br))}
+			if bucketSrc[d][b] > 0 {
+				row.PooledPct = round4(100 * float64(bucketOut[d][b]) / float64(bucketSrc[d][b]))
+			}
+			st.Buckets = append(st.Buckets, row)
+		}
+		fb := fixed[d]
+		sort.Ints(fb)
+		if len(fb) > 0 {
+			fl := make([]float64, len(fb))
+			for i, v := range fb {
+				fl[i] = float64(v)
+			}
+			st.FixedBytes = fixedRow{Median: median(fl), Min: fb[0], Max: fb[len(fb)-1]}
+		}
 		st.Verdict = "PASS"
 		if st.MedianPct > outlineBarPercent {
 			st.Verdict = "FAIL"
@@ -136,6 +170,54 @@ func TestOutlineCorpusReading(t *testing.T) {
 	sum := sha256.Sum256(out)
 	fmt.Printf("%s", out)
 	fmt.Printf("aggregate sha256: %s\n", hex.EncodeToString(sum[:]))
+}
+
+var bucketNames = []string{"1-49", "50-199", "200-999", "1000+"}
+
+type bucketRow struct {
+	Lines     string  `json:"lines"`
+	Files     int     `json:"files"`
+	MedianPct float64 `json:"median_percent"`
+	PooledPct float64 `json:"pooled_percent"`
+}
+
+type fixedRow struct {
+	Median float64 `json:"median"`
+	Min    int     `json:"min"`
+	Max    int     `json:"max"`
+}
+
+// fileLines is the number of lines of a non-empty file: newline count, plus one for an unterminated last line.
+func fileLines(src []byte) int {
+	n := strings.Count(string(src), "\n")
+	if len(src) > 0 && src[len(src)-1] != '\n' {
+		n++
+	}
+	return n
+}
+
+// sizeBucket maps a line count to an index of bucketNames.
+func sizeBucket(lines int) int {
+	switch {
+	case lines < 50:
+		return 0
+	case lines < 200:
+		return 1
+	case lines < 1000:
+		return 2
+	}
+	return 3
+}
+
+// fixedBytes is the bytes of the header line and the footer line of an outline text, newlines included.
+func fixedBytes(text string) int {
+	body := strings.TrimSuffix(text, "\n")
+	first := strings.IndexByte(body, '\n')
+	last := strings.LastIndexByte(body, '\n')
+	if first < 0 {
+		return len(text)
+	}
+	return (first + 1) + (len(body) - last)
 }
 
 func median(sorted []float64) float64 {
@@ -165,6 +247,20 @@ func round4(v float64) float64 { return math.Round(v*1e4) / 1e4 }
 
 // The statistics helpers are the measurement's own arithmetic, so they get a table test that always runs.
 func TestOutlineCorpusStatistics(t *testing.T) {
+	for _, c := range []struct{ lines, want int }{{1, 0}, {49, 0}, {50, 1}, {199, 1}, {200, 2}, {999, 2}, {1000, 3}} {
+		if got := sizeBucket(c.lines); got != c.want {
+			t.Errorf("sizeBucket(%d) = %d, want %d", c.lines, got, c.want)
+		}
+	}
+	if n := fileLines([]byte("a\nb")); n != 2 {
+		t.Errorf("fileLines unterminated = %d", n)
+	}
+	if n := fileLines([]byte("a\nb\n")); n != 2 {
+		t.Errorf("fileLines terminated = %d", n)
+	}
+	if n := fixedBytes("# a\nx\ny\n# s\n"); n != 8 {
+		t.Errorf("fixedBytes = %d, want 8", n)
+	}
 	for _, c := range []struct {
 		in          []float64
 		median, p90 float64
