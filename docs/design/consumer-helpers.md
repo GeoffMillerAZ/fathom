@@ -169,13 +169,21 @@ are arrays and never null, and `outline` is null for a file that could not be re
 `# <path> error=<text>` for that file, which the spec did not name. The nesting calls `before` and `covers` of
 `pkg/lang/view/contain.go`, the one containment rule of HLP-1.
 
-As built, two rulings from review. Go Signatures carry raw newlines and tabs (80 fields in 48 development corpus Go
-files), so one line per node and every string unchanged cannot both hold in text: `Text` writes each run of
-whitespace holding a newline or CR as one space and drops such a run at either end of a string, and the nodes and
-JSON keep the strings unchanged. A test holds text lines equal to nodes plus two over the goldens and the corpus.
-Keys are not unique in real reads (one-line TypeScript overloads share Key and span), so `before` in `contain.go`
-is made total after Key by Kind, Canonical, Name, Signature, Package and Tier, and `moreInner` is its exact
-reverse: R4 is still the one rule, and no input order changes an outline, `Enclosing` or `Touched`.
+As built (ESCALATE-28 R5): Go Signatures carry raw newlines and tabs (80 fields in 48 development corpus Go files),
+so one line per node and every string unchanged cannot both hold in text. `Text` writes each whitespace run that
+holds a newline or CR as one space and drops such a run at either end of a string. The nodes and the JSON keep the
+strings unchanged, so CH-D4 holds. A test holds text lines equal to nodes plus two over the goldens and the corpus.
+
+As built (ESCALATE-28 R6): Keys are not unique in real reads (one-line TypeScript overloads share Key and span), so
+`before` in `contain.go` is made total after Key by Kind, Canonical, Name, Signature, Package and Tier, and
+`moreInner` is its exact reverse. R4 stays one rule, and no input order changes an outline, `Enclosing` or `Touched`.
+A test holds this for duplicate Keys under shuffled input. The `at` goldens of HLP-1 are byte-identical.
+
+Reading outcome (ESCALATE-28 R7): the HLP-2 bar was fixed before the reading and does not move. It reads FAIL for
+Python and TypeScript and PASS for Go and JavaScript, so row HLP-2 stays open and HLP-2b is proven. No pooled-bytes
+bar, no outline without signatures and no new bar is adopted. The reading adds, as description with no bar, the
+ratio by file size bucket and the fixed bytes of the header and footer lines. HLP-4 needs HLP-1, HLP-2b and HLP-3.
+HLP-16, an outline size bar by file size preregistered and read on a corpus not used here, is registered as deferred.
 
 Proof (row HLP-2):
 - Byte-equal output for equal input, and for symbols supplied in shuffled order.

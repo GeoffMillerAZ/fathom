@@ -141,6 +141,7 @@ The rated register is in [the library design](../design/library-roadmap.md#consu
 - [-] HLP-8 In-memory fact set {id: LREG-35, disposition: deferred, reason: "overlaps the product index and E16", trigger: "FCT-11's census shows use (the E16 trigger) and a consumer needs lookups without the product"}
 - [-] HLP-14 Context packer {id: LREG-36, disposition: deferred, reason: "the product readouts own context selection", trigger: "a consumer outside the product asks and the readouts' own readings pass"}
 - [-] HLP-11 Incremental re-read {id: LREG-37, disposition: deferred, reason: "needs evidence that a full single-file re-read misses its budget", trigger: "LBK-9 shows single-file re-read time over its frozen budget"}
+- [-] HLP-16 Outline size bar by file size {id: LREG-40, disposition: deferred, reason: "an outline size bar by file size, preregistered and read on a corpus not used here", trigger: "the bench measures agent benefit from outlines, or a consumer asks"}
 - [-] HLP-13 Library MCP server {id: LREG-38, disposition: refused, reason: "the product owns the MCP surface (ADR-116). Wins if a named consumer asks in writing"}
 - [-] HLP-12 Library query language {id: LREG-39, disposition: refused, reason: "ADR-116 selects row export for existing query tools. Wins if a consumer shows a question the HLP-3 row export plus SQL or jq cannot express at acceptable cost"}
 

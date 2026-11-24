@@ -2,15 +2,15 @@ HLP-2 verdict: FAIL (python, typescript)
 
 # HLP-2: file outline size on the outline corpus
 
-Measured at `557eea1a5` (the reader and `pkg/lang/view` at that commit). The measuring test is
+Measured at `88bd0a216` (the reader and `pkg/lang/view` at that commit). The measuring test is
 `TestOutlineCorpusReading` in `pkg/lang/view/outline_corpus_test.go`. Toolchain `go1.27.4`, `darwin/arm64`.
 
-Aggregate SHA-256 of the printed JSON: `66c60bfbbd56ac4e2d2df71f2f96412fde4de06d540288c833c42d055a409050`
+Aggregate SHA-256 of the printed JSON: `6f2601ae5d62b511964b63e5de29c6ab070da2eb2266fb08757cf9d7bdf22a94`
 (two runs gave the same digest).
 
 The bar: the median of outline bytes divided by file bytes is at or under 20 percent for each of the four
 dialects. Go and JavaScript meet it. Python and TypeScript do not, so each of those is a FAIL for that dialect and
-the row is a FAIL. The bar is reported as measured and was not changed.
+the row is a FAIL. The bar was fixed before the reading and does not move (ESCALATE-28 R7). It is reported as measured and was not changed.
 
 This measures size, not whether an agent does better with an outline (CH-R3). Whether an outline helps an agent
 belongs to the bench program, and nothing here claims it.
@@ -69,6 +69,43 @@ Total bytes, for context only (the bar is on the per-file median):
 | javascript | 15292844 | 1476200 | 9.65% |
 | python | 4530302 | 934252 | 20.62% |
 | typescript | 7543238 | 1312569 | 17.40% |
+
+## By file size (description, no bar)
+
+Added by ESCALATE-28 R7 to tell a consumer when an outline pays. It sets no bar and changes no verdict. File size is
+the file's line count (newlines, plus one for an unterminated last line). Files is the count with a ratio. Median is
+the median of per-file ratios, pooled is outline bytes over file bytes summed within the bucket.
+
+| Dialect | Lines | Files | Median | Pooled |
+|---|---|---|---|---|
+| go | 1-49 | 193 | 27.16% | 28.92% |
+| go | 50-199 | 579 | 20.82% | 20.95% |
+| go | 200-999 | 517 | 13.23% | 13.96% |
+| go | 1000 and over | 97 | 8.70% | 10.10% |
+| javascript | 1-49 | 282 | 33.01% | 30.84% |
+| javascript | 50-199 | 619 | 14.66% | 14.33% |
+| javascript | 200-999 | 524 | 9.36% | 9.46% |
+| javascript | 1000 and over | 83 | 7.33% | 7.66% |
+| python | 1-49 | 796 | 83.65% | 68.00% |
+| python | 50-199 | 279 | 26.58% | 23.09% |
+| python | 200-999 | 120 | 14.40% | 17.89% |
+| python | 1000 and over | 21 | 12.45% | 10.27% |
+| typescript | 1-49 | 475 | 46.68% | 40.64% |
+| typescript | 50-199 | 457 | 18.72% | 19.75% |
+| typescript | 200-999 | 251 | 17.86% | 18.14% |
+| typescript | 1000 and over | 40 | 11.65% | 10.92% |
+
+The ratio falls as files grow in every dialect. Below 50 lines the outline is a quarter to four fifths of the file.
+
+Fixed bytes, the header line and the footer line of the text form per file (the header carries the file path, so it
+varies with path length):
+
+| Dialect | Median | Range |
+|---|---|---|
+| go | 107 | 86 to 163 |
+| javascript | 116 | 95 to 158 |
+| python | 124 | 93 to 169 |
+| typescript | 118 | 96 to 178 |
 
 ## Per subject
 
