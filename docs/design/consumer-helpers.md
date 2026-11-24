@@ -198,8 +198,8 @@ Proof (row HLP-2):
 
 ### HLP-4 Agent cookbook
 
-Ruling that amends the landed row: HLP-4 no longer waits on LBK-11. It needs HLP-1, HLP-2 and HLP-3 only. When
-LBK-11 lands, its cookbook links this chapter. Update the row's `needs` and the design text.
+Ruling that amends the landed row: HLP-4 no longer waits on LBK-11. It needs HLP-1, HLP-2b and HLP-3 (ESCALATE-28
+R7: HLP-2b is the outline verb, and HLP-2 stays open on its size bar). When LBK-11 lands, its cookbook links this chapter.
 
 - `docs/use-cases/library-agent-cookbook.md`: the common agent jobs, each as a short recipe with the exact
   command, the output shape, and what unknown means for that job.
