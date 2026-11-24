@@ -15,6 +15,12 @@ and a Touched set says it is incomplete. Nothing here reads a file or adds text
 a Result does not already carry, except Slice, which returns the caller's own
 bytes to the caller.
 
+CONSTANTS
+
+const RowsVersion = 1
+    RowsVersion is the version of the row shape. Provisional (CH-D6).
+
+
 FUNCTIONS
 
 func Slice(src []byte, s lang.Symbol) ([]byte, bool)
@@ -22,8 +28,35 @@ func Slice(src []byte, s lang.Symbol) ([]byte, bool)
     endings, and false when the span is unknown or does not lie inside src.
     It reads nothing but src, and the returned slice shares src's memory.
 
+func WriteJSONLines(w io.Writer, rows []Row) error
+    WriteJSONLines writes each row as its MarshalJSON line followed by a
+    newline: JSON Lines. It is what fathom-lang extract -rows prints.
+
 
 TYPES
+
+type FileRow struct {
+	Error      string
+	Dialect    string
+	Language   string
+	Skipped    string
+	Level      string
+	Incomplete bool
+	HasResult  bool
+	NullArrays []string
+}
+    FileRow is the per-file row: what the nested document holds for a file apart
+    from its arrays, and what is needed to rebuild the nested entry exactly.
+    HasResult is false when the nested entry's result is null (the file could
+    not be read): its Error says why and the other fields are zero. NullArrays
+    names the Result arrays that are null, not empty, in the nested document,
+    from symbols, references, unresolved, facts and notes.
+
+type HeaderRow struct {
+	RowsVersion   int
+	SchemaVersion int
+}
+    HeaderRow is the first row of an export.
 
 type Index struct {
 	// Has unexported fields.
@@ -65,6 +98,54 @@ func (ix *Index) Touched(start, end int) (syms []lang.Symbol, complete bool)
     Incomplete or Skipped, or a symbol with an unknown span starts before start
     (it may have reached into the range). start below 1 and end below start give
     an empty set and false.
+
+type Row struct {
+	Kind       RowKind
+	Path       string
+	I          int
+	Header     HeaderRow
+	File       FileRow
+	Symbol     lang.Symbol
+	Reference  lang.Reference
+	Unresolved lang.Unresolved
+	Fact       lang.Fact
+	Note       string
+}
+    Row is one line of the row export. Kind says which of the other fields
+    it holds: Header for KindHeader; Path and File for KindFile; Path, I and
+    one of Symbol, Reference, Unresolved, Fact or Note for the rest. I is the
+    zero-based position in the Result's array. Its JSON form is MarshalJSON's.
+
+func Header(schemaVersion int) Row
+    Header returns the first row of an export. schemaVersion is the
+    schema_version of the nested extract document the rows mirror.
+
+func Rows(path string, errText string, r lang.Result) []Row
+    Rows returns the rows of one file: its file row, then its symbols,
+    references, unresolved references, facts and notes, each in array order.
+    errText is the error the nested document shows for the file. When it
+    is not empty the file has no result: Rows returns the file row alone,
+    with HasResult false, and ignores r. The rows hold copies of r's values,
+    so a later change to r changes no row already returned.
+
+func (r Row) MarshalJSON() ([]byte, error)
+    MarshalJSON is the stable encoding of a row: one compact JSON object whose
+    fields come in the order of the row kind's shape, with the same string
+    escaping as the nested document. Equal rows give equal bytes.
+
+type RowKind string
+    RowKind names a kind of row. It is the value of a row's "row" field.
+
+const (
+	KindHeader     RowKind = "header"
+	KindFile       RowKind = "file"
+	KindSymbol     RowKind = "symbol"
+	KindReference  RowKind = "reference"
+	KindUnresolved RowKind = "unresolved"
+	KindFact       RowKind = "fact"
+	KindNote       RowKind = "note"
+)
+    The closed set of row kinds.
 
 type Status string
     Status is the answer class of Enclosing and EnclosingRange.
