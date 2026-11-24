@@ -41,6 +41,7 @@ Go API:
 - `func NewIndex(r lang.Result) *Index` builds the lookup once. Deterministic, no retained reference to caller
   slices that a caller could mutate into a wrong answer (copy what is kept).
 - `func (ix *Index) Enclosing(line int) (lang.Symbol, Status)`
+- `func (ix *Index) EnclosingRange(start, end int) (lang.Symbol, Status)` (ESCALATE-26 R2, additive)
 - `func (ix *Index) Touched(start, end int) (syms []lang.Symbol, complete bool)`
 - `func Slice(src []byte, s lang.Symbol) ([]byte, bool)`
 - `type Status string` with the closed set `found`, `none`, `unknown`.
@@ -48,22 +49,36 @@ Go API:
 Semantics:
 
 - A symbol has a known span when `EndLine >= Line > 0`. Its span is the lines `Line` to `EndLine` inclusive.
-- `Enclosing(line)`: among symbols with a known span containing the line, the innermost is the one with the
-  latest `Line`, then the earliest `EndLine`, then the smallest `Key`. Status is `found` only when the read is not
-  `Incomplete` and no symbol with an unknown span starts after the candidate's `Line` and at or before `line`.
-  Otherwise status is `unknown` and the candidate (possibly the zero Symbol) is returned as a hint. Status is
-  `none` only when the read is not `Incomplete`, no known span contains the line, and no symbol with an unknown
-  span starts at or before the line.
+- `EnclosingRange(start, end)` (ESCALATE-26 R2): among symbols with a known span containing every line of
+  `start..end`, the innermost is the one with the latest `Line`, then the earliest `EndLine`, then the largest
+  `Key` (ESCALATE-27 R4: the innermost is the last symbol in the one listing order, `Line`, `EndLine` descending,
+  `Key`, so among equal spans the first listed is the outer one, as HLP-2 nests them; one containment rule,
+  shared by HLP-1 and HLP-2). `Enclosing(line)` is `EnclosingRange(line, line)`.
+  - `found` (ESCALATE-27 R3): the read is not `Incomplete`, a known span contains the whole range, and no
+    unknown-span symbol has `Line < 1` or a `Line` at or after the candidate's `Line` and at or before `start`.
+    An unknown-span symbol that starts before the candidate's `Line` can only be outer and does not block `found`.
+    One that starts after `start`, inside the range or beyond it, cannot hold the whole range and does not block
+    it either.
+  - `none`: the read is not `Incomplete`, no known span contains the range, and no unknown-span symbol starts at
+    or before `start`, an unknown-span symbol with `Line < 1` counting as starting at or before `start` (R3).
+  - Otherwise `unknown`, and the candidate (possibly the zero Symbol) is returned as a hint.
+  - Symbols that start inside the range are not the enclosing symbol. `Touched` reports them, and the `at`
+    output carries both beside each other.
 - `Touched(start, end)`: every symbol whose known span intersects the range, plus every unknown-span symbol whose
   `Line` lies in the range. Sorted by `Line`, then `EndLine` descending, then `Key`. `complete` is false when the
   read is `Incomplete` or an unknown-span symbol starts before `start`.
 - A `Skipped` result has no symbols: `Enclosing` is `unknown`, `Touched` is empty with `complete` false.
-- `line < 1`, `end < start`: status `none` or an empty set with `complete` true is wrong. Return `unknown` and
+- `start < 1`, `end < start`: status `none` or an empty set with `complete` true is wrong. Return `unknown` and
   `complete` false. Never panic.
 - `Slice` returns the bytes of lines `Line` to `EndLine` with their line endings, and false when the span is
   unknown or lies outside `src`. It reads nothing but `src`.
 
-Binary: `fathom-lang at [-root DIR] [-deadline D] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...` reads each
+Budget (ESCALATE-26 R1): `pkg/lang/view` is opt-in, like `pkg/lang/cue`. The door's closure budget (CH-D5,
+`pkg/lang` at 80) does not grow. The closure test asserts the forbidden set and that the closure of `view` is the
+door's plus `view` and nothing else, so a consumer of `view` links one package more than a consumer of `pkg/lang`
+alone. `view` does not import `pkg/lang/deps`.
+
+Binary: `fathom-lang at [-root DIR] [-deadline D] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...` (`LINE` and `END` at least 1, `END` not below `LINE`, else a usage error, exit 2) reads each
 file once under the existing supervised boundary and prints
 `{"schema_version":1,"queries":[{"path","start","end","status","enclosing":{symbol}|null,"touched":[symbols],"complete":bool,"error":""}]}`.
 Several queries on one path share one read. Exit codes as `extract`. No source text is printed.
