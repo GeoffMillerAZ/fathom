@@ -149,7 +149,8 @@ Semantics:
 - Nodes are the Result's symbols, ordered by `Line`, then `EndLine` descending, then `Key`. A node is a child of
   the innermost known-span symbol that strictly contains its span (same rule as HLP-1). Unknown-span symbols are
   top-level nodes with `SpanKnown` false. Equal spans nest by `Key` order, first as parent.
-- Every string comes from the Result unchanged. The outline adds no text from the file (CH-D4).
+- Every node string comes from the Result unchanged, in `Nodes` and in JSON. The outline adds no text from the
+  file (CH-D4). `Text` alone writes a run of whitespace that holds a newline or CR as one space (see as built).
 - `MaxNodes`: when the outline has more nodes, drop the deepest level first, then the next, until it fits, and
   set `Omitted` to the number dropped. If the top level alone exceeds the limit, keep the first `MaxNodes` in
   order. Truncation is never silent: `Text` ends with a line stating how many were omitted.
@@ -162,6 +163,19 @@ Semantics:
 
 Binary: `fathom-lang outline [-root DIR] [-format text|json] [-max-nodes N] [-deadline D] [-max-memory SIZE]
 [-in-process] PATH...` prints the text form, or `{"schema_version":1,"files":[{"path","error","outline":{...}}]}`.
+
+As built: the JSON field names are the snake case of the Go fields (`end_line`, `span_known`), `nodes` and `children`
+are arrays and never null, and `outline` is null for a file that could not be read. The text form prints
+`# <path> error=<text>` for that file, which the spec did not name. The nesting calls `before` and `covers` of
+`pkg/lang/view/contain.go`, the one containment rule of HLP-1.
+
+As built, two rulings from review. Go Signatures carry raw newlines and tabs (80 fields in 48 development corpus Go
+files), so one line per node and every string unchanged cannot both hold in text: `Text` writes each run of
+whitespace holding a newline or CR as one space and drops such a run at either end of a string, and the nodes and
+JSON keep the strings unchanged. A test holds text lines equal to nodes plus two over the goldens and the corpus.
+Keys are not unique in real reads (one-line TypeScript overloads share Key and span), so `before` in `contain.go`
+is made total after Key by Kind, Canonical, Name, Signature, Package and Tier, and `moreInner` is its exact
+reverse: R4 is still the one rule, and no input order changes an outline, `Enclosing` or `Touched`.
 
 Proof (row HLP-2):
 - Byte-equal output for equal input, and for symbols supplied in shuffled order.
