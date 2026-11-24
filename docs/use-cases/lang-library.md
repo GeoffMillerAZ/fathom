@@ -23,6 +23,7 @@ It is not a query engine. Nothing is stored, nothing is joined across files, and
 | `pkg/lang/iac` | Go package | `iac.ReadFile` and `iac.ReadModule`: the resources, data sources and module calls of Terraform, OpenTofu, CloudFormation and Pulumi YAML, each attribute with a path, a class, its references and a span (see Resource reads) |
 | `pkg/lang/deps` | Go package | Direct file dependencies and typed unknowns from a repository `fs.FS` |
 | `pkg/lang/langtest` | Go package | `CheckPack`: a pack's validation, required kinds and goldens, for pack authors |
+| `pkg/lang/view` | Go package (provisional) | `NewIndex`, `Enclosing`, `EnclosingRange`, `Touched`, `Slice`: span lookups over one `lang.Result` |
 | `cmd/fathom-lang` | Binary (stdlib flags only) | `extract`, `dialects`, `resources`, `deps`, `pathfilters`, `boundaries`, `contract` and `catalog import`, printing the same facts as JSON for tools not written in Go |
 
 ---
@@ -64,6 +65,7 @@ The runnable versions are the godoc examples on `Reader.Extract`, `Reader.Dialec
 ```
 fathom-lang extract [-root DIR] [-siblings FILE|-] [-walk] [-cache DIR] [-pack DIR]
                     [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH...
+fathom-lang at [-root DIR] [-deadline DURATION] [-max-memory SIZE] [-in-process] PATH:LINE[-END]...
 fathom-lang dialects [-pack DIR]
 fathom-lang resources [-root DIR] [-module DIR] [-values] [-deadline DURATION] [-max-memory SIZE]
                       [-in-process] PATH...
@@ -81,6 +83,14 @@ fathom-lang catalog import -dir DIR -region REGION [-licence SPDX] <schemas.zip>
 $ fathom-lang extract -root infra main.tf | jq '.files[0].result | {dialect, level, symbols: [.symbols[].name]}'
 { "dialect": "terraform", "level": "L3", "symbols": ["aws_s3_bucket.logs", "var.name"] }
 ```
+
+`at` (provisional) answers which symbol holds a line or range, reading each distinct file once in the same supervised child as `extract`. It prints `{"schema_version":1,"queries":[{"path","start","end","status","enclosing","touched","complete","error"}]}` in argument order. `status` is `found`, `none` or `unknown`. `unknown` means the read cannot decide: a symbol with no end line may hold the range, or the read is incomplete or skipped. Then `enclosing` is the best candidate or null, and `complete` false says `touched` may be missing symbols. For a range, `enclosing` is the innermost symbol holding the whole range. No source text is printed. Exit codes are those of `extract`. The shape may change in a minor release until the LP-8 readings pass and one release has shipped.
+
+```
+$ fathom-lang at -root infra main.tf:2 main.tf:1-5 | jq '.queries[] | {start, end, status, enclosing: .enclosing.key}'
+```
+
+From Go, `pkg/lang/view` gives the same answers over one `lang.Result` (`view.NewIndex(r).Enclosing(line)`, `EnclosingRange`, `Touched`, and `view.Slice` for the bytes of a symbol's lines in your own source). It is provisional too. A consumer of `view` links one package more than a consumer of `pkg/lang` alone.
 
 `deps` takes repository-relative slash paths and prints direct dependency edges and typed
 unknowns. Read `complete` before using the edges for skip decisions. `-export` writes unit
@@ -196,4 +206,4 @@ Treat `Incomplete` as "not read". The exit status stays 0 for such a file, as fo
 
 ## Maintained
 
-This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `cmd/fathom-lang` (its extract, dialects, resources, deps, pathfilters, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.
+This doc covers: `pkg/lang/iac` (`iac.ReadFile`, `iac.ReadModule`, `iac.WithValues`, `iac.WithDeadline`, `iac.OpenCatalog`, `Catalog.Contract`, `iac.ImportCatalog`), `pkg/lang` (`lang.New`, `Reader.Extract`, `Reader.Dialects`, `WithDialects`, `WithExtractor`, `WithLimits` and the read deadline, `EnableCompilationCache`), `pkg/lang/cue`, `pkg/lang/deps`, `pkg/lang/deps/boundaries`, `pkg/lang/langtest`, `pkg/lang/view`, `cmd/fathom-lang` (its extract, at, dialects, resources, deps, pathfilters, boundaries, contract and catalog import commands, the `-root`, `-siblings`, `-walk`, `-cache`, `-pack`, `-deadline`, `-max-memory` and `-in-process` flags, its supervised child and the JSON goldens), and the same extraction as `fathom ingest`. Update it when these change.

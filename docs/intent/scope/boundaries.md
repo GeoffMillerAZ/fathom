@@ -44,3 +44,9 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   RT-M1 reads. Phase start triggers and kills: `docs/vision/38-proof-layer-roadmap.md` section 9.4. The environment
   daemon (F74) also waits on the owner's answer to U1. Its goal, provisionally G38, is opened with the next free
   goal id when phase 1 starts.
+
+## Provisional surfaces (LP-8 consumer helpers)
+
+Not yet compatibility surface (CH-D5, CH-D6, `docs/design/consumer-helpers.md`). Each settles when the LP-8 readings pass and one release has shipped, and until then may change in a minor release.
+
+- `pkg/lang/view` exported Go API and the `fathom-lang at` JSON (`schema_version` 1: `path`, `start`, `end`, `status`, `enclosing`, `touched`, `complete`, `error`), either may change in a minor release. Evidence: `TestLangAPISnapshot` (`view.txt`), `TestAtJSONGolden`, `TestViewClosure`.
