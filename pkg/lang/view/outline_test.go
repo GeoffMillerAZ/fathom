@@ -490,3 +490,42 @@ func TestOutlineParentEqualsIndexEnclosingRange(t *testing.T) {
 		}
 	}
 }
+
+// ESCALATE-28 R6: symbols with equal span and equal Key but different Kind, Name or Signature give identical
+// Enclosing, Touched and Outline answers under every input order.
+func TestDuplicateKeysShuffleStableAllVerbs(t *testing.T) {
+	mk := func(kind, name, sig string) lang.Symbol {
+		return lang.Symbol{Key: "p.dup", Name: name, Package: "p", Kind: kind, Canonical: strings.ToLower(kind), Signature: sig, Line: 2, EndLine: 4, Tier: "verified"}
+	}
+	r := lang.Result{Dialect: "typescript", Level: "L3", Symbols: []lang.Symbol{
+		osym("p.outer", "outer", "Class", "class", "", 1, 9),
+		mk("Method", "dup", "dup(a: string)"),
+		mk("Method", "dup", "dup(a: number)"),
+		mk("Overload", "dup", "dup(a: number)"),
+		mk("Method", "dup2", "dup(a: number)"),
+		osym("p.tail", "tail", "Function", "function", "", 6, 7),
+	}}
+	ix0 := view.NewIndex(r)
+	e0, s0 := ix0.Enclosing(3)
+	t0, c0 := ix0.Touched(2, 6)
+	base := view.Outline("a.ts", r, view.OutlineOptions{})
+	baseJSON, _ := json.Marshal(base)
+	rng := rand.New(rand.NewSource(28))
+	for i := 0; i < 200; i++ {
+		s := slices.Clone(r.Symbols)
+		rng.Shuffle(len(s), func(a, b int) { s[a], s[b] = s[b], s[a] })
+		r2 := r
+		r2.Symbols = s
+		ix := view.NewIndex(r2)
+		if e, st := ix.Enclosing(3); e != e0 || st != s0 {
+			t.Fatalf("shuffle %d changed Enclosing: %+v vs %+v", i, e, e0)
+		}
+		if ts, c := ix.Touched(2, 6); c != c0 || !reflect.DeepEqual(ts, t0) {
+			t.Fatalf("shuffle %d changed Touched", i)
+		}
+		d := view.Outline("a.ts", r2, view.OutlineOptions{})
+		if j, _ := json.Marshal(d); string(j) != string(baseJSON) || d.Text() != base.Text() {
+			t.Fatalf("shuffle %d changed Outline", i)
+		}
+	}
+}
